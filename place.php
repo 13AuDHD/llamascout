@@ -30,18 +30,26 @@ function place_report_rating_item(string $label, mixed $value): void
         return;
     }
     ?>
-    <div class="scout-report-item scout-report-rating-item">
-        <div
-            class="scout-rating-dots"
-            aria-label="<?= place_h($rating) ?> out of 5"
-        >
-            <?php for ($i = 1; $i <= 5; $i++): ?>
-                <span
-                    class="scout-rating-dot<?= $i <= $rating ? ' is-filled' : '' ?>"
-                    aria-hidden="true"
-                ></span>
-            <?php endfor; ?>
-        </div>
+<div class="scout-report-item scout-report-rating-item">
+
+    <div class="scout-rating-content">
+        <span><?= place_h($label) ?></span>
+        <strong><?= place_h($rating) ?>/5</strong>
+    </div>
+
+    <div
+        class="scout-rating-dots"
+        aria-label="<?= place_h($rating) ?> out of 5"
+    >
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+            <span
+                class="scout-rating-dot<?= $i <= $rating ? ' is-filled' : '' ?>"
+                aria-hidden="true"
+            ></span>
+        <?php endfor; ?>
+    </div>
+
+</div>
 
         <div class="scout-rating-content">
             <span><?= place_h($label) ?></span>
