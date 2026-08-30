@@ -342,7 +342,7 @@ try {
         weather_fetch_city_forecast(
             $city,
             $state,
-            5
+            1
         );
 
 
