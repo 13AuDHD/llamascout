@@ -1022,29 +1022,9 @@ textarea {
 
 .scout-report-rating-item {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 1fr auto;
     gap: 16px;
     align-items: center;
-}
-
-.scout-rating-dots {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-.scout-rating-dot {
-    display: block;
-    width: 13px;
-    height: 13px;
-
-    border: 2px solid currentColor;
-    border-radius: 50%;
-}
-
-.scout-rating-dot.is-filled {
-    background: currentColor;
 }
 
 .scout-rating-content {
@@ -1062,11 +1042,32 @@ textarea {
     font-size: 1rem;
 }
 
+.scout-rating-dots {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.scout-rating-dot {
+    display: block;
+    width: 13px;
+    height: 13px;
+
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.scout-rating-dot.is-filled {
+    background: currentColor;
+}
+
 @media (max-width: 420px) {
 
     .scout-report-rating-item {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
     }
 
     .scout-rating-dot {
@@ -1074,5 +1075,3 @@ textarea {
         height: 12px;
     }
 }
-
-
