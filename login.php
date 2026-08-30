@@ -5,38 +5,46 @@ declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 
 if (auth_check()) {
-    header('Location: /');
+    header('Location: /index.php');
     exit;
 }
 
 $error = '';
-$email = '';
+$identifier = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim((string) ($_POST['email'] ?? ''));
+    $identifier = trim((string) ($_POST['identifier'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
 
-    if ($email === '' || $password === '') {
-        $error = 'Enter your email address and password.';
+    if ($identifier === '' || $password === '') {
+        $error = 'Enter your email address or username and password.';
     } else {
         try {
             $stmt = db()->prepare(
                 'SELECT
                     id,
                     email,
+                    username,
                     password_hash,
                     status,
                     email_verified_at
                  FROM users
-                 WHERE email = ?
+                 WHERE email = :identifier
+                    OR username = :identifier
                  LIMIT 1'
             );
 
-            $stmt->execute([$email]);
+            $stmt->execute([
+                'identifier' => $identifier,
+            ]);
+
             $user = $stmt->fetch();
 
-            if (!$user || !password_verify($password, $user['password_hash'])) {
-                $error = 'The email address or password is incorrect.';
+            if (
+                !$user ||
+                !password_verify($password, (string) $user['password_hash'])
+            ) {
+                $error = 'The email address, username, or password is incorrect.';
             } elseif ($user['status'] !== 'active') {
                 $error = 'This account is not currently active.';
             } elseif ($user['email_verified_at'] === null) {
@@ -52,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $update->execute([(int) $user['id']]);
 
-                header('Location: /');
+                header('Location: /index.php');
                 exit;
             }
         } catch (Throwable $e) {
@@ -79,19 +87,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="post" action="/login.php">
         <div>
-            <label for="email">Email address</label>
+            <label for="identifier">Email address or username</label>
+
             <input
-                type="email"
-                id="email"
-                name="email"
-                value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>"
-                autocomplete="email"
+                type="text"
+                id="identifier"
+                name="identifier"
+                value="<?= htmlspecialchars($identifier, ENT_QUOTES, 'UTF-8') ?>"
+                autocomplete="username"
                 required
             >
         </div>
 
         <div>
             <label for="password">Password</label>
+
             <input
                 type="password"
                 id="password"
