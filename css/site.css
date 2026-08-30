@@ -1016,5 +1016,63 @@ textarea {
 
 
 
+/* =========================================================
+   SCOUT REPORT RATING DOTS
+   ========================================================= */
+
+.scout-report-rating-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+}
+
+.scout-rating-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.scout-rating-dot {
+    display: block;
+    width: 13px;
+    height: 13px;
+
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.scout-rating-dot.is-filled {
+    background: currentColor;
+}
+
+.scout-rating-content {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.scout-rating-content > span {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.scout-rating-content > strong {
+    font-size: 1rem;
+}
+
+@media (max-width: 420px) {
+
+    .scout-report-rating-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .scout-rating-dot {
+        width: 12px;
+        height: 12px;
+    }
+}
 
 
