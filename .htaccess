@@ -1,1 +1,39 @@
+RewriteEngine On
+
+# =========================================================
+# FORCE HTTPS
+# =========================================================
+
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+
+# =========================================================
+# DEFAULT INDEX
+# =========================================================
+
 DirectoryIndex index.php index.html
+
+
+# =========================================================
+# CACHE CONTROL
+# Development-friendly: don't cache code/content files
+# =========================================================
+
+<IfModule mod_headers.c>
+
+    <FilesMatch "\.(html?|php|json|js|css)$">
+        Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+
+    <FilesMatch "\.(png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf)$">
+        Header always set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+
+    Header unset ETag
+
+</IfModule>
+
+FileETag None
