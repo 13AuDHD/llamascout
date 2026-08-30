@@ -71,7 +71,6 @@ function place_public_by_slug(string $slug): ?array
             p.sensory_summary,
             p.access_summary,
             p.elevation_feet,
-            p.road,
             p.city,
             p.county,
             p.state,
