@@ -157,20 +157,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         <?php endif; ?>
 
-        <?php if ($place['road']): ?>
-            <div class="place-fact">
-                <i class="fa-solid fa-road" aria-hidden="true"></i>
-                <span>Road</span>
-                <strong>
-                    <?= htmlspecialchars(
-                        $place['road'],
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>
-                </strong>
-            </div>
-        <?php endif; ?>
-
         <?php if ($place['public_location_label']): ?>
             <div class="place-fact">
                 <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
@@ -225,40 +211,6 @@ require __DIR__ . '/partials/header.php';
 
             </div>
 
-        </section>
-
-    <?php endif; ?>
-
-
-    <?php if ($place['access_summary']): ?>
-
-        <section class="place-section">
-            <h2>Access</h2>
-
-            <p>
-                <?= nl2br(htmlspecialchars(
-                    $place['access_summary'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                )) ?>
-            </p>
-        </section>
-
-    <?php endif; ?>
-
-
-    <?php if ($place['sensory_summary']): ?>
-
-        <section class="place-section">
-            <h2>Sensory notes</h2>
-
-            <p>
-                <?= nl2br(htmlspecialchars(
-                    $place['sensory_summary'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                )) ?>
-            </p>
         </section>
 
     <?php endif; ?>
