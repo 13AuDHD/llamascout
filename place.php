@@ -18,7 +18,7 @@ function place_yes_no(mixed $value): ?string
     return (int) $value === 1 ? 'Yes' : 'No';
 }
 
-function place_report_rating(string $label, mixed $value): void
+function place_report_rating_item(string $label, mixed $value): void
 {
     if ($value === null || $value === '') {
         return;
