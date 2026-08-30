@@ -24,8 +24,6 @@ function places_public(): array
             p.land_manager,
             p.land_type,
             p.elevation_feet,
-            p.sensory_summary,
-            p.access_summary,
             p.last_verified_at,
             p.published_at,
             pi.src AS featured_image,
@@ -68,8 +66,6 @@ function place_public_by_slug(string $slug): ?array
             p.public_location_label,
             p.public_latitude,
             p.public_longitude,
-            p.sensory_summary,
-            p.access_summary,
             p.elevation_feet,
             p.city,
             p.county,
@@ -97,37 +93,39 @@ function place_public_by_slug(string $slug): ?array
         return null;
     }
 
-    $place['images'] = place_public_images((int) $place['id']);
+    $place['featured_image'] = place_public_featured_image((int) $place['id']);
     $place['amenities'] = place_public_amenities((int) $place['id']);
 
     return $place;
 }
 
 
-function place_public_images(int $placeId): array
+function place_public_featured_image(int $placeId): ?array
 {
     $stmt = db()->prepare(
         "
         SELECT
             src,
-            alt_text,
-            is_featured,
-            sort_order
+            alt_text
 
         FROM place_images
 
         WHERE place_id = ?
+          AND is_featured = 1
 
         ORDER BY
-            is_featured DESC,
             sort_order ASC,
             id ASC
+
+        LIMIT 1
         "
     );
 
     $stmt->execute([$placeId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $image ?: null;
 }
 
 
