@@ -4,52 +4,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 
-try {
-    $pdo = db();
+$pageTitle = 'Llama Scout';
 
-    $result = $pdo->query('SELECT DATABASE() AS database_name, VERSION() AS database_version');
-    $database = $result->fetch();
+require __DIR__ . '/partials/header.php';
+?>
 
-    ?><!doctype html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Llama Scout v2</title>
-    </head>
-    <body>
-        <main>
-            <h1>Llama Scout v2</h1>
-            <p>PHP bootstrap loaded successfully.</p>
-            <p>Database connection successful.</p>
-            <p>
-                Database:
-                <strong><?= htmlspecialchars((string) $database['database_name'], ENT_QUOTES, 'UTF-8') ?></strong>
-            </p>
-            <p>
-                MariaDB/MySQL:
-                <strong><?= htmlspecialchars((string) $database['database_version'], ENT_QUOTES, 'UTF-8') ?></strong>
-            </p>
-        </main>
-    </body>
-    </html>
-    <?php
-} catch (Throwable $e) {
-    http_response_code(500);
+<section class="hero">
+    <h1>Know the place before you go.</h1>
 
-    ?><!doctype html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Llama Scout v2 Setup Error</title>
-    </head>
-    <body>
-        <main>
-            <h1>Llama Scout v2 Setup Error</h1>
-            <p><?= htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') ?></p>
-        </main>
-    </body>
-    </html>
-    <?php
-}
+    <p>
+        Llama Scout helps you understand a place before you arrive,
+        including access, amenities, connectivity, sensory conditions,
+        and the details that can make or break a trip.
+    </p>
+</section>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>
