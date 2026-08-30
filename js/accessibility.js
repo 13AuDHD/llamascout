@@ -1,441 +1,155 @@
-/* =========================================================
-   LLAMA SCOUT
-   ACCESSIBILITY + DISPLAY SETTINGS
-   ========================================================= */
-
 (() => {
+    'use strict';
 
-  const storageKey =
-    "llama-theme";
+    const root = document.documentElement;
 
+    const button = document.getElementById('accessibility-button');
+    const panel = document.getElementById('accessibility-panel');
+    const closeButton = document.getElementById('accessibility-close');
 
-    const fontSizeStorageKey =
-    "llama-font-size";
-
-
-  function savedFontSize() {
-
-    const value =
-      localStorage.getItem(
-        fontSizeStorageKey
-      );
-
+    const themeSelect = document.getElementById('theme-select');
+    const fontSizeSelect = document.getElementById('font-size-select');
+    const reducedMotion = document.getElementById('reduced-motion');
+    const resetButton = document.getElementById('accessibility-reset');
 
     if (
-      value === "normal"
-      ||
-      value === "larger"
-      ||
-      value === "largest"
+        !button ||
+        !panel ||
+        !themeSelect ||
+        !fontSizeSelect ||
+        !reducedMotion
     ) {
-      return value;
+        return;
     }
 
-
-    return "normal";
-  }
-
-
-  function applyFontSize(
-    choice
-  ) {
-
-    document.documentElement
-      .setAttribute(
-        "data-font-size",
-        choice
-      );
-
-
-    document
-      .querySelectorAll(
-        "[data-font-size-choice]"
-      )
-      .forEach(
-        (button) => {
-
-          const active =
-            button.dataset.fontSizeChoice
-            ===
-            choice;
-
-
-          button.classList.toggle(
-            "is-active",
-            active
-          );
-
-
-          button.setAttribute(
-            "aria-pressed",
-            active
-              ? "true"
-              : "false"
-          );
+    function getPreference(key, fallback) {
+        try {
+            return localStorage.getItem(key) || fallback;
+        } catch (error) {
+            return fallback;
         }
-      );
-  }
-
-
-  applyFontSize(
-    savedFontSize()
-  );
-
-   
-  function savedTheme() {
-
-    const value =
-      localStorage.getItem(
-        storageKey
-      );
-
-
-    if (
-      value === "light"
-      ||
-      value === "dark"
-      ||
-      value === "system"
-    ) {
-      return value;
     }
 
-
-    return "system";
-  }
-
-
-  function resolvedTheme(
-    choice
-  ) {
-
-    if (
-      choice === "dark"
-    ) {
-      return "dark";
+    function setPreference(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            // localStorage is optional.
+        }
     }
 
-
-    if (
-      choice === "light"
-    ) {
-      return "light";
+    function removePreference(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            // localStorage is optional.
+        }
     }
 
-
-    return window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches
-      ? "dark"
-      : "light";
-  }
-
-
-  function applyTheme(
-    choice
-  ) {
-
-    const resolved =
-      resolvedTheme(
-        choice
-      );
-
-
-    document.documentElement
-      .setAttribute(
-        "data-theme",
-        resolved
-      );
-
-
-    document.documentElement
-      .setAttribute(
-        "data-theme-choice",
-        choice
-      );
-
-
-    document
-      .querySelectorAll(
-        "[data-theme-choice]"
-      )
-      .forEach(
-        (button) => {
-
-          const active =
-            button.dataset.themeChoice
-            ===
-            choice;
-
-
-          button.classList.toggle(
-            "is-active",
-            active
-          );
-
-
-          button.setAttribute(
-            "aria-pressed",
-            active
-              ? "true"
-              : "false"
-          );
+    function applyTheme(value) {
+        if (value === 'light' || value === 'dark') {
+            root.dataset.theme = value;
+        } else {
+            delete root.dataset.theme;
         }
-      );
-  }
+    }
 
-
-  /*
-   * Apply the theme immediately.
-   *
-   * This works whether or not the page has the
-   * accessibility panel/header.
-   */
-
-  applyTheme(
-    savedTheme()
-  );
-
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-      const toggle =
-        document.querySelector(
-          "[data-accessibility-toggle]"
-        );
-
-
-      const panel =
-        document.getElementById(
-          "accessibility-panel"
-        );
-
-
-      const themeButtons =
-        document.querySelectorAll(
-          "[data-theme-choice]"
-        );
-
-
-      const fontSizeButtons =
-        document.querySelectorAll(
-          "[data-font-size-choice]"
-        );
-       
-      /*
-       * Standalone pages such as login,
-       * registration and password recovery
-       * do not have the accessibility panel.
-       *
-       * Theme handling still remains active.
-       */
-
-      if (
-        toggle
-        &&
-        panel
-      ) {
-
-        function panelIsOpen() {
-
-          return !panel.hidden;
+    function applyFontSize(value) {
+        if (value === 'large' || value === 'larger') {
+            root.dataset.fontSize = value;
+        } else {
+            delete root.dataset.fontSize;
         }
+    }
 
-
-        function openPanel() {
-
-          panel.hidden =
-            false;
-
-
-          toggle.setAttribute(
-            "aria-expanded",
-            "true"
-          );
+    function applyReducedMotion(enabled) {
+        if (enabled) {
+            root.dataset.reducedMotion = 'true';
+        } else {
+            delete root.dataset.reducedMotion;
         }
+    }
 
+    function openPanel() {
+        panel.hidden = false;
+        button.setAttribute('aria-expanded', 'true');
 
-        function closePanel(
-          returnFocus = false
-        ) {
+        window.requestAnimationFrame(() => {
+            themeSelect.focus();
+        });
+    }
 
-          panel.hidden =
-            true;
+    function closePanel() {
+        panel.hidden = true;
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
+    }
 
+    const storedTheme = getPreference('llama-theme', 'system');
+    const storedFontSize = getPreference('llama-font-size', 'normal');
+    const storedReducedMotion =
+        getPreference('llama-reduced-motion', 'false') === 'true';
 
-          toggle.setAttribute(
-            "aria-expanded",
-            "false"
-          );
+    themeSelect.value = storedTheme;
+    fontSizeSelect.value = storedFontSize;
+    reducedMotion.checked = storedReducedMotion;
 
+    applyTheme(storedTheme);
+    applyFontSize(storedFontSize);
+    applyReducedMotion(storedReducedMotion);
 
-          if (
-            returnFocus
-          ) {
-            toggle.focus();
-          }
-        }
-
-
-        function togglePanel() {
-
-          if (
-            panelIsOpen()
-          ) {
-
-            closePanel();
-
-          } else {
-
+    button.addEventListener('click', () => {
+        if (panel.hidden) {
             openPanel();
-          }
-        }
-
-
-        toggle.addEventListener(
-          "click",
-          togglePanel
-        );
-
-
-        document.addEventListener(
-          "keydown",
-          (event) => {
-
-            if (
-              event.key === "Escape"
-              &&
-              panelIsOpen()
-            ) {
-
-              closePanel(
-                true
-              );
-            }
-          }
-        );
-
-
-        document.addEventListener(
-          "click",
-          (event) => {
-
-            if (
-              !panelIsOpen()
-            ) {
-              return;
-            }
-
-
-            if (
-              panel.contains(
-                event.target
-              )
-              ||
-              toggle.contains(
-                event.target
-              )
-            ) {
-              return;
-            }
-
-
+        } else {
             closePanel();
-          }
-        );
-      }
-
-
-      themeButtons.forEach(
-        (button) => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const choice =
-                button.dataset.themeChoice;
-
-
-              localStorage.setItem(
-                storageKey,
-                choice
-              );
-
-
-              applyTheme(
-                choice
-              );
-            }
-          );
         }
-      );
+    });
 
+    closeButton?.addEventListener('click', closePanel);
 
-      fontSizeButtons.forEach(
-        (button) => {
+    themeSelect.addEventListener('change', () => {
+        const value = themeSelect.value;
 
-          button.addEventListener(
-            "click",
-            () => {
+        setPreference('llama-theme', value);
+        applyTheme(value);
+    });
 
-              const choice =
-                button.dataset.fontSizeChoice;
+    fontSizeSelect.addEventListener('change', () => {
+        const value = fontSizeSelect.value;
 
+        setPreference('llama-font-size', value);
+        applyFontSize(value);
+    });
 
-              localStorage.setItem(
-                fontSizeStorageKey,
-                choice
-              );
+    reducedMotion.addEventListener('change', () => {
+        const enabled = reducedMotion.checked;
 
-
-              applyFontSize(
-                choice
-              );
-            }
-          );
-        }
-      );
-       
-      /*
-       * Refresh pressed-state after the
-       * DOM controls are available.
-       */
-
-      applyTheme(
-        savedTheme()
-      );
-
-      applyFontSize(
-        savedFontSize()
-      );
-    }
-  );
-
-
-  const systemTheme =
-    window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    );
-
-
-  systemTheme.addEventListener(
-    "change",
-    () => {
-
-      if (
-        savedTheme()
-        ===
-        "system"
-      ) {
-
-        applyTheme(
-          "system"
+        setPreference(
+            'llama-reduced-motion',
+            enabled ? 'true' : 'false'
         );
-      }
-    }
-  );
 
+        applyReducedMotion(enabled);
+    });
+
+    resetButton?.addEventListener('click', () => {
+        removePreference('llama-theme');
+        removePreference('llama-font-size');
+        removePreference('llama-reduced-motion');
+
+        themeSelect.value = 'system';
+        fontSizeSelect.value = 'normal';
+        reducedMotion.checked = false;
+
+        delete root.dataset.theme;
+        delete root.dataset.fontSize;
+        delete root.dataset.reducedMotion;
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            closePanel();
+        }
+    });
 })();
