@@ -159,3 +159,170 @@ function place_public_amenities(int $placeId): array
 
     return $amenities ?: [];
 }
+
+function place_member_by_slug(string $slug): ?array
+{
+    $stmt = db()->prepare(
+        "
+        SELECT
+            p.id,
+            p.slug,
+            p.name,
+            p.type,
+            p.status,
+            p.source_type,
+            p.description,
+
+            p.latitude,
+            p.longitude,
+            p.elevation_feet,
+            p.road,
+
+            p.city,
+            p.county,
+            p.state,
+            p.region,
+            p.land_manager,
+            p.land_type,
+
+            p.sensory_summary,
+            p.access_summary,
+
+            p.last_verified_at,
+            p.published_at
+
+        FROM places p
+
+        WHERE p.slug = ?
+          AND p.status IN ('active', 'featured')
+
+        LIMIT 1
+        "
+    );
+
+    $stmt->execute([$slug]);
+
+    $place = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$place) {
+        return null;
+    }
+
+    $placeId = (int) $place['id'];
+
+    $place['images'] = place_member_images($placeId);
+    $place['amenities'] = place_public_amenities($placeId);
+    $place['details'] = place_member_row('place_details', $placeId);
+    $place['connectivity'] = place_member_row('place_connectivity', $placeId);
+    $place['sensory_details'] = place_member_row('place_sensory_details', $placeId);
+    $place['rules'] = place_member_row('place_rules', $placeId);
+    $place['experience'] = place_member_row('place_experience', $placeId);
+
+    $place['sensory'] = place_member_sensory($placeId);
+
+    return $place;
+}
+
+
+function place_member_images(int $placeId): array
+{
+    $stmt = db()->prepare(
+        "
+        SELECT
+            src,
+            alt_text,
+            is_featured,
+            sort_order
+
+        FROM place_images
+
+        WHERE place_id = ?
+
+        ORDER BY
+            is_featured DESC,
+            sort_order ASC,
+            id ASC
+        "
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function place_member_row(string $table, int $placeId): array
+{
+    $allowedTables = [
+        'place_details',
+        'place_connectivity',
+        'place_sensory_details',
+        'place_rules',
+        'place_experience',
+    ];
+
+    if (!in_array($table, $allowedTables, true)) {
+        throw new InvalidArgumentException('Invalid place data table.');
+    }
+
+    $stmt = db()->prepare(
+        "SELECT *
+         FROM `$table`
+         WHERE place_id = ?
+         LIMIT 1"
+    );
+
+    $stmt->execute([$placeId]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: [];
+}
+
+
+function place_member_sensory(int $placeId): array
+{
+    $stmt = db()->prepare(
+        "
+        SELECT
+            period,
+            noise,
+            traffic,
+            crowds,
+            privacy,
+            light_pollution,
+            sensory_comfort,
+            social_interaction_likelihood
+
+        FROM place_sensory
+
+        WHERE place_id = ?
+
+        ORDER BY
+            CASE period
+                WHEN 'daytime' THEN 1
+                WHEN 'nighttime' THEN 2
+                ELSE 3
+            END
+        "
+    );
+
+    $stmt->execute([$placeId]);
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $sensory = [];
+
+    foreach ($rows as $row) {
+        $period = (string) $row['period'];
+        unset($row['period']);
+
+        $sensory[$period] = $row;
+    }
+
+    return $sensory;
+}
+
+
+
+
