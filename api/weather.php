@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/weather.php';
+
 
 
 header(
@@ -184,7 +184,8 @@ try {
        Llama Scout place system.
        ===================================================== */
 
-   $hasMemberAccess = user_has_member_access();
+    $hasMemberAccess =
+        user_has_member_access();
 
 
 
@@ -196,7 +197,9 @@ try {
        campsite coordinates and stored elevation.
        ===================================================== */
 
-if ($hasMemberAccess) {
+    if (
+        $hasMemberAccess
+    ) {
 
         $latitude =
             $place[
@@ -257,8 +260,8 @@ if ($hasMemberAccess) {
 
         weather_api_success(
             [
-                 'accessLevel' => 
-                    current_user() ? 'free' : 'visitor',
+                'accessLevel' =>
+                    'member',
 
                 'forecastType' =>
                     'campsite',
@@ -346,7 +349,7 @@ if ($hasMemberAccess) {
     weather_api_success(
         [
             'accessLevel' =>
-                $accessLevel,
+                current_user() ? 'free' : 'visitor',
 
             'forecastType' =>
                 'city',
