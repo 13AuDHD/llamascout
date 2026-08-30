@@ -10,25 +10,32 @@ function db(): PDO
         return $pdo;
     }
 
+    $config = app_config();
+    $database = $config['database'] ?? null;
+
     if (
-        !defined('DB_HOST') ||
-        !defined('DB_NAME') ||
-        !defined('DB_USER') ||
-        !defined('DB_PASS')
+        !is_array($database) ||
+        empty($database['host']) ||
+        empty($database['name']) ||
+        empty($database['user']) ||
+        !array_key_exists('password', $database)
     ) {
         throw new RuntimeException('Database configuration is incomplete.');
     }
 
+    $charset = $database['charset'] ?? 'utf8mb4';
+
     $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=utf8mb4',
-        DB_HOST,
-        DB_NAME
+        'mysql:host=%s;dbname=%s;charset=%s',
+        $database['host'],
+        $database['name'],
+        $charset
     );
 
     $pdo = new PDO(
         $dsn,
-        DB_USER,
-        DB_PASS,
+        $database['user'],
+        $database['password'],
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
