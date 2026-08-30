@@ -4,39 +4,51 @@ declare(strict_types=1);
 
 function places_public(): array
 {
-    $db = db();
-
-    $stmt = $db->query(
+    $stmt = db()->query(
         "
         SELECT
-            id,
-            slug,
-            name,
-            type,
-            status,
-            public_summary,
-            city,
-            county,
-            state,
-            region,
-            land_manager,
-            land_type,
-            latitude,
-            longitude
+            p.id,
+            p.slug,
+            p.name,
+            p.type,
+            p.status,
+            p.source_type,
 
-        FROM places
+            p.public_summary,
+            p.public_location_label,
+            p.public_latitude,
+            p.public_longitude,
 
-        WHERE status IN (
-            'active',
-            'featured'
-        )
+            p.city,
+            p.county,
+            p.state,
+            p.region,
+            p.land_manager,
+            p.land_type,
+
+            p.elevation_feet,
+            p.sensory_summary,
+            p.access_summary,
+            p.last_verified_at,
+            p.published_at,
+
+            pi.src AS featured_image,
+            pi.alt_text AS featured_image_alt
+
+        FROM places p
+
+        LEFT JOIN place_images pi
+            ON pi.place_id = p.id
+           AND pi.is_featured = 1
+
+        WHERE p.status IN ('active', 'featured')
 
         ORDER BY
-            CASE status
-                WHEN 'featured' THEN 1
-                ELSE 2
+            CASE
+                WHEN p.status = 'featured' THEN 0
+                ELSE 1
             END,
-            name ASC
+            p.name ASC
         "
     );
 
@@ -49,28 +61,42 @@ function place_public_by_slug(string $slug): ?array
     $stmt = db()->prepare(
         "
         SELECT
-            id,
-            slug,
-            name,
-            type,
-            status,
-            public_summary,
-            city,
-            county,
-            state,
-            region,
-            land_manager,
-            land_type,
-            latitude,
-            longitude
+            p.id,
+            p.slug,
+            p.name,
+            p.type,
+            p.status,
+            p.source_type,
 
-        FROM places
+            p.public_summary,
+            p.public_location_label,
+            p.public_latitude,
+            p.public_longitude,
 
-        WHERE slug = ?
-          AND status IN (
-              'active',
-              'featured'
-          )
+            p.city,
+            p.county,
+            p.state,
+            p.region,
+            p.land_manager,
+            p.land_type,
+
+            p.elevation_feet,
+            p.sensory_summary,
+            p.access_summary,
+            p.last_verified_at,
+            p.published_at,
+
+            pi.src AS featured_image,
+            pi.alt_text AS featured_image_alt
+
+        FROM places p
+
+        LEFT JOIN place_images pi
+            ON pi.place_id = p.id
+           AND pi.is_featured = 1
+
+        WHERE p.slug = ?
+          AND p.status IN ('active', 'featured')
 
         LIMIT 1
         "
