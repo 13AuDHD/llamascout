@@ -1,27 +1,16 @@
 RewriteEngine On
 
-RewriteRule ^$ index.php [L]
-
-# =========================================================
 # FORCE HTTPS
-# =========================================================
-
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
+# ROOT HOMEPAGE
+RewriteRule ^$ index.php [L]
 
-# =========================================================
 # DEFAULT INDEX
-# =========================================================
-
 DirectoryIndex index.php index.html
 
-
-# =========================================================
 # CACHE CONTROL
-# Development-friendly: don't cache code/content files
-# =========================================================
-
 <IfModule mod_headers.c>
 
     <FilesMatch "\.(html?|php|json|js|css)$">
