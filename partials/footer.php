@@ -11,7 +11,7 @@ declare(strict_types=1);
     </div>
 </footer>
 
-<script src="/js/accessibility.js?v=1"></script>
+<script src="/js/accessibility.js"></script>
 
 </body>
 </html>
