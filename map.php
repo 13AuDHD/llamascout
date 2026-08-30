@@ -76,6 +76,6 @@ require __DIR__ . '/partials/header.php';
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="/js/map.js?v=1"></script>
+<script src="/js/map.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
