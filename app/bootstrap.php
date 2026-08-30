@@ -13,5 +13,6 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
+require_once __DIR__ . '/weather.php';
 
 start_llama_session();
