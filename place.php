@@ -132,7 +132,7 @@ require __DIR__ . '/partials/header.php';
 
                 <?php if (!empty($place['land_type'])): ?>
 
-                    · <?= htmlspecialchars(
+                    Â· <?= htmlspecialchars(
                         $place['land_type'],
                         ENT_QUOTES,
                         'UTF-8'
@@ -305,6 +305,49 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 
+
+    <!-- =====================================================
+         WEATHER
+         VISITOR / FREE: TODAY FOR NEARBY CITY
+         MEMBER: EXACT CAMPSITE + 5-DAY FORECAST
+         ===================================================== -->
+
+    <section
+        class="place-section place-weather"
+        aria-labelledby="weather-heading"
+        data-place-weather
+        data-place-slug="<?= htmlspecialchars(
+            $place['slug'],
+            ENT_QUOTES,
+            'UTF-8'
+        ) ?>"
+    >
+
+        <div class="place-weather-heading">
+            <div>
+                <p class="eyebrow">Weather</p>
+                <h2 id="weather-heading">
+                    <?= $hasMemberAccess
+                        ? 'Campsite weather'
+                        : 'Local weather' ?>
+                </h2>
+            </div>
+
+            <i
+                class="fa-solid fa-cloud-sun place-weather-heading-icon"
+                aria-hidden="true"
+            ></i>
+        </div>
+
+        <div
+            class="place-weather-content"
+            data-place-weather-content
+            aria-live="polite"
+        >
+            <p class="place-weather-loading">Loading weatherâ¦</p>
+        </div>
+
+    </section>
 
     <!-- =====================================================
          AMENITIES
@@ -489,5 +532,7 @@ require __DIR__ . '/partials/header.php';
 
 
 </article>
+
+<script src="/js/place.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
