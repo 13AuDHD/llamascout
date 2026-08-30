@@ -18,13 +18,37 @@ function place_yes_no(mixed $value): ?string
     return (int) $value === 1 ? 'Yes' : 'No';
 }
 
-function place_rating(mixed $value): ?string
+function place_report_rating_item(string $label, mixed $value): void
 {
     if ($value === null || $value === '') {
-        return null;
+        return;
     }
 
-    return ((int) $value) . '/5';
+    $rating = (int) $value;
+
+    if ($rating < 1 || $rating > 5) {
+        return;
+    }
+    ?>
+    <div class="scout-report-item scout-report-rating-item">
+        <div
+            class="scout-rating-dots"
+            aria-label="<?= place_h($rating) ?> out of 5"
+        >
+            <?php for ($i = 1; $i <= 5; $i++): ?>
+                <span
+                    class="scout-rating-dot<?= $i <= $rating ? ' is-filled' : '' ?>"
+                    aria-hidden="true"
+                ></span>
+            <?php endfor; ?>
+        </div>
+
+        <div class="scout-rating-content">
+            <span><?= place_h($label) ?></span>
+            <strong><?= place_h($rating) ?>/5</strong>
+        </div>
+    </div>
+    <?php
 }
 
 function place_report_item(string $label, mixed $value, ?string $icon = null): void
@@ -94,6 +118,7 @@ $connectivity = $hasMemberAccess ? ($place['connectivity'] ?? []) : [];
 $sensory = $hasMemberAccess ? ($place['sensory'] ?? []) : [];
 $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
+$experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -259,14 +284,14 @@ require __DIR__ . '/partials/header.php';
                         <?php place_report_item('Trailer suitable', place_yes_no($details['trailer_suitable'] ?? null), 'fa-trailer'); ?>
                         <?php place_report_item('Parking surface', $details['parking_surface'] ?? null, 'fa-square-parking'); ?>
                         <?php place_report_item('Ground condition', $details['ground_condition'] ?? null, 'fa-mountain-sun'); ?>
-                        <?php place_report_item('Levelness', place_rating($details['levelness'] ?? null), 'fa-arrows-left-right-to-line'); ?>
+                        <?php place_report_rating_item('Levelness', $details['levelness'] ?? null); ?>
                         <?php place_report_item('Leveling required', place_yes_no($details['leveling_required'] ?? null), 'fa-scale-balanced'); ?>
                         <?php place_report_item('Turnaround space', place_yes_no($details['turnaround_space'] ?? null), 'fa-rotate'); ?>
                         <?php place_report_item('Pull-through', place_yes_no($details['pull_through'] ?? null), 'fa-arrow-right'); ?>
                         <?php place_report_item('Back-in', place_yes_no($details['back_in'] ?? null), 'fa-arrow-left'); ?>
-                        <?php place_report_item('Open sky', place_rating($details['site_open_sky'] ?? null), 'fa-cloud-sun'); ?>
-                        <?php place_report_item('Tree cover', place_rating($details['tree_cover'] ?? null), 'fa-tree'); ?>
-                        <?php place_report_item('Shade', place_rating($details['site_shade'] ?? null), 'fa-umbrella-beach'); ?>
+                        <?php place_report_rating_item('Open sky', $details['site_open_sky'] ?? null); ?>
+                        <?php place_report_rating_item('Tree cover', $details['tree_cover'] ?? null); ?>
+                        <?php place_report_rating_item('Shade', $details['site_shade'] ?? null); ?>
                     </div>
                 </section>
 
@@ -283,20 +308,20 @@ require __DIR__ . '/partials/header.php';
                     <?php endif; ?>
 
                     <div class="scout-report-grid">
-                        <?php place_report_item('Site access difficulty', place_rating($details['site_access_difficulty'] ?? null), 'fa-route'); ?>
-                        <?php place_report_item('Road difficulty', place_rating($details['road_overall_difficulty'] ?? null), 'fa-road'); ?>
-                        <?php place_report_item('Road stress', place_rating($details['road_stress'] ?? null), 'fa-gauge-high'); ?>
+                        <?php place_report_rating_item('Site access difficulty', $details['site_access_difficulty'] ?? null); ?>
+                        <?php place_report_rating_item('Road difficulty', $details['road_overall_difficulty'] ?? null); ?>
+                        <?php place_report_rating_item('Road stress', $details['road_stress'] ?? null); ?>
                         <?php place_report_item('Road surface', $details['road_surface'] ?? null, 'fa-road'); ?>
                         <?php place_report_item('Road width', $details['road_width'] ?? null, 'fa-arrows-left-right'); ?>
                         <?php place_report_item('Sedan accessible', place_yes_no($details['sedan_accessible'] ?? null), 'fa-car'); ?>
                         <?php place_report_item('High clearance recommended', place_yes_no($details['high_clearance_recommended'] ?? null), 'fa-truck-pickup'); ?>
                         <?php place_report_item('4WD recommended', place_yes_no($details['four_wheel_drive_recommended'] ?? null), 'fa-truck-monster'); ?>
-                        <?php place_report_item('Rocks', place_rating($details['rocks'] ?? null), 'fa-hill-rockslide'); ?>
-                        <?php place_report_item('Washboards', place_rating($details['washboards'] ?? null), 'fa-grip-lines'); ?>
-                        <?php place_report_item('Potholes', place_rating($details['potholes'] ?? null), 'fa-circle-exclamation'); ?>
-                        <?php place_report_item('Mud risk', place_rating($details['mud_risk'] ?? null), 'fa-droplet'); ?>
-                        <?php place_report_item('Steep grades', place_rating($details['steep_grades'] ?? null), 'fa-mountain'); ?>
-                        <?php place_report_item('Drop-off exposure', place_rating($details['drop_off_exposure'] ?? null), 'fa-triangle-exclamation'); ?>
+                        <?php place_report_rating_item('Rocks', $details['rocks'] ?? null); ?>
+                        <?php place_report_rating_item('Washboards', $details['washboards'] ?? null); ?>
+                        <?php place_report_rating_item('Potholes', $details['potholes'] ?? null); ?>
+                        <?php place_report_rating_item('Mud risk', $details['mud_risk'] ?? null); ?>
+                        <?php place_report_rating_item('Steep grades', $details['steep_grades'] ?? null); ?>
+                        <?php place_report_rating_item('Drop-off exposure', $details['drop_off_exposure'] ?? null); ?>
                         <?php place_report_item('Water crossings', place_yes_no($details['water_crossings'] ?? null), 'fa-water'); ?>
                         <?php place_report_item('Downed-tree risk', place_yes_no($details['downed_tree_risk'] ?? null), 'fa-tree'); ?>
                         <?php place_report_item('Seasonal closure', place_yes_no($details['seasonal_closure'] ?? null), 'fa-calendar-xmark'); ?>
@@ -312,12 +337,12 @@ require __DIR__ . '/partials/header.php';
                     </h3>
 
                     <div class="scout-report-grid">
-                        <?php place_report_item('Overall', place_rating($connectivity['overall'] ?? null), 'fa-signal'); ?>
-                        <?php place_report_item('T-Mobile', place_rating($connectivity['t_mobile'] ?? null), 'fa-mobile-screen-button'); ?>
-                        <?php place_report_item('Verizon', place_rating($connectivity['verizon'] ?? null), 'fa-mobile-screen-button'); ?>
-                        <?php place_report_item('AT&T', place_rating($connectivity['att'] ?? null), 'fa-mobile-screen-button'); ?>
-                        <?php place_report_item('Other cell', place_rating($connectivity['other_cell'] ?? null), 'fa-mobile-screen-button'); ?>
-                        <?php place_report_item('Starlink', place_rating($connectivity['starlink'] ?? null), 'fa-satellite-dish'); ?>
+                        <?php place_report_rating_item('Overall', $connectivity['overall'] ?? null); ?>
+                        <?php place_report_rating_item('T-Mobile', $connectivity['t_mobile'] ?? null); ?>
+                        <?php place_report_rating_item('Verizon', $connectivity['verizon'] ?? null); ?>
+                        <?php place_report_rating_item('AT&T', $connectivity['att'] ?? null); ?>
+                        <?php place_report_rating_item('Other cell', $connectivity['other_cell'] ?? null); ?>
+                        <?php place_report_rating_item('Starlink', $connectivity['starlink'] ?? null); ?>
                         <?php place_report_item('Starlink tested', place_yes_no($connectivity['starlink_tested'] ?? null), 'fa-satellite'); ?>
                     </div>
 
@@ -348,13 +373,13 @@ require __DIR__ . '/partials/header.php';
                             <div class="scout-report-subsection">
                                 <h4><?= place_h($periodLabel) ?></h4>
                                 <div class="scout-report-grid">
-                                    <?php place_report_item('Noise', place_rating($sensory[$periodKey]['noise'] ?? null), 'fa-volume-high'); ?>
-                                    <?php place_report_item('Traffic', place_rating($sensory[$periodKey]['traffic'] ?? null), 'fa-car'); ?>
-                                    <?php place_report_item('Crowds', place_rating($sensory[$periodKey]['crowds'] ?? null), 'fa-people-group'); ?>
-                                    <?php place_report_item('Privacy', place_rating($sensory[$periodKey]['privacy'] ?? null), 'fa-user-shield'); ?>
-                                    <?php place_report_item('Light pollution', place_rating($sensory[$periodKey]['light_pollution'] ?? null), 'fa-lightbulb'); ?>
-                                    <?php place_report_item('Sensory comfort', place_rating($sensory[$periodKey]['sensory_comfort'] ?? null), 'fa-heart'); ?>
-                                    <?php place_report_item('Social interaction', place_rating($sensory[$periodKey]['social_interaction_likelihood'] ?? null), 'fa-comments'); ?>
+                                    <?php place_report_rating_item('Noise', $sensory[$periodKey]['noise'] ?? null); ?>
+                                    <?php place_report_rating_item('Traffic', $sensory[$periodKey]['traffic'] ?? null); ?>
+                                    <?php place_report_rating_item('Crowds', $sensory[$periodKey]['crowds'] ?? null); ?>
+                                    <?php place_report_rating_item('Privacy', $sensory[$periodKey]['privacy'] ?? null); ?>
+                                    <?php place_report_rating_item('Light pollution', $sensory[$periodKey]['light_pollution'] ?? null); ?>
+                                    <?php place_report_rating_item('Sensory comfort', $sensory[$periodKey]['sensory_comfort'] ?? null); ?>
+                                    <?php place_report_rating_item('Social interaction', $sensory[$periodKey]['social_interaction_likelihood'] ?? null); ?>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -364,17 +389,17 @@ require __DIR__ . '/partials/header.php';
                         <div class="scout-report-subsection">
                             <h4>Other sensory conditions</h4>
                             <div class="scout-report-grid">
-                                <?php place_report_item('Traffic dust', place_rating($sensoryDetails['dust_from_traffic'] ?? null), 'fa-smog'); ?>
-                                <?php place_report_item('Generator noise', place_rating($sensoryDetails['generator_noise'] ?? null), 'fa-volume-high'); ?>
-                                <?php place_report_item('Aircraft noise', place_rating($sensoryDetails['aircraft_noise'] ?? null), 'fa-plane'); ?>
-                                <?php place_report_item('Road noise', place_rating($sensoryDetails['road_noise'] ?? null), 'fa-road'); ?>
-                                <?php place_report_item('Human activity', place_rating($sensoryDetails['human_activity'] ?? null), 'fa-person-walking'); ?>
-                                <?php place_report_item('Wildlife noise', place_rating($sensoryDetails['wildlife_noise'] ?? null), 'fa-paw'); ?>
-                                <?php place_report_item('Wind noise', place_rating($sensoryDetails['wind_noise'] ?? null), 'fa-wind'); ?>
-                                <?php place_report_item('Smoke risk', place_rating($sensoryDetails['smoke_risk'] ?? null), 'fa-smog'); ?>
-                                <?php place_report_item('Strong odors', place_rating($sensoryDetails['strong_odors'] ?? null), 'fa-wind'); ?>
-                                <?php place_report_item('Visual exposure', place_rating($sensoryDetails['visual_exposure'] ?? null), 'fa-eye'); ?>
-                                <?php place_report_item('Predictability', place_rating($sensoryDetails['predictability'] ?? null), 'fa-arrow-right-arrow-left'); ?>
+                                <?php place_report_rating_item('Traffic dust', $sensoryDetails['dust_from_traffic'] ?? null); ?>
+                                <?php place_report_rating_item('Generator noise', $sensoryDetails['generator_noise'] ?? null); ?>
+                                <?php place_report_rating_item('Aircraft noise', $sensoryDetails['aircraft_noise'] ?? null); ?>
+                                <?php place_report_rating_item('Road noise', $sensoryDetails['road_noise'] ?? null); ?>
+                                <?php place_report_rating_item('Human activity', $sensoryDetails['human_activity'] ?? null); ?>
+                                <?php place_report_rating_item('Wildlife noise', $sensoryDetails['wildlife_noise'] ?? null); ?>
+                                <?php place_report_rating_item('Wind noise', $sensoryDetails['wind_noise'] ?? null); ?>
+                                <?php place_report_rating_item('Smoke risk', $sensoryDetails['smoke_risk'] ?? null); ?>
+                                <?php place_report_rating_item('Strong odors', $sensoryDetails['strong_odors'] ?? null); ?>
+                                <?php place_report_rating_item('Visual exposure', $sensoryDetails['visual_exposure'] ?? null); ?>
+                                <?php place_report_rating_item('Predictability', $sensoryDetails['predictability'] ?? null); ?>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -398,9 +423,9 @@ require __DIR__ . '/partials/header.php';
                         <?php place_report_item('Best months', $rules['best_months'] ?? null, 'fa-calendar-check'); ?>
                         <?php place_report_item('Recommended season', $rules['recommended_travel_season'] ?? null, 'fa-leaf'); ?>
                         <?php place_report_item('Winter access', place_yes_no($rules['winter_access'] ?? null), 'fa-snowflake'); ?>
-                        <?php place_report_item('Snow risk', place_rating($rules['snow_risk'] ?? null), 'fa-snowflake'); ?>
-                        <?php place_report_item('Mud-season risk', place_rating($rules['mud_season_risk'] ?? null), 'fa-droplet'); ?>
-                        <?php place_report_item('Monsoon risk', place_rating($rules['monsoon_risk'] ?? null), 'fa-cloud-showers-heavy'); ?>
+                        <?php place_report_rating_item('Snow risk', $rules['snow_risk'] ?? null); ?>
+                        <?php place_report_rating_item('Mud-season risk', $rules['mud_season_risk'] ?? null); ?>
+                        <?php place_report_rating_item('Monsoon risk', $rules['monsoon_risk'] ?? null); ?>
                         <?php place_report_item('Overnight camping', place_yes_no($rules['overnight_camping_allowed'] ?? null), 'fa-moon'); ?>
                         <?php place_report_item('Dispersed camping', place_yes_no($rules['dispersed_camping_allowed'] ?? null), 'fa-campground'); ?>
                         <?php place_report_item(
@@ -441,6 +466,48 @@ require __DIR__ . '/partials/header.php';
                             </a>
                         </p>
                     <?php endif; ?>
+                </section>
+            <?php endif; ?>
+
+            <?php if (!empty($experience)): ?>
+                <section class="scout-report-section">
+                    <h3>
+                        <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+                        Experience &amp; recommendations
+                    </h3>
+
+                    <div class="scout-report-subsection">
+                        <h4>Experience</h4>
+
+                        <div class="scout-report-grid">
+                            <?php place_report_rating_item('Sunrise view', $experience['sunrise_view'] ?? null); ?>
+                            <?php place_report_rating_item('Sunset view', $experience['sunset_view'] ?? null); ?>
+                            <?php place_report_rating_item('Mountain view', $experience['mountain_view'] ?? null); ?>
+                            <?php place_report_rating_item('Forest view', $experience['forest_view'] ?? null); ?>
+                            <?php place_report_rating_item('Night sky', $experience['night_sky'] ?? null); ?>
+                            <?php place_report_rating_item('Stargazing', $experience['stargazing'] ?? null); ?>
+                            <?php place_report_rating_item('Quiet evening', $experience['quiet_evening'] ?? null); ?>
+                            <?php place_report_rating_item('Overnight comfort', $experience['overnight_comfort'] ?? null); ?>
+                            <?php place_report_rating_item('Extended stay comfort', $experience['extended_stay_comfort'] ?? null); ?>
+                            <?php place_report_rating_item('Sensory retreat', $experience['sensory_retreat'] ?? null); ?>
+                            <?php place_report_rating_item('Remote work', $experience['remote_work'] ?? null); ?>
+                            <?php place_report_rating_item('Overall scenery', $experience['overall_scenery'] ?? null); ?>
+                        </div>
+                    </div>
+
+                    <div class="scout-report-subsection">
+                        <h4>Recommended for</h4>
+
+                        <div class="scout-report-grid">
+                            <?php place_report_rating_item('Overnight stop', $experience['recommended_overnight_stop'] ?? null); ?>
+                            <?php place_report_rating_item('Quiet evening', $experience['recommended_quiet_evening'] ?? null); ?>
+                            <?php place_report_rating_item('Extended stay', $experience['recommended_extended_stay'] ?? null); ?>
+                            <?php place_report_rating_item('Sensory retreat', $experience['recommended_sensory_retreat'] ?? null); ?>
+                            <?php place_report_rating_item('Stargazing', $experience['recommended_stargazing'] ?? null); ?>
+                            <?php place_report_rating_item('Remote work', $experience['recommended_remote_work'] ?? null); ?>
+                            <?php place_report_item('Solo travel', place_yes_no($experience['recommended_solo_travel'] ?? null), 'fa-person-hiking'); ?>
+                        </div>
+                    </div>
                 </section>
             <?php endif; ?>
         </section>
