@@ -101,32 +101,26 @@ require __DIR__ . '/partials/header.php';
     </header>
 
 
-    <?php if (!empty($place['images'])): ?>
+<?php if (!empty($place['featured_image'])): ?>
 
-        <section class="place-gallery" aria-label="Place photos">
+    <section class="place-hero-image" aria-label="Place photo">
 
-            <?php foreach ($place['images'] as $image): ?>
+        <img
+            src="/<?= htmlspecialchars(
+                ltrim($place['featured_image']['src'], '/'),
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+            alt="<?= htmlspecialchars(
+                $place['featured_image']['alt_text'] ?: $place['name'],
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
 
-                <img
-                    src="/<?= htmlspecialchars(
-                        ltrim($image['src'], '/'),
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    alt="<?= htmlspecialchars(
-                        $image['alt_text'] ?: $place['name'],
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    loading="lazy"
-                >
+    </section>
 
-            <?php endforeach; ?>
-
-        </section>
-
-    <?php endif; ?>
-
+<?php endif; ?>
 
     <?php if ($place['public_summary'] || $place['description']): ?>
 
