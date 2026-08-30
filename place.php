@@ -18,7 +18,7 @@ function place_yes_no(mixed $value): ?string
     return (int) $value === 1 ? 'Yes' : 'No';
 }
 
-function place_report_rating_item(string $label, mixed $value): void
+function place_report_rating(string $label, mixed $value): void
 {
     if ($value === null || $value === '') {
         return;
@@ -30,12 +30,13 @@ function place_report_rating_item(string $label, mixed $value): void
         return;
     }
     ?>
-<div class="scout-report-item scout-report-rating-item">
 
-    <div class="scout-rating-content">
-        <span><?= place_h($label) ?></span>
-        <strong><?= place_h($rating) ?>/5</strong>
-    </div>
+    <div class="scout-report-item scout-report-rating-item">
+
+        <div class="scout-rating-content">
+            <span><?= place_h($label) ?></span>
+            <strong><?= place_h($rating) ?>/5</strong>
+        </div>
 
         <div
             class="scout-rating-dots"
@@ -49,13 +50,11 @@ function place_report_rating_item(string $label, mixed $value): void
             <?php endfor; ?>
         </div>
 
-        <div class="scout-rating-content">
-            <span><?= place_h($label) ?></span>
-            <strong><?= place_h($rating) ?>/5</strong>
-        </div>
     </div>
+
     <?php
 }
+
 
 function place_report_item(string $label, mixed $value, ?string $icon = null): void
 {
