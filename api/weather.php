@@ -184,8 +184,7 @@ try {
        Llama Scout place system.
        ===================================================== */
 
-    $accessLevel =
-        place_access_level();
+   $hasMemberAccess = user_has_member_access();
 
 
 
@@ -197,10 +196,7 @@ try {
        campsite coordinates and stored elevation.
        ===================================================== */
 
-    if (
-        $accessLevel ===
-        'member'
-    ) {
+if ($hasMemberAccess) {
 
         $latitude =
             $place[
@@ -261,8 +257,8 @@ try {
 
         weather_api_success(
             [
-                'accessLevel' =>
-                    'member',
+                 'accessLevel' => 
+                    current_user() ? 'free' : 'visitor',
 
                 'forecastType' =>
                     'campsite',
