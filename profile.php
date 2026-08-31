@@ -173,21 +173,57 @@ require __DIR__ . '/partials/header.php';
         <?php if (!empty($profile['badges'])): ?>
             <div class="community-badge-grid">
                 <?php foreach ($profile['badges'] as $badge): ?>
-                    <article class="community-badge-card">
+                    <?php
+                    $badgeSlug =
+                        (string) ($badge['slug'] ?? '');
+
+                    $badgeName =
+                        (string) ($badge['name'] ?? 'Badge');
+
+                    $badgeImage =
+                        $badge['resolved_image_src'] ?? null;
+                    ?>
+
+                    <a
+                        class="community-badge-card"
+                        href="/badges/<?= rawurlencode($badgeSlug) ?>"
+                        aria-label="View <?= public_profile_e($badgeName) ?> badge details"
+                    >
                         <span class="community-badge-icon">
-                            <?php if (!empty($badge['image_src'])): ?>
-                                <img src="<?= public_profile_e(llama_profile_image_url((string) $badge['image_src'], $siteUrl)) ?>" alt="">
+                            <?php if ($badgeImage): ?>
+                                <img
+                                    src="<?= public_profile_e(
+                                        llama_profile_image_url(
+                                            (string) $badgeImage,
+                                            $siteUrl
+                                        )
+                                    ) ?>"
+                                    alt="<?= public_profile_e($badgeName) ?>"
+                                    loading="lazy"
+                                >
                             <?php else: ?>
-                                <i class="fa-solid <?= public_profile_e($badge['icon'] ?: 'fa-award') ?>" aria-hidden="true"></i>
+                                <i
+                                    class="fa-solid <?= public_profile_e(
+                                        $badge['icon'] ?: 'fa-award'
+                                    ) ?>"
+                                    aria-hidden="true"
+                                ></i>
                             <?php endif; ?>
                         </span>
+
                         <div>
-                            <strong><?= public_profile_e($badge['name']) ?></strong>
+                            <strong><?= public_profile_e($badgeName) ?></strong>
+
                             <?php if (!empty($badge['description'])): ?>
                                 <p><?= public_profile_e($badge['description']) ?></p>
                             <?php endif; ?>
+
+                            <span class="community-badge-view">
+                                View badge
+                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                            </span>
                         </div>
-                    </article>
+                    </a>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
