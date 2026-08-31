@@ -8,6 +8,21 @@ require_login();
 
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_saved_place'])) {
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    $savedId = (int) ($_POST['saved_id'] ?? 0);
+
+    if ($savedId < 1 || !saved_places_verify_csrf($csrfToken)) {
+        http_response_code(400);
+        exit('Invalid request.');
+    }
+
+    remove_saved_place_record_for_user($userId, $savedId);
+
+    header('Location: /', true, 303);
+    exit;
+}
+
 $savedPlaces = saved_places_for_user($userId);
 
 $config = llama_config();
@@ -98,7 +113,29 @@ require dirname(__DIR__) . '/partials/header.php';
                         <div class="saved-place-card-body">
                             <div class="saved-place-card-title-row">
                                 <h3><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?></h3>
-                                <i class="fa-solid fa-bookmark" aria-hidden="true"></i>
+
+                                <form method="post" class="saved-place-remove-form">
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= htmlspecialchars(saved_places_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
+                                    >
+                                    <input
+                                        type="hidden"
+                                        name="saved_id"
+                                        value="<?= (int) $saved['saved_id'] ?>"
+                                    >
+                                    <button
+                                        type="submit"
+                                        name="remove_saved_place"
+                                        value="1"
+                                        class="saved-place-remove-button"
+                                        aria-label="Remove <?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?> from saved places"
+                                        title="Remove from saved places"
+                                    >
+                                        <i class="fa-solid fa-bookmark" aria-hidden="true"></i>
+                                    </button>
+                                </form>
                             </div>
 
                             <?php if ($location): ?>
