@@ -1,6 +1,12 @@
 <?php
 
 declare(strict_types=1);
+
+$config = llama_config();
+$siteUrl = rtrim(
+    (string) ($config['app']['url'] ?? 'https://llamascout.com'),
+    '/'
+);
 ?>
 
 </main>
@@ -11,7 +17,7 @@ declare(strict_types=1);
     </div>
 </footer>
 
-<script src="/js/accessibility.js"></script>
+<script src="<?= htmlspecialchars($siteUrl . '/js/accessibility.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 
 </body>
 </html>
