@@ -42,6 +42,8 @@ require __DIR__ . '/partials/header.php';
 
     <form method="post" class="contribution-form">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(community_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="photo_stage_token" value="<?= htmlspecialchars((string) ($_POST['photo_stage_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="photos_json" value="<?= htmlspecialchars((string) ($_POST['photos_json'] ?? '[]'), ENT_QUOTES, 'UTF-8') ?>">
 
         <fieldset>
             <legend>Place</legend>
@@ -95,6 +97,18 @@ require __DIR__ . '/partials/header.php';
                 <label class="contribution-field contribution-field-wide"><span>Sensory summary</span><textarea name="sensory_summary" rows="4"><?= htmlspecialchars((string) ($_POST['sensory_summary'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
                 <label class="contribution-field contribution-field-wide"><span>Notes for the reviewer</span><textarea name="contributor_notes" rows="3"><?= htmlspecialchars((string) ($_POST['contributor_notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
             </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Photos</legend>
+            <div
+                data-photo-uploader
+                data-photo-context="add-place"
+                data-photo-max="10"
+                data-photo-csrf="<?= htmlspecialchars(llama_photo_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
+                data-photo-title="Photos of this place"
+                data-photo-help="Add up to 10 current photos. You can remove anything before submitting, and abandoned uploads are cleaned up automatically."
+            ></div>
         </fieldset>
 
         <div class="contribution-actions">

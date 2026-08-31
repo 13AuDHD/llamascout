@@ -154,11 +154,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
+            $reportPhotos = llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]');
+
             submit_place_report(
                 $userId,
                 (int) $place['id'],
                 $problemType,
-                $reportDetails
+                $reportDetails,
+                (string) ($_POST['photo_stage_token'] ?? ''),
+                $reportPhotos
             );
 
             header(
@@ -294,7 +298,7 @@ require __DIR__ . '/partials/header.php';
             <p class="place-land">
                 <?= place_h($place['land_manager']) ?>
                 <?php if (!empty($place['land_type'])): ?>
-                    Â· <?= place_h($place['land_type']) ?>
+                    · <?= place_h($place['land_type']) ?>
                 <?php endif; ?>
             </p>
         <?php endif; ?>
@@ -373,7 +377,7 @@ require __DIR__ . '/partials/header.php';
             data-place-weather-content
             aria-live="polite"
         >
-            <p class="place-weather-loading">Loading weatherâ¦</p>
+            <p class="place-weather-loading">Loading weather…</p>
         </div>
     </section>
 
@@ -729,6 +733,8 @@ require __DIR__ . '/partials/header.php';
                             value="<?= place_h(place_report_csrf_token()) ?>"
                         >
                         <input type="hidden" name="place_report_action" value="submit">
+                        <input type="hidden" name="photo_stage_token" value="<?= place_h($_POST['photo_stage_token'] ?? '') ?>">
+                        <input type="hidden" name="photos_json" value="<?= place_h($_POST['photos_json'] ?? '[]') ?>">
 
                         <label for="problem-type">What is the problem?</label>
                         <select id="problem-type" name="problem_type" required>
@@ -751,6 +757,15 @@ require __DIR__ . '/partials/header.php';
                             maxlength="4000"
                             required
                         ><?= place_h($reportDetails ?? '') ?></textarea>
+
+                        <div
+                            data-photo-uploader
+                            data-photo-context="place-report"
+                            data-photo-max="5"
+                            data-photo-csrf="<?= place_h(llama_photo_csrf_token()) ?>"
+                            data-photo-title="Photos for this report"
+                            data-photo-help="Optional. Add up to 5 photos that document the problem. You can remove them before submitting, and abandoned uploads are cleaned up automatically."
+                        ></div>
 
                         <button type="submit" class="place-report-submit">
                             <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
