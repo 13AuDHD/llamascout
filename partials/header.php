@@ -14,6 +14,20 @@ $accountUrl = rtrim(
     (string) ($config['app']['account_url'] ?? 'https://account.llamascout.com'),
     '/'
 );
+
+$adminUrl = rtrim(
+    (string) ($config['app']['admin_url'] ?? 'https://admin.llamascout.com'),
+    '/'
+);
+
+$userId = !empty($user['id']) ? (int) $user['id'] : 0;
+$isOwner = $userId > 0 && user_has_role('owner', $userId);
+$isAdmin = $userId > 0 && user_has_role('admin', $userId);
+$canAccessAdmin = $isOwner || $isAdmin;
+
+$pageRobots = trim((string) ($pageRobots ?? ''));
+$pageDescription = trim((string) ($pageDescription ?? ''));
+$canonicalUrl = trim((string) ($canonicalUrl ?? ''));
 ?>
 <!doctype html>
 <html lang="en">
@@ -24,16 +38,25 @@ $accountUrl = rtrim(
 
     <title><?= htmlspecialchars($pageTitle ?? 'Llama Scout', ENT_QUOTES, 'UTF-8') ?></title>
 
-    <?php if (!empty($pageDescription)): ?>
-        <meta name="description" content="<?= htmlspecialchars((string) $pageDescription, ENT_QUOTES, 'UTF-8') ?>">
+    <?php if ($pageDescription !== ''): ?>
+        <meta
+            name="description"
+            content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>"
+        >
     <?php endif; ?>
 
-    <?php if (!empty($pageRobots)): ?>
-        <meta name="robots" content="<?= htmlspecialchars((string) $pageRobots, ENT_QUOTES, 'UTF-8') ?>">
+    <?php if ($pageRobots !== ''): ?>
+        <meta
+            name="robots"
+            content="<?= htmlspecialchars($pageRobots, ENT_QUOTES, 'UTF-8') ?>"
+        >
     <?php endif; ?>
 
-    <?php if (!empty($canonicalUrl)): ?>
-        <link rel="canonical" href="<?= htmlspecialchars((string) $canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+    <?php if ($canonicalUrl !== ''): ?>
+        <link
+            rel="canonical"
+            href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>"
+        >
     <?php endif; ?>
 
     <script>
@@ -55,7 +78,7 @@ $accountUrl = rtrim(
                     document.documentElement.dataset.reducedMotion = 'true';
                 }
             } catch (e) {
-                // Preferences are optional.
+                // Accessibility preferences are optional.
             }
         })();
     </script>
@@ -65,11 +88,25 @@ $accountUrl = rtrim(
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/contributor-attribution.css', ENT_QUOTES, 'UTF-8') ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>">
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/mobile-menu.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/contributor-attribution.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
 </head>
 
 <body>
@@ -78,22 +115,35 @@ $accountUrl = rtrim(
     Skip to main content
 </a>
 
-<header class="site-header">
+<header class="site-header" id="site-header">
+
     <div class="site-header-inner">
 
-        <a class="site-brand" href="<?= htmlspecialchars($siteUrl . '/index.php', ENT_QUOTES, 'UTF-8') ?>" aria-label="Llama Scout home">
-            <img src="<?= htmlspecialchars($siteUrl . '/images/logo.png', ENT_QUOTES, 'UTF-8') ?>" alt="Llama Scout">
+        <a
+            class="site-brand"
+            href="<?= htmlspecialchars($siteUrl . '/', ENT_QUOTES, 'UTF-8') ?>"
+            aria-label="Llama Scout home"
+        >
+            <img
+                src="<?= htmlspecialchars($siteUrl . '/images/logo.png', ENT_QUOTES, 'UTF-8') ?>"
+                alt="Llama Scout"
+            >
         </a>
 
-        <nav class="site-nav" aria-label="Main navigation">
 
-            <a href="<?= htmlspecialchars($siteUrl . '/index.php', ENT_QUOTES, 'UTF-8') ?>">
+        <nav
+            class="site-nav"
+            id="site-navigation"
+            aria-label="Main navigation"
+        >
+
+            <a href="<?= htmlspecialchars($siteUrl . '/', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-house" aria-hidden="true"></i>
                 <span>Home</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-map" aria-hidden="true"></i>
+                <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
                 <span>Map</span>
             </a>
 
@@ -108,19 +158,39 @@ $accountUrl = rtrim(
             </a>
 
             <?php if ($user): ?>
-                <a href="<?= htmlspecialchars($accountUrl . '/index.php', ENT_QUOTES, 'UTF-8') ?>">
+
+                <a href="<?= htmlspecialchars($siteUrl . '/add-place.php', ENT_QUOTES, 'UTF-8') ?>">
+                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                    <span>Add a Place</span>
+                </a>
+
+                <a href="<?= htmlspecialchars($accountUrl . '/', ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>
                     <span>Account</span>
                 </a>
+
+                <?php if ($canAccessAdmin): ?>
+                    <a
+                        class="site-nav-admin"
+                        href="<?= htmlspecialchars($adminUrl . '/', ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                        <span>Admin</span>
+                    </a>
+                <?php endif; ?>
+
             <?php else: ?>
+
                 <a href="<?= htmlspecialchars($accountUrl . '/login.php', ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
                     <span>Sign in</span>
                 </a>
+
             <?php endif; ?>
 
+
             <button
-                class="accessibility-button"
+                class="accessibility-button accessibility-button-desktop"
                 type="button"
                 id="accessibility-button"
                 aria-controls="accessibility-panel"
@@ -132,7 +202,43 @@ $accountUrl = rtrim(
 
         </nav>
 
+
+        <div class="site-mobile-controls">
+
+            <button
+                class="accessibility-button accessibility-button-mobile"
+                type="button"
+                id="accessibility-button-mobile"
+                aria-controls="accessibility-panel"
+                aria-expanded="false"
+            >
+                <i class="fa-solid fa-universal-access" aria-hidden="true"></i>
+                <span class="visually-hidden">Accessibility settings</span>
+            </button>
+
+            <button
+                class="site-menu-toggle"
+                type="button"
+                id="site-menu-toggle"
+                aria-controls="site-navigation"
+                aria-expanded="false"
+                aria-label="Open menu"
+            >
+                <span class="site-menu-toggle-icon" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
+
+                <span class="visually-hidden" id="site-menu-toggle-label">
+                    Open menu
+                </span>
+            </button>
+
+        </div>
+
     </div>
+
 
     <div
         class="accessibility-panel"
@@ -154,6 +260,7 @@ $accountUrl = rtrim(
                 </button>
             </div>
 
+
             <div class="accessibility-setting">
                 <label for="theme-select">
                     <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
@@ -166,6 +273,7 @@ $accountUrl = rtrim(
                     <option value="dark">Dark</option>
                 </select>
             </div>
+
 
             <div class="accessibility-setting">
                 <label for="font-size-select">
@@ -180,6 +288,7 @@ $accountUrl = rtrim(
                 </select>
             </div>
 
+
             <div class="accessibility-setting accessibility-checkbox">
                 <input type="checkbox" id="reduced-motion">
 
@@ -188,6 +297,7 @@ $accountUrl = rtrim(
                     Reduce motion
                 </label>
             </div>
+
 
             <button
                 type="button"
@@ -199,6 +309,7 @@ $accountUrl = rtrim(
 
         </div>
     </div>
+
 </header>
 
 <main class="site-main" id="main-content">
