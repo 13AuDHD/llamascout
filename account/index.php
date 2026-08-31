@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_saved_place'])
 }
 
 $savedPlaces = saved_places_for_user($userId);
+$contributionCounts = community_submission_counts($userId);
 
 $config = llama_config();
 $siteUrl = rtrim(
@@ -169,6 +170,27 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+    </section>
+
+    <section class="account-section" aria-labelledby="contributions-heading">
+        <div class="account-section-heading">
+            <div>
+                <p class="account-eyebrow">Community</p>
+                <h2 id="contributions-heading">Contributions</h2>
+            </div>
+            <span class="account-section-count"><?= (int) $contributionCounts['total'] ?></span>
+        </div>
+
+        <div class="account-action-grid">
+            <a class="account-action-card" href="<?= htmlspecialchars($siteUrl . '/add-place.php', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                <span><strong>Add a place</strong><small>Submit a new campsite or outdoor place.</small></span>
+            </a>
+            <a class="account-action-card" href="/contributions.php">
+                <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                <span><strong>My contributions</strong><small><?= (int) $contributionCounts['open'] ?> currently awaiting review.</small></span>
+            </a>
+        </div>
     </section>
 
 </section>
