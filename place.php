@@ -124,6 +124,7 @@ $sensory = $hasMemberAccess ? ($place['sensory'] ?? []) : [];
 $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
+$provenance = $place['provenance'] ?? [];
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -136,6 +137,19 @@ require __DIR__ . '/partials/header.php';
         </p>
 
         <h1><?= place_h($place['name']) ?></h1>
+
+        <?php if (!empty($provenance['label'])): ?>
+            <?php $isLlamaScouted = ($provenance['status'] ?? '') === 'llama-scouted'; ?>
+            <p class="place-provenance-line">
+                <span class="place-provenance-badge <?= $isLlamaScouted ? 'is-scouted' : 'is-community' ?>">
+                    <i
+                        class="fa-solid <?= $isLlamaScouted ? 'fa-binoculars' : 'fa-people-group' ?>"
+                        aria-hidden="true"
+                    ></i>
+                    <?= place_h($provenance['label']) ?>
+                </span>
+            </p>
+        <?php endif; ?>
 
         <?php if ($locationParts): ?>
             <p class="place-location">
