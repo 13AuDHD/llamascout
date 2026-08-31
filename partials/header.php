@@ -55,6 +55,7 @@ $accountUrl = rtrim(
 
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>">
 </head>
 
 <body>
@@ -80,6 +81,11 @@ $accountUrl = rtrim(
             <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-map" aria-hidden="true"></i>
                 <span>Map</span>
+            </a>
+
+            <a href="<?= htmlspecialchars($siteUrl . '/community.php', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-people-group" aria-hidden="true"></i>
+                <span>Community</span>
             </a>
 
             <?php if ($user): ?>
