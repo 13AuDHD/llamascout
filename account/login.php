@@ -682,12 +682,12 @@ function e(
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/style.css"
+    href="https://llamascout.com/css/site.css"
   >
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account.css"
+    href="https://llamascout.com/css/auth.css"
   >
 
 

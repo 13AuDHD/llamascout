@@ -691,12 +691,12 @@ $displayName =
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/style.css"
+    href="https://llamascout.com/css/site.css"
   >
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account.css"
+    href="https://llamascout.com/css/auth.css"
   >
 
   <link
@@ -704,9 +704,6 @@ $displayName =
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   >
 
-   <script
-  src="https://llamascout.com/js/accessibility.js"
-></script>
 
   <?php if (
       !$enabled
