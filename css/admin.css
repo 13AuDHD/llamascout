@@ -2799,3 +2799,544 @@ html[data-reduced-motion="true"] .admin-sidebar {
     font-size: .75rem;
     text-align: center;
 }
+
+
+/* =========================================================
+   CANONICAL PLACE ADMINISTRATION
+   ========================================================= */
+
+.admin-place-filters {
+    display: grid;
+    grid-template-columns:
+        minmax(280px, 1.5fr)
+        minmax(150px, .5fr)
+        minmax(150px, .5fr)
+        auto;
+    gap: 12px;
+    align-items: end;
+
+    padding: 16px;
+}
+
+.admin-place-filters label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-place-filters label > span {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-place-filters input,
+.admin-place-filters select {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-place-list {
+    display: grid;
+}
+
+.admin-place-list-card {
+    display: grid;
+    grid-template-columns:
+        92px
+        minmax(0, 1fr)
+        auto;
+    gap: 15px;
+    align-items: center;
+
+    padding: 14px 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-place-list-card:last-child {
+    border-bottom: 0;
+}
+
+.admin-place-list-image {
+    width: 92px;
+    height: 72px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+
+    color: var(--text-muted);
+}
+
+.admin-place-list-image img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.admin-place-list-main {
+    min-width: 0;
+}
+
+.admin-place-list-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.admin-place-list-heading > div {
+    min-width: 0;
+}
+
+.admin-place-list-heading span:first-child {
+    color: var(--text-muted);
+    font-size: .64rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-place-list-heading h2 {
+    margin: 2px 0 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: .95rem;
+}
+
+.admin-place-list-main > p {
+    margin: 5px 0;
+
+    color: var(--text-muted);
+    font-size: .72rem;
+}
+
+.admin-place-list-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    color: var(--text-muted);
+    font-size: .67rem;
+}
+
+.admin-place-list-facts span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.admin-place-list-facts .has-alert {
+    color: #d9a23c;
+}
+
+.admin-place-list-actions {
+    display: flex;
+    gap: 7px;
+}
+
+.admin-place-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-bottom: 14px;
+    padding: 17px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-place-summary-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-place-summary-heading p,
+.admin-place-summary-heading h2 {
+    margin: 0;
+}
+
+.admin-place-summary-heading p {
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-place-summary-heading h2 {
+    font-size: 1.2rem;
+}
+
+.admin-place-summary > div:first-child > span {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+    font-size: .72rem;
+}
+
+.admin-place-summary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-place-report-alert {
+    border-color: color-mix(
+        in srgb,
+        #d9a23c 60%,
+        var(--border)
+    );
+}
+
+.admin-place-section-nav {
+    position: sticky;
+    top: calc(var(--admin-topbar-height) + 8px);
+    z-index: 70;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    margin-bottom: 18px;
+    padding: 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.admin-place-section-nav a {
+    padding: 7px 10px;
+
+    border-radius: 8px;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-place-section-nav a:hover,
+.admin-place-section-nav a:focus-visible {
+    background: var(--background);
+    color: var(--text);
+}
+
+.admin-place-editor-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.55fr)
+        minmax(280px, .62fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.admin-place-editor-section {
+    margin-bottom: 18px;
+
+    scroll-margin-top:
+        calc(
+            var(--admin-topbar-height)
+            + 72px
+        );
+}
+
+.admin-place-compact-form {
+    padding: 16px 18px;
+}
+
+.admin-place-tristate-grid,
+.admin-place-rating-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 11px;
+}
+
+.admin-place-tristate-grid label,
+.admin-place-rating-grid label,
+.admin-place-verification-form label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-place-tristate-grid label > span,
+.admin-place-rating-grid label > span,
+.admin-place-verification-form label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-tristate-grid select,
+.admin-place-rating-grid select,
+.admin-place-rating-grid input,
+.admin-place-rating-grid textarea,
+.admin-place-verification-form select,
+.admin-place-verification-form input,
+.admin-place-verification-form textarea {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-place-rating-grid textarea,
+.admin-place-verification-form textarea {
+    resize: vertical;
+}
+
+.admin-place-rating-grid .is-wide,
+.admin-place-verification-form .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-image-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 9px;
+
+    padding: 14px;
+}
+
+.admin-place-image-grid > article {
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-place-image-preview {
+    position: relative;
+
+    aspect-ratio: 4 / 3;
+
+    overflow: hidden;
+
+    background: var(--surface);
+}
+
+.admin-place-image-preview img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.admin-place-image-preview > span {
+    position: absolute;
+    left: 7px;
+    bottom: 7px;
+
+    padding: 4px 7px;
+
+    border-radius: 999px;
+
+    background: rgba(0, 0, 0, .76);
+    color: #fff;
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.admin-place-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+
+    padding: 7px;
+}
+
+.admin-place-image-actions form {
+    margin: 0;
+}
+
+.admin-place-photo-upload {
+    padding: 14px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-place-verification-form {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 11px;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-place-inline-check {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center;
+    gap: 8px !important;
+}
+
+.admin-place-inline-check input {
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+
+    margin: 0;
+}
+
+.admin-place-history-list {
+    display: grid;
+}
+
+.admin-place-history-list > div {
+    display: grid;
+    gap: 3px;
+
+    padding: 12px 17px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-place-history-list > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-place-history-list strong {
+    font-size: .76rem;
+}
+
+.admin-place-history-list span,
+.admin-place-history-list p {
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+
+    .admin-place-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-list-card {
+        grid-template-columns:
+            80px
+            minmax(0, 1fr);
+    }
+
+    .admin-place-list-actions {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-place-filters {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-place-image-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 560px) {
+
+    .admin-place-filters,
+    .admin-place-tristate-grid,
+    .admin-place-rating-grid,
+    .admin-place-verification-form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-rating-grid .is-wide,
+    .admin-place-verification-form .is-wide {
+        grid-column: auto;
+    }
+
+    .admin-place-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-place-list-card {
+        grid-template-columns: 70px minmax(0, 1fr);
+    }
+
+    .admin-place-list-image {
+        width: 70px;
+        height: 62px;
+    }
+
+    .admin-place-image-grid {
+        grid-template-columns: 1fr;
+    }
+}
