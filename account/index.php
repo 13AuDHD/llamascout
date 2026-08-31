@@ -69,7 +69,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     $name = (string) ($saved['name'] ?? 'Saved place');
                     $isAvailable = $saved['place_id'] !== null
                         && $slug !== ''
-                        && (string) ($saved['status'] ?? '') === 'published';
+                        && in_array((string) ($saved['status'] ?? ''), ['active', 'featured'], true);
 
                     $location = array_values(array_filter([
                         $saved['city'] ?? null,
@@ -81,7 +81,13 @@ require dirname(__DIR__) . '/partials/header.php';
                         <?php if (!empty($saved['featured_image'])): ?>
                             <div class="saved-place-card-image">
                                 <img
-                                    src="<?= htmlspecialchars((string) $saved['featured_image'], ENT_QUOTES, 'UTF-8') ?>"
+                                    src="<?= htmlspecialchars(
+                                        str_starts_with((string) $saved['featured_image'], '/')
+                                            ? $siteUrl . (string) $saved['featured_image']
+                                            : (string) $saved['featured_image'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>"
                                     alt=""
                                     loading="lazy"
                                 >
