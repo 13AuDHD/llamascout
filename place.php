@@ -207,6 +207,11 @@ $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
 $provenance = $place['provenance'] ?? [];
+$contributors = llama_place_contributors(
+    db(),
+    (int) $place['id'],
+    $userId > 0 ? $userId : null
+);
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -285,6 +290,118 @@ require __DIR__ . '/partials/header.php';
                     <?= place_h($provenance['label']) ?>
                 </span>
             </p>
+        <?php endif; ?>
+
+        <?php if ($contributors): ?>
+            <section class="place-contributors" aria-labelledby="place-contributors-heading">
+                <div class="place-contributors-heading">
+                    <div>
+                        <p class="place-contributors-eyebrow">Contributors</p>
+                        <h2 id="place-contributors-heading">Who helped document this place</h2>
+                    </div>
+                </div>
+
+                <div class="place-contributor-list">
+                    <?php foreach ($contributors as $contributor): ?>
+                        <article class="place-contributor-card">
+                            <?php if (!empty($contributor['profile_url'])): ?>
+                                <a
+                                    class="place-contributor-avatar"
+                                    href="<?= place_h($contributor['profile_url']) ?>"
+                                    aria-label="View <?= place_h($contributor['display_name']) ?>'s profile"
+                                >
+                                    <img
+                                        src="<?= place_h($contributor['image_url']) ?>"
+                                        alt=""
+                                        loading="lazy"
+                                    >
+                                </a>
+                            <?php else: ?>
+                                <span class="place-contributor-avatar" aria-hidden="true">
+                                    <img
+                                        src="<?= place_h($contributor['image_url']) ?>"
+                                        alt=""
+                                        loading="lazy"
+                                    >
+                                </span>
+                            <?php endif; ?>
+
+                            <div class="place-contributor-copy">
+                                <div class="place-contributor-name-row">
+                                    <?php if (!empty($contributor['profile_url'])): ?>
+                                        <a
+                                            class="place-contributor-name"
+                                            href="<?= place_h($contributor['profile_url']) ?>"
+                                        >
+                                            <?= place_h($contributor['display_name']) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <strong class="place-contributor-name">
+                                            <?= place_h($contributor['display_name']) ?>
+                                        </strong>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($contributor['username'])): ?>
+                                        <span class="place-contributor-username">
+                                            @<?= place_h($contributor['username']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <p class="place-contributor-role">
+                                    <?= place_h($contributor['role']) ?>
+                                </p>
+
+                                <div class="place-contributor-meta">
+                                    <span>
+                                        <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                                        <?= (int) $contributor['contribution_count'] ?> approved
+                                        <?= (int) $contributor['contribution_count'] === 1 ? 'contribution' : 'contributions' ?>
+                                    </span>
+
+                                    <?php if ((int) $contributor['place_points'] > 0): ?>
+                                        <span>
+                                            <i class="fa-solid fa-star" aria-hidden="true"></i>
+                                            <?= (int) $contributor['place_points'] ?> points on this place
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if (!empty($contributor['badges'])): ?>
+                                    <div class="place-contributor-badges" aria-label="Earned badges">
+                                        <?php foreach (array_slice($contributor['badges'], 0, 4) as $badge): ?>
+                                            <span
+                                                class="place-contributor-badge"
+                                                title="<?= place_h($badge['name'] ?? 'Badge') ?>"
+                                            >
+                                                <?php if (!empty($badge['image_src'])): ?>
+                                                    <img
+                                                        src="<?= place_h(llama_profile_image_url((string) $badge['image_src'])) ?>"
+                                                        alt="<?= place_h($badge['name'] ?? 'Badge') ?>"
+                                                        loading="lazy"
+                                                    >
+                                                <?php else: ?>
+                                                    <i
+                                                        class="fa-solid <?= place_h(llama_contributor_badge_icon($badge)) ?>"
+                                                        aria-hidden="true"
+                                                    ></i>
+                                                    <span><?= place_h($badge['name'] ?? 'Badge') ?></span>
+                                                <?php endif; ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ($userId < 1): ?>
+                    <p class="place-contributors-privacy-note">
+                        Some contributor identities are visible only to signed-in members unless that member has enabled a public profile.
+                    </p>
+                <?php endif; ?>
+            </section>
         <?php endif; ?>
 
         <?php if ($locationParts): ?>
