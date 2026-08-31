@@ -111,6 +111,105 @@ function admin_shop_product_variants(
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function admin_shop_create_product(
+    PDO $db,
+    int $actorUserId,
+    array $data
+): int {
+    $name = trim(
+        (string) ($data['name'] ?? '')
+    );
+
+    $slug = strtolower(
+        trim(
+            (string) ($data['slug'] ?? '')
+        )
+    );
+
+    $productType = trim(
+        (string) ($data['product_type'] ?? '')
+    );
+
+    $requiresShipping =
+        isset($data['requires_shipping'])
+            ? 1
+            : 0;
+
+    if ($name === '') {
+        throw new RuntimeException(
+            'Product name is required.'
+        );
+    }
+
+    if (
+        $slug === ''
+        || !preg_match(
+            '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+            $slug
+        )
+    ) {
+        throw new RuntimeException(
+            'Product slug must contain lowercase letters, numbers, and hyphens.'
+        );
+    }
+
+    $dupe = $db->prepare(
+        'SELECT id
+         FROM shop_products
+         WHERE slug = ?
+         LIMIT 1'
+    );
+
+    $dupe->execute([$slug]);
+
+    if ($dupe->fetchColumn()) {
+        throw new RuntimeException(
+            'Another product already uses that slug.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO shop_products (
+            slug,
+            name,
+            status,
+            product_type,
+            requires_shipping,
+            sort_order
+         ) VALUES (
+            ?, ?, "draft", ?, ?, 0
+         )'
+    );
+
+    $stmt->execute([
+        $slug,
+        $name,
+        $productType !== ''
+            ? $productType
+            : null,
+        $requiresShipping,
+    ]);
+
+    $productId =
+        (int) $db->lastInsertId();
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'shop.product_created',
+        'Created draft shop product "' .
+            $name .
+            '".',
+        [
+            'product_id' => $productId,
+            'slug' => $slug,
+        ]
+    );
+
+    return $productId;
+}
+
 function admin_shop_save_product(
     PDO $db,
     int $actorUserId,
