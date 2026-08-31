@@ -172,6 +172,23 @@ require dirname(__DIR__) . '/partials/header.php';
         <?php endif; ?>
     </section>
 
+
+    <section class="account-section" aria-labelledby="profile-heading">
+        <div class="account-section-heading">
+            <div>
+                <p class="account-eyebrow">Community profile</p>
+                <h2 id="profile-heading">Profile</h2>
+            </div>
+        </div>
+
+        <div class="account-action-grid">
+            <a class="account-action-card" href="/profile.php">
+                <i class="fa-solid fa-images" aria-hidden="true"></i>
+                <span><strong>Profile photos</strong><small>Upload, choose, and remove profile images.</small></span>
+            </a>
+        </div>
+    </section>
+
     <section class="account-section" aria-labelledby="contributions-heading">
         <div class="account-section-heading">
             <div>

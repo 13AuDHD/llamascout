@@ -62,6 +62,8 @@ require dirname(__DIR__) . '/partials/header.php';
         <form method="post" class="contribution-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(community_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="photo_stage_token" value="<?= htmlspecialchars((string) ($_POST['photo_stage_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="photos_json" value="<?= htmlspecialchars((string) ($_POST['photos_json'] ?? '[]'), ENT_QUOTES, 'UTF-8') ?>">
 
             <fieldset>
                 <legend>Change only what needs changing</legend>
@@ -86,6 +88,18 @@ require dirname(__DIR__) . '/partials/header.php';
                     <label class="contribution-field"><span>Date visited</span><input type="date" name="visited_at" value="<?= htmlspecialchars((string) ($_POST['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
                     <label class="contribution-field contribution-field-wide"><span>Notes for the reviewer</span><textarea name="contributor_notes" rows="3"><?= htmlspecialchars((string) ($_POST['contributor_notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
                 </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Photos from this visit</legend>
+                <div
+                    data-photo-uploader
+                    data-photo-context="update-place"
+                    data-photo-max="5"
+                    data-photo-csrf="<?= htmlspecialchars(llama_photo_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
+                    data-photo-title="Photos from this visit"
+                    data-photo-help="Add up to 5 current photos that show what changed or document current conditions. Removed or abandoned uploads are cleaned up automatically."
+                ></div>
             </fieldset>
 
             <div class="contribution-actions">
