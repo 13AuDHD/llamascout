@@ -159,6 +159,14 @@ function admin_shell_nav_class(
             <p class="admin-nav-label">Places</p>
 
             <a
+                class="<?= admin_shell_nav_class('places', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/places.php') ?>"
+            >
+                <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                <span>Places</span>
+            </a>
+
+            <a
                 class="<?= admin_shell_nav_class('submissions', $adminActiveNav) ?>"
                 href="<?= moderation_e($adminUrl . '/submissions.php') ?>"
             >
