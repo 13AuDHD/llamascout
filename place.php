@@ -250,6 +250,24 @@ require __DIR__ . '/partials/header.php';
                     Sign in to save
                 </a>
             <?php endif; ?>
+
+            <?php if ($userId > 0): ?>
+                <a
+                    class="place-save-button"
+                    href="<?= place_h($accountUrl . '/update-place.php?slug=' . rawurlencode((string) $place['slug'])) ?>"
+                >
+                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                    Suggest update
+                </a>
+            <?php else: ?>
+                <a
+                    class="place-save-button"
+                    href="<?= place_h($accountUrl . '/login.php?return=' . rawurlencode($accountUrl . '/update-place.php?slug=' . rawurlencode((string) $place['slug']))) ?>"
+                >
+                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                    Suggest update
+                </a>
+            <?php endif; ?>
         </div>
 
         <?php if (!empty($provenance['label'])): ?>
