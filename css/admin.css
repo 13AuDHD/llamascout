@@ -1682,3 +1682,23 @@ html[data-reduced-motion="true"] .admin-sidebar {
         flex-direction: column;
     }
 }
+
+
+/* =========================================================
+   ADMIN PROFILE PHOTO AVATARS
+   ========================================================= */
+
+.admin-user-table-avatar,
+.admin-user-summary-avatar {
+    overflow: hidden;
+    padding: 0;
+}
+
+.admin-user-table-avatar img,
+.admin-user-summary-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
