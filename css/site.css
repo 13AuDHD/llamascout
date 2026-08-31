@@ -1129,3 +1129,54 @@ textarea {
 .place-provenance-badge.is-community {
     color: var(--text-muted);
 }
+
+
+/* =========================================================
+   SAVE PLACE
+   ========================================================= */
+
+.place-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.place-save-form {
+    margin: 0;
+}
+
+.place-save-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: 42px;
+    padding: 9px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.place-save-button:hover,
+.place-save-button:focus-visible {
+    text-decoration: none;
+}
+
+.place-save-button.is-saved {
+    font-weight: 800;
+}
+
+
+
+
+
