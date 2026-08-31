@@ -11,6 +11,7 @@ if (!headers_sent()) {
 
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
 require_once __DIR__ . '/weather.php';
@@ -26,3 +27,7 @@ require_once __DIR__ . '/community-contributions.php';
 require_once __DIR__ . '/moderation.php';
 
 start_llama_session();
+
+llama_enforce_maintenance(
+    db()
+);
