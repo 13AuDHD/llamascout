@@ -7,9 +7,8 @@ function admin_users_current_is_owner(
     int $userId
 ): bool {
     return user_has_role(
-        $db,
-        $userId,
-        'owner'
+        'owner',
+        $userId
     );
 }
 
@@ -203,7 +202,6 @@ function admin_users_roles(
     int $userId
 ): array {
     return user_roles(
-        $db,
         $userId
     );
 }
@@ -395,9 +393,8 @@ function admin_users_save_account(
     );
 
     $targetIsOwner = user_has_role(
-        $db,
-        $targetUserId,
-        'owner'
+        'owner',
+        $targetUserId
     );
 
     if (
@@ -925,9 +922,8 @@ function admin_users_anonymize(
 
     if (
         user_has_role(
-            $db,
-            $targetUserId,
-            'owner'
+            'owner',
+            $targetUserId
         )
     ) {
         throw new RuntimeException(
