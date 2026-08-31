@@ -242,11 +242,21 @@ function admin_shell_nav_class(
                 <span>Points</span>
             </a>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('system', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/system.php') ?>"
+            >
                 <i class="fa-solid fa-gears" aria-hidden="true"></i>
                 <span>System</span>
-                <small>Next</small>
-            </span>
+            </a>
+
+            <a
+                class="<?= admin_shell_nav_class('audit', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/audit.php') ?>"
+            >
+                <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                <span>Audit Log</span>
+            </a>
 
         </nav>
 

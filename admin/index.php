@@ -7,6 +7,7 @@ require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
+$maintenanceState = llama_maintenance_state($db);
 
 $stats = admin_dashboard_stats($db);
 $queue = admin_dashboard_queue($db);
@@ -28,14 +29,32 @@ require __DIR__ . '/_header.php';
 
 <section class="admin-status-strip">
     <div>
-        <span class="admin-status-dot is-live" aria-hidden="true"></span>
-        <strong>Site live</strong>
-        <span>Public site is operating normally.</span>
+        <span
+            class="admin-status-dot <?= $maintenanceState['enabled']
+                ? 'is-maintenance'
+                : 'is-live' ?>"
+            aria-hidden="true"
+        ></span>
+
+        <strong>
+            <?= $maintenanceState['enabled']
+                ? 'Maintenance mode'
+                : 'Site live' ?>
+        </strong>
+
+        <span>
+            <?= $maintenanceState['enabled']
+                ? 'Public access is currently restricted.'
+                : 'Public site is operating normally.' ?>
+        </span>
     </div>
 
-    <span class="admin-status-strip-note">
-        Maintenance controls are the next system module.
-    </span>
+    <a
+        class="admin-status-strip-note"
+        href="/system.php"
+    >
+        System controls
+    </a>
 </section>
 
 
