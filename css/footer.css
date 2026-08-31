@@ -1,0 +1,354 @@
+/* =========================================================
+   LLAMA SCOUT
+   FANCY SITE FOOTER
+
+   Restores the dark Llama Scout footer layout while keeping
+   the current v2 navigation and legal routes.
+   ========================================================= */
+
+.site-footer {
+    padding:
+        42px
+        0
+        20px;
+
+    color: #f7f1e8;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(0, 0, 0, .96),
+            #172822
+        );
+}
+
+.site-footer p {
+    color:
+        rgba(247, 241, 232, .78);
+}
+
+.site-footer a {
+    color: #f7f1e8;
+}
+
+.footer-inner {
+    width:
+        min(
+            1120px,
+            calc(100% - 48px)
+        );
+
+    margin: 0 auto;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.15fr)
+        minmax(420px, .85fr);
+
+    gap: 80px;
+
+    align-items: start;
+}
+
+.footer-brand-block {
+    max-width: 620px;
+}
+
+.footer-brand {
+    display: block;
+
+    width: 100%;
+}
+
+.footer-brand img {
+    display: block;
+
+    width:
+        min(
+            420px,
+            100%
+        );
+
+    height: auto;
+
+    max-width: none;
+
+    object-fit: contain;
+
+    object-position:
+        left
+        center;
+}
+
+.footer-tagline {
+    max-width: 520px;
+
+    margin:
+        18px
+        0
+        20px;
+
+    color:
+        rgba(247, 241, 232, .78);
+
+    line-height: 1.55;
+}
+
+.social-links {
+    display: flex;
+
+    justify-content: flex-start;
+
+    flex-wrap: wrap;
+
+    gap: 13px;
+}
+
+.social-links a {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+
+    place-items: center;
+
+    border:
+        1px solid
+        rgba(255, 255, 255, .24);
+
+    border-radius: 999px;
+
+    color: #f7f1e8;
+
+    font-size: 1.08rem;
+
+    text-decoration: none;
+
+    transition:
+        color .18s ease,
+        border-color .18s ease,
+        background-color .18s ease,
+        transform .18s ease;
+}
+
+.social-links a:hover,
+.social-links a:focus-visible {
+    color: #9bd3e3;
+
+    border-color:
+        rgba(155, 211, 227, .62);
+
+    background:
+        rgba(255, 255, 255, .06);
+}
+
+.social-links a:hover {
+    transform: translateY(-2px);
+}
+
+.footer-link-columns {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 50px;
+
+    padding-top: 32px;
+}
+
+.footer-link-column {
+    display: grid;
+
+    align-content: start;
+
+    gap: 10px;
+}
+
+.footer-link-column h2 {
+    margin:
+        0
+        0
+        8px;
+
+    color:
+        rgba(247, 241, 232, .58);
+
+    font-size: .72rem;
+
+    font-weight: 800;
+
+    letter-spacing: .1em;
+
+    text-transform: uppercase;
+}
+
+.footer-link-column a {
+    width: fit-content;
+
+    color: #f7f1e8;
+
+    text-decoration: none;
+
+    line-height: 1.45;
+}
+
+.footer-link-column a:hover,
+.footer-link-column a:focus-visible {
+    color: #9bd3e3;
+
+    text-decoration: underline;
+}
+
+.footer-bottom {
+    width:
+        min(
+            1120px,
+            calc(100% - 48px)
+        );
+
+    margin:
+        30px
+        auto
+        0;
+
+    padding-top: 18px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 18px;
+
+    border-top:
+        1px solid
+        rgba(255, 255, 255, .15);
+
+    color:
+        rgba(247, 241, 232, .68);
+
+    font-size: .88rem;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+    .footer-inner {
+        grid-template-columns: 1fr;
+
+        gap: 34px;
+    }
+
+    .footer-link-columns {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 30px;
+
+        padding-top: 0;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+    .site-footer {
+        padding-top: 34px;
+    }
+
+    .footer-inner,
+    .footer-bottom {
+        width:
+            calc(100% - 40px);
+    }
+
+    .footer-brand img {
+        width:
+            min(
+                330px,
+                100%
+            );
+    }
+
+    .footer-link-columns {
+        grid-template-columns:
+            1fr
+            1fr;
+
+        gap: 30px;
+    }
+
+    .footer-bottom {
+        margin-top: 26px;
+    }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 430px) {
+
+    .footer-link-columns {
+        gap: 22px;
+    }
+
+    .footer-link-column {
+        font-size: .92rem;
+    }
+
+    .social-links {
+        gap: 10px;
+    }
+
+    .social-links a {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+html[data-reduced-motion="true"]
+.social-links a {
+    transition: none;
+}
+
+html[data-reduced-motion="true"]
+.social-links a:hover {
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .social-links a {
+        transition: none;
+    }
+
+    .social-links a:hover {
+        transform: none;
+    }
+}
