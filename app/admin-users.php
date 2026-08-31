@@ -26,7 +26,7 @@ function admin_user_avatar_src(
     }
 
     return rtrim($siteUrl, '/') .
-        '/images/profile-default.png';
+        '/images/default-profile.png';
 }
 
 function admin_user_profile_image_sql(
@@ -36,7 +36,6 @@ function admin_user_profile_image_sql(
              FROM community_profile_images cpi
              WHERE cpi.user_id = ' . $userAlias . '.id
              ORDER BY
-                cpi.is_primary DESC,
                 cpi.sort_order ASC,
                 cpi.id ASC
              LIMIT 1)';

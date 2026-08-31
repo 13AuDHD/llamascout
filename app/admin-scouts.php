@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 function admin_scouts_list(PDO $db): array
 {
-    $stmt = $db->query(
-        "SELECT
+    $profileImageSql =
+        admin_user_profile_image_sql('u');
+
+    $sql = "
+        SELECT
             sp.*,
             u.username,
             u.display_name,
             u.email,
             u.membership_status,
-            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
+            {$profileImageSql} AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id
@@ -27,15 +30,15 @@ function admin_scouts_list(PDO $db): array
                 FROM scout_activity sa
                 WHERE sa.user_id = sp.user_id
             ) AS scout_points
-         FROM scout_profiles sp
-         INNER JOIN users u
+        FROM scout_profiles sp
+        INNER JOIN users u
             ON u.id = sp.user_id
-         LEFT JOIN user_roles ur
+        LEFT JOIN user_roles ur
             ON ur.user_id = u.id
-         LEFT JOIN roles r
+        LEFT JOIN roles r
             ON r.id = ur.role_id
-         GROUP BY sp.id
-         ORDER BY
+        GROUP BY sp.id
+        ORDER BY
             FIELD(
                 sp.status,
                 'application_submitted',
@@ -48,40 +51,50 @@ function admin_scouts_list(PDO $db): array
                 'declined',
                 'removed'
             ),
-            sp.updated_at DESC"
-    );
+            sp.updated_at DESC
+    ";
+
+    $stmt = $db->query($sql);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
-function admin_scout_get(PDO $db, int $scoutProfileId): ?array
-{
-    $stmt = $db->prepare(
-        "SELECT
+function admin_scout_get(
+    PDO $db,
+    int $scoutProfileId
+): ?array {
+    $profileImageSql =
+        admin_user_profile_image_sql('u');
+
+    $sql = "
+        SELECT
             sp.*,
             u.username,
             u.display_name,
             u.email,
             u.membership_status,
             u.membership_ends_at,
-            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
+            {$profileImageSql} AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id
                 SEPARATOR ','
             ) AS role_slugs
-         FROM scout_profiles sp
-         INNER JOIN users u
+        FROM scout_profiles sp
+        INNER JOIN users u
             ON u.id = sp.user_id
-         LEFT JOIN user_roles ur
+        LEFT JOIN user_roles ur
             ON ur.user_id = u.id
-         LEFT JOIN roles r
+        LEFT JOIN roles r
             ON r.id = ur.role_id
-         WHERE sp.id = ?
-         GROUP BY sp.id
-         LIMIT 1"
-    );
+        WHERE sp.id = ?
+        GROUP BY sp.id
+        LIMIT 1
+    ";
+
+    $stmt = $db->prepare($sql);
     $stmt->execute([$scoutProfileId]);
+
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
