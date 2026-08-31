@@ -657,9 +657,51 @@
 
 .membership-public-paid-prices {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px 24px;
-    margin-top: 10px;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 18px;
+
+    margin-top: 14px;
+}
+
+.membership-price-option {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.membership-price-option strong {
+    font-size: 2rem;
+}
+
+.membership-price-option span {
+    color: var(--text-muted);
+}
+
+.membership-price-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.membership-price-separator::before,
+.membership-price-separator::after {
+    content: "";
+
+    width: 24px;
+    height: 1px;
+
+    background: var(--border);
+}
+
+.membership-price-separator span {
+    margin: 0 8px;
 }
 
 .membership-public-paid-prices div {
