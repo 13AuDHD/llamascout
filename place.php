@@ -163,6 +163,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $csrfToken = (string) ($_POST['csrf_token'] ?? '');
         $problemType = trim((string) ($_POST['problem_type'] ?? ''));
         $reportDetails = trim((string) ($_POST['report_details'] ?? ''));
+        $reportPhotoToken = trim((string) ($_POST['photo_stage_token'] ?? ''));
+        $reportPhotos = llama_photo_decode_form_photos(
+            $_POST['photos_json'] ?? '[]'
+        );
 
         if ($userId < 1 || !place_report_verify_csrf($csrfToken)) {
             http_response_code(400);
@@ -174,7 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $userId,
                 (int) $place['id'],
                 $problemType,
-                $reportDetails
+                $reportDetails,
+                $reportPhotoToken,
+                $reportPhotos
             );
 
             header(
@@ -944,6 +950,18 @@ require __DIR__ . '/partials/header.php';
                         >
                         <input type="hidden" name="place_report_action" value="submit">
 
+                        <input
+                            type="hidden"
+                            name="photo_stage_token"
+                            value="<?= place_h((string) ($_POST['photo_stage_token'] ?? '')) ?>"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="photos_json"
+                            value="<?= place_h((string) ($_POST['photos_json'] ?? '[]')) ?>"
+                        >
+
                         <label for="problem-type">What is the problem?</label>
                         <select id="problem-type" name="problem_type" required>
                             <option value="">Choose one</option>
@@ -965,6 +983,18 @@ require __DIR__ . '/partials/header.php';
                             maxlength="4000"
                             required
                         ><?= place_h($reportDetails ?? '') ?></textarea>
+
+                        <div class="place-report-photo-section">
+                            <div
+                                data-photo-uploader
+                                data-photo-context="place-report"
+                                data-photo-max="5"
+                                data-photo-csrf="<?= place_h(llama_photo_csrf_token()) ?>"
+                                data-photo-endpoint="/photo-upload.php"
+                                data-photo-title="Photos of the problem"
+                                data-photo-help="Add up to 5 photos showing signs, gates, closures, downed trees, washouts, road damage, obstructions, or anything else that helps document the problem."
+                            ></div>
+                        </div>
 
                         <button type="submit" class="place-report-submit">
                             <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
