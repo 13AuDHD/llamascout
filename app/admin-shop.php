@@ -139,6 +139,72 @@ function admin_shop_product_variants(
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function admin_shop_slugify(
+    string $name
+): string {
+    $value = trim($name);
+
+    if (
+        function_exists('iconv')
+        && $value !== ''
+    ) {
+        $converted = @iconv(
+            'UTF-8',
+            'ASCII//TRANSLIT//IGNORE',
+            $value
+        );
+
+        if (is_string($converted)) {
+            $value = $converted;
+        }
+    }
+
+    $value = strtolower($value);
+
+    $value = preg_replace(
+        '/[^a-z0-9]+/',
+        '-',
+        $value
+    ) ?? '';
+
+    $value = trim($value, '-');
+
+    return $value !== ''
+        ? $value
+        : 'product';
+}
+
+function admin_shop_unique_slug(
+    PDO $db,
+    string $name
+): string {
+    $base = admin_shop_slugify($name);
+    $slug = $base;
+    $suffix = 2;
+
+    while (true) {
+        $stmt = $db->prepare(
+            'SELECT id
+             FROM shop_products
+             WHERE slug = ?
+             LIMIT 1'
+        );
+
+        $stmt->execute([$slug]);
+
+        if (!$stmt->fetchColumn()) {
+            return $slug;
+        }
+
+        $slug =
+            $base .
+            '-' .
+            $suffix;
+
+        $suffix++;
+    }
+}
+
 function admin_shop_create_product(
     PDO $db,
     int $actorUserId,
@@ -146,12 +212,6 @@ function admin_shop_create_product(
 ): int {
     $name = trim(
         (string) ($data['name'] ?? '')
-    );
-
-    $slug = strtolower(
-        trim(
-            (string) ($data['slug'] ?? '')
-        )
     );
 
     $productType = trim(
@@ -169,32 +229,11 @@ function admin_shop_create_product(
         );
     }
 
-    if (
-        $slug === ''
-        || !preg_match(
-            '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-            $slug
-        )
-    ) {
-        throw new RuntimeException(
-            'Product slug must contain lowercase letters, numbers, and hyphens.'
+    $slug =
+        admin_shop_unique_slug(
+            $db,
+            $name
         );
-    }
-
-    $dupe = $db->prepare(
-        'SELECT id
-         FROM shop_products
-         WHERE slug = ?
-         LIMIT 1'
-    );
-
-    $dupe->execute([$slug]);
-
-    if ($dupe->fetchColumn()) {
-        throw new RuntimeException(
-            'Another product already uses that slug.'
-        );
-    }
 
     $stmt = $db->prepare(
         'INSERT INTO shop_products (
@@ -259,12 +298,6 @@ function admin_shop_save_product(
         (string) ($data['name'] ?? '')
     );
 
-    $slug = strtolower(
-        trim(
-            (string) ($data['slug'] ?? '')
-        )
-    );
-
     $shortDescription = trim(
         (string) ($data['short_description'] ?? '')
     );
@@ -302,18 +335,6 @@ function admin_shop_save_product(
     }
 
     if (
-        $slug === ''
-        || !preg_match(
-            '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-            $slug
-        )
-    ) {
-        throw new RuntimeException(
-            'Product slug must contain lowercase letters, numbers, and hyphens.'
-        );
-    }
-
-    if (
         !in_array(
             $status,
             ['draft','active','archived'],
@@ -325,29 +346,9 @@ function admin_shop_save_product(
         );
     }
 
-    $dupe = $db->prepare(
-        'SELECT id
-         FROM shop_products
-         WHERE slug = ?
-           AND id <> ?
-         LIMIT 1'
-    );
-
-    $dupe->execute([
-        $slug,
-        $productId,
-    ]);
-
-    if ($dupe->fetchColumn()) {
-        throw new RuntimeException(
-            'Another product already uses that slug.'
-        );
-    }
-
     $stmt = $db->prepare(
         'UPDATE shop_products
          SET
-            slug = ?,
             name = ?,
             short_description = ?,
             description = ?,
@@ -360,7 +361,6 @@ function admin_shop_save_product(
     );
 
     $stmt->execute([
-        $slug,
         $name,
         $shortDescription !== ''
             ? $shortDescription
@@ -395,7 +395,7 @@ function admin_shop_save_product(
             ],
             'after' => [
                 'name' => $name,
-                'slug' => $slug,
+                'slug' => $product['slug'],
                 'status' => $status,
             ],
         ]
@@ -1029,6 +1029,90 @@ function admin_shop_update_fulfillment(
             'fulfillment_id' => $fulfillmentId,
             'order_id' => (int) $fulfillment['order_id'],
             'status' => $status,
+        ]
+    );
+}
+
+
+function admin_shop_add_product_photos(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    string $photoToken,
+    array $photos
+): int {
+    $added = shop_images_add_staged(
+        $actorUserId,
+        $productId,
+        $photoToken,
+        $photos
+    );
+
+    $count = count($added);
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'shop.product_photos_added',
+        'Added ' .
+            $count .
+            ' product photo' .
+            ($count === 1 ? '' : 's') .
+            '.',
+        [
+            'product_id' => $productId,
+            'count' => $count,
+        ]
+    );
+
+    return $count;
+}
+
+function admin_shop_set_primary_photo(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    int $imageId
+): void {
+    shop_images_set_primary(
+        $productId,
+        $imageId
+    );
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'shop.product_primary_photo_changed',
+        'Changed a product primary photo.',
+        [
+            'product_id' => $productId,
+            'image_id' => $imageId,
+        ]
+    );
+}
+
+function admin_shop_delete_product_photo(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    int $imageId
+): void {
+    shop_images_delete(
+        $productId,
+        $imageId
+    );
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'shop.product_photo_deleted',
+        'Deleted a product photo.',
+        [
+            'product_id' => $productId,
+            'image_id' => $imageId,
         ]
     );
 }
