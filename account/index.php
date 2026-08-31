@@ -80,14 +80,15 @@ require dirname(__DIR__) . '/partials/header.php';
                     <article class="saved-place-card">
                         <?php if (!empty($saved['featured_image'])): ?>
                             <div class="saved-place-card-image">
+                                <?php
+                                $imageSrc = trim((string) $saved['featured_image']);
+
+                                if ($imageSrc !== '' && !preg_match('~^https?://~i', $imageSrc)) {
+                                    $imageSrc = $siteUrl . '/' . ltrim($imageSrc, '/');
+                                }
+                                ?>
                                 <img
-                                    src="<?= htmlspecialchars(
-                                        str_starts_with((string) $saved['featured_image'], '/')
-                                            ? $siteUrl . (string) $saved['featured_image']
-                                            : (string) $saved['featured_image'],
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>"
+                                    src="<?= htmlspecialchars($imageSrc, ENT_QUOTES, 'UTF-8') ?>"
                                     alt=""
                                     loading="lazy"
                                 >
