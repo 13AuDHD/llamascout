@@ -234,6 +234,14 @@ function admin_shell_nav_class(
                 <span>Policies</span>
             </a>
 
+            <a
+                class="<?= admin_shell_nav_class('points', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/points.php') ?>"
+            >
+                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                <span>Points</span>
+            </a>
+
             <span class="admin-nav-link is-coming">
                 <i class="fa-solid fa-gears" aria-hidden="true"></i>
                 <span>System</span>
