@@ -11,6 +11,7 @@ RewriteRule ^$ index.php [L]
 RewriteRule ^field-guides/?$ field-guides.php [L]
 RewriteRule ^field-guides/([a-z0-9-]+)/?$ field-guide.php?slug=$1 [QSA,L]
 RewriteRule ^membership/?$ membership.php [L]
+RewriteRule ^badges/([a-z0-9-]+)/?$ badge.php?slug=$1 [QSA,L]
 
 # PUBLIC MEMBER PROFILES
 # Existing files and directories always win.
