@@ -26,14 +26,29 @@ function places_public(): array
             p.elevation_feet,
             p.last_verified_at,
             p.published_at,
+
             pi.src AS featured_image,
-            pi.alt_text AS featured_image_alt
+            pi.alt_text AS featured_image_alt,
+
+            pa.toilets,
+            pa.potable_water,
+            pa.trash,
+            pa.fire_ring,
+            pa.picnic_table,
+            pa.bear_box,
+            pa.showers,
+            pa.electricity,
+            pa.dump_station,
+            pa.food_storage_required
 
         FROM places p
 
         LEFT JOIN place_images pi
             ON pi.place_id = p.id
            AND pi.is_featured = 1
+
+        LEFT JOIN place_amenities pa
+            ON pa.place_id = p.id
 
         WHERE p.status IN ('active', 'featured')
 
@@ -46,9 +61,39 @@ function places_public(): array
         "
     );
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    foreach ($rows as &$row) {
+        $row['amenities'] = [
+            'toilets' => isset($row['toilets']) ? (int) $row['toilets'] : 0,
+            'potable_water' => isset($row['potable_water']) ? (int) $row['potable_water'] : 0,
+            'trash' => isset($row['trash']) ? (int) $row['trash'] : 0,
+            'fire_ring' => isset($row['fire_ring']) ? (int) $row['fire_ring'] : 0,
+            'picnic_table' => isset($row['picnic_table']) ? (int) $row['picnic_table'] : 0,
+            'bear_box' => isset($row['bear_box']) ? (int) $row['bear_box'] : 0,
+            'showers' => isset($row['showers']) ? (int) $row['showers'] : 0,
+            'electricity' => isset($row['electricity']) ? (int) $row['electricity'] : 0,
+            'dump_station' => isset($row['dump_station']) ? (int) $row['dump_station'] : 0,
+            'food_storage_required' => isset($row['food_storage_required']) ? (int) $row['food_storage_required'] : 0,
+        ];
+
+        unset(
+            $row['toilets'],
+            $row['potable_water'],
+            $row['trash'],
+            $row['fire_ring'],
+            $row['picnic_table'],
+            $row['bear_box'],
+            $row['showers'],
+            $row['electricity'],
+            $row['dump_station'],
+            $row['food_storage_required']
+        );
+    }
+    unset($row);
+
+    return $rows;
+}
 
 function place_public_by_slug(string $slug): ?array
 {
@@ -93,11 +138,8 @@ function place_public_by_slug(string $slug): ?array
         return null;
     }
 
-    $placeId = (int) $place['id'];
-
-    $place['featured_image'] = place_public_featured_image($placeId);
-    $place['amenities'] = place_public_amenities($placeId);
-    $place['provenance'] = place_public_provenance($placeId, (string) ($place['source_type'] ?? ''));
+    $place['featured_image'] = place_public_featured_image((int) $place['id']);
+    $place['amenities'] = place_public_amenities((int) $place['id']);
 
     return $place;
 }
@@ -220,8 +262,6 @@ function place_member_by_slug(string $slug): ?array
     $place['sensory_details'] = place_member_row('place_sensory_details', $placeId);
     $place['rules'] = place_member_row('place_rules', $placeId);
     $place['experience'] = place_member_row('place_experience', $placeId);
-    $place['notes'] = place_member_notes($placeId);
-    $place['provenance'] = place_public_provenance($placeId, (string) ($place['source_type'] ?? ''));
 
     $place['sensory'] = place_member_sensory($placeId);
 
@@ -331,112 +371,3 @@ function place_member_sensory(int $placeId): array
 
 
 
-
-
-function place_member_notes(int $placeId): array
-{
-    $stmt = db()->prepare(
-        "
-        SELECT
-            note,
-            sort_order
-
-        FROM place_notes
-
-        WHERE place_id = ?
-
-        ORDER BY
-            sort_order ASC,
-            id ASC
-        "
-    );
-
-    $stmt->execute([$placeId]);
-
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-
-function place_public_provenance(int $placeId, string $sourceType = ''): array
-{
-    $stmt = db()->prepare(
-        "
-        SELECT
-            pp.origin_type,
-            pp.established_at,
-            MAX(
-                CASE
-                    WHEN pc.status = 'approved'
-                     AND pc.visited_at IS NOT NULL
-                     AND pc.role_at_time IN (
-                         'owner',
-                         'admin',
-                         'scout',
-                         'master-scout',
-                         'master_scout'
-                     )
-                    THEN pc.visited_at
-                    ELSE NULL
-                END
-            ) AS last_scouted_at
-
-        FROM places p
-
-        LEFT JOIN place_provenance pp
-            ON pp.place_id = p.id
-
-        LEFT JOIN place_contributions pc
-            ON pc.place_id = p.id
-
-        WHERE p.id = ?
-
-        GROUP BY
-            p.id,
-            pp.origin_type,
-            pp.established_at
-
-        LIMIT 1
-        "
-    );
-
-    $stmt->execute([$placeId]);
-
-    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-    $lastScoutedAt = $row['last_scouted_at'] ?? null;
-    $originType = strtolower(trim((string) ($row['origin_type'] ?? '')));
-
-    if ($originType === '') {
-        $source = strtolower(trim($sourceType));
-
-        $originType = match ($source) {
-            'llama-scouted',
-            'llama-scout',
-            'scout',
-            'master-scout',
-            'master_scout' => 'scout',
-
-            'community-scouted',
-            'community-contributed',
-            'community_contributed',
-            'community' => 'community',
-
-            'admin',
-            'staff' => 'admin',
-
-            'owner' => 'owner',
-
-            default => 'legacy',
-        };
-    }
-
-    $isScouted = $lastScoutedAt !== null;
-
-    return [
-        'status' => $isScouted ? 'llama-scouted' : 'community-contributed',
-        'label' => $isScouted ? 'Llama Scouted' : 'Community Contributed',
-        'origin_type' => $originType,
-        'established_at' => $row['established_at'] ?? null,
-        'last_scouted_at' => $lastScoutedAt,
-    ];
-}
