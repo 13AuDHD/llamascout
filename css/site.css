@@ -1092,3 +1092,40 @@ textarea {
     padding-left: 4px;
     line-height: 1.6;
 }
+
+
+/* =========================================================
+   PLACE PROVENANCE
+   ========================================================= */
+
+.place-provenance-line {
+    margin: 12px 0 16px;
+}
+
+.place-provenance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 7px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.place-provenance-badge i {
+    font-size: 0.95rem;
+}
+
+.place-provenance-badge.is-scouted {
+    font-weight: 800;
+}
+
+.place-provenance-badge.is-community {
+    color: var(--text-muted);
+}
