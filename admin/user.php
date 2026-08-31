@@ -193,20 +193,16 @@ require __DIR__ . '/_header.php';
 <section class="admin-user-summary">
 
     <div class="admin-user-summary-identity">
-        <span class="admin-user-summary-avatar" aria-hidden="true">
-            <?= moderation_e(
-                strtoupper(
-                    substr(
-                        (string) (
-                            $user['display_name']
-                            ?: $user['username']
-                            ?: 'U'
-                        ),
-                        0,
-                        1
+        <span class="admin-user-summary-avatar">
+            <img
+                src="<?= moderation_e(
+                    admin_user_avatar_src(
+                        (string) ($user['profile_image_src'] ?? ''),
+                        $siteUrl
                     )
-                )
-            ) ?>
+                ) ?>"
+                alt=""
+            >
         </span>
 
         <div>

@@ -77,20 +77,17 @@ require __DIR__ . '/_header.php';
                     <tr>
                         <td>
                             <div class="admin-user-identity">
-                                <span class="admin-user-table-avatar" aria-hidden="true">
-                                    <?= moderation_e(
-                                        strtoupper(
-                                            substr(
-                                                (string) (
-                                                    $scout['display_name']
-                                                    ?: $scout['username']
-                                                    ?: 'S'
-                                                ),
-                                                0,
-                                                1
+                                <span class="admin-user-table-avatar">
+                                    <img
+                                        src="<?= moderation_e(
+                                            admin_user_avatar_src(
+                                                (string) ($scout['profile_image_src'] ?? ''),
+                                                $siteUrl
                                             )
-                                        )
-                                    ) ?>
+                                        ) ?>"
+                                        alt=""
+                                        loading="lazy"
+                                    >
                                 </span>
                                 <div>
                                     <strong>
