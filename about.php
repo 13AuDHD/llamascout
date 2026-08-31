@@ -173,7 +173,7 @@ require __DIR__ . '/partials/header.php';
 
             <div>
                 <p class="about-eyebrow">Why it exists</p>
-                <h2>Because âyou can camp thereâ is not enough information.</h2>
+                <h2>Because "you can camp there" is not enough information.</h2>
             </div>
 
             <div class="about-copy">
@@ -195,7 +195,7 @@ require __DIR__ . '/partials/header.php';
                     Sensory information is a core part of Llama Scout because it is
                     useful information, not because every traveler experiences a
                     Place the same way. The goal is not to decide whether a Place
-                    is âgood.â The goal is to describe it well enough that you can.
+                    is "good." The goal is to describe it well enough that you can.
                 </p>
             </div>
 
@@ -265,7 +265,7 @@ require __DIR__ . '/partials/header.php';
 
             <div class="about-copy">
                 <p>
-                    âLlama Scoutedâ means a Llama Scout has physically been at the
+                    "Llama Scouted" means a Llama Scout has physically been at the
                     Place and documented it through the Scout process. It is a record
                     that field observation happened, not a permanent guarantee that
                     every condition remains unchanged forever.
