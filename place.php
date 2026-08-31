@@ -474,6 +474,23 @@ require __DIR__ . '/partials/header.php';
                 </section>
             <?php endif; ?>
 
+            <?php if (!empty($place['notes'])): ?>
+                <section class="scout-report-section">
+                    <h3>
+                        <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+                        Scout notes
+                    </h3>
+
+                    <ul class="scout-report-notes-list">
+                        <?php foreach ($place['notes'] as $note): ?>
+                            <?php if (!empty($note['note'])): ?>
+                                <li><?= place_h($note['note']) ?></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
+                </section>
+            <?php endif; ?>
+
             <?php if (!empty($experience)): ?>
                 <section class="scout-report-section">
                     <h3>
