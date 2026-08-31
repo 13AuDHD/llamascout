@@ -172,59 +172,52 @@ require __DIR__ . '/partials/header.php';
 
         <?php if (!empty($profile['badges'])): ?>
             <div class="community-badge-grid">
-                <?php foreach ($profile['badges'] as $badge): ?>
-                    <?php
-                    $badgeSlug =
-                        (string) ($badge['slug'] ?? '');
+<?php foreach ($profile['badges'] as $badge): ?>
+    <?php
+    $badgeSlug =
+        (string) ($badge['slug'] ?? '');
 
-                    $badgeName =
-                        (string) ($badge['name'] ?? 'Badge');
+    $badgeName =
+        (string) ($badge['name'] ?? 'Badge');
 
-                    $badgeImage =
-                        $badge['resolved_image_src'] ?? null;
-                    ?>
+    $badgeImage =
+        $badge['resolved_image_src'] ?? null;
+    ?>
 
-                    <a
-                        class="community-badge-card"
-                        href="/badges/<?= rawurlencode($badgeSlug) ?>"
-                        aria-label="View <?= public_profile_e($badgeName) ?> badge details"
-                    >
-                        <span class="community-badge-icon">
-                            <?php if ($badgeImage): ?>
-                                <img
-                                    src="<?= public_profile_e(
-                                        llama_profile_image_url(
-                                            (string) $badgeImage,
-                                            $siteUrl
-                                        )
-                                    ) ?>"
-                                    alt="<?= public_profile_e($badgeName) ?>"
-                                    loading="lazy"
-                                >
-                            <?php else: ?>
-                                <i
-                                    class="fa-solid <?= public_profile_e(
-                                        $badge['icon'] ?: 'fa-award'
-                                    ) ?>"
-                                    aria-hidden="true"
-                                ></i>
-                            <?php endif; ?>
-                        </span>
+    <a
+        class="profile-earned-badge"
+        href="/badges/<?= rawurlencode($badgeSlug) ?>"
+        aria-label="View <?= public_profile_e($badgeName) ?> badge"
+        title="<?= public_profile_e($badgeName) ?>"
+    >
+        <?php if ($badgeImage): ?>
 
-                        <div>
-                            <strong><?= public_profile_e($badgeName) ?></strong>
+            <img
+                src="<?= public_profile_e(
+                    llama_profile_image_url(
+                        (string) $badgeImage,
+                        $siteUrl
+                    )
+                ) ?>"
+                alt="<?= public_profile_e($badgeName) ?>"
+                loading="lazy"
+            >
 
-                            <?php if (!empty($badge['description'])): ?>
-                                <p><?= public_profile_e($badge['description']) ?></p>
-                            <?php endif; ?>
+        <?php else: ?>
 
-                            <span class="community-badge-view">
-                                View badge
-                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-                            </span>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
+            <span class="profile-earned-badge-fallback">
+                <i
+                    class="fa-solid <?= public_profile_e(
+                        $badge['icon'] ?: 'fa-award'
+                    ) ?>"
+                    aria-hidden="true"
+                ></i>
+            </span>
+
+        <?php endif; ?>
+    </a>
+
+<?php endforeach; ?>
             </div>
         <?php else: ?>
             <p class="public-community-profile-bio">No badges earned yet.</p>
