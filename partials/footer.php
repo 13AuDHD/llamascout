@@ -18,6 +18,7 @@ $siteUrl = rtrim(
 </footer>
 
 <script src="<?= htmlspecialchars($siteUrl . '/js/accessibility.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($siteUrl . '/js/photo-uploader.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 
 </body>
 </html>

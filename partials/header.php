@@ -54,6 +54,7 @@ $accountUrl = rtrim(
     >
 
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>">
 </head>
 
 <body>
