@@ -7,8 +7,12 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 # ROOT HOMEPAGE
 RewriteRule ^$ index.php [L]
 
+# PUBLIC-FACING CLEAN ROUTES
+RewriteRule ^field-guides/?$ field-guides.php [L]
+RewriteRule ^field-guides/([a-z0-9-]+)/?$ field-guide.php?slug=$1 [QSA,L]
+RewriteRule ^membership/?$ membership.php [L]
+
 # PUBLIC MEMBER PROFILES
-# Example: https://llamascout.com/thirteen
 # Existing files and directories always win.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
