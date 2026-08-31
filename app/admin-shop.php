@@ -17,6 +17,34 @@ function admin_shop_money(
         );
 }
 
+function admin_shop_image_url(
+    ?string $src,
+    string $siteUrl = 'https://llamascout.com'
+): string {
+    $src = trim((string) $src);
+
+    if ($src === '') {
+        return '';
+    }
+
+    if (
+        preg_match(
+            '#^https?://#i',
+            $src
+        )
+    ) {
+        return $src;
+    }
+
+    if (str_starts_with($src, '//')) {
+        return 'https:' . $src;
+    }
+
+    return rtrim($siteUrl, '/') .
+        '/' .
+        ltrim($src, '/');
+}
+
 function admin_shop_products(PDO $db): array
 {
     $stmt = $db->query(
