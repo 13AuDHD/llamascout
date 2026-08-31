@@ -874,40 +874,25 @@
         border-radius: 0;
     }
 
-   
-
     .membership-public-paid-prices {
-
         grid-template-columns: 1fr;
-
         gap: 10px;
 
         margin-top: 16px;
-
     }
 
     .membership-price-option {
-
         justify-content: center;
-
     }
 
     .membership-price-separator {
-
         width: 100%;
-
         justify-content: center;
-
     }
 
     .membership-price-separator::before,
-
     .membership-price-separator::after {
-
         flex: 1 1 auto;
-
         width: auto;
     }
-
-   
 }
