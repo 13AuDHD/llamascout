@@ -176,7 +176,7 @@ require dirname(__DIR__) . '/partials/header.php';
     <section class="account-section" aria-labelledby="profile-heading">
         <div class="account-section-heading">
             <div>
-                <p class="account-eyebrow">Community profile</p>
+                <p class="account-eyebrow">Your profile</p>
                 <h2 id="profile-heading">Profile</h2>
             </div>
         </div>
@@ -184,11 +184,11 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="account-action-grid">
             <a class="account-action-card" href="/profile.php">
                 <i class="fa-solid fa-id-card" aria-hidden="true"></i>
-                <span><strong>Manage Community Profile</strong><small>Photos, bio, badges, interests, links, and visibility.</small></span>
+                <span><strong>Manage Profile</strong><small>Profile photo, optional photos, bio, interests, social handles, and public visibility.</small></span>
             </a>
-            <a class="account-action-card" href="<?= htmlspecialchars($siteUrl . '/profile.php?user=' . rawurlencode((string) ($user['username'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+            <a class="account-action-card" href="<?= htmlspecialchars($siteUrl . '/' . rawurlencode((string) ($user['username'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-eye" aria-hidden="true"></i>
-                <span><strong>View My Profile</strong><small>See the profile other community members see.</small></span>
+                <span><strong>View My Profile</strong><small>Preview your Llama Scout profile at your username URL.</small></span>
             </a>
         </div>
     </section>

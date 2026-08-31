@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     } else {
         try {
             llama_profile_save($db, $userId, $_POST);
-            $success = 'Your Community Profile has been updated.';
+            $success = 'Your Profile has been updated.';
         } catch (Throwable $exception) {
             error_log('Llama Scout community profile save error for user #' . $userId . ': ' . $exception->getMessage());
             $errors[] = $exception instanceof InvalidArgumentException
@@ -71,20 +71,20 @@ function profile_value(array $profile, string $key): string
     return (string) ($profile[$key] ?? '');
 }
 
-$pageTitle = 'Community Profile | Llama Scout';
+$pageTitle = 'Profile | Llama Scout';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
 <section class="community-profile-editor">
     <header class="community-profile-editor-header">
         <div>
-            <p class="account-eyebrow">Community profile</p>
+            <p class="account-eyebrow">Your profile</p>
             <h1><?= profile_e($displayName) ?></h1>
             <p>Build the profile other Llama Scout members see when they come across your contributions.</p>
         </div>
 
         <div class="community-profile-editor-actions">
-            <a class="place-save-button" href="<?= profile_e($siteUrl . '/profile.php?user=' . rawurlencode($username)) ?>">
+            <a class="place-save-button" href="<?= profile_e($siteUrl . '/' . rawurlencode($username)) ?>">
                 <i class="fa-solid fa-eye" aria-hidden="true"></i>
                 View profile
             </a>
@@ -231,7 +231,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="account-empty-state">
                 <i class="fa-solid fa-award" aria-hidden="true"></i>
                 <h3>No badges yet</h3>
-                <p>Badges appear here as you earn community recognition, Scout achievements, and recognized training.</p>
+                <p>Badges appear here as you earn Llama Scout achievements, contribution milestones, and recognized training.</p>
             </div>
         <?php endif; ?>
     </section>
@@ -285,28 +285,49 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="community-profile-section-heading">
                 <div>
                     <p class="account-eyebrow">Around the internet</p>
-                    <h2>Links</h2>
+                    <h2>Social profiles</h2>
                 </div>
             </div>
 
+            <p class="community-profile-section-copy">
+                For social networks, enter only your username or handle. Llama Scout builds the profile link for you.
+            </p>
+
             <div class="community-profile-form-grid">
-                <?php
-                $links = [
-                    'website_url' => ['Website', 'fa-solid fa-globe'],
-                    'instagram_url' => ['Instagram', 'fa-brands fa-instagram'],
-                    'facebook_url' => ['Facebook', 'fa-brands fa-facebook'],
-                    'bluesky_url' => ['Bluesky', 'fa-solid fa-cloud'],
-                    'youtube_url' => ['YouTube', 'fa-brands fa-youtube'],
-                    'tiktok_url' => ['TikTok', 'fa-brands fa-tiktok'],
-                    'other_social_url' => ['Other link', 'fa-solid fa-link'],
-                ];
-                ?>
-                <?php foreach ($links as $name => [$label, $icon]): ?>
-                    <label class="community-profile-field">
-                        <span><i class="<?= profile_e($icon) ?>" aria-hidden="true"></i> <?= profile_e($label) ?></span>
-                        <input type="url" name="<?= profile_e($name) ?>" maxlength="500" value="<?= profile_e(profile_value($profile, $name)) ?>" placeholder="https://">
-                    </label>
-                <?php endforeach; ?>
+                <label class="community-profile-field community-profile-field-wide">
+                    <span><i class="fa-solid fa-globe" aria-hidden="true"></i> Website</span>
+                    <input type="url" name="website_url" maxlength="500" value="<?= profile_e(profile_value($profile, 'website_url')) ?>" placeholder="https://example.com">
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-brands fa-instagram" aria-hidden="true"></i> Instagram</span>
+                    <div class="profile-handle-input"><span>@</span><input type="text" name="instagram_url" maxlength="150" value="<?= profile_e(profile_value($profile, 'instagram_url')) ?>" placeholder="username" autocapitalize="none" spellcheck="false"></div>
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-brands fa-facebook" aria-hidden="true"></i> Facebook</span>
+                    <div class="profile-handle-input"><span>@</span><input type="text" name="facebook_url" maxlength="150" value="<?= profile_e(profile_value($profile, 'facebook_url')) ?>" placeholder="username" autocapitalize="none" spellcheck="false"></div>
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-solid fa-cloud" aria-hidden="true"></i> Bluesky</span>
+                    <div class="profile-handle-input"><span>@</span><input type="text" name="bluesky_url" maxlength="150" value="<?= profile_e(profile_value($profile, 'bluesky_url')) ?>" placeholder="name.bsky.social" autocapitalize="none" spellcheck="false"></div>
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-brands fa-youtube" aria-hidden="true"></i> YouTube</span>
+                    <div class="profile-handle-input"><span>@</span><input type="text" name="youtube_url" maxlength="150" value="<?= profile_e(profile_value($profile, 'youtube_url')) ?>" placeholder="channelhandle" autocapitalize="none" spellcheck="false"></div>
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-brands fa-tiktok" aria-hidden="true"></i> TikTok</span>
+                    <div class="profile-handle-input"><span>@</span><input type="text" name="tiktok_url" maxlength="150" value="<?= profile_e(profile_value($profile, 'tiktok_url')) ?>" placeholder="username" autocapitalize="none" spellcheck="false"></div>
+                </label>
+
+                <label class="community-profile-field">
+                    <span><i class="fa-solid fa-link" aria-hidden="true"></i> Other link</span>
+                    <input type="url" name="other_social_url" maxlength="500" value="<?= profile_e(profile_value($profile, 'other_social_url')) ?>" placeholder="https://">
+                </label>
             </div>
         </section>
 
@@ -321,8 +342,8 @@ require dirname(__DIR__) . '/partials/header.php';
             <label class="community-profile-visibility-toggle">
                 <input type="checkbox" name="is_public" value="1" <?= !empty($profile['is_public']) ? 'checked' : '' ?>>
                 <span>
-                    <strong>Make my profile public</strong>
-                    <small>Public profiles can be viewed by anyone and can appear in the Community directory. When this is off, signed-in members can still view your profile from community activity.</small>
+                    <strong>Create my public profile</strong>
+                    <small>When enabled, your profile is available at llamascout.com/<?= profile_e($username) ?>, can be viewed by anyone, and may be indexed by search engines. When disabled, signed-in members can still see your basic profile, badges, and contribution stats.</small>
                 </span>
             </label>
         </section>
@@ -330,7 +351,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="community-profile-save-row">
             <button type="submit" name="save_profile" value="1" class="contribution-submit">
                 <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                Save Community Profile
+                Save Profile
             </button>
         </div>
     </form>
