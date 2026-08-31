@@ -6,33 +6,23 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 $adminUser = moderation_require_admin();
 $db = db();
 $csrfToken = moderation_csrf_token();
-$pageTitle = 'Review Problem Report | Llama Scout Admin';
-$pageRobots = 'noindex,nofollow';
+require_once __DIR__ . '/_dashboard.php';
 
-require dirname(__DIR__) . '/partials/header.php';
-?>
-<link rel="stylesheet" href="https://llamascout.com/css/admin-moderation.css">
+$stats = admin_dashboard_stats($db);
 
-<section class="admin-moderation-page">
-    <header class="admin-moderation-header">
-        <div>
-            <p class="admin-moderation-eyebrow">Llama Scout Admin</p>
-            <h1>Review Problem Report</h1>
-        </div>
-        <a class="admin-moderation-button" href="https://account.llamascout.com/">
-            <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
-            Account
-        </a>
-    </header>
+$adminNavCounts = [
+    'new_places' => $stats['new_places'],
+    'updates' => $stats['updates'],
+    'reports' => $stats['reports'],
+    'orders' => $stats['orders'],
+];
 
-    <nav class="admin-moderation-nav" aria-label="Moderation">
-        <a href="/"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Dashboard</a>
-        <a href="/submissions.php"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> New Places</a>
-        <a href="/updates.php"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Place Updates</a>
-        <a href="/reports.php"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Reports</a>
-    </nav>
+$adminPageTitle = 'Review Problem Report';
+$adminPageEyebrow = 'Moderation';
+$adminActiveNav = 'reports';
 
-<?php
+require __DIR__ . '/_header.php';
+
 $reportId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 $item = moderation_report($db, $reportId);
 $error = '';
@@ -40,7 +30,7 @@ $error = '';
 if (!$item) {
     http_response_code(404);
     echo '<div class="admin-moderation-notice">Report not found.</div>';
-    require dirname(__DIR__) . '/partials/footer.php';
+    require __DIR__ . '/_footer.php';
     exit;
 }
 
@@ -133,5 +123,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </form>
 </div>
-</section>
-<?php require dirname(__DIR__) . '/partials/footer.php'; ?>
+<?php require __DIR__ . '/_footer.php'; ?>
