@@ -217,6 +217,7 @@ function place_member_by_slug(string $slug): ?array
     $place['sensory_details'] = place_member_row('place_sensory_details', $placeId);
     $place['rules'] = place_member_row('place_rules', $placeId);
     $place['experience'] = place_member_row('place_experience', $placeId);
+    $place['notes'] = place_member_notes($placeId);
 
     $place['sensory'] = place_member_sensory($placeId);
 
@@ -326,3 +327,27 @@ function place_member_sensory(int $placeId): array
 
 
 
+
+
+function place_member_notes(int $placeId): array
+{
+    $stmt = db()->prepare(
+        "
+        SELECT
+            note,
+            sort_order
+
+        FROM place_notes
+
+        WHERE place_id = ?
+
+        ORDER BY
+            sort_order ASC,
+            id ASC
+        "
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
