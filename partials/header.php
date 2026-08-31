@@ -5,6 +5,11 @@ declare(strict_types=1);
 $user = current_user();
 $config = llama_config();
 
+$siteUrl = rtrim(
+    (string) ($config['app']['url'] ?? 'https://llamascout.com'),
+    '/'
+);
+
 $accountUrl = rtrim(
     (string) ($config['app']['account_url'] ?? 'https://account.llamascout.com'),
     '/'
@@ -48,7 +53,7 @@ $accountUrl = rtrim(
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>">
 </head>
 
 <body>
@@ -60,18 +65,18 @@ $accountUrl = rtrim(
 <header class="site-header">
     <div class="site-header-inner">
 
-        <a class="site-brand" href="/index.php" aria-label="Llama Scout home">
-            <img src="/images/logo.png" alt="Llama Scout">
+        <a class="site-brand" href="<?= htmlspecialchars($siteUrl . '/index.php', ENT_QUOTES, 'UTF-8') ?>" aria-label="Llama Scout home">
+            <img src="<?= htmlspecialchars($siteUrl . '/images/logo.png', ENT_QUOTES, 'UTF-8') ?>" alt="Llama Scout">
         </a>
 
         <nav class="site-nav" aria-label="Main navigation">
 
-            <a href="/index.php">
+            <a href="<?= htmlspecialchars($siteUrl . '/index.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-house" aria-hidden="true"></i>
                 <span>Home</span>
             </a>
 
-            <a href="/map.php">
+            <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-map" aria-hidden="true"></i>
                 <span>Map</span>
             </a>
