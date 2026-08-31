@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/points.php';
+
 /* =========================================================
    LLAMA SCOUT
    MODERATION ENGINE
@@ -513,7 +515,25 @@ function moderation_insert_contribution(
         $notes,
     ]);
 
-    return (int) $db->lastInsertId();
+    $contributionId =
+        (int) $db->lastInsertId();
+
+    if ($points !== 0) {
+        llama_points_record(
+            $db,
+            $userId,
+            $points,
+            'place_contribution',
+            $contributionId,
+            'Approved ' .
+                str_replace('_', ' ', $type) .
+                ' contribution.',
+            $approvedBy,
+            $contributionId
+        );
+    }
+
+    return $contributionId;
 }
 
 function moderation_approve_new_place(

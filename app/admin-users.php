@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/points.php';
+
 function admin_users_current_is_owner(
     PDO $db,
     int $userId
@@ -304,19 +306,11 @@ function admin_users_stats(
         }
     }
 
-    try {
-        $stmt = $db->prepare(
-            'SELECT COALESCE(SUM(points_awarded), 0)
-             FROM place_contributions
-             WHERE user_id = ?
-               AND status = "approved"'
+    $stats['points'] =
+        llama_points_total(
+            $db,
+            $userId
         );
-
-        $stmt->execute([$userId]);
-        $stats['points'] = (int) $stmt->fetchColumn();
-    } catch (Throwable $exception) {
-        $stats['points'] = 0;
-    }
 
     return $stats;
 }

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/points.php';
+
 const LLAMA_DEFAULT_PROFILE_IMAGE = '/images/default-profile.png';
 
 function llama_ensure_community_profile(PDO $db, int $userId): void
@@ -65,40 +67,6 @@ function llama_primary_profile_image(PDO $db, int $userId): string
         : LLAMA_DEFAULT_PROFILE_IMAGE;
 }
 
-function llama_badge_image_url(
-    string $slug,
-    ?string $configuredImageSrc = null
-): ?string
-{
-    $slug = strtolower(trim($slug));
-
-    if (
-        $slug !== ''
-        && preg_match('/^[a-z0-9-]+$/', $slug)
-    ) {
-        $relativePath =
-            '/images/badges/' .
-            $slug .
-            '.png';
-
-        $physicalPath =
-            dirname(__DIR__) .
-            $relativePath;
-
-        if (is_file($physicalPath)) {
-            return $relativePath;
-        }
-    }
-
-    $configuredImageSrc =
-        trim((string) $configuredImageSrc);
-
-    return $configuredImageSrc !== ''
-        ? $configuredImageSrc
-        : null;
-}
-
-
 function llama_user_badges(PDO $db, int $userId): array
 {
     $stmt = $db->prepare(
@@ -126,19 +94,7 @@ function llama_user_badges(PDO $db, int $userId): array
     );
     $stmt->execute([$userId]);
 
-    $badges =
-        $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    foreach ($badges as &$badge) {
-        $badge['resolved_image_src'] =
-            llama_badge_image_url(
-                (string) ($badge['slug'] ?? ''),
-                (string) ($badge['image_src'] ?? '')
-            );
-    }
-    unset($badge);
-
-    return $badges;
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 function llama_profile_stats(PDO $db, int $userId): array
@@ -163,7 +119,7 @@ function llama_profile_stats(PDO $db, int $userId): array
     $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
     return [
-        'points' => (int) ($row['points'] ?? 0),
+        'points' => llama_points_total($db, $userId),
         'approved_contributions' => (int) ($row['approved_contributions'] ?? 0),
         'places_submitted' => (int) ($row['places_submitted'] ?? 0),
         'places_improved' => (int) ($row['places_improved'] ?? 0),
