@@ -93,8 +93,11 @@ function place_public_by_slug(string $slug): ?array
         return null;
     }
 
-    $place['featured_image'] = place_public_featured_image((int) $place['id']);
-    $place['amenities'] = place_public_amenities((int) $place['id']);
+    $placeId = (int) $place['id'];
+
+    $place['featured_image'] = place_public_featured_image($placeId);
+    $place['amenities'] = place_public_amenities($placeId);
+    $place['provenance'] = place_public_provenance($placeId, (string) ($place['source_type'] ?? ''));
 
     return $place;
 }
@@ -218,6 +221,7 @@ function place_member_by_slug(string $slug): ?array
     $place['rules'] = place_member_row('place_rules', $placeId);
     $place['experience'] = place_member_row('place_experience', $placeId);
     $place['notes'] = place_member_notes($placeId);
+    $place['provenance'] = place_public_provenance($placeId, (string) ($place['source_type'] ?? ''));
 
     $place['sensory'] = place_member_sensory($placeId);
 
@@ -350,4 +354,89 @@ function place_member_notes(int $placeId): array
     $stmt->execute([$placeId]);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function place_public_provenance(int $placeId, string $sourceType = ''): array
+{
+    $stmt = db()->prepare(
+        "
+        SELECT
+            pp.origin_type,
+            pp.established_at,
+            MAX(
+                CASE
+                    WHEN pc.status = 'approved'
+                     AND pc.visited_at IS NOT NULL
+                     AND pc.role_at_time IN (
+                         'owner',
+                         'admin',
+                         'scout',
+                         'master-scout',
+                         'master_scout'
+                     )
+                    THEN pc.visited_at
+                    ELSE NULL
+                END
+            ) AS last_scouted_at
+
+        FROM places p
+
+        LEFT JOIN place_provenance pp
+            ON pp.place_id = p.id
+
+        LEFT JOIN place_contributions pc
+            ON pc.place_id = p.id
+
+        WHERE p.id = ?
+
+        GROUP BY
+            p.id,
+            pp.origin_type,
+            pp.established_at
+
+        LIMIT 1
+        "
+    );
+
+    $stmt->execute([$placeId]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $lastScoutedAt = $row['last_scouted_at'] ?? null;
+    $originType = strtolower(trim((string) ($row['origin_type'] ?? '')));
+
+    if ($originType === '') {
+        $source = strtolower(trim($sourceType));
+
+        $originType = match ($source) {
+            'llama-scouted',
+            'llama-scout',
+            'scout',
+            'master-scout',
+            'master_scout' => 'scout',
+
+            'community-scouted',
+            'community-contributed',
+            'community_contributed',
+            'community' => 'community',
+
+            'admin',
+            'staff' => 'admin',
+
+            'owner' => 'owner',
+
+            default => 'legacy',
+        };
+    }
+
+    $isScouted = $lastScoutedAt !== null;
+
+    return [
+        'status' => $isScouted ? 'llama-scouted' : 'community-contributed',
+        'label' => $isScouted ? 'Llama Scouted' : 'Community Contributed',
+        'origin_type' => $originType,
+        'established_at' => $row['established_at'] ?? null,
+        'last_scouted_at' => $lastScoutedAt,
+    ];
 }
