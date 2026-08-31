@@ -480,12 +480,19 @@ require __DIR__ . '/_header.php';
 <?php foreach ($images as $image): ?>
 <figure>
     <img
-        src="https://llamascout.com<?= moderation_e(
-            (string) $image['image_url']
+        src="<?= moderation_e(
+            admin_shop_image_url(
+                (string) $image['image_url'],
+                $siteUrl
+            )
         ) ?>"
         alt="<?= moderation_e(
-            (string) ($image['alt_text'] ?? '')
+            (string) (
+                $image['alt_text']
+                ?: $product['name']
+            )
         ) ?>"
+        loading="lazy"
     >
 
     <?php if ((int) $image['is_primary'] === 1): ?>
@@ -518,8 +525,12 @@ require __DIR__ . '/_header.php';
 
     <a
         class="admin-button"
-        href="https://llamascout.com/shop/product.php?slug=<?= rawurlencode(
-            (string) $product['slug']
+        href="<?= moderation_e(
+            $siteUrl .
+            '/product.php?slug=' .
+            rawurlencode(
+                (string) $product['slug']
+            )
         ) ?>"
         target="_blank"
         rel="noopener"
