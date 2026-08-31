@@ -63,10 +63,15 @@ require __DIR__ . '/_header.php';
         <div class="admin-commerce-product-image">
             <?php if (!empty($product['primary_image_url'])): ?>
                 <img
-                    src="https://llamascout.com<?= moderation_e(
-                        (string) $product['primary_image_url']
+                    src="<?= moderation_e(
+                        admin_shop_image_url(
+                            (string) $product['primary_image_url'],
+                            $siteUrl
+                        )
                     ) ?>"
-                    alt=""
+                    alt="<?= moderation_e(
+                        (string) $product['name']
+                    ) ?>"
                     loading="lazy"
                 >
             <?php else: ?>
