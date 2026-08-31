@@ -556,3 +556,29 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
     justify-self: end;
     margin: 0;
 }
+
+
+/* =========================================================
+   SCOUT REPORT ICON POSITION OVERRIDE
+   Overrides legacy left-icon rules in site.css
+   ========================================================= */
+
+.scout-report-value-item > .scout-report-value-content {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+}
+
+.scout-report-value-item > i.scout-report-value-icon {
+    grid-column: 2;
+    grid-row: 1;
+
+    width: 30px;
+
+    justify-self: end;
+    align-self: center;
+
+    margin: 0;
+
+    text-align: center;
+}
