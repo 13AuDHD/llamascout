@@ -1478,4 +1478,35 @@ textarea {
 
 
 
+/* =========================================================
+   SAVED PLACE REMOVE BUTTON
+   ========================================================= */
 
+.saved-place-remove-form {
+    margin: 0;
+}
+
+.saved-place-remove-button {
+    display: inline-grid;
+    place-items: center;
+
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    border: 0;
+    border-radius: 999px;
+
+    background: transparent;
+    color: var(--text);
+
+    font: inherit;
+
+    cursor: pointer;
+}
+
+.saved-place-remove-button:hover,
+.saved-place-remove-button:focus-visible {
+    background: var(--background);
+}
