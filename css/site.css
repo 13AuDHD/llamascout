@@ -1074,3 +1074,21 @@ textarea {
         height: 12px;
     }
 }
+
+
+/* =========================================================
+   SCOUT NOTES
+   ========================================================= */
+
+.scout-report-notes-list {
+    display: grid;
+    gap: 10px;
+
+    margin: 0;
+    padding-left: 22px;
+}
+
+.scout-report-notes-list li {
+    padding-left: 4px;
+    line-height: 1.6;
+}
