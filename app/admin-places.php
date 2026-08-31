@@ -1090,3 +1090,502 @@ function admin_place_delete_image(
         ['uploads/places']
     );
 }
+
+
+function admin_place_sensory_period(
+    PDO $db,
+    int $placeId,
+    string $period
+): array {
+    if (!in_array($period, ['daytime', 'nighttime'], true)) {
+        throw new InvalidArgumentException(
+            'Invalid sensory period.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM place_sensory
+         WHERE place_id = ?
+           AND period = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $placeId,
+        $period,
+    ]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+}
+
+function admin_place_normalize_value(
+    mixed $raw,
+    string $type
+): mixed {
+    if ($raw === '' || $raw === null) {
+        return null;
+    }
+
+    if ($type === 'bool') {
+        $value = (int) $raw;
+
+        if (!in_array($value, [0, 1], true)) {
+            throw new RuntimeException(
+                'Yes/No values must be valid.'
+            );
+        }
+
+        return $value;
+    }
+
+    if ($type === 'rating') {
+        $value = (int) $raw;
+
+        if ($value < 1 || $value > 5) {
+            throw new RuntimeException(
+                'Ratings must be from 1 to 5.'
+            );
+        }
+
+        return $value;
+    }
+
+    if ($type === 'int') {
+        if (!preg_match('/^-?\d+$/', (string) $raw)) {
+            throw new RuntimeException(
+                'Whole-number fields must contain a valid number.'
+            );
+        }
+
+        return (int) $raw;
+    }
+
+    if ($type === 'decimal') {
+        if (!is_numeric($raw)) {
+            throw new RuntimeException(
+                'Numeric fields must contain a valid number.'
+            );
+        }
+
+        return (string) $raw;
+    }
+
+    return trim((string) $raw) !== ''
+        ? trim((string) $raw)
+        : null;
+}
+
+function admin_place_save_child_row(
+    PDO $db,
+    int $placeId,
+    string $table,
+    array $fieldTypes,
+    array $data
+): void {
+    $allowedTables = [
+        'place_details',
+        'place_sensory_details',
+        'place_rules',
+        'place_experience',
+    ];
+
+    if (!in_array($table, $allowedTables, true)) {
+        throw new InvalidArgumentException(
+            'Invalid Place report table.'
+        );
+    }
+
+    $values = [];
+
+    foreach ($fieldTypes as $field => $type) {
+        $values[$field] =
+            admin_place_normalize_value(
+                $data[$field] ?? null,
+                $type
+            );
+    }
+
+    $existing = admin_place_row(
+        $db,
+        $table,
+        $placeId
+    );
+
+    if ($existing) {
+        $set = [];
+        $params = [];
+
+        foreach ($values as $field => $value) {
+            $set[] = "`$field` = ?";
+            $params[] = $value;
+        }
+
+        $params[] = $placeId;
+
+        $stmt = $db->prepare(
+            "UPDATE `$table`
+             SET " .
+                implode(', ', $set) .
+            ' WHERE place_id = ?'
+        );
+
+        $stmt->execute($params);
+
+        return;
+    }
+
+    $fields = array_keys($values);
+
+    $stmt = $db->prepare(
+        "INSERT INTO `$table` (
+            place_id,
+            " .
+            implode(
+                ', ',
+                array_map(
+                    static fn(string $field): string =>
+                        "`$field`",
+                    $fields
+                )
+            ) .
+        ') VALUES (
+            ?,
+            ' .
+            implode(
+                ', ',
+                array_fill(
+                    0,
+                    count($fields),
+                    '?'
+                )
+            ) .
+        ')'
+    );
+
+    $stmt->execute(
+        array_merge(
+            [$placeId],
+            array_values($values)
+        )
+    );
+}
+
+function admin_place_save_details(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $data
+): void {
+    $fields = [
+        'vehicle_capacity' => 'int',
+        'max_vehicle_length_feet' => 'int',
+        'tent_camping_suitable' => 'bool',
+        'rv_suitable' => 'bool',
+        'trailer_suitable' => 'bool',
+        'parking_surface' => 'text',
+        'levelness' => 'rating',
+        'leveling_required' => 'bool',
+        'turnaround_space' => 'bool',
+        'pull_through' => 'bool',
+        'back_in' => 'bool',
+        'ground_condition' => 'text',
+        'site_open_sky' => 'rating',
+        'tree_cover' => 'rating',
+        'site_shade' => 'rating',
+        'site_access_difficulty' => 'rating',
+        'road_overall_difficulty' => 'rating',
+        'road_difficulty' => 'rating',
+        'road_stress' => 'rating',
+        'sedan_accessible' => 'bool',
+        'high_clearance_recommended' => 'bool',
+        'four_wheel_drive_recommended' => 'bool',
+        'road_surface' => 'text',
+        'road_width' => 'text',
+        'rocks' => 'rating',
+        'washboards' => 'rating',
+        'potholes' => 'rating',
+        'mud_risk' => 'rating',
+        'steep_grades' => 'rating',
+        'drop_off_exposure' => 'rating',
+        'water_crossings' => 'bool',
+        'downed_tree_risk' => 'bool',
+        'seasonal_closure' => 'bool',
+        'forest' => 'bool',
+        'mountains' => 'bool',
+        'water_nearby' => 'bool',
+        'water_view' => 'bool',
+        'mountain_view' => 'bool',
+        'forest_view' => 'bool',
+        'wildlife' => 'bool',
+        'bugs' => 'bool',
+        'wind_exposure' => 'rating',
+        'sun_exposure' => 'rating',
+        'environment_shade' => 'rating',
+        'environment_open_sky' => 'rating',
+        'wheelchair_friendly' => 'bool',
+        'mobility_device_friendly' => 'bool',
+        'flat_walking_surface' => 'bool',
+        'walking_distance_from_vehicle' => 'text',
+        'step_free_access' => 'bool',
+        'accessible_toilet' => 'bool',
+        'accessible_picnic_table' => 'bool',
+        'felt_safe_daytime' => 'bool',
+        'felt_safe_nighttime' => 'bool',
+        'flash_flood_risk' => 'bool',
+        'wildfire_risk' => 'bool',
+        'fall_hazard' => 'bool',
+        'cliff_exposure' => 'bool',
+        'rockfall_risk' => 'bool',
+        'wildlife_risk' => 'bool',
+        'traffic_hazard' => 'bool',
+        'emergency_access' => 'bool',
+        'warning_exposed_to_road' => 'bool',
+        'warning_zero_privacy' => 'bool',
+        'warning_passing_vehicle_dust' => 'bool',
+        'warning_possible_downed_trees' => 'bool',
+        'warning_no_tent_camping' => 'bool',
+        'warning_limited_vehicle_length' => 'bool',
+        'warning_leveling_may_be_required' => 'bool',
+        'warning_no_amenities' => 'bool',
+        'warning_motorized_recreation_traffic' => 'bool',
+        'warning_blind_turn_traffic_nearby' => 'bool',
+    ];
+
+    admin_place_save_child_row(
+        $db,
+        $placeId,
+        'place_details',
+        $fields,
+        $data
+    );
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.scout_report_details_updated',
+        'Updated road, access, environment, safety, and warning details.',
+        ['place_id' => $placeId]
+    );
+}
+
+function admin_place_save_sensory_details(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $data
+): void {
+    $detailFields = [
+        'dust_from_traffic' => 'rating',
+        'generator_noise' => 'rating',
+        'aircraft_noise' => 'rating',
+        'road_noise' => 'rating',
+        'human_activity' => 'rating',
+        'wildlife_noise' => 'rating',
+        'wind_noise' => 'rating',
+        'smoke_risk' => 'rating',
+        'strong_odors' => 'rating',
+        'visual_exposure' => 'rating',
+        'predictability' => 'rating',
+    ];
+
+    admin_place_save_child_row(
+        $db,
+        $placeId,
+        'place_sensory_details',
+        $detailFields,
+        $data
+    );
+
+    $periodFields = [
+        'noise',
+        'traffic',
+        'crowds',
+        'privacy',
+        'light_pollution',
+        'sensory_comfort',
+        'social_interaction_likelihood',
+    ];
+
+    foreach (['daytime', 'nighttime'] as $period) {
+        $values = [];
+
+        foreach ($periodFields as $field) {
+            $values[$field] =
+                admin_place_normalize_value(
+                    $data[$period . '_' . $field] ?? null,
+                    'rating'
+                );
+        }
+
+        $existing =
+            admin_place_sensory_period(
+                $db,
+                $placeId,
+                $period
+            );
+
+        if ($existing) {
+            $sets = [];
+            $params = [];
+
+            foreach ($values as $field => $value) {
+                $sets[] = "`$field` = ?";
+                $params[] = $value;
+            }
+
+            $params[] = $placeId;
+            $params[] = $period;
+
+            $stmt = $db->prepare(
+                'UPDATE place_sensory
+                 SET ' . implode(', ', $sets) . '
+                 WHERE place_id = ?
+                   AND period = ?'
+            );
+
+            $stmt->execute($params);
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO place_sensory (
+                    place_id,
+                    period,
+                    noise,
+                    traffic,
+                    crowds,
+                    privacy,
+                    light_pollution,
+                    sensory_comfort,
+                    social_interaction_likelihood
+                 ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?
+                 )'
+            );
+
+            $stmt->execute([
+                $placeId,
+                $period,
+                $values['noise'],
+                $values['traffic'],
+                $values['crowds'],
+                $values['privacy'],
+                $values['light_pollution'],
+                $values['sensory_comfort'],
+                $values['social_interaction_likelihood'],
+            ]);
+        }
+    }
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.sensory_updated',
+        'Updated daytime, nighttime, and detailed sensory conditions.',
+        ['place_id' => $placeId]
+    );
+}
+
+function admin_place_save_rules(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $data
+): void {
+    $fields = [
+        'best_months' => 'text',
+        'winter_access' => 'bool',
+        'snow_risk' => 'rating',
+        'mud_season_risk' => 'rating',
+        'monsoon_risk' => 'rating',
+        'recommended_travel_season' => 'text',
+        'seasonal_access_note' => 'text',
+        'overnight_camping_allowed' => 'bool',
+        'dispersed_camping_allowed' => 'bool',
+        'stay_limit_days' => 'int',
+        'maximum_days_per_60_day_period' => 'int',
+        'move_distance_after_stay_miles' => 'decimal',
+        'permit_required' => 'bool',
+        'fee' => 'decimal',
+        'campfire_allowed' => 'bool',
+        'current_fire_restrictions_url' => 'text',
+        'vehicle_distance_from_road_max_feet' => 'int',
+        'minimum_distance_from_water_feet' => 'int',
+        'existing_sites_encouraged' => 'bool',
+        'pack_it_in_pack_it_out' => 'bool',
+        'residential_use_prohibited' => 'bool',
+        'nearest_town' => 'text',
+        'nearest_fuel' => 'text',
+        'nearest_grocery' => 'text',
+        'nearest_water' => 'text',
+        'nearest_toilet' => 'text',
+        'nearest_hospital' => 'text',
+    ];
+
+    admin_place_save_child_row(
+        $db,
+        $placeId,
+        'place_rules',
+        $fields,
+        $data
+    );
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.rules_updated',
+        'Updated Place rules, seasonal access, fees, and nearby services.',
+        ['place_id' => $placeId]
+    );
+}
+
+function admin_place_save_experience(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $data
+): void {
+    $fields = [
+        'sunrise_view' => 'rating',
+        'sunset_view' => 'rating',
+        'mountain_view' => 'rating',
+        'forest_view' => 'rating',
+        'night_sky' => 'rating',
+        'stargazing' => 'rating',
+        'quiet_evening' => 'rating',
+        'overnight_comfort' => 'rating',
+        'extended_stay_comfort' => 'rating',
+        'sensory_retreat' => 'rating',
+        'remote_work' => 'rating',
+        'overall_scenery' => 'rating',
+        'recommended_overnight_stop' => 'rating',
+        'recommended_quiet_evening' => 'rating',
+        'recommended_extended_stay' => 'rating',
+        'recommended_sensory_retreat' => 'rating',
+        'recommended_stargazing' => 'rating',
+        'recommended_remote_work' => 'rating',
+        'recommended_solo_travel' => 'bool',
+        'recommended_families' => 'bool',
+        'recommended_large_groups' => 'bool',
+        'not_recommended_for' => 'text',
+    ];
+
+    admin_place_save_child_row(
+        $db,
+        $placeId,
+        'place_experience',
+        $fields,
+        $data
+    );
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.experience_updated',
+        'Updated Place experience ratings and recommendations.',
+        ['place_id' => $placeId]
+    );
+}
