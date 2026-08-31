@@ -136,7 +136,7 @@ require __DIR__ . '/partials/header.php';
                         <?php endif; ?>
                     </div>
 
-                    <p>The complete Llama Scout place report.</p>
+                    <p>The complete Llama Scout Place report. Still no actual llama included.</p>
 
                     <ul>
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i> Everything in Member</li>
@@ -216,6 +216,7 @@ require __DIR__ . '/partials/header.php';
                         <tr><td>Connectivity</td><td>No</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Scout Notes and complete report</td><td>No</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Exact-location 5-day weather</td><td>No</td><td>No</td><td>Yes</td></tr>
+                        <tr><td>Free llama rides</td><td>No</td><td>No</td><td>Still No</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -296,6 +297,25 @@ require __DIR__ . '/partials/header.php';
                     <p>
                         Yes. Active monthly and annual options are shown above using
                         the current prices configured in Llama Scout.
+                    </p>
+                </details>
+
+                <details>
+                    <summary>Is there a difference between monthly and annual membership?</summary>
+                    <p>
+                        The access is the same. Monthly membership is billed month to month.
+                        Annual membership covers the full year in one payment. Either way,
+                        you get the same complete Llama Scout Place reports. No secret
+                        platinum llama lounge exists for annual members.
+                    </p>
+                </details>
+                
+                <details>
+                    <summary>What do llamas eat?</summary>
+                    <p>
+                        Mostly grass, hay, leaves, and other plant material. They do not
+                        require a paid Llama Scout membership, although we have been unable
+                        to confirm whether any llamas are currently sharing passwords.
                     </p>
                 </details>
             </div>
