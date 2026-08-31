@@ -117,6 +117,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/legal.css', ENT_QUOTES, 'UTF-8') ?>"
     >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/about.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
 </head>
 
 <body>
@@ -160,6 +165,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
             <a href="<?= htmlspecialchars($siteUrl . '/field-guides', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-compass" aria-hidden="true"></i>
                 <span>Guides</span>
+            </a>
+
+            <a href="<?= htmlspecialchars($siteUrl . '/about.php', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                <span>About</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/membership', ENT_QUOTES, 'UTF-8') ?>">
