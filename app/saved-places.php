@@ -70,3 +70,36 @@ function remove_saved_place_for_user(int $userId, int $placeId): void
 
     $stmt->execute([$userId, $placeId]);
 }
+
+function saved_places_for_user(int $userId): array
+{
+    $stmt = db()->prepare(
+        "SELECT
+            usp.id AS saved_id,
+            usp.saved_at,
+            usp.place_id,
+            COALESCE(p.slug, usp.place_slug_snapshot) AS slug,
+            COALESCE(p.name, usp.place_name_snapshot, usp.place_slug_snapshot, 'Saved place') AS name,
+            p.status,
+            p.city,
+            p.county,
+            p.state,
+            p.elevation_feet,
+            (
+                SELECT pi.src
+                FROM place_images pi
+                WHERE pi.place_id = p.id
+                ORDER BY pi.is_featured DESC, pi.sort_order ASC, pi.id ASC
+                LIMIT 1
+            ) AS featured_image
+         FROM user_saved_places usp
+         LEFT JOIN places p
+            ON p.id = usp.place_id
+         WHERE usp.user_id = ?
+         ORDER BY usp.saved_at DESC, usp.id DESC"
+    );
+
+    $stmt->execute([$userId]);
+
+    return $stmt->fetchAll() ?: [];
+}
