@@ -120,41 +120,41 @@ require __DIR__ . '/partials/header.php';
                     <span class="membership-public-kicker">Complete access</span>
                     <h2>Paid Member</h2>
                     
-                    <div class="membership-public-paid-prices">
-                    
-                        <?php if ($monthly): ?>
-                            <div class="membership-price-option">
-                                <strong>
-                                    <?= membership_public_e(
-                                        membership_public_money(
-                                            (int) $monthly['amount_cents']
-                                        )
-                                    ) ?>
-                                </strong>
-                                <span>/ month</span>
-                            </div>
-                        <?php endif; ?>
-                    
-                        <?php if ($monthly && $annual): ?>
-                            <div class="membership-price-separator">
-                                <span>or</span>
-                            </div>
-                        <?php endif; ?>
-                    
-                        <?php if ($annual): ?>
-                            <div class="membership-price-option">
-                                <strong>
-                                    <?= membership_public_e(
-                                        membership_public_money(
-                                            (int) $annual['amount_cents']
-                                        )
-                                    ) ?>
-                                </strong>
-                                <span>/ year</span>
-                            </div>
-                        <?php endif; ?>
-                    
-                    </div>
+<div class="membership-public-paid-prices">
+
+    <?php if ($monthly): ?>
+        <div class="membership-price-option">
+            <strong>
+                <?= membership_public_e(
+                    membership_public_money(
+                        (int) $monthly['amount_cents']
+                    )
+                ) ?>
+            </strong>
+            <span>/ month</span>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($monthly && $annual): ?>
+        <div class="membership-price-separator">
+            <span>or</span>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($annual): ?>
+        <div class="membership-price-option">
+            <strong>
+                <?= membership_public_e(
+                    membership_public_money(
+                        (int) $annual['amount_cents']
+                    )
+                ) ?>
+            </strong>
+            <span>/ year</span>
+        </div>
+    <?php endif; ?>
+
+</div>
                     <p>The complete Llama Scout Place report. Still no actual llama included.</p>
 
                     <ul>
