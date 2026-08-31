@@ -14,5 +14,6 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
 require_once __DIR__ . '/weather.php';
+require_once __DIR__ . '/saved-places.php';
 
 start_llama_session();
