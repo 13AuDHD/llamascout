@@ -35,6 +35,11 @@ require __DIR__ . '/_header.php';
         <p>Catalog</p>
         <h2><?= number_format(count($products)) ?> products</h2>
     </div>
+
+    <a class="admin-button" href="/product-new.php">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        New product
+    </a>
 </header>
 
 <?php if (!$products): ?>

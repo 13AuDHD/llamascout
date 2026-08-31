@@ -463,6 +463,10 @@ require __DIR__ . '/_header.php';
         <p>Media</p>
         <h2>Product Images</h2>
     </div>
+
+    <span>
+        Image manager next
+    </span>
 </header>
 
 <?php if (!$images): ?>
