@@ -39,7 +39,9 @@ function submit_place_report(
     int $userId,
     int $placeId,
     string $problemType,
-    string $details
+    string $details,
+    string $photoToken = '',
+    array $submittedPhotos = []
 ): int {
     $problemTypes = place_report_problem_types();
 
@@ -57,19 +59,74 @@ function submit_place_report(
         throw new InvalidArgumentException('Report details are too long.');
     }
 
-    $stmt = db()->prepare(
-        "INSERT INTO place_reports
-            (place_id, user_id, problem_type, details, status)
-         VALUES
-            (?, ?, ?, ?, 'open')"
-    );
+    if ($submittedPhotos && trim($photoToken) === '') {
+        throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
+    }
 
-    $stmt->execute([
-        $placeId,
-        $userId,
-        $problemType,
-        $details,
-    ]);
+    $db = db();
+    $reportId = 0;
 
-    return (int) db()->lastInsertId();
+    try {
+        $db->beginTransaction();
+
+        $stmt = $db->prepare(
+            "INSERT INTO place_reports
+                (place_id, user_id, problem_type, details, status)
+             VALUES
+                (?, ?, ?, ?, 'open')"
+        );
+
+        $stmt->execute([
+            $placeId,
+            $userId,
+            $problemType,
+            $details,
+        ]);
+
+        $reportId = (int) $db->lastInsertId();
+
+        if (trim($photoToken) !== '') {
+            $photos = llama_photo_commit_stage(
+                'place-report',
+                $userId,
+                $photoToken,
+                $submittedPhotos,
+                '/uploads/place-reports/' . $reportId
+            );
+
+            if ($photos) {
+                $imageStmt = $db->prepare(
+                    'INSERT INTO place_report_images
+                        (report_id, file_path, original_name, mime_type, file_size, sort_order)
+                     VALUES
+                        (:report_id, :file_path, :original_name, :mime_type, :file_size, :sort_order)'
+                );
+
+                foreach ($photos as $index => $photo) {
+                    $imageStmt->execute([
+                        ':report_id' => $reportId,
+                        ':file_path' => (string) ($photo['path'] ?? ''),
+                        ':original_name' => (string) ($photo['original_name'] ?? ''),
+                        ':mime_type' => (string) ($photo['mime_type'] ?? 'image/jpeg'),
+                        ':file_size' => (int) ($photo['size'] ?? 0),
+                        ':sort_order' => $index,
+                    ]);
+                }
+            }
+        }
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        if ($reportId > 0) {
+            llama_photo_remove_tree(dirname(__DIR__) . '/uploads/place-reports/' . $reportId);
+        }
+
+        throw $exception;
+    }
+
+    return $reportId;
 }

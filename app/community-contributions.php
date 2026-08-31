@@ -109,6 +109,13 @@ function submit_new_place(int $userId, array $input): int
         throw new InvalidArgumentException('Enter both latitude and longitude, or leave both blank.');
     }
 
+    $photoToken = trim((string) ($input['photo_stage_token'] ?? ''));
+    $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
+
+    if ($submittedPhotos && $photoToken === '') {
+        throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
+    }
+
     $data = [
         'type' => $type,
         'description' => community_clean_text($input['description'] ?? null),
@@ -126,25 +133,69 @@ function submit_new_place(int $userId, array $input): int
         'sensory_summary' => community_clean_text($input['sensory_summary'] ?? null),
         'contributor_notes' => community_clean_text($input['contributor_notes'] ?? null),
         'visited_at' => community_clean_text($input['visited_at'] ?? null, 30),
+        'photos' => [],
     ];
 
-    $stmt = db()->prepare(
-        'INSERT INTO place_submissions
-            (user_id, role_at_submission, place_name, source_type, status, submission_data)
-         VALUES
-            (:user_id, :role_at_submission, :place_name, :source_type, :status, :submission_data)'
-    );
+    $db = db();
+    $submissionId = 0;
 
-    $stmt->execute([
-        ':user_id' => $userId,
-        ':role_at_submission' => community_role_at_submission($userId),
-        ':place_name' => $name,
-        ':source_type' => 'community-scouted',
-        ':status' => 'pending',
-        ':submission_data' => json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-    ]);
+    try {
+        $db->beginTransaction();
 
-    return (int) db()->lastInsertId();
+        $stmt = $db->prepare(
+            'INSERT INTO place_submissions
+                (user_id, role_at_submission, place_name, source_type, status, submission_data)
+             VALUES
+                (:user_id, :role_at_submission, :place_name, :source_type, :status, :submission_data)'
+        );
+
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':role_at_submission' => community_role_at_submission($userId),
+            ':place_name' => $name,
+            ':source_type' => 'community-scouted',
+            ':status' => 'pending',
+            ':submission_data' => json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+        ]);
+
+        $submissionId = (int) $db->lastInsertId();
+
+        if ($photoToken !== '') {
+            $data['photos'] = llama_photo_commit_stage(
+                'add-place',
+                $userId,
+                $photoToken,
+                $submittedPhotos,
+                '/uploads/place-submissions/' . $submissionId
+            );
+
+            $update = $db->prepare(
+                'UPDATE place_submissions
+                 SET submission_data = :submission_data
+                 WHERE id = :id AND user_id = :user_id'
+            );
+
+            $update->execute([
+                ':submission_data' => json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                ':id' => $submissionId,
+                ':user_id' => $userId,
+            ]);
+        }
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        if ($submissionId > 0) {
+            llama_photo_remove_tree(dirname(__DIR__) . '/uploads/place-submissions/' . $submissionId);
+        }
+
+        throw $exception;
+    }
+
+    return $submissionId;
 }
 
 function community_editable_place_fields(array $place): array
@@ -245,35 +296,85 @@ function submit_place_update(int $userId, array $place, array $input): int
         $original[$key] = $oldValue;
     }
 
-    if (!$proposed) {
-        throw new InvalidArgumentException('Change at least one field before submitting.');
+    $photoToken = trim((string) ($input['photo_stage_token'] ?? ''));
+    $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
+
+    if (!$proposed && !$submittedPhotos) {
+        throw new InvalidArgumentException('Change at least one field or add a photo before submitting.');
+    }
+
+    if ($submittedPhotos && $photoToken === '') {
+        throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
     }
 
     $visitedAt = community_clean_text($input['visited_at'] ?? null, 30);
     $notes = community_clean_text($input['contributor_notes'] ?? null);
+    $db = db();
+    $updateId = 0;
 
-    $stmt = db()->prepare(
-        'INSERT INTO place_update_submissions
-            (place_id, user_id, update_type, status, role_at_submission, visited_at,
-             proposed_changes, original_values, contributor_notes)
-         VALUES
-            (:place_id, :user_id, :update_type, :status, :role_at_submission, :visited_at,
-             :proposed_changes, :original_values, :contributor_notes)'
-    );
+    try {
+        $db->beginTransaction();
 
-    $stmt->execute([
-        ':place_id' => $placeId,
-        ':user_id' => $userId,
-        ':update_type' => 'update',
-        ':status' => 'pending',
-        ':role_at_submission' => community_role_at_submission($userId),
-        ':visited_at' => $visitedAt !== null ? $visitedAt . (strlen($visitedAt) === 10 ? ' 00:00:00' : '') : null,
-        ':proposed_changes' => json_encode($proposed, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-        ':original_values' => json_encode($original, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-        ':contributor_notes' => $notes,
-    ]);
+        $stmt = $db->prepare(
+            'INSERT INTO place_update_submissions
+                (place_id, user_id, update_type, status, role_at_submission, visited_at,
+                 proposed_changes, original_values, photos, contributor_notes)
+             VALUES
+                (:place_id, :user_id, :update_type, :status, :role_at_submission, :visited_at,
+                 :proposed_changes, :original_values, :photos, :contributor_notes)'
+        );
 
-    return (int) db()->lastInsertId();
+        $stmt->execute([
+            ':place_id' => $placeId,
+            ':user_id' => $userId,
+            ':update_type' => 'update',
+            ':status' => 'pending',
+            ':role_at_submission' => community_role_at_submission($userId),
+            ':visited_at' => $visitedAt !== null ? $visitedAt . (strlen($visitedAt) === 10 ? ' 00:00:00' : '') : null,
+            ':proposed_changes' => json_encode($proposed, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            ':original_values' => json_encode($original, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            ':photos' => '[]',
+            ':contributor_notes' => $notes,
+        ]);
+
+        $updateId = (int) $db->lastInsertId();
+
+        if ($photoToken !== '') {
+            $committedPhotos = llama_photo_commit_stage(
+                'update-place',
+                $userId,
+                $photoToken,
+                $submittedPhotos,
+                '/uploads/place-updates/' . $updateId
+            );
+
+            $photoUpdate = $db->prepare(
+                'UPDATE place_update_submissions
+                 SET photos = :photos
+                 WHERE id = :id AND user_id = :user_id'
+            );
+
+            $photoUpdate->execute([
+                ':photos' => json_encode($committedPhotos, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                ':id' => $updateId,
+                ':user_id' => $userId,
+            ]);
+        }
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        if ($updateId > 0) {
+            llama_photo_remove_tree(dirname(__DIR__) . '/uploads/place-updates/' . $updateId);
+        }
+
+        throw $exception;
+    }
+
+    return $updateId;
 }
 
 function community_submissions_for_user(int $userId): array
