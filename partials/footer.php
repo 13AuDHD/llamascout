@@ -112,6 +112,10 @@ $footerUser = current_user();
                     Field Guides
                 </a>
 
+                <a href="<?= htmlspecialchars($footerSiteBase . '/about.php', ENT_QUOTES, 'UTF-8') ?>">
+                    About Llama Scout
+                </a>
+
                 <a href="<?= htmlspecialchars($footerSiteBase . '/membership', ENT_QUOTES, 'UTF-8') ?>">
                     Membership
                 </a>
