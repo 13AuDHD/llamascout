@@ -484,3 +484,70 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
 @media (prefers-reduced-motion: reduce) {
     .place-photo-thumb img { transition: none; }
 }
+
+
+/* =========================================================
+   SCOUT REPORT CARD ALIGNMENT
+   Keep every label/value aligned on the left.
+   Icons and rating dots occupy the same right-side visual area.
+   ========================================================= */
+
+.scout-report-item {
+    min-width: 0;
+}
+
+.scout-report-value-item,
+.scout-report-rating-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.scout-report-value-content,
+.scout-rating-content {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+    text-align: left;
+}
+
+.scout-report-value-content > span,
+.scout-rating-content > span {
+    display: block;
+}
+
+.scout-report-value-content > strong,
+.scout-rating-content > strong {
+    display: block;
+}
+
+.scout-report-value-icon {
+    width: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: end;
+    font-size: 1.28rem;
+    text-align: center;
+}
+
+.scout-rating-dots {
+    width: 92px;
+    justify-self: end;
+    justify-content: center;
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .scout-report-value-item,
+    .scout-report-rating-item {
+        grid-template-columns: minmax(0, 1fr) 84px;
+        gap: 12px;
+    }
+
+    .scout-report-value-icon,
+    .scout-rating-dots {
+        width: 84px;
+    }
+}
