@@ -159,6 +159,23 @@ function admin_shell_nav_class(
             <p class="admin-nav-label">Places</p>
 
             <a
+                class="<?= admin_shell_nav_class('moderation', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/moderation.php') ?>"
+            >
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                <span>Moderation</span>
+                <?php
+                $moderationTotal =
+                    (int) ($adminNavCounts['new_places'] ?? 0)
+                    + (int) ($adminNavCounts['updates'] ?? 0)
+                    + (int) ($adminNavCounts['reports'] ?? 0);
+                ?>
+                <?php if ($moderationTotal > 0): ?>
+                    <b><?= $moderationTotal ?></b>
+                <?php endif; ?>
+            </a>
+
+            <a
                 class="<?= admin_shell_nav_class('places', $adminActiveNav) ?>"
                 href="<?= moderation_e($adminUrl . '/places.php') ?>"
             >
