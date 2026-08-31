@@ -127,7 +127,7 @@ require __DIR__ . '/partials/header.php';
                                 <span>/ month</span>
                             </div>
                         <?php endif; ?>
-
+                            &nbsp;-or-&nbsp;
                         <?php if ($annual): ?>
                             <div>
                                 <strong><?= membership_public_e(membership_public_money((int) $annual['amount_cents'])) ?></strong>
