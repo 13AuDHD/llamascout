@@ -107,6 +107,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>"
     >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/footer.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
 </head>
 
 <body>
