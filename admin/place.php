@@ -112,6 +112,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice =
                     'Verification added.';
 
+            } elseif ($action === 'save-details') {
+
+                admin_place_save_details(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    $_POST
+                );
+
+                $notice =
+                    'Road, access, environment, and safety details updated.';
+
+            } elseif ($action === 'save-sensory') {
+
+                admin_place_save_sensory_details(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    $_POST
+                );
+
+                $notice =
+                    'Sensory conditions updated.';
+
+            } elseif ($action === 'save-rules') {
+
+                admin_place_save_rules(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    $_POST
+                );
+
+                $notice =
+                    'Rules and seasonal information updated.';
+
+            } elseif ($action === 'save-experience') {
+
+                admin_place_save_experience(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    $_POST
+                );
+
+                $notice =
+                    'Experience ratings updated.';
+
             } elseif ($action === 'add-photos') {
 
                 $photoToken = trim(
@@ -214,6 +262,48 @@ $connectivity =
         $placeId
     );
 
+$details =
+    admin_place_row(
+        $db,
+        'place_details',
+        $placeId
+    );
+
+$sensoryDetails =
+    admin_place_row(
+        $db,
+        'place_sensory_details',
+        $placeId
+    );
+
+$daytimeSensory =
+    admin_place_sensory_period(
+        $db,
+        $placeId,
+        'daytime'
+    );
+
+$nighttimeSensory =
+    admin_place_sensory_period(
+        $db,
+        $placeId,
+        'nighttime'
+    );
+
+$rules =
+    admin_place_row(
+        $db,
+        'place_rules',
+        $placeId
+    );
+
+$experience =
+    admin_place_row(
+        $db,
+        'place_experience',
+        $placeId
+    );
+
 $images =
     admin_place_images(
         $db,
@@ -285,6 +375,42 @@ function admin_place_tri_option(
         === (string) $current
             ? 'selected'
             : '';
+}
+
+function admin_place_yes_no_options(
+    mixed $current
+): void {
+    ?>
+    <option
+        value=""
+        <?= $current === null
+            || $current === ''
+                ? 'selected'
+                : '' ?>
+    >
+        Unknown
+    </option>
+
+    <option
+        value="1"
+        <?= (string) $current === '1'
+            ? 'selected'
+            : '' ?>
+    >
+        Yes
+    </option>
+
+    <option
+        value="0"
+        <?= $current !== null
+            && $current !== ''
+            && (string) $current === '0'
+                ? 'selected'
+                : '' ?>
+    >
+        No
+    </option>
+    <?php
 }
 
 function admin_place_rating_options(
@@ -418,6 +544,10 @@ function admin_place_rating_options(
     <a href="#location">Location</a>
     <a href="#amenities">Amenities</a>
     <a href="#connectivity">Connectivity</a>
+    <a href="#road-access">Road + Access</a>
+    <a href="#sensory-report">Sensory</a>
+    <a href="#rules">Rules + Seasons</a>
+    <a href="#experience">Experience</a>
     <a href="#photos">Photos</a>
     <a href="#verification">Verification</a>
     <a href="#status">Status</a>
@@ -907,6 +1037,627 @@ function admin_place_rating_options(
         type="submit"
     >
         Save connectivity
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+
+<section
+    class="admin-panel admin-place-editor-section"
+    id="road-access"
+>
+
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report</p>
+        <h2>Road + Site Access</h2>
+    </div>
+</header>
+
+<form class="admin-place-compact-form" method="post">
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+<input type="hidden" name="place_admin_action" value="save-details">
+
+<h3 class="admin-place-subsection-title">Site + Vehicle Fit</h3>
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'vehicle_capacity' => 'Vehicle capacity',
+        'max_vehicle_length_feet' => 'Maximum vehicle length (ft)',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <input
+        type="number"
+        step="1"
+        min="0"
+        name="<?= moderation_e($field) ?>"
+        value="<?= moderation_e((string) ($details[$field] ?? '')) ?>"
+    >
+</label>
+<?php endforeach; ?>
+
+<?php foreach (
+    [
+        'tent_camping_suitable' => 'Tent camping suitable',
+        'rv_suitable' => 'RV suitable',
+        'trailer_suitable' => 'Trailer suitable',
+        'leveling_required' => 'Leveling required',
+        'turnaround_space' => 'Turnaround space',
+        'pull_through' => 'Pull-through',
+        'back_in' => 'Back-in',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label>
+    <span>Parking surface</span>
+    <input
+        type="text"
+        name="parking_surface"
+        value="<?= moderation_e((string) ($details['parking_surface'] ?? '')) ?>"
+    >
+</label>
+
+<label>
+    <span>Ground condition</span>
+    <input
+        type="text"
+        name="ground_condition"
+        value="<?= moderation_e((string) ($details['ground_condition'] ?? '')) ?>"
+    >
+</label>
+
+<?php foreach (
+    [
+        'levelness' => 'Levelness',
+        'site_open_sky' => 'Open sky',
+        'tree_cover' => 'Tree cover',
+        'site_shade' => 'Site shade',
+        'site_access_difficulty' => 'Site access difficulty',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+</div>
+
+
+<h3 class="admin-place-subsection-title">Road Conditions</h3>
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'road_overall_difficulty' => 'Overall road difficulty',
+        'road_difficulty' => 'Technical difficulty',
+        'road_stress' => 'Driver stress',
+        'rocks' => 'Rocks',
+        'washboards' => 'Washboards',
+        'potholes' => 'Potholes',
+        'mud_risk' => 'Mud risk',
+        'steep_grades' => 'Steep grades',
+        'drop_off_exposure' => 'Drop-off exposure',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label>
+    <span>Road surface</span>
+    <input
+        type="text"
+        name="road_surface"
+        value="<?= moderation_e((string) ($details['road_surface'] ?? '')) ?>"
+    >
+</label>
+
+<label>
+    <span>Road width</span>
+    <input
+        type="text"
+        name="road_width"
+        value="<?= moderation_e((string) ($details['road_width'] ?? '')) ?>"
+    >
+</label>
+
+<?php foreach (
+    [
+        'sedan_accessible' => 'Sedan accessible',
+        'high_clearance_recommended' => 'High clearance recommended',
+        'four_wheel_drive_recommended' => '4WD recommended',
+        'water_crossings' => 'Water crossings',
+        'downed_tree_risk' => 'Downed-tree risk',
+        'seasonal_closure' => 'Seasonal closure',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+</div>
+
+
+<h3 class="admin-place-subsection-title">Environment + Accessibility</h3>
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'forest' => 'Forest',
+        'mountains' => 'Mountains',
+        'water_nearby' => 'Water nearby',
+        'water_view' => 'Water view',
+        'mountain_view' => 'Mountain view',
+        'forest_view' => 'Forest view',
+        'wildlife' => 'Wildlife',
+        'bugs' => 'Bugs',
+        'wheelchair_friendly' => 'Wheelchair friendly',
+        'mobility_device_friendly' => 'Mobility-device friendly',
+        'flat_walking_surface' => 'Flat walking surface',
+        'step_free_access' => 'Step-free access',
+        'accessible_toilet' => 'Accessible toilet',
+        'accessible_picnic_table' => 'Accessible picnic table',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<?php foreach (
+    [
+        'wind_exposure' => 'Wind exposure',
+        'sun_exposure' => 'Sun exposure',
+        'environment_shade' => 'Environment shade',
+        'environment_open_sky' => 'Environment open sky',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label class="is-wide">
+    <span>Walking distance from vehicle</span>
+    <input
+        type="text"
+        name="walking_distance_from_vehicle"
+        value="<?= moderation_e((string) ($details['walking_distance_from_vehicle'] ?? '')) ?>"
+    >
+</label>
+
+</div>
+
+
+<h3 class="admin-place-subsection-title">Safety + Warnings</h3>
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'felt_safe_daytime' => 'Felt safe daytime',
+        'felt_safe_nighttime' => 'Felt safe nighttime',
+        'flash_flood_risk' => 'Flash-flood risk',
+        'wildfire_risk' => 'Wildfire risk',
+        'fall_hazard' => 'Fall hazard',
+        'cliff_exposure' => 'Cliff exposure',
+        'rockfall_risk' => 'Rockfall risk',
+        'wildlife_risk' => 'Wildlife risk',
+        'traffic_hazard' => 'Traffic hazard',
+        'emergency_access' => 'Emergency access',
+        'warning_exposed_to_road' => 'Warning: exposed to road',
+        'warning_zero_privacy' => 'Warning: zero privacy',
+        'warning_passing_vehicle_dust' => 'Warning: passing vehicle dust',
+        'warning_possible_downed_trees' => 'Warning: possible downed trees',
+        'warning_no_tent_camping' => 'Warning: no tent camping',
+        'warning_limited_vehicle_length' => 'Warning: limited vehicle length',
+        'warning_leveling_may_be_required' => 'Warning: leveling may be required',
+        'warning_no_amenities' => 'Warning: no amenities',
+        'warning_motorized_recreation_traffic' => 'Warning: motorized recreation traffic',
+        'warning_blind_turn_traffic_nearby' => 'Warning: blind-turn traffic nearby',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+</div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Save road + access report
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+<section
+    class="admin-panel admin-place-editor-section"
+    id="sensory-report"
+>
+
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report</p>
+        <h2>Sensory Conditions</h2>
+    </div>
+</header>
+
+<form class="admin-place-compact-form" method="post">
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+<input type="hidden" name="place_admin_action" value="save-sensory">
+
+<div class="admin-place-day-night-grid">
+
+<section>
+    <h3>Daytime</h3>
+
+    <div class="admin-place-report-grid">
+    <?php foreach (
+        [
+            'noise' => 'Noise',
+            'traffic' => 'Traffic',
+            'crowds' => 'Crowds',
+            'privacy' => 'Privacy',
+            'light_pollution' => 'Light pollution',
+            'sensory_comfort' => 'Sensory comfort',
+            'social_interaction_likelihood' => 'Social interaction likelihood',
+        ] as $field => $label
+    ): ?>
+        <label>
+            <span><?= moderation_e($label) ?></span>
+            <select name="daytime_<?= moderation_e($field) ?>">
+                <?php admin_place_rating_options($daytimeSensory[$field] ?? null); ?>
+            </select>
+        </label>
+    <?php endforeach; ?>
+    </div>
+</section>
+
+<section>
+    <h3>Nighttime</h3>
+
+    <div class="admin-place-report-grid">
+    <?php foreach (
+        [
+            'noise' => 'Noise',
+            'traffic' => 'Traffic',
+            'crowds' => 'Crowds',
+            'privacy' => 'Privacy',
+            'light_pollution' => 'Light pollution',
+            'sensory_comfort' => 'Sensory comfort',
+            'social_interaction_likelihood' => 'Social interaction likelihood',
+        ] as $field => $label
+    ): ?>
+        <label>
+            <span><?= moderation_e($label) ?></span>
+            <select name="nighttime_<?= moderation_e($field) ?>">
+                <?php admin_place_rating_options($nighttimeSensory[$field] ?? null); ?>
+            </select>
+        </label>
+    <?php endforeach; ?>
+    </div>
+</section>
+
+</div>
+
+
+<h3 class="admin-place-subsection-title">Specific Sensory Inputs</h3>
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'dust_from_traffic' => 'Dust from traffic',
+        'generator_noise' => 'Generator noise',
+        'aircraft_noise' => 'Aircraft noise',
+        'road_noise' => 'Road noise',
+        'human_activity' => 'Human activity',
+        'wildlife_noise' => 'Wildlife noise',
+        'wind_noise' => 'Wind noise',
+        'smoke_risk' => 'Smoke risk',
+        'strong_odors' => 'Strong odors',
+        'visual_exposure' => 'Visual exposure',
+        'predictability' => 'Predictability',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($sensoryDetails[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+</div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Save sensory report
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+<section
+    class="admin-panel admin-place-editor-section"
+    id="rules"
+>
+
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report</p>
+        <h2>Rules + Seasonal Access</h2>
+    </div>
+</header>
+
+<form class="admin-place-compact-form" method="post">
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+<input type="hidden" name="place_admin_action" value="save-rules">
+
+<div class="admin-place-report-grid">
+
+<label class="is-wide">
+    <span>Best months</span>
+    <input
+        type="text"
+        name="best_months"
+        value="<?= moderation_e((string) ($rules['best_months'] ?? '')) ?>"
+        placeholder="May, June, July, August..."
+    >
+</label>
+
+<label>
+    <span>Winter access</span>
+    <select name="winter_access">
+        <?php admin_place_yes_no_options($rules['winter_access'] ?? null); ?>
+    </select>
+</label>
+
+<?php foreach (
+    [
+        'snow_risk' => 'Snow risk',
+        'mud_season_risk' => 'Mud-season risk',
+        'monsoon_risk' => 'Monsoon risk',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($rules[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label class="is-wide">
+    <span>Recommended travel season</span>
+    <input
+        type="text"
+        name="recommended_travel_season"
+        value="<?= moderation_e((string) ($rules['recommended_travel_season'] ?? '')) ?>"
+    >
+</label>
+
+<label class="is-wide">
+    <span>Seasonal access note</span>
+    <textarea name="seasonal_access_note" rows="4"><?= moderation_e((string) ($rules['seasonal_access_note'] ?? '')) ?></textarea>
+</label>
+
+<?php foreach (
+    [
+        'overnight_camping_allowed' => 'Overnight camping allowed',
+        'dispersed_camping_allowed' => 'Dispersed camping allowed',
+        'permit_required' => 'Permit required',
+        'campfire_allowed' => 'Campfire allowed',
+        'existing_sites_encouraged' => 'Existing sites encouraged',
+        'pack_it_in_pack_it_out' => 'Pack it in / pack it out',
+        'residential_use_prohibited' => 'Residential use prohibited',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($rules[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label>
+    <span>Stay limit (days)</span>
+    <input type="number" min="0" step="1" name="stay_limit_days" value="<?= moderation_e((string) ($rules['stay_limit_days'] ?? '')) ?>">
+</label>
+
+<label>
+    <span>Maximum days per 60-day period</span>
+    <input type="number" min="0" step="1" name="maximum_days_per_60_day_period" value="<?= moderation_e((string) ($rules['maximum_days_per_60_day_period'] ?? '')) ?>">
+</label>
+
+<label>
+    <span>Move distance after stay (miles)</span>
+    <input type="number" min="0" step=".01" name="move_distance_after_stay_miles" value="<?= moderation_e((string) ($rules['move_distance_after_stay_miles'] ?? '')) ?>">
+</label>
+
+<label>
+    <span>Fee</span>
+    <input type="number" min="0" step=".01" name="fee" value="<?= moderation_e((string) ($rules['fee'] ?? '')) ?>">
+</label>
+
+<label class="is-wide">
+    <span>Current fire restrictions URL</span>
+    <input type="url" name="current_fire_restrictions_url" value="<?= moderation_e((string) ($rules['current_fire_restrictions_url'] ?? '')) ?>">
+</label>
+
+<label>
+    <span>Max distance from road (ft)</span>
+    <input type="number" min="0" step="1" name="vehicle_distance_from_road_max_feet" value="<?= moderation_e((string) ($rules['vehicle_distance_from_road_max_feet'] ?? '')) ?>">
+</label>
+
+<label>
+    <span>Minimum distance from water (ft)</span>
+    <input type="number" min="0" step="1" name="minimum_distance_from_water_feet" value="<?= moderation_e((string) ($rules['minimum_distance_from_water_feet'] ?? '')) ?>">
+</label>
+
+<?php foreach (
+    [
+        'nearest_town' => 'Nearest town',
+        'nearest_fuel' => 'Nearest fuel',
+        'nearest_grocery' => 'Nearest grocery',
+        'nearest_water' => 'Nearest water',
+        'nearest_toilet' => 'Nearest toilet',
+        'nearest_hospital' => 'Nearest hospital',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <input
+        type="text"
+        name="<?= moderation_e($field) ?>"
+        value="<?= moderation_e((string) ($rules[$field] ?? '')) ?>"
+    >
+</label>
+<?php endforeach; ?>
+
+</div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Save rules + seasons
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+<section
+    class="admin-panel admin-place-editor-section"
+    id="experience"
+>
+
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report</p>
+        <h2>Experience + Recommendations</h2>
+    </div>
+</header>
+
+<form class="admin-place-compact-form" method="post">
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+<input type="hidden" name="place_admin_action" value="save-experience">
+
+<div class="admin-place-report-grid">
+
+<?php foreach (
+    [
+        'sunrise_view' => 'Sunrise view',
+        'sunset_view' => 'Sunset view',
+        'mountain_view' => 'Mountain view',
+        'forest_view' => 'Forest view',
+        'night_sky' => 'Night sky',
+        'stargazing' => 'Stargazing',
+        'quiet_evening' => 'Quiet evening',
+        'overnight_comfort' => 'Overnight comfort',
+        'extended_stay_comfort' => 'Extended-stay comfort',
+        'sensory_retreat' => 'Sensory retreat',
+        'remote_work' => 'Remote work',
+        'overall_scenery' => 'Overall scenery',
+        'recommended_overnight_stop' => 'Recommended overnight stop',
+        'recommended_quiet_evening' => 'Recommended quiet evening',
+        'recommended_extended_stay' => 'Recommended extended stay',
+        'recommended_sensory_retreat' => 'Recommended sensory retreat',
+        'recommended_stargazing' => 'Recommended stargazing',
+        'recommended_remote_work' => 'Recommended remote work',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_rating_options($experience[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<?php foreach (
+    [
+        'recommended_solo_travel' => 'Recommended for solo travel',
+        'recommended_families' => 'Recommended for families',
+        'recommended_large_groups' => 'Recommended for large groups',
+    ] as $field => $label
+): ?>
+<label>
+    <span><?= moderation_e($label) ?></span>
+    <select name="<?= moderation_e($field) ?>">
+        <?php admin_place_yes_no_options($experience[$field] ?? null); ?>
+    </select>
+</label>
+<?php endforeach; ?>
+
+<label class="is-wide">
+    <span>Not recommended for</span>
+    <textarea
+        name="not_recommended_for"
+        rows="4"
+    ><?= moderation_e((string) ($experience['not_recommended_for'] ?? '')) ?></textarea>
+</label>
+
+</div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Save experience report
     </button>
 </div>
 
