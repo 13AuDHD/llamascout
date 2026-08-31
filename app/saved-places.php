@@ -71,6 +71,17 @@ function remove_saved_place_for_user(int $userId, int $placeId): void
     $stmt->execute([$userId, $placeId]);
 }
 
+function remove_saved_place_record_for_user(int $userId, int $savedId): void
+{
+    $stmt = db()->prepare(
+        "DELETE FROM user_saved_places
+         WHERE id = ?
+           AND user_id = ?"
+    );
+
+    $stmt->execute([$savedId, $userId]);
+}
+
 function saved_places_for_user(int $userId): array
 {
     $stmt = db()->prepare(
