@@ -73,6 +73,8 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
 }
 
 $slug = trim((string) ($_GET['slug'] ?? ''));
+$user = current_user();
+$userId = !empty($user['id']) ? (int) $user['id'] : 0;
 $hasMemberAccess = user_has_member_access();
 $place = null;
 
@@ -94,6 +96,46 @@ if (!$place) {
     </section>
     <?php
     require __DIR__ . '/partials/footer.php';
+    exit;
+}
+
+$isSaved = $userId > 0
+    ? user_has_saved_place($userId, (int) $place['id'])
+    : false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = (string) ($_POST['saved_place_action'] ?? '');
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+
+    if (
+        $userId < 1
+        || !in_array($action, ['save', 'remove'], true)
+        || !saved_places_verify_csrf($csrfToken)
+    ) {
+        http_response_code(400);
+        exit('Invalid request.');
+    }
+
+    if ($action === 'save') {
+        save_place_for_user(
+            $userId,
+            (int) $place['id'],
+            (string) $place['slug'],
+            (string) $place['name']
+        );
+    } else {
+        remove_saved_place_for_user(
+            $userId,
+            (int) $place['id']
+        );
+    }
+
+    header(
+        'Location: /place.php?slug=' .
+        rawurlencode((string) $place['slug']),
+        true,
+        303
+    );
     exit;
 }
 
@@ -137,6 +179,42 @@ require __DIR__ . '/partials/header.php';
         </p>
 
         <h1><?= place_h($place['name']) ?></h1>
+
+        <div class="place-header-actions">
+            <?php if ($userId > 0): ?>
+                <form method="post" class="place-save-form">
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= place_h(saved_places_csrf_token()) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="saved_place_action"
+                        value="<?= $isSaved ? 'remove' : 'save' ?>"
+                    >
+                    <button
+                        type="submit"
+                        class="place-save-button<?= $isSaved ? ' is-saved' : '' ?>"
+                        aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"
+                    >
+                        <i
+                            class="<?= $isSaved ? 'fa-solid' : 'fa-regular' ?> fa-bookmark"
+                            aria-hidden="true"
+                        ></i>
+                        <?= $isSaved ? 'Saved' : 'Save place' ?>
+                    </button>
+                </form>
+            <?php else: ?>
+                <a
+                    class="place-save-button"
+                    href="https://account.llamascout.com/login.php"
+                >
+                    <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                    Sign in to save
+                </a>
+            <?php endif; ?>
+        </div>
 
         <?php if (!empty($provenance['label'])): ?>
             <?php $isLlamaScouted = ($provenance['status'] ?? '') === 'llama-scouted'; ?>
