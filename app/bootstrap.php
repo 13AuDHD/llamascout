@@ -23,5 +23,6 @@ require_once __DIR__ . '/profile-images.php';
 require_once __DIR__ . '/shop-images.php';
 require_once __DIR__ . '/place-reports.php';
 require_once __DIR__ . '/community-contributions.php';
+require_once __DIR__ . '/moderation.php';
 
 start_llama_session();
