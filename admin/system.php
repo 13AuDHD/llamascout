@@ -288,13 +288,23 @@ require __DIR__ . '/_header.php';
         <?php endif; ?>
 
 
-        <?php if ($actorIsOwner): ?>
-            <div class="admin-user-form-actions">
+        <div class="admin-user-form-actions">
+            <a
+                class="admin-button is-muted"
+                href="https://llamascout.com/maintenance.php?preview=1"
+                target="_blank"
+                rel="noopener"
+            >
+                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                Preview maintenance page
+            </a>
+
+            <?php if ($actorIsOwner): ?>
                 <button class="admin-button" type="submit">
                     Save system status
                 </button>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
 
     </form>
 
