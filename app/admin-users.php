@@ -12,6 +12,36 @@ function admin_users_current_is_owner(
     );
 }
 
+function admin_user_avatar_src(
+    ?string $profileImageSrc,
+    string $siteUrl
+): string {
+    $profileImageSrc = trim((string) $profileImageSrc);
+
+    if ($profileImageSrc !== '') {
+        return llama_profile_image_url(
+            $profileImageSrc,
+            $siteUrl
+        );
+    }
+
+    return rtrim($siteUrl, '/') .
+        '/images/profile-default.png';
+}
+
+function admin_user_profile_image_sql(
+    string $userAlias = 'u'
+): string {
+    return '(SELECT cpi.image_src
+             FROM community_profile_images cpi
+             WHERE cpi.user_id = ' . $userAlias . '.id
+             ORDER BY
+                cpi.is_primary DESC,
+                cpi.sort_order ASC,
+                cpi.id ASC
+             LIMIT 1)';
+}
+
 function admin_users_audit(
     PDO $db,
     int $actorUserId,
@@ -139,6 +169,7 @@ function admin_users_list(
             u.membership_interval,
             u.membership_ends_at,
             u.anonymized_at,
+            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id
@@ -175,6 +206,7 @@ function admin_users_get(
     $stmt = $db->prepare(
         'SELECT
             u.*,
+            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id

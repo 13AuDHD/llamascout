@@ -11,6 +11,7 @@ function admin_scouts_list(PDO $db): array
             u.display_name,
             u.email,
             u.membership_status,
+            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id
@@ -63,6 +64,7 @@ function admin_scout_get(PDO $db, int $scoutProfileId): ?array
             u.email,
             u.membership_status,
             u.membership_ends_at,
+            ' . admin_user_profile_image_sql('u') . ' AS profile_image_src,
             GROUP_CONCAT(
                 DISTINCT r.slug
                 ORDER BY r.id
