@@ -3340,3 +3340,132 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   SCOUT REPORT EDITOR
+   ========================================================= */
+
+.admin-place-subsection-title {
+    margin: 22px 0 10px;
+
+    color: var(--text);
+
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-place-subsection-title:first-of-type {
+    margin-top: 0;
+}
+
+.admin-place-report-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.admin-place-report-grid > label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-place-report-grid > label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-report-grid input,
+.admin-place-report-grid select,
+.admin-place-report-grid textarea {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-place-report-grid textarea {
+    resize: vertical;
+}
+
+.admin-place-report-grid .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-day-night-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 16px;
+
+    margin-bottom: 20px;
+}
+
+.admin-place-day-night-grid > section {
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.admin-place-day-night-grid h3 {
+    margin: 0 0 10px;
+
+    font-size: .82rem;
+}
+
+.admin-place-day-night-grid
+.admin-place-report-grid {
+    grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 920px) {
+
+    .admin-place-report-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-place-day-night-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+
+    .admin-place-report-grid,
+    .admin-place-day-night-grid
+    .admin-place-report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-report-grid .is-wide {
+        grid-column: auto;
+    }
+}
