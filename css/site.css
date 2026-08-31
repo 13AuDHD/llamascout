@@ -1178,5 +1178,175 @@ textarea {
 
 
 
+/* =========================================================
+   ACCOUNT
+   ========================================================= */
 
+.account-page {
+    display: grid;
+    gap: 32px;
+}
+
+.account-page-header,
+.account-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.account-page-header h1,
+.account-section-heading h2 {
+    margin: 0;
+}
+
+.account-eyebrow {
+    margin: 0 0 5px;
+
+    color: var(--text-muted);
+
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.account-logout-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.account-section {
+    display: grid;
+    gap: 20px;
+}
+
+.account-section-count {
+    display: grid;
+    place-items: center;
+
+    min-width: 38px;
+    min-height: 38px;
+
+    padding: 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+
+    font-weight: 800;
+}
+
+.account-empty-state {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+
+    padding: 28px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.account-empty-state > i {
+    font-size: 1.5rem;
+}
+
+.account-empty-state h3,
+.account-empty-state p {
+    margin: 0;
+}
+
+.saved-places-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.saved-place-card {
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.saved-place-card-image {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+}
+
+.saved-place-card-image img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.saved-place-card-body {
+    display: grid;
+    gap: 10px;
+
+    padding: 18px;
+}
+
+.saved-place-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.saved-place-card-title-row h3 {
+    margin: 0;
+
+    font-size: 1.1rem;
+}
+
+.saved-place-card-location,
+.saved-place-card-meta,
+.saved-place-card-unavailable {
+    margin: 0;
+
+    color: var(--text-muted);
+}
+
+.saved-place-card-location {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.saved-place-card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: 4px;
+
+    font-weight: 700;
+    text-decoration: none;
+}
+
+@media (max-width: 600px) {
+
+    .account-page-header,
+    .account-section-heading {
+        align-items: flex-start;
+    }
+
+    .saved-places-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
