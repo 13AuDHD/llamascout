@@ -127,6 +127,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/map.css', ENT_QUOTES, 'UTF-8') ?>"
     >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/place-detail.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
 </head>
 
 <body>
