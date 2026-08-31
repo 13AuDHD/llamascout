@@ -65,6 +65,40 @@ function llama_primary_profile_image(PDO $db, int $userId): string
         : LLAMA_DEFAULT_PROFILE_IMAGE;
 }
 
+function llama_badge_image_url(
+    string $slug,
+    ?string $configuredImageSrc = null
+): ?string
+{
+    $slug = strtolower(trim($slug));
+
+    if (
+        $slug !== ''
+        && preg_match('/^[a-z0-9-]+$/', $slug)
+    ) {
+        $relativePath =
+            '/images/badges/' .
+            $slug .
+            '.png';
+
+        $physicalPath =
+            dirname(__DIR__) .
+            $relativePath;
+
+        if (is_file($physicalPath)) {
+            return $relativePath;
+        }
+    }
+
+    $configuredImageSrc =
+        trim((string) $configuredImageSrc);
+
+    return $configuredImageSrc !== ''
+        ? $configuredImageSrc
+        : null;
+}
+
+
 function llama_user_badges(PDO $db, int $userId): array
 {
     $stmt = $db->prepare(
@@ -92,7 +126,19 @@ function llama_user_badges(PDO $db, int $userId): array
     );
     $stmt->execute([$userId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $badges =
+        $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($badges as &$badge) {
+        $badge['resolved_image_src'] =
+            llama_badge_image_url(
+                (string) ($badge['slug'] ?? ''),
+                (string) ($badge['image_src'] ?? '')
+            );
+    }
+    unset($badge);
+
+    return $badges;
 }
 
 function llama_profile_stats(PDO $db, int $userId): array
