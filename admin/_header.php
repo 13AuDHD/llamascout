@@ -167,6 +167,14 @@ function admin_shell_nav_class(
             </a>
 
             <a
+                class="<?= admin_shell_nav_class('verifications', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
+            >
+                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+                <span>Verifications</span>
+            </a>
+
+            <a
                 class="<?= admin_shell_nav_class('submissions', $adminActiveNav) ?>"
                 href="<?= moderation_e($adminUrl . '/submissions.php') ?>"
             >
