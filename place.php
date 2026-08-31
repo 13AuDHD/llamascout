@@ -9,6 +9,14 @@ function place_h(mixed $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function place_image_url(?string $src): string
+{
+    $src = trim((string) $src);
+    if ($src === '') return '';
+    if (preg_match('~^https?://~i', $src)) return $src;
+    return '/' . ltrim($src, '/');
+}
+
 function place_yes_no(mixed $value): ?string
 {
     if ($value === null || $value === '') {
@@ -154,15 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
-            $reportPhotos = llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]');
-
             submit_place_report(
                 $userId,
                 (int) $place['id'],
                 $problemType,
-                $reportDetails,
-                (string) ($_POST['photo_stage_token'] ?? ''),
-                $reportPhotos
+                $reportDetails
             );
 
             header(
@@ -206,238 +210,216 @@ $sensory = $hasMemberAccess ? ($place['sensory'] ?? []) : [];
 $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
-$provenance = $place['provenance'] ?? [];
-$contributors = llama_place_contributors(
-    db(),
-    (int) $place['id'],
-    $userId > 0 ? $userId : null
-);
+$db = db();
+
+$historyProvenance = [];
+$recentPlaceActivity = [];
+
+try {
+    $stmt = $db->prepare(
+        'SELECT pp.origin_type, pp.established_at, pp.original_contributor_id,
+                u.username AS contributor_username,
+                u.display_name AS contributor_display_name
+         FROM place_provenance pp
+         LEFT JOIN users u ON u.id = pp.original_contributor_id
+         WHERE pp.place_id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([(int) $place['id']]);
+    $historyProvenance = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $stmt = $db->prepare(
+        'SELECT pc.id, pc.user_id, pc.contribution_type,
+                pc.points_awarded, pc.visited_at, pc.approved_at,
+                u.username, u.display_name
+         FROM place_contributions pc
+         LEFT JOIN users u ON u.id = pc.user_id
+         WHERE pc.place_id = ?
+           AND pc.status = ?
+         ORDER BY COALESCE(pc.approved_at, pc.created_at) DESC, pc.id DESC
+         LIMIT 8'
+    );
+    $stmt->execute([(int) $place['id'], 'approved']);
+    $recentPlaceActivity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $exception) {
+    error_log('Llama Scout public Place history error: ' . $exception->getMessage());
+}
+
+$galleryImages = [];
+$heroImage = null;
+
+if ($hasMemberAccess && !empty($place['images'])) {
+    $galleryImages = array_values(array_filter(
+        $place['images'],
+        static fn(array $image): bool =>
+            trim((string) ($image['src'] ?? '')) !== ''
+    ));
+
+    foreach ($galleryImages as $image) {
+        if (!empty($image['is_featured'])) {
+            $heroImage = $image;
+            break;
+        }
+    }
+
+    $heroImage ??= $galleryImages[0] ?? null;
+} elseif (!empty($place['featured_image'])) {
+    $heroImage = $place['featured_image'];
+}
 
 require __DIR__ . '/partials/header.php';
 ?>
 
 <article class="place-page">
 
-    <header class="place-header">
-        <p class="eyebrow">
-            <?= place_h(ucwords(str_replace('-', ' ', (string) $place['type']))) ?>
-        </p>
+    <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
 
-        <h1><?= place_h($place['name']) ?></h1>
-
-        <div class="place-header-actions">
-            <?php if ($userId > 0): ?>
-                <form method="post" class="place-save-form">
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="<?= place_h(saved_places_csrf_token()) ?>"
-                    >
-                    <input
-                        type="hidden"
-                        name="saved_place_action"
-                        value="<?= $isSaved ? 'remove' : 'save' ?>"
-                    >
-                    <button
-                        type="submit"
-                        class="place-save-button<?= $isSaved ? ' is-saved' : '' ?>"
-                        aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"
-                    >
-                        <i
-                            class="<?= $isSaved ? 'fa-solid' : 'fa-regular' ?> fa-bookmark"
-                            aria-hidden="true"
-                        ></i>
-                        <?= $isSaved ? 'Saved' : 'Save place' ?>
-                    </button>
-                </form>
-            <?php else: ?>
-                <a
-                    class="place-save-button"
-                    href="https://account.llamascout.com/login.php"
-                >
-                    <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
-                    Sign in to save
-                </a>
-            <?php endif; ?>
-
-            <?php if ($userId > 0): ?>
-                <a
-                    class="place-save-button"
-                    href="<?= place_h($accountUrl . '/update-place.php?slug=' . rawurlencode((string) $place['slug'])) ?>"
-                >
-                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                    Suggest update
-                </a>
-            <?php else: ?>
-                <a
-                    class="place-save-button"
-                    href="<?= place_h($accountUrl . '/login.php?return=' . rawurlencode($accountUrl . '/update-place.php?slug=' . rawurlencode((string) $place['slug']))) ?>"
-                >
-                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                    Suggest update
-                </a>
-            <?php endif; ?>
-        </div>
-
-        <?php if (!empty($provenance['label'])): ?>
-            <?php $isLlamaScouted = ($provenance['status'] ?? '') === 'llama-scouted'; ?>
-            <p class="place-provenance-line">
-                <span class="place-provenance-badge <?= $isLlamaScouted ? 'is-scouted' : 'is-community' ?>">
-                    <i
-                        class="fa-solid <?= $isLlamaScouted ? 'fa-binoculars' : 'fa-people-group' ?>"
-                        aria-hidden="true"
-                    ></i>
-                    <?= place_h($provenance['label']) ?>
-                </span>
-            </p>
+        <?php if ($heroImage): ?>
+            <img
+                class="place-detail-hero-image"
+                src="<?= place_h(place_image_url($heroImage['src'] ?? '')) ?>"
+                alt="<?= place_h(($heroImage['alt_text'] ?? '') ?: $place['name']) ?>"
+            >
         <?php endif; ?>
 
-        <?php if ($contributors): ?>
-            <section class="place-contributors" aria-labelledby="place-contributors-heading">
-                <div class="place-contributors-heading">
-                    <div>
-                        <p class="place-contributors-eyebrow">Contributors</p>
-                        <h2 id="place-contributors-heading">Who helped document this place</h2>
-                    </div>
+        <div class="place-detail-hero-shade" aria-hidden="true"></div>
+
+        <div class="place-detail-hero-inner">
+
+            <a class="place-detail-back" href="/map.php">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                Explore Map
+            </a>
+
+            <div class="place-detail-hero-content">
+
+                <div class="place-detail-title-block">
+                    <p class="place-detail-eyebrow">
+                        <?= place_h(ucwords(str_replace(['-', '_'], ' ', (string) $place['type']))) ?>
+                    </p>
+
+                    <h1><?= place_h($place['name']) ?></h1>
+
+                    <?php if ($locationParts): ?>
+                        <p class="place-detail-location">
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                            <?= place_h(implode(', ', $locationParts)) ?>
+                        </p>
+                    <?php endif; ?>
+
+                    <?php if (!empty($place['land_manager'])): ?>
+                        <p class="place-detail-land">
+                            <?= place_h($place['land_manager']) ?>
+                            <?php if (!empty($place['land_type'])): ?>
+                                / <?= place_h($place['land_type']) ?>
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
                 </div>
 
-                <div class="place-contributor-list">
-                    <?php foreach ($contributors as $contributor): ?>
-                        <article class="place-contributor-card">
-                            <?php if (!empty($contributor['profile_url'])): ?>
-                                <a
-                                    class="place-contributor-avatar"
-                                    href="<?= place_h($contributor['profile_url']) ?>"
-                                    aria-label="View <?= place_h($contributor['display_name']) ?>'s profile"
-                                >
-                                    <img
-                                        src="<?= place_h($contributor['image_url']) ?>"
-                                        alt=""
-                                        loading="lazy"
-                                    >
-                                </a>
-                            <?php else: ?>
-                                <span class="place-contributor-avatar" aria-hidden="true">
-                                    <img
-                                        src="<?= place_h($contributor['image_url']) ?>"
-                                        alt=""
-                                        loading="lazy"
-                                    >
-                                </span>
+                <div class="place-detail-actions">
+                    <?php if ($userId > 0): ?>
+                        <form method="post" class="place-save-form">
+                            <input type="hidden" name="csrf_token" value="<?= place_h(saved_places_csrf_token()) ?>">
+                            <input type="hidden" name="saved_place_action" value="<?= $isSaved ? 'remove' : 'save' ?>">
+                            <button
+                                type="submit"
+                                class="place-detail-action-button<?= $isSaved ? ' is-saved' : '' ?>"
+                                aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"
+                            >
+                                <i class="<?= $isSaved ? 'fa-solid' : 'fa-regular' ?> fa-bookmark" aria-hidden="true"></i>
+                                <?= $isSaved ? 'Saved' : 'Save Place' ?>
+                            </button>
+                        </form>
+
+                        <a
+                            class="place-detail-action-button"
+                            href="https://account.llamascout.com/update-place.php?place_id=<?= (int) $place['id'] ?>"
+                        >
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                            Suggest Update
+                        </a>
+                    <?php else: ?>
+                        <a class="place-detail-action-button" href="https://account.llamascout.com/login.php">
+                            <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                            Sign in to save
+                        </a>
+                    <?php endif; ?>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <?php if ($hasMemberAccess && $galleryImages): ?>
+        <section class="place-photo-gallery-section" aria-labelledby="place-photo-gallery-heading">
+            <div class="place-detail-container">
+                <div class="place-photo-gallery-heading">
+                    <div>
+                        <p class="place-detail-eyebrow">Photos</p>
+                        <h2 id="place-photo-gallery-heading">Photo gallery</h2>
+                    </div>
+                    <span><?= count($galleryImages) ?> <?= count($galleryImages) === 1 ? 'photo' : 'photos' ?></span>
+                </div>
+
+                <div class="place-photo-gallery" data-place-gallery>
+                    <?php foreach ($galleryImages as $index => $image): ?>
+                        <button
+                            class="place-photo-thumb<?= !empty($image['is_featured']) ? ' is-featured' : '' ?>"
+                            type="button"
+                            data-place-gallery-open="<?= (int) $index ?>"
+                            aria-label="Open photo <?= (int) $index + 1 ?> of <?= count($galleryImages) ?>"
+                        >
+                            <img
+                                src="<?= place_h(place_image_url($image['src'] ?? '')) ?>"
+                                alt="<?= place_h(($image['alt_text'] ?? '') ?: $place['name']) ?>"
+                                loading="<?= $index < 4 ? 'eager' : 'lazy' ?>"
+                            >
+                            <?php if (!empty($image['is_featured'])): ?>
+                                <span class="place-photo-featured-label">Hero</span>
                             <?php endif; ?>
-
-                            <div class="place-contributor-copy">
-                                <div class="place-contributor-name-row">
-                                    <?php if (!empty($contributor['profile_url'])): ?>
-                                        <a
-                                            class="place-contributor-name"
-                                            href="<?= place_h($contributor['profile_url']) ?>"
-                                        >
-                                            <?= place_h($contributor['display_name']) ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <strong class="place-contributor-name">
-                                            <?= place_h($contributor['display_name']) ?>
-                                        </strong>
-                                    <?php endif; ?>
-
-                                    <?php if (!empty($contributor['username'])): ?>
-                                        <span class="place-contributor-username">
-                                            @<?= place_h($contributor['username']) ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-
-                                <p class="place-contributor-role">
-                                    <?= place_h($contributor['role']) ?>
-                                </p>
-
-                                <div class="place-contributor-meta">
-                                    <span>
-                                        <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                                        <?= (int) $contributor['contribution_count'] ?> approved
-                                        <?= (int) $contributor['contribution_count'] === 1 ? 'contribution' : 'contributions' ?>
-                                    </span>
-
-                                    <?php if ((int) $contributor['place_points'] > 0): ?>
-                                        <span>
-                                            <i class="fa-solid fa-star" aria-hidden="true"></i>
-                                            <?= (int) $contributor['place_points'] ?> points on this place
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-
-                                <?php if (!empty($contributor['badges'])): ?>
-                                    <div class="place-contributor-badges" aria-label="Earned badges">
-                                        <?php foreach (array_slice($contributor['badges'], 0, 4) as $badge): ?>
-                                            <span
-                                                class="place-contributor-badge"
-                                                title="<?= place_h($badge['name'] ?? 'Badge') ?>"
-                                            >
-                                                <?php if (!empty($badge['image_src'])): ?>
-                                                    <img
-                                                        src="<?= place_h(llama_profile_image_url((string) $badge['image_src'])) ?>"
-                                                        alt="<?= place_h($badge['name'] ?? 'Badge') ?>"
-                                                        loading="lazy"
-                                                    >
-                                                <?php else: ?>
-                                                    <i
-                                                        class="fa-solid <?= place_h(llama_contributor_badge_icon($badge)) ?>"
-                                                        aria-hidden="true"
-                                                    ></i>
-                                                    <span><?= place_h($badge['name'] ?? 'Badge') ?></span>
-                                                <?php endif; ?>
-                                            </span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </article>
+                        </button>
                     <?php endforeach; ?>
                 </div>
 
-                <?php if ($userId < 1): ?>
-                    <p class="place-contributors-privacy-note">
-                        Some contributor identities are visible only to signed-in members unless that member has enabled a public profile.
-                    </p>
-                <?php endif; ?>
-            </section>
-        <?php endif; ?>
-
-        <?php if ($locationParts): ?>
-            <p class="place-location">
-                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                <?= place_h(implode(', ', $locationParts)) ?>
-            </p>
-        <?php endif; ?>
-
-        <?php if (!empty($place['land_manager'])): ?>
-            <p class="place-land">
-                <?= place_h($place['land_manager']) ?>
-                <?php if (!empty($place['land_type'])): ?>
-                    · <?= place_h($place['land_type']) ?>
-                <?php endif; ?>
-            </p>
-        <?php endif; ?>
-    </header>
-
-    <?php if ($hasMemberAccess && !empty($place['images'])): ?>
-        <section class="place-gallery" aria-label="Place photos">
-            <?php foreach ($place['images'] as $image): ?>
-                <img
-                    src="/<?= place_h(ltrim($image['src'], '/')) ?>"
-                    alt="<?= place_h($image['alt_text'] ?: $place['name']) ?>"
-                    loading="lazy"
-                >
-            <?php endforeach; ?>
+                <p class="place-photo-gallery-help">
+                    Tap any photo to view it larger and move through the full gallery.
+                </p>
+            </div>
         </section>
-    <?php elseif (!empty($place['featured_image'])): ?>
-        <section class="place-hero-image" aria-label="Place photo">
-            <img
-                src="/<?= place_h(ltrim($place['featured_image']['src'], '/')) ?>"
-                alt="<?= place_h($place['featured_image']['alt_text'] ?: $place['name']) ?>"
-            >
-        </section>
+
+        <dialog class="place-gallery-lightbox" id="place-gallery-lightbox" aria-label="Place photo viewer">
+            <div class="place-gallery-lightbox-inner">
+                <div class="place-gallery-lightbox-top">
+                    <span id="place-gallery-counter"></span>
+                    <button type="button" class="place-gallery-close" id="place-gallery-close" aria-label="Close photo viewer">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="place-gallery-stage">
+                    <button type="button" class="place-gallery-arrow is-previous" id="place-gallery-previous" aria-label="Previous photo">
+                        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                    </button>
+
+                    <img id="place-gallery-large-image" src="" alt="">
+
+                    <button type="button" class="place-gallery-arrow is-next" id="place-gallery-next" aria-label="Next photo">
+                        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <p class="place-gallery-caption" id="place-gallery-caption"></p>
+
+                <div class="place-gallery-lightbox-thumbs" id="place-gallery-lightbox-thumbs">
+                    <?php foreach ($galleryImages as $index => $image): ?>
+                        <button type="button" data-place-gallery-jump="<?= (int) $index ?>" aria-label="View photo <?= (int) $index + 1 ?>">
+                            <img src="<?= place_h(place_image_url($image['src'] ?? '')) ?>" alt="" loading="lazy">
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </dialog>
     <?php endif; ?>
 
     <section class="place-facts" aria-label="Place details">
@@ -815,6 +797,109 @@ require __DIR__ . '/partials/header.php';
         </section>
     <?php endif; ?>
 
+    <section class="place-history-section">
+        <div class="place-detail-container">
+
+            <div class="place-history-heading">
+                <p class="place-detail-eyebrow">Place history</p>
+                <h2>Who helped document this Place</h2>
+                <p>
+                    Scout status, provenance, and recent approved activity live at
+                    the bottom so the main page stays focused on planning.
+                </p>
+            </div>
+
+            <?php if ($historyProvenance): ?>
+                <?php
+                $originType = (string) ($historyProvenance['origin_type'] ?? '');
+                $originIsScout = in_array($originType, ['llama-scouted', 'scout', 'admin'], true);
+                $originName = trim((string) (
+                    $historyProvenance['contributor_display_name']
+                    ?: $historyProvenance['contributor_username']
+                    ?: ''
+                ));
+                ?>
+                <div class="place-history-origin">
+                    <div class="place-history-badge<?= $originIsScout ? ' is-scouted' : '' ?>">
+                        <i class="fa-solid <?= $originIsScout ? 'fa-binoculars' : 'fa-people-group' ?>" aria-hidden="true"></i>
+                        <div>
+                            <span><?= $originIsScout ? 'Llama Scouted' : 'Member contributed' ?></span>
+                            <strong>
+                                <?= $originIsScout
+                                    ? 'This Place has been documented in the field.'
+                                    : 'This Place began with a member contribution.'
+                                ?>
+                            </strong>
+                        </div>
+                    </div>
+
+                    <?php if ($originName !== ''): ?>
+                        <p>
+                            Original contributor:
+                            <?php if (!empty($historyProvenance['contributor_username'])): ?>
+                                <a href="/<?= rawurlencode((string) $historyProvenance['contributor_username']) ?>">
+                                    <?= place_h($originName) ?>
+                                </a>
+                            <?php else: ?>
+                                <?= place_h($originName) ?>
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($recentPlaceActivity): ?>
+                <div class="place-activity-list">
+                    <?php foreach ($recentPlaceActivity as $activity): ?>
+                        <?php
+                        $activityName = trim((string) (
+                            $activity['display_name']
+                            ?: $activity['username']
+                            ?: 'Llama Scout member'
+                        ));
+                        $activityType = ucwords(str_replace(
+                            ['_', '-'],
+                            ' ',
+                            (string) $activity['contribution_type']
+                        ));
+                        ?>
+                        <article class="place-activity-item">
+                            <div class="place-activity-icon">
+                                <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            </div>
+
+                            <div>
+                                <strong>
+                                    <?php if (!empty($activity['username'])): ?>
+                                        <a href="/<?= rawurlencode((string) $activity['username']) ?>">
+                                            <?= place_h($activityName) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <?= place_h($activityName) ?>
+                                    <?php endif; ?>
+                                </strong>
+
+                                <span>
+                                    <?= place_h($activityType) ?>
+                                    <?php if (!empty($activity['approved_at'])): ?>
+                                        / <?= place_h(date('M j, Y', strtotime((string) $activity['approved_at']))) ?>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+
+                            <?php if ((int) ($activity['points_awarded'] ?? 0) > 0): ?>
+                                <span class="place-activity-points">+<?= (int) $activity['points_awarded'] ?></span>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php elseif (!$historyProvenance): ?>
+                <p class="place-history-empty">No approved Place history is available yet.</p>
+            <?php endif; ?>
+
+        </div>
+    </section>
+
     <section class="place-report-section" id="report-place">
         <details class="place-report"<?= $reportError !== null ? ' open' : '' ?>>
             <summary>
@@ -850,8 +935,6 @@ require __DIR__ . '/partials/header.php';
                             value="<?= place_h(place_report_csrf_token()) ?>"
                         >
                         <input type="hidden" name="place_report_action" value="submit">
-                        <input type="hidden" name="photo_stage_token" value="<?= place_h($_POST['photo_stage_token'] ?? '') ?>">
-                        <input type="hidden" name="photos_json" value="<?= place_h($_POST['photos_json'] ?? '[]') ?>">
 
                         <label for="problem-type">What is the problem?</label>
                         <select id="problem-type" name="problem_type" required>
@@ -875,15 +958,6 @@ require __DIR__ . '/partials/header.php';
                             required
                         ><?= place_h($reportDetails ?? '') ?></textarea>
 
-                        <div
-                            data-photo-uploader
-                            data-photo-context="place-report"
-                            data-photo-max="5"
-                            data-photo-csrf="<?= place_h(llama_photo_csrf_token()) ?>"
-                            data-photo-title="Photos for this report"
-                            data-photo-help="Optional. Add up to 5 photos that document the problem. You can remove them before submitting, and abandoned uploads are cleaned up automatically."
-                        ></div>
-
                         <button type="submit" class="place-report-submit">
                             <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
                             Submit report
@@ -901,6 +975,7 @@ require __DIR__ . '/partials/header.php';
 
 </article>
 
+<script src="/js/place-gallery.js"></script>
 <script src="/js/place.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
