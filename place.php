@@ -70,12 +70,20 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
         return;
     }
     ?>
-    <div class="scout-report-item">
+    <div class="scout-report-item scout-report-value-item">
+
+        <div class="scout-report-value-content">
+            <span><?= place_h($label) ?></span>
+            <strong><?= place_h($value) ?></strong>
+        </div>
+
         <?php if ($icon): ?>
-            <i class="fa-solid <?= place_h($icon) ?>" aria-hidden="true"></i>
+            <i
+                class="fa-solid <?= place_h($icon) ?> scout-report-value-icon"
+                aria-hidden="true"
+            ></i>
         <?php endif; ?>
-        <span><?= place_h($label) ?></span>
-        <strong><?= place_h($value) ?></strong>
+
     </div>
     <?php
 }
