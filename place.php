@@ -103,40 +103,76 @@ $isSaved = $userId > 0
     ? user_has_saved_place($userId, (int) $place['id'])
     : false;
 
+$reportError = null;
+$reportSubmitted = isset($_GET['reported']) && $_GET['reported'] === '1';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = (string) ($_POST['saved_place_action'] ?? '');
-    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    if (isset($_POST['saved_place_action'])) {
+        $action = (string) ($_POST['saved_place_action'] ?? '');
+        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
 
-    if (
-        $userId < 1
-        || !in_array($action, ['save', 'remove'], true)
-        || !saved_places_verify_csrf($csrfToken)
-    ) {
-        http_response_code(400);
-        exit('Invalid request.');
+        if (
+            $userId < 1
+            || !in_array($action, ['save', 'remove'], true)
+            || !saved_places_verify_csrf($csrfToken)
+        ) {
+            http_response_code(400);
+            exit('Invalid request.');
+        }
+
+        if ($action === 'save') {
+            save_place_for_user(
+                $userId,
+                (int) $place['id'],
+                (string) $place['slug'],
+                (string) $place['name']
+            );
+        } else {
+            remove_saved_place_for_user(
+                $userId,
+                (int) $place['id']
+            );
+        }
+
+        header(
+            'Location: /place.php?slug=' .
+            rawurlencode((string) $place['slug']),
+            true,
+            303
+        );
+        exit;
     }
 
-    if ($action === 'save') {
-        save_place_for_user(
-            $userId,
-            (int) $place['id'],
-            (string) $place['slug'],
-            (string) $place['name']
-        );
-    } else {
-        remove_saved_place_for_user(
-            $userId,
-            (int) $place['id']
-        );
-    }
+    if (isset($_POST['place_report_action'])) {
+        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+        $problemType = trim((string) ($_POST['problem_type'] ?? ''));
+        $reportDetails = trim((string) ($_POST['report_details'] ?? ''));
 
-    header(
-        'Location: /place.php?slug=' .
-        rawurlencode((string) $place['slug']),
-        true,
-        303
-    );
-    exit;
+        if ($userId < 1 || !place_report_verify_csrf($csrfToken)) {
+            http_response_code(400);
+            exit('Invalid request.');
+        }
+
+        try {
+            submit_place_report(
+                $userId,
+                (int) $place['id'],
+                $problemType,
+                $reportDetails
+            );
+
+            header(
+                'Location: /place.php?slug=' .
+                rawurlencode((string) $place['slug']) .
+                '&reported=1#report-place',
+                true,
+                303
+            );
+            exit;
+        } catch (InvalidArgumentException $exception) {
+            $reportError = $exception->getMessage();
+        }
+    }
 }
 
 $pageTitle = $place['name'] . ' | Llama Scout';
@@ -639,6 +675,79 @@ require __DIR__ . '/partials/header.php';
             </div>
         </section>
     <?php endif; ?>
+
+    <section class="place-report-section" id="report-place">
+        <details class="place-report"<?= $reportError !== null ? ' open' : '' ?>>
+            <summary>
+                <i class="fa-regular fa-flag" aria-hidden="true"></i>
+                Report a problem with this place
+            </summary>
+
+            <div class="place-report-body">
+                <?php if ($reportSubmitted): ?>
+                    <div class="place-report-message is-success" role="status">
+                        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                        <p>Thanks. Your report has been submitted for review.</p>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($reportError !== null): ?>
+                    <div class="place-report-message is-error" role="alert">
+                        <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                        <p><?= place_h($reportError) ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($userId > 0): ?>
+                    <p>
+                        Tell us what changed or what looks wrong. Reports are reviewed before
+                        information on the place is changed.
+                    </p>
+
+                    <form method="post" class="place-report-form">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="<?= place_h(place_report_csrf_token()) ?>"
+                        >
+                        <input type="hidden" name="place_report_action" value="submit">
+
+                        <label for="problem-type">What is the problem?</label>
+                        <select id="problem-type" name="problem_type" required>
+                            <option value="">Choose one</option>
+                            <?php foreach (place_report_problem_types() as $value => $label): ?>
+                                <option
+                                    value="<?= place_h($value) ?>"
+                                    <?= isset($problemType) && $problemType === $value ? 'selected' : '' ?>
+                                >
+                                    <?= place_h($label) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label for="report-details">What should we know?</label>
+                        <textarea
+                            id="report-details"
+                            name="report_details"
+                            rows="5"
+                            maxlength="4000"
+                            required
+                        ><?= place_h($reportDetails ?? '') ?></textarea>
+
+                        <button type="submit" class="place-report-submit">
+                            <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+                            Submit report
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <p>You need to be signed in to submit a place report.</p>
+                    <a class="place-report-signin" href="https://account.llamascout.com/login.php">
+                        Sign in
+                    </a>
+                <?php endif; ?>
+            </div>
+        </details>
+    </section>
 
 </article>
 
