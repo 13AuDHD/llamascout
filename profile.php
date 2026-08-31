@@ -9,11 +9,16 @@ $currentUser = current_user();
 $username = strtolower(trim((string) ($_GET['user'] ?? '')));
 $profile = llama_public_profile_by_username($db, $username);
 
+function public_profile_e(mixed $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
 if (!$profile) {
     http_response_code(404);
     $pageTitle = 'Profile Not Found | Llama Scout';
     require __DIR__ . '/partials/header.php';
-    echo '<section class="account-empty-state"><i class="fa-solid fa-user-slash" aria-hidden="true"></i><h1>Profile not found</h1><p>This Community Profile does not exist or is no longer available.</p><a class="place-save-button" href="/community.php">Browse Community</a></section>';
+    echo '<section class="account-empty-state"><i class="fa-solid fa-user-slash" aria-hidden="true"></i><h1>Profile not found</h1><p>That Llama Scout profile does not exist or is no longer available.</p><a class="place-save-button" href="/map.php">Explore the map</a></section>';
     require __DIR__ . '/partials/footer.php';
     exit;
 }
@@ -21,36 +26,69 @@ if (!$profile) {
 $isOwner = $currentUser && (int) ($currentUser['id'] ?? 0) === (int) $profile['id'];
 $isPublic = !empty($profile['is_public']);
 $isSignedIn = is_array($currentUser);
+$showFullProfile = $isPublic || $isOwner;
 
 if (!$isPublic && !$isOwner && !$isSignedIn) {
     http_response_code(404);
     $pageTitle = 'Profile Not Found | Llama Scout';
     require __DIR__ . '/partials/header.php';
-    echo '<section class="account-empty-state"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><h1>Members-only profile</h1><p>Sign in to view this Llama Scout member profile.</p></section>';
+    echo '<section class="account-empty-state"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><h1>This profile is not public</h1><p>Sign in to view this member\'s basic Llama Scout profile.</p></section>';
     require __DIR__ . '/partials/footer.php';
     exit;
-}
-
-function public_profile_e(mixed $value): string
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 $config = llama_config();
 $siteUrl = rtrim((string) ($config['app']['url'] ?? 'https://llamascout.com'), '/');
 $accountUrl = rtrim((string) ($config['app']['account_url'] ?? 'https://account.llamascout.com'), '/');
 $displayName = trim((string) ($profile['display_name'] ?? '')) ?: (string) $profile['username'];
-$pageTitle = $displayName . ' | Llama Scout Community';
+$pageTitle = $displayName . ' | Llama Scout';
+$canonicalUrl = llama_profile_url((string) $profile['username'], $siteUrl);
 
-$socials = array_filter([
-    ['fa-solid fa-globe', 'Website', $profile['website_url'] ?? null],
-    ['fa-brands fa-instagram', 'Instagram', $profile['instagram_url'] ?? null],
-    ['fa-brands fa-facebook', 'Facebook', $profile['facebook_url'] ?? null],
-    ['fa-solid fa-cloud', 'Bluesky', $profile['bluesky_url'] ?? null],
-    ['fa-brands fa-youtube', 'YouTube', $profile['youtube_url'] ?? null],
-    ['fa-brands fa-tiktok', 'TikTok', $profile['tiktok_url'] ?? null],
-    ['fa-solid fa-link', 'Link', $profile['other_social_url'] ?? null],
-], static fn (array $item): bool => is_string($item[2]) && trim($item[2]) !== '');
+$joinedAt = null;
+if (!empty($profile['joined_at'])) {
+    try {
+        $joinedAt = new DateTimeImmutable((string) $profile['joined_at']);
+    } catch (Throwable) {
+        $joinedAt = null;
+    }
+}
+
+$stats = is_array($profile['stats'] ?? null) ? $profile['stats'] : [];
+$primaryImageId = (int) ($profile['primary_image_id'] ?? 0);
+$galleryImages = array_values(array_filter(
+    is_array($profile['images'] ?? null) ? $profile['images'] : [],
+    static fn (array $image): bool => (int) ($image['id'] ?? 0) !== $primaryImageId
+));
+
+$socials = [];
+if ($showFullProfile) {
+    $website = trim((string) ($profile['website_url'] ?? ''));
+    if ($website !== '') {
+        $socials[] = ['fa-solid fa-globe', 'Website', $website, parse_url($website, PHP_URL_HOST) ?: 'Website'];
+    }
+
+    foreach ([
+        ['instagram', 'fa-brands fa-instagram', 'Instagram', 'instagram_url'],
+        ['facebook', 'fa-brands fa-facebook', 'Facebook', 'facebook_url'],
+        ['bluesky', 'fa-solid fa-cloud', 'Bluesky', 'bluesky_url'],
+        ['youtube', 'fa-brands fa-youtube', 'YouTube', 'youtube_url'],
+        ['tiktok', 'fa-brands fa-tiktok', 'TikTok', 'tiktok_url'],
+    ] as [$network, $icon, $label, $field]) {
+        $handle = trim((string) ($profile[$field] ?? ''));
+        $url = llama_profile_social_url($network, $handle);
+        if ($url !== null) {
+            $socials[] = [$icon, $label, $url, llama_profile_social_display($handle)];
+        }
+    }
+
+    $other = trim((string) ($profile['other_social_url'] ?? ''));
+    if ($other !== '') {
+        $socials[] = ['fa-solid fa-link', 'Other', $other, parse_url($other, PHP_URL_HOST) ?: 'Link'];
+    }
+}
+
+$pageRobots = $isPublic ? 'index,follow' : 'noindex,nofollow';
+$pageDescription = $isPublic ? $displayName . ' on Llama Scout.' : '';
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -64,11 +102,18 @@ require __DIR__ . '/partials/header.php';
         >
 
         <div class="public-community-profile-heading">
-            <p class="account-eyebrow">Llama Scout Community</p>
+            <p class="account-eyebrow">Llama Scout member</p>
             <h1><?= public_profile_e($displayName) ?></h1>
             <p class="public-community-profile-handle">@<?= public_profile_e($profile['username']) ?></p>
 
-            <?php if (!empty($profile['location'])): ?>
+            <?php if ($joinedAt): ?>
+                <p class="public-community-profile-location">
+                    <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+                    Joined <?= public_profile_e($joinedAt->format('F Y')) ?>
+                </p>
+            <?php endif; ?>
+
+            <?php if ($showFullProfile && !empty($profile['location'])): ?>
                 <p class="public-community-profile-location">
                     <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
                     <?= public_profile_e($profile['location']) ?>
@@ -84,14 +129,48 @@ require __DIR__ . '/partials/header.php';
         </div>
     </header>
 
-    <?php if (!empty($profile['badges'])): ?>
-        <section class="public-community-profile-section">
-            <div class="community-profile-section-heading">
-                <div>
-                    <p class="account-eyebrow">Recognition</p>
-                    <h2>Badges</h2>
-                </div>
+    <section class="public-community-profile-section">
+        <div class="community-profile-section-heading">
+            <div>
+                <p class="account-eyebrow">Activity</p>
+                <h2>Llama Scout stats</h2>
             </div>
+        </div>
+
+        <div class="public-community-profile-facts profile-stat-grid">
+            <div class="public-community-profile-fact">
+                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                <span>Points earned</span>
+                <strong><?= number_format((int) ($stats['points'] ?? 0)) ?></strong>
+            </div>
+            <div class="public-community-profile-fact">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                <span>Places submitted</span>
+                <strong><?= number_format((int) ($stats['places_submitted'] ?? 0)) ?></strong>
+            </div>
+            <div class="public-community-profile-fact">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                <span>Places improved</span>
+                <strong><?= number_format((int) ($stats['places_improved'] ?? 0)) ?></strong>
+            </div>
+            <div class="public-community-profile-fact">
+                <i class="fa-solid fa-check" aria-hidden="true"></i>
+                <span>Approved contributions</span>
+                <strong><?= number_format((int) ($stats['approved_contributions'] ?? 0)) ?></strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="public-community-profile-section">
+        <div class="community-profile-section-heading">
+            <div>
+                <p class="account-eyebrow">Recognition</p>
+                <h2>Badges</h2>
+            </div>
+            <span class="account-section-count"><?= count($profile['badges'] ?? []) ?></span>
+        </div>
+
+        <?php if (!empty($profile['badges'])): ?>
             <div class="community-badge-grid">
                 <?php foreach ($profile['badges'] as $badge): ?>
                     <article class="community-badge-card">
@@ -111,72 +190,87 @@ require __DIR__ . '/partials/header.php';
                     </article>
                 <?php endforeach; ?>
             </div>
-        </section>
-    <?php endif; ?>
+        <?php else: ?>
+            <p class="public-community-profile-bio">No badges earned yet.</p>
+        <?php endif; ?>
+    </section>
 
-    <?php if (!empty($profile['bio'])): ?>
-        <section class="public-community-profile-section">
-            <h2>About</h2>
-            <p class="public-community-profile-bio"><?= nl2br(public_profile_e($profile['bio'])) ?></p>
-        </section>
-    <?php endif; ?>
-
-    <?php
-    $facts = array_filter([
-        ['fa-solid fa-people-group', 'Squad / club', $profile['squad'] ?? null],
-        ['fa-solid fa-campground', 'Camping style', $profile['camping_style'] ?? null],
-        ['fa-solid fa-mountain-sun', 'Favorite kind of place', $profile['favorite_places'] ?? null],
-        ['fa-solid fa-music', 'Camping soundtrack', $profile['favorite_camping_music'] ?? null],
-    ], static fn (array $item): bool => is_string($item[2]) && trim($item[2]) !== '');
-    ?>
-    <?php if ($facts): ?>
-        <section class="public-community-profile-section">
-            <h2>Camp profile</h2>
-            <div class="public-community-profile-facts">
-                <?php foreach ($facts as [$icon, $label, $value]): ?>
-                    <div class="public-community-profile-fact">
-                        <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
-                        <span><?= public_profile_e($label) ?></span>
-                        <strong><?= public_profile_e($value) ?></strong>
-                    </div>
-                <?php endforeach; ?>
+    <?php if (!$showFullProfile): ?>
+        <section class="public-community-profile-section profile-private-note">
+            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+            <div>
+                <strong>This member has not made a public profile.</strong>
+                <p>Members can still see the basic account information, badges, and contribution activity shown above.</p>
             </div>
         </section>
-    <?php endif; ?>
+    <?php else: ?>
 
-    <?php if (!empty($profile['images'])): ?>
-        <section class="public-community-profile-section">
-            <div class="community-profile-section-heading">
-                <div>
-                    <p class="account-eyebrow">Gallery</p>
-                    <h2>Photos</h2>
+        <?php if (!empty($profile['bio'])): ?>
+            <section class="public-community-profile-section">
+                <h2>About</h2>
+                <p class="public-community-profile-bio"><?= nl2br(public_profile_e($profile['bio'])) ?></p>
+            </section>
+        <?php endif; ?>
+
+        <?php
+        $facts = array_filter([
+            ['fa-solid fa-people-group', 'Squad / club', $profile['squad'] ?? null],
+            ['fa-solid fa-campground', 'Camping style', $profile['camping_style'] ?? null],
+            ['fa-solid fa-mountain-sun', 'Favorite kind of place', $profile['favorite_places'] ?? null],
+            ['fa-solid fa-music', 'Camping soundtrack', $profile['favorite_camping_music'] ?? null],
+        ], static fn (array $item): bool => is_string($item[2]) && trim($item[2]) !== '');
+        ?>
+        <?php if ($facts): ?>
+            <section class="public-community-profile-section">
+                <h2>About their adventures</h2>
+                <div class="public-community-profile-facts">
+                    <?php foreach ($facts as [$icon, $label, $value]): ?>
+                        <div class="public-community-profile-fact">
+                            <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
+                            <span><?= public_profile_e($label) ?></span>
+                            <strong><?= public_profile_e($value) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-                <span class="account-section-count"><?= count($profile['images']) ?>/5</span>
-            </div>
-            <div class="public-community-profile-gallery">
-                <?php foreach ($profile['images'] as $image): ?>
-                    <img
-                        src="<?= public_profile_e(llama_profile_image_url((string) $image['image_src'], $siteUrl)) ?>"
-                        alt="<?= public_profile_e($image['alt_text'] ?: $displayName . ' profile photo') ?>"
-                        loading="lazy"
-                    >
-                <?php endforeach; ?>
-            </div>
-        </section>
-    <?php endif; ?>
+            </section>
+        <?php endif; ?>
 
-    <?php if ($socials): ?>
-        <section class="public-community-profile-section">
-            <h2>Links</h2>
-            <div class="public-community-profile-links">
-                <?php foreach ($socials as [$icon, $label, $url]): ?>
-                    <a href="<?= public_profile_e($url) ?>" target="_blank" rel="noopener noreferrer">
-                        <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
-                        <?= public_profile_e($label) ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </section>
+        <?php if ($galleryImages): ?>
+            <section class="public-community-profile-section">
+                <div class="community-profile-section-heading">
+                    <div>
+                        <p class="account-eyebrow">Photos</p>
+                        <h2>More from <?= public_profile_e($displayName) ?></h2>
+                    </div>
+                </div>
+                <div class="public-community-profile-gallery">
+                    <?php foreach ($galleryImages as $image): ?>
+                        <img
+                            src="<?= public_profile_e(llama_profile_image_url((string) $image['image_src'], $siteUrl)) ?>"
+                            alt="<?= public_profile_e($image['alt_text'] ?: $displayName . ' profile photo') ?>"
+                            loading="lazy"
+                        >
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($socials): ?>
+            <section class="public-community-profile-section">
+                <h2>Elsewhere</h2>
+                <div class="public-community-profile-links">
+                    <?php foreach ($socials as [$icon, $label, $url, $text]): ?>
+                        <a href="<?= public_profile_e($url) ?>" target="_blank" rel="noopener noreferrer">
+                            <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
+                            <span>
+                                <strong><?= public_profile_e($label) ?></strong>
+                                <small><?= public_profile_e($text) ?></small>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
     <?php endif; ?>
 </article>
 
