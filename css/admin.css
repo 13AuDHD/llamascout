@@ -2660,3 +2660,20 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-column: auto;
     }
 }
+
+
+/* =========================================================
+   NEW PRODUCT
+   ========================================================= */
+
+.admin-commerce-new-product {
+    max-width: 880px;
+}
+
+.admin-commerce-new-product-note {
+    margin: 0 17px 4px;
+
+    color: var(--text-muted);
+    font-size: .75rem;
+    line-height: 1.55;
+}
