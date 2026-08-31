@@ -656,10 +656,11 @@
 }
 
 .membership-public-paid-prices {
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: auto auto auto;
     align-items: center;
-    gap: 18px;
+    justify-content: start;
+    gap: 16px;
 
     margin-top: 14px;
 }
@@ -672,20 +673,22 @@
 
 .membership-price-option strong {
     font-size: 2rem;
+    line-height: 1;
 }
 
 .membership-price-option span {
     color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .membership-price-separator {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
 
     color: var(--text-muted);
 
-    font-size: .78rem;
+    font-size: .75rem;
     font-weight: 800;
     text-transform: uppercase;
 }
@@ -701,7 +704,7 @@
 }
 
 .membership-price-separator span {
-    margin: 0 8px;
+    white-space: nowrap;
 }
 
 .membership-public-paid-prices div {
@@ -871,25 +874,40 @@
         border-radius: 0;
     }
 
-    .membership-public-paid-prices {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
+   
 
-        margin-top: 18px;
+    .membership-public-paid-prices {
+
+        grid-template-columns: 1fr;
+
+        gap: 10px;
+
+        margin-top: 16px;
+
     }
 
     .membership-price-option {
+
         justify-content: center;
+
     }
 
     .membership-price-separator {
+
         width: 100%;
+
+        justify-content: center;
+
     }
 
     .membership-price-separator::before,
+
     .membership-price-separator::after {
+
         flex: 1 1 auto;
+
         width: auto;
     }
+
+   
 }
