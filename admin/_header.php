@@ -187,11 +187,13 @@ function admin_shell_nav_class(
 
             <p class="admin-nav-label">People</p>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('users', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/users.php') ?>"
+            >
                 <i class="fa-solid fa-users" aria-hidden="true"></i>
                 <span>Users</span>
-                <small>Next</small>
-            </span>
+            </a>
 
             <span class="admin-nav-link is-coming">
                 <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
