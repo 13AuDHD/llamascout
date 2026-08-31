@@ -424,3 +424,89 @@
         height: 72px;
     }
 }
+
+/* =========================================================
+   PROFILE VISIBILITY + HANDLE INPUTS
+   ========================================================= */
+
+.community-profile-section-copy {
+    margin: -4px 0 18px;
+    max-width: 760px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.profile-handle-input {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.profile-handle-input > span {
+    padding: 10px 0 10px 12px;
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.profile-handle-input input {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+.profile-handle-input:focus-within {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.profile-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.profile-private-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.profile-private-note > i {
+    margin-top: 3px;
+    font-size: 1.1rem;
+}
+
+.profile-private-note strong,
+.profile-private-note p {
+    margin: 0;
+}
+
+.profile-private-note p {
+    margin-top: 4px;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.public-community-profile-links a > span {
+    display: grid;
+    gap: 2px;
+}
+
+.public-community-profile-links a small {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 800px) {
+    .profile-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
