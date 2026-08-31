@@ -69,6 +69,7 @@ $accountUrl = rtrim(
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/contributor-attribution.css', ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>">
 </head>
 
 <body>
@@ -94,6 +95,16 @@ $accountUrl = rtrim(
             <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-map" aria-hidden="true"></i>
                 <span>Map</span>
+            </a>
+
+            <a href="<?= htmlspecialchars($siteUrl . '/field-guides', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-compass" aria-hidden="true"></i>
+                <span>Guides</span>
+            </a>
+
+            <a href="<?= htmlspecialchars($siteUrl . '/membership', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+                <span>Membership</span>
             </a>
 
             <?php if ($user): ?>
