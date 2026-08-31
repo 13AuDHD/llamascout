@@ -273,11 +273,11 @@ require __DIR__ . '/_header.php';
                     </span>
                 </div>
 
-                <div>
-                    <i class="fa-regular fa-circle" aria-hidden="true"></i>
+                <div class="is-ready">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
                         <strong>Shop + Orders</strong>
-                        Products and fulfillment
+                        Products, orders, fulfillment
                     </span>
                 </div>
 

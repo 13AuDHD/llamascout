@@ -209,19 +209,24 @@ function admin_shell_nav_class(
 
             <p class="admin-nav-label">Commerce</p>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('products', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/products.php') ?>"
+            >
                 <i class="fa-solid fa-shirt" aria-hidden="true"></i>
                 <span>Products</span>
-                <small>Next</small>
-            </span>
+            </a>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('orders', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/orders.php') ?>"
+            >
                 <i class="fa-solid fa-box" aria-hidden="true"></i>
                 <span>Orders</span>
                 <?php if (!empty($adminNavCounts['orders'])): ?>
                     <b><?= (int) $adminNavCounts['orders'] ?></b>
                 <?php endif; ?>
-            </span>
+            </a>
 
 
             <p class="admin-nav-label">Configuration</p>

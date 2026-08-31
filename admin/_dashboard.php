@@ -263,8 +263,8 @@ function admin_dashboard_queue(PDO $db): array
                         2
                     ),
                 'time' => (string) $row['occurred_at'],
-                'href' => '',
-                'action' => 'Orders next',
+                'href' => '/order.php?id=' . (int) $row['id'],
+                'action' => 'Fulfill',
             ];
         }
     } catch (Throwable $exception) {
