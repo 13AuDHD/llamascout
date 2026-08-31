@@ -105,6 +105,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
 
     <link
         rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+    
+    <link
+        rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>"
     >
 
