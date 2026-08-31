@@ -107,20 +107,6 @@ require __DIR__ . '/_header.php';
 </label>
 
 <label>
-    <span>Slug</span>
-    <input
-        type="text"
-        name="slug"
-        maxlength="160"
-        value="<?= moderation_e(
-            (string) ($_POST['slug'] ?? '')
-        ) ?>"
-        placeholder="llama-scout-t-shirt"
-        required
-    >
-</label>
-
-<label>
     <span>Product type</span>
     <input
         type="text"
@@ -150,9 +136,10 @@ require __DIR__ . '/_header.php';
 </div>
 
 <p class="admin-commerce-new-product-note">
-    The product starts as a draft. After creating it,
-    you can add descriptions, pricing, variants,
-    inventory, fulfillment details, and product images.
+    The product starts as a draft. Its URL slug is created
+    automatically from the product name. After creating it,
+    you can add descriptions, pricing, variants, inventory,
+    fulfillment details, and product images.
 </p>
 
 <div class="admin-user-form-actions">

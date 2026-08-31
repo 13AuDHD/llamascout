@@ -100,6 +100,13 @@ function admin_shell_nav_class(
         rel="stylesheet"
         href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>"
     >
+
+    <?php if (!empty($adminNeedsPhotoUploader)): ?>
+        <link
+            rel="stylesheet"
+            href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>"
+        >
+    <?php endif; ?>
 </head>
 
 <body class="admin-body">

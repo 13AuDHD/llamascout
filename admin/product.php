@@ -58,6 +58,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Variant updated.';
+            } elseif ($action === 'add-photos') {
+                $photoToken = trim(
+                    (string) ($_POST['photo_stage_token'] ?? '')
+                );
+
+                $photos = llama_photo_decode_form_photos(
+                    $_POST['photos_json'] ?? '[]'
+                );
+
+                if ($photoToken === '' || !$photos) {
+                    throw new RuntimeException(
+                        'Choose at least one product photo.'
+                    );
+                }
+
+                $added = admin_shop_add_product_photos(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    $photoToken,
+                    $photos
+                );
+
+                $notice =
+                    $added === 1
+                        ? 'Product photo added.'
+                        : $added . ' product photos added.';
+            } elseif ($action === 'set-primary-photo') {
+                admin_shop_set_primary_photo(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    (int) ($_POST['image_id'] ?? 0)
+                );
+
+                $notice = 'Primary product photo updated.';
+            } elseif ($action === 'delete-photo') {
+                admin_shop_delete_product_photo(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    (int) ($_POST['image_id'] ?? 0)
+                );
+
+                $notice = 'Product photo deleted.';
             }
         } catch (Throwable $exception) {
             $error = $exception->getMessage();
@@ -98,6 +143,13 @@ $adminNavCounts = [
 $adminPageTitle = (string) $product['name'];
 $adminPageEyebrow = 'Product Administration';
 $adminActiveNav = 'products';
+$adminNeedsPhotoUploader = true;
+
+$remainingProductPhotos =
+    max(
+        0,
+        20 - count($images)
+    );
 
 require __DIR__ . '/_header.php';
 ?>
@@ -157,17 +209,6 @@ require __DIR__ . '/_header.php';
         name="name"
         maxlength="200"
         value="<?= moderation_e((string) $product['name']) ?>"
-        required
-    >
-</label>
-
-<label>
-    <span>Slug</span>
-    <input
-        type="text"
-        name="slug"
-        maxlength="160"
-        value="<?= moderation_e((string) $product['slug']) ?>"
         required
     >
 </label>
@@ -456,7 +497,7 @@ require __DIR__ . '/_header.php';
 
 <aside class="admin-user-detail-side">
 
-<section class="admin-panel">
+<section class="admin-panel admin-commerce-media-panel">
 
 <header class="admin-panel-header">
     <div>
@@ -465,48 +506,129 @@ require __DIR__ . '/_header.php';
     </div>
 
     <span>
-        Image manager next
+        <?= number_format(count($images)) ?> of 20
     </span>
 </header>
 
-<?php if (!$images): ?>
-<div class="admin-empty-state">
-    <p>No product images.</p>
-</div>
-<?php else: ?>
+<?php if ($images): ?>
 
 <div class="admin-commerce-image-grid">
 
 <?php foreach ($images as $image): ?>
-<figure>
-    <img
-        src="<?= moderation_e(
-            admin_shop_image_url(
-                (string) $image['image_url'],
-                $siteUrl
-            )
-        ) ?>"
-        alt="<?= moderation_e(
-            (string) (
-                $image['alt_text']
-                ?: $product['name']
-            )
-        ) ?>"
-        loading="lazy"
-    >
 
-    <?php if ((int) $image['is_primary'] === 1): ?>
-        <figcaption>Primary</figcaption>
-    <?php endif; ?>
-</figure>
+<article class="admin-commerce-image-card">
+
+<div class="admin-commerce-image-preview">
+
+<img
+    src="<?= moderation_e(
+        admin_shop_image_url(
+            (string) $image['image_url'],
+            $siteUrl
+        )
+    ) ?>"
+    alt="<?= moderation_e(
+        (string) (
+            $image['alt_text']
+            ?: $product['name']
+        )
+    ) ?>"
+    loading="lazy"
+>
+
+<?php if ((int) $image['is_primary'] === 1): ?>
+    <span class="admin-commerce-primary-badge">
+        Primary
+    </span>
+<?php endif; ?>
+
+</div>
+
+<div class="admin-commerce-image-actions">
+
+<?php if ((int) $image['is_primary'] !== 1): ?>
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="set-primary-photo">
+
+    <button class="admin-button is-muted" type="submit">
+        Make primary
+    </button>
+</form>
+<?php endif; ?>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="delete-photo">
+
+    <button class="admin-button admin-commerce-delete-photo" type="submit">
+        Delete
+    </button>
+</form>
+
+</div>
+
+</article>
+
 <?php endforeach; ?>
 
+</div>
+
+<?php else: ?>
+
+<div class="admin-empty-state admin-commerce-photo-empty">
+    <i class="fa-regular fa-images" aria-hidden="true"></i>
+    <h3>No product images.</h3>
+    <p>Add fresh product photos below.</p>
+</div>
+
+<?php endif; ?>
+
+
+<?php if ($remainingProductPhotos > 0): ?>
+
+<form
+    class="admin-commerce-photo-upload-form"
+    method="post"
+>
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+<input type="hidden" name="shop_admin_action" value="add-photos">
+<input type="hidden" name="photo_stage_token" value="">
+<input type="hidden" name="photos_json" value="[]">
+
+<div
+    data-photo-uploader
+    data-photo-context="shop-products"
+    data-photo-max="<?= (int) $remainingProductPhotos ?>"
+    data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
+    data-photo-endpoint="/photo-upload.php"
+    data-photo-title="Add product photos"
+    data-photo-help="Add up to <?= (int) $remainingProductPhotos ?> more product photo<?= $remainingProductPhotos === 1 ? '' : 's' ?>. Photos are resized and location metadata is removed before storage."
+></div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Add photos to product
+    </button>
+</div>
+
+</form>
+
+<?php else: ?>
+
+<div class="admin-commerce-photo-limit">
+    This product already has the maximum of 20 photos.
 </div>
 
 <?php endif; ?>
 
 </section>
-
 
 <section class="admin-panel">
 
