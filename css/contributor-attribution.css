@@ -1,0 +1,185 @@
+/* =========================================================
+   PLACE CONTRIBUTOR ATTRIBUTION
+   ========================================================= */
+
+.place-contributors {
+    display: grid;
+    gap: 14px;
+
+    margin-top: 18px;
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.place-contributors-heading {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.place-contributors-heading h2,
+.place-contributors-heading p {
+    margin: 0;
+}
+
+.place-contributors-heading h2 {
+    margin-top: 2px;
+    font-size: 1rem;
+}
+
+.place-contributors-eyebrow {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.place-contributor-list {
+    display: grid;
+    gap: 10px;
+}
+
+.place-contributor-card {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.place-contributor-avatar {
+    display: block;
+    width: 52px;
+    height: 52px;
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--surface);
+}
+
+.place-contributor-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.place-contributor-copy {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.place-contributor-name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 9px;
+}
+
+.place-contributor-name {
+    color: var(--text);
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.place-contributor-name[href]:hover,
+.place-contributor-name[href]:focus-visible {
+    text-decoration: underline;
+}
+
+.place-contributor-username,
+.place-contributor-role,
+.place-contributors-privacy-note {
+    color: var(--text-muted);
+}
+
+.place-contributor-username {
+    font-size: 0.82rem;
+}
+
+.place-contributor-role {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.place-contributor-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.place-contributor-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.place-contributor-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 3px;
+}
+
+.place-contributor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    min-height: 26px;
+    padding: 3px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.place-contributor-badge img {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.place-contributors-privacy-note {
+    margin: 0;
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+    .place-contributors {
+        padding: 14px;
+    }
+
+    .place-contributor-card {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    .place-contributor-avatar {
+        width: 44px;
+        height: 44px;
+    }
+}
