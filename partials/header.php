@@ -24,6 +24,18 @@ $accountUrl = rtrim(
 
     <title><?= htmlspecialchars($pageTitle ?? 'Llama Scout', ENT_QUOTES, 'UTF-8') ?></title>
 
+    <?php if (!empty($pageDescription)): ?>
+        <meta name="description" content="<?= htmlspecialchars((string) $pageDescription, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+
+    <?php if (!empty($pageRobots)): ?>
+        <meta name="robots" content="<?= htmlspecialchars((string) $pageRobots, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+
+    <?php if (!empty($canonicalUrl)): ?>
+        <link rel="canonical" href="<?= htmlspecialchars((string) $canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+
     <script>
         (function () {
             try {
@@ -81,11 +93,6 @@ $accountUrl = rtrim(
             <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-map" aria-hidden="true"></i>
                 <span>Map</span>
-            </a>
-
-            <a href="<?= htmlspecialchars($siteUrl . '/community.php', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-people-group" aria-hidden="true"></i>
-                <span>Community</span>
             </a>
 
             <?php if ($user): ?>
