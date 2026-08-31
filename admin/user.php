@@ -161,6 +161,7 @@ $adminNavCounts = [
     'updates' => $stats['updates'],
     'reports' => $stats['reports'],
     'orders' => $stats['orders'],
+    'scout_reviews' => $stats['scout_reviews'],
 ];
 
 $adminPageTitle =

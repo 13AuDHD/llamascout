@@ -195,11 +195,16 @@ function admin_shell_nav_class(
                 <span>Users</span>
             </a>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('scouts', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/scouts.php') ?>"
+            >
                 <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
                 <span>Scouts</span>
-                <small>Next</small>
-            </span>
+                <?php if (!empty($adminNavCounts['scout_reviews'])): ?>
+                    <b><?= (int) $adminNavCounts['scout_reviews'] ?></b>
+                <?php endif; ?>
+            </a>
 
 
             <p class="admin-nav-label">Commerce</p>
@@ -221,11 +226,13 @@ function admin_shell_nav_class(
 
             <p class="admin-nav-label">Configuration</p>
 
-            <span class="admin-nav-link is-coming">
+            <a
+                class="<?= admin_shell_nav_class('policies', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/policies.php') ?>"
+            >
                 <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
                 <span>Policies</span>
-                <small>Next</small>
-            </span>
+            </a>
 
             <span class="admin-nav-link is-coming">
                 <i class="fa-solid fa-gears" aria-hidden="true"></i>
