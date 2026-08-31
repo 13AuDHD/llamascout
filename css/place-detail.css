@@ -488,66 +488,71 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
 
 /* =========================================================
    SCOUT REPORT CARD ALIGNMENT
-   Keep every label/value aligned on the left.
-   Icons and rating dots occupy the same right-side visual area.
    ========================================================= */
 
-.scout-report-item {
-    min-width: 0;
-}
-
-.scout-report-value-item,
-.scout-report-rating-item {
+.scout-report-value-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
+    gap: 14px;
     align-items: center;
 }
 
-.scout-report-value-content,
-.scout-rating-content {
+.scout-report-value-content {
     min-width: 0;
-    display: grid;
-    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     text-align: left;
 }
 
-.scout-report-value-content > span,
-.scout-rating-content > span {
+.scout-report-value-content span {
     display: block;
 }
 
-.scout-report-value-content > strong,
-.scout-rating-content > strong {
+.scout-report-value-content strong {
     display: block;
+    margin-top: 3px;
 }
 
 .scout-report-value-icon {
-    width: 92px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     justify-self: end;
-    font-size: 1.28rem;
+    align-self: center;
+
+    width: 30px;
+
+    font-size: 1.25rem;
     text-align: center;
 }
 
-.scout-rating-dots {
-    width: 92px;
-    justify-self: end;
-    justify-content: center;
-    margin: 0;
+
+/* Rating cards already have the correct structure.
+   Just make sure their text stays left and dots stay right. */
+
+.scout-report-rating-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
 }
 
-@media (max-width: 600px) {
-    .scout-report-value-item,
-    .scout-report-rating-item {
-        grid-template-columns: minmax(0, 1fr) 84px;
-        gap: 12px;
-    }
+.scout-rating-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
 
-    .scout-report-value-icon,
-    .scout-rating-dots {
-        width: 84px;
-    }
+.scout-rating-content span {
+    display: block;
+}
+
+.scout-rating-content strong {
+    display: block;
+    margin-top: 3px;
+}
+
+.scout-rating-dots {
+    justify-self: end;
+    margin: 0;
 }
