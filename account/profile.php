@@ -2,2181 +2,338 @@
 
 declare(strict_types=1);
 
-
-require_once
-    dirname(__DIR__)
-    . '/app/auth.php';
-
-require_once
-    dirname(__DIR__)
-    . '/app/mail.php';
-
-require_once
-    dirname(__DIR__)
-    . '/app/username-policy.php';
-
-require_once
-    dirname(__DIR__)
-    . '/app/timezone.php';
-
-require_once
-    dirname(__DIR__)
-    . '/app/community-profiles.php';
-
-require_once dirname(__DIR__) . '/app/photo-upload.php';
-require_once dirname(__DIR__) . '/app/photo-staging.php';
-
+require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 require_login();
 
-start_llama_session();
+$db = db();
+$user = current_user();
+$userId = (int) ($user['id'] ?? 0);
 
+llama_ensure_community_profile($db, $userId);
 
-$db =
-    db();
-
-$user =
-    current_user();
-
-$userId =
-    (int) (
-        $user['id']
-        ?? 0
-    );
-
-
-llama_ensure_community_profile(
-    $db,
-    $userId
-);
-
-
-/* =========================================================
-   CSRF
-   ========================================================= */
-
-if (
-    empty(
-        $_SESSION[
-            'profile_image_csrf'
-        ]
-    )
-) {
-
-    $_SESSION[
-        'profile_image_csrf'
-    ] =
-        bin2hex(
-            random_bytes(
-                32
-            )
-        );
+if (empty($_SESSION['community_profile_csrf'])) {
+    $_SESSION['community_profile_csrf'] = bin2hex(random_bytes(32));
+}
+if (empty($_SESSION['profile_image_csrf'])) {
+    $_SESSION['profile_image_csrf'] = bin2hex(random_bytes(32));
 }
 
+$profileCsrf = (string) $_SESSION['community_profile_csrf'];
+$profileImageCsrf = (string) $_SESSION['profile_image_csrf'];
+$errors = [];
+$success = '';
 
-$profileImageCsrf =
-    (string)
-    $_SESSION[
-        'profile_image_csrf'
-    ];
-
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function e(
-    mixed $value
-): string {
-
-    return htmlspecialchars(
-        (string) $value,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+if (!empty($_SESSION['profile_flash_error'])) {
+    $errors[] = (string) $_SESSION['profile_flash_error'];
+    unset($_SESSION['profile_flash_error']);
+}
+if (!empty($_SESSION['profile_flash_success'])) {
+    $success = (string) $_SESSION['profile_flash_success'];
+    unset($_SESSION['profile_flash_success']);
 }
 
-function social_profile_url(
-    string $platform,
-    string $handle
-): string {
-
-    $handle =
-        trim(
-            $handle
-        );
-
-
-    if (
-        $handle === ''
-    ) {
-        return '';
-    }
-
-
-    $handle =
-        ltrim(
-            $handle,
-            '@'
-        );
-
-
-    return match (
-        $platform
-    ) {
-
-        'instagram' =>
-            'https://www.instagram.com/'
-            . rawurlencode(
-                $handle
-            ),
-
-        'facebook' =>
-            'https://www.facebook.com/'
-            . rawurlencode(
-                $handle
-            ),
-
-        'bluesky' =>
-            'https://bsky.app/profile/'
-            . rawurlencode(
-                $handle
-            ),
-
-        'youtube' =>
-            'https://www.youtube.com/@'
-            . rawurlencode(
-                $handle
-            ),
-
-        'tiktok' =>
-            'https://www.tiktok.com/@'
-            . rawurlencode(
-                $handle
-            ),
-
-        default =>
-            '',
-    };
-}
-
-function social_profile_handle(
-    string $platform,
-    string $url
-): string {
-
-    $url =
-        trim(
-            $url
-        );
-
-
-    if (
-        $url === ''
-    ) {
-        return '';
-    }
-
-
-    $path =
-        parse_url(
-            $url,
-            PHP_URL_PATH
-        );
-
-
-    if (
-        !is_string(
-            $path
-        )
-    ) {
-        return $url;
-    }
-
-
-    $path =
-        trim(
-            $path,
-            '/'
-        );
-
-
-    if (
-        $platform === 'bluesky'
-        &&
-        str_starts_with(
-            $path,
-            'profile/'
-        )
-    ) {
-
-        $path =
-            substr(
-                $path,
-                8
-            );
-    }
-
-
-    $handle =
-        basename(
-            $path
-        );
-
-
-    return
-        ltrim(
-            rawurldecode(
-                $handle
-            ),
-            '@'
-        );
-}
-
-
-function create_email_verification(
-    PDO $db,
-    array $user
-): bool {
-
-    $db->beginTransaction();
-
-
-    try {
-
-        $expireStmt =
-            $db->prepare(
-                '
-                UPDATE email_verifications
-
-                SET used_at =
-                    CURRENT_TIMESTAMP
-
-                WHERE user_id = ?
-                  AND used_at IS NULL
-                '
-            );
-
-
-        $expireStmt->execute([
-            $user['id']
-        ]);
-
-
-        $token =
-            bin2hex(
-                random_bytes(
-                    32
-                )
-            );
-
-
-        $tokenHash =
-            hash(
-                'sha256',
-                $token
-            );
-
-
-        $insertStmt =
-            $db->prepare(
-                '
-                INSERT INTO email_verifications
-                (
-                    user_id,
-                    token_hash,
-                    expires_at
-                )
-
-                VALUES
-                (
-                    ?,
-                    ?,
-                    DATE_ADD(
-                        CURRENT_TIMESTAMP,
-                        INTERVAL 24 HOUR
-                    )
-                )
-                '
-            );
-
-
-        $insertStmt->execute([
-            $user['id'],
-            $tokenHash
-        ]);
-
-
-        $db->commit();
-
-
-        return send_verification_email(
-            $user,
-            $token
-        );
-
-
-    } catch (
-        Throwable $exception
-    ) {
-
-        if (
-            $db->inTransaction()
-        ) {
-
-            $db->rollBack();
-        }
-
-
-        throw $exception;
-    }
-}
-
-
-/* =========================================================
-   INITIAL STATE
-   ========================================================= */
-
-$errors =
-    [];
-
-$success =
-    '';
-
-if (!empty($_SESSION['profile_image_upload_error'])) {
-    $errors[] = (string) $_SESSION['profile_image_upload_error'];
-    unset($_SESSION['profile_image_upload_error']);
-}
-
-if (isset($_GET['photos']) && $_GET['photos'] === 'updated') {
-    $success = 'Profile photos updated.';
-}
-
-$username =
-    (string) (
-        $user['username']
-        ?? ''
-    );
-
-
-$displayName =
-    (string) (
-        $user['display_name']
-        ?? ''
-    );
-
-
-$email =
-    (string) (
-        $user['email']
-        ?? ''
-    );
-
-
-$timezone =
-    llama_user_timezone(
-        $user
-    );
-
-
-$communityProfile =
-    llama_community_profile(
-        $db,
-        $userId
-    );
-
-
-$isPublic =
-    !empty(
-        $communityProfile[
-            'is_public'
-        ]
-    );
-
-
-$bio =
-    (string) (
-        $communityProfile[
-            'bio'
-        ]
-        ?? ''
-    );
-
-
-$location =
-    (string) (
-        $communityProfile[
-            'location'
-        ]
-        ?? ''
-    );
-
-
-$squad =
-    (string) (
-        $communityProfile[
-            'squad'
-        ]
-        ?? ''
-    );
-
-
-$websiteUrl =
-    (string) (
-        $communityProfile[
-            'website_url'
-        ]
-        ?? ''
-    );
-
-
-$instagramUrl =
-    (string) (
-        $communityProfile[
-            'instagram_url'
-        ]
-        ?? ''
-    );
-
-
-$facebookUrl =
-    (string) (
-        $communityProfile[
-            'facebook_url'
-        ]
-        ?? ''
-    );
-
-
-$blueskyUrl =
-    (string) (
-        $communityProfile[
-            'bluesky_url'
-        ]
-        ?? ''
-    );
-
-
-$youtubeUrl =
-    (string) (
-        $communityProfile[
-            'youtube_url'
-        ]
-        ?? ''
-    );
-
-
-$tiktokUrl =
-    (string) (
-        $communityProfile[
-            'tiktok_url'
-        ]
-        ?? ''
-    );
-
-
-$otherSocialUrl =
-    (string) (
-        $communityProfile[
-            'other_social_url'
-        ]
-        ?? ''
-    );
-
-
-$campingStyle =
-    (string) (
-        $communityProfile[
-            'camping_style'
-        ]
-        ?? ''
-    );
-
-
-$favoritePlaces =
-    (string) (
-        $communityProfile[
-            'favorite_places'
-        ]
-        ?? ''
-    );
-
-
-$favoriteCampingMusic =
-    (string) (
-        $communityProfile[
-            'favorite_camping_music'
-        ]
-        ?? ''
-    );
-
-
-/* =========================================================
-   SAVE PROFILE
-   ========================================================= */
-
-if (
-    $_SERVER[
-        'REQUEST_METHOD'
-    ] === 'POST'
-) {
-
-    $username =
-        strtolower(
-            trim(
-                (string) (
-                    $_POST[
-                        'username'
-                    ]
-                    ?? ''
-                )
-            )
-        );
-
-
-    $displayName =
-        trim(
-            (string) (
-                $_POST[
-                    'display_name'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $email =
-        strtolower(
-            trim(
-                (string) (
-                    $_POST[
-                        'email'
-                    ]
-                    ?? ''
-                )
-            )
-        );
-
-
-    $timezone =
-        trim(
-            (string) (
-                $_POST[
-                    'timezone'
-                ]
-                ?? llama_default_timezone()
-            )
-        );
-
-
-    $isPublic =
-        isset(
-            $_POST[
-                'is_public'
-            ]
-        );
-
-
-    $bio =
-        trim(
-            (string) (
-                $_POST[
-                    'bio'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $location =
-        trim(
-            (string) (
-                $_POST[
-                    'location'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $squad =
-        trim(
-            (string) (
-                $_POST[
-                    'squad'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $websiteUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'website_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $instagramUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'instagram_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $facebookUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'facebook_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $blueskyUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'bluesky_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $youtubeUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'youtube_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $tiktokUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'tiktok_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $otherSocialUrl =
-        trim(
-            (string) (
-                $_POST[
-                    'other_social_url'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $campingStyle =
-        trim(
-            (string) (
-                $_POST[
-                    'camping_style'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $favoritePlaces =
-        trim(
-            (string) (
-                $_POST[
-                    'favorite_places'
-                ]
-                ?? ''
-            )
-        );
-
-
-    $favoriteCampingMusic =
-        trim(
-            (string) (
-                $_POST[
-                    'favorite_camping_music'
-                ]
-                ?? ''
-            )
-        );
-
-    
-        $instagramUrl =
-        social_profile_url(
-            'instagram',
-            $instagramUrl
-        );
-
-
-    $facebookUrl =
-        social_profile_url(
-            'facebook',
-            $facebookUrl
-        );
-
-
-    $blueskyUrl =
-        social_profile_url(
-            'bluesky',
-            $blueskyUrl
-        );
-
-
-    $youtubeUrl =
-        social_profile_url(
-            'youtube',
-            $youtubeUrl
-        );
-
-
-    $tiktokUrl =
-        social_profile_url(
-            'tiktok',
-            $tiktokUrl
-        );
-
-    /* =====================================================
-       VALIDATION
-       ===================================================== */
-
-    $usernamePolicy =
-        username_policy_check(
-            $username
-        );
-
-
-    if (
-        !$usernamePolicy[
-            'allowed'
-        ]
-    ) {
-
-        $errors[] =
-            $usernamePolicy[
-                'reason'
-            ];
-    }
-
-
-    if (
-        $displayName === ''
-        ||
-        mb_strlen(
-            $displayName
-        ) < 2
-    ) {
-
-        $errors[] =
-            'Enter a display name.';
-    }
-
-
-    if (
-        mb_strlen(
-            $displayName
-        ) > 100
-    ) {
-
-        $errors[] =
-            'Display name must be 100 characters or fewer.';
-    }
-
-
-    if (
-        !filter_var(
-            $email,
-            FILTER_VALIDATE_EMAIL
-        )
-    ) {
-
-        $errors[] =
-            'Enter a valid email address.';
-    }
-
-
-    if (
-        !llama_timezone_is_valid(
-            $timezone
-        )
-    ) {
-
-        $errors[] =
-            'Choose a valid time zone.';
-    }
-
-
-    if (
-        mb_strlen(
-            $bio
-        ) > 1000
-    ) {
-
-        $errors[] =
-            'Your bio must be 1,000 characters or fewer.';
-    }
-
-
-    if (
-        mb_strlen(
-            $location
-        ) > 150
-    ) {
-
-        $errors[] =
-            'Location must be 150 characters or fewer.';
-    }
-
-
-    if (
-        mb_strlen(
-            $squad
-        ) > 150
-    ) {
-
-        $errors[] =
-            'Squad or club name must be 150 characters or fewer.';
-    }
-
-
-    $urlFields = [
-
-        'Website' =>
-            $websiteUrl,
-
-        'Other social link' =>
-            $otherSocialUrl,
-
-    ];
-
-
-    foreach (
-        $urlFields
-        as $label =>
-        $url
-    ) {
-
-        if (
-            $url !== ''
-            &&
-            !filter_var(
-                $url,
-                FILTER_VALIDATE_URL
-            )
-        ) {
-
-            $errors[] =
-                $label
-                .
-                ' must be a complete URL.';
-        }
-    }
-
-
-    /* =====================================================
-       DUPLICATE USERNAME
-       ===================================================== */
-
-    if (
-        !$errors
-    ) {
-
-        $stmt =
-            $db->prepare(
-                '
-                SELECT id
-
-                FROM users
-
-                WHERE LOWER(username) = ?
-                  AND id != ?
-
-                LIMIT 1
-                '
-            );
-
-
-        $stmt->execute([
-            $username,
-            $userId
-        ]);
-
-
-        if (
-            $stmt->fetch()
-        ) {
-
-            $errors[] =
-                'That username is already taken.';
-        }
-    }
-
-
-    /* =====================================================
-       DUPLICATE EMAIL
-       ===================================================== */
-
-    if (
-        !$errors
-    ) {
-
-        $stmt =
-            $db->prepare(
-                '
-                SELECT id
-
-                FROM users
-
-                WHERE LOWER(email) = ?
-                  AND id != ?
-
-                LIMIT 1
-                '
-            );
-
-
-        $stmt->execute([
-            $email,
-            $userId
-        ]);
-
-
-        if (
-            $stmt->fetch()
-        ) {
-
-            $errors[] =
-                'An account already exists with that email address.';
-        }
-    }
-
-
-    /* =====================================================
-       SAVE
-       ===================================================== */
-
-    if (
-        !$errors
-    ) {
-
-        $oldEmail =
-            strtolower(
-                (string) (
-                    $user[
-                        'email'
-                    ]
-                    ?? ''
-                )
-            );
-
-
-        $emailChanged =
-            $email !==
-            $oldEmail;
-
-
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
+    $submittedCsrf = (string) ($_POST['csrf_token'] ?? '');
+
+    if ($submittedCsrf === '' || !hash_equals($profileCsrf, $submittedCsrf)) {
+        $errors[] = 'Your session expired. Reload the page and try again.';
+    } else {
         try {
-
-            $db->beginTransaction();
-
-
-            if (
-                $emailChanged
-            ) {
-
-                $stmt =
-                    $db->prepare(
-                        '
-                        UPDATE users
-
-                        SET
-                            username = ?,
-                            display_name = ?,
-                            email = ?,
-                            timezone = ?,
-                            email_verified_at = NULL
-
-                        WHERE id = ?
-                        '
-                    );
-
-
-                $stmt->execute([
-                    $username,
-                    $displayName,
-                    $email,
-                    $timezone,
-                    $userId
-                ]);
-
-
-            } else {
-
-                $stmt =
-                    $db->prepare(
-                        '
-                        UPDATE users
-
-                        SET
-                            username = ?,
-                            display_name = ?,
-                            timezone = ?
-
-                        WHERE id = ?
-                        '
-                    );
-
-
-                $stmt->execute([
-                    $username,
-                    $displayName,
-                    $timezone,
-                    $userId
-                ]);
-            }
-
-
-            $profileStmt =
-                $db->prepare(
-                    '
-                    UPDATE community_profiles
-
-                    SET
-                        is_public = ?,
-                        bio = ?,
-                        location = ?,
-                        squad = ?,
-                        website_url = ?,
-                        instagram_url = ?,
-                        facebook_url = ?,
-                        bluesky_url = ?,
-                        youtube_url = ?,
-                        tiktok_url = ?,
-                        other_social_url = ?,
-                        camping_style = ?,
-                        favorite_places = ?,
-                        favorite_camping_music = ?
-
-                    WHERE user_id = ?
-                    '
-                );
-
-
-            $profileStmt->execute([
-
-                $isPublic
-                    ? 1
-                    : 0,
-
-                $bio !== ''
-                    ? $bio
-                    : null,
-
-                $location !== ''
-                    ? $location
-                    : null,
-
-                $squad !== ''
-                    ? $squad
-                    : null,
-
-                $websiteUrl !== ''
-                    ? $websiteUrl
-                    : null,
-
-                $instagramUrl !== ''
-                    ? $instagramUrl
-                    : null,
-
-                $facebookUrl !== ''
-                    ? $facebookUrl
-                    : null,
-
-                $blueskyUrl !== ''
-                    ? $blueskyUrl
-                    : null,
-
-                $youtubeUrl !== ''
-                    ? $youtubeUrl
-                    : null,
-
-                $tiktokUrl !== ''
-                    ? $tiktokUrl
-                    : null,
-
-                $otherSocialUrl !== ''
-                    ? $otherSocialUrl
-                    : null,
-
-                $campingStyle !== ''
-                    ? $campingStyle
-                    : null,
-
-                $favoritePlaces !== ''
-                    ? $favoritePlaces
-                    : null,
-
-                $favoriteCampingMusic !== ''
-                    ? $favoriteCampingMusic
-                    : null,
-
-                $userId
-
-            ]);
-
-
-            $db->commit();
-
-
-            $user =
-                current_user();
-
-
-            if (
-                $emailChanged
-            ) {
-
-                $emailSent =
-                    create_email_verification(
-                        $db,
-                        $user
-                    );
-
-
-                $success =
-                    $emailSent
-                        ? 'Profile updated. We sent a verification link to your new email address.'
-                        : 'Profile updated, but the verification email could not be sent.';
-
-            } else {
-
-                $success =
-                    'Your profile has been updated.';
-            }
-
-
-        } catch (
-            Throwable $exception
-        ) {
-
-            if (
-                $db->inTransaction()
-            ) {
-
-                $db->rollBack();
-            }
-
-
-            error_log(
-                'Llama Scout profile update error: '
-                .
-                $exception
-                    ->getMessage()
-            );
-
-
-            $errors[] =
-                'Your profile could not be updated. Please try again.';
+            llama_profile_save($db, $userId, $_POST);
+            $success = 'Your Community Profile has been updated.';
+        } catch (Throwable $exception) {
+            error_log('Llama Scout community profile save error for user #' . $userId . ': ' . $exception->getMessage());
+            $errors[] = $exception instanceof InvalidArgumentException
+                ? $exception->getMessage()
+                : 'Your profile could not be updated. Please try again.';
         }
     }
 }
 
+$profile = llama_community_profile($db, $userId);
+$profileImages = llama_community_profile_images($db, $userId);
+$primaryImage = llama_primary_profile_image($db, $userId);
+$userBadges = llama_user_badges($db, $userId);
 
-/* =========================================================
-   REFRESH STATE
-   ========================================================= */
+$config = llama_config();
+$siteUrl = rtrim((string) ($config['app']['url'] ?? 'https://llamascout.com'), '/');
+$username = (string) ($user['username'] ?? '');
+$displayName = (string) ($user['display_name'] ?? $username ?: 'Llama Scout Member');
 
-$user =
-    current_user();
+function profile_e(mixed $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
 
+function profile_value(array $profile, string $key): string
+{
+    return (string) ($profile[$key] ?? '');
+}
 
-$username =
-    (string) (
-        $user[
-            'username'
-        ]
-        ?? $username
-    );
-
-
-$displayName =
-    (string) (
-        $user[
-            'display_name'
-        ]
-        ?? $displayName
-    );
-
-
-$email =
-    (string) (
-        $user[
-            'email'
-        ]
-        ?? $email
-    );
-
-
-$timezone =
-    llama_user_timezone(
-        $user
-    );
-
-
-$isVerified =
-    !empty(
-        $user[
-            'email_verified_at'
-        ]
-    );
-
-
-$profileImages =
-    llama_community_profile_images(
-        $db,
-        $userId
-    );
-
-
-$primaryProfileImage =
-    llama_primary_profile_image(
-        $db,
-        $userId
-    );
-
-
-$userBadges =
-    llama_user_badges(
-        $db,
-        $userId
-    );
-
-
-?>
-<!doctype html>
-
-<html lang="en">
-
-<head>
-
-<meta charset="utf-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1"
->
-
-<title>
-  Profile | Llama Scout
-</title>
-
-<meta
-  name="robots"
-  content="noindex,nofollow"
->
-
-<link
-  rel="stylesheet"
-  href="https://llamascout.com/css/style.css"
->
-
-<link
-  rel="stylesheet"
-  href="https://llamascout.com/css/account.css"
->
-
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
->
-
-<link rel="stylesheet" href="https://llamascout.com/css/photo-uploader.css">
-</head>
-
-
-<body class="account-body">
-
-
-<?php
-
-require_once
-    dirname(__DIR__)
-    . '/app/header.php';
-
+$pageTitle = 'Community Profile | Llama Scout';
+require dirname(__DIR__) . '/partials/header.php';
 ?>
 
+<section class="community-profile-editor">
+    <header class="community-profile-editor-header">
+        <div>
+            <p class="account-eyebrow">Community profile</p>
+            <h1><?= profile_e($displayName) ?></h1>
+            <p>Build the profile other Llama Scout members see when they come across your contributions.</p>
+        </div>
 
-<main class="account-page">
+        <div class="community-profile-editor-actions">
+            <a class="place-save-button" href="<?= profile_e($siteUrl . '/profile.php?user=' . rawurlencode($username)) ?>">
+                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                View profile
+            </a>
+            <a class="place-save-button" href="/index.php">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                Account
+            </a>
+        </div>
+    </header>
 
-
-  <a
-    href="/"
-    class="back-link"
-  >
-
-    <i
-      class="fa-solid fa-arrow-left"
-      aria-hidden="true"
-    ></i>
-
-    Back to My Account
-
-  </a>
-
-
-  <section class="account-card">
-
-
-    <h1>
-      Community Profile
-    </h1>
-
-
-    <p class="account-intro">
-
-      Your profile is your identity around
-      the Llama Scout community.
-
-    </p>
-
-
-    <?php if ($success): ?>
-
-      <div
-        class="
-          account-status
-          account-status--success
-        "
-      >
-
-        <?= e($success) ?>
-
-      </div>
-
+    <?php if ($success !== ''): ?>
+        <div class="contribution-message is-success" role="status">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <span><?= profile_e($success) ?></span>
+        </div>
     <?php endif; ?>
-
 
     <?php if ($errors): ?>
-
-      <div
-        class="
-          account-status
-          account-status--error
-        "
-      >
-
-        <ul>
-
-          <?php foreach (
-              $errors
-              as $error
-          ): ?>
-
-            <li>
-              <?= e($error) ?>
-            </li>
-
-          <?php endforeach; ?>
-
-        </ul>
-
-      </div>
-
+        <div class="contribution-message is-error" role="alert">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <div>
+                <?php foreach ($errors as $error): ?>
+                    <p><?= profile_e($error) ?></p>
+                <?php endforeach; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
+    <section class="community-profile-section" aria-labelledby="profile-photos-heading">
+        <div class="community-profile-section-heading">
+            <div>
+                <p class="account-eyebrow">Your face around the herd</p>
+                <h2 id="profile-photos-heading">Profile photos</h2>
+            </div>
+            <span class="account-section-count"><?= count($profileImages) ?>/5</span>
+        </div>
 
-    <!-- ===================================================
-         PROFILE PHOTO
-         =================================================== -->
+        <div class="community-profile-avatar-row">
+            <img
+                class="community-profile-avatar-large"
+                src="<?= profile_e(llama_profile_image_url($primaryImage, $siteUrl)) ?>"
+                alt="Current profile picture"
+            >
+            <div>
+                <strong>Current profile picture</strong>
+                <p>If you do not choose a photo, the default Llama Scout llama is used automatically.</p>
+            </div>
+        </div>
 
-    <section class="community-profile-editor-section">
+        <?php if ($profileImages): ?>
+            <div class="community-profile-image-manager">
+                <?php foreach ($profileImages as $image): ?>
+                    <?php $isPrimary = (int) ($profile['primary_image_id'] ?? 0) === (int) $image['id']; ?>
+                    <article class="community-profile-image-card">
+                        <img
+                            src="<?= profile_e(llama_profile_image_url((string) $image['image_src'], $siteUrl)) ?>"
+                            alt="<?= profile_e($image['alt_text'] ?: 'Profile photo') ?>"
+                        >
+                        <div class="community-profile-image-card-body">
+                            <?php if ($isPrimary): ?>
+                                <span class="community-profile-primary-badge">
+                                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                                    Profile picture
+                                </span>
+                            <?php else: ?>
+                                <form method="post" action="/profile-image-action.php">
+                                    <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                                    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                                    <button class="photo-manager-button" type="submit" name="action" value="primary">
+                                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                                        Make primary
+                                    </button>
+                                </form>
+                            <?php endif; ?>
 
-      <h2>
-        Profile Photos
-      </h2>
-
-
-      <div class="community-profile-avatar-preview">
-
-        <img
-          src="<?= e(
-              $primaryProfileImage
-          ) ?>"
-          alt="Current profile photo"
-          data-profile-avatar
-        >
-
-      </div>
-
-
-      <p class="account-field-note">
-
-        Upload up to five images.
-        Choose any one as your profile photo.
-        If your selected photo is deleted,
-        the default llama takes over.
-
-      </p>
-
-
-      <form
-        id="profile-image-upload-form"
-        method="post"
-        action="/save-profile-images.php"
-      >
-
-        <input
-          type="hidden"
-          name="csrf_token"
-          value="<?= e($profileImageCsrf) ?>"
-        >
-
-        <input type="hidden" name="photo_stage_token" value="">
-        <input type="hidden" name="photos_json" value="[]">
+                            <form method="post" action="/profile-image-action.php">
+                                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                                <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                                <button class="photo-manager-button" type="submit" name="action" value="delete">
+                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (count($profileImages) < 5): ?>
+            <form method="post" action="/save-profile-images.php" class="community-profile-photo-upload-form">
+                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                <input type="hidden" name="photo_stage_token" value="">
+                <input type="hidden" name="photos_json" value="[]">
 
-          <div
-            data-photo-uploader
-            data-photo-context="profile-images"
-            data-photo-max="<?= 5 - count($profileImages) ?>"
-            data-photo-csrf="<?= e(llama_photo_csrf_token()) ?>"
-            data-photo-title="Add profile photos"
-            data-photo-help="Choose up to <?= 5 - count($profileImages) ?> more image<?= (5 - count($profileImages)) === 1 ? '' : 's' ?>. Review and remove anything you do not want before saving."
-          ></div>
+                <div
+                    data-photo-uploader
+                    data-photo-context="profile-images"
+                    data-photo-max="<?= 5 - count($profileImages) ?>"
+                    data-photo-csrf="<?= profile_e(llama_photo_csrf_token()) ?>"
+                    data-photo-endpoint="/photo-upload.php"
+                    data-photo-title="Add profile photos"
+                    data-photo-help="Choose up to <?= 5 - count($profileImages) ?> more. You can remove photos before saving."
+                ></div>
 
-          <button
-            type="submit"
-            class="account-submit"
-          >
-            Save Photos
-          </button>
-
+                <button type="submit" class="contribution-submit">
+                    <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                    Save selected photos
+                </button>
+            </form>
         <?php endif; ?>
-
-      </form>
-
-      <div
-        class="community-profile-image-grid"
-        data-profile-image-grid
-      >
-
-        <?php foreach (
-            $profileImages
-            as $image
-        ): ?>
-
-          <?php
-
-          $isPrimary =
-              (int) (
-                  $communityProfile[
-                      'primary_image_id'
-                  ]
-                  ?? 0
-              )
-              ===
-              (int)
-              $image[
-                  'id'
-              ];
-
-          ?>
-
-
-          <article
-            class="community-profile-image"
-            data-profile-image-id="<?= (int)
-                $image[
-                    'id'
-                ]
-            ?>"
-          >
-
-            <img
-              src="<?= e(
-                  $image[
-                      'image_src'
-                  ]
-              ) ?>"
-              alt="<?= e(
-                  $image[
-                      'alt_text'
-                  ]
-                  ?? 'Profile image'
-              ) ?>"
-            >
-
-
-            <?php if ($isPrimary): ?>
-
-              <strong>
-                Current Profile Photo
-              </strong>
-
-            <?php else: ?>
-
-              <button
-                type="button"
-                data-set-primary-profile-image
-                data-image-id="<?= (int)
-                    $image[
-                        'id'
-                    ]
-                ?>"
-              >
-                Make Profile Photo
-              </button>
-
-            <?php endif; ?>
-
-
-            <button
-              type="button"
-              data-delete-profile-image
-              data-image-id="<?= (int)
-                  $image[
-                      'id'
-                  ]
-              ?>"
-            >
-              Delete
-            </button>
-
-          </article>
-
-        <?php endforeach; ?>
-
-      </div>
-
-
-      <div
-        class="account-status"
-        data-profile-image-status
-        hidden
-      ></div>
-
     </section>
 
+    <section class="community-profile-section" aria-labelledby="profile-badges-heading">
+        <div class="community-profile-section-heading">
+            <div>
+                <p class="account-eyebrow">Recognition</p>
+                <h2 id="profile-badges-heading">Badges</h2>
+            </div>
+            <span class="account-section-count"><?= count($userBadges) ?></span>
+        </div>
 
-    <!-- ===================================================
-         BADGES
-         =================================================== -->
+        <?php if ($userBadges): ?>
+            <div class="community-badge-grid">
+                <?php foreach ($userBadges as $badge): ?>
+                    <article class="community-badge-card">
+                        <span class="community-badge-icon">
+                            <?php if (!empty($badge['image_src'])): ?>
+                                <img src="<?= profile_e(llama_profile_image_url((string) $badge['image_src'], $siteUrl)) ?>" alt="">
+                            <?php else: ?>
+                                <i class="fa-solid <?= profile_e($badge['icon'] ?: 'fa-award') ?>" aria-hidden="true"></i>
+                            <?php endif; ?>
+                        </span>
+                        <div>
+                            <strong><?= profile_e($badge['name']) ?></strong>
+                            <?php if (!empty($badge['description'])): ?>
+                                <p><?= profile_e($badge['description']) ?></p>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="account-empty-state">
+                <i class="fa-solid fa-award" aria-hidden="true"></i>
+                <h3>No badges yet</h3>
+                <p>Badges appear here as you earn community recognition, Scout achievements, and recognized training.</p>
+            </div>
+        <?php endif; ?>
+    </section>
 
-    <section class="community-profile-editor-section">
+    <form method="post" class="community-profile-form">
+        <input type="hidden" name="csrf_token" value="<?= profile_e($profileCsrf) ?>">
 
-      <h2>
-        Badges
-      </h2>
-
-
-      <?php if ($userBadges): ?>
-
-        <div class="community-profile-badge-grid">
-
-          <?php foreach (
-              $userBadges
-              as $badge
-          ): ?>
-
-            <div class="community-profile-badge">
-
-              <i
-                class="fa-solid <?= e(
-                    $badge[
-                        'icon'
-                    ]
-                    ?? 'fa-award'
-                ) ?>"
-                aria-hidden="true"
-              ></i>
-
-              <strong>
-                <?= e(
-                    $badge[
-                        'name'
-                    ]
-                ) ?>
-              </strong>
-
-              <?php if (
-                  !empty(
-                      $badge[
-                          'description'
-                      ]
-                  )
-              ): ?>
-
-                <span>
-                  <?= e(
-                      $badge[
-                          'description'
-                      ]
-                  ) ?>
-                </span>
-
-              <?php endif; ?>
-
+        <section class="community-profile-section">
+            <div class="community-profile-section-heading">
+                <div>
+                    <p class="account-eyebrow">About you</p>
+                    <h2>Profile details</h2>
+                </div>
             </div>
 
-          <?php endforeach; ?>
+            <div class="community-profile-form-grid">
+                <label class="community-profile-field community-profile-field-wide">
+                    <span>Bio</span>
+                    <textarea name="bio" rows="6" maxlength="1000" placeholder="Tell the herd a little about yourself."><?= profile_e(profile_value($profile, 'bio')) ?></textarea>
+                </label>
 
+                <label class="community-profile-field">
+                    <span>General location</span>
+                    <input type="text" name="location" maxlength="150" value="<?= profile_e(profile_value($profile, 'location')) ?>" placeholder="Durango, Colorado">
+                    <small>Keep it general. Do not enter a street address.</small>
+                </label>
+
+                <label class="community-profile-field">
+                    <span>Squad / club</span>
+                    <input type="text" name="squad" maxlength="150" value="<?= profile_e(profile_value($profile, 'squad')) ?>" placeholder="Trail club, camping group, etc.">
+                </label>
+
+                <label class="community-profile-field">
+                    <span>Camping style</span>
+                    <input type="text" name="camping_style" maxlength="255" value="<?= profile_e(profile_value($profile, 'camping_style')) ?>" placeholder="Overlanding, tent camping, vanlife...">
+                </label>
+
+                <label class="community-profile-field">
+                    <span>Favorite kind of place</span>
+                    <input type="text" name="favorite_places" maxlength="255" value="<?= profile_e(profile_value($profile, 'favorite_places')) ?>" placeholder="High desert, alpine forest, riverside...">
+                </label>
+
+                <label class="community-profile-field community-profile-field-wide">
+                    <span>Camping soundtrack</span>
+                    <input type="text" name="favorite_camping_music" maxlength="255" value="<?= profile_e(profile_value($profile, 'favorite_camping_music')) ?>" placeholder="What belongs on the camp playlist?">
+                </label>
+            </div>
+        </section>
+
+        <section class="community-profile-section">
+            <div class="community-profile-section-heading">
+                <div>
+                    <p class="account-eyebrow">Around the internet</p>
+                    <h2>Links</h2>
+                </div>
+            </div>
+
+            <div class="community-profile-form-grid">
+                <?php
+                $links = [
+                    'website_url' => ['Website', 'fa-solid fa-globe'],
+                    'instagram_url' => ['Instagram', 'fa-brands fa-instagram'],
+                    'facebook_url' => ['Facebook', 'fa-brands fa-facebook'],
+                    'bluesky_url' => ['Bluesky', 'fa-solid fa-cloud'],
+                    'youtube_url' => ['YouTube', 'fa-brands fa-youtube'],
+                    'tiktok_url' => ['TikTok', 'fa-brands fa-tiktok'],
+                    'other_social_url' => ['Other link', 'fa-solid fa-link'],
+                ];
+                ?>
+                <?php foreach ($links as $name => [$label, $icon]): ?>
+                    <label class="community-profile-field">
+                        <span><i class="<?= profile_e($icon) ?>" aria-hidden="true"></i> <?= profile_e($label) ?></span>
+                        <input type="url" name="<?= profile_e($name) ?>" maxlength="500" value="<?= profile_e(profile_value($profile, $name)) ?>" placeholder="https://">
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="community-profile-section">
+            <div class="community-profile-section-heading">
+                <div>
+                    <p class="account-eyebrow">Visibility</p>
+                    <h2>Who can see it?</h2>
+                </div>
+            </div>
+
+            <label class="community-profile-visibility-toggle">
+                <input type="checkbox" name="is_public" value="1" <?= !empty($profile['is_public']) ? 'checked' : '' ?>>
+                <span>
+                    <strong>Make my profile public</strong>
+                    <small>Public profiles can be viewed by anyone and can appear in the Community directory. When this is off, signed-in members can still view your profile from community activity.</small>
+                </span>
+            </label>
+        </section>
+
+        <div class="community-profile-save-row">
+            <button type="submit" name="save_profile" value="1" class="contribution-submit">
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                Save Community Profile
+            </button>
         </div>
-
-
-      <?php else: ?>
-
-        <p class="account-field-note">
-
-          No badges yet.
-          Your collection will grow as you
-          contribute, Scout places, and complete
-          recognized outdoor training.
-
-        </p>
-
-      <?php endif; ?>
-
-    </section>
-
-
-    <!-- ===================================================
-         PROFILE FORM
-         =================================================== -->
-
-    <form method="post">
-
-
-      <h2>
-        Account Identity
-      </h2>
-
-
-      <div class="account-field">
-
-        <label for="username">
-          Username
-        </label>
-
-        <input
-          id="username"
-          name="username"
-          type="text"
-          minlength="4"
-          maxlength="16"
-          autocomplete="username"
-          autocapitalize="none"
-          spellcheck="false"
-          value="<?= e(
-              $username
-          ) ?>"
-          required
-        >
-
-        <p class="account-field-note">
-
-          Your profile address will be:
-
-          <strong>
-            llamascout.com/profile/<?= e(
-                $username
-            ) ?>
-          </strong>
-
-        </p>
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="display_name">
-          Display name
-        </label>
-
-        <input
-          id="display_name"
-          name="display_name"
-          type="text"
-          maxlength="100"
-          autocomplete="name"
-          value="<?= e(
-              $displayName
-          ) ?>"
-          required
-        >
-
-      </div>
-
-
-      <!-- =================================================
-           COMMUNITY INFO
-           ================================================= -->
-
-      <h2>
-        About You
-      </h2>
-
-
-      <div class="account-field">
-
-        <label for="bio">
-          Bio
-        </label>
-
-        <textarea
-          id="bio"
-          name="bio"
-          maxlength="1000"
-          rows="6"
-          placeholder="Tell the community a little about yourself..."
-        ><?= e($bio) ?></textarea>
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="location">
-          General location
-        </label>
-
-        <input
-          id="location"
-          name="location"
-          type="text"
-          maxlength="150"
-          placeholder="Durango, Colorado"
-          value="<?= e(
-              $location
-          ) ?>"
-        >
-
-        <p class="account-field-note">
-          Keep this general. Do not use a street address.
-        </p>
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="squad">
-          Squad / Club
-        </label>
-
-        <input
-          id="squad"
-          name="squad"
-          type="text"
-          maxlength="150"
-          placeholder="Your camping, trail, or outdoor group"
-          value="<?= e(
-              $squad
-          ) ?>"
-        >
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="camping_style">
-          Camping style
-        </label>
-
-        <input
-          id="camping_style"
-          name="camping_style"
-          type="text"
-          maxlength="255"
-          placeholder="Overlanding, tent camping, vanlife..."
-          value="<?= e(
-              $campingStyle
-          ) ?>"
-        >
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="favorite_places">
-          Favorite kind of place
-        </label>
-
-        <input
-          id="favorite_places"
-          name="favorite_places"
-          type="text"
-          maxlength="255"
-          placeholder="High desert, alpine forest, riverside..."
-          value="<?= e(
-              $favoritePlaces
-          ) ?>"
-        >
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="favorite_camping_music">
-          Camping soundtrack
-        </label>
-
-        <input
-          id="favorite_camping_music"
-          name="favorite_camping_music"
-          type="text"
-          maxlength="255"
-          placeholder="What belongs on the camp playlist?"
-          value="<?= e(
-              $favoriteCampingMusic
-          ) ?>"
-        >
-
-      </div>
-
-
-      <!-- =================================================
-           LINKS
-           ================================================= -->
-
-      <h2>
-        Around the Internet
-      </h2>
-
-
-      <?php
-
-      $socialFields = [
-
-          'website_url' => [
-              'Website',
-              $websiteUrl,
-              'url',
-              'https://'
-          ],
-
-          'instagram_url' => [
-              'Instagram',
-              social_profile_handle(
-                  'instagram',
-                  $instagramUrl
-              ),
-              'text',
-              'username'
-          ],
-
-          'facebook_url' => [
-              'Facebook',
-              social_profile_handle(
-                  'facebook',
-                  $facebookUrl
-              ),
-              'text',
-              'username'
-          ],
-
-          'bluesky_url' => [
-              'Bluesky',
-              social_profile_handle(
-                  'bluesky',
-                  $blueskyUrl
-              ),
-              'text',
-              'handle.bsky.social'
-          ],
-
-          'youtube_url' => [
-              'YouTube',
-              social_profile_handle(
-                  'youtube',
-                  $youtubeUrl
-              ),
-              'text',
-              'channel handle'
-          ],
-
-          'tiktok_url' => [
-              'TikTok',
-              social_profile_handle(
-                  'tiktok',
-                  $tiktokUrl
-              ),
-              'text',
-              'username'
-          ],
-
-          'other_social_url' => [
-              'Other link',
-              $otherSocialUrl,
-              'url',
-              'https://'
-          ],
-
-      ];
-
-      ?>
-
-
-      <?php foreach (
-          $socialFields
-          as $fieldName =>
-          $fieldData
-      ): ?>
-
-        <div class="account-field">
-
-          <label for="<?= e(
-              $fieldName
-          ) ?>">
-
-            <?= e(
-                $fieldData[0]
-            ) ?>
-
-          </label>
-
-          <input
-            id="<?= e(
-                $fieldName
-            ) ?>"
-            name="<?= e(
-                $fieldName
-            ) ?>"
-            type="<?= e(
-                $fieldData[2]
-            ) ?>"
-            maxlength="500"
-            placeholder="<?= e(
-                $fieldData[3]
-            ) ?>"
-            autocapitalize="none"
-            spellcheck="false"
-            value="<?= e(
-                $fieldData[1]
-            ) ?>"
-          >
-            
-        </div>
-
-      <?php endforeach; ?>
-
-
-      <!-- =================================================
-           VISIBILITY
-           ================================================= -->
-
-      <h2>
-        Profile Visibility
-      </h2>
-
-
-      <label class="community-profile-public-toggle">
-
-        <input
-          type="checkbox"
-          name="is_public"
-          value="1"
-          <?= $isPublic
-              ? 'checked'
-              : ''
-          ?>
-        >
-
-        <span>
-
-          <strong>
-            Public Profile
-          </strong>
-
-          <small>
-
-            When off, only signed-in Llama Scout
-            community members can view your profile.
-
-            When on, anyone with the link can see it
-            and search engines may index it.
-
-          </small>
-
-        </span>
-
-      </label>
-
-
-      <!-- =================================================
-           PRIVATE ACCOUNT SETTINGS
-           ================================================= -->
-
-      <h2>
-        Private Account Settings
-      </h2>
-
-
-      <div class="account-field">
-
-        <label for="email">
-          Email address
-        </label>
-
-        <input
-          id="email"
-          name="email"
-          type="email"
-          maxlength="255"
-          autocomplete="email"
-          value="<?= e(
-              $email
-          ) ?>"
-          required
-        >
-
-        <p class="account-field-note">
-
-          Your email is never displayed
-          on your Community Profile.
-
-        </p>
-
-      </div>
-
-
-      <div class="account-field">
-
-        <label for="timezone">
-          Time zone
-        </label>
-
-        <select
-          id="timezone"
-          name="timezone"
-          required
-        >
-
-          <?php foreach (
-              llama_timezones()
-              as $zone =>
-              $label
-          ): ?>
-
-            <option
-              value="<?= e(
-                  $zone
-              ) ?>"
-              <?= $timezone === $zone
-                  ? 'selected'
-                  : ''
-              ?>
-            >
-
-              <?= e(
-                  $label
-              ) ?>
-
-            </option>
-
-          <?php endforeach; ?>
-
-        </select>
-
-      </div>
-
-
-      <div class="account-email-state">
-
-        <strong>
-
-          Email status:
-
-          <?= $isVerified
-              ? 'Verified'
-              : 'Verification required'
-          ?>
-
-        </strong>
-
-
-        <?php if (
-            !$isVerified
-        ): ?>
-
-          Check your inbox or
-
-          <a href="resend-verification.php">
-            resend verification
-          </a>.
-
-        <?php endif; ?>
-
-      </div>
-
-
-      <button
-        type="submit"
-        class="account-submit"
-      >
-        Save Community Profile
-      </button>
-
-
     </form>
+</section>
 
-
-  </section>
-
-
-</main>
-
-
-<script>
-
-window.LLAMA_PROFILE_IMAGES = {
-    csrfToken:
-        <?= json_encode(
-            $profileImageCsrf
-        ) ?>,
-
-    defaultImage:
-        <?= json_encode(
-            LLAMA_DEFAULT_PROFILE_IMAGE
-        ) ?>
-};
-
-</script>
-
-
-<script
-  src="https://llamascout.com/js/header.js"
-></script>
-
-<script
-  src="https://llamascout.com/js/community-profile-editor.js"
-></script>
-
-<script src="https://llamascout.com/js/photo-uploader.js"></script>
-
-
-</body>
-
-</html>
+<?php require dirname(__DIR__) . '/partials/footer.php'; ?>

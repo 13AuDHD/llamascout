@@ -183,8 +183,12 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <div class="account-action-grid">
             <a class="account-action-card" href="/profile.php">
-                <i class="fa-solid fa-images" aria-hidden="true"></i>
-                <span><strong>Profile photos</strong><small>Upload, choose, and remove profile images.</small></span>
+                <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+                <span><strong>Manage Community Profile</strong><small>Photos, bio, badges, interests, links, and visibility.</small></span>
+            </a>
+            <a class="account-action-card" href="<?= htmlspecialchars($siteUrl . '/profile.php?user=' . rawurlencode((string) ($user['username'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                <span><strong>View My Profile</strong><small>See the profile other community members see.</small></span>
             </a>
         </div>
     </section>
