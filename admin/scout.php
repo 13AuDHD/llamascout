@@ -145,23 +145,15 @@ $activeExtension =
         : null;
 
 $reactivationRequired =
-    max(
-        1,
-        admin_scout_policy_int_value(
-            $db,
-            'reactivation_new_places_required',
-            3
-        )
+    admin_scout_policy_int_value(
+        $db,
+        'reactivation_new_places_required'
     );
 
 $reactivationWindowDays =
-    max(
-        1,
-        admin_scout_policy_int_value(
-            $db,
-            'reactivation_window_days',
-            30
-        )
+    admin_scout_policy_int_value(
+        $db,
+        'reactivation_window_days'
     );
 
 $reactivationAccepted = 0;
