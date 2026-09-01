@@ -19,6 +19,10 @@ function llama_error_ensure_table(PDO $db): void
             line_number INT UNSIGNED NULL,
             trace MEDIUMTEXT NULL,
             context_json MEDIUMTEXT NULL,
+            signature_hash CHAR(64) NULL,
+            occurrence_count INT UNSIGNED NOT NULL DEFAULT 1,
+            first_seen_at DATETIME NULL,
+            last_seen_at DATETIME NULL,
             resolution_status VARCHAR(20) NOT NULL DEFAULT 'open',
             resolved_at DATETIME NULL,
             resolved_by BIGINT UNSIGNED NULL,
@@ -27,7 +31,8 @@ function llama_error_ensure_table(PDO $db): void
             UNIQUE KEY uq_application_errors_reference (reference_code),
             KEY idx_application_errors_created (created_at),
             KEY idx_application_errors_user (user_id),
-            KEY idx_application_errors_action (action)
+            KEY idx_application_errors_action (action),
+            KEY idx_application_errors_signature (signature_hash)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 
@@ -35,9 +40,14 @@ function llama_error_ensure_table(PDO $db): void
     // the table was originally created. MariaDB 10.11 supports IF NOT EXISTS.
     $db->exec(
         "ALTER TABLE application_errors
-            ADD COLUMN IF NOT EXISTS resolution_status VARCHAR(20) NOT NULL DEFAULT 'open' AFTER context_json,
+            ADD COLUMN IF NOT EXISTS signature_hash CHAR(64) NULL AFTER context_json,
+            ADD COLUMN IF NOT EXISTS occurrence_count INT UNSIGNED NOT NULL DEFAULT 1 AFTER signature_hash,
+            ADD COLUMN IF NOT EXISTS first_seen_at DATETIME NULL AFTER occurrence_count,
+            ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL AFTER first_seen_at,
+            ADD COLUMN IF NOT EXISTS resolution_status VARCHAR(20) NOT NULL DEFAULT 'open' AFTER last_seen_at,
             ADD COLUMN IF NOT EXISTS resolved_at DATETIME NULL AFTER resolution_status,
             ADD COLUMN IF NOT EXISTS resolved_by BIGINT UNSIGNED NULL AFTER resolved_at,
+            ADD INDEX IF NOT EXISTS idx_application_errors_signature (signature_hash),
             ADD INDEX IF NOT EXISTS idx_application_errors_resolution (resolution_status),
             ADD INDEX IF NOT EXISTS idx_application_errors_resolved_by (resolved_by)"
     );
@@ -114,6 +124,25 @@ function llama_error_sanitize_context(array $context): array
     return $clean;
 }
 
+function llama_error_signature(
+    Throwable $exception,
+    ?string $action,
+    string $severity,
+    string $path
+): string {
+    $parts = [
+        strtolower(trim($severity)),
+        get_class($exception),
+        trim($exception->getMessage()),
+        trim((string) $action),
+        trim($path),
+        $exception->getFile(),
+        (string) $exception->getLine(),
+    ];
+
+    return hash('sha256', implode("\n", $parts));
+}
+
 function llama_log_exception(
     Throwable $exception,
     ?string $action = null,
@@ -125,6 +154,70 @@ function llama_log_exception(
     $path = llama_error_request_path();
     $userId = llama_error_user_id();
     $context = llama_error_sanitize_context($context);
+    $signature = llama_error_signature($exception, $action, $severity, $path);
+
+    try {
+        $db = db();
+        llama_error_ensure_table($db);
+
+        $existingStmt = $db->prepare(
+            'SELECT id, reference_code
+             FROM application_errors
+             WHERE signature_hash = ?
+               AND resolution_status = "open"
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+        $existingStmt->execute([$signature]);
+        $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $reference = (string) $existing['reference_code'];
+
+            $updateStmt = $db->prepare(
+                'UPDATE application_errors
+                 SET occurrence_count = occurrence_count + 1,
+                     last_seen_at = UTC_TIMESTAMP()
+                 WHERE id = ?'
+            );
+            $updateStmt->execute([(int) $existing['id']]);
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO application_errors
+                    (reference_code, severity, exception_class, message, action,
+                     request_method, request_path, user_id, file_path, line_number,
+                     trace, context_json, signature_hash, occurrence_count,
+                     first_seen_at, last_seen_at)
+                 VALUES
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+            );
+
+            $contextJson = $context
+                ? json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                : null;
+
+            $stmt->execute([
+                $reference,
+                mb_substr($severity, 0, 20),
+                mb_substr(get_class($exception), 0, 190),
+                $exception->getMessage(),
+                $action !== null ? mb_substr($action, 0, 190) : null,
+                $method !== '' ? $method : null,
+                $path !== '' ? $path : null,
+                $userId,
+                mb_substr($exception->getFile(), 0, 500),
+                max(0, $exception->getLine()),
+                $exception->getTraceAsString(),
+                $contextJson !== false ? $contextJson : null,
+                $signature,
+            ]);
+        }
+    } catch (Throwable $loggingFailure) {
+        error_log(
+            '[error-logger-failure] ' . $reference . ' ' .
+            get_class($loggingFailure) . ': ' . $loggingFailure->getMessage()
+        );
+    }
 
     $serverLine = sprintf(
         '[%s] %s %s user=%s path=%s action=%s %s: %s in %s:%d',
@@ -141,44 +234,6 @@ function llama_log_exception(
     );
 
     error_log($serverLine);
-
-    try {
-        $db = db();
-        llama_error_ensure_table($db);
-
-        $stmt = $db->prepare(
-            'INSERT INTO application_errors
-                (reference_code, severity, exception_class, message, action,
-                 request_method, request_path, user_id, file_path, line_number,
-                 trace, context_json)
-             VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-
-        $contextJson = $context
-            ? json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-            : null;
-
-        $stmt->execute([
-            $reference,
-            mb_substr($severity, 0, 20),
-            mb_substr(get_class($exception), 0, 190),
-            $exception->getMessage(),
-            $action !== null ? mb_substr($action, 0, 190) : null,
-            $method !== '' ? $method : null,
-            $path !== '' ? $path : null,
-            $userId,
-            mb_substr($exception->getFile(), 0, 500),
-            max(0, $exception->getLine()),
-            $exception->getTraceAsString(),
-            $contextJson !== false ? $contextJson : null,
-        ]);
-    } catch (Throwable $loggingFailure) {
-        error_log(
-            '[error-logger-failure] ' . $reference . ' ' .
-            get_class($loggingFailure) . ': ' . $loggingFailure->getMessage()
-        );
-    }
 
     return $reference;
 }

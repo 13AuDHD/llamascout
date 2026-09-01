@@ -1133,18 +1133,18 @@ function admin_system_health(
 
         $lastOpenError =
             $db->query(
-                'SELECT reference_code, severity, created_at
+                'SELECT reference_code, severity, created_at, last_seen_at, occurrence_count
                  FROM application_errors
                  WHERE resolution_status = "open"
-                 ORDER BY id DESC
+                 ORDER BY COALESCE(last_seen_at, created_at) DESC, id DESC
                  LIMIT 1'
             )->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $lastError =
             $db->query(
-                'SELECT reference_code, severity, created_at, resolution_status
+                'SELECT reference_code, severity, created_at, last_seen_at, occurrence_count, resolution_status
                  FROM application_errors
-                 ORDER BY id DESC
+                 ORDER BY COALESCE(last_seen_at, created_at) DESC, id DESC
                  LIMIT 1'
             )->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -1165,7 +1165,7 @@ function admin_system_health(
                     ? 'All recorded application errors are resolved. Most recent record: ' .
                         (string) ($lastError['reference_code'] ?? 'unknown') .
                         ' at ' .
-                        (string) ($lastError['created_at'] ?? 'unknown time') .
+                        (string) (($lastError['last_seen_at'] ?? '') ?: ($lastError['created_at'] ?? 'unknown time')) .
                         '.'
                     : 'No application errors have been recorded.';
         } else {
@@ -1180,8 +1180,11 @@ function admin_system_health(
                 'most recent open error: ' .
                 (string) ($lastOpenError['reference_code'] ?? 'unknown') .
                 ' at ' .
-                (string) ($lastOpenError['created_at'] ?? 'unknown time') .
-                '. Review Configuration > Error Log.';
+                (string) (($lastOpenError['last_seen_at'] ?? '') ?: ($lastOpenError['created_at'] ?? 'unknown time')) .
+                ((int) ($lastOpenError['occurrence_count'] ?? 1) > 1
+                    ? ' (' . number_format((int) $lastOpenError['occurrence_count']) . ' occurrences).'
+                    : '.') .
+                ' Review Configuration > Error Log.';
         }
 
         $cards[] =
