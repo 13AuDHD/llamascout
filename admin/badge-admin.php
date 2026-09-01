@@ -599,7 +599,7 @@ require __DIR__ .
                 data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
                 data-photo-endpoint="/photo-upload.php"
                 data-photo-title="Replace badge image"
-                data-photo-help="Upload one image. It becomes /images/badges/<?= moderation_e((string) $badge['slug']) ?>.jpg automatically."
+                data-photo-help="Upload one image. Transparent PNG files stay PNG. Other image types are optimized as JPEG. The file is named from the badge slug automatically."
             ></div>
         </div>
 

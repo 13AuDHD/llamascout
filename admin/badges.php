@@ -449,7 +449,7 @@ require __DIR__ .
                 data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
                 data-photo-endpoint="/photo-upload.php"
                 data-photo-title="Upload badge image"
-                data-photo-help="Upload one image. It will be resized, stripped of location metadata, saved as the badge slug, and used automatically."
+                data-photo-help="Upload one image. Transparent PNG files stay PNG. Other image types use the normal optimized JPEG pipeline. Metadata is stripped and the file is named from the badge slug."
             ></div>
         </div>
 
