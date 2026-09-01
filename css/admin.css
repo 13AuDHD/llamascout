@@ -7392,3 +7392,23 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   PHASE 39: ADMIN DASHBOARD INTEGRATION
+   ========================================================= */
+
+.admin-module-list a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.admin-module-list a:hover,
+.admin-module-list a:focus-visible {
+    background: var(--background);
+}
+
+.admin-module-list a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+}
