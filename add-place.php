@@ -9,20 +9,92 @@ $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $error = null;
 
+$editSubmissionId = max(
+    0,
+    (int) (
+        $_GET['submission']
+        ?? $_POST['submission_id']
+        ?? 0
+    )
+);
+
+$editSubmission = $editSubmissionId > 0
+    ? community_new_place_submission_for_user(
+        $userId,
+        $editSubmissionId
+    )
+    : null;
+
+$isNeedsChanges =
+    $editSubmission
+    && (string) ($editSubmission['status'] ?? '') === 'needs-changes';
+
+if ($editSubmissionId > 0 && !$editSubmission) {
+    http_response_code(404);
+    $error = 'That Place submission could not be found.';
+}
+
+if ($editSubmission && !$isNeedsChanges) {
+    header(
+        'Location: https://account.llamascout.com/contributions.php',
+        true,
+        303
+    );
+    exit;
+}
+
+if (
+    $isNeedsChanges
+    && $_SERVER['REQUEST_METHOD'] !== 'POST'
+) {
+    $_POST = array_merge(
+        community_new_place_form_input(
+            (array) ($editSubmission['data'] ?? [])
+        ),
+        $_POST
+    );
+}
+
+$existingSubmissionPhotos =
+    $isNeedsChanges
+    && is_array($editSubmission['data']['photos'] ?? null)
+        ? $editSubmission['data']['photos']
+        : [];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
         $error = 'Your session expired. Refresh the page and try again.';
     } else {
         try {
-            submit_new_place($userId, $_POST);
-            header(
-                'Location: https://account.llamascout.com/contributions.php?submitted=new',
-                true,
-                303
-            );
+            if ($isNeedsChanges) {
+                community_resubmit_new_place(
+                    $userId,
+                    $editSubmissionId,
+                    $_POST
+                );
+
+                header(
+                    'Location: https://account.llamascout.com/contributions.php?submitted=new-resubmitted',
+                    true,
+                    303
+                );
+            } else {
+                submit_new_place($userId, $_POST);
+
+                header(
+                    'Location: https://account.llamascout.com/contributions.php?submitted=new',
+                    true,
+                    303
+                );
+            }
+
             exit;
+
         } catch (Throwable $e) {
-            $error = $e instanceof InvalidArgumentException
+            $error = (
+                $e instanceof InvalidArgumentException
+                || $e instanceof RuntimeException
+            )
                 ? $e->getMessage()
                 : 'The place could not be submitted. Please try again.';
         }
@@ -161,8 +233,8 @@ require __DIR__ . '/partials/header.php';
 <section class="contribution-page add-place-page">
 
     <header class="contribution-header">
-        <p class="eyebrow">Community contribution</p>
-        <h1>Add a Place</h1>
+        <p class="eyebrow"><?= $isNeedsChanges ? 'Changes requested' : 'Community contribution' ?></p>
+        <h1><?= $isNeedsChanges ? 'Revise Place Submission' : 'Add a Place' ?></h1>
         <p>
             Share what you actually observed. The form is long because outdoor
             places are complicated, but most questions are quick selections.
@@ -178,6 +250,32 @@ require __DIR__ . '/partials/header.php';
         </div>
     </header>
 
+    <?php if ($isNeedsChanges): ?>
+        <div class="contribution-message is-attention add-place-review-request">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+
+            <div>
+                <strong>Moderation requested changes before this Place can be published.</strong>
+
+                <?php if (!empty($editSubmission['review_notes'])): ?>
+                    <span>
+                        <?= nl2br(
+                            add_place_e(
+                                (string) $editSubmission['review_notes']
+                            )
+                        ) ?>
+                    </span>
+                <?php else: ?>
+                    <span>
+                        Review the full form below, make the requested corrections,
+                        and resubmit the same Place for another review.
+                    </span>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+
     <?php if ($error): ?>
         <div class="contribution-message is-error" role="alert">
             <?= add_place_e($error) ?>
@@ -190,6 +288,13 @@ require __DIR__ . '/partials/header.php';
             name="csrf_token"
             value="<?= add_place_e(community_csrf_token()) ?>"
         >
+        <?php if ($isNeedsChanges): ?>
+            <input
+                type="hidden"
+                name="submission_id"
+                value="<?= (int) $editSubmissionId ?>"
+            >
+        <?php endif; ?>
         <input
             type="hidden"
             name="photo_stage_token"
@@ -1043,6 +1148,62 @@ require __DIR__ . '/partials/header.php';
             </summary>
 
             <div class="contribution-section-body">
+                <?php if ($isNeedsChanges && $existingSubmissionPhotos): ?>
+
+                    <div class="add-place-existing-photos">
+                        <strong>Photos already attached</strong>
+                        <p>
+                            Keep useful evidence, remove anything moderation asked
+                            you to replace, and add new photos below if needed.
+                        </p>
+
+                        <div class="add-place-existing-photo-grid">
+                            <?php foreach ($existingSubmissionPhotos as $existingPhoto): ?>
+                                <?php
+                                $existingSrc = is_array($existingPhoto)
+                                    ? trim((string) ($existingPhoto['src'] ?? ''))
+                                    : '';
+                                ?>
+
+                                <?php if ($existingSrc !== ''): ?>
+                                    <label class="add-place-existing-photo">
+                                        <img
+                                            src="<?= add_place_e($existingSrc) ?>"
+                                            alt="<?= add_place_e(
+                                                (string) (
+                                                    $existingPhoto['alt']
+                                                    ?? ''
+                                                )
+                                            ) ?>"
+                                        >
+
+                                        <span>
+                                            <input
+                                                type="checkbox"
+                                                name="remove_existing_photos[]"
+                                                value="<?= add_place_e($existingSrc) ?>"
+                                                <?= in_array(
+                                                    $existingSrc,
+                                                    (array) (
+                                                        $_POST['remove_existing_photos']
+                                                        ?? []
+                                                    ),
+                                                    true
+                                                )
+                                                    ? 'checked'
+                                                    : '' ?>
+                                            >
+                                            Remove this photo
+                                        </span>
+                                    </label>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                <?php endif; ?>
+
+
                 <div
                     data-photo-uploader
                     data-photo-context="add-place"
@@ -1058,7 +1219,7 @@ require __DIR__ . '/partials/header.php';
         <div class="contribution-actions add-place-submit-bar">
             <button class="contribution-submit" type="submit">
                 <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
-                Submit Place for review
+                <?= $isNeedsChanges ? 'Resubmit Place for review' : 'Submit Place for review' ?>
             </button>
 
             <a href="/map.php">Cancel</a>
