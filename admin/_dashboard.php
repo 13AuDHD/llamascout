@@ -18,8 +18,102 @@ function admin_safe_count(
     }
 }
 
+function admin_presence_count(
+    PDO $db,
+    string $cutoffUtc
+): int {
+    try {
+        $stmt =
+            $db->prepare(
+                "SELECT COUNT(*)
+                 FROM users
+                 WHERE status = 'active'
+                   AND last_seen_at IS NOT NULL
+                   AND last_seen_at >= ?"
+            );
+
+        $stmt->execute([
+            $cutoffUtc
+        ]);
+
+        return
+            (int)
+            $stmt->fetchColumn();
+
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout admin presence count error: '
+            .
+            $exception->getMessage()
+        );
+
+        return 0;
+    }
+}
+
+
 function admin_dashboard_stats(PDO $db): array
 {
+    $utc =
+        new DateTimeZone(
+            'UTC'
+        );
+
+    $mountain =
+        new DateTimeZone(
+            'America/Denver'
+        );
+
+    $nowUtc =
+        new DateTimeImmutable(
+            'now',
+            $utc
+        );
+
+    /*
+     * "Today" follows Llama Scout's default Mountain Time,
+     * including daylight-saving changes, then converts that
+     * midnight boundary back to UTC for the database query.
+     */
+    $todayMountain =
+        new DateTimeImmutable(
+            'now',
+            $mountain
+        );
+
+    $todayCutoffUtc =
+        $todayMountain
+            ->setTime(
+                0,
+                0,
+                0
+            )
+            ->setTimezone(
+                $utc
+            )
+            ->format(
+                'Y-m-d H:i:s'
+            );
+
+    $onlineCutoffUtc =
+        $nowUtc
+            ->modify(
+                '-5 minutes'
+            )
+            ->format(
+                'Y-m-d H:i:s'
+            );
+
+    $hourCutoffUtc =
+        $nowUtc
+            ->modify(
+                '-1 hour'
+            )
+            ->format(
+                'Y-m-d H:i:s'
+            );
+
+
     return [
         'new_places' => admin_safe_count(
             $db,
@@ -90,6 +184,24 @@ function admin_dashboard_stats(PDO $db): array
                     'trialing'
                )"
         ),
+
+        'online_now' =>
+            admin_presence_count(
+                $db,
+                $onlineCutoffUtc
+            ),
+
+        'active_hour' =>
+            admin_presence_count(
+                $db,
+                $hourCutoffUtc
+            ),
+
+        'active_today' =>
+            admin_presence_count(
+                $db,
+                $todayCutoffUtc
+            ),
     ];
 }
 

@@ -239,7 +239,27 @@ require __DIR__ . '/_header.php';
                     <dd><?= number_format((int) $stats['paid_members']) ?></dd>
                 </div>
 
+                <div>
+                    <dt>Online Now</dt>
+                    <dd><?= number_format((int) $stats['online_now']) ?></dd>
+                </div>
+
+                <div>
+                    <dt>Active Last Hour</dt>
+                    <dd><?= number_format((int) $stats['active_hour']) ?></dd>
+                </div>
+
+                <div>
+                    <dt>Active Today</dt>
+                    <dd><?= number_format((int) $stats['active_today']) ?></dd>
+                </div>
+
             </dl>
+
+            <p style="margin:0;padding:0 18px 14px;color:var(--text-muted);font-size:.67rem;line-height:1.45;">
+                Online Now = activity within 5 minutes.
+                Active Today begins at midnight Mountain Time.
+            </p>
 
         </section>
 
