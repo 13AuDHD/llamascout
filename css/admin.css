@@ -6537,3 +6537,524 @@ html[data-reduced-motion="true"] .admin-sidebar {
         padding: 9px;
     }
 }
+
+
+/* =========================================================
+   PHASE 36: BADGES + ACHIEVEMENTS
+   ========================================================= */
+
+.admin-badge-stat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+    gap: 9px;
+
+    margin-bottom: 14px;
+}
+
+.admin-badge-stat-grid > div {
+    min-width: 0;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+.admin-badge-stat-grid > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 45%,
+        var(--border)
+    );
+}
+
+.admin-badge-stat-grid span,
+.admin-badge-stat-grid strong {
+    display: block;
+}
+
+.admin-badge-stat-grid span {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    font-weight: 850;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.admin-badge-stat-grid strong {
+    margin-top: 3px;
+
+    font-size: 1rem;
+}
+
+.admin-badge-definition-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+
+    padding: 14px;
+}
+
+.admin-badge-definition-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        42px
+        minmax(0, 1fr);
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+    color: var(--text);
+
+    text-decoration: none;
+}
+
+.admin-badge-definition-card.is-inactive {
+    opacity: .62;
+}
+
+.admin-badge-definition-icon,
+.admin-badge-detail-art {
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+}
+
+.admin-badge-definition-icon {
+    width: 40px;
+    height: 40px;
+
+    color: var(--text-muted);
+}
+
+.admin-badge-definition-icon img,
+.admin-badge-detail-art img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.admin-badge-definition-copy {
+    min-width: 0;
+}
+
+.admin-badge-definition-copy > span {
+    display: block;
+
+    color: var(--text-muted);
+
+    font-size: .57rem;
+    font-weight: 850;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.admin-badge-definition-copy > strong {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: .74rem;
+}
+
+.admin-badge-definition-copy > p {
+    margin: 4px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    line-height: 1.4;
+}
+
+.admin-badge-definition-stats {
+    grid-column: 1 / -1;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.admin-badge-definition-stats span {
+    padding: 3px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    font-weight: 800;
+}
+
+.admin-badge-definition-stats .is-inactive {
+    color: #c95a52;
+}
+
+.admin-badge-definition-form {
+    padding: 14px;
+}
+
+.admin-badge-definition-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.admin-badge-definition-form-grid label,
+.admin-badge-award-form label {
+    min-width: 0;
+
+    display: grid;
+    gap: 5px;
+}
+
+.admin-badge-definition-form-grid label > span,
+.admin-badge-award-form label > span {
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    font-weight: 850;
+}
+
+.admin-badge-definition-form-grid input,
+.admin-badge-definition-form-grid select,
+.admin-badge-definition-form-grid textarea,
+.admin-badge-award-form input,
+.admin-badge-award-form select,
+.admin-badge-award-form textarea,
+.admin-badge-revoke-form input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .68rem;
+}
+
+.admin-badge-definition-form-grid textarea,
+.admin-badge-award-form textarea {
+    resize: vertical;
+}
+
+.admin-badge-definition-form-grid .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-badge-definition-form-grid small {
+    color: var(--text-muted);
+
+    font-size: .57rem;
+    line-height: 1.35;
+}
+
+.admin-badge-active-field {
+    grid-column: 1 / -1;
+
+    display: flex !important;
+    align-items: center;
+    gap: 7px;
+}
+
+.admin-badge-active-field input {
+    width: auto;
+}
+
+.admin-badge-detail-hero {
+    display: grid;
+    grid-template-columns:
+        74px
+        minmax(0, 1fr)
+        auto;
+    gap: 14px;
+    align-items: center;
+
+    margin-bottom: 14px;
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.admin-badge-detail-art {
+    width: 72px;
+    height: 72px;
+
+    color: var(--text-muted);
+
+    font-size: 1.6rem;
+}
+
+.admin-badge-detail-hero > div:nth-child(2) > span {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    font-weight: 850;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-badge-detail-hero h2 {
+    margin: 3px 0 0;
+
+    font-size: 1.05rem;
+}
+
+.admin-badge-detail-hero p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+.admin-badge-detail-counts {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-badge-detail-counts > div {
+    min-width: 82px;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+
+    text-align: center;
+}
+
+.admin-badge-detail-counts span,
+.admin-badge-detail-counts strong {
+    display: block;
+}
+
+.admin-badge-detail-counts span {
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-badge-detail-counts strong {
+    margin-top: 2px;
+
+    font-size: .72rem;
+}
+
+.admin-badge-detail-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        300px;
+    gap: 14px;
+}
+
+.admin-badge-detail-main,
+.admin-badge-detail-side {
+    min-width: 0;
+
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.admin-badge-recipient-list {
+    display: grid;
+}
+
+.admin-badge-recipient-list article {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(190px, 280px);
+    gap: 12px;
+    align-items: start;
+
+    padding: 11px 14px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-badge-recipient-list article:last-child {
+    border-bottom: 0;
+}
+
+.admin-badge-recipient-copy strong,
+.admin-badge-recipient-copy span {
+    display: block;
+}
+
+.admin-badge-recipient-copy strong {
+    font-size: .7rem;
+}
+
+.admin-badge-recipient-copy strong a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.admin-badge-recipient-copy span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .59rem;
+}
+
+.admin-badge-recipient-copy p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.4;
+}
+
+.admin-badge-revoke-form {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-badge-award-form {
+    display: grid;
+    gap: 10px;
+
+    padding: 14px;
+}
+
+.admin-badge-award-form > small {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    line-height: 1.4;
+}
+
+.admin-badge-public-link {
+    padding: 14px;
+}
+
+.admin-user-stat-link {
+    display: inline-block;
+
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .57rem;
+    font-weight: 850;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+
+@media (max-width: 1050px) {
+
+    .admin-badge-definition-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-badge-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-detail-side {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+
+@media (max-width: 720px) {
+
+    .admin-badge-stat-grid,
+    .admin-badge-definition-grid,
+    .admin-badge-detail-side {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-badge-detail-hero {
+        grid-template-columns:
+            58px
+            minmax(0, 1fr);
+    }
+
+    .admin-badge-detail-art {
+        width: 56px;
+        height: 56px;
+    }
+
+    .admin-badge-detail-counts {
+        grid-column: 1 / -1;
+    }
+
+    .admin-badge-recipient-list article {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 520px) {
+
+    .admin-badge-definition-grid,
+    .admin-badge-detail-side,
+    .admin-badge-definition-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-definition-form-grid .is-wide,
+    .admin-badge-active-field {
+        grid-column: auto;
+    }
+}
