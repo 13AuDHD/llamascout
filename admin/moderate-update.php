@@ -78,40 +78,177 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $proposed = $item['proposed'];
 $original = $item['original'];
 $photos = $item['photo_list'];
+
+$definitions =
+    community_place_update_field_definitions();
+
+$groupedChanges = [];
+
+foreach ($proposed as $path => $newValue) {
+    $definition =
+        $definitions[$path]
+        ?? [
+            'label' =>
+                ucwords(
+                    str_replace(
+                        ['.', '_'],
+                        ' ',
+                        $path
+                    )
+                ),
+            'group' => 'Other',
+            'type' => 'text',
+        ];
+
+    $groupedChanges[
+        (string) $definition['group']
+    ][$path] = [
+        'definition' => $definition,
+        'old' => $original[$path] ?? null,
+        'new' => $newValue,
+    ];
+}
+
+function moderate_update_value(
+    mixed $value,
+    string $type
+): string {
+    if ($value === null || $value === '') {
+        return 'Unknown';
+    }
+
+    if ($type === 'bool') {
+        return (int) $value === 1
+            ? 'Yes'
+            : 'No';
+    }
+
+    if ($type === 'rating') {
+        return (string) $value . '/5';
+    }
+
+    return (string) $value;
+}
 ?>
 
 <?php if ($error !== ''): ?>
-    <div class="admin-moderation-notice"><?= moderation_e($error) ?></div>
+    <div class="admin-moderation-notice">
+        <?= moderation_e($error) ?>
+    </div>
 <?php endif; ?>
 
 <div class="admin-moderation-detail">
     <h2><?= moderation_e($item['place_name']) ?></h2>
+
     <p>
-        Submitted by <strong><?= moderation_e($item['display_name'] ?: $item['username']) ?></strong>
-        on <?= moderation_e($item['submitted_at']) ?>.
-        <a href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $item['place_slug']) ?>" target="_blank" rel="noopener">Open live Place</a>
+        Submitted by
+        <strong>
+            <?= moderation_e(
+                $item['display_name']
+                ?: $item['username']
+            ) ?>
+        </strong>
+
+        on
+        <?= moderation_e($item['submitted_at']) ?>.
+
+        <?php if (!empty($item['visited_at'])): ?>
+            Visited
+            <?= moderation_e($item['visited_at']) ?>.
+        <?php endif; ?>
+
+        <a
+            href="https://llamascout.com/place.php?slug=<?= rawurlencode(
+                (string) $item['place_slug']
+            ) ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            Open live Place
+        </a>
     </p>
 
     <?php if (!empty($item['contributor_notes'])): ?>
-        <p><strong>Contributor notes:</strong><br><?= nl2br(moderation_e($item['contributor_notes'])) ?></p>
+        <p>
+            <strong>Contributor notes:</strong><br>
+            <?= nl2br(
+                moderation_e(
+                    $item['contributor_notes']
+                )
+            ) ?>
+        </p>
     <?php endif; ?>
-
-    <?php foreach ($proposed as $field => $newValue): ?>
-        <div class="admin-moderation-field" style="margin-top:12px;">
-            <span><?= moderation_e(ucwords(str_replace('_', ' ', $field))) ?></span>
-            <div class="admin-moderation-change">
-                <div class="admin-moderation-old">
-                    <strong>Original</strong><br>
-                    <?= nl2br(moderation_e($original[$field] ?? '')) ?>
-                </div>
-                <div class="admin-moderation-new">
-                    <strong>Proposed</strong><br>
-                    <?= nl2br(moderation_e($newValue ?? '')) ?>
-                </div>
-            </div>
-        </div>
-    <?php endforeach; ?>
 </div>
+
+
+<?php foreach ($groupedChanges as $group => $changes): ?>
+
+<section class="admin-moderation-detail">
+
+<h2><?= moderation_e($group) ?></h2>
+
+<?php foreach ($changes as $path => $change): ?>
+
+<?php
+$definition =
+    $change['definition'];
+
+$type =
+    (string) (
+        $definition['type']
+        ?? 'text'
+    );
+?>
+
+<div class="admin-moderation-field admin-update-comparison">
+
+<span>
+    <?= moderation_e(
+        (string) (
+            $definition['label']
+            ?? $path
+        )
+    ) ?>
+</span>
+
+<div class="admin-moderation-change">
+
+<div class="admin-moderation-old">
+    <strong>Current when submitted</strong><br>
+
+    <?= nl2br(
+        moderation_e(
+            moderate_update_value(
+                $change['old'],
+                $type
+            )
+        )
+    ) ?>
+</div>
+
+<div class="admin-moderation-new">
+    <strong>Proposed</strong><br>
+
+    <?= nl2br(
+        moderation_e(
+            moderate_update_value(
+                $change['new'],
+                $type
+            )
+        )
+    ) ?>
+</div>
+
+</div>
+
+</div>
+
+<?php endforeach; ?>
+
+</section>
+
+<?php endforeach; ?>
+
 
 <?php if ($photos): ?>
     <div class="admin-moderation-detail">
