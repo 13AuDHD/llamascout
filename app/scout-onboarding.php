@@ -9,7 +9,7 @@ require_once __DIR__ . '/stripe.php';
 
 
 const LLAMA_SCOUT_INVITE_DAYS = 30;
-const LLAMA_SCOUT_TRAINING_VERSION = '1';
+const LLAMA_SCOUT_TRAINING_VERSION = '2';
 
 
 function llama_scout_onboarding_profile(
@@ -1071,23 +1071,29 @@ function llama_scout_complete_training(
 
     foreach (
         [
-            'acknowledged_tools' =>
-                'Scout tools and access',
-            'acknowledged_accuracy' =>
-                'accuracy expectations',
-            'acknowledged_safety' =>
-                'safety expectations',
-            'acknowledged_privacy' =>
-                'privacy expectations',
+            'video_watched' =>
+                'entire Scout training video',
+            'video_confirmed' =>
+                'video completion confirmation',
+            'ack_local_rules' =>
+                'local rules and land-manager requirements',
+            'ack_positive_example' =>
+                'Scout conduct commitment',
+            'ack_no_boosters' =>
+                'reception-testing equipment rule',
+            'ack_accuracy' =>
+                'accuracy commitment',
+            'ack_safety' =>
+                'safety and stewardship commitment',
+            'ack_privilege' =>
+                'Scout privilege and termination terms',
+            'ack_no_employment' =>
+                'volunteer and compensation terms',
         ]
         as
         $key => $label
     ) {
-        if (
-            !isset(
-                $data[$key]
-            )
-        ) {
+        if (!isset($data[$key])) {
             throw new RuntimeException(
                 'Acknowledge the ' .
                 $label .
@@ -1113,10 +1119,13 @@ function llama_scout_complete_training(
 
     try {
         /*
-         * The v2 onboarding uses the complete written orientation
-         * below instead of the unfinished legacy training video.
-         * The historical video fields are satisfied at completion
-         * so the existing schema and readiness checks stay valid.
+         * Training version 2 restores the Scout orientation video.
+         * The page requires the video to reach its end before the
+         * candidate can attest that it was watched. The remaining
+         * acknowledgements are individually required by the POST
+         * validation above. The four historical acknowledgement
+         * columns remain the compact persisted completion summary
+         * used by existing readiness checks.
          */
         $db->prepare(
             'UPDATE scout_training
