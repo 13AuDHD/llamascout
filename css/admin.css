@@ -4312,3 +4312,283 @@ html[data-reduced-motion="true"] .admin-sidebar {
         justify-items: start;
     }
 }
+
+
+/* =========================================================
+   SCOUT REPORT EDITOR
+   ========================================================= */
+
+.admin-place-subsection-title {
+    margin: 22px 0 10px;
+
+    color: var(--text);
+
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-place-subsection-title:first-of-type {
+    margin-top: 0;
+}
+
+.admin-place-report-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.admin-place-report-grid > label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-place-report-grid > label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-report-grid input,
+.admin-place-report-grid select,
+.admin-place-report-grid textarea {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-place-report-grid textarea {
+    resize: vertical;
+}
+
+.admin-place-report-grid .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-day-night-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 16px;
+
+    margin-bottom: 20px;
+}
+
+.admin-place-day-night-grid > section {
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.admin-place-day-night-grid h3 {
+    margin: 0 0 10px;
+
+    font-size: .82rem;
+}
+
+.admin-place-day-night-grid
+.admin-place-report-grid {
+    grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 920px) {
+
+    .admin-place-report-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-place-day-night-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+
+    .admin-place-report-grid,
+    .admin-place-day-night-grid
+    .admin-place-report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-report-grid .is-wide {
+        grid-column: auto;
+    }
+}
+
+
+/* =========================================================
+   PRODUCT OPTIONS + VARIANT BUILDER
+   ========================================================= */
+
+.admin-commerce-options-form,
+.admin-commerce-generator {
+    padding: 16px;
+}
+
+.admin-commerce-option-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.admin-commerce-option-card {
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-commerce-option-number {
+    margin-bottom: 9px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.admin-commerce-option-card label,
+.admin-commerce-generator label {
+    display: grid;
+    gap: 5px;
+
+    margin-top: 9px;
+}
+
+.admin-commerce-option-card label:first-of-type,
+.admin-commerce-generator label:first-child {
+    margin-top: 0;
+}
+
+.admin-commerce-option-card label > span,
+.admin-commerce-generator label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-commerce-option-card input,
+.admin-commerce-option-card textarea,
+.admin-commerce-generator input,
+.admin-commerce-generator select {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-commerce-option-card textarea {
+    resize: vertical;
+}
+
+.admin-commerce-options-note {
+    margin-top: 12px;
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .69rem;
+    line-height: 1.5;
+}
+
+.admin-commerce-generator-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.admin-commerce-generator-grid .is-wide,
+.admin-commerce-variant-grid .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-commerce-variant-title > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    white-space: nowrap;
+}
+
+.admin-commerce-variant-title > label input {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+
+    .admin-commerce-option-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+
+    .admin-commerce-generator-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-commerce-generator-grid .is-wide,
+    .admin-commerce-variant-grid .is-wide {
+        grid-column: auto;
+    }
+}
