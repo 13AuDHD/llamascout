@@ -364,8 +364,8 @@ function llama_master_scout_qualification(
                 'lifetime_points'
             ],
             $pointsRequired,
-            $pointsRequired > 0
-            &&
+            $pointsRequired === 0
+            ||
             (int)
             $summary[
                 'lifetime_points'
@@ -382,8 +382,8 @@ function llama_master_scout_qualification(
                 'new_places'
             ],
             $newPlacesRequired,
-            $newPlacesRequired > 0
-            &&
+            $newPlacesRequired === 0
+            ||
             $counts[
                 'new_places'
             ]
@@ -399,8 +399,8 @@ function llama_master_scout_qualification(
                 'updates'
             ],
             $updatesRequired,
-            $updatesRequired > 0
-            &&
+            $updatesRequired === 0
+            ||
             $counts[
                 'updates'
             ]
@@ -416,8 +416,8 @@ function llama_master_scout_qualification(
                 'corrections'
             ],
             $correctionsRequired,
-            $correctionsRequired > 0
-            &&
+            $correctionsRequired === 0
+            ||
             $counts[
                 'corrections'
             ]
@@ -433,8 +433,8 @@ function llama_master_scout_qualification(
                 'updated_places'
             ],
             $updatedPlacesRequired,
-            $updatedPlacesRequired > 0
-            &&
+            $updatedPlacesRequired === 0
+            ||
             $counts[
                 'updated_places'
             ]
@@ -446,20 +446,20 @@ function llama_master_scout_qualification(
 
 
     /*
-     * A numeric requirement set to zero is intentionally
-     * incomplete policy, not "everyone passes."
+     * Zero means that individual requirement is disabled.
+     * Negative values are invalid policy configuration.
      */
 
     $numericPolicyComplete =
-        $pointsRequired > 0
+        $pointsRequired >= 0
         &&
-        $newPlacesRequired > 0
+        $newPlacesRequired >= 0
         &&
-        $updatesRequired > 0
+        $updatesRequired >= 0
         &&
-        $correctionsRequired > 0
+        $correctionsRequired >= 0
         &&
-        $updatedPlacesRequired > 0;
+        $updatedPlacesRequired >= 0;
 
 
     $allRequirementsMet =

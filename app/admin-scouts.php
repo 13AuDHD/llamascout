@@ -496,44 +496,44 @@ function admin_scout_master_qualification(
             'label' => 'Lifetime points',
             'current' => (int) ($counts['points'] ?? 0),
             'required' => $pointsRequired,
-            'met' => $pointsRequired > 0 && (int) ($counts['points'] ?? 0) >= $pointsRequired,
+            'met' => $pointsRequired === 0 || (int) ($counts['points'] ?? 0) >= $pointsRequired,
         ],
         [
             'key' => 'new_places',
             'label' => 'Lifetime new Places',
             'current' => (int) ($counts['new_places'] ?? 0),
             'required' => $newPlacesRequired,
-            'met' => $newPlacesRequired > 0 && (int) ($counts['new_places'] ?? 0) >= $newPlacesRequired,
+            'met' => $newPlacesRequired === 0 || (int) ($counts['new_places'] ?? 0) >= $newPlacesRequired,
         ],
         [
             'key' => 'updates',
             'label' => 'Approved updates',
             'current' => (int) ($counts['updates'] ?? 0),
             'required' => $updatesRequired,
-            'met' => $updatesRequired > 0 && (int) ($counts['updates'] ?? 0) >= $updatesRequired,
+            'met' => $updatesRequired === 0 || (int) ($counts['updates'] ?? 0) >= $updatesRequired,
         ],
         [
             'key' => 'corrections',
             'label' => 'Approved corrections',
             'current' => (int) ($counts['corrections'] ?? 0),
             'required' => $correctionsRequired,
-            'met' => $correctionsRequired > 0 && (int) ($counts['corrections'] ?? 0) >= $correctionsRequired,
+            'met' => $correctionsRequired === 0 || (int) ($counts['corrections'] ?? 0) >= $correctionsRequired,
         ],
         [
             'key' => 'updated_places',
             'label' => 'Different Places improved',
             'current' => (int) ($counts['updated_places'] ?? 0),
             'required' => $updatedPlacesRequired,
-            'met' => $updatedPlacesRequired > 0 && (int) ($counts['updated_places'] ?? 0) >= $updatedPlacesRequired,
+            'met' => $updatedPlacesRequired === 0 || (int) ($counts['updated_places'] ?? 0) >= $updatedPlacesRequired,
         ],
     ];
 
     $numericComplete =
-        $pointsRequired > 0
-        && $newPlacesRequired > 0
-        && $updatesRequired > 0
-        && $correctionsRequired > 0
-        && $updatedPlacesRequired > 0;
+        $pointsRequired >= 0
+        && $newPlacesRequired >= 0
+        && $updatesRequired >= 0
+        && $correctionsRequired >= 0
+        && $updatedPlacesRequired >= 0;
 
     $allMet = true;
     foreach ($requirements as $requirement) {
@@ -572,7 +572,7 @@ function admin_scout_operational_stats(
             $stats['active']++;
         }
 
-        if (in_array('master_scout', $roles, true)) {
+        if (in_array('master-scout', $roles, true) || in_array('master_scout', $roles, true)) {
             $stats['master']++;
         }
 
