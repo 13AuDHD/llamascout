@@ -156,3 +156,139 @@ function admin_verification_stats(
         'public_checked' => (int) ($row['public_checked'] ?? 0),
     ];
 }
+
+
+function admin_verification_attention_queue(
+    PDO $db,
+    int $limit = 100
+): array {
+    $limit = max(1, min(250, $limit));
+
+    $sql =
+        'SELECT
+            p.id,
+            p.name,
+            p.slug,
+            p.status,
+            p.city,
+            p.county,
+            p.state,
+            p.last_verified_at,
+            p.updated_at,
+            p.source_type,
+            (
+                SELECT COUNT(*)
+                FROM place_verifications pv
+                WHERE pv.place_id = p.id
+            ) AS verification_count,
+            (
+                SELECT COUNT(*)
+                FROM place_reports pr
+                WHERE pr.place_id = p.id
+                  AND pr.status IN ("open","investigating")
+            ) AS open_report_count,
+            CASE
+                WHEN p.last_verified_at IS NULL
+                    THEN "never"
+                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 730 DAY)
+                    THEN "overdue"
+                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY)
+                    THEN "attention"
+                ELSE "current"
+            END AS freshness_state,
+            DATEDIFF(
+                NOW(),
+                p.last_verified_at
+            ) AS days_since_verified
+         FROM places p
+         WHERE p.status IN (
+            "active",
+            "featured",
+            "draft",
+            "unlisted"
+         )
+         ORDER BY
+            CASE
+                WHEN p.last_verified_at IS NULL THEN 1
+                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 730 DAY) THEN 2
+                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 3
+                ELSE 4
+            END,
+            CASE
+                WHEN p.status IN ("featured","active") THEN 1
+                ELSE 2
+            END,
+            p.last_verified_at ASC,
+            p.updated_at DESC,
+            p.name ASC
+         LIMIT ' . $limit;
+
+    return
+        $db->query($sql)->fetchAll(PDO::FETCH_ASSOC)
+        ?: [];
+}
+
+
+function admin_verification_attention_stats(
+    PDO $db
+): array {
+    $sql =
+        'SELECT
+            COUNT(*) AS total_places,
+            SUM(
+                CASE
+                    WHEN status IN ("active","featured")
+                     AND last_verified_at IS NULL
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS published_never_verified,
+            SUM(
+                CASE
+                    WHEN status IN ("active","featured")
+                     AND last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY)
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS published_stale,
+            SUM(
+                CASE
+                    WHEN status IN ("active","featured")
+                     AND last_verified_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS published_current
+         FROM places
+         WHERE status IN (
+            "active",
+            "featured",
+            "draft",
+            "unlisted"
+         )';
+
+    $row = $db->query($sql)->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    return [
+        'total_places' =>
+            (int) ($row['total_places'] ?? 0),
+        'published_never_verified' =>
+            (int) ($row['published_never_verified'] ?? 0),
+        'published_stale' =>
+            (int) ($row['published_stale'] ?? 0),
+        'published_current' =>
+            (int) ($row['published_current'] ?? 0),
+    ];
+}
+
+
+function admin_verification_freshness_label(
+    string $state
+): string {
+    return match ($state) {
+        'never' => 'Never verified',
+        'overdue' => 'Over 2 years old',
+        'attention' => 'Over 1 year old',
+        default => 'Current',
+    };
+}
