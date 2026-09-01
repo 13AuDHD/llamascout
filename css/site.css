@@ -173,8 +173,8 @@ textarea {
     display: block;
 
     width: auto;
-    max-width: 320px;
-    max-height: 92px;
+    max-width: 280px;
+    max-height: 72px;
 }
 
 .site-nav {
@@ -2355,5 +2355,96 @@ textarea::placeholder {
         gap: 7px;
 
         min-width: 0;
+    }
+}
+
+
+/* =========================================================
+   HEADER WIDTH / TABLET LANDSCAPE
+   ========================================================= */
+
+/*
+ * The full desktop navigation needs more horizontal room now
+ * that Shop, Cart, Add a Place, Account, and Admin are present.
+ * Keep the desktop-style navigation on wider tablet/desktop
+ * screens, but let the header use the available viewport instead
+ * of forcing everything into the older 1200px content width.
+ */
+
+.site-header-inner {
+    width: min(1440px, calc(100% - 32px));
+}
+
+.site-nav {
+    min-width: 0;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+}
+
+.site-nav > a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.accessibility-button-desktop {
+    flex: 0 0 44px;
+}
+
+
+/*
+ * Compact the desktop navigation before the existing mobile /
+ * tablet portrait hamburger breakpoint takes over at 860px.
+ */
+@media (min-width: 861px) and (max-width: 1400px) {
+
+    .site-header-inner {
+        width: min(100% - 24px, 1400px);
+        gap: 14px;
+    }
+
+    .site-brand img {
+        max-width: 225px;
+        max-height: 64px;
+    }
+
+    .site-nav {
+        gap: 12px;
+    }
+
+    .site-nav > a {
+        gap: 5px;
+
+        font-size: .88rem;
+    }
+
+    .accessibility-button-desktop {
+        width: 40px;
+        height: 40px;
+
+        flex-basis: 40px;
+
+        font-size: 1.25rem;
+    }
+}
+
+
+/*
+ * Give narrower landscape tablets another small reduction
+ * without changing the established hamburger behavior.
+ */
+@media (min-width: 861px) and (max-width: 1180px) {
+
+    .site-brand img {
+        max-width: 190px;
+    }
+
+    .site-nav {
+        gap: 9px;
+    }
+
+    .site-nav > a {
+        gap: 4px;
+
+        font-size: .8rem;
     }
 }
