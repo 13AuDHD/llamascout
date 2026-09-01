@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/shop-cart.php';
+
 $user = current_user();
 $config = llama_config();
 
@@ -205,6 +207,20 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
             <a href="<?= htmlspecialchars($siteUrl . '/shop.php', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
                 <span>Shop</span>
+            </a>
+
+            <a
+                class="site-cart-link"
+                href="<?= htmlspecialchars($siteUrl . '/cart.php', ENT_QUOTES, 'UTF-8') ?>"
+            >
+                <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                <span>Cart</span>
+
+                <?php if (shop_cart_count() > 0): ?>
+                    <b class="site-cart-count">
+                        <?= shop_cart_count() ?>
+                    </b>
+                <?php endif; ?>
             </a>
 
             <?php if ($user): ?>
