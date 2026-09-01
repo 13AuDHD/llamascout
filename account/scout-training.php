@@ -210,6 +210,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <form
     method="post"
     class="account-scout-form"
+    data-scout-training-form
 >
     <input
         type="hidden"
@@ -221,115 +222,149 @@ require dirname(__DIR__) . '/partials/header.php';
         ) ?>"
     >
 
-    <section class="account-scout-panel">
-        <p class="account-eyebrow">1. Tools + access</p>
-        <h2>Scout access is trust, not a private-data shortcut</h2>
+    <input
+        type="hidden"
+        name="video_watched"
+        value=""
+        data-scout-video-watched
+    >
+
+    <section class="account-scout-panel account-scout-video-panel">
+        <p class="account-eyebrow">Scout orientation</p>
+        <h2>Watch the complete Scout training video</h2>
         <p>
-            Scout tools exist to improve Place information and support
-            field contributions. Member-only data, precise coordinates,
-            moderation information, and private account information must
-            not be copied into public posts or shared outside their intended
-            context.
+            This orientation covers what Llama Scout expects in the field,
+            how observations should be collected, and the limits of Scout
+            authority. The final production video is expected to run about
+            four to five minutes. The current file may be a shorter test video.
         </p>
-        <p>
-            When you contribute to a Place, identify what you personally
-            observed and use the normal community workflow for later corrections.
-        </p>
+
+        <div class="account-scout-video-wrap">
+            <video
+                controls
+                playsinline
+                preload="metadata"
+                data-scout-training-video
+            >
+                <source
+                    src="https://llamascout.com/videos/scout-training.mp4"
+                    type="video/mp4"
+                >
+                Your browser does not support the Scout training video.
+            </video>
+        </div>
+
+        <div
+            class="account-scout-video-status"
+            data-scout-video-status
+            role="status"
+        >
+            <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+            <span>Watch the video through to the end to unlock the final acknowledgements.</span>
+        </div>
     </section>
 
     <section class="account-scout-panel">
-        <p class="account-eyebrow">2. Accuracy</p>
-        <h2>Unknown is better than invented</h2>
+        <p class="account-eyebrow">Rules + commitments</p>
+        <h2>What you agree to as a Llama Scout</h2>
         <p>
-            Do not guess just to fill a field. Conditions change, and a Scout
-            Report should communicate uncertainty rather than creating false
-            confidence. Dates, access, closures, road conditions, amenities,
-            connectivity, and sensory observations should reflect what you
-            actually know.
+            These commitments apply whenever you are acting as a Llama Scout
+            or submitting observations gathered for a Scout Report. Official
+            land-manager rules, laws, closures, posted instructions, and local
+            requirements always take priority over Llama Scout guidance.
         </p>
-    </section>
 
-    <section class="account-scout-panel">
-        <p class="account-eyebrow">3. Safety</p>
-        <h2>A Scout Report does not guarantee conditions</h2>
-        <p>
-            Outdoor access can change after a visit. Weather, fire, flooding,
-            snow, gates, land-management rules, road damage, and vehicle
-            capability all matter. Record conditions carefully and avoid
-            language that promises another person can safely reach a Place.
-        </p>
-    </section>
-
-    <section class="account-scout-panel">
-        <p class="account-eyebrow">4. Privacy</p>
-        <h2>Protect people as carefully as Place data</h2>
-        <p>
-            Do not publish private personal information about other visitors,
-            residents, property owners, or community members. Photos should
-            document the Place rather than expose people unnecessarily.
-            Llama Scout removes embedded photo metadata through its normal
-            upload pipeline.
-        </p>
-    </section>
-
-    <section class="account-scout-panel">
-        <p class="account-eyebrow">Acknowledgements</p>
-        <h2>Finish Scout training</h2>
-
-        <div class="account-scout-check-list">
+        <div class="account-scout-check-list account-scout-training-checks">
 
             <label>
-                <input
-                    type="checkbox"
-                    name="acknowledged_tools"
-                    value="1"
-                    required
-                >
+                <input type="checkbox" name="ack_local_rules" value="1" required>
                 <span>
-                    <strong>Scout tools + access</strong>
-                    I understand how Scout access should be used.
+                    <strong>Official rules come first</strong>
+                    I will follow all applicable local laws, closures, posted
+                    instructions, land-manager rules, regulations, and guidelines
+                    while Scouting a location. When they differ from Llama Scout
+                    guidance, the official rule or instruction supersedes Llama Scout.
                 </span>
             </label>
 
             <label>
-                <input
-                    type="checkbox"
-                    name="acknowledged_accuracy"
-                    value="1"
-                    required
-                >
+                <input type="checkbox" name="ack_positive_example" value="1" required>
                 <span>
-                    <strong>Accuracy</strong>
-                    I will separate observations from assumptions and use
-                    Unknown when I genuinely do not know.
+                    <strong>Represent Llama Scout responsibly</strong>
+                    I will act respectfully, responsibly, and lawfully; I will set a
+                    positive example for Llama Scout and will not claim authority I
+                    do not have over visitors, property owners, agencies, or land managers.
                 </span>
             </label>
 
             <label>
-                <input
-                    type="checkbox"
-                    name="acknowledged_safety"
-                    value="1"
-                    required
-                >
+                <input type="checkbox" name="ack_no_boosters" value="1" required>
                 <span>
-                    <strong>Safety</strong>
-                    I understand that conditions change and Scout Reports
-                    are not guarantees of access or safety.
+                    <strong>Test reception honestly</strong>
+                    I will not use a cellular booster, repeater, signal amplifier,
+                    or other power-boosting equipment when testing cellular or
+                    satellite reception for a Scout Report. Reception results should
+                    reflect ordinary service available at the location.
                 </span>
             </label>
 
             <label>
+                <input type="checkbox" name="ack_accuracy" value="1" required>
+                <span>
+                    <strong>Observed beats assumed</strong>
+                    I will report what I personally observed, separate facts from
+                    estimates or assumptions, include relevant visit conditions and
+                    dates, and use Unknown rather than inventing information.
+                </span>
+            </label>
+
+            <label>
+                <input type="checkbox" name="ack_safety" value="1" required>
+                <span>
+                    <strong>Safety, privacy + stewardship</strong>
+                    I will respect private property, closures, other visitors, wildlife,
+                    and the environment. I understand that a Scout Report documents
+                    conditions observed during a visit and is not a guarantee of future
+                    access, road conditions, safety, or suitability for another person.
+                </span>
+            </label>
+
+            <label class="account-scout-video-confirm is-locked" data-scout-video-confirm>
                 <input
                     type="checkbox"
-                    name="acknowledged_privacy"
+                    name="video_confirmed"
                     value="1"
                     required
+                    disabled
+                    data-scout-video-confirm-checkbox
                 >
                 <span>
-                    <strong>Privacy</strong>
-                    I will protect private member information and avoid
-                    unnecessarily identifying people in field contributions.
+                    <strong>I watched the entire training video</strong>
+                    I confirm that I watched the Scout orientation video through to
+                    the end before accepting these commitments.
+                </span>
+            </label>
+
+            <label>
+                <input type="checkbox" name="ack_privilege" value="1" required>
+                <span>
+                    <strong>Scout status is a privilege</strong>
+                    I understand that becoming or remaining a Llama Scout is not an
+                    entitlement. Scout participation may be ended by me or by Llama
+                    Scout, and Scout access may be suspended or terminated when the
+                    Scout program requirements or standards are not met.
+                </span>
+            </label>
+
+            <label>
+                <input type="checkbox" name="ack_no_employment" value="1" required>
+                <span>
+                    <strong>This is not employment</strong>
+                    I understand that Scout participation is voluntary and is not a
+                    job offer or employment relationship. I will not receive wages or
+                    monetary compensation for my time, travel, efforts, or ordinary
+                    Scout contributions unless Llama Scout separately agrees in writing
+                    to a specific paid arrangement.
                 </span>
             </label>
 
@@ -340,12 +375,45 @@ require dirname(__DIR__) . '/partials/header.php';
         <button
             class="account-scout-button"
             type="submit"
+            data-scout-training-submit
+            disabled
         >
             Finish training and submit for approval
         </button>
     </div>
 
 </form>
+
+<script>
+(() => {
+    const form = document.querySelector('[data-scout-training-form]');
+    if (!form) return;
+
+    const video = form.querySelector('[data-scout-training-video]');
+    const watched = form.querySelector('[data-scout-video-watched]');
+    const confirmBox = form.querySelector('[data-scout-video-confirm-checkbox]');
+    const confirmLabel = form.querySelector('[data-scout-video-confirm]');
+    const status = form.querySelector('[data-scout-video-status]');
+    const submit = form.querySelector('[data-scout-training-submit]');
+    const unlockVideoConfirmation = () => {
+        watched.value = '1';
+        confirmBox.disabled = false;
+        confirmLabel.classList.remove('is-locked');
+        status.classList.add('is-complete');
+        status.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Video complete. Finish the acknowledgements below.</span>';
+        refreshSubmit();
+    };
+
+    const refreshSubmit = () => {
+        const required = [...form.querySelectorAll('input[type="checkbox"][required]')];
+        submit.disabled = watched.value !== '1' || required.some((box) => box.disabled || !box.checked);
+    };
+
+    video?.addEventListener('ended', unlockVideoConfirmation);
+    form.addEventListener('change', refreshSubmit);
+    refreshSubmit();
+})();
+</script>
 
 <?php endif; ?>
 
