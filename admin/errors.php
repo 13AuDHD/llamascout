@@ -103,7 +103,7 @@ require __DIR__ . '/_header.php';
     <header class="admin-panel-header">
         <div>
             <p>Application diagnostics</p>
-            <h2><?= number_format((int) $result['total']) ?> recorded errors</h2>
+            <h2><?= number_format((int) $result['total']) ?> recorded issues</h2>
         </div>
         <span>Page <?= (int) $result['page'] ?> of <?= (int) $result['pages'] ?></span>
     </header>
@@ -161,11 +161,17 @@ require __DIR__ . '/_header.php';
                         <div class="admin-audit-title-row">
                             <strong><?= moderation_e((string) $row['reference_code']) ?></strong>
                             <span class="admin-audit-category"><?= moderation_e(strtoupper((string) $row['severity'])) ?></span>
+                            <?php if ((int) ($row['occurrence_count'] ?? 1) > 1): ?>
+                                <span class="admin-audit-category"><?= number_format((int) $row['occurrence_count']) ?> occurrences</span>
+                            <?php endif; ?>
                         </div>
 
                         <span>
                             <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?>
-                            · <?= moderation_e((string) $row['created_at']) ?> UTC
+                            · Last seen <?= moderation_e((string) ($row['last_seen_at'] ?: $row['created_at'])) ?> UTC
+                            <?php if ((int) ($row['occurrence_count'] ?? 1) > 1): ?>
+                                · First seen <?= moderation_e((string) ($row['first_seen_at'] ?: $row['created_at'])) ?> UTC
+                            <?php endif; ?>
                         </span>
 
                         <small>
