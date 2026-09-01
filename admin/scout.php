@@ -582,9 +582,15 @@ require __DIR__ . '/_header.php';
                                 <option
                                     value="<?= moderation_e($status) ?>"
                                     <?= (string) $scout['status'] === $status ? 'selected' : '' ?>
-                                    <?= $isOnboarding && $status === 'active'
-                                        ? 'disabled'
-                                        : '' ?>
+                                    <?= $status === 'active'
+                                        && $scoutStatus !== 'active'
+                                            ? 'disabled'
+                                            : (
+                                                $activeExtension
+                                                && $status !== $scoutStatus
+                                                    ? 'disabled'
+                                                    : ''
+                                            ) ?>
                                 >
                                     <?= moderation_e(
                                         ucwords(
