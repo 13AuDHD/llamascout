@@ -45,6 +45,121 @@ $displayName = (string) (
     ?? 'Your account'
 );
 
+/*
+ * Contribution points are a permanent ledger balance.
+ */
+$pointsStmt = $db->prepare(
+    'SELECT COALESCE(SUM(points), 0)
+     FROM points_ledger
+     WHERE user_id = ?'
+);
+
+$pointsStmt->execute([$userId]);
+
+$pointsBalance =
+    (int) $pointsStmt->fetchColumn();
+
+
+/*
+ * Earned badges only. Pending or declined credential reviews
+ * do not appear as earned account badges.
+ */
+$badgeStmt = $db->prepare(
+    'SELECT
+        bd.id,
+        bd.slug,
+        bd.name,
+        bd.description,
+        bd.category,
+        bd.icon,
+        bd.image_src,
+        ub.awarded_at
+     FROM user_badges ub
+     INNER JOIN badge_definitions bd
+        ON bd.id = ub.badge_id
+     WHERE ub.user_id = ?
+       AND ub.review_status = "earned"
+       AND bd.is_active = 1
+     ORDER BY
+        bd.sort_order ASC,
+        ub.awarded_at ASC,
+        bd.id ASC'
+);
+
+$badgeStmt->execute([$userId]);
+
+$earnedBadges =
+    $badgeStmt->fetchAll(PDO::FETCH_ASSOC)
+    ?: [];
+
+
+/*
+ * Billing state is displayed here without exposing Stripe IDs.
+ * Plan changes go through the public Membership page. Direct
+ * Stripe payment-method editing will use the billing portal once
+ * the v2 Stripe service is restored.
+ */
+$billingStmt = $db->prepare(
+    'SELECT
+        membership_status,
+        membership_interval,
+        membership_ends_at,
+        stripe_customer_id,
+        stripe_subscription_id
+     FROM users
+     WHERE id = ?
+     LIMIT 1'
+);
+
+$billingStmt->execute([$userId]);
+
+$billingState =
+    $billingStmt->fetch(PDO::FETCH_ASSOC)
+    ?: [];
+
+$membershipStatus =
+    strtolower(
+        trim(
+            (string) (
+                $billingState['membership_status']
+                ?? 'none'
+            )
+        )
+    );
+
+$membershipInterval =
+    strtolower(
+        trim(
+            (string) (
+                $billingState['membership_interval']
+                ?? ''
+            )
+        )
+    );
+
+$hasStripeCustomer =
+    trim(
+        (string) (
+            $billingState['stripe_customer_id']
+            ?? ''
+        )
+    ) !== '';
+
+$membershipLabel = match ($membershipStatus) {
+    'active' =>
+        $membershipInterval === 'annual'
+            ? 'Annual membership'
+            : (
+                $membershipInterval === 'monthly'
+                    ? 'Monthly membership'
+                    : 'Active membership'
+            ),
+    'trialing' => 'Trial membership',
+    'past_due' => 'Payment issue',
+    'complimentary' => 'Complimentary membership',
+    default => 'Free account',
+};
+
 $pageTitle = 'Your Account | Llama Scout';
 
 require dirname(__DIR__) . '/partials/header.php';
@@ -80,6 +195,223 @@ require dirname(__DIR__) . '/partials/header.php';
             Log out
         </a>
     </header>
+
+    <section
+        class="account-glance-grid"
+        aria-label="Account at a glance"
+    >
+
+        <div class="account-glance-card account-glance-points">
+            <span class="account-glance-icon">
+                <i
+                    class="fa-solid fa-star"
+                    aria-hidden="true"
+                ></i>
+            </span>
+
+            <div>
+                <strong>
+                    <?= number_format($pointsBalance) ?>
+                </strong>
+                <span>Contribution points</span>
+            </div>
+        </div>
+
+
+        <div class="account-glance-card">
+            <span class="account-glance-icon">
+                <i
+                    class="fa-solid fa-award"
+                    aria-hidden="true"
+                ></i>
+            </span>
+
+            <div>
+                <strong>
+                    <?= number_format(count($earnedBadges)) ?>
+                </strong>
+                <span>
+                    Badge<?= count($earnedBadges) === 1 ? '' : 's' ?> earned
+                </span>
+            </div>
+        </div>
+
+
+        <a
+            class="account-glance-card account-glance-link"
+            href="<?= htmlspecialchars(
+                $siteUrl . '/membership',
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
+            <span class="account-glance-icon">
+                <i
+                    class="fa-solid fa-credit-card"
+                    aria-hidden="true"
+                ></i>
+            </span>
+
+            <div>
+                <strong>
+                    <?= htmlspecialchars(
+                        $membershipLabel,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
+                </strong>
+                <span>Membership & billing</span>
+            </div>
+
+            <i
+                class="fa-solid fa-chevron-right"
+                aria-hidden="true"
+            ></i>
+        </a>
+
+    </section>
+
+
+    <section class="account-section" aria-labelledby="badges-heading">
+        <div class="account-section-heading">
+            <div>
+                <p class="account-eyebrow">Recognition</p>
+                <h2 id="badges-heading">Your badges</h2>
+            </div>
+
+            <span class="account-section-count">
+                <?= count($earnedBadges) ?>
+            </span>
+        </div>
+
+        <?php if (!$earnedBadges): ?>
+
+            <div class="account-empty-state account-badges-empty">
+                <i
+                    class="fa-solid fa-award"
+                    aria-hidden="true"
+                ></i>
+
+                <h3>No badges earned yet</h3>
+
+                <p>
+                    Contribute Places, improve existing information,
+                    and participate in Llama Scout to earn badges.
+                </p>
+            </div>
+
+        <?php else: ?>
+
+            <div class="account-badge-grid">
+
+                <?php foreach ($earnedBadges as $badge): ?>
+
+                    <?php
+                    $badgeImage =
+                        trim(
+                            (string) (
+                                $badge['image_src']
+                                ?? ''
+                            )
+                        );
+
+                    if (
+                        $badgeImage !== ''
+                        && !preg_match(
+                            '~^https?://~i',
+                            $badgeImage
+                        )
+                    ) {
+                        $badgeImage =
+                            $siteUrl .
+                            '/' .
+                            ltrim(
+                                $badgeImage,
+                                '/'
+                            );
+                    }
+
+                    $badgeIcon =
+                        trim(
+                            (string) (
+                                $badge['icon']
+                                ?? 'fa-award'
+                            )
+                        );
+
+                    if (
+                        $badgeIcon !== ''
+                        && !str_contains(
+                            $badgeIcon,
+                            'fa-'
+                        )
+                    ) {
+                        $badgeIcon =
+                            'fa-award';
+                    }
+                    ?>
+
+                    <article class="account-badge-card">
+
+                        <div class="account-badge-mark">
+
+                            <?php if ($badgeImage !== ''): ?>
+
+                                <img
+                                    src="<?= htmlspecialchars(
+                                        $badgeImage,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>"
+                                    alt=""
+                                    loading="lazy"
+                                >
+
+                            <?php else: ?>
+
+                                <i
+                                    class="fa-solid <?= htmlspecialchars(
+                                        $badgeIcon,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>"
+                                    aria-hidden="true"
+                                ></i>
+
+                            <?php endif; ?>
+
+                        </div>
+
+                        <div class="account-badge-copy">
+                            <strong>
+                                <?= htmlspecialchars(
+                                    (string) $badge['name'],
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </strong>
+
+                            <?php if (!empty($badge['description'])): ?>
+                                <span>
+                                    <?= htmlspecialchars(
+                                        (string) $badge['description'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
+                    </article>
+
+                <?php endforeach; ?>
+
+            </div>
+
+        <?php endif; ?>
+
+    </section>
+
 
     <section class="account-section" aria-labelledby="saved-places-heading">
         <div class="account-section-heading">
@@ -228,6 +560,28 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <div class="account-action-grid account-security-grid">
+            <a
+                class="account-action-card"
+                href="<?= htmlspecialchars(
+                    $siteUrl . '/membership',
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
+            >
+                <i
+                    class="fa-solid fa-credit-card"
+                    aria-hidden="true"
+                ></i>
+
+                <span>
+                    <strong>Billing & membership</strong>
+                    <small>
+                        View your current access, switch membership plans,
+                        or manage billing options.
+                    </small>
+                </span>
+            </a>
+
             <a class="account-action-card" href="/forgot-password.php">
                 <i class="fa-solid fa-key" aria-hidden="true"></i>
                 <span>
