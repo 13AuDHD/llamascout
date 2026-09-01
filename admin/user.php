@@ -289,6 +289,12 @@ require __DIR__ . '/_header.php';
     <div>
         <span>Badges</span>
         <strong><?= number_format((int) $userStats['badges']) ?></strong>
+        <a
+            class="admin-user-stat-link"
+            href="/badges.php?user_id=<?= (int) $userId ?>"
+        >
+            Manage
+        </a>
     </div>
 
     <div>

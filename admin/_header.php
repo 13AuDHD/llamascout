@@ -246,6 +246,14 @@ function admin_shell_nav_class(
                 <?php endif; ?>
             </a>
 
+            <a
+                class="<?= admin_shell_nav_class('badges', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/badges.php') ?>"
+            >
+                <i class="fa-solid fa-award" aria-hidden="true"></i>
+                <span>Badges</span>
+            </a>
+
 
             <p class="admin-nav-label">Commerce</p>
 
