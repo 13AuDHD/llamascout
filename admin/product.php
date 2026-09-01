@@ -49,6 +49,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Product updated.';
+            } elseif ($action === 'save-options') {
+                admin_shop_save_options(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    $_POST
+                );
+
+                $notice = 'Product options updated.';
+            } elseif ($action === 'generate-variants') {
+                $created = admin_shop_generate_variants(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    $_POST
+                );
+
+                $notice =
+                    $created > 0
+                        ? $created . ' missing variant' .
+                            ($created === 1 ? '' : 's') .
+                            ' generated.'
+                        : 'No missing variants needed to be generated.';
             } elseif ($action === 'save-variant') {
                 admin_shop_save_variant(
                     $db,
@@ -121,6 +144,11 @@ if (!$product) {
 }
 
 $images = admin_shop_product_images(
+    $db,
+    $productId
+);
+
+$options = admin_shop_product_options(
     $db,
     $productId
 );
@@ -309,6 +337,282 @@ require __DIR__ . '/_header.php';
 
 <header class="admin-panel-header">
     <div>
+        <p>Catalog Structure</p>
+        <h2>Product Options</h2>
+    </div>
+
+    <span>
+        <?= number_format(count($options)) ?>
+        of 3 option groups
+    </span>
+</header>
+
+<form
+    class="admin-commerce-options-form"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(moderation_csrf_token()) ?>"
+>
+
+<input
+    type="hidden"
+    name="product_id"
+    value="<?= (int) $productId ?>"
+>
+
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="save-options"
+>
+
+<?php
+$optionsByPosition = [];
+
+foreach ($options as $option) {
+    $optionsByPosition[
+        (int) $option['option_position']
+    ] = $option;
+}
+?>
+
+<div class="admin-commerce-option-grid">
+
+<?php for ($position = 1; $position <= 3; $position++): ?>
+
+<?php
+$option =
+    $optionsByPosition[$position]
+    ?? null;
+
+$valueText =
+    $option
+        ? implode(
+            "\n",
+            array_map(
+                static fn(array $row): string =>
+                    (string) $row['option_value'],
+                $option['values']
+            )
+        )
+        : '';
+?>
+
+<div class="admin-commerce-option-card">
+
+<div class="admin-commerce-option-number">
+    Option <?= $position ?>
+</div>
+
+<label>
+    <span>Option name</span>
+
+    <input
+        type="text"
+        name="option_name[<?= $position ?>]"
+        maxlength="100"
+        value="<?= moderation_e(
+            (string) (
+                $option['option_name']
+                ?? ''
+            )
+        ) ?>"
+        placeholder="<?= $position === 1
+            ? 'Color'
+            : (
+                $position === 2
+                    ? 'Size'
+                    : 'Style'
+            ) ?>"
+    >
+</label>
+
+<label>
+    <span>Values</span>
+
+    <textarea
+        name="option_values[<?= $position ?>]"
+        rows="5"
+        placeholder="One value per line, or separate values with commas."
+    ><?= moderation_e($valueText) ?></textarea>
+</label>
+
+</div>
+
+<?php endfor; ?>
+
+</div>
+
+<div class="admin-commerce-options-note">
+
+<?php if ($variants): ?>
+    Existing option groups and names are locked because this product
+    already has variants. You can safely add new values, then use
+    Generate Missing Variants below.
+<?php else: ?>
+    Leave unused option groups blank. A product can have up to three
+    options, such as Color, Size, and Style.
+<?php endif; ?>
+
+</div>
+
+<div class="admin-user-form-actions">
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Save options
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Variant Builder</p>
+        <h2>Generate Missing Variants</h2>
+    </div>
+</header>
+
+<form
+    class="admin-commerce-generator"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(moderation_csrf_token()) ?>"
+>
+
+<input
+    type="hidden"
+    name="product_id"
+    value="<?= (int) $productId ?>"
+>
+
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="generate-variants"
+>
+
+<div class="admin-commerce-generator-grid">
+
+<label>
+    <span>Default price</span>
+
+    <input
+        type="number"
+        name="default_price"
+        min="0"
+        step=".01"
+        placeholder="24.00"
+        required
+    >
+</label>
+
+<label>
+    <span>SKU prefix</span>
+
+    <input
+        type="text"
+        name="sku_prefix"
+        maxlength="80"
+        value="LS-<?= moderation_e(
+            admin_shop_sku_piece(
+                (string) $product['slug']
+            )
+        ) ?>"
+    >
+</label>
+
+<label>
+    <span>Initial inventory</span>
+
+    <input
+        type="number"
+        name="default_inventory"
+        step="1"
+        value="0"
+    >
+</label>
+
+<label>
+    <span>Fulfillment</span>
+
+    <select name="default_fulfillment_type">
+        <option value="manual">Manual</option>
+        <option value="provider">Provider</option>
+        <option value="digital">Digital</option>
+    </select>
+</label>
+
+<label class="is-wide">
+    <span>Fulfillment provider</span>
+
+    <input
+        type="text"
+        name="default_fulfillment_provider"
+        placeholder="Printful, Printify, local inventory, etc."
+    >
+</label>
+
+<div class="admin-commerce-checks is-wide">
+    <label>
+        <input
+            type="checkbox"
+            name="default_track_inventory"
+            value="1"
+        >
+        <span>Track inventory</span>
+    </label>
+
+    <label>
+        <input
+            type="checkbox"
+            name="default_allow_backorder"
+            value="1"
+        >
+        <span>Allow backorder</span>
+    </label>
+</div>
+
+</div>
+
+<div class="admin-commerce-options-note">
+    This creates only combinations that do not already exist.
+    Existing variants, prices, inventory, fulfillment IDs, and order
+    history are never deleted or replaced.
+</div>
+
+<div class="admin-user-form-actions">
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Generate missing variants
+    </button>
+</div>
+
+</form>
+
+</section>
+
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
         <p>Pricing + Inventory</p>
         <h2>Variants</h2>
     </div>
@@ -377,6 +681,19 @@ require __DIR__ . '/_header.php';
 </div>
 
 <div class="admin-commerce-variant-grid">
+
+<label class="is-wide">
+    <span>SKU</span>
+    <input
+        type="text"
+        name="sku"
+        maxlength="120"
+        value="<?= moderation_e(
+            (string) $variant['sku']
+        ) ?>"
+        required
+    >
+</label>
 
 <label>
     <span>Price</span>
@@ -452,7 +769,45 @@ require __DIR__ . '/_header.php';
     >
 </label>
 
-<div class="admin-commerce-checks">
+<label>
+    <span>Provider product ID</span>
+    <input
+        type="text"
+        name="fulfillment_product_id"
+        value="<?= moderation_e(
+            (string) (
+                $variant['fulfillment_product_id']
+                ?? ''
+            )
+        ) ?>"
+    >
+</label>
+
+<label>
+    <span>Provider variant ID</span>
+    <input
+        type="text"
+        name="fulfillment_variant_id"
+        value="<?= moderation_e(
+            (string) (
+                $variant['fulfillment_variant_id']
+                ?? ''
+            )
+        ) ?>"
+    >
+</label>
+
+<label>
+    <span>Sort order</span>
+    <input
+        type="number"
+        name="sort_order"
+        step="1"
+        value="<?= (int) $variant['sort_order'] ?>"
+    >
+</label>
+
+<div class="admin-commerce-checks is-wide">
     <label>
         <input
             type="checkbox"
