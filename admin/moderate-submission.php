@@ -691,7 +691,6 @@ $coreChecksComplete = count(
     array_filter($coreReviewChecks)
 );
 ?>
-?>
 
 <?php if ($error !== ''): ?>
     <div class="admin-moderation-notice">
