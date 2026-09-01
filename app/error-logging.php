@@ -53,6 +53,80 @@ function llama_error_ensure_table(PDO $db): void
     );
 }
 
+function llama_error_retention_days(PDO $db): int
+{
+    try {
+        $stmt = $db->prepare(
+            'SELECT setting_value
+             FROM site_settings
+             WHERE setting_key = ?
+             LIMIT 1'
+        );
+        $stmt->execute(['error_log_retention_days']);
+        $value = $stmt->fetchColumn();
+
+        if ($value === false || !is_numeric((string) $value)) {
+            return 180;
+        }
+
+        return max(30, min(3650, (int) $value));
+    } catch (Throwable $exception) {
+        return 180;
+    }
+}
+
+function llama_error_cleanup_resolved(PDO $db, ?int $retentionDays = null): int
+{
+    llama_error_ensure_table($db);
+    $days = $retentionDays ?? llama_error_retention_days($db);
+    $days = max(30, min(3650, $days));
+
+    $stmt = $db->prepare(
+        'DELETE FROM application_errors
+         WHERE resolution_status = "resolved"
+           AND COALESCE(resolved_at, last_seen_at, created_at)
+               < (UTC_TIMESTAMP() - INTERVAL ' . $days . ' DAY)'
+    );
+    $stmt->execute();
+
+    return $stmt->rowCount();
+}
+
+function llama_error_maybe_cleanup(PDO $db): void
+{
+    try {
+        $stmt = $db->prepare(
+            'SELECT setting_value
+             FROM site_settings
+             WHERE setting_key = ?
+             LIMIT 1'
+        );
+        $stmt->execute(['error_log_last_cleanup_at']);
+        $lastCleanup = $stmt->fetchColumn();
+
+        if (is_string($lastCleanup) && $lastCleanup !== '') {
+            $lastTs = strtotime($lastCleanup . ' UTC');
+            if ($lastTs !== false && $lastTs >= time() - 86400) {
+                return;
+            }
+        }
+
+        llama_error_cleanup_resolved($db);
+
+        $upsert = $db->prepare(
+            'INSERT INTO site_settings (setting_key, setting_value)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+        );
+        $upsert->execute([
+            'error_log_last_cleanup_at',
+            gmdate('Y-m-d H:i:s'),
+        ]);
+    } catch (Throwable $exception) {
+        // Cleanup must never interfere with recording the original error.
+    }
+}
+
 function llama_error_reference(): string
 {
     try {
@@ -212,6 +286,8 @@ function llama_log_exception(
                 $signature,
             ]);
         }
+
+        llama_error_maybe_cleanup($db);
     } catch (Throwable $loggingFailure) {
         error_log(
             '[error-logger-failure] ' . $reference . ' ' .

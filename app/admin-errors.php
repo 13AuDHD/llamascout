@@ -197,3 +197,73 @@ function admin_errors_create_test(PDO $db, int $actorUserId): string
 
     return $reference;
 }
+
+
+function admin_errors_retention_days(PDO $db): int
+{
+    return llama_error_retention_days($db);
+}
+
+function admin_errors_set_retention_days(PDO $db, int $actorUserId, int $days): int
+{
+    if ($actorUserId <= 0) {
+        throw new InvalidArgumentException('Invalid administrator.');
+    }
+
+    if ($days < 30 || $days > 3650) {
+        throw new InvalidArgumentException('Resolved error history must be kept between 30 and 3650 days.');
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO site_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+    );
+    $stmt->execute(['error_log_retention_days', (string) $days]);
+
+    if (function_exists('admin_users_audit')) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'error_log_retention_updated',
+            'Changed resolved error-log retention to ' . $days . ' days.',
+            ['retention_days' => $days]
+        );
+    }
+
+    return $days;
+}
+
+function admin_errors_cleanup_now(PDO $db, int $actorUserId): int
+{
+    if ($actorUserId <= 0) {
+        throw new InvalidArgumentException('Invalid administrator.');
+    }
+
+    $days = admin_errors_retention_days($db);
+    $deleted = llama_error_cleanup_resolved($db, $days);
+
+    $stmt = $db->prepare(
+        'INSERT INTO site_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+    );
+    $stmt->execute(['error_log_last_cleanup_at', gmdate('Y-m-d H:i:s')]);
+
+    if (function_exists('admin_users_audit')) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'error_log_cleanup',
+            'Cleaned resolved application errors older than ' . $days . ' days.',
+            [
+                'retention_days' => $days,
+                'deleted_records' => $deleted,
+            ]
+        );
+    }
+
+    return $deleted;
+}
