@@ -33,6 +33,17 @@ $types =
 $verificationStats =
     admin_verification_stats($db);
 
+$attentionQueue =
+    admin_verification_attention_queue(
+        $db,
+        100
+    );
+
+$attentionStats =
+    admin_verification_attention_stats(
+        $db
+    );
+
 $stats =
     admin_dashboard_stats($db);
 
@@ -50,6 +61,155 @@ $adminActiveNav = 'verifications';
 
 require __DIR__ . '/_header.php';
 ?>
+
+<section class="admin-panel admin-verification-operations-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Operational Queue</p>
+        <h2>Place Verification Freshness</h2>
+    </div>
+
+    <span>
+        Published Places are considered current when checked within the last year.
+    </span>
+</header>
+
+<div class="admin-verification-health-summary">
+
+    <div class="is-good">
+        <span class="admin-verification-light" aria-hidden="true"></span>
+        <div>
+            <strong><?= number_format((int) $attentionStats['published_current']) ?></strong>
+            <span>Current</span>
+        </div>
+    </div>
+
+    <div class="is-attention">
+        <span class="admin-verification-light" aria-hidden="true"></span>
+        <div>
+            <strong><?= number_format((int) $attentionStats['published_stale']) ?></strong>
+            <span>Need attention</span>
+        </div>
+    </div>
+
+    <div class="is-down">
+        <span class="admin-verification-light" aria-hidden="true"></span>
+        <div>
+            <strong><?= number_format((int) $attentionStats['published_never_verified']) ?></strong>
+            <span>Never verified</span>
+        </div>
+    </div>
+
+</div>
+
+
+<?php
+$needsAttention = array_values(
+    array_filter(
+        $attentionQueue,
+        static fn (array $place): bool =>
+            in_array(
+                (string) $place['freshness_state'],
+                ['never','overdue','attention'],
+                true
+            )
+    )
+);
+?>
+
+<?php if (!$needsAttention): ?>
+
+<div class="admin-empty-state admin-verification-all-current">
+    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <h3>Published Place verification is current.</h3>
+    <p>No active or featured Places are currently more than one year out of date or missing verification.</p>
+</div>
+
+<?php else: ?>
+
+<div class="admin-verification-attention-list">
+
+<?php foreach ($needsAttention as $place): ?>
+
+<?php
+$freshness = (string) $place['freshness_state'];
+$published = in_array(
+    (string) $place['status'],
+    ['active','featured'],
+    true
+);
+?>
+
+<article class="admin-verification-attention-row is-<?= moderation_e($freshness) ?>">
+
+<span class="admin-verification-light" aria-hidden="true"></span>
+
+<div class="admin-verification-attention-main">
+    <div>
+        <strong><?= moderation_e((string) $place['name']) ?></strong>
+        <span>
+            <?= moderation_e(
+                implode(
+                    ' · ',
+                    array_filter([
+                        $place['city'] ?? null,
+                        $place['county'] ?? null,
+                        $place['state'] ?? null,
+                    ])
+                ) ?: 'Location not recorded'
+            ) ?>
+        </span>
+    </div>
+
+    <div class="admin-verification-attention-meta">
+        <span class="admin-status-pill">
+            <?= moderation_e(ucfirst((string) $place['status'])) ?>
+        </span>
+
+        <span>
+            <?= moderation_e(admin_verification_freshness_label($freshness)) ?>
+        </span>
+
+        <?php if ((int) $place['open_report_count'] > 0): ?>
+            <span class="is-report">
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <?= number_format((int) $place['open_report_count']) ?> open report<?= (int) $place['open_report_count'] === 1 ? '' : 's' ?>
+            </span>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="admin-verification-attention-actions">
+    <a
+        class="admin-button"
+        href="/place.php?id=<?= (int) $place['id'] ?>#verification"
+    >
+        Verify Place
+    </a>
+
+    <?php if ($published): ?>
+        <a
+            class="admin-button is-muted"
+            href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            View
+        </a>
+    <?php endif; ?>
+</div>
+
+</article>
+
+<?php endforeach; ?>
+
+</div>
+
+<?php endif; ?>
+
+</section>
+
 
 <section class="admin-verification-stat-grid">
 
@@ -221,7 +381,7 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
 
 <div>
-    <p>Trust + Freshness</p>
+    <p>Verification History</p>
 
     <h2>
         <?= number_format(count($items)) ?>
