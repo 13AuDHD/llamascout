@@ -52,6 +52,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 $notice = 'Scout rank updated.';
 
+            } elseif ($action === 'reactivation-grant') {
+                $result =
+                    admin_scout_grant_reactivation(
+                        $db,
+                        $actorUserId,
+                        $scoutProfileId,
+                        (string) (
+                            $_POST['notes']
+                            ?? ''
+                        )
+                    );
+
+                $notice =
+                    (int) $result['window_days'] .
+                    '-day Scout reactivation window granted.';
+
+            } elseif ($action === 'reactivation-cancel') {
+                admin_scout_cancel_reactivation(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    (string) (
+                        $_POST['notes']
+                        ?? ''
+                    )
+                );
+
+                $notice =
+                    'Scout reactivation window canceled.';
+
             } elseif ($action === 'onboarding-review') {
                 $reviewAction =
                     (string) (
@@ -101,6 +131,52 @@ $activity = admin_scout_activity($db, (int) $scout['user_id']);
 $rankHistory = admin_scout_rank_history($db, (int) $scout['user_id']);
 $currentPeriod = admin_scout_current_period($db, $scout);
 $masterQualification = admin_scout_master_qualification($db, $scout);
+$latestExtension =
+    admin_scout_latest_extension(
+        $db,
+        $scoutProfileId,
+        (int) $scout['user_id']
+    );
+
+$activeExtension =
+    $latestExtension
+    && (string) $latestExtension['status'] === 'active'
+        ? $latestExtension
+        : null;
+
+$reactivationRequired =
+    max(
+        1,
+        admin_scout_policy_int_value(
+            $db,
+            'reactivation_new_places_required',
+            3
+        )
+    );
+
+$reactivationWindowDays =
+    max(
+        1,
+        admin_scout_policy_int_value(
+            $db,
+            'reactivation_window_days',
+            30
+        )
+    );
+
+$reactivationAccepted = 0;
+
+if ($activeExtension) {
+    $reactivationAccepted =
+        llama_count_scout_reports(
+            $db,
+            $scoutProfileId,
+            (int) $scout['user_id'],
+            (string) $activeExtension['started_at'],
+            (string) $activeExtension['ends_at']
+        );
+}
+
 
 $scoutStatus =
     (string) $scout['status'];
@@ -628,6 +704,186 @@ require __DIR__ . '/_header.php';
                     </div>
                 </dl>
             </section>
+        <?php endif; ?>
+
+
+        <?php if (
+            in_array(
+                $scoutStatus,
+                ['inactive', 'removed'],
+                true
+            )
+            || $activeExtension
+            || $latestExtension
+        ): ?>
+
+        <section class="admin-panel admin-scout-reactivation-panel">
+
+            <header class="admin-panel-header">
+                <div>
+                    <p>Lifecycle</p>
+                    <h2>Scout Reactivation</h2>
+                </div>
+
+                <?php if ($activeExtension): ?>
+                    <span>
+                        Active through
+                        <?= moderation_e((string) $activeExtension['ends_at']) ?>
+                    </span>
+                <?php endif; ?>
+            </header>
+
+            <?php if ($activeExtension): ?>
+
+                <div class="admin-scout-reactivation-status">
+                    <div>
+                        <span>Window</span>
+                        <strong>
+                            <?= moderation_e((string) $activeExtension['started_at']) ?>
+                            to
+                            <?= moderation_e((string) $activeExtension['ends_at']) ?>
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>New Places</span>
+                        <strong>
+                            <?= number_format($reactivationAccepted) ?>
+                            of
+                            <?= number_format($reactivationRequired) ?>
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Access</span>
+                        <strong>Basic Scout</strong>
+                        <small>Master Scout is not restored during reactivation.</small>
+                    </div>
+
+                    <div>
+                        <span>Result</span>
+                        <strong>
+                            <?= $reactivationAccepted >= $reactivationRequired
+                                ? 'Requirement met'
+                                : 'In progress' ?>
+                        </strong>
+                        <small>
+                            Maintenance finalizes the window automatically.
+                        </small>
+                    </div>
+                </div>
+
+                <form
+                    class="admin-user-form admin-scout-reactivation-cancel"
+                    method="post"
+                >
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                    <input type="hidden" name="scout_admin_action" value="reactivation-cancel">
+
+                    <label>
+                        <span>Cancellation reason</span>
+                        <textarea
+                            name="notes"
+                            rows="2"
+                            placeholder="Required to cancel temporary Scout access."
+                            required
+                        ></textarea>
+                    </label>
+
+                    <div class="admin-user-form-actions">
+                        <button
+                            class="admin-button is-danger"
+                            type="submit"
+                            onclick="return confirm('Cancel this Scout reactivation window and remove temporary Scout access?');"
+                        >
+                            Cancel reactivation
+                        </button>
+                    </div>
+                </form>
+
+            <?php elseif (
+                in_array(
+                    $scoutStatus,
+                    ['inactive', 'removed'],
+                    true
+                )
+            ): ?>
+
+                <div class="admin-scout-reactivation-intro">
+                    <div>
+                        <strong>
+                            <?= number_format($reactivationWindowDays) ?>-day window
+                        </strong>
+                        <span>
+                            Temporary basic Scout access while the former Scout completes
+                            <?= number_format($reactivationRequired) ?> approved new
+                            <?= $reactivationRequired === 1 ? 'Place' : 'Places' ?>.
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong>Successful reactivation</strong>
+                        <span>
+                            Returns as a basic Llama Scout for a normal Scout period.
+                            Former Master Scout rank must be earned again.
+                        </span>
+                    </div>
+                </div>
+
+                <form class="admin-user-form" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                    <input type="hidden" name="scout_admin_action" value="reactivation-grant">
+
+                    <label>
+                        <span>Administrative note (optional)</span>
+                        <textarea
+                            name="notes"
+                            rows="2"
+                            placeholder="Reason for granting another Scout opportunity."
+                        ></textarea>
+                    </label>
+
+                    <div class="admin-user-form-actions">
+                        <button
+                            class="admin-button"
+                            type="submit"
+                            onclick="return confirm('Grant this former Scout temporary basic Scout access for the configured reactivation window?');"
+                        >
+                            Grant reactivation window
+                        </button>
+                    </div>
+                </form>
+
+            <?php endif; ?>
+
+            <?php if ($latestExtension): ?>
+                <div class="admin-scout-reactivation-history">
+                    <span>Latest reactivation</span>
+                    <strong>
+                        <?= moderation_e(
+                            ucwords(
+                                str_replace(
+                                    '_',
+                                    ' ',
+                                    (string) $latestExtension['status']
+                                )
+                            )
+                        ) ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e((string) $latestExtension['started_at']) ?>
+                        to
+                        <?= moderation_e((string) $latestExtension['ends_at']) ?>
+                        · granted by
+                        <?= moderation_e((string) ($latestExtension['granted_by_name'] ?: 'System')) ?>
+                    </small>
+                </div>
+            <?php endif; ?>
+
+        </section>
+
         <?php endif; ?>
 
 
