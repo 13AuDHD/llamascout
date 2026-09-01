@@ -30,6 +30,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            if ($adminAction === 'retention') {
+                $days = admin_errors_set_retention_days(
+                    $db,
+                    $actorUserId,
+                    (int) ($_POST['retention_days'] ?? 0)
+                );
+                header('Location: /errors.php?retention_updated=' . $days);
+                exit;
+            }
+
+            if ($adminAction === 'cleanup') {
+                $deleted = admin_errors_cleanup_now($db, $actorUserId);
+                header('Location: /errors.php?cleaned=' . $deleted);
+                exit;
+            }
+
             if ($adminAction !== 'resolution') {
                 throw new InvalidArgumentException('Choose a valid error-log action.');
             }
@@ -69,14 +85,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $updated = strtolower(trim((string) ($_GET['updated'] ?? '')));
 $tested = (string) ($_GET['tested'] ?? '') === '1';
+$retentionUpdated = (int) ($_GET['retention_updated'] ?? 0);
+$cleaned = isset($_GET['cleaned']) ? max(0, (int) $_GET['cleaned']) : null;
 if ($updated === 'resolved') {
     $notice = 'Error marked resolved.';
 } elseif ($updated === 'open') {
     $notice = 'Error reopened.';
 } elseif ($tested) {
     $notice = 'Diagnostic test recorded successfully. The matching error record is shown below.';
+} elseif ($retentionUpdated > 0) {
+    $notice = 'Resolved error history will be kept for ' . $retentionUpdated . ' days.';
+} elseif ($cleaned !== null) {
+    $notice = number_format($cleaned) . ' old resolved error record' . ($cleaned === 1 ? '' : 's') . ' removed.';
 }
 
+$retentionDays = admin_errors_retention_days($db);
 $result = admin_errors_search($db, $_GET, 50);
 $rows = $result['rows'];
 $filters = $result['filters'];
@@ -135,6 +158,28 @@ require __DIR__ . '/_header.php';
             <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
             <input type="hidden" name="admin_action" value="self_test">
             <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-vial" aria-hidden="true"></i> Run error-log test</button>
+        </form>
+    </div>
+
+    <div class="admin-notice">
+        <div>
+            <strong>Resolved error history</strong>
+            <p>Open issues are never removed automatically. Resolved issues are kept for the retention period below, then cleaned up automatically when new errors are recorded.</p>
+        </div>
+        <form method="post" class="admin-inline-form">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="admin_action" value="retention">
+            <label>
+                <span class="sr-only">Retention days</span>
+                <input type="number" name="retention_days" min="30" max="3650" step="1" value="<?= (int) $retentionDays ?>" required>
+            </label>
+            <span>days</span>
+            <button class="admin-button is-muted" type="submit">Save retention</button>
+        </form>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="admin_action" value="cleanup">
+            <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-broom" aria-hidden="true"></i> Clean up now</button>
         </form>
     </div>
 
