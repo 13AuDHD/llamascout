@@ -8,6 +8,7 @@ require_login();
 
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
+$db = db();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_saved_place'])) {
     $csrfToken = (string) ($_POST['csrf_token'] ?? '');
     $savedId = (int) ($_POST['saved_id'] ?? 0);
@@ -32,21 +33,46 @@ $siteUrl = rtrim(
     '/'
 );
 
+$profileImage = llama_profile_image_url(
+    llama_primary_profile_image($db, $userId),
+    $siteUrl
+);
+
+$displayName = (string) (
+    $user['display_name']
+    ?? $user['username']
+    ?? $user['email']
+    ?? 'Your account'
+);
+
 $pageTitle = 'Your Account | Llama Scout';
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<section class="account-page">
+<link
+    rel="stylesheet"
+    href="<?= htmlspecialchars($siteUrl . '/css/account-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
+>
 
-    <header class="account-page-header">
-        <div>
-            <p class="account-eyebrow">Your account</p>
-            <h1><?= htmlspecialchars(
-                (string) ($user['display_name'] ?? $user['username'] ?? $user['email']),
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?></h1>
+<section class="account-page account-dashboard-page">
+
+    <header class="account-page-header account-dashboard-header">
+        <div class="account-identity">
+            <img
+                class="account-identity-avatar"
+                src="<?= htmlspecialchars($profileImage, ENT_QUOTES, 'UTF-8') ?>"
+                alt=""
+            >
+
+            <div class="account-identity-copy">
+                <p class="account-eyebrow">Your account</p>
+                <h1><?= htmlspecialchars(
+                    $displayName,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></h1>
+            </div>
         </div>
 
         <a class="account-logout-link" href="/logout.php">
@@ -192,6 +218,34 @@ require dirname(__DIR__) . '/partials/header.php';
             </a>
         </div>
     </section>
+
+    <section class="account-section" aria-labelledby="security-heading">
+        <div class="account-section-heading">
+            <div>
+                <p class="account-eyebrow">Account settings</p>
+                <h2 id="security-heading">Security & account</h2>
+            </div>
+        </div>
+
+        <div class="account-action-grid account-security-grid">
+            <a class="account-action-card" href="/forgot-password.php">
+                <i class="fa-solid fa-key" aria-hidden="true"></i>
+                <span>
+                    <strong>Reset password</strong>
+                    <small>Send a secure password reset link to the email address on your account.</small>
+                </span>
+            </a>
+
+            <a class="account-action-card account-action-card-danger" href="/delete-account.php">
+                <i class="fa-solid fa-user-slash" aria-hidden="true"></i>
+                <span>
+                    <strong>Delete or anonymize account</strong>
+                    <small>Permanently close your account. Published contribution history may remain anonymously.</small>
+                </span>
+            </a>
+        </div>
+    </section>
+
 
     <section class="account-section" aria-labelledby="contributions-heading">
         <div class="account-section-heading">
