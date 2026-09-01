@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/scout-policy.php';
+require_once __DIR__ . '/scout-onboarding.php';
 
 function admin_scouts_list(PDO $db): array
 {
@@ -551,6 +552,25 @@ function admin_scout_set_status(
     }
 
     $before = (string) $scout['status'];
+
+    if (
+        $status === 'active'
+        && in_array(
+            $before,
+            [
+                'invited',
+                'application_started',
+                'application_submitted',
+                'training',
+                'pending_approval',
+            ],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'Scout onboarding must be approved through the onboarding review before activating Scout access.'
+        );
+    }
 
     $activeThrough =
         $scout['active_through']
