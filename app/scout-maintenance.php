@@ -619,8 +619,8 @@ function llama_expire_scout_access(
     ) {
 
         /*
-         * Normal annual expiration removes an earned rank and
-         * permanently records the rank that was lost.
+         * Normal annual expiration permanently records the
+         * current rank that was lost.
          */
 
         llama_end_current_scout_rank(
@@ -645,6 +645,41 @@ function llama_expire_scout_access(
         );
 
     }
+
+
+    /*
+     * Rank history is historical. user_roles represents current
+     * authority, so expired Scout access must remove both Scout
+     * and Master Scout roles.
+     */
+
+    llama_remove_scout_roles(
+        $db,
+        $userId
+    );
+
+
+    /*
+     * Master Scout is also represented publicly by the
+     * automatic master-scout badge. Remove that current-rank
+     * badge when Scout authority expires. Historical rank
+     * changes remain in scout_rank_history.
+     */
+
+    $masterBadgeStmt =
+        $db->prepare(
+            'DELETE ub
+             FROM user_badges ub
+             INNER JOIN badge_definitions bd
+                ON bd.id = ub.badge_id
+             WHERE ub.user_id = ?
+               AND bd.slug = "master-scout"
+               AND ub.review_status = "earned"'
+        );
+
+    $masterBadgeStmt->execute([
+        $userId
+    ]);
 
 
     llama_end_scout_complimentary_membership(
