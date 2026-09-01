@@ -10,9 +10,52 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser = moderation_require_admin();
 $db = db();
 
-$scouts = admin_scouts_list($db);
-$stats = admin_dashboard_stats($db);
+$allScouts = admin_scouts_list($db);
+$scoutStats = admin_scout_operational_stats($allScouts);
 
+$q = trim((string) ($_GET['q'] ?? ''));
+$filter = strtolower(trim((string) ($_GET['filter'] ?? 'all')));
+
+if (!in_array($filter, ['all','attention','onboarding','active','master','inactive'], true)) {
+    $filter = 'all';
+}
+
+$scouts = array_values(array_filter(
+    $allScouts,
+    static function (array $scout) use ($q, $filter): bool {
+        $roles = explode(',', (string) ($scout['role_slugs'] ?? ''));
+        $status = (string) ($scout['status'] ?? '');
+        $isMaster = in_array('master_scout', $roles, true);
+
+        $matchesFilter = match ($filter) {
+            'attention' => in_array($status, ['application_submitted','pending_approval','inactive'], true),
+            'onboarding' => in_array($status, ['invited','application_started','application_submitted','training','pending_approval'], true),
+            'active' => $status === 'active',
+            'master' => $isMaster,
+            'inactive' => in_array($status, ['inactive','declined','removed'], true),
+            default => true,
+        };
+
+        if (!$matchesFilter) {
+            return false;
+        }
+
+        if ($q === '') {
+            return true;
+        }
+
+        $haystack = strtolower(implode(' ', [
+            $scout['display_name'] ?? '',
+            $scout['username'] ?? '',
+            $scout['email'] ?? '',
+            $status,
+        ]));
+
+        return str_contains($haystack, strtolower($q));
+    }
+));
+
+$stats = admin_dashboard_stats($db);
 $adminNavCounts = [
     'new_places' => $stats['new_places'],
     'updates' => $stats['updates'],
@@ -28,129 +71,99 @@ $adminActiveNav = 'scouts';
 require __DIR__ . '/_header.php';
 ?>
 
-<section class="admin-panel">
+<section class="admin-scout-stat-grid">
+    <div><span>Total profiles</span><strong><?= number_format($scoutStats['total']) ?></strong></div>
+    <div><span>Active Scouts</span><strong><?= number_format($scoutStats['active']) ?></strong></div>
+    <div><span>Master Scouts</span><strong><?= number_format($scoutStats['master']) ?></strong></div>
+    <div><span>Onboarding</span><strong><?= number_format($scoutStats['onboarding']) ?></strong></div>
+    <div class="<?= $scoutStats['attention'] > 0 ? 'has-attention' : '' ?>"><span>Needs attention</span><strong><?= number_format($scoutStats['attention']) ?></strong></div>
+</section>
 
+<section class="admin-panel">
     <header class="admin-panel-header">
         <div>
             <p>Scout Program</p>
-            <h2><?= number_format(count($scouts)) ?> Scout profiles</h2>
+            <h2><?= number_format(count($scouts)) ?> shown</h2>
         </div>
-
-        <a class="admin-button" href="/policies.php">
-            Scout policies
-        </a>
+        <a class="admin-button" href="/policies.php">Scout policies</a>
     </header>
+
+    <form class="admin-scout-filter-form" method="get">
+        <label>
+            <span>Search</span>
+            <input type="search" name="q" value="<?= moderation_e($q) ?>" placeholder="Name, username, email">
+        </label>
+        <label>
+            <span>View</span>
+            <select name="filter">
+                <?php foreach ([
+                    'all' => 'All Scouts',
+                    'attention' => 'Needs attention',
+                    'onboarding' => 'Onboarding',
+                    'active' => 'Active',
+                    'master' => 'Master Scouts',
+                    'inactive' => 'Inactive / former',
+                ] as $value => $label): ?>
+                    <option value="<?= moderation_e($value) ?>" <?= $filter === $value ? 'selected' : '' ?>><?= moderation_e($label) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <button class="admin-button" type="submit">Apply</button>
+        <?php if ($q !== '' || $filter !== 'all'): ?>
+            <a class="admin-button is-muted" href="/scouts.php">Clear</a>
+        <?php endif; ?>
+    </form>
 
     <?php if (!$scouts): ?>
         <div class="admin-empty-state">
             <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-            <h3>No Scout profiles yet.</h3>
+            <h3>No Scout profiles match this view.</h3>
         </div>
     <?php else: ?>
+        <div class="admin-scout-list">
+            <?php foreach ($scouts as $scout): ?>
+                <?php
+                $roles = explode(',', (string) ($scout['role_slugs'] ?? ''));
+                $isMaster = in_array('master_scout', $roles, true);
+                $status = (string) $scout['status'];
+                $attention = in_array($status, ['application_submitted','pending_approval','inactive'], true);
+                $period = admin_scout_current_period($db, $scout);
+                ?>
+                <article class="admin-scout-list-row <?= $attention ? 'has-attention' : '' ?>">
+                    <div class="admin-user-identity">
+                        <span class="admin-user-table-avatar">
+                            <img src="<?= moderation_e(admin_user_avatar_src((string) ($scout['profile_image_src'] ?? ''), $siteUrl)) ?>" alt="" loading="lazy">
+                        </span>
+                        <div>
+                            <strong><a href="/scout.php?id=<?= (int) $scout['id'] ?>"><?= moderation_e($scout['display_name'] ?: $scout['username'] ?: 'Scout') ?></a></strong>
+                            <span>@<?= moderation_e((string) $scout['username']) ?></span>
+                            <span><?= moderation_e((string) $scout['email']) ?></span>
+                        </div>
+                    </div>
 
-        <div class="admin-user-table-wrap">
-            <table class="admin-user-table">
-                <thead>
-                    <tr>
-                        <th>Scout</th>
-                        <th>Rank</th>
-                        <th>Status</th>
-                        <th>Scout Points</th>
-                        <th>Activity</th>
-                        <th>Active Through</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($scouts as $scout): ?>
-                    <?php
-                    $roles = explode(
-                        ',',
-                        (string) ($scout['role_slugs'] ?? '')
-                    );
-                    $isMaster = in_array(
-                        'master_scout',
-                        $roles,
-                        true
-                    );
-                    ?>
-                    <tr>
-                        <td>
-                            <div class="admin-user-identity">
-                                <span class="admin-user-table-avatar">
-                                    <img
-                                        src="<?= moderation_e(
-                                            admin_user_avatar_src(
-                                                (string) ($scout['profile_image_src'] ?? ''),
-                                                $siteUrl
-                                            )
-                                        ) ?>"
-                                        alt=""
-                                        loading="lazy"
-                                    >
-                                </span>
-                                <div>
-                                    <strong>
-                                        <?= moderation_e(
-                                            $scout['display_name']
-                                            ?: $scout['username']
-                                            ?: 'Scout'
-                                        ) ?>
-                                    </strong>
-                                    <span>
-                                        @<?= moderation_e(
-                                            (string) $scout['username']
-                                        ) ?>
-                                    </span>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="admin-status-pill">
-                                <?= $isMaster ? 'Master Scout' : 'Llama Scout' ?>
-                            </span>
-                        </td>
-                        <td>
-                            <span class="admin-status-pill">
-                                <?= moderation_e(
-                                    ucwords(
-                                        str_replace(
-                                            '_',
-                                            ' ',
-                                            (string) $scout['status']
-                                        )
-                                    )
-                                ) ?>
-                            </span>
-                        </td>
-                        <td><?= number_format((int) $scout['scout_points']) ?></td>
-                        <td><?= number_format((int) $scout['activity_count']) ?></td>
-                        <td>
-                            <span class="admin-table-muted">
-                                <?= moderation_e(
-                                    (string) (
-                                        $scout['active_through']
-                                        ?: 'Not active'
-                                    )
-                                ) ?>
-                            </span>
-                        </td>
-                        <td>
-                            <a
-                                class="admin-button"
-                                href="/scout.php?id=<?= (int) $scout['id'] ?>"
-                            >
-                                Manage
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+                    <div class="admin-scout-list-facts">
+                        <span><small>Rank</small><strong><?= $isMaster ? 'Master Scout' : 'Llama Scout' ?></strong></span>
+                        <span><small>Status</small><strong><?= moderation_e(ucwords(str_replace('_', ' ', $status))) ?></strong></span>
+                        <span><small>Points</small><strong><?= number_format((int) $scout['scout_points']) ?></strong></span>
+                        <span><small>New Places</small><strong><?= number_format((int) $scout['new_place_count']) ?></strong></span>
+                        <span><small>Improvements</small><strong><?= number_format((int) $scout['improvement_count']) ?></strong></span>
+                    </div>
+
+                    <div class="admin-scout-period-mini <?= !empty($period['met']) ? 'is-good' : '' ?>">
+                        <?php if ($status === 'active' && !empty($period['end'])): ?>
+                            <strong><?= number_format((int) $period['completed']) ?> / <?= number_format((int) $period['required']) ?> new Places</strong>
+                            <span>Active through <?= moderation_e((string) $period['end']) ?></span>
+                        <?php else: ?>
+                            <strong><?= moderation_e(ucwords(str_replace('_', ' ', $status))) ?></strong>
+                            <span>Current Scout period not active</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <a class="admin-button" href="/scout.php?id=<?= (int) $scout['id'] ?>">Manage</a>
+                </article>
+            <?php endforeach; ?>
         </div>
-
     <?php endif; ?>
-
 </section>
 
 <?php require __DIR__ . '/_footer.php'; ?>
