@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-system.php';
+require_once dirname(__DIR__) . '/app/admin-testing.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -54,6 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         (int) $cleanup['deleted_bytes']
                     ) .
                     ').';
+            } elseif ($action === 'reset_test_account') {
+                $targetUserId = (int) ($_POST['test_user_id'] ?? 0);
+                $result = admin_testing_reset(
+                    $db,
+                    $actorUserId,
+                    $targetUserId,
+                    isset($_POST['wipe_stripe']),
+                    isset($_POST['wipe_scout']),
+                    isset($_POST['wipe_saved_places'])
+                );
+
+                $notice = 'Test account reset completed immediately.';
             } else {
                 admin_system_set_maintenance(
                     $db,
@@ -112,6 +125,9 @@ $maintenanceHistory =
         $db,
         8
     );
+
+$testAccounts = admin_testing_accounts($db);
+$stripeTestMode = admin_testing_is_stripe_test_mode();
 
 $stats = admin_dashboard_stats($db);
 
@@ -452,6 +468,130 @@ require __DIR__ . '/_header.php';
 
 </section>
 
+
+
+<section class="admin-panel admin-system-testing-panel">
+
+    <header class="admin-panel-header">
+        <div>
+            <p>Owner tools</p>
+            <h2>Testing</h2>
+        </div>
+
+        <?php if (!$actorIsOwner): ?>
+            <span>Owner access required</span>
+        <?php endif; ?>
+    </header>
+
+    <div class="admin-system-testing-body">
+        <div class="admin-system-testing-copy">
+            <h3>Reset a reusable test account</h3>
+            <p>
+                Pick a non-Admin account and wipe only the test state you want
+                to repeat. Published Places and contribution provenance are not
+                deleted by this tool. Account anonymization remains under Users
+                for the final account-deletion test.
+            </p>
+        </div>
+
+        <div class="admin-system-testing-mode <?= $stripeTestMode ? 'is-test' : 'is-live' ?>">
+            <i class="fa-solid <?= $stripeTestMode ? 'fa-flask' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i>
+            <span>
+                <strong>Stripe: <?= $stripeTestMode ? 'TEST mode' : 'LIVE / unavailable' ?></strong>
+                <?= $stripeTestMode
+                    ? 'Stripe test subscriptions/customers can be canceled and deleted by the reset tool.'
+                    : 'Stripe wipe is blocked. The tool will never silently destroy live Stripe billing.' ?>
+            </span>
+        </div>
+
+        <?php if ($actorIsOwner): ?>
+        <form
+            method="post"
+            class="admin-system-testing-form"
+            onsubmit="return confirm('Reset the selected test account now? The checked state will be removed immediately.');"
+        >
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="reset_test_account">
+
+            <label class="admin-system-testing-user">
+                <span>Test username</span>
+                <select name="test_user_id" required>
+                    <option value="">Choose a test account...</option>
+                    <?php foreach ($testAccounts as $testAccount): ?>
+                        <option value="<?= (int) $testAccount['id'] ?>">
+                            <?= moderation_e(
+                                (string) ($testAccount['username'] ?: $testAccount['display_name'] ?: $testAccount['email'])
+                            ) ?>
+                            · User #<?= (int) $testAccount['id'] ?>
+                            <?php if (!empty($testAccount['scout_status'])): ?>
+                                · Scout: <?= moderation_e((string) $testAccount['scout_status']) ?>
+                            <?php endif; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <div class="admin-system-testing-options">
+                <label class="admin-system-check <?= !$stripeTestMode ? 'is-disabled' : '' ?>">
+                    <input
+                        type="checkbox"
+                        name="wipe_stripe"
+                        value="1"
+                        <?= !$stripeTestMode ? 'disabled' : '' ?>
+                    >
+                    <span>
+                        <strong>Wipe / disconnect Stripe payments</strong>
+                        <small>
+                            Cancel the linked Stripe test subscription, delete the
+                            Stripe test customer, clear local billing IDs, grants,
+                            and membership state.
+                        </small>
+                    </span>
+                </label>
+
+                <label class="admin-system-check">
+                    <input type="checkbox" name="wipe_scout" value="1">
+                    <span>
+                        <strong>Wipe Scout status earned</strong>
+                        <small>
+                            Remove Scout and Master Scout authority, onboarding,
+                            training, reactivation, rank-history test state, and
+                            Scout complimentary membership. Published contribution
+                            history remains intact.
+                        </small>
+                    </span>
+                </label>
+
+                <label class="admin-system-check">
+                    <input type="checkbox" name="wipe_saved_places" value="1">
+                    <span>
+                        <strong>Wipe Saved Places</strong>
+                        <small>
+                            Remove the selected account's saved/favorite Place state.
+                        </small>
+                    </span>
+                </label>
+            </div>
+
+            <div class="admin-system-testing-warning">
+                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                <span>
+                    <strong>Immediate action</strong>
+                    Only the checked items are reset. There is no undo button.
+                </span>
+            </div>
+
+            <div class="admin-user-form-actions">
+                <button class="admin-button is-danger" type="submit">
+                    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                    Reset selected test state
+                </button>
+            </div>
+        </form>
+        <?php endif; ?>
+    </div>
+
+</section>
 
 <div class="admin-system-operations-grid">
 
