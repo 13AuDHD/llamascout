@@ -138,6 +138,16 @@ function admin_testing_reset(
         $stripeResult = admin_testing_reset_stripe_remote($target);
     }
 
+    /*
+     * MariaDB/MySQL DDL implicitly commits an open transaction.
+     * The Scout ensure helpers may execute CREATE TABLE IF NOT EXISTS,
+     * so all schema preparation must happen before beginTransaction().
+     */
+    if ($wipeScout) {
+        llama_ensure_scout_extensions_table($db);
+        llama_ensure_scout_rank_history_table($db);
+    }
+
     $db->beginTransaction();
 
     try {
@@ -164,9 +174,6 @@ function admin_testing_reset(
         }
 
         if ($wipeScout) {
-            llama_ensure_scout_extensions_table($db);
-            llama_ensure_scout_rank_history_table($db);
-
             foreach (['scout_extensions', 'scout_rank_history', 'scout_applications', 'scout_training'] as $table) {
                 $counts['scout_rows'] += admin_testing_delete_if_present($db, $table, $targetUserId);
             }
