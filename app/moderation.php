@@ -536,6 +536,222 @@ function moderation_insert_contribution(
     return $contributionId;
 }
 
+function moderation_insert_place_child_row(
+    PDO $db,
+    string $table,
+    int $placeId,
+    array $data
+): void {
+    $allowed = [
+        'place_amenities',
+        'place_connectivity',
+        'place_details',
+        'place_sensory_details',
+        'place_rules',
+        'place_experience',
+    ];
+
+    if (
+        !in_array(
+            $table,
+            $allowed,
+            true
+        )
+        || !$data
+    ) {
+        return;
+    }
+
+    $columns = [];
+    $values = [];
+
+    foreach ($data as $key => $value) {
+        if (!preg_match('/^[a-z0-9_]+$/', (string) $key)) {
+            continue;
+        }
+
+        $columns[] = (string) $key;
+        $values[] =
+            is_bool($value)
+                ? ($value ? 1 : 0)
+                : $value;
+    }
+
+    if (!$columns) {
+        return;
+    }
+
+    $quoted =
+        array_map(
+            static fn(string $column): string =>
+                '`' . $column . '`',
+            $columns
+        );
+
+    $stmt = $db->prepare(
+        'INSERT INTO `' .
+        $table .
+        '` (
+            `place_id`,
+            ' .
+            implode(', ', $quoted) .
+        ') VALUES (
+            ?,
+            ' .
+            implode(
+                ', ',
+                array_fill(
+                    0,
+                    count($columns),
+                    '?'
+                )
+            ) .
+        ')'
+    );
+
+    $stmt->execute(
+        array_merge(
+            [$placeId],
+            $values
+        )
+    );
+}
+
+function moderation_insert_submission_report_data(
+    PDO $db,
+    int $placeId,
+    array $data
+): void {
+    moderation_insert_place_child_row(
+        $db,
+        'place_amenities',
+        $placeId,
+        is_array($data['amenities'] ?? null)
+            ? $data['amenities']
+            : []
+    );
+
+    moderation_insert_place_child_row(
+        $db,
+        'place_connectivity',
+        $placeId,
+        is_array($data['connectivity'] ?? null)
+            ? $data['connectivity']
+            : []
+    );
+
+    moderation_insert_place_child_row(
+        $db,
+        'place_details',
+        $placeId,
+        is_array($data['details'] ?? null)
+            ? $data['details']
+            : []
+    );
+
+    $sensory =
+        is_array($data['sensory'] ?? null)
+            ? $data['sensory']
+            : [];
+
+    moderation_insert_place_child_row(
+        $db,
+        'place_sensory_details',
+        $placeId,
+        is_array($sensory['details'] ?? null)
+            ? $sensory['details']
+            : []
+    );
+
+    foreach (
+        [
+            'daytime',
+            'nighttime',
+        ] as $period
+    ) {
+        $periodData =
+            is_array($sensory[$period] ?? null)
+                ? $sensory[$period]
+                : [];
+
+        if (!$periodData) {
+            continue;
+        }
+
+        $columns = [];
+        $values = [];
+
+        foreach ($periodData as $key => $value) {
+            if (!preg_match('/^[a-z0-9_]+$/', (string) $key)) {
+                continue;
+            }
+
+            $columns[] = (string) $key;
+            $values[] = $value;
+        }
+
+        if (!$columns) {
+            continue;
+        }
+
+        $stmt = $db->prepare(
+            'INSERT INTO place_sensory (
+                place_id,
+                period,
+                ' .
+                implode(
+                    ', ',
+                    array_map(
+                        static fn(string $column): string =>
+                            '`' . $column . '`',
+                        $columns
+                    )
+                ) .
+            ') VALUES (
+                ?,
+                ?,
+                ' .
+                implode(
+                    ', ',
+                    array_fill(
+                        0,
+                        count($columns),
+                        '?'
+                    )
+                ) .
+            ')'
+        );
+
+        $stmt->execute(
+            array_merge(
+                [
+                    $placeId,
+                    $period,
+                ],
+                $values
+            )
+        );
+    }
+
+    moderation_insert_place_child_row(
+        $db,
+        'place_rules',
+        $placeId,
+        is_array($data['rules'] ?? null)
+            ? $data['rules']
+            : []
+    );
+
+    moderation_insert_place_child_row(
+        $db,
+        'place_experience',
+        $placeId,
+        is_array($data['experience'] ?? null)
+            ? $data['experience']
+            : []
+    );
+}
+
 function moderation_approve_new_place(
     PDO $db,
     int $submissionId,
@@ -618,6 +834,13 @@ function moderation_approve_new_place(
     ]);
 
     $placeId = (int) $db->lastInsertId();
+
+    moderation_insert_submission_report_data(
+        $db,
+        $placeId,
+        $data
+    );
+
 
     $provenance = $db->prepare(
         'INSERT INTO place_provenance
