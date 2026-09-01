@@ -7488,228 +7488,200 @@ html[data-reduced-motion="true"] .admin-sidebar {
 
 
 /* =========================================================
-   PHASE 41: SCOUT ONBOARDING
+   PHASE 42: MEMBER BADGE MANAGEMENT
    ========================================================= */
 
-.admin-scout-invite-panel {
+.admin-member-badge-manager {
     margin-bottom: 14px;
 }
 
-.admin-scout-invite-form {
+.admin-member-badge-summary {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) minmax(180px, .7fr) auto;
-    gap: 10px;
-    align-items: end;
-    padding: 13px 14px;
-}
-
-.admin-scout-invite-form label {
-    display: grid;
-    gap: 4px;
-}
-
-.admin-scout-invite-form label > span,
-.admin-scout-invite-form > div > strong,
-.admin-scout-invite-form > div > span {
-    display: block;
-}
-
-.admin-scout-invite-form label > span {
-    color: var(--text-muted);
-    font-size: .59rem;
-    font-weight: 850;
-}
-
-.admin-scout-invite-form select {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--background);
-    color: var(--text);
-    font: inherit;
-}
-
-.admin-scout-invite-form > div > strong {
-    font-size: .65rem;
-}
-
-.admin-scout-invite-form > div > span {
-    margin-top: 2px;
-    color: var(--text-muted);
-    font-size: .57rem;
-    line-height: 1.35;
-}
-
-.admin-scout-onboarding-review {
-    scroll-margin-top: 84px;
-}
-
-.admin-scout-onboarding-steps {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 7px;
-    padding: 13px 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border);
 }
 
-.admin-scout-onboarding-steps > div {
-    display: grid;
-    grid-template-columns: 24px minmax(0, 1fr);
-    gap: 6px;
-    align-items: center;
-    min-width: 0;
-}
-
-.admin-scout-onboarding-steps > div > span {
-    width: 22px;
-    height: 22px;
-    display: grid;
-    place-items: center;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: var(--text-muted);
-    font-size: .56rem;
-    font-weight: 900;
-}
-
-.admin-scout-onboarding-steps strong {
-    overflow-wrap: anywhere;
-    font-size: .58rem;
-}
-
-.admin-scout-onboarding-steps .is-complete > span {
-    border-color: #58a66a;
-    color: #58a66a;
-}
-
-.admin-scout-onboarding-steps .is-current > span {
-    border-color: #d3a842;
-    color: #d3a842;
-}
-
-.admin-scout-onboarding-facts {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    padding: 13px 14px;
-}
-
-.admin-scout-onboarding-facts > div {
-    min-width: 0;
+.admin-member-badge-summary > div {
     padding: 9px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--background);
 }
 
-.admin-scout-onboarding-facts > div.is-good {
-    border-color: color-mix(in srgb, #58a66a 45%, var(--border));
-}
-
-.admin-scout-onboarding-facts > div.has-attention {
-    border-color: color-mix(in srgb, #d3a842 45%, var(--border));
-}
-
-.admin-scout-onboarding-facts span,
-.admin-scout-onboarding-facts strong,
-.admin-scout-onboarding-facts small {
+.admin-member-badge-summary span,
+.admin-member-badge-summary strong {
     display: block;
 }
 
-.admin-scout-onboarding-facts span {
+.admin-member-badge-summary span {
     color: var(--text-muted);
     font-size: .55rem;
     font-weight: 850;
     text-transform: uppercase;
 }
 
-.admin-scout-onboarding-facts strong {
-    margin-top: 3px;
-    font-size: .65rem;
+.admin-member-badge-summary strong {
+    margin-top: 2px;
+    font-size: .82rem;
 }
 
-.admin-scout-onboarding-facts small {
-    margin-top: 2px;
+.admin-member-badge-list {
+    display: grid;
+}
+
+.admin-member-badge-row {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) minmax(190px, auto);
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-member-badge-art {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--background);
+}
+
+.admin-member-badge-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.admin-member-badge-copy span,
+.admin-member-badge-copy strong,
+.admin-member-badge-copy small {
+    display: block;
+}
+
+.admin-member-badge-copy span {
     color: var(--text-muted);
     font-size: .54rem;
-    line-height: 1.35;
+    font-weight: 850;
+    text-transform: uppercase;
 }
 
-.admin-scout-review-note {
-    margin: 0 14px 12px;
-    padding: 9px 10px;
-    border: 1px solid color-mix(in srgb, #d3a842 45%, var(--border));
-    border-radius: 8px;
+.admin-member-badge-copy strong {
+    margin-top: 2px;
+    font-size: .69rem;
 }
 
-.admin-scout-review-note strong {
-    font-size: .65rem;
+.admin-member-badge-copy small {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: .55rem;
 }
 
-.admin-scout-review-note p {
+.admin-member-badge-copy p {
     margin: 4px 0 0;
     color: var(--text-muted);
-    font-size: .61rem;
-    line-height: 1.45;
+    font-size: .58rem;
 }
 
-.admin-scout-review-actions {
-    border-top: 1px solid var(--border);
+.admin-member-badge-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
 }
 
-.admin-scout-review-actions > label {
+.admin-member-badge-actions form {
     display: grid;
-    gap: 5px;
+    grid-template-columns: minmax(120px, 1fr) auto;
+    gap: 6px;
+    align-items: center;
 }
 
-.admin-scout-review-actions > label > span {
-    color: var(--text-muted);
-    font-size: .59rem;
-    font-weight: 850;
-}
-
-.admin-scout-review-actions textarea {
+.admin-member-badge-actions input,
+.admin-member-badge-award input,
+.admin-member-badge-award select {
     width: 100%;
     box-sizing: border-box;
-    padding: 8px;
+    padding: 7px 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--background);
     color: var(--text);
     font: inherit;
-    resize: vertical;
 }
 
-.admin-scout-review-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 9px;
+.admin-member-badge-award {
+    padding: 13px 14px;
 }
 
-@media (max-width: 860px) {
-    .admin-scout-invite-form {
+.admin-member-badge-award > div > p,
+.admin-member-badge-award > div > h3 {
+    margin: 0;
+}
+
+.admin-member-badge-award > div > p {
+    color: var(--text-muted);
+    font-size: .55rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-member-badge-award > div > h3 {
+    margin-top: 2px;
+    font-size: .78rem;
+}
+
+.admin-member-badge-award form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    margin-top: 10px;
+}
+
+.admin-member-badge-award label {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-member-badge-award label > span {
+    color: var(--text-muted);
+    font-size: .55rem;
+    font-weight: 850;
+}
+
+.admin-muted-copy {
+    color: var(--text-muted);
+    font-size: .61rem;
+}
+
+@media (max-width: 900px) {
+    .admin-member-badge-row {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .admin-member-badge-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+
+    .admin-member-badge-award form {
         grid-template-columns: 1fr 1fr;
     }
-
-    .admin-scout-invite-form > button {
-        width: fit-content;
-    }
-
-    .admin-scout-onboarding-facts {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
-@media (max-width: 620px) {
-    .admin-scout-invite-form,
-    .admin-scout-onboarding-facts {
+@media (max-width: 560px) {
+    .admin-member-badge-summary,
+    .admin-member-badge-award form {
         grid-template-columns: 1fr;
     }
 
-    .admin-scout-onboarding-steps {
+    .admin-member-badge-actions form {
         grid-template-columns: 1fr;
+        width: 100%;
     }
 }
