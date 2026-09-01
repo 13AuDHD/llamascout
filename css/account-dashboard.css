@@ -1,0 +1,160 @@
+/* =========================================================
+   LLAMA SCOUT ACCOUNT DASHBOARD
+   ========================================================= */
+
+.account-dashboard-page {
+    width: min(1180px, calc(100% - 32px));
+    margin: 0 auto;
+}
+
+.account-dashboard-header {
+    min-width: 0;
+}
+
+.account-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.account-identity-avatar {
+    flex: 0 0 68px;
+    width: 68px;
+    height: 68px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+}
+
+.account-identity-copy {
+    min-width: 0;
+}
+
+.account-identity-copy h1 {
+    overflow-wrap: anywhere;
+}
+
+/*
+ * Saved Places deliberately uses fixed responsive column counts.
+ * A single saved Place therefore occupies one card slot instead of
+ * stretching across the entire row.
+ */
+.saved-places-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.saved-place-card {
+    min-width: 0;
+}
+
+.saved-place-card-image {
+    aspect-ratio: 4 / 3;
+}
+
+.saved-place-card-body {
+    gap: 7px;
+    padding: 13px;
+}
+
+.saved-place-card-title-row {
+    gap: 8px;
+}
+
+.saved-place-card-title-row h3 {
+    font-size: .94rem;
+    line-height: 1.2;
+}
+
+.saved-place-card-location,
+.saved-place-card-meta,
+.saved-place-card-unavailable {
+    font-size: .76rem;
+    line-height: 1.35;
+}
+
+.saved-place-card-link {
+    font-size: .78rem;
+}
+
+.saved-place-remove-button {
+    flex: 0 0 auto;
+}
+
+.account-action-card-danger {
+    border-color: color-mix(
+        in srgb,
+        #b64b42 45%,
+        var(--border)
+    );
+}
+
+.account-action-card-danger > i,
+.account-action-card-danger strong {
+    color: #c65c52;
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+    .saved-places-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .account-dashboard-page {
+        width: min(100% - 20px, 1180px);
+        gap: 26px;
+    }
+
+    .account-dashboard-header {
+        align-items: center;
+    }
+
+    .account-identity {
+        gap: 10px;
+    }
+
+    .account-identity-avatar {
+        flex-basis: 54px;
+        width: 54px;
+        height: 54px;
+    }
+
+    .account-identity-copy h1 {
+        font-size: clamp(1.45rem, 7vw, 2rem);
+    }
+
+    .account-logout-link {
+        font-size: .78rem;
+    }
+
+    .saved-places-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .saved-place-card-image {
+        aspect-ratio: 1 / 1;
+    }
+
+    .saved-place-card-body {
+        padding: 10px;
+    }
+
+    .saved-place-card-title-row h3 {
+        font-size: .84rem;
+    }
+
+    .saved-place-card-location,
+    .saved-place-card-meta,
+    .saved-place-card-unavailable,
+    .saved-place-card-link {
+        font-size: .7rem;
+    }
+
+    .account-security-grid {
+        grid-template-columns: 1fr;
+    }
+}
