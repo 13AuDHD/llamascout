@@ -27,6 +27,10 @@ require_once
     __DIR__
     . '/mfa.php';
 
+require_once
+    __DIR__
+    . '/presence.php';
+
 
 /* =========================================================
    CONSTANTS
@@ -737,6 +741,27 @@ function current_user(): ?array {
 
 
         return null;
+    }
+
+
+    /*
+     * Authenticated presence.
+     *
+     * This is approximate activity, not a persistent "logged in"
+     * flag. Closed tabs and sleeping devices naturally age out.
+     * Presence failure must never break authentication.
+     */
+    try {
+        llama_presence_touch(
+            db(),
+            $userId
+        );
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout presence update error: '
+            .
+            $exception->getMessage()
+        );
     }
 
 
