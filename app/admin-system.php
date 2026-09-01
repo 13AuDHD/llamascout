@@ -1116,44 +1116,53 @@ function admin_system_health(
     try {
         llama_error_ensure_table($db);
 
-        $recentErrorStats =
+        $openErrorStats =
             $db->query(
                 'SELECT
-                    COUNT(*) AS total_24h,
-                    SUM(CASE WHEN severity = "fatal" THEN 1 ELSE 0 END) AS fatal_24h
+                    COUNT(*) AS open_total,
+                    SUM(CASE WHEN severity = "fatal" THEN 1 ELSE 0 END) AS open_fatal
                  FROM application_errors
-                 WHERE created_at >= (UTC_TIMESTAMP() - INTERVAL 24 HOUR)'
+                 WHERE resolution_status = "open"'
             )->fetch(PDO::FETCH_ASSOC) ?: [];
 
-        $recentErrors =
-            (int) ($recentErrorStats['total_24h'] ?? 0);
+        $openErrors =
+            (int) ($openErrorStats['open_total'] ?? 0);
 
-        $recentFatals =
-            (int) ($recentErrorStats['fatal_24h'] ?? 0);
+        $openFatals =
+            (int) ($openErrorStats['open_fatal'] ?? 0);
+
+        $lastOpenError =
+            $db->query(
+                'SELECT reference_code, severity, created_at
+                 FROM application_errors
+                 WHERE resolution_status = "open"
+                 ORDER BY id DESC
+                 LIMIT 1'
+            )->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $lastError =
             $db->query(
-                'SELECT reference_code, severity, created_at
+                'SELECT reference_code, severity, created_at, resolution_status
                  FROM application_errors
                  ORDER BY id DESC
                  LIMIT 1'
             )->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $errorHealthStatus =
-            $recentFatals > 0
+            $openFatals > 0
                 ? 'down'
                 : (
-                    $recentErrors > 0
+                    $openErrors > 0
                         ? 'attention'
                         : 'good'
                 );
 
-        if ($recentErrors === 0) {
-            $errorHealthValue = 'No errors in 24h';
+        if ($openErrors === 0) {
+            $errorHealthValue = 'No open errors';
 
             $errorHealthDetail =
                 $lastError
-                    ? 'No errors were recorded in the last 24 hours. Most recent: ' .
+                    ? 'All recorded application errors are resolved. Most recent record: ' .
                         (string) ($lastError['reference_code'] ?? 'unknown') .
                         ' at ' .
                         (string) ($lastError['created_at'] ?? 'unknown time') .
@@ -1161,17 +1170,17 @@ function admin_system_health(
                     : 'No application errors have been recorded.';
         } else {
             $errorHealthValue =
-                number_format($recentErrors) .
-                ' in 24h';
+                number_format($openErrors) .
+                ' open';
 
             $errorHealthDetail =
-                ($recentFatals > 0
-                    ? number_format($recentFatals) . ' fatal; '
+                ($openFatals > 0
+                    ? number_format($openFatals) . ' fatal; '
                     : '') .
-                'most recent: ' .
-                (string) ($lastError['reference_code'] ?? 'unknown') .
+                'most recent open error: ' .
+                (string) ($lastOpenError['reference_code'] ?? 'unknown') .
                 ' at ' .
-                (string) ($lastError['created_at'] ?? 'unknown time') .
+                (string) ($lastOpenError['created_at'] ?? 'unknown time') .
                 '. Review Configuration > Error Log.';
         }
 

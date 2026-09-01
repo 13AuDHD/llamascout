@@ -19,6 +19,9 @@ function llama_error_ensure_table(PDO $db): void
             line_number INT UNSIGNED NULL,
             trace MEDIUMTEXT NULL,
             context_json MEDIUMTEXT NULL,
+            resolution_status VARCHAR(20) NOT NULL DEFAULT 'open',
+            resolved_at DATETIME NULL,
+            resolved_by BIGINT UNSIGNED NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY uq_application_errors_reference (reference_code),
@@ -26,6 +29,17 @@ function llama_error_ensure_table(PDO $db): void
             KEY idx_application_errors_user (user_id),
             KEY idx_application_errors_action (action)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+
+    // Keep existing installations in sync when this feature is added after
+    // the table was originally created. MariaDB 10.11 supports IF NOT EXISTS.
+    $db->exec(
+        "ALTER TABLE application_errors
+            ADD COLUMN IF NOT EXISTS resolution_status VARCHAR(20) NOT NULL DEFAULT 'open' AFTER context_json,
+            ADD COLUMN IF NOT EXISTS resolved_at DATETIME NULL AFTER resolution_status,
+            ADD COLUMN IF NOT EXISTS resolved_by BIGINT UNSIGNED NULL AFTER resolved_at,
+            ADD INDEX IF NOT EXISTS idx_application_errors_resolution (resolution_status),
+            ADD INDEX IF NOT EXISTS idx_application_errors_resolved_by (resolved_by)"
     );
 }
 
