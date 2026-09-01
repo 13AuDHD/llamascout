@@ -1585,7 +1585,17 @@ function community_open_update_for_user(
     int $placeId
 ): ?array {
     $stmt = db()->prepare(
-        "SELECT id, status, submitted_at
+        "SELECT
+            id,
+            status,
+            submitted_at,
+            reviewed_at,
+            review_notes,
+            visited_at,
+            proposed_changes,
+            original_values,
+            photos,
+            contributor_notes
          FROM place_update_submissions
          WHERE user_id = :user_id
            AND place_id = :place_id
@@ -1656,6 +1666,334 @@ function community_parse_update_value(
             : 500
     );
 }
+
+function community_resubmit_place_update(
+    int $userId,
+    array $place,
+    int $updateId,
+    array $input
+): int {
+    $placeId =
+        (int) ($place['id'] ?? 0);
+
+    if (
+        $userId < 1
+        || $placeId < 1
+        || $updateId < 1
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid Place update.'
+        );
+    }
+
+    $db = db();
+
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM place_update_submissions
+         WHERE id = ?
+           AND user_id = ?
+           AND place_id = ?
+           AND status = "needs-changes"
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $updateId,
+        $userId,
+        $placeId,
+    ]);
+
+    $existing =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$existing) {
+        throw new RuntimeException(
+            'This Place update is no longer available for resubmission.'
+        );
+    }
+
+    $definitions =
+        community_place_update_field_definitions();
+
+    $current =
+        community_update_current_values(
+            $db,
+            $placeId
+        );
+
+    $selected =
+        is_array(
+            $input['change_fields']
+            ?? null
+        )
+            ? array_values(
+                $input['change_fields']
+            )
+            : [];
+
+    $values =
+        is_array(
+            $input['field_value']
+            ?? null
+        )
+            ? $input['field_value']
+            : [];
+
+    $proposed = [];
+    $original = [];
+
+    foreach ($selected as $path) {
+        $path = (string) $path;
+
+        if (!isset($definitions[$path])) {
+            continue;
+        }
+
+        $definition =
+            $definitions[$path];
+
+        $raw =
+            $values[$path]
+            ?? '__NULL__';
+
+        $newValue =
+            community_parse_update_value(
+                $raw,
+                (string) $definition['type']
+            );
+
+        $oldValue =
+            $current[$path]
+            ?? null;
+
+        $oldComparable =
+            is_bool($oldValue)
+                ? ($oldValue ? '1' : '0')
+                : (
+                    $oldValue === null
+                        ? null
+                        : (string) $oldValue
+                );
+
+        $newComparable =
+            is_bool($newValue)
+                ? ($newValue ? '1' : '0')
+                : (
+                    $newValue === null
+                        ? null
+                        : (string) $newValue
+                );
+
+        if ($oldComparable === $newComparable) {
+            continue;
+        }
+
+        $proposed[$path] =
+            $newValue;
+
+        $original[$path] =
+            $oldValue;
+    }
+
+    $existingPhotos =
+        json_decode(
+            (string) (
+                $existing['photos']
+                ?? '[]'
+            ),
+            true
+        );
+
+    if (!is_array($existingPhotos)) {
+        $existingPhotos = [];
+    }
+
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
+
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+    if (
+        !$proposed
+        && !$existingPhotos
+        && !$submittedPhotos
+    ) {
+        throw new InvalidArgumentException(
+            'Select at least one field that changed, or include a current photo.'
+        );
+    }
+
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
+    }
+
+    $visitedAt =
+        community_clean_text(
+            $input['visited_at']
+            ?? null,
+            30
+        );
+
+    $notes =
+        community_clean_text(
+            $input['contributor_notes']
+            ?? null
+        );
+
+    $newCommittedPhotos = [];
+
+    try {
+        $db->beginTransaction();
+
+        if ($photoToken !== '') {
+            $newCommittedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/' .
+                        $updateId
+                );
+        }
+
+        $photos =
+            array_values(
+                array_merge(
+                    $existingPhotos,
+                    $newCommittedPhotos
+                )
+            );
+
+        $update = $db->prepare(
+            'UPDATE place_update_submissions
+             SET
+                status = "pending",
+                role_at_submission = :role_at_submission,
+                visited_at = :visited_at,
+                proposed_changes = :proposed_changes,
+                original_values = :original_values,
+                photos = :photos,
+                contributor_notes = :contributor_notes,
+                submitted_at = CURRENT_TIMESTAMP,
+                reviewed_at = NULL,
+                reviewed_by = NULL,
+                review_notes = NULL
+             WHERE id = :id
+               AND user_id = :user_id
+               AND place_id = :place_id
+               AND status = "needs-changes"'
+        );
+
+        $update->execute([
+            ':role_at_submission' =>
+                community_role_at_submission(
+                    $userId
+                ),
+
+            ':visited_at' =>
+                $visitedAt !== null
+                    ? $visitedAt .
+                        (
+                            strlen($visitedAt) === 10
+                                ? ' 00:00:00'
+                                : ''
+                        )
+                    : null,
+
+            ':proposed_changes' =>
+                json_encode(
+                    $proposed,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+
+            ':original_values' =>
+                json_encode(
+                    $original,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+
+            ':photos' =>
+                json_encode(
+                    $photos,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+
+            ':contributor_notes' =>
+                $notes,
+
+            ':id' =>
+                $updateId,
+
+            ':user_id' =>
+                $userId,
+
+            ':place_id' =>
+                $placeId,
+        ]);
+
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException(
+                'The Place update changed before it could be resubmitted.'
+            );
+        }
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        foreach ($newCommittedPhotos as $photo) {
+            $src =
+                is_array($photo)
+                    ? trim(
+                        (string) (
+                            $photo['src']
+                            ?? ''
+                        )
+                    )
+                    : '';
+
+            if ($src !== '') {
+                $absolute =
+                    dirname(__DIR__)
+                    . $src;
+
+                if (is_file($absolute)) {
+                    @unlink($absolute);
+                }
+            }
+        }
+
+        throw $exception;
+    }
+
+    return $updateId;
+}
+
 
 function submit_place_update(
     int $userId,
