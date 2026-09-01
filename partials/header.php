@@ -95,6 +95,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
 
     <link
         rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/shop.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <link
+        rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/mobile-menu.css', ENT_QUOTES, 'UTF-8') ?>"
     >
 
@@ -195,6 +200,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
             <a href="<?= htmlspecialchars($siteUrl . '/membership', ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fa-solid fa-id-card" aria-hidden="true"></i>
                 <span>Membership</span>
+            </a>
+
+            <a href="<?= htmlspecialchars($siteUrl . '/shop.php', ENT_QUOTES, 'UTF-8') ?>">
+                <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
+                <span>Shop</span>
             </a>
 
             <?php if ($user): ?>
