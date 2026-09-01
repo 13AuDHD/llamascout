@@ -43,10 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
             llama_profile_save($db, $userId, $_POST);
             $success = 'Your Profile has been updated.';
         } catch (Throwable $exception) {
-            error_log('Llama Scout community profile save error for user #' . $userId . ': ' . $exception->getMessage());
-            $errors[] = $exception instanceof InvalidArgumentException
+            $reference = llama_log_caught_exception(
+                $exception,
+                'account.profile_save',
+                ['user_id' => $userId],
+                [InvalidArgumentException::class]
+            );
+
+            $errors[] = $reference === null
                 ? $exception->getMessage()
-                : 'Your profile could not be updated. Please try again.';
+                : llama_error_message_with_reference('Your profile could not be updated. Please try again.', $reference);
         }
     }
 }

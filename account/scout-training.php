@@ -97,8 +97,16 @@ if (
             );
             exit;
         } catch (Throwable $exception) {
-            $error =
-                $exception->getMessage();
+            $reference = llama_log_caught_exception(
+                $exception,
+                'account.scout_training',
+                ['user_id' => $userId],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('Scout training could not be saved.', $reference);
         }
     }
 }

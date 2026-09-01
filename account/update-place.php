@@ -113,15 +113,16 @@ if (
             exit;
 
         } catch (Throwable $exception) {
-            $error =
-                (
-                    $exception
-                    instanceof InvalidArgumentException
-                    || $exception
-                    instanceof RuntimeException
-                )
-                    ? $exception->getMessage()
-                    : 'The update could not be submitted. Please try again.';
+            $reference = llama_log_caught_exception(
+                $exception,
+                'account.place_update_submit',
+                ['place_id' => (int) ($place['id'] ?? 0), 'user_id' => $userId],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The update could not be submitted. Please try again.', $reference);
         }
     }
 }

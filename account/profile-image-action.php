@@ -36,7 +36,16 @@ try {
         throw new InvalidArgumentException('Unknown profile-photo action.');
     }
 } catch (Throwable $exception) {
-    $_SESSION['profile_flash_error'] = $exception->getMessage();
+    $reference = llama_log_caught_exception(
+        $exception,
+        'account.profile_image_action',
+        ['user_id' => $userId, 'image_id' => $imageId, 'action' => $action],
+        [InvalidArgumentException::class]
+    );
+
+    $_SESSION['profile_flash_error'] = $reference === null
+        ? $exception->getMessage()
+        : llama_error_message_with_reference('The profile photo action could not be completed.', $reference);
 }
 
 header('Location: /profile.php', true, 303);

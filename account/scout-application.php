@@ -85,8 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             exit;
         } catch (Throwable $exception) {
-            $error =
-                $exception->getMessage();
+            $reference = llama_log_caught_exception(
+                $exception,
+                'account.scout_application',
+                ['user_id' => $userId],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The Scout application could not be submitted.', $reference);
         }
     }
 }

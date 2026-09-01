@@ -34,7 +34,16 @@ try {
     profile_images_add_staged($userId, $token, $photos);
     $_SESSION['profile_flash_success'] = 'Profile photos saved.';
 } catch (Throwable $exception) {
-    $_SESSION['profile_flash_error'] = $exception->getMessage();
+    $reference = llama_log_caught_exception(
+        $exception,
+        'account.profile_images_save',
+        ['user_id' => $userId],
+        [InvalidArgumentException::class]
+    );
+
+    $_SESSION['profile_flash_error'] = $reference === null
+        ? $exception->getMessage()
+        : llama_error_message_with_reference('Profile photos could not be saved.', $reference);
 }
 
 header('Location: /profile.php', true, 303);
