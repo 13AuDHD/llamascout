@@ -271,7 +271,7 @@ function llama_render_maintenance(
 <div class="maintenance-illustration">
 
 <img
-    src="https://llamascout.com/images/maintenance-llama.jpg"
+    src="https://llamascout.com/images/maintenance-llama.png"
     alt="The Llama Scout mascot working under the hood of an off-road vehicle"
 >
 
