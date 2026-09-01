@@ -5,3 +5,15 @@ DirectoryIndex index.php
 <IfModule mod_headers.c>
     Header always set X-Robots-Tag "noindex, nofollow, noarchive"
 </IfModule>
+
+# Route subdomain server errors to the central Llama Scout safety page.
+# These are absolute because admin.llamascout.com and account.llamascout.com
+# have their own document roots.
+ErrorDocument 400 https://llamascout.com/safety.php?reason=400
+ErrorDocument 401 https://llamascout.com/safety.php?reason=401
+ErrorDocument 403 https://llamascout.com/safety.php?reason=403
+ErrorDocument 404 https://llamascout.com/safety.php?reason=404
+ErrorDocument 410 https://llamascout.com/safety.php?reason=410
+ErrorDocument 429 https://llamascout.com/safety.php?reason=429
+ErrorDocument 500 https://llamascout.com/safety.php?reason=500
+ErrorDocument 503 https://llamascout.com/safety.php?reason=503
