@@ -109,7 +109,7 @@ if (!$offer) {
 
             $sessionData = [
                 'mode' => 'subscription',
-                'ui_mode' => 'embedded',
+                'ui_mode' => 'embedded_page',
                 'line_items' => [[
                     'price' => $priceId,
                     'quantity' => 1,
@@ -281,7 +281,7 @@ require dirname(__DIR__) . '/partials/header.php';
     >
         <div class="checkout-loading">
             <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-            Loading secure payment form…
+            Loading secure payment formâ¦
         </div>
     </div>
 
