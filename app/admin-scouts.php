@@ -771,14 +771,80 @@ function admin_scout_set_master(
             $roleStmt->execute([$slug]);
             $roleId = (int) $roleStmt->fetchColumn();
 
-            if ($roleId > 0) {
-                $insert = $db->prepare(
-                    'INSERT IGNORE INTO user_roles (
-                        user_id,
-                        role_id
-                    ) VALUES (?, ?)'
+            if ($roleId < 1) {
+                throw new RuntimeException(
+                    'Required role is missing: ' .
+                    $slug .
+                    '. Run the Phase 43 role SQL before promoting a Master Scout.'
                 );
-                $insert->execute([$userId, $roleId]);
+            }
+
+            $insert = $db->prepare(
+                'INSERT IGNORE INTO user_roles (
+                    user_id,
+                    role_id
+                ) VALUES (?, ?)'
+            );
+            $insert->execute([$userId, $roleId]);
+        }
+
+        $badgeStmt = $db->prepare(
+            'SELECT id
+             FROM badge_definitions
+             WHERE slug = "master-scout"
+               AND is_active = 1
+             LIMIT 1'
+        );
+        $badgeStmt->execute();
+
+        $masterBadgeId =
+            (int) $badgeStmt->fetchColumn();
+
+        if ($masterBadgeId > 0) {
+            $existingBadgeStmt = $db->prepare(
+                'SELECT id
+                 FROM user_badges
+                 WHERE user_id = ?
+                   AND badge_id = ?
+                 LIMIT 1'
+            );
+
+            $existingBadgeStmt->execute([
+                $userId,
+                $masterBadgeId,
+            ]);
+
+            $existingUserBadgeId =
+                (int) $existingBadgeStmt->fetchColumn();
+
+            if ($existingUserBadgeId > 0) {
+                $db->prepare(
+                    'UPDATE user_badges
+                     SET
+                        awarded_by = ?,
+                        review_status = "earned",
+                        note = ?
+                     WHERE id = ?'
+                )->execute([
+                    $actorUserId,
+                    'Automatically awarded with Master Scout rank.',
+                    $existingUserBadgeId,
+                ]);
+            } else {
+                $db->prepare(
+                    'INSERT INTO user_badges (
+                        user_id,
+                        badge_id,
+                        awarded_by,
+                        review_status,
+                        note
+                     ) VALUES (?, ?, ?, "earned", ?)'
+                )->execute([
+                    $userId,
+                    $masterBadgeId,
+                    $actorUserId,
+                    'Automatically awarded with Master Scout rank.',
+                ]);
             }
         }
 
@@ -796,6 +862,17 @@ function admin_scout_set_master(
                AND r.slug = "master_scout"'
         );
         $stmt->execute([$userId]);
+
+        $badgeStmt = $db->prepare(
+            'DELETE ub
+             FROM user_badges ub
+             INNER JOIN badge_definitions bd
+                ON bd.id = ub.badge_id
+             WHERE ub.user_id = ?
+               AND bd.slug = "master-scout"
+               AND ub.review_status = "earned"'
+        );
+        $badgeStmt->execute([$userId]);
 
         $fromRank = 'master_scout';
         $toRank = 'scout';
