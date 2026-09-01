@@ -165,3 +165,35 @@ function admin_errors_set_resolution(
     }
 }
 
+function admin_errors_create_test(PDO $db, int $actorUserId): string
+{
+    if ($actorUserId <= 0) {
+        throw new InvalidArgumentException('Invalid administrator.');
+    }
+
+    $exception = new RuntimeException('Admin diagnostic test error. No user action failed.');
+    $reference = llama_log_exception(
+        $exception,
+        'admin.errors.self_test',
+        [
+            'diagnostic_test' => true,
+            'actor_user_id' => $actorUserId,
+        ],
+        'error'
+    );
+
+    if (function_exists('admin_users_audit')) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'error_log_self_test',
+            'Generated diagnostic error-log self-test ' . $reference . '.',
+            [
+                'reference_code' => $reference,
+            ]
+        );
+    }
+
+    return $reference;
+}
