@@ -64,7 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (Throwable $e) {
-            $error = 'Unable to sign in right now.';
+            $reference = llama_log_caught_exception(
+                $e,
+                'login',
+                ['identifier_type' => str_contains($identifier, '@') ? 'email' : 'username']
+            );
+            $error = llama_error_message_with_reference('Unable to sign in right now.', $reference);
         }
     }
 }

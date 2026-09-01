@@ -77,9 +77,16 @@ if (
         );
 
         exit;
+    } catch (RuntimeException $exception) {
+        // Cart validation/session messages are expected user-facing errors.
+        $error = $exception->getMessage();
     } catch (Throwable $exception) {
-        $error =
-            $exception->getMessage();
+        $reference = llama_log_caught_exception(
+            $exception,
+            'cart_action',
+            ['cart_action' => (string) ($_POST['cart_action'] ?? '')]
+        );
+        $error = llama_error_message_with_reference('The cart could not be updated.', $reference);
     }
 }
 

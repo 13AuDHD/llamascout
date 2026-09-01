@@ -166,9 +166,16 @@ if (
         );
 
         exit;
+    } catch (RuntimeException $exception) {
+        // Product-option validation is expected and safe to show directly.
+        $cartError = $exception->getMessage();
     } catch (Throwable $exception) {
-        $cartError =
-            $exception->getMessage();
+        $reference = llama_log_caught_exception(
+            $exception,
+            'product_add_to_cart',
+            ['product_id' => (int) ($product['id'] ?? 0)]
+        );
+        $cartError = llama_error_message_with_reference('The item could not be added to your cart.', $reference);
     }
 }
 
