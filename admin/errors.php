@@ -9,6 +9,55 @@ require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
+$actorUserId = (int) ($adminUser['id'] ?? 0);
+
+$notice = '';
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+        $error = 'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            $errorId = (int) ($_POST['error_id'] ?? 0);
+            $resolutionAction = trim((string) ($_POST['resolution_action'] ?? ''));
+            $newStatus = $resolutionAction === 'resolve' ? 'resolved' : ($resolutionAction === 'reopen' ? 'open' : '');
+
+            if ($newStatus === '') {
+                throw new InvalidArgumentException('Choose a valid error action.');
+            }
+
+            admin_errors_set_resolution($db, $errorId, $actorUserId, $newStatus);
+
+            $returnQuery = trim((string) ($_POST['return_query'] ?? ''));
+            $returnQuery = preg_replace('/(?:^|&)updated=[^&]*/', '', $returnQuery) ?? '';
+            $returnQuery = trim($returnQuery, '&');
+            $returnQuery .= ($returnQuery !== '' ? '&' : '') . 'updated=' . rawurlencode($newStatus);
+
+            header('Location: /errors.php?' . $returnQuery);
+            exit;
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $error = $exception->getMessage();
+        } catch (Throwable $exception) {
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.errors.resolution',
+                ['error_id' => (int) ($_POST['error_id'] ?? 0)]
+            );
+            $error = llama_error_message_with_reference(
+                'The error record could not be updated.',
+                $reference
+            );
+        }
+    }
+}
+
+$updated = strtolower(trim((string) ($_GET['updated'] ?? '')));
+if ($updated === 'resolved') {
+    $notice = 'Error marked resolved.';
+} elseif ($updated === 'open') {
+    $notice = 'Error reopened.';
+}
 
 $result = admin_errors_search($db, $_GET, 50);
 $rows = $result['rows'];
@@ -44,6 +93,13 @@ require __DIR__ . '/_header.php';
 ?>
 
 <section class="admin-panel admin-audit-console">
+    <?php if ($notice !== ''): ?>
+        <div class="admin-notice is-success"><p><?= moderation_e($notice) ?></p></div>
+    <?php endif; ?>
+    <?php if ($error !== ''): ?>
+        <div class="admin-notice is-error"><p><?= moderation_e($error) ?></p></div>
+    <?php endif; ?>
+
     <header class="admin-panel-header">
         <div>
             <p>Application diagnostics</p>
@@ -64,6 +120,15 @@ require __DIR__ . '/_header.php';
                 <option value="">All severities</option>
                 <option value="error" <?= $filters['severity'] === 'error' ? 'selected' : '' ?>>Error</option>
                 <option value="fatal" <?= $filters['severity'] === 'fatal' ? 'selected' : '' ?>>Fatal</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Status</span>
+            <select name="status">
+                <option value="">All statuses</option>
+                <option value="open" <?= $filters['status'] === 'open' ? 'selected' : '' ?>>Open</option>
+                <option value="resolved" <?= $filters['status'] === 'resolved' ? 'selected' : '' ?>>Resolved</option>
             </select>
         </label>
 
@@ -113,6 +178,21 @@ require __DIR__ . '/_header.php';
                         </small>
 
                         <p class="admin-error-message"><?= moderation_e((string) $row['message']) ?></p>
+
+                        <?php $isResolved = (string) ($row['resolution_status'] ?? 'open') === 'resolved'; ?>
+                        <div class="admin-error-resolution">
+                            <strong><?= $isResolved ? 'Resolved' : 'Open' ?></strong>
+                            <?php if ($isResolved && !empty($row['resolved_at'])): ?>
+                                <span>Resolved <?= moderation_e((string) $row['resolved_at']) ?> UTC<?php if ((int) ($row['resolved_by'] ?? 0) > 0): ?> by Admin #<?= (int) $row['resolved_by'] ?><?php endif; ?></span>
+                            <?php endif; ?>
+                            <form method="post">
+                                <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                                <input type="hidden" name="error_id" value="<?= (int) $row['id'] ?>">
+                                <input type="hidden" name="return_query" value="<?= moderation_e((string) ($_SERVER['QUERY_STRING'] ?? '')) ?>">
+                                <input type="hidden" name="resolution_action" value="<?= $isResolved ? 'reopen' : 'resolve' ?>">
+                                <button class="admin-button is-muted" type="submit"><?= $isResolved ? 'Reopen' : 'Mark resolved' ?></button>
+                            </form>
+                        </div>
 
                         <details class="admin-audit-details">
                             <summary>View technical details <span><?= $context ? count($context) : 0 ?></span></summary>
