@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/scout-policy.php';
+
 function admin_scouts_list(PDO $db): array
 {
     $profileImageSql =
@@ -29,7 +31,21 @@ function admin_scouts_list(PDO $db): array
                 SELECT COALESCE(SUM(sa.points),0)
                 FROM scout_activity sa
                 WHERE sa.user_id = sp.user_id
-            ) AS scout_points
+            ) AS scout_points,
+            (
+                SELECT COUNT(*)
+                FROM place_contributions pc
+                WHERE pc.user_id = sp.user_id
+                  AND pc.status = 'approved'
+                  AND pc.contribution_type = 'new_place'
+            ) AS new_place_count,
+            (
+                SELECT COUNT(*)
+                FROM place_contributions pc
+                WHERE pc.user_id = sp.user_id
+                  AND pc.status = 'approved'
+                  AND pc.contribution_type IN ('update','correction')
+            ) AS improvement_count
         FROM scout_profiles sp
         INNER JOIN users u
             ON u.id = sp.user_id
@@ -181,6 +197,330 @@ function admin_scout_policy_rows(PDO $db): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+
+function admin_scout_policy_int_value(
+    PDO $db,
+    string $key,
+    int $default = 0
+): int {
+    return (int) llama_scout_policy_value(
+        $db,
+        $key,
+        $default
+    );
+}
+
+
+function admin_scout_policy_bool_value(
+    PDO $db,
+    string $key,
+    bool $default = false
+): bool {
+    return (bool) llama_scout_policy_value(
+        $db,
+        $key,
+        $default
+    );
+}
+
+
+function admin_scout_current_period(
+    PDO $db,
+    array $scout
+): array {
+    $months = max(
+        1,
+        admin_scout_policy_int_value(
+            $db,
+            'scout_period_months',
+            12
+        )
+    );
+
+    $required = max(
+        0,
+        admin_scout_policy_int_value(
+            $db,
+            'annual_new_places_required',
+            3
+        )
+    );
+
+    $end = trim(
+        (string) (
+            $scout['active_through']
+            ?? ''
+        )
+    );
+
+    if ($end === '') {
+        return [
+            'start' => null,
+            'end' => null,
+            'required' => $required,
+            'completed' => 0,
+            'remaining' => $required,
+            'met' => false,
+            'days_remaining' => null,
+        ];
+    }
+
+    try {
+        $endDate = new DateTimeImmutable($end);
+        $startDate = $endDate->modify('-' . $months . ' months');
+
+        $startedAt = trim(
+            (string) (
+                $scout['scout_started_at']
+                ?? ''
+            )
+        );
+
+        if ($startedAt !== '') {
+            $started = new DateTimeImmutable($startedAt);
+            if ($started > $startDate) {
+                $startDate = $started;
+            }
+        }
+
+        $stmt = $db->prepare(
+            'SELECT COUNT(*)
+             FROM scout_activity
+             WHERE scout_profile_id = ?
+               AND user_id = ?
+               AND activity_type = "place_approved"
+               AND occurred_at >= ?
+               AND occurred_at < ?'
+        );
+
+        $stmt->execute([
+            (int) $scout['id'],
+            (int) $scout['user_id'],
+            $startDate->format('Y-m-d H:i:s'),
+            $endDate->format('Y-m-d H:i:s'),
+        ]);
+
+        $completed = (int) $stmt->fetchColumn();
+
+        $daysRemaining = (int) floor(
+            ($endDate->getTimestamp() - time()) / 86400
+        );
+
+        return [
+            'start' => $startDate->format('Y-m-d H:i:s'),
+            'end' => $endDate->format('Y-m-d H:i:s'),
+            'required' => $required,
+            'completed' => $completed,
+            'remaining' => max(0, $required - $completed),
+            'met' => $required > 0 && $completed >= $required,
+            'days_remaining' => $daysRemaining,
+        ];
+    } catch (Throwable) {
+        return [
+            'start' => null,
+            'end' => $end,
+            'required' => $required,
+            'completed' => 0,
+            'remaining' => $required,
+            'met' => false,
+            'days_remaining' => null,
+        ];
+    }
+}
+
+
+function admin_scout_master_qualification(
+    PDO $db,
+    array $scout
+): array {
+    $enabled = admin_scout_policy_bool_value(
+        $db,
+        'master_scout_qualification_enabled',
+        false
+    );
+
+    $pointsRequired = max(0, admin_scout_policy_int_value(
+        $db,
+        'master_scout_points_required',
+        0
+    ));
+
+    $newPlacesRequired = max(0, admin_scout_policy_int_value(
+        $db,
+        'master_scout_lifetime_new_places_required',
+        0
+    ));
+
+    $updatesRequired = max(0, admin_scout_policy_int_value(
+        $db,
+        'master_scout_updates_required',
+        0
+    ));
+
+    $correctionsRequired = max(0, admin_scout_policy_int_value(
+        $db,
+        'master_scout_corrections_required',
+        0
+    ));
+
+    $updatedPlacesRequired = max(0, admin_scout_policy_int_value(
+        $db,
+        'master_scout_updated_places_required',
+        0
+    ));
+
+    $requiresCurrent = admin_scout_policy_bool_value(
+        $db,
+        'master_scout_requires_current_period',
+        true
+    );
+
+    $stmt = $db->prepare(
+        'SELECT
+            COALESCE(SUM(points_awarded),0) AS points,
+            SUM(CASE WHEN contribution_type = "new_place" THEN 1 ELSE 0 END) AS new_places,
+            SUM(CASE WHEN contribution_type = "update" THEN 1 ELSE 0 END) AS updates,
+            SUM(CASE WHEN contribution_type = "correction" THEN 1 ELSE 0 END) AS corrections,
+            COUNT(DISTINCT CASE
+                WHEN contribution_type IN ("update","correction") THEN place_id
+                ELSE NULL
+            END) AS updated_places
+         FROM place_contributions
+         WHERE user_id = ?
+           AND status = "approved"'
+    );
+
+    $stmt->execute([
+        (int) $scout['user_id'],
+    ]);
+
+    $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $period = admin_scout_current_period($db, $scout);
+    $active = (string) $scout['status'] === 'active';
+
+    $requirements = [
+        [
+            'key' => 'active',
+            'label' => 'Active Llama Scout',
+            'current' => $active ? 1 : 0,
+            'required' => 1,
+            'met' => $active,
+        ],
+        [
+            'key' => 'current_period',
+            'label' => 'Current period requirement',
+            'current' => (int) $period['completed'],
+            'required' => (int) $period['required'],
+            'met' => !$requiresCurrent || (bool) $period['met'],
+        ],
+        [
+            'key' => 'points',
+            'label' => 'Lifetime points',
+            'current' => (int) ($counts['points'] ?? 0),
+            'required' => $pointsRequired,
+            'met' => $pointsRequired > 0 && (int) ($counts['points'] ?? 0) >= $pointsRequired,
+        ],
+        [
+            'key' => 'new_places',
+            'label' => 'Lifetime new Places',
+            'current' => (int) ($counts['new_places'] ?? 0),
+            'required' => $newPlacesRequired,
+            'met' => $newPlacesRequired > 0 && (int) ($counts['new_places'] ?? 0) >= $newPlacesRequired,
+        ],
+        [
+            'key' => 'updates',
+            'label' => 'Approved updates',
+            'current' => (int) ($counts['updates'] ?? 0),
+            'required' => $updatesRequired,
+            'met' => $updatesRequired > 0 && (int) ($counts['updates'] ?? 0) >= $updatesRequired,
+        ],
+        [
+            'key' => 'corrections',
+            'label' => 'Approved corrections',
+            'current' => (int) ($counts['corrections'] ?? 0),
+            'required' => $correctionsRequired,
+            'met' => $correctionsRequired > 0 && (int) ($counts['corrections'] ?? 0) >= $correctionsRequired,
+        ],
+        [
+            'key' => 'updated_places',
+            'label' => 'Different Places improved',
+            'current' => (int) ($counts['updated_places'] ?? 0),
+            'required' => $updatedPlacesRequired,
+            'met' => $updatedPlacesRequired > 0 && (int) ($counts['updated_places'] ?? 0) >= $updatedPlacesRequired,
+        ],
+    ];
+
+    $numericComplete =
+        $pointsRequired > 0
+        && $newPlacesRequired > 0
+        && $updatesRequired > 0
+        && $correctionsRequired > 0
+        && $updatedPlacesRequired > 0;
+
+    $allMet = true;
+    foreach ($requirements as $requirement) {
+        if (!$requirement['met']) {
+            $allMet = false;
+            break;
+        }
+    }
+
+    return [
+        'enabled' => $enabled,
+        'policy_complete' => $numericComplete,
+        'eligible' => $enabled && $numericComplete && $allMet,
+        'requirements' => $requirements,
+        'period' => $period,
+    ];
+}
+
+
+function admin_scout_operational_stats(
+    array $scouts
+): array {
+    $stats = [
+        'total' => count($scouts),
+        'active' => 0,
+        'master' => 0,
+        'onboarding' => 0,
+        'attention' => 0,
+    ];
+
+    foreach ($scouts as $scout) {
+        $roles = explode(',', (string) ($scout['role_slugs'] ?? ''));
+        $status = (string) ($scout['status'] ?? '');
+
+        if ($status === 'active') {
+            $stats['active']++;
+        }
+
+        if (in_array('master_scout', $roles, true)) {
+            $stats['master']++;
+        }
+
+        if (in_array($status, [
+            'invited',
+            'application_started',
+            'application_submitted',
+            'training',
+            'pending_approval',
+        ], true)) {
+            $stats['onboarding']++;
+        }
+
+        if (in_array($status, [
+            'application_submitted',
+            'pending_approval',
+            'inactive',
+        ], true)) {
+            $stats['attention']++;
+        }
+    }
+
+    return $stats;
+}
+
+
 function admin_scout_set_status(
     PDO $db,
     int $actorUserId,
@@ -212,6 +552,40 @@ function admin_scout_set_status(
 
     $before = (string) $scout['status'];
 
+    $activeThrough =
+        $scout['active_through']
+        ?? null;
+
+    if ($status === 'active') {
+        $needsPeriod = true;
+
+        if (!empty($activeThrough)) {
+            try {
+                $needsPeriod =
+                    new DateTimeImmutable((string) $activeThrough)
+                    <= new DateTimeImmutable('now');
+            } catch (Throwable) {
+                $needsPeriod = true;
+            }
+        }
+
+        if ($needsPeriod) {
+            $periodMonths = max(
+                1,
+                admin_scout_policy_int_value(
+                    $db,
+                    'scout_period_months',
+                    12
+                )
+            );
+
+            $activeThrough =
+                (new DateTimeImmutable('now'))
+                ->modify('+' . $periodMonths . ' months')
+                ->format('Y-m-d H:i:s');
+        }
+    }
+
     $sql =
         'UPDATE scout_profiles
          SET
@@ -230,6 +604,11 @@ function admin_scout_set_status(
                 WHEN ? = "active" AND scout_started_at IS NULL
                     THEN NOW()
                 ELSE scout_started_at
+            END,
+            active_through = CASE
+                WHEN ? = "active"
+                    THEN ?
+                ELSE active_through
             END,
             inactive_at = CASE
                 WHEN ? = "inactive"
@@ -261,6 +640,7 @@ function admin_scout_set_status(
         $actorUserId,
         $status,
         $status,
+        $activeThrough,
         $status,
         $status,
         $actorUserId,
@@ -339,6 +719,26 @@ function admin_scout_set_master(
 
     $userId = (int) $scout['user_id'];
 
+    $qualification =
+        admin_scout_master_qualification(
+            $db,
+            $scout
+        );
+
+    if ($makeMaster) {
+        if ((string) $scout['status'] !== 'active') {
+            throw new RuntimeException(
+                'Only an active Llama Scout can be promoted to Master Scout.'
+            );
+        }
+
+        if (empty($qualification['eligible'])) {
+            throw new RuntimeException(
+                'This Scout has not yet completed the current Master Scout qualification requirements.'
+            );
+        }
+    }
+
     $roleStmt = $db->prepare(
         'SELECT id
          FROM roles
@@ -403,6 +803,25 @@ function admin_scout_set_master(
         $actorUserId,
         trim($notes) !== '' ? trim($notes) : null,
     ]);
+
+    if ($makeMaster) {
+        $snapshot = json_encode(
+            $qualification,
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+        );
+
+        if ($snapshot !== false) {
+            $db->prepare(
+                'UPDATE scout_rank_history
+                 SET qualification_snapshot = ?
+                 WHERE id = ?'
+            )->execute([
+                $snapshot,
+                (int) $db->lastInsertId(),
+            ]);
+        }
+    }
 
     admin_users_audit(
         $db,
