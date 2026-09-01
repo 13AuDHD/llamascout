@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/admin-users.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -101,6 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $points
                 );
 
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) $item['user_id'],
+                'place.submission_approved',
+                'Approved new Place submission #' . $submissionId . '.',
+                [
+                    'submission_id' => $submissionId,
+                    'place_id' => $placeId,
+                    'publish_status' => $status,
+                    'points_awarded' => $points,
+                ]
+            );
+
             $db->commit();
 
             header(
@@ -124,6 +139,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (int) $adminUser['id'],
                 $action,
                 $notes
+            );
+
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) $item['user_id'],
+                'place.submission_rejected',
+                'Rejected new Place submission #' . $submissionId . '.',
+                [
+                    'submission_id' => $submissionId,
+                    'review_notes' => $notes,
+                ]
             );
 
             $db->commit();

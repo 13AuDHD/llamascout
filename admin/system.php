@@ -29,18 +29,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Your session token expired. Reload and try again.';
     } else {
         try {
-            admin_system_set_maintenance(
-                $db,
-                $actorUserId,
-                $_POST
-            );
+            $action =
+                trim(
+                    (string) (
+                        $_POST['action']
+                        ?? 'maintenance'
+                    )
+                );
 
-            $notice =
-                ((string) ($_POST['enabled'] ?? '0')) === '1'
-                    ? 'Maintenance mode enabled.'
-                    : 'Maintenance mode disabled.';
+            if ($action === 'cleanup_staging') {
+                $cleanup =
+                    admin_system_cleanup_staging(
+                        $db,
+                        $actorUserId
+                    );
+
+                $notice =
+                    'Photo staging cleanup removed ' .
+                    number_format(
+                        (int) $cleanup['deleted_files']
+                    ) .
+                    ' abandoned files (' .
+                    admin_system_format_bytes(
+                        (int) $cleanup['deleted_bytes']
+                    ) .
+                    ').';
+            } else {
+                admin_system_set_maintenance(
+                    $db,
+                    $actorUserId,
+                    $_POST
+                );
+
+                $notice =
+                    ((string) ($_POST['enabled'] ?? '0')) === '1'
+                        ? 'Maintenance mode enabled.'
+                        : 'Maintenance mode disabled.';
+            }
         } catch (Throwable $exception) {
-            $error = $exception->getMessage();
+            $error =
+                $exception->getMessage();
         }
     }
 }
@@ -67,6 +95,17 @@ if ((int) $state['started_by'] > 0) {
 
 $lastScoutMaintenance =
     admin_system_last_scout_maintenance($db);
+
+$health =
+    admin_system_health(
+        $db
+    );
+
+$maintenanceHistory =
+    admin_system_maintenance_history(
+        $db,
+        8
+    );
 
 $stats = admin_dashboard_stats($db);
 
@@ -122,6 +161,97 @@ require __DIR__ . '/_header.php';
 </section>
 
 
+
+<section class="admin-panel admin-system-health-panel">
+
+    <header class="admin-panel-header">
+        <div>
+            <p>Quick glance</p>
+            <h2>System Health</h2>
+        </div>
+
+        <div class="admin-health-summary" aria-label="System health summary">
+            <span class="is-good">
+                <i aria-hidden="true"></i>
+                <?= number_format((int) $health['summary']['good']) ?>
+                Healthy
+            </span>
+
+            <span class="is-attention">
+                <i aria-hidden="true"></i>
+                <?= number_format((int) $health['summary']['attention']) ?>
+                Need attention
+            </span>
+
+            <span class="is-down">
+                <i aria-hidden="true"></i>
+                <?= number_format((int) $health['summary']['down']) ?>
+                Problem
+            </span>
+        </div>
+    </header>
+
+    <div class="admin-health-grid">
+
+        <?php foreach ($health['cards'] as $card): ?>
+
+            <article
+                class="admin-health-card is-<?= moderation_e(
+                    (string) $card['status']
+                ) ?>"
+            >
+                <span
+                    class="admin-health-light"
+                    aria-hidden="true"
+                ></span>
+
+                <div class="admin-health-card-icon">
+                    <i
+                        class="fa-solid <?= moderation_e(
+                            (string) $card['icon']
+                        ) ?>"
+                        aria-hidden="true"
+                    ></i>
+                </div>
+
+                <div class="admin-health-card-copy">
+                    <span>
+                        <?= moderation_e(
+                            (string) $card['label']
+                        ) ?>
+                    </span>
+
+                    <strong>
+                        <?= moderation_e(
+                            (string) $card['value']
+                        ) ?>
+                    </strong>
+
+                    <small>
+                        <?= moderation_e(
+                            (string) $card['detail']
+                        ) ?>
+                    </small>
+                </div>
+
+                <span class="admin-health-status-text">
+                    <?= $card['status'] === 'good'
+                        ? 'Healthy'
+                        : (
+                            $card['status'] === 'attention'
+                                ? 'Needs attention'
+                                : 'Problem'
+                        ) ?>
+                </span>
+            </article>
+
+        <?php endforeach; ?>
+
+    </div>
+
+</section>
+
+
 <section class="admin-panel admin-system-maintenance-panel">
 
     <header class="admin-panel-header">
@@ -141,6 +271,12 @@ require __DIR__ . '/_header.php';
             type="hidden"
             name="csrf_token"
             value="<?= moderation_e(moderation_csrf_token()) ?>"
+        >
+
+        <input
+            type="hidden"
+            name="action"
+            value="maintenance"
         >
 
         <div class="admin-system-maintenance-toggle">
@@ -311,28 +447,185 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<div class="admin-dashboard-side admin-system-cards">
+<div class="admin-system-operations-grid">
 
     <section class="admin-panel">
 
         <header class="admin-panel-header">
             <div>
                 <p>Automation</p>
-                <h2>Scout Maintenance</h2>
+                <h2>Scheduled Maintenance</h2>
             </div>
         </header>
 
-        <dl class="admin-user-definition-list">
+        <div class="admin-system-operation-body">
+            <dl class="admin-user-definition-list">
+                <div>
+                    <dt>Scout renewal maintenance</dt>
+                    <dd>
+                        <?= moderation_e(
+                            $lastScoutMaintenance
+                            ?: 'No run recorded'
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Photo staging cleanup</dt>
+                    <dd>
+                        Runs opportunistically during photo upload activity.
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+    </section>
+
+
+    <section class="admin-panel">
+
+        <header class="admin-panel-header">
             <div>
-                <dt>Last renewal maintenance</dt>
-                <dd>
-                    <?= moderation_e(
-                        $lastScoutMaintenance
-                        ?: 'No run recorded'
-                    ) ?>
-                </dd>
+                <p>Storage</p>
+                <h2>Photo Staging Cleanup</h2>
             </div>
-        </dl>
+        </header>
+
+        <div class="admin-system-operation-body">
+
+            <p>
+                Only temporary staged files older than 24 hours
+                are eligible. Published Place, profile, report,
+                and product photos are never touched by this cleanup.
+            </p>
+
+            <dl class="admin-user-definition-list">
+                <div>
+                    <dt>Staged files</dt>
+                    <dd>
+                        <?= number_format(
+                            (int) $health['staging']['files']
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Eligible for cleanup</dt>
+                    <dd>
+                        <?= number_format(
+                            (int) $health['staging']['stale_files']
+                        ) ?>
+                        files,
+                        <?= moderation_e(
+                            admin_system_format_bytes(
+                                (int) $health['staging']['stale_bytes']
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+            </dl>
+
+            <?php if ($actorIsOwner): ?>
+
+                <form
+                    method="post"
+                    class="admin-system-cleanup-form"
+                    onsubmit="return confirm('Remove abandoned staged photo files older than 24 hours?');"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= moderation_e(moderation_csrf_token()) ?>"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="cleanup_staging"
+                    >
+
+                    <button
+                        class="admin-button is-muted"
+                        type="submit"
+                    >
+                        <i
+                            class="fa-solid fa-broom"
+                            aria-hidden="true"
+                        ></i>
+                        Run safe cleanup
+                    </button>
+                </form>
+
+            <?php endif; ?>
+
+        </div>
+
+    </section>
+
+
+    <section class="admin-panel">
+
+        <header class="admin-panel-header">
+            <div>
+                <p>History</p>
+                <h2>Maintenance History</h2>
+            </div>
+
+            <a
+                class="admin-panel-header-link"
+                href="/audit.php?category=system"
+            >
+                Full audit
+            </a>
+        </header>
+
+        <?php if (!$maintenanceHistory): ?>
+
+            <div class="admin-empty-state">
+                <p>No maintenance changes have been recorded yet.</p>
+            </div>
+
+        <?php else: ?>
+
+            <div class="admin-maintenance-history">
+
+                <?php foreach ($maintenanceHistory as $historyRow): ?>
+
+                    <div>
+                        <span
+                            class="admin-health-light <?= str_ends_with(
+                                (string) $historyRow['action'],
+                                'disabled'
+                            )
+                                ? 'is-good'
+                                : 'is-attention' ?>"
+                            aria-hidden="true"
+                        ></span>
+
+                        <div>
+                            <strong>
+                                <?= moderation_e(
+                                    (string) $historyRow['summary']
+                                ) ?>
+                            </strong>
+
+                            <span>
+                                <?= moderation_e(
+                                    (string) $historyRow['actor_name']
+                                ) ?>
+                                ·
+                                <?= moderation_e(
+                                    (string) $historyRow['created_at']
+                                ) ?>
+                            </span>
+                        </div>
+                    </div>
+
+                <?php endforeach; ?>
+
+            </div>
+
+        <?php endif; ?>
 
     </section>
 
@@ -346,15 +639,14 @@ require __DIR__ . '/_header.php';
             </div>
         </header>
 
-        <div class="admin-user-action-box">
+        <div class="admin-system-operation-body">
             <p>
-                Review account changes, Scout status changes,
-                points adjustments, maintenance changes, and other
-                administrative actions.
+                Search and filter administrative changes, inspect
+                stored metadata, and trace who changed what.
             </p>
 
             <a class="admin-button" href="/audit.php">
-                View audit log
+                View audit console
             </a>
         </div>
 

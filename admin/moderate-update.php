@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/admin-users.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -48,7 +49,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->beginTransaction();
 
         if ($action === 'approve') {
-            moderation_approve_update($db, $updateId, (int) $adminUser['id'], $notes, $points);
+            $contributionId =
+                moderation_approve_update(
+                    $db,
+                    $updateId,
+                    (int) $adminUser['id'],
+                    $notes,
+                    $points
+                );
+
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) $item['user_id'],
+                'place.update_approved',
+                'Approved Place update #' . $updateId . '.',
+                [
+                    'update_id' => $updateId,
+                    'place_id' => (int) $item['place_id'],
+                    'contribution_id' => $contributionId,
+                    'changed_fields' => array_keys($item['proposed']),
+                    'points_awarded' => $points,
+                ]
+            );
+
             $db->commit();
             header('Location: /updates.php?approved=1');
             exit;
@@ -58,7 +82,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($notes === '') {
                 throw new InvalidArgumentException('Add review notes explaining why the update was not approved.');
             }
-            moderation_set_update_status($db, $updateId, (int) $adminUser['id'], $action, $notes);
+            moderation_set_update_status(
+                $db,
+                $updateId,
+                (int) $adminUser['id'],
+                $action,
+                $notes
+            );
+
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) $item['user_id'],
+                'place.update_rejected',
+                'Rejected Place update #' . $updateId . '.',
+                [
+                    'update_id' => $updateId,
+                    'place_id' => (int) $item['place_id'],
+                    'review_notes' => $notes,
+                ]
+            );
+
             $db->commit();
             header('Location: /updates.php?updated=1');
             exit;
