@@ -116,16 +116,38 @@ function admin_system_set_maintenance(
             );
         }
 
+        $beforeEnabled =
+            (bool) (
+                $before['enabled']
+                ?? false
+            );
+
+        if ($beforeEnabled !== $enabled) {
+            $auditAction =
+                $enabled
+                    ? 'system.maintenance_enabled'
+                    : 'system.maintenance_disabled';
+
+            $auditSummary =
+                $enabled
+                    ? 'Enabled maintenance mode.'
+                    : 'Disabled maintenance mode.';
+        } else {
+            $auditAction =
+                'system.maintenance_updated';
+
+            $auditSummary =
+                $enabled
+                    ? 'Updated active maintenance settings.'
+                    : 'Updated maintenance settings while disabled.';
+        }
+
         admin_users_audit(
             $db,
             $actorUserId,
             null,
-            $enabled
-                ? 'system.maintenance_enabled'
-                : 'system.maintenance_disabled',
-            $enabled
-                ? 'Enabled maintenance mode.'
-                : 'Disabled maintenance mode.',
+            $auditAction,
+            $auditSummary,
             [
                 'before' => $before,
                 'after' => [
@@ -159,6 +181,9 @@ function admin_system_audit_category_sql(): string
         'CASE
             WHEN aal.action LIKE "user.%"
                 THEN "users"
+            WHEN aal.action LIKE "place.report_%"
+                OR aal.action LIKE "report.%"
+                THEN "reports"
             WHEN aal.action LIKE "place.%"
                 OR aal.action LIKE "moderation.%"
                 THEN "places"
@@ -170,8 +195,6 @@ function admin_system_audit_category_sql(): string
                 OR aal.action LIKE "order.%"
                 OR aal.action LIKE "product.%"
                 THEN "shop"
-            WHEN aal.action LIKE "report.%"
-                THEN "reports"
             WHEN aal.action LIKE "system.%"
                 THEN "system"
             WHEN aal.action LIKE "badge.%"
@@ -1251,7 +1274,8 @@ function admin_system_maintenance_history(
                 ON u.id = aal.actor_user_id
              WHERE aal.action IN (
                 "system.maintenance_enabled",
-                "system.maintenance_disabled"
+                "system.maintenance_disabled",
+                "system.maintenance_updated"
              )
              ORDER BY
                 aal.created_at DESC,
