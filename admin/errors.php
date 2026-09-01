@@ -19,6 +19,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Your session token expired. Reload and try again.';
     } else {
         try {
+            $adminAction = trim((string) ($_POST['admin_action'] ?? 'resolution'));
+
+            if ($adminAction === 'self_test') {
+                $reference = admin_errors_create_test($db, $actorUserId);
+                header('Location: /errors.php?' . http_build_query([
+                    'q' => $reference,
+                    'tested' => '1',
+                ]));
+                exit;
+            }
+
+            if ($adminAction !== 'resolution') {
+                throw new InvalidArgumentException('Choose a valid error-log action.');
+            }
+
             $errorId = (int) ($_POST['error_id'] ?? 0);
             $resolutionAction = trim((string) ($_POST['resolution_action'] ?? ''));
             $newStatus = $resolutionAction === 'resolve' ? 'resolved' : ($resolutionAction === 'reopen' ? 'open' : '');
@@ -53,10 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $updated = strtolower(trim((string) ($_GET['updated'] ?? '')));
+$tested = (string) ($_GET['tested'] ?? '') === '1';
 if ($updated === 'resolved') {
     $notice = 'Error marked resolved.';
 } elseif ($updated === 'open') {
     $notice = 'Error reopened.';
+} elseif ($tested) {
+    $notice = 'Diagnostic test recorded successfully. The matching error record is shown below.';
 }
 
 $result = admin_errors_search($db, $_GET, 50);
@@ -107,6 +125,18 @@ require __DIR__ . '/_header.php';
         </div>
         <span>Page <?= (int) $result['page'] ?> of <?= (int) $result['pages'] ?></span>
     </header>
+
+    <div class="admin-notice">
+        <div>
+            <strong>Error-log self-test</strong>
+            <p>Creates a harmless test exception so you can verify reference IDs, database logging, the Admin viewer, and System Health without breaking a real workflow.</p>
+        </div>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="admin_action" value="self_test">
+            <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-vial" aria-hidden="true"></i> Run error-log test</button>
+        </form>
+    </div>
 
     <form class="admin-audit-filters" method="get">
         <label class="admin-audit-search">
@@ -193,6 +223,7 @@ require __DIR__ . '/_header.php';
                             <?php endif; ?>
                             <form method="post">
                                 <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                                <input type="hidden" name="admin_action" value="resolution">
                                 <input type="hidden" name="error_id" value="<?= (int) $row['id'] ?>">
                                 <input type="hidden" name="return_query" value="<?= moderation_e((string) ($_SERVER['QUERY_STRING'] ?? '')) ?>">
                                 <input type="hidden" name="resolution_action" value="<?= $isResolved ? 'reopen' : 'resolve' ?>">
