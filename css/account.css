@@ -8723,3 +8723,57 @@ body.account-auth-body {
 
 
 
+
+
+/* =========================================================
+   PHASE 50: PLACE UPDATE RESUBMISSION
+   ========================================================= */
+
+.contribution-message.is-attention {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.contribution-message.is-attention strong,
+.contribution-message.is-attention span {
+    display: block;
+}
+
+.contribution-message.is-attention span {
+    margin-top: 4px;
+}
+
+.update-place-existing-photos {
+    margin-bottom: 16px;
+}
+
+.update-place-existing-photos > strong,
+.update-place-existing-photos > p {
+    display: block;
+    margin: 0;
+}
+
+.update-place-existing-photos > p {
+    margin-top: 4px;
+    opacity: .7;
+}
+
+.contribution-existing-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.contribution-existing-photo-grid img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.contribution-resubmit-link {
+    font-weight: 850;
+}

@@ -419,3 +419,19 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   PHASE 50: REQUEST CHANGES ACTION
+   ========================================================= */
+
+.admin-moderation-button.is-warning {
+    border-color: rgba(211,168,66,.74);
+    background: rgba(211,168,66,.14);
+    color: inherit;
+}
+
+.admin-moderation-button.is-warning:hover,
+.admin-moderation-button.is-warning:focus-visible {
+    background: rgba(211,168,66,.22);
+}
