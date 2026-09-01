@@ -169,6 +169,31 @@ function llama_log_exception(
     return $reference;
 }
 
+
+function llama_log_caught_exception(
+    Throwable $exception,
+    ?string $action = null,
+    array $context = [],
+    array $expectedClasses = []
+): ?string {
+    foreach ($expectedClasses as $className) {
+        if (is_string($className) && $className !== '' && $exception instanceof $className) {
+            return null;
+        }
+    }
+
+    return llama_log_exception($exception, $action, $context);
+}
+
+function llama_error_message_with_reference(string $message, ?string $reference): string
+{
+    if ($reference === null || $reference === '') {
+        return $message;
+    }
+
+    return rtrim($message) . ' Error reference: ' . $reference;
+}
+
 function llama_error_public_response(string $reference): never
 {
     if (!headers_sent()) {

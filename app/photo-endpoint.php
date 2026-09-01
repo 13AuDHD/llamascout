@@ -134,11 +134,16 @@ function llama_photo_run_endpoint(): never
             'message' => $exception->getMessage(),
         ]);
     } catch (Throwable $exception) {
-        error_log('Llama Scout photo endpoint error: ' . $exception->getMessage());
+        $reference = llama_log_exception(
+            $exception,
+            'photo.upload',
+            ['scope' => $scope ?? null]
+        );
 
         llama_photo_endpoint_respond(500, [
             'success' => false,
             'message' => 'The photo upload could not be completed. Please try again.',
+            'reference' => $reference,
         ]);
     }
 }
