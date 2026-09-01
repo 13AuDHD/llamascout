@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/public-shop.php';
+require_once __DIR__ . '/app/shop-cart.php';
 
 $db = db();
 
@@ -98,6 +99,78 @@ $variants =
         $db,
         $productId
     );
+
+$cartError = '';
+$cartNotice = '';
+
+if (
+    $_SERVER['REQUEST_METHOD']
+    === 'POST'
+) {
+    try {
+        if (
+            !shop_cart_verify_csrf(
+                (string) (
+                    $_POST['csrf_token']
+                    ?? ''
+                )
+            )
+        ) {
+            throw new RuntimeException(
+                'Your session could not be verified. Reload the page and try again.'
+            );
+        }
+
+        $variantId =
+            (int) (
+                $_POST['variant_id']
+                ?? 0
+            );
+
+        $quantity =
+            (int) (
+                $_POST['quantity']
+                ?? 1
+            );
+
+        $validVariantIds =
+            array_map(
+                static fn(array $variant): int =>
+                    (int) $variant['id'],
+                $variants
+            );
+
+        if (
+            $variantId < 1
+            || !in_array(
+                $variantId,
+                $validVariantIds,
+                true
+            )
+        ) {
+            throw new RuntimeException(
+                'Choose an available product option.'
+            );
+        }
+
+        shop_cart_add(
+            $db,
+            $variantId,
+            $quantity
+        );
+
+        header(
+            'Location: /cart.php?added=1',
+            true,
+            303
+        );
+
+        exit;
+    } catch (Throwable $exception) {
+        $cartError =
+            $exception->getMessage();
+    }
+}
 
 $prices =
     array_values(
@@ -406,23 +479,172 @@ Pricing coming soon
 <?php endif; ?>
 
 
+<?php if ($cartError !== ''): ?>
+
+<div class="product-cart-message is-error">
+    <?= htmlspecialchars(
+        $cartError,
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>
+</div>
+
+<?php endif; ?>
+
+
+<?php if ($variants): ?>
+
+<form
+    class="product-add-cart"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= htmlspecialchars(
+        shop_cart_csrf_token(),
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+>
+
+
+<label>
+    <span>Choose option</span>
+
+    <select
+        name="variant_id"
+        required
+    >
+
+        <option value="">
+            Select an option
+        </option>
+
+        <?php foreach ($variants as $variant): ?>
+
+            <?php
+            $availability =
+                public_shop_variant_availability(
+                    $variant
+                );
+
+            $soldOut =
+                (
+                    (int) (
+                        $variant[
+                            'track_inventory'
+                        ]
+                        ?? 0
+                    ) === 1
+                    && (int) (
+                        $variant[
+                            'inventory_quantity'
+                        ]
+                        ?? 0
+                    ) <= 0
+                    && (int) (
+                        $variant[
+                            'allow_backorder'
+                        ]
+                        ?? 0
+                    ) !== 1
+                );
+            ?>
+
+            <option
+                value="<?= (int) $variant['id'] ?>"
+                <?= $soldOut
+                    ? 'disabled'
+                    : '' ?>
+            >
+                <?= htmlspecialchars(
+                    (string) (
+                        $variant['name']
+                        ?: 'Standard'
+                    ),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+                ·
+                <?= htmlspecialchars(
+                    public_shop_money(
+                        (int) $variant[
+                            'price_cents'
+                        ],
+                        (string) (
+                            $variant[
+                                'currency'
+                            ]
+                            ?? 'usd'
+                        )
+                    ),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+                ·
+                <?= htmlspecialchars(
+                    $availability,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </option>
+
+        <?php endforeach; ?>
+
+    </select>
+</label>
+
+
+<label class="product-quantity-field">
+    <span>Quantity</span>
+
+    <select name="quantity">
+        <?php for ($quantity = 1; $quantity <= 10; $quantity++): ?>
+            <option value="<?= $quantity ?>">
+                <?= $quantity ?>
+            </option>
+        <?php endfor; ?>
+    </select>
+</label>
+
+
+<button
+    class="shop-primary-button product-add-button"
+    type="submit"
+>
+    <i
+        class="fa-solid fa-cart-plus"
+        aria-hidden="true"
+    ></i>
+
+    Add to cart
+</button>
+
+</form>
+
+<?php else: ?>
+
 <div class="product-purchase-note">
 
 <i
-    class="fa-solid fa-cart-shopping"
+    class="fa-solid fa-circle-info"
     aria-hidden="true"
 ></i>
 
 <div>
-    <strong>Online checkout is the next shop step.</strong>
+    <strong>This product is not ready for purchase yet.</strong>
 
     <span>
-        The catalog and product pages are live now. Checkout will be
-        connected to the existing order and Stripe infrastructure next.
+        An active product variant with a price is required before it
+        can be added to the cart.
     </span>
 </div>
 
 </div>
+
+<?php endif; ?>
 
 
 <?php if (!empty($product['description'])): ?>
