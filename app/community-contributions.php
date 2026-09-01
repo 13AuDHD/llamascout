@@ -870,45 +870,720 @@ function submit_new_place(int $userId, array $input): int
     }
 }
 
-function community_editable_place_fields(array $place): array
+function community_place_update_field_definitions(): array
 {
     return [
-        'name' => ['label' => 'Place name', 'value' => $place['name'] ?? null],
-        'description' => ['label' => 'Description', 'value' => $place['description'] ?? null],
-        'latitude' => ['label' => 'Latitude', 'value' => $place['latitude'] ?? null],
-        'longitude' => ['label' => 'Longitude', 'value' => $place['longitude'] ?? null],
-        'elevation_feet' => ['label' => 'Elevation (ft)', 'value' => $place['elevation_feet'] ?? null],
-        'road' => ['label' => 'Road', 'value' => $place['road'] ?? null],
-        'city' => ['label' => 'City', 'value' => $place['city'] ?? null],
-        'county' => ['label' => 'County', 'value' => $place['county'] ?? null],
-        'state' => ['label' => 'State', 'value' => $place['state'] ?? null],
-        'region' => ['label' => 'Region / district', 'value' => $place['region'] ?? null],
-        'land_manager' => ['label' => 'Land manager', 'value' => $place['land_manager'] ?? null],
-        'land_type' => ['label' => 'Land type', 'value' => $place['land_type'] ?? null],
-        'access_summary' => ['label' => 'Access summary', 'value' => $place['access_summary'] ?? null],
-        'sensory_summary' => ['label' => 'Sensory summary', 'value' => $place['sensory_summary'] ?? null],
+        // Core Place record.
+        'name' => [
+            'label' => 'Place name',
+            'group' => 'Basic information',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'name',
+        ],
+        'description' => [
+            'label' => 'Description',
+            'group' => 'Basic information',
+            'type' => 'textarea',
+            'table' => 'places',
+            'column' => 'description',
+        ],
+        'latitude' => [
+            'label' => 'Latitude',
+            'group' => 'Location',
+            'type' => 'float',
+            'table' => 'places',
+            'column' => 'latitude',
+        ],
+        'longitude' => [
+            'label' => 'Longitude',
+            'group' => 'Location',
+            'type' => 'float',
+            'table' => 'places',
+            'column' => 'longitude',
+        ],
+        'elevation_feet' => [
+            'label' => 'Elevation (ft)',
+            'group' => 'Location',
+            'type' => 'int',
+            'table' => 'places',
+            'column' => 'elevation_feet',
+        ],
+        'road' => [
+            'label' => 'Road',
+            'group' => 'Location',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'road',
+        ],
+        'city' => [
+            'label' => 'Nearest city / locality',
+            'group' => 'Location',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'city',
+        ],
+        'county' => [
+            'label' => 'County',
+            'group' => 'Location',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'county',
+        ],
+        'state' => [
+            'label' => 'State',
+            'group' => 'Location',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'state',
+        ],
+        'region' => [
+            'label' => 'Region / ranger district',
+            'group' => 'Location',
+            'type' => 'text',
+            'table' => 'places',
+            'column' => 'region',
+        ],
+        'land_manager' => [
+            'label' => 'Land manager',
+            'group' => 'Location',
+            'type' => 'land_manager',
+            'table' => 'places',
+            'column' => 'land_manager',
+        ],
+        'land_type' => [
+            'label' => 'Land type',
+            'group' => 'Location',
+            'type' => 'land_type',
+            'table' => 'places',
+            'column' => 'land_type',
+        ],
+        'access_summary' => [
+            'label' => 'Access summary',
+            'group' => 'Summaries',
+            'type' => 'textarea',
+            'table' => 'places',
+            'column' => 'access_summary',
+        ],
+        'sensory_summary' => [
+            'label' => 'Sensory summary',
+            'group' => 'Summaries',
+            'type' => 'textarea',
+            'table' => 'places',
+            'column' => 'sensory_summary',
+        ],
+
+        // Site + road details.
+        'details.vehicle_capacity' => [
+            'label' => 'Vehicle capacity',
+            'group' => 'Site and vehicle fit',
+            'type' => 'int',
+            'table' => 'place_details',
+            'column' => 'vehicle_capacity',
+        ],
+        'details.max_vehicle_length_feet' => [
+            'label' => 'Maximum vehicle length',
+            'group' => 'Site and vehicle fit',
+            'type' => 'int',
+            'table' => 'place_details',
+            'column' => 'max_vehicle_length_feet',
+        ],
+        'details.parking_surface' => [
+            'label' => 'Parking surface',
+            'group' => 'Site and vehicle fit',
+            'type' => 'surface',
+            'table' => 'place_details',
+            'column' => 'parking_surface',
+        ],
+        'details.ground_condition' => [
+            'label' => 'Ground condition',
+            'group' => 'Site and vehicle fit',
+            'type' => 'ground',
+            'table' => 'place_details',
+            'column' => 'ground_condition',
+        ],
+        'details.tent_camping_suitable' => [
+            'label' => 'Tent camping suitable?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'tent_camping_suitable',
+        ],
+        'details.rv_suitable' => [
+            'label' => 'RV suitable?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'rv_suitable',
+        ],
+        'details.trailer_suitable' => [
+            'label' => 'Trailer suitable?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'trailer_suitable',
+        ],
+        'details.leveling_required' => [
+            'label' => 'Leveling required?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'leveling_required',
+        ],
+        'details.turnaround_space' => [
+            'label' => 'Turnaround space?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'turnaround_space',
+        ],
+        'details.pull_through' => [
+            'label' => 'Pull-through site?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'pull_through',
+        ],
+        'details.back_in' => [
+            'label' => 'Back-in site?',
+            'group' => 'Site and vehicle fit',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'back_in',
+        ],
+        'details.levelness' => [
+            'label' => 'Levelness',
+            'group' => 'Site and vehicle fit',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'levelness',
+        ],
+        'details.site_open_sky' => [
+            'label' => 'Open sky',
+            'group' => 'Site and vehicle fit',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'site_open_sky',
+        ],
+        'details.tree_cover' => [
+            'label' => 'Tree cover',
+            'group' => 'Site and vehicle fit',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'tree_cover',
+        ],
+        'details.site_shade' => [
+            'label' => 'Shade',
+            'group' => 'Site and vehicle fit',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'site_shade',
+        ],
+
+        'details.road_surface' => [
+            'label' => 'Road surface',
+            'group' => 'Road access',
+            'type' => 'surface',
+            'table' => 'place_details',
+            'column' => 'road_surface',
+        ],
+        'details.road_width' => [
+            'label' => 'Road width',
+            'group' => 'Road access',
+            'type' => 'road_width',
+            'table' => 'place_details',
+            'column' => 'road_width',
+        ],
+        'details.sedan_accessible' => [
+            'label' => 'Sedan accessible?',
+            'group' => 'Road access',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'sedan_accessible',
+        ],
+        'details.high_clearance_recommended' => [
+            'label' => 'High clearance recommended?',
+            'group' => 'Road access',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'high_clearance_recommended',
+        ],
+        'details.four_wheel_drive_recommended' => [
+            'label' => '4WD recommended?',
+            'group' => 'Road access',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'four_wheel_drive_recommended',
+        ],
+        'details.water_crossings' => [
+            'label' => 'Water crossings?',
+            'group' => 'Road access',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'water_crossings',
+        ],
+        'details.seasonal_closure' => [
+            'label' => 'Seasonal closure?',
+            'group' => 'Road access',
+            'type' => 'bool',
+            'table' => 'place_details',
+            'column' => 'seasonal_closure',
+        ],
+        'details.site_access_difficulty' => [
+            'label' => 'Site access difficulty',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'site_access_difficulty',
+        ],
+        'details.road_overall_difficulty' => [
+            'label' => 'Road difficulty',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'road_overall_difficulty',
+        ],
+        'details.road_stress' => [
+            'label' => 'Driving stress',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'road_stress',
+        ],
+        'details.rocks' => [
+            'label' => 'Rocks',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'rocks',
+        ],
+        'details.washboards' => [
+            'label' => 'Washboards',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'washboards',
+        ],
+        'details.potholes' => [
+            'label' => 'Potholes',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'potholes',
+        ],
+        'details.mud_risk' => [
+            'label' => 'Mud risk',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'mud_risk',
+        ],
+        'details.steep_grades' => [
+            'label' => 'Steep grades',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'steep_grades',
+        ],
+        'details.drop_off_exposure' => [
+            'label' => 'Drop-off exposure',
+            'group' => 'Road access',
+            'type' => 'rating',
+            'table' => 'place_details',
+            'column' => 'drop_off_exposure',
+        ],
+
+        // Amenities.
+        'amenities.toilets' => [
+            'label' => 'Toilets',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'toilets',
+        ],
+        'amenities.potable_water' => [
+            'label' => 'Potable water',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'potable_water',
+        ],
+        'amenities.trash' => [
+            'label' => 'Trash service',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'trash',
+        ],
+        'amenities.fire_ring' => [
+            'label' => 'Fire ring',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'fire_ring',
+        ],
+        'amenities.picnic_table' => [
+            'label' => 'Picnic table',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'picnic_table',
+        ],
+        'amenities.bear_box' => [
+            'label' => 'Bear box',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'bear_box',
+        ],
+        'amenities.showers' => [
+            'label' => 'Showers',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'showers',
+        ],
+        'amenities.electricity' => [
+            'label' => 'Electricity',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'electricity',
+        ],
+        'amenities.dump_station' => [
+            'label' => 'Dump station',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'dump_station',
+        ],
+
+        // Connectivity.
+        'connectivity.overall' => [
+            'label' => 'Overall cell service',
+            'group' => 'Connectivity',
+            'type' => 'rating',
+            'table' => 'place_connectivity',
+            'column' => 'overall',
+        ],
+        'connectivity.t_mobile' => [
+            'label' => 'T-Mobile',
+            'group' => 'Connectivity',
+            'type' => 'rating',
+            'table' => 'place_connectivity',
+            'column' => 't_mobile',
+        ],
+        'connectivity.verizon' => [
+            'label' => 'Verizon',
+            'group' => 'Connectivity',
+            'type' => 'rating',
+            'table' => 'place_connectivity',
+            'column' => 'verizon',
+        ],
+        'connectivity.att' => [
+            'label' => 'AT&T',
+            'group' => 'Connectivity',
+            'type' => 'rating',
+            'table' => 'place_connectivity',
+            'column' => 'att',
+        ],
+        'connectivity.starlink' => [
+            'label' => 'Starlink',
+            'group' => 'Connectivity',
+            'type' => 'rating',
+            'table' => 'place_connectivity',
+            'column' => 'starlink',
+        ],
+        'connectivity.starlink_tested' => [
+            'label' => 'Starlink actually tested?',
+            'group' => 'Connectivity',
+            'type' => 'bool',
+            'table' => 'place_connectivity',
+            'column' => 'starlink_tested',
+        ],
+        'connectivity.starlink_note' => [
+            'label' => 'Starlink notes',
+            'group' => 'Connectivity',
+            'type' => 'textarea',
+            'table' => 'place_connectivity',
+            'column' => 'starlink_note',
+        ],
+
+        // Sensory daytime/nighttime.
+        'sensory.daytime.noise' => [
+            'label' => 'Daytime noise',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'noise',
+            'period' => 'daytime',
+        ],
+        'sensory.daytime.traffic' => [
+            'label' => 'Daytime traffic',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'traffic',
+            'period' => 'daytime',
+        ],
+        'sensory.daytime.crowds' => [
+            'label' => 'Daytime crowds',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'crowds',
+            'period' => 'daytime',
+        ],
+        'sensory.daytime.privacy' => [
+            'label' => 'Daytime privacy',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'privacy',
+            'period' => 'daytime',
+        ],
+        'sensory.daytime.sensory_comfort' => [
+            'label' => 'Daytime sensory comfort',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'sensory_comfort',
+            'period' => 'daytime',
+        ],
+        'sensory.nighttime.noise' => [
+            'label' => 'Nighttime noise',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'noise',
+            'period' => 'nighttime',
+        ],
+        'sensory.nighttime.traffic' => [
+            'label' => 'Nighttime traffic',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'traffic',
+            'period' => 'nighttime',
+        ],
+        'sensory.nighttime.crowds' => [
+            'label' => 'Nighttime crowds',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'crowds',
+            'period' => 'nighttime',
+        ],
+        'sensory.nighttime.privacy' => [
+            'label' => 'Nighttime privacy',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'privacy',
+            'period' => 'nighttime',
+        ],
+        'sensory.nighttime.sensory_comfort' => [
+            'label' => 'Nighttime sensory comfort',
+            'group' => 'Sensory profile',
+            'type' => 'rating',
+            'table' => 'place_sensory',
+            'column' => 'sensory_comfort',
+            'period' => 'nighttime',
+        ],
+
+        // Rules and season.
+        'rules.winter_access' => [
+            'label' => 'Winter access?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'winter_access',
+        ],
+        'rules.snow_risk' => [
+            'label' => 'Snow risk',
+            'group' => 'Rules and seasons',
+            'type' => 'rating',
+            'table' => 'place_rules',
+            'column' => 'snow_risk',
+        ],
+        'rules.mud_season_risk' => [
+            'label' => 'Mud-season risk',
+            'group' => 'Rules and seasons',
+            'type' => 'rating',
+            'table' => 'place_rules',
+            'column' => 'mud_season_risk',
+        ],
+        'rules.monsoon_risk' => [
+            'label' => 'Monsoon risk',
+            'group' => 'Rules and seasons',
+            'type' => 'rating',
+            'table' => 'place_rules',
+            'column' => 'monsoon_risk',
+        ],
+        'rules.seasonal_access_note' => [
+            'label' => 'Seasonal access notes',
+            'group' => 'Rules and seasons',
+            'type' => 'textarea',
+            'table' => 'place_rules',
+            'column' => 'seasonal_access_note',
+        ],
+        'rules.overnight_camping_allowed' => [
+            'label' => 'Overnight camping allowed?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'overnight_camping_allowed',
+        ],
+        'rules.dispersed_camping_allowed' => [
+            'label' => 'Dispersed camping allowed?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'dispersed_camping_allowed',
+        ],
+        'rules.stay_limit_days' => [
+            'label' => 'Stay limit (days)',
+            'group' => 'Rules and seasons',
+            'type' => 'int',
+            'table' => 'place_rules',
+            'column' => 'stay_limit_days',
+        ],
+        'rules.permit_required' => [
+            'label' => 'Permit required?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'permit_required',
+        ],
+        'rules.fee' => [
+            'label' => 'Fee',
+            'group' => 'Rules and seasons',
+            'type' => 'float',
+            'table' => 'place_rules',
+            'column' => 'fee',
+        ],
+        'rules.campfire_allowed' => [
+            'label' => 'Campfire allowed?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'campfire_allowed',
+        ],
     ];
+}
+
+function community_update_current_values(
+    PDO $db,
+    int $placeId
+): array {
+    $definitions =
+        community_place_update_field_definitions();
+
+    $values = [];
+
+    $tableRows = [];
+
+    foreach ($definitions as $path => $definition) {
+        $table =
+            (string) $definition['table'];
+
+        $column =
+            (string) $definition['column'];
+
+        if ($table === 'places') {
+            if (!isset($tableRows['places'])) {
+                $stmt = $db->prepare(
+                    'SELECT *
+                     FROM places
+                     WHERE id = ?
+                     LIMIT 1'
+                );
+                $stmt->execute([$placeId]);
+                $tableRows['places'] =
+                    $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            $values[$path] =
+                $tableRows['places'][$column]
+                ?? null;
+
+            continue;
+        }
+
+        if ($table === 'place_sensory') {
+            $period =
+                (string) ($definition['period'] ?? '');
+
+            $cacheKey =
+                'place_sensory:' . $period;
+
+            if (!isset($tableRows[$cacheKey])) {
+                $stmt = $db->prepare(
+                    'SELECT *
+                     FROM place_sensory
+                     WHERE place_id = ?
+                       AND period = ?
+                     LIMIT 1'
+                );
+                $stmt->execute([
+                    $placeId,
+                    $period,
+                ]);
+                $tableRows[$cacheKey] =
+                    $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            $values[$path] =
+                $tableRows[$cacheKey][$column]
+                ?? null;
+
+            continue;
+        }
+
+        if (!isset($tableRows[$table])) {
+            $stmt = $db->prepare(
+                "SELECT *
+                 FROM `$table`
+                 WHERE place_id = ?
+                 LIMIT 1"
+            );
+            $stmt->execute([$placeId]);
+            $tableRows[$table] =
+                $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        $values[$path] =
+            $tableRows[$table][$column]
+            ?? null;
+    }
+
+    return $values;
 }
 
 function community_find_place_for_update(string $slug): ?array
 {
     $stmt = db()->prepare(
-        "SELECT id, slug, name, status, description, latitude, longitude, elevation_feet,
-                road, city, county, state, region, land_manager, land_type,
-                access_summary, sensory_summary
+        "SELECT *
          FROM places
          WHERE slug = :slug
            AND status IN ('active', 'featured')
          LIMIT 1"
     );
-    $stmt->execute([':slug' => $slug]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $stmt->execute([
+        ':slug' => $slug,
+    ]);
+
+    $row =
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
 }
 
-function community_open_update_for_user(int $userId, int $placeId): ?array
-{
+function community_open_update_for_user(
+    int $userId,
+    int $placeId
+): ?array {
     $stmt = db()->prepare(
         "SELECT id, status, submitted_at
          FROM place_update_submissions
@@ -918,69 +1593,224 @@ function community_open_update_for_user(int $userId, int $placeId): ?array
          ORDER BY submitted_at DESC
          LIMIT 1"
     );
-    $stmt->execute([':user_id' => $userId, ':place_id' => $placeId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $stmt->execute([
+        ':user_id' => $userId,
+        ':place_id' => $placeId,
+    ]);
+
+    $row =
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
 }
 
-function submit_place_update(int $userId, array $place, array $input): int
-{
-    $placeId = (int) ($place['id'] ?? 0);
+function community_parse_update_value(
+    mixed $raw,
+    string $type
+): mixed {
+    if ($raw === '__NULL__') {
+        return null;
+    }
+
+    if ($type === 'bool') {
+        if ((string) $raw === '1') {
+            return true;
+        }
+
+        if ((string) $raw === '0') {
+            return false;
+        }
+
+        return null;
+    }
+
+    if ($type === 'rating') {
+        $value = (int) $raw;
+
+        return $value >= 1 && $value <= 5
+            ? $value
+            : null;
+    }
+
+    if ($type === 'int') {
+        return community_clean_int(
+            $raw,
+            -100000,
+            100000
+        );
+    }
+
+    if ($type === 'float') {
+        return community_clean_float(
+            $raw,
+            -1000000,
+            1000000
+        );
+    }
+
+    return community_clean_text(
+        $raw,
+        $type === 'textarea'
+            ? 5000
+            : 500
+    );
+}
+
+function submit_place_update(
+    int $userId,
+    array $place,
+    array $input
+): int {
+    $placeId =
+        (int) ($place['id'] ?? 0);
+
     if ($placeId < 1) {
-        throw new InvalidArgumentException('Invalid place.');
+        throw new InvalidArgumentException(
+            'Invalid place.'
+        );
     }
 
-    if (community_open_update_for_user($userId, $placeId)) {
-        throw new RuntimeException('You already have an open update for this place.');
+    if (
+        community_open_update_for_user(
+            $userId,
+            $placeId
+        )
+    ) {
+        throw new RuntimeException(
+            'You already have an open update for this place.'
+        );
     }
 
-    $fields = community_editable_place_fields($place);
+    $definitions =
+        community_place_update_field_definitions();
+
+    $current =
+        community_update_current_values(
+            db(),
+            $placeId
+        );
+
+    $selected =
+        is_array(
+            $input['change_fields']
+            ?? null
+        )
+            ? array_values(
+                $input['change_fields']
+            )
+            : [];
+
+    $values =
+        is_array(
+            $input['field_value']
+            ?? null
+        )
+            ? $input['field_value']
+            : [];
+
     $proposed = [];
     $original = [];
 
-    foreach ($fields as $key => $meta) {
-        if (!array_key_exists($key, $input)) {
+    foreach ($selected as $path) {
+        $path =
+            (string) $path;
+
+        if (!isset($definitions[$path])) {
             continue;
         }
 
-        $newValue = match ($key) {
-            'latitude' => community_clean_float($input[$key], -90, 90),
-            'longitude' => community_clean_float($input[$key], -180, 180),
-            'elevation_feet' => community_clean_int($input[$key], -1500, 30000),
-            'name' => community_clean_text($input[$key], 200),
-            'road' => community_clean_text($input[$key], 255),
-            'city', 'county', 'state' => community_clean_text($input[$key], 120),
-            'region' => community_clean_text($input[$key], 160),
-            'land_manager', 'land_type' => community_clean_text($input[$key], 180),
-            default => community_clean_text($input[$key]),
-        };
+        $definition =
+            $definitions[$path];
 
-        $oldValue = $meta['value'];
-        $oldComparable = $oldValue === null ? null : (string) $oldValue;
-        $newComparable = $newValue === null ? null : (string) $newValue;
+        $raw =
+            $values[$path]
+            ?? '__NULL__';
 
-        if ($oldComparable === $newComparable) {
+        $newValue =
+            community_parse_update_value(
+                $raw,
+                (string) $definition['type']
+            );
+
+        $oldValue =
+            $current[$path]
+            ?? null;
+
+        $oldComparable =
+            is_bool($oldValue)
+                ? ($oldValue ? '1' : '0')
+                : (
+                    $oldValue === null
+                        ? null
+                        : (string) $oldValue
+                );
+
+        $newComparable =
+            is_bool($newValue)
+                ? ($newValue ? '1' : '0')
+                : (
+                    $newValue === null
+                        ? null
+                        : (string) $newValue
+                );
+
+        if (
+            $oldComparable
+            === $newComparable
+        ) {
             continue;
         }
 
-        $proposed[$key] = $newValue;
-        $original[$key] = $oldValue;
+        $proposed[$path] = $newValue;
+        $original[$path] = $oldValue;
     }
 
-    $photoToken = trim((string) ($input['photo_stage_token'] ?? ''));
-    $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
 
-    if (!$proposed && !$submittedPhotos) {
-        throw new InvalidArgumentException('Change at least one field or add a photo before submitting.');
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+    if (
+        !$proposed
+        && !$submittedPhotos
+    ) {
+        throw new InvalidArgumentException(
+            'Select at least one field that changed, or add a current photo.'
+        );
     }
 
-    if ($submittedPhotos && $photoToken === '') {
-        throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
     }
 
-    $visitedAt = community_clean_text($input['visited_at'] ?? null, 30);
-    $notes = community_clean_text($input['contributor_notes'] ?? null);
+    $visitedAt =
+        community_clean_text(
+            $input['visited_at']
+            ?? null,
+            30
+        );
+
+    $notes =
+        community_clean_text(
+            $input['contributor_notes']
+            ?? null
+        );
+
     $db = db();
     $updateId = 0;
 
@@ -989,11 +1819,31 @@ function submit_place_update(int $userId, array $place, array $input): int
 
         $stmt = $db->prepare(
             'INSERT INTO place_update_submissions
-                (place_id, user_id, update_type, status, role_at_submission, visited_at,
-                 proposed_changes, original_values, photos, contributor_notes)
+                (
+                    place_id,
+                    user_id,
+                    update_type,
+                    status,
+                    role_at_submission,
+                    visited_at,
+                    proposed_changes,
+                    original_values,
+                    photos,
+                    contributor_notes
+                )
              VALUES
-                (:place_id, :user_id, :update_type, :status, :role_at_submission, :visited_at,
-                 :proposed_changes, :original_values, :photos, :contributor_notes)'
+                (
+                    :place_id,
+                    :user_id,
+                    :update_type,
+                    :status,
+                    :role_at_submission,
+                    :visited_at,
+                    :proposed_changes,
+                    :original_values,
+                    :photos,
+                    :contributor_notes
+                )'
         );
 
         $stmt->execute([
@@ -1001,33 +1851,67 @@ function submit_place_update(int $userId, array $place, array $input): int
             ':user_id' => $userId,
             ':update_type' => 'update',
             ':status' => 'pending',
-            ':role_at_submission' => community_role_at_submission($userId),
-            ':visited_at' => $visitedAt !== null ? $visitedAt . (strlen($visitedAt) === 10 ? ' 00:00:00' : '') : null,
-            ':proposed_changes' => json_encode($proposed, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            ':original_values' => json_encode($original, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            ':role_at_submission' =>
+                community_role_at_submission(
+                    $userId
+                ),
+            ':visited_at' =>
+                $visitedAt !== null
+                    ? $visitedAt .
+                        (
+                            strlen($visitedAt) === 10
+                                ? ' 00:00:00'
+                                : ''
+                        )
+                    : null,
+            ':proposed_changes' =>
+                json_encode(
+                    $proposed,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+            ':original_values' =>
+                json_encode(
+                    $original,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
             ':photos' => '[]',
             ':contributor_notes' => $notes,
         ]);
 
-        $updateId = (int) $db->lastInsertId();
+        $updateId =
+            (int) $db->lastInsertId();
 
         if ($photoToken !== '') {
-            $committedPhotos = llama_photo_commit_stage(
-                'update-place',
-                $userId,
-                $photoToken,
-                $submittedPhotos,
-                '/uploads/place-updates/' . $updateId
-            );
+            $committedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/' .
+                        $updateId
+                );
 
-            $photoUpdate = $db->prepare(
-                'UPDATE place_update_submissions
-                 SET photos = :photos
-                 WHERE id = :id AND user_id = :user_id'
-            );
+            $photoUpdate =
+                $db->prepare(
+                    'UPDATE place_update_submissions
+                     SET photos = :photos
+                     WHERE id = :id
+                       AND user_id = :user_id'
+                );
 
             $photoUpdate->execute([
-                ':photos' => json_encode($committedPhotos, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                ':photos' =>
+                    json_encode(
+                        $committedPhotos,
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                        | JSON_THROW_ON_ERROR
+                    ),
                 ':id' => $updateId,
                 ':user_id' => $userId,
             ]);
@@ -1040,7 +1924,11 @@ function submit_place_update(int $userId, array $place, array $input): int
         }
 
         if ($updateId > 0) {
-            llama_photo_remove_tree(dirname(__DIR__) . '/uploads/place-updates/' . $updateId);
+            llama_photo_remove_tree(
+                dirname(__DIR__) .
+                '/uploads/place-updates/' .
+                $updateId
+            );
         }
 
         throw $exception;

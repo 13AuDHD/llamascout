@@ -950,58 +950,284 @@ function moderation_set_submission_status(
     }
 }
 
-function moderation_place_update_columns(): array
+function moderation_place_update_definitions(): array
 {
-    return [
-        'name',
-        'description',
-        'latitude',
-        'longitude',
-        'elevation_feet',
-        'road',
-        'city',
-        'county',
-        'state',
-        'region',
-        'land_manager',
-        'land_type',
-        'access_summary',
-        'sensory_summary',
-    ];
+    return community_place_update_field_definitions();
 }
 
-function moderation_current_place_values(PDO $db, int $placeId, bool $lock = false): array
-{
-    $columns = moderation_place_update_columns();
+function moderation_current_update_value(
+    PDO $db,
+    int $placeId,
+    string $path,
+    bool $lock = false
+): mixed {
+    $definitions =
+        moderation_place_update_definitions();
 
-    $stmt = $db->prepare(
-        'SELECT ' . implode(', ', $columns) . '
-         FROM places
-         WHERE id = ?
-         LIMIT 1' . ($lock ? ' FOR UPDATE' : '')
-    );
-    $stmt->execute([$placeId]);
-
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        throw new RuntimeException('The Place no longer exists.');
+    if (!isset($definitions[$path])) {
+        throw new RuntimeException(
+            'Unsupported Place update field: ' .
+            $path
+        );
     }
 
-    return $row;
+    $definition =
+        $definitions[$path];
+
+    $table =
+        (string) $definition['table'];
+
+    $column =
+        (string) $definition['column'];
+
+    if ($table === 'places') {
+        $stmt = $db->prepare(
+            "SELECT `$column`
+             FROM places
+             WHERE id = ?
+             LIMIT 1" .
+            ($lock ? ' FOR UPDATE' : '')
+        );
+
+        $stmt->execute([$placeId]);
+
+        return $stmt->fetchColumn();
+    }
+
+    if ($table === 'place_sensory') {
+        $period =
+            (string) (
+                $definition['period']
+                ?? ''
+            );
+
+        $stmt = $db->prepare(
+            "SELECT `$column`
+             FROM place_sensory
+             WHERE place_id = ?
+               AND period = ?
+             LIMIT 1" .
+            ($lock ? ' FOR UPDATE' : '')
+        );
+
+        $stmt->execute([
+            $placeId,
+            $period,
+        ]);
+
+        $value = $stmt->fetchColumn();
+
+        return $value === false
+            ? null
+            : $value;
+    }
+
+    $stmt = $db->prepare(
+        "SELECT `$column`
+         FROM `$table`
+         WHERE place_id = ?
+         LIMIT 1" .
+        ($lock ? ' FOR UPDATE' : '')
+    );
+
+    $stmt->execute([$placeId]);
+
+    $value = $stmt->fetchColumn();
+
+    return $value === false
+        ? null
+        : $value;
 }
 
-function moderation_values_match(mixed $current, mixed $original): bool
-{
-    if ($current === null && $original === null) {
+function moderation_values_match(
+    mixed $current,
+    mixed $original
+): bool {
+    if (
+        $current === null
+        && $original === null
+    ) {
         return true;
     }
 
-    if ($current === null || $original === null) {
+    if (
+        $current === null
+        || $original === null
+    ) {
         return false;
     }
 
-    return (string) $current === (string) $original;
+    if (is_bool($original)) {
+        return (int) $current
+            === ($original ? 1 : 0);
+    }
+
+    return (string) $current
+        === (string) $original;
+}
+
+function moderation_apply_update_field(
+    PDO $db,
+    int $placeId,
+    string $path,
+    mixed $value
+): void {
+    $definitions =
+        moderation_place_update_definitions();
+
+    if (!isset($definitions[$path])) {
+        throw new RuntimeException(
+            'Unsupported Place update field: ' .
+            $path
+        );
+    }
+
+    $definition =
+        $definitions[$path];
+
+    $table =
+        (string) $definition['table'];
+
+    $column =
+        (string) $definition['column'];
+
+    $storedValue =
+        is_bool($value)
+            ? ($value ? 1 : 0)
+            : $value;
+
+    if ($table === 'places') {
+        $stmt = $db->prepare(
+            "UPDATE places
+             SET `$column` = ?
+             WHERE id = ?"
+        );
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+
+        if ($path === 'latitude') {
+            $db->prepare(
+                'UPDATE places
+                 SET public_latitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+                $placeId,
+            ]);
+        }
+
+        if ($path === 'longitude') {
+            $db->prepare(
+                'UPDATE places
+                 SET public_longitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+                $placeId,
+            ]);
+        }
+
+        return;
+    }
+
+    if ($table === 'place_sensory') {
+        $period =
+            (string) (
+                $definition['period']
+                ?? ''
+            );
+
+        $exists = $db->prepare(
+            'SELECT id
+             FROM place_sensory
+             WHERE place_id = ?
+               AND period = ?
+             LIMIT 1'
+        );
+
+        $exists->execute([
+            $placeId,
+            $period,
+        ]);
+
+        if ($exists->fetchColumn()) {
+            $stmt = $db->prepare(
+                "UPDATE place_sensory
+                 SET `$column` = ?
+                 WHERE place_id = ?
+                   AND period = ?"
+            );
+
+            $stmt->execute([
+                $storedValue,
+                $placeId,
+                $period,
+            ]);
+        } else {
+            $stmt = $db->prepare(
+                "INSERT INTO place_sensory (
+                    place_id,
+                    period,
+                    `$column`
+                 ) VALUES (?, ?, ?)"
+            );
+
+            $stmt->execute([
+                $placeId,
+                $period,
+                $storedValue,
+            ]);
+        }
+
+        return;
+    }
+
+    $exists = $db->prepare(
+        "SELECT place_id
+         FROM `$table`
+         WHERE place_id = ?
+         LIMIT 1"
+    );
+
+    $exists->execute([$placeId]);
+
+    if ($exists->fetchColumn()) {
+        $stmt = $db->prepare(
+            "UPDATE `$table`
+             SET `$column` = ?
+             WHERE place_id = ?"
+        );
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+    } else {
+        $stmt = $db->prepare(
+            "INSERT INTO `$table` (
+                place_id,
+                `$column`
+             ) VALUES (?, ?)"
+        );
+
+        $stmt->execute([
+            $placeId,
+            $storedValue,
+        ]);
+    }
 }
 
 function moderation_approve_update(
@@ -1012,75 +1238,112 @@ function moderation_approve_update(
     int $points = 0
 ): int {
     if (!$db->inTransaction()) {
-        throw new RuntimeException('Place update approval requires an active database transaction.');
+        throw new RuntimeException(
+            'Place update approval requires an active database transaction.'
+        );
     }
 
-    $update = moderation_update($db, $updateId, true);
+    $update =
+        moderation_update(
+            $db,
+            $updateId,
+            true
+        );
 
     if (!$update) {
-        throw new RuntimeException('The Place update could not be found.');
+        throw new RuntimeException(
+            'The Place update could not be found.'
+        );
     }
 
-    if (!in_array((string) $update['status'], ['pending', 'needs-changes'], true)) {
-        throw new RuntimeException('This Place update is no longer awaiting review.');
+    if (
+        !in_array(
+            (string) $update['status'],
+            [
+                'pending',
+                'needs-changes',
+            ],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'This Place update is no longer awaiting review.'
+        );
     }
 
-    $placeId = (int) $update['place_id'];
-    $current = moderation_current_place_values($db, $placeId, true);
-    $proposed = $update['proposed'];
-    $original = $update['original'];
-    $allowed = moderation_place_update_columns();
+    $placeId =
+        (int) $update['place_id'];
 
-    foreach ($proposed as $field => $value) {
-        if (!in_array($field, $allowed, true)) {
-            throw new RuntimeException('This update contains an unsupported field: ' . $field);
+    $proposed =
+        $update['proposed'];
+
+    $original =
+        $update['original'];
+
+    $definitions =
+        moderation_place_update_definitions();
+
+    foreach ($proposed as $path => $value) {
+        if (!isset($definitions[$path])) {
+            throw new RuntimeException(
+                'This update contains an unsupported field: ' .
+                $path
+            );
         }
 
-        if (!array_key_exists($field, $original)) {
-            throw new RuntimeException('This update is missing its original value for ' . $field . '.');
+        if (!array_key_exists($path, $original)) {
+            throw new RuntimeException(
+                'This update is missing its original value for ' .
+                $path .
+                '.'
+            );
         }
 
-        if (!moderation_values_match($current[$field] ?? null, $original[$field])) {
+        $current =
+            moderation_current_update_value(
+                $db,
+                $placeId,
+                $path,
+                true
+            );
+
+        if (
+            !moderation_values_match(
+                $current,
+                $original[$path]
+            )
+        ) {
             throw new RuntimeException(
                 'This Place changed after the contribution was submitted. Review the current value of "' .
-                str_replace('_', ' ', $field) .
+                str_replace(
+                    [
+                        '.',
+                        '_',
+                    ],
+                    ' ',
+                    $path
+                ) .
                 '" before approving.'
             );
         }
     }
 
-    if (!$proposed && empty($update['photo_list'])) {
-        throw new RuntimeException('This update does not contain any changes.');
+    if (
+        !$proposed
+        && empty($update['photo_list'])
+    ) {
+        throw new RuntimeException(
+            'This update does not contain any changes.'
+        );
     }
 
-    if ($proposed) {
-        $assignments = [];
-        $params = [];
-
-        foreach ($proposed as $field => $value) {
-            $assignments[] = '`' . $field . '` = ?';
-            $params[] = $value;
-        }
-
-        if (array_key_exists('latitude', $proposed)) {
-            $assignments[] = '`public_latitude` = ?';
-            $params[] = $proposed['latitude'] !== null ? round((float) $proposed['latitude'], 1) : null;
-        }
-
-        if (array_key_exists('longitude', $proposed)) {
-            $assignments[] = '`public_longitude` = ?';
-            $params[] = $proposed['longitude'] !== null ? round((float) $proposed['longitude'], 1) : null;
-        }
-
-        $params[] = $placeId;
-
-        $stmt = $db->prepare(
-            'UPDATE places
-             SET ' . implode(', ', $assignments) . '
-             WHERE id = ?'
+    foreach ($proposed as $path => $value) {
+        moderation_apply_update_field(
+            $db,
+            $placeId,
+            $path,
+            $value
         );
-
-        $stmt->execute($params);
     }
 
     moderation_attach_place_photos(
@@ -1088,43 +1351,78 @@ function moderation_approve_update(
         $placeId,
         (int) $update['user_id'],
         $update['photo_list'],
-        '/uploads/place-updates/' . $updateId . '/'
+        '/uploads/place-updates/' .
+            $updateId .
+            '/'
     );
 
-    $contributionId = moderation_insert_contribution(
+    $contributionId =
+        moderation_insert_contribution(
+            $db,
+            $placeId,
+            (int) $update['user_id'],
+            null,
+            (string) (
+                $update['update_type']
+                ?? 'update'
+            ),
+            trim(
+                (string) (
+                    $update['role_at_submission']
+                    ?? 'user'
+                )
+            ),
+            !empty($update['visited_at'])
+                ? (string) $update['visited_at']
+                : null,
+            $reviewedBy,
+            $points,
+            array_keys($proposed),
+            $reviewNotes !== ''
+                ? $reviewNotes
+                : null
+        );
+
+    moderation_award_badge(
         $db,
-        $placeId,
         (int) $update['user_id'],
-        null,
-        (string) ($update['update_type'] ?? 'update'),
-        trim((string) ($update['role_at_submission'] ?? 'user')),
-        !empty($update['visited_at']) ? (string) $update['visited_at'] : null,
-        $reviewedBy,
-        $points,
-        array_keys($proposed),
-        $reviewNotes !== '' ? $reviewNotes : null
+        'first-contribution'
     );
 
-    moderation_award_badge($db, (int) $update['user_id'], 'first-contribution');
-    moderation_award_badge($db, (int) $update['user_id'], 'helpful-editor');
+    moderation_award_badge(
+        $db,
+        (int) $update['user_id'],
+        'helpful-editor'
+    );
 
     $stmt = $db->prepare(
         'UPDATE place_update_submissions
-         SET status = ?, reviewed_by = ?, review_notes = ?,
-             reviewed_at = CURRENT_TIMESTAMP, contribution_id = ?,
-             points_awarded = ?
+         SET
+            status = ?,
+            reviewed_by = ?,
+            review_notes = ?,
+            reviewed_at = CURRENT_TIMESTAMP,
+            contribution_id = ?,
+            points_awarded = ?
          WHERE id = ?'
     );
+
     $stmt->execute([
         'approved',
         $reviewedBy,
-        $reviewNotes !== '' ? $reviewNotes : null,
+        $reviewNotes !== ''
+            ? $reviewNotes
+            : null,
         $contributionId,
         max(0, $points),
         $updateId,
     ]);
 
-    moderation_remove_tree(dirname(__DIR__) . '/uploads/place-updates/' . $updateId);
+    moderation_remove_tree(
+        dirname(__DIR__) .
+        '/uploads/place-updates/' .
+        $updateId
+    );
 
     return $contributionId;
 }
