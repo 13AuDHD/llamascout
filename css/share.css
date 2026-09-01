@@ -1,0 +1,71 @@
+.llama-share-button {
+    font: inherit;
+    cursor: pointer;
+}
+
+.llama-share-button:disabled {
+    cursor: default;
+    opacity: .72;
+}
+
+.public-community-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 14px;
+}
+
+.public-community-profile-actions
+.place-save-button {
+    margin: 0;
+}
+
+.shop-share-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    min-height: 38px;
+    padding: 7px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    white-space: nowrap;
+
+    font-size: .72rem;
+    font-weight: 850;
+}
+
+.product-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.product-title-row h1 {
+    min-width: 0;
+}
+
+@media (max-width: 560px) {
+    .product-title-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .shop-share-button {
+        align-self: flex-start;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-share-button {
+        transition: none !important;
+    }
+}
