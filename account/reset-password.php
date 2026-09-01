@@ -523,15 +523,16 @@ if (
             }
 
 
-            error_log(
-                'Llama Scout password reset error: '
-                .
-                $exception->getMessage()
+            $reference = llama_log_caught_exception(
+                $exception,
+                'password_reset'
             );
 
 
-            $error =
-                'Your password could not be changed. Please request a new reset link and try again.';
+            $error = llama_error_message_with_reference(
+                'Your password could not be changed. Please request a new reset link and try again.',
+                $reference
+            );
         }
     }
 }

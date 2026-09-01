@@ -900,14 +900,16 @@ if (
             }
 
 
-            error_log(
-                'Llama Scout registration error: '
-                . $exception->getMessage()
+            $reference = llama_log_caught_exception(
+                $exception,
+                'account_registration'
             );
 
 
-            $errors[] =
-                'Something went wrong while creating your account. Please try again.';
+            $errors[] = llama_error_message_with_reference(
+                'Something went wrong while creating your account. Please try again.',
+                $reference
+            );
         }
     }
 }

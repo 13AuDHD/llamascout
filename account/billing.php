@@ -127,11 +127,10 @@ try {
             true
         );
 } catch (Throwable $exception) {
-    error_log(
-        'Llama Scout billing plan lookup error for user #' .
-        $userId .
-        ': ' .
-        $exception->getMessage()
+    llama_log_caught_exception(
+        $exception,
+        'billing_plan_lookup',
+        ['user_id' => $userId]
     );
 }
 

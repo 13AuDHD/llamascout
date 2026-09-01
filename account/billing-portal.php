@@ -86,14 +86,17 @@ try {
 
     exit;
 } catch (Throwable $exception) {
-    error_log(
-        'Llama Scout Stripe portal error for user #' .
-        $userId .
-        ': ' .
-        $exception->getMessage()
+    $reference = llama_log_caught_exception(
+        $exception,
+        'stripe_billing_portal',
+        ['user_id' => $userId]
     );
 
     http_response_code(500);
+    $billingPortalError = llama_error_message_with_reference(
+        'The billing portal could not be opened.',
+        $reference
+    );
 }
 
 $pageTitle =

@@ -433,10 +433,11 @@ if (
                 }
 
 
-                error_log(
-                    'Llama Scout password reset request error: '
-                    .
-                    $exception->getMessage()
+                // Keep the public response deliberately generic so account
+                // existence is never disclosed, but retain the failure for Admin.
+                llama_log_caught_exception(
+                    $exception,
+                    'password_reset_request'
                 );
             }
         }

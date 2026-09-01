@@ -659,17 +659,10 @@ if (
         Throwable $exception
     ) {
 
-        error_log(
-            'Llama Scout Stripe Checkout error for user #'
-            .
-            $account[
-                'id'
-            ]
-            .
-            ': '
-            .
-            $exception
-                ->getMessage()
+        $reference = llama_log_caught_exception(
+            $exception,
+            'stripe_checkout',
+            ['user_id' => (int) $account['id']]
         );
 
 
@@ -678,8 +671,10 @@ if (
         );
 
 
-        $checkoutError =
-            'Something went wrong while connecting to Stripe checkout. No payment was created.';
+        $checkoutError = llama_error_message_with_reference(
+            'Something went wrong while connecting to Stripe checkout. No payment was created.',
+            $reference
+        );
 
     }
 

@@ -340,14 +340,16 @@ if ($token !== '') {
         }
 
 
-        error_log(
-            'Llama Scout verification error: '
-            . $exception->getMessage()
+        $reference = llama_log_caught_exception(
+            $exception,
+            'email_verification'
         );
 
 
-        $error =
-            'Something went wrong while verifying your email.';
+        $error = llama_error_message_with_reference(
+            'Something went wrong while verifying your email.',
+            $reference
+        );
     }
 }
 
