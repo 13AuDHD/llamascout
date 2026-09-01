@@ -218,7 +218,7 @@ $pageRobots =
     'noindex,nofollow';
 
 $pageDescription =
-    'Choose a Llama Scout membership plan and continue to secure Stripe checkout.';
+    'Choose a Llama Scout membership plan and complete secure checkout without leaving Llama Scout.';
 
 require dirname(__DIR__) .
     '/partials/header.php';
@@ -487,13 +487,13 @@ $onSale =
 
 <div>
     <strong>
-        Secure checkout by Stripe
+        Secure checkout stays on Llama Scout
     </strong>
 
     <span>
+        Stripe securely handles the payment fields inside Llama Scout.
         Llama Scout does not receive or store your complete card
-        number. Stripe handles payment information and recurring
-        billing.
+        number.
     </span>
 </div>
 

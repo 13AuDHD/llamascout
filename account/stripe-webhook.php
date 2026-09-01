@@ -137,9 +137,10 @@ try {
     $exception
 ) {
 
-    error_log(
-        'Llama Scout Stripe webhook setup error: ' .
-        $exception->getMessage()
+    llama_log_caught_exception(
+        $exception,
+        'stripe_webhook_setup',
+        []
     );
 
 
@@ -315,11 +316,13 @@ try {
     $exception
 ) {
 
-    error_log(
-        'Llama Scout Stripe webhook processing error for ' .
-        $event->type .
-        ': ' .
-        $exception->getMessage()
+    llama_log_caught_exception(
+        $exception,
+        'stripe_webhook_processing',
+        [
+            'event_type' => (string) ($event->type ?? ''),
+            'event_id' => (string) ($event->id ?? ''),
+        ]
     );
 
 
