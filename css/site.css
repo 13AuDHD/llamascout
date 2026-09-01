@@ -388,22 +388,12 @@ textarea {
 
 @media (max-width: 700px) {
 
-    .site-header-inner {
-        align-items: flex-start;
-        flex-direction: column;
-
-        padding: 12px 0;
-    }
-
-    .site-nav {
-        width: 100%;
-
-        gap: 18px;
-
-        overflow-x: auto;
-
-        padding-bottom: 4px;
-    }
+    /*
+     * Header and navigation responsive behavior is owned by
+     * mobile-menu.css. Do not turn the shared header into a
+     * vertical stack here or the hamburger drops below the
+     * logo on phone-sized screens.
+     */
 
     .site-main {
         padding-top: 32px;
