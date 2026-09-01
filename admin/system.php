@@ -67,8 +67,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         : 'Maintenance mode disabled.';
             }
         } catch (Throwable $exception) {
+            $reference = llama_log_exception(
+                $exception,
+                'admin.system.' . ($action ?? 'unknown')
+            );
+
             $error =
-                $exception->getMessage();
+                'The action failed. Error reference: ' .
+                $reference;
         }
     }
 }

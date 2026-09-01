@@ -304,6 +304,14 @@ function admin_shell_nav_class(
             </a>
 
             <a
+                class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/errors.php') ?>"
+            >
+                <i class="fa-solid fa-bug" aria-hidden="true"></i>
+                <span>Error Log</span>
+            </a>
+
+            <a
                 class="<?= admin_shell_nav_class('audit', $adminActiveNav) ?>"
                 href="<?= moderation_e($adminUrl . '/audit.php') ?>"
             >

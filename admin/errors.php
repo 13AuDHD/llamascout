@@ -1,0 +1,143 @@
+<?php
+
+declare(strict_types=1);
+
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/admin-users.php';
+require_once dirname(__DIR__) . '/app/admin-errors.php';
+require_once __DIR__ . '/_dashboard.php';
+
+$adminUser = moderation_require_admin();
+$db = db();
+
+$result = admin_errors_search($db, $_GET, 50);
+$rows = $result['rows'];
+$filters = $result['filters'];
+
+$stats = admin_dashboard_stats($db);
+$adminNavCounts = [
+    'new_places' => $stats['new_places'],
+    'updates' => $stats['updates'],
+    'reports' => $stats['reports'],
+    'orders' => $stats['orders'],
+    'scout_reviews' => $stats['scout_reviews'],
+];
+
+$adminPageTitle = 'Error Log';
+$adminPageEyebrow = 'System';
+$adminActiveNav = 'errors';
+
+function error_log_query(array $changes = []): string
+{
+    $query = array_merge($_GET, $changes);
+
+    foreach ($query as $key => $value) {
+        if ($value === '' || $value === null || $value === 0 || $value === '0') {
+            unset($query[$key]);
+        }
+    }
+
+    return http_build_query($query);
+}
+
+require __DIR__ . '/_header.php';
+?>
+
+<section class="admin-panel admin-audit-console">
+    <header class="admin-panel-header">
+        <div>
+            <p>Application diagnostics</p>
+            <h2><?= number_format((int) $result['total']) ?> recorded errors</h2>
+        </div>
+        <span>Page <?= (int) $result['page'] ?> of <?= (int) $result['pages'] ?></span>
+    </header>
+
+    <form class="admin-audit-filters" method="get">
+        <label class="admin-audit-search">
+            <span>Search</span>
+            <input type="search" name="q" value="<?= moderation_e((string) $filters['q']) ?>" placeholder="Reference, action, page, exception, or message">
+        </label>
+
+        <label>
+            <span>Severity</span>
+            <select name="severity">
+                <option value="">All severities</option>
+                <option value="error" <?= $filters['severity'] === 'error' ? 'selected' : '' ?>>Error</option>
+                <option value="fatal" <?= $filters['severity'] === 'fatal' ? 'selected' : '' ?>>Fatal</option>
+            </select>
+        </label>
+
+        <label>
+            <span>User ID</span>
+            <input type="number" min="1" name="user_id" value="<?= (int) $filters['user_id'] > 0 ? (int) $filters['user_id'] : '' ?>" placeholder="Any">
+        </label>
+
+        <div class="admin-audit-filter-actions">
+            <button class="admin-button" type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Filter</button>
+            <a class="admin-button is-muted" href="/errors.php">Clear</a>
+        </div>
+    </form>
+
+    <?php if (!$rows): ?>
+        <div class="admin-empty-state"><p>No application errors match these filters.</p></div>
+    <?php else: ?>
+        <div class="admin-audit-list">
+            <?php foreach ($rows as $row): ?>
+                <?php
+                $context = admin_errors_context($row['context_json'] ?? null);
+                $userName = trim((string) ($row['display_name'] ?? ''));
+                if ($userName === '') {
+                    $userName = trim((string) ($row['username'] ?? ''));
+                }
+                ?>
+                <article class="admin-audit-row">
+                    <span class="admin-audit-icon"><i class="fa-solid <?= $row['severity'] === 'fatal' ? 'fa-skull-crossbones' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i></span>
+                    <div class="admin-audit-main">
+                        <div class="admin-audit-title-row">
+                            <strong><?= moderation_e((string) $row['reference_code']) ?></strong>
+                            <span class="admin-audit-category"><?= moderation_e(strtoupper((string) $row['severity'])) ?></span>
+                        </div>
+
+                        <span>
+                            <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?>
+                            · <?= moderation_e((string) $row['created_at']) ?> UTC
+                        </span>
+
+                        <small>
+                            <?= moderation_e((string) ($row['request_method'] ?: '')) ?>
+                            <?= moderation_e((string) ($row['request_path'] ?: 'unknown path')) ?>
+                            <?php if (!empty($row['action'])): ?> · <?= moderation_e((string) $row['action']) ?><?php endif; ?>
+                            <?php if ((int) ($row['user_id'] ?? 0) > 0): ?>
+                                · User #<?= (int) $row['user_id'] ?><?= $userName !== '' ? ' (' . moderation_e($userName) . ')' : '' ?>
+                            <?php endif; ?>
+                        </small>
+
+                        <p class="admin-error-message"><?= moderation_e((string) $row['message']) ?></p>
+
+                        <details class="admin-audit-details">
+                            <summary>View technical details <span><?= $context ? count($context) : 0 ?></span></summary>
+                            <dl class="admin-audit-metadata">
+                                <div><dt>File</dt><dd><?= moderation_e((string) ($row['file_path'] ?: 'Unknown')) ?>:<?= (int) ($row['line_number'] ?? 0) ?></dd></div>
+                                <?php if ((int) ($row['user_id'] ?? 0) > 0): ?><div><dt>User</dt><dd><a href="/user.php?id=<?= (int) $row['user_id'] ?>">Open user #<?= (int) $row['user_id'] ?></a></dd></div><?php endif; ?>
+                                <?php foreach ($context as $key => $value): ?>
+                                    <div><dt><?= moderation_e((string) $key) ?></dt><dd><?= moderation_e(is_scalar($value) || $value === null ? (string) $value : json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></dd></div>
+                                <?php endforeach; ?>
+                            </dl>
+                            <?php if (!empty($row['trace'])): ?><pre class="admin-error-trace"><?= moderation_e((string) $row['trace']) ?></pre><?php endif; ?>
+                        </details>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ((int) $result['pages'] > 1): ?>
+            <nav class="admin-audit-pagination" aria-label="Error log pages">
+                <?php if ((int) $result['page'] > 1): ?><a class="admin-button is-muted" href="?<?= moderation_e(error_log_query(['page' => (int) $result['page'] - 1])) ?>">Previous</a><?php endif; ?>
+                <span>Page <?= (int) $result['page'] ?> of <?= (int) $result['pages'] ?></span>
+                <?php if ((int) $result['page'] < (int) $result['pages']): ?><a class="admin-button is-muted" href="?<?= moderation_e(error_log_query(['page' => (int) $result['page'] + 1])) ?>">Next</a><?php endif; ?>
+            </nav>
+        <?php endif; ?>
+    <?php endif; ?>
+</section>
+
+<?php require __DIR__ . '/_footer.php'; ?>
