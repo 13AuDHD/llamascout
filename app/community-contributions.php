@@ -90,7 +90,9 @@ function community_place_types(): array
     ];
 }
 
-function submit_new_place(int $userId, array $input): int
+function community_build_new_place_submission(
+    array $input
+): array
 {
     $name = community_clean_text(
         $input['name'] ?? null,
@@ -776,6 +778,23 @@ function submit_new_place(int $userId, array $input): int
         'photos' => [],
     ];
 
+
+    return [
+        'data' => $data,
+        'photo_token' => $photoToken,
+        'submitted_photos' => $submittedPhotos,
+    ];
+}
+
+
+function submit_new_place(int $userId, array $input): int
+{
+    $built = community_build_new_place_submission($input);
+    $data = $built['data'];
+    $photoToken = (string) $built['photo_token'];
+    $submittedPhotos = $built['submitted_photos'];
+    $name = (string) $data['name'];
+
     $db = db();
     $submissionId = 0;
 
@@ -869,6 +888,447 @@ function submit_new_place(int $userId, array $input): int
         throw $exception;
     }
 }
+
+
+function community_new_place_submission_for_user(
+    int $userId,
+    int $submissionId
+): ?array {
+    if ($userId < 1 || $submissionId < 1) {
+        return null;
+    }
+
+    $stmt = db()->prepare(
+        'SELECT
+            id,
+            user_id,
+            place_name,
+            status,
+            submission_data,
+            submitted_at,
+            reviewed_at,
+            reviewed_by,
+            review_notes
+         FROM place_submissions
+         WHERE id = ?
+           AND user_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$submissionId, $userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        return null;
+    }
+
+    $data = json_decode(
+        (string) ($row['submission_data'] ?? '{}'),
+        true
+    );
+
+    $row['data'] = is_array($data) ? $data : [];
+    return $row;
+}
+
+
+function community_new_place_form_input(array $data): array
+{
+    $input = [];
+
+    $copy = static function (
+        array &$target,
+        string $formKey,
+        array $source,
+        string $dataKey
+    ): void {
+        if (!array_key_exists($dataKey, $source)) {
+            return;
+        }
+
+        $value = $source[$dataKey];
+
+        if (is_bool($value)) {
+            $target[$formKey] = $value ? '1' : '0';
+            return;
+        }
+
+        if ($value !== null) {
+            $target[$formKey] = (string) $value;
+        }
+    };
+
+    foreach ([
+        'name', 'type', 'description', 'latitude', 'longitude',
+        'elevation_feet', 'road', 'city', 'county', 'state',
+        'region', 'land_manager', 'land_type', 'access_summary',
+        'sensory_summary', 'contributor_notes', 'visited_at',
+    ] as $key) {
+        $copy($input, $key, $data, $key);
+    }
+
+    $details = is_array($data['details'] ?? null)
+        ? $data['details']
+        : [];
+
+    $detailMap = [
+        'vehicle_capacity' => 'vehicle_capacity',
+        'max_vehicle_length_feet' => 'max_vehicle_length_feet',
+        'tent_camping_suitable' => 'tent_camping_suitable',
+        'rv_suitable' => 'rv_suitable',
+        'trailer_suitable' => 'trailer_suitable',
+        'parking_surface' => 'parking_surface',
+        'levelness' => 'levelness',
+        'leveling_required' => 'leveling_required',
+        'turnaround_space' => 'turnaround_space',
+        'pull_through' => 'pull_through',
+        'back_in' => 'back_in',
+        'ground_condition' => 'ground_condition',
+        'site_open_sky' => 'site_open_sky',
+        'tree_cover' => 'tree_cover',
+        'site_shade' => 'site_shade',
+        'site_access_difficulty' => 'site_access_difficulty',
+        'road_overall_difficulty' => 'road_overall_difficulty',
+        'road_stress' => 'road_stress',
+        'sedan_accessible' => 'sedan_accessible',
+        'high_clearance_recommended' => 'high_clearance_recommended',
+        'four_wheel_drive_recommended' => 'four_wheel_drive_recommended',
+        'road_surface' => 'road_surface',
+        'road_width' => 'road_width',
+        'rocks' => 'rocks',
+        'washboards' => 'washboards',
+        'potholes' => 'potholes',
+        'mud_risk' => 'mud_risk',
+        'steep_grades' => 'steep_grades',
+        'drop_off_exposure' => 'drop_off_exposure',
+        'water_crossings' => 'water_crossings',
+        'downed_tree_risk' => 'downed_tree_risk',
+        'seasonal_closure' => 'seasonal_closure',
+        'environment_forest' => 'forest',
+        'environment_mountains' => 'mountains',
+        'environment_water_nearby' => 'water_nearby',
+        'environment_water_view' => 'water_view',
+        'environment_mountain_view' => 'mountain_view',
+        'environment_forest_view' => 'forest_view',
+        'environment_wildlife' => 'wildlife',
+        'environment_bugs' => 'bugs',
+        'environment_wind_exposure' => 'wind_exposure',
+        'environment_sun_exposure' => 'sun_exposure',
+        'environment_shade' => 'environment_shade',
+        'environment_open_sky' => 'environment_open_sky',
+        'wheelchair_friendly' => 'wheelchair_friendly',
+        'mobility_device_friendly' => 'mobility_device_friendly',
+        'flat_walking_surface' => 'flat_walking_surface',
+        'walking_distance_from_vehicle' => 'walking_distance_from_vehicle',
+        'step_free_access' => 'step_free_access',
+        'accessible_toilet' => 'accessible_toilet',
+        'accessible_picnic_table' => 'accessible_picnic_table',
+        'felt_safe_daytime' => 'felt_safe_daytime',
+        'felt_safe_nighttime' => 'felt_safe_nighttime',
+        'flash_flood_risk' => 'flash_flood_risk',
+        'wildfire_risk' => 'wildfire_risk',
+        'fall_hazard' => 'fall_hazard',
+        'cliff_exposure' => 'cliff_exposure',
+        'rockfall_risk' => 'rockfall_risk',
+        'wildlife_risk' => 'wildlife_risk',
+        'traffic_hazard' => 'traffic_hazard',
+        'emergency_access' => 'emergency_access',
+        'warning_exposed_to_road' => 'warning_exposed_to_road',
+        'warning_zero_privacy' => 'warning_zero_privacy',
+        'warning_passing_vehicle_dust' => 'warning_passing_vehicle_dust',
+        'warning_possible_downed_trees' => 'warning_possible_downed_trees',
+        'warning_no_tent_camping' => 'warning_no_tent_camping',
+        'warning_limited_vehicle_length' => 'warning_limited_vehicle_length',
+        'warning_leveling_may_be_required' => 'warning_leveling_may_be_required',
+        'warning_no_amenities' => 'warning_no_amenities',
+        'warning_motorized_recreation_traffic' => 'warning_motorized_recreation_traffic',
+        'warning_blind_turn_traffic_nearby' => 'warning_blind_turn_traffic_nearby',
+    ];
+
+    foreach ($detailMap as $formKey => $dataKey) {
+        $copy($input, $formKey, $details, $dataKey);
+    }
+
+    $amenities = is_array($data['amenities'] ?? null)
+        ? $data['amenities']
+        : [];
+
+    foreach ([
+        'toilets', 'potable_water', 'trash', 'fire_ring',
+        'picnic_table', 'bear_box', 'showers', 'electricity',
+        'dump_station', 'food_storage_required',
+    ] as $key) {
+        if (!empty($amenities[$key])) {
+            $input['amenity_' . $key] = '1';
+        }
+    }
+
+    $connectivity = is_array($data['connectivity'] ?? null)
+        ? $data['connectivity']
+        : [];
+
+    foreach ([
+        'overall', 't_mobile', 'verizon', 'att',
+        'other_cell', 'starlink',
+    ] as $key) {
+        $copy($input, 'connectivity_' . $key, $connectivity, $key);
+    }
+
+    $copy($input, 'connectivity_starlink_tested', $connectivity, 'starlink_tested');
+    $copy($input, 'connectivity_starlink_note', $connectivity, 'starlink_note');
+
+    $sensory = is_array($data['sensory'] ?? null)
+        ? $data['sensory']
+        : [];
+
+    foreach ([
+        'daytime' => 'daytime',
+        'nighttime' => 'nighttime',
+    ] as $periodKey => $prefix) {
+        $period = is_array($sensory[$periodKey] ?? null)
+            ? $sensory[$periodKey]
+            : [];
+
+        foreach ([
+            'noise' => 'noise',
+            'traffic' => 'traffic',
+            'crowds' => 'crowds',
+            'privacy' => 'privacy',
+            'light_pollution' => 'light_pollution',
+            'sensory_comfort' => 'sensory_comfort',
+            'social_interaction_likelihood' => 'social_interaction',
+        ] as $dataKey => $suffix) {
+            $copy(
+                $input,
+                $prefix . '_' . $suffix,
+                $period,
+                $dataKey
+            );
+        }
+    }
+
+    $sensoryDetails = is_array($sensory['details'] ?? null)
+        ? $sensory['details']
+        : [];
+
+    foreach ([
+        'dust_from_traffic', 'generator_noise', 'aircraft_noise',
+        'road_noise', 'human_activity', 'wildlife_noise',
+        'wind_noise', 'smoke_risk', 'strong_odors',
+        'visual_exposure', 'predictability',
+    ] as $key) {
+        $copy($input, 'sensory_' . $key, $sensoryDetails, $key);
+    }
+
+    $rules = is_array($data['rules'] ?? null)
+        ? $data['rules']
+        : [];
+
+    foreach ([
+        'best_months', 'winter_access', 'snow_risk',
+        'mud_season_risk', 'monsoon_risk', 'seasonal_access_note',
+        'overnight_camping_allowed', 'dispersed_camping_allowed',
+        'stay_limit_days', 'permit_required', 'fee',
+        'campfire_allowed', 'current_fire_restrictions_url',
+        'existing_sites_encouraged', 'pack_it_in_pack_it_out',
+        'residential_use_prohibited', 'nearest_town',
+        'nearest_fuel', 'nearest_grocery', 'nearest_water',
+        'nearest_toilet', 'nearest_hospital',
+    ] as $key) {
+        $copy($input, $key, $rules, $key);
+    }
+
+    $experience = is_array($data['experience'] ?? null)
+        ? $data['experience']
+        : [];
+
+    foreach ([
+        'sunrise_view', 'sunset_view', 'mountain_view',
+        'forest_view', 'night_sky', 'stargazing',
+        'quiet_evening', 'overnight_comfort',
+        'extended_stay_comfort', 'sensory_retreat',
+        'remote_work', 'overall_scenery',
+    ] as $key) {
+        $copy($input, 'experience_' . $key, $experience, $key);
+    }
+
+    foreach ([
+        'recommended_overnight_stop', 'recommended_quiet_evening',
+        'recommended_extended_stay', 'recommended_sensory_retreat',
+        'recommended_stargazing', 'recommended_remote_work',
+        'recommended_solo_travel', 'recommended_families',
+        'recommended_large_groups', 'not_recommended_for',
+    ] as $key) {
+        $copy($input, $key, $experience, $key);
+    }
+
+    return $input;
+}
+
+
+function community_resubmit_new_place(
+    int $userId,
+    int $submissionId,
+    array $input
+): int {
+    $existing = community_new_place_submission_for_user(
+        $userId,
+        $submissionId
+    );
+
+    if (
+        !$existing
+        || (string) $existing['status'] !== 'needs-changes'
+    ) {
+        throw new RuntimeException(
+            'This new Place submission is no longer available for resubmission.'
+        );
+    }
+
+    $built = community_build_new_place_submission($input);
+    $data = $built['data'];
+    $photoToken = (string) $built['photo_token'];
+    $submittedPhotos = $built['submitted_photos'];
+
+    $existingData = is_array($existing['data'] ?? null)
+        ? $existing['data']
+        : [];
+
+    $existingPhotos = is_array($existingData['photos'] ?? null)
+        ? $existingData['photos']
+        : [];
+
+    $removePhotos = is_array($input['remove_existing_photos'] ?? null)
+        ? array_values(
+            array_filter(
+                array_map(
+                    static fn ($value): string => trim((string) $value),
+                    $input['remove_existing_photos']
+                ),
+                static fn (string $value): bool => $value !== ''
+            )
+        )
+        : [];
+
+    $keptPhotos = [];
+
+    foreach ($existingPhotos as $photo) {
+        if (!is_array($photo)) {
+            continue;
+        }
+
+        $src = trim((string) ($photo['src'] ?? ''));
+
+        if (
+            $src !== ''
+            && in_array($src, $removePhotos, true)
+        ) {
+            continue;
+        }
+
+        $keptPhotos[] = $photo;
+    }
+
+    $newCommittedPhotos = [];
+    $db = db();
+
+    try {
+        $db->beginTransaction();
+
+        if ($photoToken !== '') {
+            $newCommittedPhotos = llama_photo_commit_stage(
+                'add-place',
+                $userId,
+                $photoToken,
+                $submittedPhotos,
+                '/uploads/place-submissions/' . $submissionId
+            );
+        }
+
+        $data['photos'] = array_values(
+            array_merge($keptPhotos, $newCommittedPhotos)
+        );
+
+        $update = $db->prepare(
+            'UPDATE place_submissions
+             SET
+                place_name = ?,
+                role_at_submission = ?,
+                status = "pending",
+                submission_data = ?,
+                submitted_at = CURRENT_TIMESTAMP,
+                reviewed_at = NULL,
+                reviewed_by = NULL,
+                review_notes = NULL
+             WHERE id = ?
+               AND user_id = ?
+               AND status = "needs-changes"'
+        );
+
+        $update->execute([
+            (string) $data['name'],
+            community_role_at_submission($userId),
+            json_encode(
+                $data,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            ),
+            $submissionId,
+            $userId,
+        ]);
+
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException(
+                'The Place submission changed before it could be resubmitted.'
+            );
+        }
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        foreach ($newCommittedPhotos as $photo) {
+            $src = is_array($photo)
+                ? trim((string) ($photo['src'] ?? ''))
+                : '';
+
+            if ($src !== '') {
+                $absolute = dirname(__DIR__) . $src;
+
+                if (is_file($absolute)) {
+                    @unlink($absolute);
+                }
+            }
+        }
+
+        throw $exception;
+    }
+
+    foreach ($removePhotos as $src) {
+        if (
+            !str_starts_with(
+                $src,
+                '/uploads/place-submissions/' . $submissionId . '/'
+            )
+        ) {
+            continue;
+        }
+
+        $absolute = dirname(__DIR__) . $src;
+
+        if (is_file($absolute)) {
+            @unlink($absolute);
+        }
+    }
+
+    return $submissionId;
+}
+
+
 
 function community_place_update_field_definitions(): array
 {
