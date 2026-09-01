@@ -240,7 +240,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <a
             class="account-glance-card account-glance-link"
             href="<?= htmlspecialchars(
-                $siteUrl . '/membership',
+                'https://account.llamascout.com/billing.php',
                 ENT_QUOTES,
                 'UTF-8'
             ) ?>"
@@ -563,7 +563,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <a
                 class="account-action-card"
                 href="<?= htmlspecialchars(
-                    $siteUrl . '/membership',
+                    'https://account.llamascout.com/billing.php',
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?>"
