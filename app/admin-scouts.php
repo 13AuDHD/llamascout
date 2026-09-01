@@ -202,26 +202,22 @@ function admin_scout_policy_rows(PDO $db): array
 
 function admin_scout_policy_int_value(
     PDO $db,
-    string $key,
-    int $default = 0
+    string $key
 ): int {
-    return (int) llama_scout_policy_value(
+    return llama_scout_policy_int(
         $db,
-        $key,
-        $default
+        $key
     );
 }
 
 
 function admin_scout_policy_bool_value(
     PDO $db,
-    string $key,
-    bool $default = false
+    string $key
 ): bool {
-    return (bool) llama_scout_policy_value(
+    return llama_scout_policy_bool(
         $db,
-        $key,
-        $default
+        $key
     );
 }
 
@@ -230,23 +226,17 @@ function admin_scout_current_period(
     PDO $db,
     array $scout
 ): array {
-    $months = max(
-        1,
+    $months =
         admin_scout_policy_int_value(
             $db,
-            'scout_period_months',
-            12
-        )
-    );
+            'scout_period_months'
+        );
 
-    $required = max(
-        0,
+    $required =
         admin_scout_policy_int_value(
             $db,
-            'annual_new_places_required',
-            3
-        )
-    );
+            'annual_new_places_required'
+        );
 
     $end = trim(
         (string) (
@@ -337,44 +327,37 @@ function admin_scout_master_qualification(
 ): array {
     $enabled = admin_scout_policy_bool_value(
         $db,
-        'master_scout_qualification_enabled',
-        false
+        'master_scout_qualification_enabled'
     );
 
-    $pointsRequired = max(0, admin_scout_policy_int_value(
+    $pointsRequired = admin_scout_policy_int_value(
         $db,
-        'master_scout_points_required',
-        0
-    ));
+        'master_scout_points_required'
+    );
 
-    $newPlacesRequired = max(0, admin_scout_policy_int_value(
+    $newPlacesRequired = admin_scout_policy_int_value(
         $db,
-        'master_scout_lifetime_new_places_required',
-        0
-    ));
+        'master_scout_lifetime_new_places_required'
+    );
 
-    $updatesRequired = max(0, admin_scout_policy_int_value(
+    $updatesRequired = admin_scout_policy_int_value(
         $db,
-        'master_scout_updates_required',
-        0
-    ));
+        'master_scout_updates_required'
+    );
 
-    $correctionsRequired = max(0, admin_scout_policy_int_value(
+    $correctionsRequired = admin_scout_policy_int_value(
         $db,
-        'master_scout_corrections_required',
-        0
-    ));
+        'master_scout_corrections_required'
+    );
 
-    $updatedPlacesRequired = max(0, admin_scout_policy_int_value(
+    $updatedPlacesRequired = admin_scout_policy_int_value(
         $db,
-        'master_scout_updated_places_required',
-        0
-    ));
+        'master_scout_updated_places_required'
+    );
 
     $requiresCurrent = admin_scout_policy_bool_value(
         $db,
-        'master_scout_requires_current_period',
-        true
+        'master_scout_requires_current_period'
     );
 
     $stmt = $db->prepare(
@@ -591,14 +574,11 @@ function admin_scout_set_status(
         }
 
         if ($needsPeriod) {
-            $periodMonths = max(
-                1,
+            $periodMonths =
                 admin_scout_policy_int_value(
                     $db,
-                    'scout_period_months',
-                    12
-                )
-            );
+                    'scout_period_months'
+                );
 
             $activeThrough =
                 (new DateTimeImmutable('now'))
@@ -1052,23 +1032,17 @@ function admin_scout_grant_reactivation(
         $db
     );
 
-    $windowDays = max(
-        1,
+    $windowDays =
         admin_scout_policy_int_value(
             $db,
-            'reactivation_window_days',
-            30
-        )
-    );
+            'reactivation_window_days'
+        );
 
-    $requiredPlaces = max(
-        1,
+    $requiredPlaces =
         admin_scout_policy_int_value(
             $db,
-            'reactivation_new_places_required',
-            3
-        )
-    );
+            'reactivation_new_places_required'
+        );
 
     $startedAt =
         (new DateTimeImmutable('now'))

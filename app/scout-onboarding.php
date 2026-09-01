@@ -1357,14 +1357,11 @@ function llama_scout_admin_review(
                 );
             }
 
-            $periodMonths = max(
-                1,
-                (int) llama_scout_policy_value(
+            $periodMonths =
+                llama_scout_policy_int(
                     $db,
-                    'scout_period_months',
-                    12
-                )
-            );
+                    'scout_period_months'
+                );
 
             $activeThrough =
                 (new DateTimeImmutable('now'))

@@ -24,11 +24,9 @@ require_once
 
    Scout policy is loaded from scout_policy.
 
-   Current default policy:
-
-   - Standard Scout period:
-       3 accepted new place Scout Reports required
-       during a 12-month Scout period.
+   All Scout qualification, renewal, and reactivation thresholds
+   are controlled by the current Admin policy. This maintenance
+   process does not provide fallback requirements.
 
    - Requirement met:
        extend for another configured Scout period.
@@ -40,10 +38,8 @@ require_once
        Lifetime Scout points remain permanently recorded.
 
    - Admin / Owner may grant a separate reactivation period.
-
-   - Default reactivation:
-       3 newly accepted new place Scout Reports
-       during a 30-day window.
+     Reactivation requirements and window length come from the
+     configured Scout policy.
 
    - Successful reactivation:
        member returns as BASIC Scout.
@@ -218,8 +214,7 @@ function llama_scout_maintenance_is_due(
     $interval =
         llama_scout_policy_int(
             $db,
-            'maintenance_interval_seconds',
-            60
+            'maintenance_interval_seconds'
         );
 
 
@@ -801,8 +796,7 @@ function llama_complete_scout_extension(
     $scoutPeriodMonths =
         llama_scout_policy_int(
             $db,
-            'scout_period_months',
-            1
+            'scout_period_months'
         );
 
 
@@ -1042,24 +1036,21 @@ function llama_run_scout_renewal_maintenance(
     $annualReportsRequired =
         llama_scout_policy_int(
             $db,
-            'annual_new_places_required',
-            1
+            'annual_new_places_required'
         );
 
 
     $reactivationReportsRequired =
         llama_scout_policy_int(
             $db,
-            'reactivation_new_places_required',
-            1
+            'reactivation_new_places_required'
         );
 
 
     $scoutPeriodMonths =
         llama_scout_policy_int(
             $db,
-            'scout_period_months',
-            1
+            'scout_period_months'
         );
 
 

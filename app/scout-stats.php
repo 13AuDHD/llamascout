@@ -299,7 +299,7 @@ function llama_scout_current_period(
                 'reactivation',
 
             'label' =>
-                '30-Day Reactivation',
+                'Reactivation Period',
 
             'start' =>
                 $extension[
@@ -316,8 +316,7 @@ function llama_scout_current_period(
             'required' =>
                 llama_scout_policy_int(
                     $db,
-                    'reactivation_new_places_required',
-                    1
+                    'reactivation_new_places_required'
                 ),
 
         ];
@@ -346,7 +345,7 @@ function llama_scout_current_period(
                 'annual',
 
             'label' =>
-                'Current Scout Year',
+                'Current Scout Period',
 
             'start' =>
                 null,
@@ -357,8 +356,7 @@ function llama_scout_current_period(
             'required' =>
                 llama_scout_policy_int(
                     $db,
-                    'annual_new_places_required',
-                    1
+                    'annual_new_places_required'
                 ),
 
         ];
@@ -369,8 +367,7 @@ function llama_scout_current_period(
     $months =
         llama_scout_policy_int(
             $db,
-            'scout_period_months',
-            1
+            'scout_period_months'
         );
 
 
@@ -416,7 +413,7 @@ function llama_scout_current_period(
             'annual',
 
         'label' =>
-            'Current Scout Year',
+            'Current Scout Period',
 
         'start' =>
             $start,
@@ -427,8 +424,7 @@ function llama_scout_current_period(
         'required' =>
             llama_scout_policy_int(
                 $db,
-                'annual_new_places_required',
-                1
+                'annual_new_places_required'
             ),
 
     ];

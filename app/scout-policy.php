@@ -23,8 +23,7 @@ function llama_ensure_scout_policy_table(PDO $db): void
 
 function llama_scout_policy_value(
     PDO $db,
-    string $key,
-    mixed $default = null
+    string $key
 ): mixed {
     llama_ensure_scout_policy_table($db);
 
@@ -38,7 +37,9 @@ function llama_scout_policy_value(
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
-        return $default;
+        throw new RuntimeException(
+            'Scout policy setting "' . $key . '" is not configured.'
+        );
     }
 
     return match ((string) $row['value_type']) {
@@ -55,13 +56,21 @@ function llama_scout_policy_value(
 
 function llama_scout_policy_int(
     PDO $db,
-    string $key,
-    int $default = 0
+    string $key
 ): int {
     return (int) llama_scout_policy_value(
         $db,
-        $key,
-        $default
+        $key
+    );
+}
+
+function llama_scout_policy_bool(
+    PDO $db,
+    string $key
+): bool {
+    return (bool) llama_scout_policy_value(
+        $db,
+        $key
     );
 }
 
