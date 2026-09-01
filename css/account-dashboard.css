@@ -158,3 +158,231 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   ACCOUNT AT A GLANCE
+   ========================================================= */
+
+.account-glance-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+
+    margin: 0 0 28px;
+}
+
+.account-glance-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        42px
+        minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    text-decoration: none;
+}
+
+.account-glance-link {
+    grid-template-columns:
+        42px
+        minmax(0, 1fr)
+        auto;
+}
+
+.account-glance-icon {
+    width: 40px;
+    height: 40px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+}
+
+.account-glance-card > div {
+    min-width: 0;
+}
+
+.account-glance-card strong,
+.account-glance-card > div > span {
+    display: block;
+}
+
+.account-glance-card strong {
+    overflow-wrap: anywhere;
+
+    font-size: 1rem;
+    line-height: 1.15;
+}
+
+.account-glance-card > div > span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+.account-glance-points strong {
+    font-size: 1.3rem;
+}
+
+
+/* =========================================================
+   EARNED BADGES
+   ========================================================= */
+
+.account-badge-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.account-badge-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        46px
+        minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding: 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+.account-badge-mark {
+    width: 44px;
+    height: 44px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: 1rem;
+}
+
+.account-badge-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.account-badge-copy {
+    min-width: 0;
+}
+
+.account-badge-copy strong,
+.account-badge-copy span {
+    display: block;
+}
+
+.account-badge-copy strong {
+    font-size: .76rem;
+    line-height: 1.25;
+}
+
+.account-badge-copy span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.35;
+}
+
+.account-badges-empty {
+    min-height: 150px;
+}
+
+
+@media (max-width: 900px) {
+
+    .account-badge-grid {
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+
+@media (max-width: 700px) {
+
+    .account-glance-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .account-glance-link {
+        grid-column: 1 / -1;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .account-badge-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .account-badge-card {
+        grid-template-columns: 38px minmax(0, 1fr);
+        gap: 8px;
+
+        padding: 9px;
+    }
+
+    .account-badge-mark {
+        width: 36px;
+        height: 36px;
+    }
+
+    .account-badge-copy strong {
+        font-size: .7rem;
+    }
+
+    .account-badge-copy span {
+        display: none;
+    }
+}
