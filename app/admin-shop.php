@@ -121,6 +121,870 @@ function admin_shop_product_images(
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function admin_shop_product_options(
+    PDO $db,
+    int $productId
+): array {
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM shop_product_options
+         WHERE product_id = ?
+         ORDER BY
+            option_position ASC,
+            id ASC'
+    );
+
+    $stmt->execute([$productId]);
+
+    $options =
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ?: [];
+
+    if (!$options) {
+        return [];
+    }
+
+    $valueStmt = $db->prepare(
+        'SELECT *
+         FROM shop_product_option_values
+         WHERE option_id = ?
+         ORDER BY
+            sort_order ASC,
+            id ASC'
+    );
+
+    foreach ($options as &$option) {
+        $valueStmt->execute([
+            (int) $option['id'],
+        ]);
+
+        $option['values'] =
+            $valueStmt->fetchAll(
+                PDO::FETCH_ASSOC
+            ) ?: [];
+    }
+
+    unset($option);
+
+    return $options;
+}
+
+function admin_shop_normalize_option_values(
+    string $raw
+): array {
+    $parts =
+        preg_split(
+            '/[\r\n,]+/',
+            $raw
+        ) ?: [];
+
+    $values = [];
+    $seen = [];
+
+    foreach ($parts as $part) {
+        $value =
+            trim((string) $part);
+
+        if ($value === '') {
+            continue;
+        }
+
+        if (mb_strlen($value) > 150) {
+            throw new RuntimeException(
+                'Option values must be 150 characters or fewer.'
+            );
+        }
+
+        $key =
+            mb_strtolower($value);
+
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $values[] = $value;
+    }
+
+    if (count($values) > 50) {
+        throw new RuntimeException(
+            'Each option can contain at most 50 values.'
+        );
+    }
+
+    return $values;
+}
+
+function admin_shop_save_options(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    array $data
+): void {
+    $product =
+        admin_shop_product(
+            $db,
+            $productId
+        );
+
+    if (!$product) {
+        throw new RuntimeException(
+            'Product not found.'
+        );
+    }
+
+    $submitted = [];
+
+    for ($position = 1; $position <= 3; $position++) {
+        $name =
+            trim(
+                (string) (
+                    $data['option_name'][$position]
+                    ?? ''
+                )
+            );
+
+        $rawValues =
+            (string) (
+                $data['option_values'][$position]
+                ?? ''
+            );
+
+        $values =
+            admin_shop_normalize_option_values(
+                $rawValues
+            );
+
+        if ($name === '' && !$values) {
+            continue;
+        }
+
+        if ($name === '') {
+            throw new RuntimeException(
+                'Every option with values needs an option name.'
+            );
+        }
+
+        if (mb_strlen($name) > 100) {
+            throw new RuntimeException(
+                'Option names must be 100 characters or fewer.'
+            );
+        }
+
+        if (!$values) {
+            throw new RuntimeException(
+                'Option "' .
+                $name .
+                '" needs at least one value.'
+            );
+        }
+
+        $submitted[$position] = [
+            'name' => $name,
+            'values' => $values,
+        ];
+    }
+
+    if ($submitted) {
+        $positions =
+            array_keys($submitted);
+
+        $expected =
+            range(
+                1,
+                count($positions)
+            );
+
+        if ($positions !== $expected) {
+            throw new RuntimeException(
+                'Product options must use positions 1, 2, and 3 in order without gaps.'
+            );
+        }
+    }
+
+    $variants =
+        admin_shop_product_variants(
+            $db,
+            $productId
+        );
+
+    $existing =
+        admin_shop_product_options(
+            $db,
+            $productId
+        );
+
+    $existingByPosition = [];
+
+    foreach ($existing as $option) {
+        $existingByPosition[
+            (int) $option['option_position']
+        ] = $option;
+    }
+
+    $db->beginTransaction();
+
+    try {
+        if (!$variants) {
+            $delete =
+                $db->prepare(
+                    'DELETE FROM shop_product_options
+                     WHERE product_id = ?'
+                );
+
+            $delete->execute([$productId]);
+
+            $insertOption =
+                $db->prepare(
+                    'INSERT INTO shop_product_options (
+                        product_id,
+                        option_position,
+                        option_name
+                     ) VALUES (?, ?, ?)'
+                );
+
+            $insertValue =
+                $db->prepare(
+                    'INSERT INTO shop_product_option_values (
+                        option_id,
+                        option_value,
+                        sort_order
+                     ) VALUES (?, ?, ?)'
+                );
+
+            foreach (
+                $submitted
+                as $position => $option
+            ) {
+                $insertOption->execute([
+                    $productId,
+                    $position,
+                    $option['name'],
+                ]);
+
+                $optionId =
+                    (int) $db->lastInsertId();
+
+                foreach (
+                    $option['values']
+                    as $sortOrder => $value
+                ) {
+                    $insertValue->execute([
+                        $optionId,
+                        $value,
+                        $sortOrder,
+                    ]);
+                }
+            }
+        } else {
+            if (
+                count($submitted)
+                !== count($existing)
+            ) {
+                throw new RuntimeException(
+                    'Once variants exist, option groups cannot be added or removed. You can still add new values to the existing options.'
+                );
+            }
+
+            foreach (
+                $submitted
+                as $position => $option
+            ) {
+                $existingOption =
+                    $existingByPosition[$position]
+                    ?? null;
+
+                if (!$existingOption) {
+                    throw new RuntimeException(
+                        'The existing option structure no longer matches this product.'
+                    );
+                }
+
+                if (
+                    mb_strtolower(
+                        trim(
+                            (string) $existingOption['option_name']
+                        )
+                    )
+                    !==
+                    mb_strtolower(
+                        $option['name']
+                    )
+                ) {
+                    throw new RuntimeException(
+                        'Option names cannot be renamed after variants exist. Existing orders and variant combinations depend on them.'
+                    );
+                }
+
+                $known = [];
+
+                foreach (
+                    $existingOption['values']
+                    as $valueRow
+                ) {
+                    $known[
+                        mb_strtolower(
+                            trim(
+                                (string) $valueRow['option_value']
+                            )
+                        )
+                    ] = true;
+                }
+
+                $insertValue =
+                    $db->prepare(
+                        'INSERT INTO shop_product_option_values (
+                            option_id,
+                            option_value,
+                            sort_order
+                         ) VALUES (?, ?, ?)'
+                    );
+
+                $nextSort =
+                    count(
+                        $existingOption['values']
+                    );
+
+                foreach (
+                    $option['values']
+                    as $value
+                ) {
+                    $key =
+                        mb_strtolower($value);
+
+                    if (isset($known[$key])) {
+                        continue;
+                    }
+
+                    $insertValue->execute([
+                        (int) $existingOption['id'],
+                        $value,
+                        $nextSort++,
+                    ]);
+
+                    $known[$key] = true;
+                }
+            }
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'shop.product_options_updated',
+            'Updated product options for "' .
+                (string) $product['name'] .
+                '".',
+            [
+                'product_id' => $productId,
+                'option_count' =>
+                    count($submitted),
+            ]
+        );
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+}
+
+function admin_shop_sku_piece(
+    string $value
+): string {
+    $value =
+        strtoupper($value);
+
+    $value =
+        preg_replace(
+            '/[^A-Z0-9]+/',
+            '-',
+            $value
+        ) ?? '';
+
+    return trim($value, '-');
+}
+
+function admin_shop_unique_sku(
+    PDO $db,
+    string $base
+): string {
+    $base =
+        admin_shop_sku_piece($base);
+
+    if ($base === '') {
+        $base = 'LS-PRODUCT';
+    }
+
+    $base =
+        substr(
+            $base,
+            0,
+            105
+        );
+
+    $candidate = $base;
+    $suffix = 2;
+
+    $stmt =
+        $db->prepare(
+            'SELECT id
+             FROM shop_product_variants
+             WHERE sku = ?
+             LIMIT 1'
+        );
+
+    while (true) {
+        $stmt->execute([$candidate]);
+
+        if (!$stmt->fetchColumn()) {
+            return $candidate;
+        }
+
+        $candidate =
+            substr(
+                $base,
+                0,
+                110
+            )
+            . '-'
+            . $suffix;
+
+        $suffix++;
+    }
+}
+
+function admin_shop_cartesian_product(
+    array $sets
+): array {
+    if (!$sets) {
+        return [[]];
+    }
+
+    $results = [[]];
+
+    foreach ($sets as $set) {
+        $next = [];
+
+        foreach ($results as $result) {
+            foreach ($set as $value) {
+                $next[] =
+                    array_merge(
+                        $result,
+                        [$value]
+                    );
+            }
+        }
+
+        $results = $next;
+
+        if (count($results) > 250) {
+            throw new RuntimeException(
+                'This option setup would create more than 250 variants. Reduce the number of option values.'
+            );
+        }
+    }
+
+    return $results;
+}
+
+function admin_shop_existing_variant_keys(
+    PDO $db,
+    int $productId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            vv.variant_id,
+            o.option_position,
+            vv.option_value_id
+         FROM shop_product_variant_values vv
+         INNER JOIN shop_product_options o
+            ON o.id = vv.option_id
+         INNER JOIN shop_product_variants v
+            ON v.id = vv.variant_id
+         WHERE v.product_id = ?
+         ORDER BY
+            vv.variant_id ASC,
+            o.option_position ASC'
+    );
+
+    $stmt->execute([$productId]);
+
+    $byVariant = [];
+
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ?: []
+        as $row
+    ) {
+        $byVariant[
+            (int) $row['variant_id']
+        ][
+            (int) $row['option_position']
+        ] =
+            (int) $row['option_value_id'];
+    }
+
+    $keys = [];
+
+    foreach ($byVariant as $values) {
+        ksort($values);
+
+        $keys[
+            implode(
+                ':',
+                array_values($values)
+            )
+        ] = true;
+    }
+
+    return $keys;
+}
+
+function admin_shop_generate_variants(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    array $data
+): int {
+    $product =
+        admin_shop_product(
+            $db,
+            $productId
+        );
+
+    if (!$product) {
+        throw new RuntimeException(
+            'Product not found.'
+        );
+    }
+
+    $priceRaw =
+        trim(
+            (string) (
+                $data['default_price']
+                ?? ''
+            )
+        );
+
+    if (
+        $priceRaw === ''
+        || !is_numeric($priceRaw)
+        || (float) $priceRaw < 0
+    ) {
+        throw new RuntimeException(
+            'Enter a valid default price before generating variants.'
+        );
+    }
+
+    $priceCents =
+        (int) round(
+            ((float) $priceRaw)
+            * 100
+        );
+
+    $inventoryQuantity =
+        (int) (
+            $data['default_inventory']
+            ?? 0
+        );
+
+    $trackInventory =
+        isset(
+            $data['default_track_inventory']
+        )
+            ? 1
+            : 0;
+
+    $allowBackorder =
+        isset(
+            $data['default_allow_backorder']
+        )
+            ? 1
+            : 0;
+
+    $fulfillmentType =
+        trim(
+            (string) (
+                $data['default_fulfillment_type']
+                ?? 'manual'
+            )
+        );
+
+    if (
+        !in_array(
+            $fulfillmentType,
+            [
+                'manual',
+                'provider',
+                'digital',
+            ],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'Invalid fulfillment type.'
+        );
+    }
+
+    $fulfillmentProvider =
+        trim(
+            (string) (
+                $data['default_fulfillment_provider']
+                ?? ''
+            )
+        );
+
+    $skuPrefix =
+        trim(
+            (string) (
+                $data['sku_prefix']
+                ?? ''
+            )
+        );
+
+    if ($skuPrefix === '') {
+        $skuPrefix =
+            'LS-' .
+            admin_shop_sku_piece(
+                (string) $product['slug']
+            );
+    }
+
+    $options =
+        admin_shop_product_options(
+            $db,
+            $productId
+        );
+
+    $sets = [];
+
+    foreach ($options as $option) {
+        if (empty($option['values'])) {
+            throw new RuntimeException(
+                'Every option needs at least one value before variants can be generated.'
+            );
+        }
+
+        $sets[] =
+            $option['values'];
+    }
+
+    $combinations =
+        admin_shop_cartesian_product(
+            $sets
+        );
+
+    $existingKeys =
+        admin_shop_existing_variant_keys(
+            $db,
+            $productId
+        );
+
+    $existingVariants =
+        admin_shop_product_variants(
+            $db,
+            $productId
+        );
+
+    $hasDefault =
+        !$options
+        && !empty($existingVariants);
+
+    if ($hasDefault) {
+        return 0;
+    }
+
+    $insertVariant =
+        $db->prepare(
+            'INSERT INTO shop_product_variants (
+                product_id,
+                sku,
+                name,
+                option_one_name,
+                option_one_value,
+                option_two_name,
+                option_two_value,
+                option_three_name,
+                option_three_value,
+                price_cents,
+                currency,
+                track_inventory,
+                inventory_quantity,
+                allow_backorder,
+                fulfillment_type,
+                fulfillment_provider,
+                is_active,
+                sort_order
+             ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, "usd", ?, ?, ?, ?, ?, 1, ?
+             )'
+        );
+
+    $insertLink =
+        $db->prepare(
+            'INSERT INTO shop_product_variant_values (
+                variant_id,
+                option_id,
+                option_value_id,
+                sort_order
+             ) VALUES (?, ?, ?, ?)'
+        );
+
+    $count = 0;
+
+    $sortStmt =
+        $db->prepare(
+            'SELECT COALESCE(
+                MAX(sort_order),
+                -1
+             )
+             FROM shop_product_variants
+             WHERE product_id = ?'
+        );
+
+    $sortStmt->execute([$productId]);
+
+    $nextSort =
+        (int) $sortStmt->fetchColumn()
+        + 1;
+
+    $db->beginTransaction();
+
+    try {
+        foreach ($combinations as $combo) {
+            if ($options) {
+                $ids =
+                    array_map(
+                        static fn(array $value): int =>
+                            (int) $value['id'],
+                        $combo
+                    );
+
+                $key =
+                    implode(':', $ids);
+
+                if (isset($existingKeys[$key])) {
+                    continue;
+                }
+            }
+
+            $valueNames =
+                array_map(
+                    static fn(array $value): string =>
+                        (string) $value['option_value'],
+                    $combo
+                );
+
+            $variantName =
+                $valueNames
+                    ? implode(' / ', $valueNames)
+                    : 'Default';
+
+            $skuParts = [$skuPrefix];
+
+            foreach ($valueNames as $valueName) {
+                $piece =
+                    admin_shop_sku_piece(
+                        $valueName
+                    );
+
+                if ($piece !== '') {
+                    $skuParts[] = $piece;
+                }
+            }
+
+            $sku =
+                admin_shop_unique_sku(
+                    $db,
+                    implode('-', $skuParts)
+                );
+
+            $slot = [];
+
+            for ($i = 0; $i < 3; $i++) {
+                $slot[$i] = [
+                    'name' =>
+                        isset($options[$i])
+                            ? (string) $options[$i]['option_name']
+                            : null,
+                    'value' =>
+                        isset($combo[$i])
+                            ? (string) $combo[$i]['option_value']
+                            : null,
+                ];
+            }
+
+            $insertVariant->execute([
+                $productId,
+                $sku,
+                $variantName,
+                $slot[0]['name'],
+                $slot[0]['value'],
+                $slot[1]['name'],
+                $slot[1]['value'],
+                $slot[2]['name'],
+                $slot[2]['value'],
+                $priceCents,
+                $trackInventory,
+                $inventoryQuantity,
+                $allowBackorder,
+                $fulfillmentType,
+                $fulfillmentProvider !== ''
+                    ? $fulfillmentProvider
+                    : null,
+                $nextSort++,
+            ]);
+
+            $variantId =
+                (int) $db->lastInsertId();
+
+            foreach ($combo as $index => $value) {
+                $insertLink->execute([
+                    $variantId,
+                    (int) $options[$index]['id'],
+                    (int) $value['id'],
+                    $index,
+                ]);
+            }
+
+            $count++;
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'shop.variants_generated',
+            'Generated ' .
+                $count .
+                ' product variant' .
+                ($count === 1 ? '' : 's') .
+                ' for "' .
+                (string) $product['name'] .
+                '".',
+            [
+                'product_id' => $productId,
+                'created_count' => $count,
+            ]
+        );
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+
+    return $count;
+}
+
 function admin_shop_product_variants(
     PDO $db,
     int $productId
@@ -416,7 +1280,9 @@ function admin_shop_save_variant(
     );
 
     $stmt->execute([$variantId]);
-    $variant = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $variant =
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$variant) {
         throw new RuntimeException(
@@ -424,17 +1290,77 @@ function admin_shop_save_variant(
         );
     }
 
-    $priceCents = max(
-        0,
-        (int) round(
-            ((float) ($data['price'] ?? 0))
-            * 100
-        )
-    );
+    $sku =
+        trim(
+            (string) (
+                $data['sku']
+                ?? $variant['sku']
+            )
+        );
 
-    $compareRaw = trim(
-        (string) ($data['compare_at_price'] ?? '')
-    );
+    if ($sku === '') {
+        throw new RuntimeException(
+            'Variant SKU is required.'
+        );
+    }
+
+    if (mb_strlen($sku) > 120) {
+        throw new RuntimeException(
+            'Variant SKU must be 120 characters or fewer.'
+        );
+    }
+
+    $dupe =
+        $db->prepare(
+            'SELECT id
+             FROM shop_product_variants
+             WHERE sku = ?
+               AND id <> ?
+             LIMIT 1'
+        );
+
+    $dupe->execute([
+        $sku,
+        $variantId,
+    ]);
+
+    if ($dupe->fetchColumn()) {
+        throw new RuntimeException(
+            'Another variant already uses that SKU.'
+        );
+    }
+
+    $priceRaw =
+        trim(
+            (string) (
+                $data['price']
+                ?? ''
+            )
+        );
+
+    if (
+        $priceRaw === ''
+        || !is_numeric($priceRaw)
+        || (float) $priceRaw < 0
+    ) {
+        throw new RuntimeException(
+            'Enter a valid variant price.'
+        );
+    }
+
+    $priceCents =
+        (int) round(
+            ((float) $priceRaw)
+            * 100
+        );
+
+    $compareRaw =
+        trim(
+            (string) (
+                $data['compare_at_price']
+                ?? ''
+            )
+        );
 
     $compareCents =
         $compareRaw !== ''
@@ -453,7 +1379,10 @@ function admin_shop_save_variant(
             : 0;
 
     $inventoryQuantity =
-        (int) ($data['inventory_quantity'] ?? 0);
+        (int) (
+            $data['inventory_quantity']
+            ?? 0
+        );
 
     $allowBackorder =
         isset($data['allow_backorder'])
@@ -465,18 +1394,52 @@ function admin_shop_save_variant(
             ? 1
             : 0;
 
-    $fulfillmentType = trim(
-        (string) ($data['fulfillment_type'] ?? 'manual')
-    );
+    $sortOrder =
+        (int) (
+            $data['sort_order']
+            ?? $variant['sort_order']
+        );
 
-    $fulfillmentProvider = trim(
-        (string) ($data['fulfillment_provider'] ?? '')
-    );
+    $fulfillmentType =
+        trim(
+            (string) (
+                $data['fulfillment_type']
+                ?? 'manual'
+            )
+        );
+
+    $fulfillmentProvider =
+        trim(
+            (string) (
+                $data['fulfillment_provider']
+                ?? ''
+            )
+        );
+
+    $fulfillmentProductId =
+        trim(
+            (string) (
+                $data['fulfillment_product_id']
+                ?? ''
+            )
+        );
+
+    $fulfillmentVariantId =
+        trim(
+            (string) (
+                $data['fulfillment_variant_id']
+                ?? ''
+            )
+        );
 
     if (
         !in_array(
             $fulfillmentType,
-            ['manual','provider','digital'],
+            [
+                'manual',
+                'provider',
+                'digital',
+            ],
             true
         )
     ) {
@@ -485,21 +1448,27 @@ function admin_shop_save_variant(
         );
     }
 
-    $update = $db->prepare(
-        'UPDATE shop_product_variants
-         SET
-            price_cents = ?,
-            compare_at_price_cents = ?,
-            track_inventory = ?,
-            inventory_quantity = ?,
-            allow_backorder = ?,
-            fulfillment_type = ?,
-            fulfillment_provider = ?,
-            is_active = ?
-         WHERE id = ?'
-    );
+    $update =
+        $db->prepare(
+            'UPDATE shop_product_variants
+             SET
+                sku = ?,
+                price_cents = ?,
+                compare_at_price_cents = ?,
+                track_inventory = ?,
+                inventory_quantity = ?,
+                allow_backorder = ?,
+                fulfillment_type = ?,
+                fulfillment_provider = ?,
+                fulfillment_product_id = ?,
+                fulfillment_variant_id = ?,
+                is_active = ?,
+                sort_order = ?
+             WHERE id = ?'
+        );
 
     $update->execute([
+        $sku,
         $priceCents,
         $compareCents,
         $trackInventory,
@@ -509,7 +1478,14 @@ function admin_shop_save_variant(
         $fulfillmentProvider !== ''
             ? $fulfillmentProvider
             : null,
+        $fulfillmentProductId !== ''
+            ? $fulfillmentProductId
+            : null,
+        $fulfillmentVariantId !== ''
+            ? $fulfillmentVariantId
+            : null,
         $isActive,
+        $sortOrder,
         $variantId,
     ]);
 
@@ -525,7 +1501,9 @@ function admin_shop_save_variant(
             'product_id' =>
                 (int) $variant['product_id'],
             'variant_id' => $variantId,
-            'sku' => $variant['sku'],
+            'sku_before' =>
+                $variant['sku'],
+            'sku_after' => $sku,
         ]
     );
 }
