@@ -212,15 +212,40 @@ require __DIR__ . '/partials/header.php';
 
             <div class="contribution-section-body">
                 <div class="contribution-grid">
-                    <label class="contribution-field contribution-field-wide">
+                    <label class="contribution-field contribution-field-wide add-place-name-field">
                         <span>Place name *</span>
-                        <input
-                            name="name"
-                            required
-                            maxlength="200"
-                            value="<?= add_place_e((string) ($_POST['name'] ?? '')) ?>"
-                            placeholder="First Fork Riverside Camp"
-                        >
+
+                        <div class="add-place-name-control">
+                            <input
+                                name="name"
+                                data-place-name
+                                required
+                                maxlength="200"
+                                value="<?= add_place_e((string) ($_POST['name'] ?? '')) ?>"
+                                placeholder="A suggested name will appear here"
+                            >
+
+                            <button
+                                class="add-place-name-refresh"
+                                type="button"
+                                data-refresh-place-name
+                                aria-label="Suggest another Place name"
+                                title="Suggest another name"
+                            >
+                                <i
+                                    class="fa-solid fa-arrows-rotate"
+                                    aria-hidden="true"
+                                ></i>
+
+                                <span>Another name</span>
+                            </button>
+                        </div>
+
+                        <small>
+                            We suggest simple location-neutral names so the title
+                            does not accidentally reveal a road, landmark, or exact
+                            location. You can still edit the suggestion.
+                        </small>
                     </label>
 
                     <label class="contribution-field">
@@ -1042,5 +1067,6 @@ require __DIR__ . '/partials/header.php';
 </section>
 
 <script src="<?= add_place_e($siteUrl . '/js/add-place-location.js') ?>"></script>
+<script src="<?= add_place_e($siteUrl . '/js/add-place-name.js') ?>"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
