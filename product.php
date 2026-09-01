@@ -208,6 +208,25 @@ $canonicalUrl =
     . '/product.php?slug='
     . rawurlencode($slug);
 
+$pageSocialType = 'product';
+
+$pageSocialImage =
+    $images
+        ? public_shop_image_url(
+            (string) (
+                $images[0]['image_url']
+                ?? ''
+            ),
+            $siteUrl
+        )
+        : public_shop_image_url(
+            (string) (
+                $product['primary_image_url']
+                ?? ''
+            ),
+            $siteUrl
+        );
+
 $shopPageCss = true;
 
 require __DIR__ . '/partials/header.php';
@@ -325,6 +344,8 @@ require __DIR__ . '/partials/header.php';
 <?php endif; ?>
 
 
+<div class="product-title-row">
+
 <h1>
     <?= htmlspecialchars(
         (string) $product['name'],
@@ -332,6 +353,42 @@ require __DIR__ . '/partials/header.php';
         'UTF-8'
     ) ?>
 </h1>
+
+<button
+    class="shop-share-button llama-share-button"
+    type="button"
+    data-share
+    data-share-title="<?= htmlspecialchars(
+        (string) $product['name'] .
+        ' | Llama Scout Shop',
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+    data-share-text="<?= htmlspecialchars(
+        (string) $product['name'] .
+        ' from the Llama Scout Shop.',
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+    data-share-url="<?= htmlspecialchars(
+        $canonicalUrl,
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+    aria-label="Share <?= htmlspecialchars(
+        (string) $product['name'],
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+>
+    <i
+        class="fa-solid fa-arrow-up-from-bracket"
+        aria-hidden="true"
+    ></i>
+    <span data-share-label>Share</span>
+</button>
+
+</div>
 
 
 <div class="product-price">

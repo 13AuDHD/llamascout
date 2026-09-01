@@ -281,6 +281,58 @@ if ($hasMemberAccess && !empty($place['images'])) {
     $heroImage = $place['featured_image'];
 }
 
+$canonicalUrl =
+    'https://llamascout.com/place.php?slug=' .
+    rawurlencode(
+        (string) $place['slug']
+    );
+
+$pageDescription =
+    trim(
+        (string) (
+            $place['public_summary']
+            ?? ''
+        )
+    );
+
+if ($pageDescription === '') {
+    $pageDescription =
+        'Explore ' .
+        (string) $place['name'] .
+        ' on Llama Scout.';
+}
+
+$pageSocialImage = '';
+
+if ($heroImage) {
+    $pageSocialImage =
+        place_image_url(
+            (string) (
+                $heroImage['src']
+                ?? ''
+            )
+        );
+
+    if (
+        $pageSocialImage !== ''
+        && !str_starts_with(
+            $pageSocialImage,
+            'http://'
+        )
+        && !str_starts_with(
+            $pageSocialImage,
+            'https://'
+        )
+    ) {
+        $pageSocialImage =
+            'https://llamascout.com/' .
+            ltrim(
+                $pageSocialImage,
+                '/'
+            );
+    }
+}
+
 require __DIR__ . '/partials/header.php';
 ?>
 
@@ -359,6 +411,21 @@ require __DIR__ . '/partials/header.php';
                             Sign in to save
                         </a>
                     <?php endif; ?>
+
+                    <button
+                        class="place-detail-action-button llama-share-button"
+                        type="button"
+                        data-share
+                        data-share-title="<?= place_h($place['name'] . ' | Llama Scout') ?>"
+                        data-share-text="<?= place_h('Check out ' . $place['name'] . ' on Llama Scout.') ?>"
+                        data-share-url="<?= place_h($canonicalUrl) ?>"
+                    >
+                        <i
+                            class="fa-solid fa-arrow-up-from-bracket"
+                            aria-hidden="true"
+                        ></i>
+                        <span data-share-label>Share</span>
+                    </button>
                 </div>
 
             </div>

@@ -87,8 +87,33 @@ if ($showFullProfile) {
     }
 }
 
-$pageRobots = $isPublic ? 'index,follow' : 'noindex,nofollow';
-$pageDescription = $isPublic ? $displayName . ' on Llama Scout.' : '';
+$pageRobots =
+    $isPublic
+        ? 'index,follow'
+        : 'noindex,nofollow';
+
+$pageDescription =
+    $isPublic
+        ? $displayName .
+            ' on Llama Scout.'
+        : '';
+
+$canonicalUrl =
+    $isPublic
+        ? $siteUrl .
+            '/' .
+            rawurlencode(
+                (string) $profile['username']
+            )
+        : '';
+
+$pageSocialImage =
+    $isPublic
+        ? llama_profile_image_url(
+            (string) $profile['primary_image'],
+            $siteUrl
+        )
+        : '';
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -120,12 +145,39 @@ require __DIR__ . '/partials/header.php';
                 </p>
             <?php endif; ?>
 
-            <?php if ($isOwner): ?>
-                <a class="place-save-button" href="<?= public_profile_e($accountUrl . '/profile.php') ?>">
-                    <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                    Edit profile
-                </a>
-            <?php endif; ?>
+            <div class="public-community-profile-actions">
+
+                <?php if ($isOwner): ?>
+                    <a
+                        class="place-save-button"
+                        href="<?= public_profile_e($accountUrl . '/profile.php') ?>"
+                    >
+                        <i
+                            class="fa-solid fa-pen"
+                            aria-hidden="true"
+                        ></i>
+                        Edit profile
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($isPublic): ?>
+                    <button
+                        class="place-save-button llama-share-button"
+                        type="button"
+                        data-share
+                        data-share-title="<?= public_profile_e($displayName . ' | Llama Scout') ?>"
+                        data-share-text="<?= public_profile_e('Check out ' . $displayName . ' on Llama Scout.') ?>"
+                        data-share-url="<?= public_profile_e($canonicalUrl) ?>"
+                    >
+                        <i
+                            class="fa-solid fa-arrow-up-from-bracket"
+                            aria-hidden="true"
+                        ></i>
+                        <span data-share-label>Share</span>
+                    </button>
+                <?php endif; ?>
+
+            </div>
         </div>
     </header>
 
