@@ -245,3 +245,177 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   PHASE 49: COMPLETE NEW PLACE MODERATION REVIEW
+   ========================================================= */
+
+.admin-moderation-section-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.admin-moderation-section-header h2,
+.admin-moderation-section-header p {
+    margin: 0;
+}
+
+.admin-moderation-section-header h2 {
+    margin-top: 3px;
+}
+
+.admin-moderation-section-header > div:first-child > p:last-child {
+    max-width: 760px;
+    margin-top: 5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.admin-moderation-section-counts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.admin-moderation-section-counts span {
+    display: inline-flex;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-moderation-section-counts .is-known {
+    border-color: rgba(88,166,106,.46);
+}
+
+.admin-moderation-section-counts .is-unknown {
+    border-color: rgba(211,168,66,.48);
+}
+
+.admin-moderation-full-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-moderation-field.is-unknown {
+    border-style: dashed;
+    background: rgba(211,168,66,.045);
+}
+
+.admin-moderation-field.is-unknown > div {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.admin-moderation-field.is-provided {
+    background: rgba(88,166,106,.025);
+}
+
+.admin-moderation-review-readiness {
+    border-width: 2px;
+}
+
+.admin-moderation-readiness-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.admin-moderation-readiness-grid > div {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.admin-moderation-readiness-grid span,
+.admin-moderation-readiness-grid strong,
+.admin-moderation-readiness-grid small {
+    display: block;
+}
+
+.admin-moderation-readiness-grid span {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.admin-moderation-readiness-grid strong {
+    margin-top: 4px;
+    font-size: 1.2rem;
+}
+
+.admin-moderation-readiness-grid small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.admin-moderation-core-checks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.admin-moderation-core-checks > div {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.admin-moderation-core-checks > div.is-met > i {
+    color: #58a66a;
+}
+
+.admin-moderation-core-checks > div.is-missing {
+    border-color: rgba(211,168,66,.48);
+}
+
+.admin-moderation-core-checks > div.is-missing > i {
+    color: #d3a842;
+}
+
+.admin-moderation-core-checks span {
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+.admin-moderation-core-checks strong {
+    font-size: .7rem;
+}
+
+@media (max-width: 980px) {
+    .admin-moderation-full-grid,
+    .admin-moderation-readiness-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-moderation-section-header {
+        display: grid;
+    }
+
+    .admin-moderation-section-counts {
+        justify-content: flex-start;
+    }
+
+    .admin-moderation-full-grid,
+    .admin-moderation-readiness-grid,
+    .admin-moderation-core-checks {
+        grid-template-columns: 1fr;
+    }
+}
