@@ -10,6 +10,10 @@ if (!headers_sent()) {
 }
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/error-logging.php';
+
+llama_error_register_handlers();
+
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
