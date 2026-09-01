@@ -1227,6 +1227,286 @@ function admin_system_health(
             );
     }
 
+    /* =========================================================
+       SCOUT INTEGRITY
+
+       These checks are observational only. They do not change Scout
+       state or invent policy values. Admin-controlled policy remains
+       authoritative.
+       ========================================================= */
+
+    try {
+        $requiredPolicyKeys = [
+            'annual_new_places_required',
+            'scout_period_months',
+            'reactivation_new_places_required',
+            'reactivation_window_days',
+            'master_scout_qualification_enabled',
+            'master_scout_lifetime_new_places_required',
+            'master_scout_updates_required',
+            'master_scout_updated_places_required',
+            'master_scout_corrections_required',
+            'master_scout_points_required',
+            'master_scout_requires_current_period',
+            'new_place_max_points',
+            'place_update_max_points',
+            'place_correction_points',
+            'maintenance_interval_seconds',
+        ];
+
+        $placeholders = implode(
+            ',',
+            array_fill(0, count($requiredPolicyKeys), '?')
+        );
+
+        $policyStmt = $db->prepare(
+            'SELECT policy_key
+             FROM scout_policy
+             WHERE policy_key IN (' . $placeholders . ')'
+        );
+        $policyStmt->execute($requiredPolicyKeys);
+
+        $configuredKeys = $policyStmt->fetchAll(
+            PDO::FETCH_COLUMN
+        ) ?: [];
+
+        $missingPolicyKeys = array_values(
+            array_diff($requiredPolicyKeys, $configuredKeys)
+        );
+
+        $cards[] = admin_system_health_card(
+            'scout_policy_integrity',
+            'Scout policy',
+            $missingPolicyKeys ? 'down' : 'good',
+            $missingPolicyKeys
+                ? number_format(count($missingPolicyKeys)) . ' missing'
+                : 'Complete',
+            $missingPolicyKeys
+                ? 'Missing Admin policy settings: ' . implode(', ', $missingPolicyKeys) . '.'
+                : 'All Scout, reactivation, Master Scout, point-cap, and maintenance policy settings are configured.',
+            'fa-sliders'
+        );
+    } catch (Throwable) {
+        $cards[] = admin_system_health_card(
+            'scout_policy_integrity',
+            'Scout policy',
+            'down',
+            'Unavailable',
+            'Scout policy configuration could not be checked.',
+            'fa-sliders'
+        );
+    }
+
+    try {
+        $roleRows = $db->query(
+            'SELECT slug
+             FROM roles
+             WHERE slug IN ("scout", "master-scout")'
+        )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        $missingRoles = array_values(
+            array_diff(
+                ['scout', 'master-scout'],
+                $roleRows
+            )
+        );
+
+        $cards[] = admin_system_health_card(
+            'scout_role_definitions',
+            'Scout roles',
+            $missingRoles ? 'down' : 'good',
+            $missingRoles
+                ? number_format(count($missingRoles)) . ' missing'
+                : 'Defined',
+            $missingRoles
+                ? 'Missing canonical role definitions: ' . implode(', ', $missingRoles) . '.'
+                : 'Canonical Scout and Master Scout roles are available.',
+            'fa-user-shield'
+        );
+    } catch (Throwable) {
+        $cards[] = admin_system_health_card(
+            'scout_role_definitions',
+            'Scout roles',
+            'down',
+            'Unavailable',
+            'Scout role definitions could not be checked.',
+            'fa-user-shield'
+        );
+    }
+
+    try {
+        $activeWithoutRole = (int) $db->query(
+            'SELECT COUNT(*)
+             FROM scout_profiles sp
+             WHERE sp.status = "active"
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM user_roles ur
+                    INNER JOIN roles r
+                        ON r.id = ur.role_id
+                    WHERE ur.user_id = sp.user_id
+                      AND r.slug IN (
+                          "scout",
+                          "master-scout",
+                          "master_scout"
+                      )
+               )'
+        )->fetchColumn();
+
+        $nonActiveWithRole = (int) $db->query(
+            'SELECT COUNT(DISTINCT sp.id)
+             FROM scout_profiles sp
+             INNER JOIN user_roles ur
+                ON ur.user_id = sp.user_id
+             INNER JOIN roles r
+                ON r.id = ur.role_id
+             WHERE sp.status <> "active"
+               AND r.slug IN (
+                   "scout",
+                   "master-scout",
+                   "master_scout"
+               )'
+        )->fetchColumn();
+
+        $profileProblems = $activeWithoutRole + $nonActiveWithRole;
+        $profileDetails = [];
+
+        if ($activeWithoutRole > 0) {
+            $profileDetails[] = number_format($activeWithoutRole) . ' active profile(s) have no Scout authority role';
+        }
+
+        if ($nonActiveWithRole > 0) {
+            $profileDetails[] = number_format($nonActiveWithRole) . ' non-active profile(s) still retain Scout authority';
+        }
+
+        $cards[] = admin_system_health_card(
+            'scout_profile_integrity',
+            'Scout profile integrity',
+            $profileProblems > 0 ? 'down' : 'good',
+            $profileProblems > 0
+                ? number_format($profileProblems) . ' problem' . ($profileProblems === 1 ? '' : 's')
+                : 'Consistent',
+            $profileProblems > 0
+                ? implode('; ', $profileDetails) . '.'
+                : 'Scout profile status and current Scout authority agree.',
+            'fa-binoculars'
+        );
+    } catch (Throwable) {
+        $cards[] = admin_system_health_card(
+            'scout_profile_integrity',
+            'Scout profile integrity',
+            'down',
+            'Unavailable',
+            'Scout profile and role consistency could not be checked.',
+            'fa-binoculars'
+        );
+    }
+
+    try {
+        $duplicateExtensions = (int) $db->query(
+            'SELECT COUNT(*)
+             FROM (
+                 SELECT scout_profile_id, user_id
+                 FROM scout_extensions
+                 WHERE status = "active"
+                 GROUP BY scout_profile_id, user_id
+                 HAVING COUNT(*) > 1
+             ) duplicate_active_extensions'
+        )->fetchColumn();
+
+        $orphanedExtensions = (int) $db->query(
+            'SELECT COUNT(*)
+             FROM scout_extensions se
+             LEFT JOIN scout_profiles sp
+                ON sp.id = se.scout_profile_id
+               AND sp.user_id = se.user_id
+             WHERE se.status = "active"
+               AND (
+                   sp.id IS NULL
+                   OR sp.status <> "active"
+               )'
+        )->fetchColumn();
+
+        $masterDuringReactivation = (int) $db->query(
+            'SELECT COUNT(DISTINCT se.id)
+             FROM scout_extensions se
+             INNER JOIN user_roles ur
+                ON ur.user_id = se.user_id
+             INNER JOIN roles r
+                ON r.id = ur.role_id
+             WHERE se.status = "active"
+               AND r.slug IN (
+                   "master-scout",
+                   "master_scout"
+               )'
+        )->fetchColumn();
+
+        $expiredActiveExtensions = (int) $db->query(
+            'SELECT COUNT(*)
+             FROM scout_extensions
+             WHERE status = "active"
+               AND ends_at < CURRENT_TIMESTAMP'
+        )->fetchColumn();
+
+        $reactivationProblems =
+            $duplicateExtensions
+            + $orphanedExtensions
+            + $masterDuringReactivation;
+
+        $reactivationDetails = [];
+
+        if ($duplicateExtensions > 0) {
+            $reactivationDetails[] = number_format($duplicateExtensions) . ' duplicate active reactivation record(s)';
+        }
+
+        if ($orphanedExtensions > 0) {
+            $reactivationDetails[] = number_format($orphanedExtensions) . ' active reactivation record(s) do not match an active Scout profile';
+        }
+
+        if ($masterDuringReactivation > 0) {
+            $reactivationDetails[] = number_format($masterDuringReactivation) . ' active reactivation record(s) still have Master Scout authority';
+        }
+
+        if ($expiredActiveExtensions > 0) {
+            $reactivationDetails[] = number_format($expiredActiveExtensions) . ' active reactivation record(s) are past their end time and awaiting maintenance';
+        }
+
+        $reactivationStatus =
+            $reactivationProblems > 0
+                ? 'down'
+                : (
+                    $expiredActiveExtensions > 0
+                        ? 'attention'
+                        : 'good'
+                );
+
+        $reactivationIssueCount =
+            $reactivationProblems
+            + $expiredActiveExtensions;
+
+        $cards[] = admin_system_health_card(
+            'scout_reactivation_integrity',
+            'Scout reactivation integrity',
+            $reactivationStatus,
+            $reactivationIssueCount > 0
+                ? number_format($reactivationIssueCount) . ' issue' . ($reactivationIssueCount === 1 ? '' : 's')
+                : 'Consistent',
+            $reactivationIssueCount > 0
+                ? implode('; ', $reactivationDetails) . '.'
+                : 'Active reactivation records are unique and consistent with Scout state.',
+            'fa-rotate'
+        );
+    } catch (Throwable) {
+        $cards[] = admin_system_health_card(
+            'scout_reactivation_integrity',
+            'Scout reactivation integrity',
+            'down',
+            'Unavailable',
+            'Scout reactivation consistency could not be checked.',
+            'fa-rotate'
+        );
+    }
+
     $summary = [
         'good' => 0,
         'attention' => 0,
