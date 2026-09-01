@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/scout-policy.php';
 require_once __DIR__ . '/scout-onboarding.php';
+require_once __DIR__ . '/scout-maintenance.php';
 
 function admin_scouts_list(PDO $db): array
 {
@@ -982,4 +983,416 @@ function admin_scout_update_policy(
         'Updated Scout and Master Scout qualification policy.',
         ['keys' => array_keys($values)]
     );
+}
+
+
+/* =========================================================
+   SCOUT REACTIVATION OPERATIONS
+   ========================================================= */
+
+function admin_scout_latest_extension(
+    PDO $db,
+    int $scoutProfileId,
+    int $userId
+): ?array {
+    $stmt = $db->prepare(
+        'SELECT
+            se.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                CASE
+                    WHEN se.granted_by IS NULL THEN "System"
+                    ELSE CONCAT("User #", se.granted_by)
+                END
+            ) AS granted_by_name
+         FROM scout_extensions se
+         LEFT JOIN users u
+            ON u.id = se.granted_by
+         WHERE se.scout_profile_id = ?
+           AND se.user_id = ?
+         ORDER BY se.id DESC
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $scoutProfileId,
+        $userId,
+    ]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
+
+function admin_scout_grant_reactivation(
+    PDO $db,
+    int $actorUserId,
+    int $scoutProfileId,
+    string $notes = ''
+): array {
+    $scout = admin_scout_get(
+        $db,
+        $scoutProfileId
+    );
+
+    if (!$scout) {
+        throw new RuntimeException(
+            'Scout profile not found.'
+        );
+    }
+
+    if (
+        !in_array(
+            (string) $scout['status'],
+            [
+                'inactive',
+                'removed',
+            ],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'Only an inactive or removed former Scout can receive a reactivation window.'
+        );
+    }
+
+    $userId =
+        (int) $scout['user_id'];
+
+    llama_ensure_scout_extensions_table(
+        $db
+    );
+
+    $windowDays = max(
+        1,
+        admin_scout_policy_int_value(
+            $db,
+            'reactivation_window_days',
+            30
+        )
+    );
+
+    $requiredPlaces = max(
+        1,
+        admin_scout_policy_int_value(
+            $db,
+            'reactivation_new_places_required',
+            3
+        )
+    );
+
+    $startedAt =
+        (new DateTimeImmutable('now'))
+        ->format('Y-m-d H:i:s');
+
+    $endsAt =
+        (new DateTimeImmutable($startedAt))
+        ->modify('+' . $windowDays . ' days')
+        ->format('Y-m-d H:i:s');
+
+    $db->beginTransaction();
+
+    try {
+        $activeStmt = $db->prepare(
+            'SELECT id
+             FROM scout_extensions
+             WHERE scout_profile_id = ?
+               AND user_id = ?
+               AND status = "active"
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $activeStmt->execute([
+            $scoutProfileId,
+            $userId,
+        ]);
+
+        if (
+            (int) $activeStmt->fetchColumn()
+            > 0
+        ) {
+            throw new RuntimeException(
+                'This Scout already has an active reactivation window.'
+            );
+        }
+
+        $userStmt = $db->prepare(
+            'SELECT
+                membership_status,
+                stripe_subscription_id
+             FROM users
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $userStmt->execute([
+            $userId,
+        ]);
+
+        $userRow =
+            $userStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$userRow) {
+            throw new RuntimeException(
+                'Scout account not found.'
+            );
+        }
+
+        $insert = $db->prepare(
+            'INSERT INTO scout_extensions (
+                scout_profile_id,
+                user_id,
+                granted_by,
+                started_at,
+                ends_at,
+                status,
+                accepted_reports
+             ) VALUES (?, ?, ?, ?, ?, "active", 0)'
+        );
+
+        $insert->execute([
+            $scoutProfileId,
+            $userId,
+            $actorUserId,
+            $startedAt,
+            $endsAt,
+        ]);
+
+        $extensionId =
+            (int) $db->lastInsertId();
+
+        $profileUpdate = $db->prepare(
+            'UPDATE scout_profiles
+             SET
+                status = "active",
+                active_through = ?,
+                inactive_at = NULL,
+                removed_at = NULL,
+                removed_by = NULL,
+                removal_reason = NULL,
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+               AND user_id = ?
+               AND status IN ("inactive", "removed")'
+        );
+
+        $profileUpdate->execute([
+            $endsAt,
+            $scoutProfileId,
+            $userId,
+        ]);
+
+        if ($profileUpdate->rowCount() !== 1) {
+            throw new RuntimeException(
+                'The Scout profile changed before reactivation could be granted.'
+            );
+        }
+
+        /*
+         * Reactivation is probationary basic Scout access.
+         * It does not restore Master Scout and creates no new
+         * earned-rank history until the window is completed.
+         */
+        llama_grant_basic_scout_role(
+            $db,
+            $userId
+        );
+
+        $membershipStatus =
+            strtolower(
+                trim(
+                    (string) (
+                        $userRow['membership_status']
+                        ?? ''
+                    )
+                )
+            );
+
+        $hasPaidMembership =
+            in_array(
+                $membershipStatus,
+                [
+                    'active',
+                    'trialing',
+                    'past_due',
+                ],
+                true
+            )
+            && !empty(
+                $userRow['stripe_subscription_id']
+            );
+
+        if (!$hasPaidMembership) {
+            $db->prepare(
+                'UPDATE users
+                 SET
+                    membership_status = "complimentary",
+                    membership_interval = NULL,
+                    membership_started_at = ?,
+                    membership_ends_at = ?
+                 WHERE id = ?'
+            )->execute([
+                $startedAt,
+                $endsAt,
+                $userId,
+            ]);
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $userId,
+            'scout.reactivation_granted',
+            'Granted a Scout reactivation window.',
+            [
+                'scout_profile_id' =>
+                    $scoutProfileId,
+                'extension_id' =>
+                    $extensionId,
+                'window_days' =>
+                    $windowDays,
+                'required_new_places' =>
+                    $requiredPlaces,
+                'ends_at' =>
+                    $endsAt,
+                'notes' =>
+                    trim($notes) !== ''
+                        ? trim($notes)
+                        : null,
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+
+    return [
+        'extension_id' =>
+            $extensionId,
+        'started_at' =>
+            $startedAt,
+        'ends_at' =>
+            $endsAt,
+        'window_days' =>
+            $windowDays,
+        'required_new_places' =>
+            $requiredPlaces,
+    ];
+}
+
+
+function admin_scout_cancel_reactivation(
+    PDO $db,
+    int $actorUserId,
+    int $scoutProfileId,
+    string $notes
+): void {
+    $notes = trim($notes);
+
+    if ($notes === '') {
+        throw new RuntimeException(
+            'Add a reason before canceling a reactivation window.'
+        );
+    }
+
+    $scout = admin_scout_get(
+        $db,
+        $scoutProfileId
+    );
+
+    if (!$scout) {
+        throw new RuntimeException(
+            'Scout profile not found.'
+        );
+    }
+
+    $userId =
+        (int) $scout['user_id'];
+
+    $db->beginTransaction();
+
+    try {
+        $stmt = $db->prepare(
+            'SELECT *
+             FROM scout_extensions
+             WHERE scout_profile_id = ?
+               AND user_id = ?
+               AND status = "active"
+             ORDER BY id DESC
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $stmt->execute([
+            $scoutProfileId,
+            $userId,
+        ]);
+
+        $extension =
+            $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$extension) {
+            throw new RuntimeException(
+                'This Scout does not have an active reactivation window.'
+            );
+        }
+
+        $db->prepare(
+            'UPDATE scout_extensions
+             SET
+                status = "canceled",
+                resolved_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+               AND status = "active"'
+        )->execute([
+            (int) $extension['id'],
+        ]);
+
+        /*
+         * Temporary access is removed without creating a fake
+         * Scout-rank expiration event.
+         */
+        llama_expire_scout_access(
+            $db,
+            $scoutProfileId,
+            $userId,
+            false
+        );
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $userId,
+            'scout.reactivation_canceled',
+            'Canceled a Scout reactivation window.',
+            [
+                'scout_profile_id' =>
+                    $scoutProfileId,
+                'extension_id' =>
+                    (int) $extension['id'],
+                'notes' =>
+                    $notes,
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
