@@ -1223,3 +1223,249 @@ function llama_schedule_subscription_end_for_scout(
             ),
     ];
 }
+
+/* =========================================================
+   STRIPE PUBLISHABLE KEY
+
+   Embedded Checkout needs the publishable key in the browser.
+   The secret key remains server-side only.
+   ========================================================= */
+
+function llama_stripe_publishable_key(): string
+{
+    $config = llama_stripe_config();
+
+    $key = trim(
+        (string) (
+            $config['publishable_key']
+            ?? $config['public_key']
+            ?? ''
+        )
+    );
+
+    if ($key === '') {
+        throw new RuntimeException(
+            'Stripe configuration is missing: publishable_key'
+        );
+    }
+
+    return $key;
+}
+
+
+/* =========================================================
+   CUSTOMER BILLING SNAPSHOT
+
+   Read-only Stripe details used by the native Llama Scout
+   billing dashboard. Failures are handled by the caller so
+   local membership access is never destroyed by a temporary
+   Stripe API outage.
+   ========================================================= */
+
+function llama_stripe_billing_snapshot(
+    string $customerId,
+    ?string $subscriptionId = null,
+    int $invoiceLimit = 12
+): array {
+    $customerId = trim($customerId);
+    $subscriptionId = trim((string) $subscriptionId);
+
+    if ($customerId === '') {
+        throw new InvalidArgumentException(
+            'A Stripe customer ID is required.'
+        );
+    }
+
+    $stripe = llama_stripe_client();
+
+    $customer = $stripe->customers->retrieve(
+        $customerId,
+        []
+    );
+
+    $subscription = null;
+
+    if ($subscriptionId !== '') {
+        $subscription = $stripe->subscriptions->retrieve(
+            $subscriptionId,
+            []
+        );
+    }
+
+    $paymentMethod = null;
+    $paymentMethodId = '';
+
+    if ($subscription) {
+        $subscriptionDefault =
+            $subscription->default_payment_method
+            ?? null;
+
+        if (is_string($subscriptionDefault)) {
+            $paymentMethodId = trim($subscriptionDefault);
+        } elseif (is_object($subscriptionDefault)) {
+            $paymentMethod = $subscriptionDefault;
+            $paymentMethodId = trim(
+                (string) ($subscriptionDefault->id ?? '')
+            );
+        }
+    }
+
+    if ($paymentMethodId === '') {
+        $customerDefault =
+            $customer->invoice_settings->default_payment_method
+            ?? null;
+
+        if (is_string($customerDefault)) {
+            $paymentMethodId = trim($customerDefault);
+        } elseif (is_object($customerDefault)) {
+            $paymentMethod = $customerDefault;
+            $paymentMethodId = trim(
+                (string) ($customerDefault->id ?? '')
+            );
+        }
+    }
+
+    if ($paymentMethod === null && $paymentMethodId !== '') {
+        $paymentMethod = $stripe->paymentMethods->retrieve(
+            $paymentMethodId,
+            []
+        );
+    }
+
+    $invoiceLimit = max(1, min(24, $invoiceLimit));
+
+    $invoiceCollection = $stripe->invoices->all([
+        'customer' => $customerId,
+        'limit' => $invoiceLimit,
+    ]);
+
+    $invoices = [];
+
+    foreach (($invoiceCollection->data ?? []) as $invoice) {
+        $invoices[] = [
+            'id' => (string) ($invoice->id ?? ''),
+            'number' => (string) ($invoice->number ?? ''),
+            'status' => (string) ($invoice->status ?? ''),
+            'currency' => (string) ($invoice->currency ?? 'usd'),
+            'amount_paid' => (int) ($invoice->amount_paid ?? 0),
+            'amount_due' => (int) ($invoice->amount_due ?? 0),
+            'created' => isset($invoice->created)
+                ? (int) $invoice->created
+                : null,
+            'hosted_invoice_url' => trim(
+                (string) ($invoice->hosted_invoice_url ?? '')
+            ),
+            'invoice_pdf' => trim(
+                (string) ($invoice->invoice_pdf ?? '')
+            ),
+        ];
+    }
+
+    $card = null;
+
+    if (
+        $paymentMethod
+        && isset($paymentMethod->card)
+    ) {
+        $card = [
+            'brand' => (string) ($paymentMethod->card->brand ?? ''),
+            'last4' => (string) ($paymentMethod->card->last4 ?? ''),
+            'exp_month' => (int) ($paymentMethod->card->exp_month ?? 0),
+            'exp_year' => (int) ($paymentMethod->card->exp_year ?? 0),
+        ];
+    }
+
+    $currentPrice = null;
+    $subscriptionItemId = '';
+
+    if ($subscription) {
+        $firstItem = $subscription->items->data[0] ?? null;
+
+        if ($firstItem) {
+            $subscriptionItemId = trim(
+                (string) ($firstItem->id ?? '')
+            );
+
+            $price = $firstItem->price ?? null;
+
+            if ($price) {
+                $currentPrice = [
+                    'id' => (string) ($price->id ?? ''),
+                    'unit_amount' => (int) ($price->unit_amount ?? 0),
+                    'currency' => (string) ($price->currency ?? 'usd'),
+                    'interval' => (string) ($price->recurring->interval ?? ''),
+                ];
+            }
+        }
+    }
+
+    return [
+        'customer' => [
+            'id' => (string) ($customer->id ?? ''),
+            'email' => (string) ($customer->email ?? ''),
+            'name' => (string) ($customer->name ?? ''),
+        ],
+        'subscription' => $subscription
+            ? [
+                'id' => (string) ($subscription->id ?? ''),
+                'status' => (string) ($subscription->status ?? ''),
+                'cancel_at_period_end' =>
+                    llama_subscription_cancel_at_period_end($subscription),
+                'period_end' =>
+                    llama_subscription_period_end($subscription),
+                'item_id' => $subscriptionItemId,
+                'price' => $currentPrice,
+            ]
+            : null,
+        'payment_method' => $card,
+        'invoices' => $invoices,
+    ];
+}
+
+
+/* =========================================================
+   CUSTOMER PORTAL FLOW
+
+   The Llama Scout billing page remains the user's dashboard.
+   Stripe's portal is used only for focused secure actions that
+   Stripe must complete, then sends the member back here.
+   ========================================================= */
+
+function llama_stripe_portal_flow_url(
+    string $customerId,
+    string $returnUrl,
+    ?array $flowData = null
+): string {
+    $customerId = trim($customerId);
+    $returnUrl = trim($returnUrl);
+
+    if ($customerId === '' || $returnUrl === '') {
+        throw new InvalidArgumentException(
+            'Stripe customer and return URL are required.'
+        );
+    }
+
+    $payload = [
+        'customer' => $customerId,
+        'return_url' => $returnUrl,
+    ];
+
+    if ($flowData !== null) {
+        $payload['flow_data'] = $flowData;
+    }
+
+    $session = llama_stripe_client()
+        ->billingPortal
+        ->sessions
+        ->create($payload);
+
+    $url = trim((string) ($session->url ?? ''));
+
+    if ($url === '') {
+        throw new RuntimeException(
+            'Stripe did not return a billing portal URL.'
+        );
+    }
+
+    return $url;
+}

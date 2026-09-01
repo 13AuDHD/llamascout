@@ -956,7 +956,7 @@ function admin_system_health(
         $privateRoot .
         '/stripe-php/init.php';
 
-    $stripeReady =
+    $stripeFilesReady =
         is_readable(
             $stripeConfig
         )
@@ -965,19 +965,105 @@ function admin_system_health(
             $stripeLibrary
         );
 
+    $stripeConfigData = [];
+    $stripeConfigError = '';
+
+    if ($stripeFilesReady) {
+        try {
+            $loadedStripeConfig = require $stripeConfig;
+
+            if (!is_array($loadedStripeConfig)) {
+                throw new RuntimeException(
+                    'Private Stripe configuration did not return an array.'
+                );
+            }
+
+            $stripeConfigData = $loadedStripeConfig;
+        } catch (Throwable $exception) {
+            $stripeConfigError = $exception->getMessage();
+        }
+    }
+
+    $stripeSecretReady =
+        trim((string) ($stripeConfigData['secret_key'] ?? '')) !== '';
+
+    $stripePublishableReady =
+        trim((string) (
+            $stripeConfigData['publishable_key']
+            ?? $stripeConfigData['public_key']
+            ?? ''
+        )) !== '';
+
+    $stripeWebhookReady =
+        trim((string) ($stripeConfigData['webhook_secret'] ?? '')) !== '';
+
+    $stripePlanPricesReady = true;
+    $stripePlanProblemCount = 0;
+
+    try {
+        $stripePlanProblemCount = (int) $db->query(
+            "SELECT COUNT(*)
+             FROM membership_plans
+             WHERE is_active = 1
+               AND (stripe_price_id IS NULL OR TRIM(stripe_price_id) = '')"
+        )->fetchColumn();
+
+        $stripePlanPricesReady = $stripePlanProblemCount === 0;
+    } catch (Throwable) {
+        $stripePlanPricesReady = false;
+    }
+
+    $stripeReady =
+        $stripeFilesReady
+        && $stripeConfigError === ''
+        && $stripeSecretReady
+        && $stripePublishableReady
+        && $stripeWebhookReady
+        && $stripePlanPricesReady;
+
+    $stripeDetailParts = [];
+
+    if (!$stripeFilesReady) {
+        $stripeDetailParts[] = 'Private Stripe configuration or PHP library is missing.';
+    }
+
+    if ($stripeConfigError !== '') {
+        $stripeDetailParts[] = 'Private Stripe configuration could not be loaded.';
+    }
+
+    if ($stripeFilesReady && !$stripeSecretReady) {
+        $stripeDetailParts[] = 'Secret key is missing.';
+    }
+
+    if ($stripeFilesReady && !$stripePublishableReady) {
+        $stripeDetailParts[] = 'Publishable key is missing; embedded checkout cannot load.';
+    }
+
+    if ($stripeFilesReady && !$stripeWebhookReady) {
+        $stripeDetailParts[] = 'Webhook secret is missing.';
+    }
+
+    if (!$stripePlanPricesReady) {
+        $stripeDetailParts[] = $stripePlanProblemCount > 0
+            ? $stripePlanProblemCount . ' active membership plan(s) are missing a Stripe Price ID.'
+            : 'Membership Stripe Price configuration could not be verified.';
+    }
+
+    if (!$stripeDetailParts) {
+        $stripeDetailParts[] = 'Embedded checkout, webhook verification, and active membership Price IDs are configured.';
+    }
+
     $cards[] =
         admin_system_health_card(
             'stripe',
-            'Stripe',
+            'Stripe billing',
             $stripeReady
                 ? 'good'
                 : 'down',
             $stripeReady
-                ? 'Configured'
-                : 'Missing',
-            $stripeReady
-                ? 'Private Stripe configuration and PHP library are available.'
-                : 'Membership billing cannot operate until the private Stripe files are available.',
+                ? 'Ready'
+                : 'Needs attention',
+            implode(' ', $stripeDetailParts),
             'fa-credit-card'
         );
 
