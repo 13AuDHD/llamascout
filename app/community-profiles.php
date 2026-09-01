@@ -145,6 +145,56 @@ function llama_profile_image_url(string $src, ?string $siteUrl = null): string
     return rtrim($siteUrl, '/') . '/' . ltrim($src, '/');
 }
 
+
+function llama_badge_image_url(
+    string $slug,
+    string $imageSrc = ''
+): string {
+    $imageSrc = trim($imageSrc);
+
+    if ($imageSrc !== '') {
+        return $imageSrc;
+    }
+
+    $slug = strtolower(trim($slug));
+
+    if (
+        $slug === ''
+        || !preg_match(
+            '/^[a-z0-9-]+$/',
+            $slug
+        )
+    ) {
+        return '';
+    }
+
+    $root = dirname(__DIR__);
+
+    $candidates = [
+        '/images/badges/' . $slug . '.jpg',
+        '/images/badges/' . $slug . '.jpeg',
+        '/images/badges/' . $slug . '.png',
+        '/images/badges/' . $slug . '.webp',
+        '/uploads/badges/' . $slug . '.jpg',
+        '/uploads/badges/' . $slug . '.jpeg',
+        '/uploads/badges/' . $slug . '.png',
+        '/uploads/badges/' . $slug . '.webp',
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (
+            is_file(
+                $root . $candidate
+            )
+        ) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+
 function llama_profile_url(string $username, ?string $siteUrl = null): string
 {
     $username = trim($username);

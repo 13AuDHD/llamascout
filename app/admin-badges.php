@@ -975,7 +975,7 @@ function admin_badges_replace_image_from_stage(
             $actorUserId,
             $photoToken,
             $submittedPhotos,
-            '/uploads/badges'
+            '/images/badges'
         );
 
     if (!$committed) {
@@ -999,7 +999,7 @@ function admin_badges_replace_image_from_stage(
         $sourcePath;
 
     $finalRelative =
-        '/uploads/badges/' .
+        '/images/badges/' .
         $slug .
         '.jpg';
 
@@ -1053,15 +1053,52 @@ function admin_badges_replace_image_from_stage(
     if (
         $oldImage !== ''
         && $oldImage !== $finalRelative
-        && str_starts_with(
-            '/' . ltrim($oldImage, '/'),
-            '/uploads/badges/'
-        )
     ) {
-        llama_photo_delete_owned_permanent_path(
-            $oldImage,
-            ['uploads/badges']
-        );
+        $normalizedOld =
+            '/' . ltrim(
+                $oldImage,
+                '/'
+            );
+
+        if (
+            str_starts_with(
+                $normalizedOld,
+                '/images/badges/'
+            )
+            || str_starts_with(
+                $normalizedOld,
+                '/uploads/badges/'
+            )
+        ) {
+            llama_photo_delete_owned_permanent_path(
+                $oldImage,
+                [
+                    'images/badges',
+                    'uploads/badges',
+                ]
+            );
+        }
+    }
+
+    foreach (
+        [
+            'png',
+            'jpeg',
+            'webp',
+        ]
+        as
+        $legacyExtension
+    ) {
+        $legacyFile =
+            dirname(__DIR__) .
+            '/images/badges/' .
+            $slug .
+            '.' .
+            $legacyExtension;
+
+        if (is_file($legacyFile)) {
+            @unlink($legacyFile);
+        }
     }
 
     $db->prepare(
