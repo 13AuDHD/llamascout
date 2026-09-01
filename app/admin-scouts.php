@@ -629,167 +629,173 @@ function admin_scout_set_status(
     }
 
     $before = (string) $scout['status'];
+    $userId = (int) $scout['user_id'];
+    $cleanNotes = trim($notes);
 
-    if (
-        $status === 'active'
-        && in_array(
-            $before,
-            [
-                'invited',
-                'application_started',
-                'application_submitted',
-                'training',
-                'pending_approval',
-            ],
-            true
-        )
-    ) {
+    if ($status === $before) {
+        return;
+    }
+
+    /*
+     * "active" is not a generic Admin status toggle.
+     *
+     * New Scouts become active only through onboarding approval.
+     * Former Scouts receive temporary access only through the explicit,
+     * discretionary reactivation workflow. This prevents the status form
+     * from bypassing either qualification path.
+     */
+    if ($status === 'active') {
         throw new RuntimeException(
-            'Scout onboarding must be approved through the onboarding review before activating Scout access.'
+            'Scout activation must be completed through onboarding approval or an admin-granted reactivation window.'
         );
     }
 
-    $activeThrough =
-        $scout['active_through']
-        ?? null;
+    /*
+     * An active reactivation window is a probationary state, not an earned
+     * Scout rank. It must be ended through the dedicated reactivation action
+     * so the extension record and temporary access are closed together.
+     */
+    if ($before === 'active') {
+        $activeExtension =
+            llama_active_scout_extension(
+                $db,
+                $scoutProfileId,
+                $userId
+            );
 
-    if ($status === 'active') {
-        $needsPeriod = true;
-
-        if (!empty($activeThrough)) {
-            try {
-                $needsPeriod =
-                    new DateTimeImmutable((string) $activeThrough)
-                    <= new DateTimeImmutable('now');
-            } catch (Throwable) {
-                $needsPeriod = true;
-            }
+        if ($activeExtension !== null) {
+            throw new RuntimeException(
+                'This Scout is in an active reactivation window. Cancel the reactivation window instead of changing the Scout status directly.'
+            );
         }
+    }
 
-        if ($needsPeriod) {
-            $periodMonths =
-                admin_scout_policy_int_value(
+    $db->beginTransaction();
+
+    try {
+        $sql =
+            'UPDATE scout_profiles
+             SET
+                status = ?,
+                inactive_at = CASE
+                    WHEN ? = "inactive"
+                        THEN NOW()
+                    ELSE inactive_at
+                END,
+                removed_at = CASE
+                    WHEN ? = "removed"
+                        THEN NOW()
+                    ELSE removed_at
+                END,
+                removed_by = CASE
+                    WHEN ? = "removed"
+                        THEN ?
+                    ELSE removed_by
+                END,
+                removal_reason = CASE
+                    WHEN ? = "removed"
+                        THEN ?
+                    ELSE removal_reason
+                END,
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?';
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            $status,
+            $status,
+            $status,
+            $status,
+            $actorUserId,
+            $status,
+            $cleanNotes !== '' ? $cleanNotes : null,
+            $scoutProfileId,
+        ]);
+
+        if (
+            in_array(
+                $status,
+                ['inactive', 'declined', 'removed'],
+                true
+            )
+        ) {
+            $currentRank =
+                llama_current_scout_rank(
                     $db,
-                    'scout_period_months'
+                    $userId
                 );
 
-            $activeThrough =
-                (new DateTimeImmutable('now'))
-                ->modify('+' . $periodMonths . ' months')
-                ->format('Y-m-d H:i:s');
-        }
-    }
+            if ($currentRank !== LLAMA_SCOUT_RANK_NONE) {
+                $rankReason =
+                    $status === 'removed'
+                        ? LLAMA_RANK_REASON_REMOVED
+                        : LLAMA_RANK_REASON_ADMIN_CHANGE;
 
-    $sql =
-        'UPDATE scout_profiles
-         SET
-            status = ?,
-            approved_at = CASE
-                WHEN ? = "active" AND approved_at IS NULL
-                    THEN NOW()
-                ELSE approved_at
-            END,
-            approved_by = CASE
-                WHEN ? = "active" AND approved_by IS NULL
-                    THEN ?
-                ELSE approved_by
-            END,
-            scout_started_at = CASE
-                WHEN ? = "active" AND scout_started_at IS NULL
-                    THEN NOW()
-                ELSE scout_started_at
-            END,
-            active_through = CASE
-                WHEN ? = "active"
-                    THEN ?
-                ELSE active_through
-            END,
-            inactive_at = CASE
-                WHEN ? = "inactive"
-                    THEN NOW()
-                ELSE inactive_at
-            END,
-            removed_at = CASE
-                WHEN ? = "removed"
-                    THEN NOW()
-                ELSE removed_at
-            END,
-            removed_by = CASE
-                WHEN ? = "removed"
-                    THEN ?
-                ELSE removed_by
-            END,
-            removal_reason = CASE
-                WHEN ? = "removed"
-                    THEN ?
-                ELSE removal_reason
-            END
-         WHERE id = ?';
+                llama_end_current_scout_rank(
+                    $db,
+                    $userId,
+                    $rankReason,
+                    $actorUserId,
+                    $cleanNotes !== ''
+                        ? $cleanNotes
+                        : 'Scout authority ended by Admin status change.'
+                );
+            } else {
+                /*
+                 * Defensive cleanup for legacy/inconsistent rows. The rank
+                 * engine normally owns these roles, but no inactive or
+                 * removed Scout should retain Scout authority.
+                 */
+                llama_clear_current_scout_rank(
+                    $db,
+                    $userId
+                );
+            }
 
-    $stmt = $db->prepare($sql);
-    $stmt->execute([
-        $status,
-        $status,
-        $status,
-        $actorUserId,
-        $status,
-        $status,
-        $activeThrough,
-        $status,
-        $status,
-        $actorUserId,
-        $status,
-        trim($notes) !== '' ? trim($notes) : null,
-        $scoutProfileId,
-    ]);
-
-    if ($status === 'active') {
-        $roleStmt = $db->prepare(
-            'SELECT id FROM roles WHERE slug = "scout" LIMIT 1'
-        );
-        $roleStmt->execute();
-        $roleId = (int) $roleStmt->fetchColumn();
-
-        if ($roleId > 0) {
-            $insert = $db->prepare(
-                'INSERT IGNORE INTO user_roles (user_id, role_id)
-                 VALUES (?, ?)'
-            );
-            $insert->execute([
-                (int) $scout['user_id'],
-                $roleId,
+            $db->prepare(
+                'DELETE ub
+                 FROM user_badges ub
+                 INNER JOIN badge_definitions bd
+                    ON bd.id = ub.badge_id
+                 WHERE ub.user_id = ?
+                   AND bd.slug = "master-scout"
+                   AND ub.review_status = "earned"'
+            )->execute([
+                $userId,
             ]);
+
+            llama_end_scout_complimentary_membership(
+                $db,
+                $userId
+            );
         }
-    }
 
-    if (in_array($status, ['inactive','declined','removed'], true)) {
-        $stmt = $db->prepare(
-            'DELETE ur
-             FROM user_roles ur
-             INNER JOIN roles r
-                ON r.id = ur.role_id
-             WHERE ur.user_id = ?
-               AND r.slug IN ("scout","master_scout")'
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $userId,
+            'scout.status_updated',
+            'Changed Scout status from ' .
+                $before .
+                ' to ' .
+                $status . '.',
+            [
+                'scout_profile_id' => $scoutProfileId,
+                'before' => $before,
+                'after' => $status,
+                'notes' => $cleanNotes,
+            ]
         );
-        $stmt->execute([(int) $scout['user_id']]);
-    }
 
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        (int) $scout['user_id'],
-        'scout.status_updated',
-        'Changed Scout status from ' .
-            $before .
-            ' to ' .
-            $status . '.',
-        [
-            'scout_profile_id' => $scoutProfileId,
-            'before' => $before,
-            'after' => $status,
-            'notes' => trim($notes),
-        ]
-    );
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
 
 function admin_scout_set_master(
