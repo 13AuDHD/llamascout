@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/scout-onboarding.php';
 
 require_login();
 
@@ -44,6 +45,42 @@ $displayName = (string) (
     ?? $user['email']
     ?? 'Your account'
 );
+
+$scoutProfile =
+    llama_scout_onboarding_profile(
+        $db,
+        $userId
+    );
+
+$scoutOnboardingStatus =
+    $scoutProfile
+        ? (string) $scoutProfile['status']
+        : '';
+
+$showScoutOnboarding =
+    $scoutProfile
+    && in_array(
+        $scoutOnboardingStatus,
+        [
+            'invited',
+            'application_started',
+            'application_submitted',
+            'training',
+            'pending_approval',
+            'declined',
+        ],
+        true
+    );
+
+$scoutOnboardingStep =
+    llama_scout_onboarding_step(
+        $scoutOnboardingStatus
+    );
+
+$scoutOnboardingHref =
+    llama_scout_onboarding_href(
+        $scoutOnboardingStatus
+    );
 
 /*
  * Contribution points are a permanent ledger balance.
@@ -170,6 +207,11 @@ require dirname(__DIR__) . '/partials/header.php';
     href="<?= htmlspecialchars($siteUrl . '/css/account-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
 >
 
+<link
+    rel="stylesheet"
+    href="<?= htmlspecialchars($siteUrl . '/css/account-scout-onboarding.css', ENT_QUOTES, 'UTF-8') ?>"
+>
+
 <section class="account-page account-dashboard-page">
 
     <header class="account-page-header account-dashboard-header">
@@ -195,6 +237,80 @@ require dirname(__DIR__) . '/partials/header.php';
             Log out
         </a>
     </header>
+
+    <?php if ($showScoutOnboarding): ?>
+
+        <section class="account-scout-onboarding-card">
+
+            <div class="account-scout-onboarding-icon">
+                <i
+                    class="fa-solid fa-binoculars"
+                    aria-hidden="true"
+                ></i>
+            </div>
+
+            <div class="account-scout-onboarding-copy">
+                <p class="account-eyebrow">
+                    Llama Scout Team
+                </p>
+
+                <h2>
+                    <?= htmlspecialchars(
+                        llama_scout_onboarding_status_label(
+                            $scoutOnboardingStatus
+                        ),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
+                </h2>
+
+                <p>
+                    <?php if ($scoutOnboardingStatus === 'invited'): ?>
+                        You have been invited to become a Llama Scout.
+                        Review the role and decide whether you want to continue.
+                    <?php elseif ($scoutOnboardingStatus === 'application_started'): ?>
+                        Continue your About You application.
+                    <?php elseif (in_array($scoutOnboardingStatus, ['application_submitted','training'], true)): ?>
+                        Your application is complete. Continue Scout training.
+                    <?php elseif ($scoutOnboardingStatus === 'pending_approval'): ?>
+                        Your application and training are complete. Basecamp is reviewing your onboarding.
+                    <?php else: ?>
+                        Your Scout invitation was declined. Your regular Llama Scout account is unchanged.
+                    <?php endif; ?>
+                </p>
+            </div>
+
+            <div class="account-scout-onboarding-action">
+                <?php if ($scoutOnboardingStep > 0): ?>
+                    <span>
+                        Step <?= $scoutOnboardingStep ?> of 5
+                    </span>
+                <?php endif; ?>
+
+                <a
+                    href="<?= htmlspecialchars(
+                        $scoutOnboardingHref,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                >
+                    <?= $scoutOnboardingStatus === 'pending_approval'
+                        ? 'View status'
+                        : (
+                            $scoutOnboardingStatus === 'declined'
+                                ? 'View invitation'
+                                : 'Continue onboarding'
+                        ) ?>
+                    <i
+                        class="fa-solid fa-arrow-right"
+                        aria-hidden="true"
+                    ></i>
+                </a>
+            </div>
+
+        </section>
+
+    <?php endif; ?>
 
     <section
         class="account-glance-grid"
