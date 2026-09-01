@@ -72,6 +72,10 @@ $showScoutOnboarding =
         true
     );
 
+$showActiveScout =
+    $scoutProfile
+    && $scoutOnboardingStatus === 'active';
+
 $scoutOnboardingStep =
     llama_scout_onboarding_step(
         $scoutOnboardingStatus
@@ -212,6 +216,11 @@ require dirname(__DIR__) . '/partials/header.php';
     href="<?= htmlspecialchars($siteUrl . '/css/account-scout-onboarding.css', ENT_QUOTES, 'UTF-8') ?>"
 >
 
+<link
+    rel="stylesheet"
+    href="<?= htmlspecialchars($siteUrl . '/css/account-scout-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
+>
+
 <section class="account-page account-dashboard-page">
 
     <header class="account-page-header account-dashboard-header">
@@ -237,6 +246,48 @@ require dirname(__DIR__) . '/partials/header.php';
             Log out
         </a>
     </header>
+
+    <?php if ($showActiveScout): ?>
+
+        <section class="account-active-scout-card">
+
+            <div class="account-active-scout-icon">
+                <i
+                    class="fa-solid fa-binoculars"
+                    aria-hidden="true"
+                ></i>
+            </div>
+
+            <div class="account-active-scout-copy">
+                <p class="account-eyebrow">
+                    Llama Scout Team
+                </p>
+
+                <h2>
+                    Active Llama Scout
+                </h2>
+
+                <p>
+                    Open Scout Basecamp to see your current Scout period,
+                    field-work progress, contributions, and Master Scout progress.
+                </p>
+            </div>
+
+            <a
+                class="account-active-scout-action"
+                href="/scout.php"
+            >
+                Scout Basecamp
+                <i
+                    class="fa-solid fa-arrow-right"
+                    aria-hidden="true"
+                ></i>
+            </a>
+
+        </section>
+
+    <?php endif; ?>
+
 
     <?php if ($showScoutOnboarding): ?>
 
