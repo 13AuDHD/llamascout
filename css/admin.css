@@ -4592,3 +4592,528 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-column: auto;
     }
 }
+
+
+/* =========================================================
+   PHASE 29: SYSTEM HEALTH + AUDIT CONSOLE
+   ========================================================= */
+
+.admin-system-health-panel {
+    margin-bottom: 18px;
+}
+
+.admin-health-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.admin-health-summary span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+}
+
+.admin-health-summary i,
+.admin-health-light {
+    width: 9px;
+    height: 9px;
+
+    display: inline-block;
+    flex: 0 0 9px;
+
+    border-radius: 50%;
+}
+
+.admin-health-summary .is-good i,
+.admin-health-card.is-good .admin-health-light,
+.admin-health-light.is-good {
+    background: #58a66a;
+    box-shadow: 0 0 0 3px rgba(88,166,106,.13);
+}
+
+.admin-health-summary .is-attention i,
+.admin-health-card.is-attention .admin-health-light,
+.admin-health-light.is-attention {
+    background: #d3a842;
+    box-shadow: 0 0 0 3px rgba(211,168,66,.13);
+}
+
+.admin-health-summary .is-down i,
+.admin-health-card.is-down .admin-health-light,
+.admin-health-light.is-down {
+    background: #c95a52;
+    box-shadow: 0 0 0 3px rgba(201,90,82,.13);
+}
+
+.admin-health-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+
+    padding: 16px;
+}
+
+.admin-health-card {
+    position: relative;
+
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        38px
+        minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    padding: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.admin-health-card > .admin-health-light {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+}
+
+.admin-health-card-icon {
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text-muted);
+}
+
+.admin-health-card-copy {
+    min-width: 0;
+    padding-right: 12px;
+}
+
+.admin-health-card-copy > span,
+.admin-health-card-copy > strong,
+.admin-health-card-copy > small {
+    display: block;
+}
+
+.admin-health-card-copy > span {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-health-card-copy > strong {
+    margin-top: 2px;
+
+    overflow-wrap: anywhere;
+
+    font-size: .82rem;
+}
+
+.admin-health-card-copy > small {
+    margin-top: 5px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.4;
+}
+
+.admin-health-status-text {
+    grid-column: 1 / -1;
+
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    font-weight: 800;
+}
+
+.admin-health-card.is-good .admin-health-status-text {
+    color: #58a66a;
+}
+
+.admin-health-card.is-attention .admin-health-status-text {
+    color: #d3a842;
+}
+
+.admin-health-card.is-down .admin-health-status-text {
+    color: #c95a52;
+}
+
+.admin-system-operations-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 14px;
+
+    margin-bottom: 18px;
+}
+
+.admin-system-operation-body {
+    padding: 16px;
+}
+
+.admin-system-operation-body > p {
+    margin: 0 0 14px;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    line-height: 1.55;
+}
+
+.admin-system-cleanup-form {
+    margin-top: 14px;
+}
+
+.admin-maintenance-history {
+    display: grid;
+}
+
+.admin-maintenance-history > div {
+    display: grid;
+    grid-template-columns:
+        10px
+        minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    padding: 11px 14px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-maintenance-history > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-maintenance-history .admin-health-light {
+    margin-top: 4px;
+}
+
+.admin-maintenance-history strong,
+.admin-maintenance-history span {
+    display: block;
+}
+
+.admin-maintenance-history strong {
+    font-size: .73rem;
+}
+
+.admin-maintenance-history span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+    font-size: .64rem;
+}
+
+.admin-panel-header-link {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+
+/* AUDIT CONSOLE */
+
+.admin-audit-filters {
+    display: grid;
+    grid-template-columns:
+        minmax(190px, 1.6fr)
+        repeat(
+            5,
+            minmax(120px, 1fr)
+        );
+    gap: 9px;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-audit-filters label {
+    min-width: 0;
+
+    display: grid;
+    gap: 5px;
+}
+
+.admin-audit-filters label > span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.admin-audit-filters input,
+.admin-audit-filters select {
+    width: 100%;
+    min-height: 38px;
+    box-sizing: border-box;
+
+    padding: 7px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .7rem;
+}
+
+.admin-audit-filter-actions {
+    grid-column: 1 / -1;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-audit-main {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.admin-audit-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.admin-audit-category {
+    flex: 0 0 auto;
+
+    padding: 3px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+
+    color: var(--text-muted) !important;
+
+    font-size: .58rem !important;
+    font-weight: 850;
+}
+
+.admin-audit-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 4px;
+}
+
+.admin-audit-links a {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.admin-audit-details {
+    margin-top: 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+}
+
+.admin-audit-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    padding: 8px 10px;
+
+    cursor: pointer;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+
+    list-style: none;
+}
+
+.admin-audit-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-audit-details summary span {
+    min-width: 20px;
+
+    padding: 2px 5px;
+
+    border-radius: 999px;
+
+    background: var(--surface);
+
+    text-align: center;
+}
+
+.admin-audit-metadata {
+    margin: 0;
+    padding: 0 10px 8px;
+}
+
+.admin-audit-metadata > div {
+    display: grid;
+    grid-template-columns:
+        minmax(130px, .7fr)
+        minmax(0, 1.3fr);
+    gap: 10px;
+
+    padding: 7px 0;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-audit-metadata dt {
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    font-weight: 800;
+}
+
+.admin-audit-metadata dd {
+    min-width: 0;
+    margin: 0;
+
+    overflow-wrap: anywhere;
+
+    font-size: .64rem;
+}
+
+.admin-audit-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    padding: 15px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-audit-pagination > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+
+@media (max-width: 1180px) {
+
+    .admin-health-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-audit-filters {
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-audit-search {
+        grid-column:
+            span 2;
+    }
+}
+
+
+@media (max-width: 760px) {
+
+    .admin-health-summary {
+        justify-content: flex-start;
+    }
+
+    .admin-health-grid,
+    .admin-system-operations-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-audit-filters {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .admin-audit-search {
+        grid-column: 1 / -1;
+    }
+}
+
+
+@media (max-width: 520px) {
+
+    .admin-audit-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-audit-search,
+    .admin-audit-filter-actions {
+        grid-column: auto;
+    }
+
+    .admin-audit-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-audit-metadata > div {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+}
