@@ -191,8 +191,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->rollBack();
         }
 
-        $error =
-            $exception->getMessage();
+        $reference = llama_log_caught_exception(
+            $exception,
+            'admin.moderate_submission',
+            ['submission_id' => $submissionId, 'action' => $action],
+            [InvalidArgumentException::class]
+        );
+
+        $error = $reference === null
+            ? $exception->getMessage()
+            : llama_error_message_with_reference('The moderation action could not be completed.', $reference);
     }
 
     $item =

@@ -128,7 +128,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice = 'Product photo deleted.';
             }
         } catch (Throwable $exception) {
-            $error = $exception->getMessage();
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.product_action',
+                ['product_id' => $productId, 'action' => $action],
+                [InvalidArgumentException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The product action could not be completed.', $reference);
         }
     }
 }

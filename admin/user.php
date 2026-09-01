@@ -89,7 +89,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Account anonymized. Contribution history was preserved.';
             }
         } catch (Throwable $exception) {
-            $error = $exception->getMessage();
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.user_action',
+                ['target_user_id' => $userId, 'action' => $action],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The user action could not be completed.', $reference);
         }
     }
 }

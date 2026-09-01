@@ -114,8 +114,16 @@ if (
                 $reportId
             );
     } catch (Throwable $exception) {
-        $error =
-            $exception->getMessage();
+        $reference = llama_log_caught_exception(
+            $exception,
+            'admin.moderate_report',
+            ['report_id' => $reportId],
+            [InvalidArgumentException::class]
+        );
+
+        $error = $reference === null
+            ? $exception->getMessage()
+            : llama_error_message_with_reference('The report could not be updated.', $reference);
 
         $item =
             moderation_report(

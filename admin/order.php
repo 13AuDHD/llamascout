@@ -69,7 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice = 'Fulfillment updated.';
             }
         } catch (Throwable $exception) {
-            $error = $exception->getMessage();
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.order_update',
+                ['order_id' => $orderId],
+                [InvalidArgumentException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The order could not be updated.', $reference);
         }
     }
 }
