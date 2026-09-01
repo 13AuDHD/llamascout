@@ -76,7 +76,7 @@ try {
         ->sessions
         ->create([
             'mode' => 'setup',
-            'ui_mode' => 'embedded',
+            'ui_mode' => 'embedded_page',
             'currency' => $currency,
             'customer' => $customerId,
             'client_reference_id' => (string) $userId,
@@ -168,7 +168,7 @@ require dirname(__DIR__) . '/partials/header.php';
         >
             <div class="checkout-loading">
                 <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                Loading secure payment form…
+                Loading secure payment formâ¦
             </div>
         </div>
         <div id="checkout-load-error" class="checkout-load-error" hidden>
