@@ -730,6 +730,7 @@ function admin_place_rating_options(
 <label>
     <span>Name</span>
     <input
+        id="admin-place-name"
         type="text"
         name="name"
         value="<?= moderation_e(
@@ -741,19 +742,67 @@ function admin_place_rating_options(
 
 <label>
     <span>Type</span>
-    <input
-        type="text"
+    <select
         name="type"
-        value="<?= moderation_e(
-            (string) $place['type']
-        ) ?>"
         required
     >
+        <?php
+        $placeTypes = [
+            'dispersed-camping' => 'Dispersed Camping',
+            'campground' => 'Campground',
+            'overnight-parking' => 'Overnight Parking',
+            'boondocking' => 'Boondocking',
+            'primitive-camping' => 'Primitive Camping',
+            'backcountry-camping' => 'Backcountry Camping',
+            'other' => 'Other',
+        ];
+
+        $currentPlaceType =
+            strtolower(
+                trim(
+                    (string) $place['type']
+                )
+            );
+
+        if (
+            $currentPlaceType !== ''
+            && !array_key_exists(
+                $currentPlaceType,
+                $placeTypes
+            )
+        ) {
+            $placeTypes =
+                [
+                    $currentPlaceType =>
+                        ucwords(
+                            str_replace(
+                                '-',
+                                ' ',
+                                $currentPlaceType
+                            )
+                        ),
+                ]
+                + $placeTypes;
+        }
+        ?>
+
+        <?php foreach ($placeTypes as $value => $label): ?>
+            <option
+                value="<?= moderation_e($value) ?>"
+                <?= $currentPlaceType === $value
+                    ? 'selected'
+                    : '' ?>
+            >
+                <?= moderation_e($label) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 </label>
 
 <label>
     <span>URL slug</span>
     <input
+        id="admin-place-slug"
         type="text"
         name="slug"
         value="<?= moderation_e(
@@ -761,6 +810,9 @@ function admin_place_rating_options(
         ) ?>"
         required
     >
+    <small>
+        Automatically generated from the Place name. You can edit it manually if needed.
+    </small>
 </label>
 
 <label>
@@ -2703,5 +2755,83 @@ function admin_place_rating_options(
 </aside>
 
 </div>
+
+
+<script>
+(() => {
+    const nameInput =
+        document.getElementById(
+            'admin-place-name'
+        );
+
+    const slugInput =
+        document.getElementById(
+            'admin-place-slug'
+        );
+
+    if (!nameInput || !slugInput) {
+        return;
+    }
+
+    let slugWasManuallyEdited =
+        false;
+
+    const slugify = (value) =>
+        value
+            .normalize('NFKD')
+            .replace(
+                /[\u0300-\u036f]/g,
+                ''
+            )
+            .toLowerCase()
+            .trim()
+            .replace(
+                /[^a-z0-9]+/g,
+                '-'
+            )
+            .replace(
+                /^-+|-+$/g,
+                ''
+            );
+
+    slugInput.addEventListener(
+        'input',
+        () => {
+            slugWasManuallyEdited =
+                true;
+        }
+    );
+
+    nameInput.addEventListener(
+        'input',
+        () => {
+            if (
+                slugWasManuallyEdited
+            ) {
+                return;
+            }
+
+            slugInput.value =
+                slugify(
+                    nameInput.value
+                );
+        }
+    );
+
+    nameInput.addEventListener(
+        'change',
+        () => {
+            if (
+                !slugWasManuallyEdited
+            ) {
+                slugInput.value =
+                    slugify(
+                        nameInput.value
+                    );
+            }
+        }
+    );
+})();
+</script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
