@@ -7685,3 +7685,336 @@ html[data-reduced-motion="true"] .admin-sidebar {
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   PHASE 41: SCOUT ONBOARDING
+   ========================================================= */
+
+.admin-scout-invite-panel {
+    margin-bottom: 14px;
+}
+
+.admin-scout-invite-form {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(180px, .7fr) auto;
+    gap: 10px;
+    align-items: end;
+    padding: 13px 14px;
+}
+
+.admin-scout-invite-form label {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-scout-invite-form label > span,
+.admin-scout-invite-form > div > strong,
+.admin-scout-invite-form > div > span {
+    display: block;
+}
+
+.admin-scout-invite-form label > span {
+    color: var(--text-muted);
+    font-size: .59rem;
+    font-weight: 850;
+}
+
+.admin-scout-invite-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.admin-scout-invite-form > div > strong {
+    font-size: .65rem;
+}
+
+.admin-scout-invite-form > div > span {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: .57rem;
+    line-height: 1.35;
+}
+
+.admin-scout-onboarding-review {
+    scroll-margin-top: 84px;
+}
+
+.admin-scout-onboarding-steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-scout-onboarding-steps > div {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+}
+
+.admin-scout-onboarding-steps > div > span {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .56rem;
+    font-weight: 900;
+}
+
+.admin-scout-onboarding-steps strong {
+    overflow-wrap: anywhere;
+    font-size: .58rem;
+}
+
+.admin-scout-onboarding-steps .is-complete > span {
+    border-color: #58a66a;
+    color: #58a66a;
+}
+
+.admin-scout-onboarding-steps .is-current > span {
+    border-color: #d3a842;
+    color: #d3a842;
+}
+
+.admin-scout-onboarding-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 13px 14px;
+}
+
+.admin-scout-onboarding-facts > div {
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.admin-scout-onboarding-facts > div.is-good {
+    border-color: color-mix(in srgb, #58a66a 45%, var(--border));
+}
+
+.admin-scout-onboarding-facts > div.has-attention {
+    border-color: color-mix(in srgb, #d3a842 45%, var(--border));
+}
+
+.admin-scout-onboarding-facts span,
+.admin-scout-onboarding-facts strong,
+.admin-scout-onboarding-facts small {
+    display: block;
+}
+
+.admin-scout-onboarding-facts span {
+    color: var(--text-muted);
+    font-size: .55rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-scout-onboarding-facts strong {
+    margin-top: 3px;
+    font-size: .65rem;
+}
+
+.admin-scout-onboarding-facts small {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: .54rem;
+    line-height: 1.35;
+}
+
+.admin-scout-review-note {
+    margin: 0 14px 12px;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, #d3a842 45%, var(--border));
+    border-radius: 8px;
+}
+
+.admin-scout-review-note strong {
+    font-size: .65rem;
+}
+
+.admin-scout-review-note p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: .61rem;
+    line-height: 1.45;
+}
+
+.admin-scout-review-actions {
+    border-top: 1px solid var(--border);
+}
+
+.admin-scout-review-actions > label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-scout-review-actions > label > span {
+    color: var(--text-muted);
+    font-size: .59rem;
+    font-weight: 850;
+}
+
+.admin-scout-review-actions textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+    resize: vertical;
+}
+
+.admin-scout-review-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 9px;
+}
+
+@media (max-width: 860px) {
+    .admin-scout-invite-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-scout-invite-form > button {
+        width: fit-content;
+    }
+
+    .admin-scout-onboarding-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+    .admin-scout-invite-form,
+    .admin-scout-onboarding-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-scout-onboarding-steps {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   PHASE 46: SCOUT REACTIVATION OPERATIONS
+   ========================================================= */
+
+.admin-scout-reactivation-status,
+.admin-scout-reactivation-intro {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 13px 14px;
+}
+
+.admin-scout-reactivation-intro {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-scout-reactivation-status > div,
+.admin-scout-reactivation-intro > div {
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.admin-scout-reactivation-status span,
+.admin-scout-reactivation-status strong,
+.admin-scout-reactivation-status small,
+.admin-scout-reactivation-intro strong,
+.admin-scout-reactivation-intro span,
+.admin-scout-reactivation-history span,
+.admin-scout-reactivation-history strong,
+.admin-scout-reactivation-history small {
+    display: block;
+}
+
+.admin-scout-reactivation-status span,
+.admin-scout-reactivation-history > span {
+    color: var(--text-muted);
+    font-size: .55rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-scout-reactivation-status strong,
+.admin-scout-reactivation-intro strong,
+.admin-scout-reactivation-history strong {
+    margin-top: 2px;
+    font-size: .65rem;
+}
+
+.admin-scout-reactivation-status small,
+.admin-scout-reactivation-intro span,
+.admin-scout-reactivation-history small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: .56rem;
+    line-height: 1.4;
+}
+
+.admin-scout-reactivation-cancel {
+    border-top: 1px solid var(--border);
+}
+
+.admin-scout-reactivation-cancel label {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-scout-reactivation-cancel label > span {
+    color: var(--text-muted);
+    font-size: .58rem;
+    font-weight: 850;
+}
+
+.admin-scout-reactivation-cancel textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+    resize: vertical;
+}
+
+.admin-scout-reactivation-history {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+}
+
+@media (max-width: 820px) {
+    .admin-scout-reactivation-status {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-scout-reactivation-status,
+    .admin-scout-reactivation-intro {
+        grid-template-columns: 1fr;
+    }
+}
