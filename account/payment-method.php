@@ -51,7 +51,6 @@ if (!$account) {
 
 $customerId = trim((string) ($account['stripe_customer_id'] ?? ''));
 $subscriptionId = trim((string) ($account['stripe_subscription_id'] ?? ''));
-$interval = strtolower(trim((string) ($account['membership_interval'] ?? '')));
 
 $clientSecret = '';
 $publishableKey = '';
@@ -62,42 +61,32 @@ try {
         throw new RuntimeException('No Stripe customer is attached to this account.');
     }
 
-    $plan = llama_membership_plan_by_interval($db, $interval, false);
-    $currency = strtolower(trim((string) ($plan['currency'] ?? '')));
-
-    if ($currency === '') {
-        throw new RuntimeException('The membership billing currency is not configured.');
-    }
-
     $publishableKey = llama_stripe_publishable_key();
 
-    $session = llama_stripe_client()
-        ->checkout
-        ->sessions
+    $setupIntent = llama_stripe_client()
+        ->setupIntents
         ->create([
-            'mode' => 'setup',
-            'ui_mode' => 'embedded_page',
-            'currency' => $currency,
             'customer' => $customerId,
-            'client_reference_id' => (string) $userId,
+            'usage' => 'off_session',
+            'automatic_payment_methods' => [
+                'enabled' => true,
+            ],
             'metadata' => [
                 'llama_user_id' => (string) $userId,
                 'stripe_subscription_id' => $subscriptionId,
+                'purpose' => 'membership_payment_method_update',
             ],
-            'return_url' =>
-                'https://account.llamascout.com/payment-method-return.php?session_id={CHECKOUT_SESSION_ID}',
-            'redirect_on_completion' => 'always',
         ]);
 
-    $clientSecret = trim((string) ($session->client_secret ?? ''));
+    $clientSecret = trim((string) ($setupIntent->client_secret ?? ''));
 
     if ($clientSecret === '') {
-        throw new RuntimeException('Stripe did not return an Embedded Checkout client secret.');
+        throw new RuntimeException('Stripe did not return a SetupIntent client secret.');
     }
 } catch (Throwable $exception) {
     $reference = llama_log_caught_exception(
         $exception,
-        'stripe_payment_method_embedded',
+        'stripe_payment_method_setup_intent',
         ['user_id' => $userId]
     );
 
@@ -120,7 +109,7 @@ require dirname(__DIR__) . '/partials/header.php';
 ?>
 <link rel="stylesheet" href="https://llamascout.com/css/account-billing.css">
 <?php if ($clientSecret !== ''): ?>
-<script src="https://js.stripe.com/clover/stripe.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <?php endif; ?>
 
 <section class="billing-page checkout-page">
@@ -160,23 +149,32 @@ require dirname(__DIR__) . '/partials/header.php';
     </aside>
 
     <main class="checkout-form-card">
-        <div
-            id="llama-embedded-checkout"
-            class="checkout-embed"
-            data-publishable-key="<?= payment_method_e($publishableKey) ?>"
-            data-client-secret="<?= payment_method_e($clientSecret) ?>"
-        >
-            <div class="checkout-loading">
-                <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                Loading secure payment formâ¦
+        <form id="payment-method-form" novalidate>
+            <div
+                id="payment-element"
+                class="checkout-embed"
+                data-publishable-key="<?= payment_method_e($publishableKey) ?>"
+                data-client-secret="<?= payment_method_e($clientSecret) ?>"
+            >
+                <div class="checkout-loading" id="payment-method-loading">
+                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+                    Loading secure payment form…
+                </div>
             </div>
-        </div>
-        <div id="checkout-load-error" class="checkout-load-error" hidden>
-            Secure payment fields could not load. Refresh and try again.
-        </div>
+
+            <div id="payment-method-message" class="checkout-load-error" role="alert" hidden></div>
+
+            <button id="payment-method-submit" class="billing-primary-button payment-method-submit" type="submit" disabled>
+                <span class="payment-method-submit-label">Save payment method</span>
+                <span class="payment-method-submit-working" hidden>
+                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+                    Saving…
+                </span>
+            </button>
+        </form>
     </main>
 </div>
-<script src="https://llamascout.com/js/membership-checkout.js" defer></script>
+<script src="https://llamascout.com/js/payment-method.js" defer></script>
 <?php endif; ?>
 </section>
 

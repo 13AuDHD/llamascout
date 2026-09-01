@@ -9,46 +9,51 @@ require_login();
 
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
-$sessionId = trim((string) ($_GET['session_id'] ?? ''));
+$setupIntentId = trim((string) ($_GET['setup_intent'] ?? ''));
 $db = db();
 
 $status = 'error';
 $message = 'The payment method could not be confirmed.';
 
 try {
-    if ($sessionId === '') {
-        throw new InvalidArgumentException('Stripe Checkout Session ID is missing.');
+    if ($setupIntentId === '') {
+        throw new InvalidArgumentException('Stripe SetupIntent ID is missing.');
     }
 
-    $session = llama_stripe_client()
-        ->checkout
-        ->sessions
-        ->retrieve($sessionId, []);
-
-    $sessionUserId = (int) (
-        $session->client_reference_id
-        ?? $session->metadata->llama_user_id
-        ?? 0
+    $stmt = $db->prepare(
+        'SELECT stripe_customer_id, stripe_subscription_id
+         FROM users
+         WHERE id = ?
+         LIMIT 1'
     );
+    $stmt->execute([$userId]);
+    $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($sessionUserId !== $userId) {
-        throw new RuntimeException('Payment-method session does not belong to the signed-in account.');
+    if (!$account) {
+        throw new RuntimeException('Signed-in account could not be loaded.');
     }
 
-    if (strtolower((string) ($session->status ?? '')) !== 'complete') {
+    $expectedCustomerId = trim((string) ($account['stripe_customer_id'] ?? ''));
+    $subscriptionId = trim((string) ($account['stripe_subscription_id'] ?? ''));
+
+    if ($expectedCustomerId === '') {
+        throw new RuntimeException('No Stripe customer is attached to this account.');
+    }
+
+    $stripe = llama_stripe_client();
+    $setupIntent = $stripe->setupIntents->retrieve($setupIntentId, []);
+
+    $intentUserId = (int) ($setupIntent->metadata->llama_user_id ?? 0);
+    $intentCustomerId = trim((string) ($setupIntent->customer ?? ''));
+    $intentStatus = strtolower(trim((string) ($setupIntent->status ?? '')));
+
+    if ($intentUserId !== $userId || $intentCustomerId !== $expectedCustomerId) {
+        throw new RuntimeException('Payment-method setup does not belong to the signed-in account.');
+    }
+
+    if ($intentStatus !== 'succeeded') {
         throw new RuntimeException('Payment-method setup is not complete.');
     }
-
-    $setupIntentId = trim((string) ($session->setup_intent ?? ''));
-    $customerId = trim((string) ($session->customer ?? ''));
-
-    if ($setupIntentId === '' || $customerId === '') {
-        throw new RuntimeException('Completed setup session is missing Stripe billing references.');
-    }
-
-    $setupIntent = llama_stripe_client()
-        ->setupIntents
-        ->retrieve($setupIntentId, []);
 
     $paymentMethodId = trim((string) ($setupIntent->payment_method ?? ''));
 
@@ -56,15 +61,11 @@ try {
         throw new RuntimeException('Stripe SetupIntent did not contain a payment method.');
     }
 
-    $stripe = llama_stripe_client();
-
-    $stripe->customers->update($customerId, [
+    $stripe->customers->update($expectedCustomerId, [
         'invoice_settings' => [
             'default_payment_method' => $paymentMethodId,
         ],
     ]);
-
-    $subscriptionId = trim((string) ($session->metadata->stripe_subscription_id ?? ''));
 
     if ($subscriptionId !== '') {
         $subscription = $stripe->subscriptions->update($subscriptionId, [
@@ -82,7 +83,7 @@ try {
         'stripe_payment_method_return',
         [
             'user_id' => $userId,
-            'session_id' => $sessionId,
+            'setup_intent' => $setupIntentId,
         ]
     );
 
