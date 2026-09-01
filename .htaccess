@@ -1,5 +1,16 @@
 RewriteEngine On
 
+# CUSTOM SAFETY / ERROR ROUTING
+# Keep these on the root domain so missing pages never fall back to Apache's generic error page.
+ErrorDocument 400 /safety.php?reason=400
+ErrorDocument 401 /safety.php?reason=401
+ErrorDocument 403 /safety.php?reason=403
+ErrorDocument 404 /safety.php?reason=404
+ErrorDocument 410 /safety.php?reason=410
+ErrorDocument 429 /safety.php?reason=429
+ErrorDocument 500 /safety.php?reason=500
+ErrorDocument 503 /safety.php?reason=503
+
 # FORCE HTTPS
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
