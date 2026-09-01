@@ -59,6 +59,25 @@ if (
                         $_POST
                     );
 
+                $submittedPhotos =
+                    llama_photo_decode_form_photos(
+                        $_POST['photos_json']
+                        ?? '[]'
+                    );
+
+                if ($submittedPhotos) {
+                    admin_badges_replace_image_from_stage(
+                        $db,
+                        $actorUserId,
+                        $badgeId,
+                        (string) (
+                            $_POST['photo_stage_token']
+                            ?? ''
+                        ),
+                        $submittedPhotos
+                    );
+                }
+
                 header(
                     'Location: /badge-admin.php?id=' .
                     $badgeId .
@@ -110,6 +129,9 @@ $adminPageEyebrow =
 
 $adminActiveNav =
     'badges';
+
+$adminNeedsPhotoUploader =
+    true;
 
 require __DIR__ .
     '/_header.php';
@@ -399,15 +421,31 @@ require __DIR__ .
             >
         </label>
 
-        <label class="is-wide">
-            <span>Image path</span>
+        <div class="is-wide admin-badge-image-uploader-field">
+            <span>Badge image</span>
+
             <input
-                type="text"
-                name="image_src"
-                maxlength="500"
-                placeholder="/images/badges/example.png"
+                type="hidden"
+                name="photo_stage_token"
+                value=""
             >
-        </label>
+
+            <input
+                type="hidden"
+                name="photos_json"
+                value="[]"
+            >
+
+            <div
+                data-photo-uploader
+                data-photo-context="badges"
+                data-photo-max="1"
+                data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
+                data-photo-endpoint="/photo-upload.php"
+                data-photo-title="Upload badge image"
+                data-photo-help="Upload one image. It will be resized, stripped of location metadata, saved as the badge slug, and used automatically."
+            ></div>
+        </div>
 
         <label class="is-wide">
             <span>Description</span>

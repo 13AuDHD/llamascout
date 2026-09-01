@@ -77,8 +77,29 @@ if (
                     $_POST
                 );
 
+                $submittedPhotos =
+                    llama_photo_decode_form_photos(
+                        $_POST['photos_json']
+                        ?? '[]'
+                    );
+
+                if ($submittedPhotos) {
+                    admin_badges_replace_image_from_stage(
+                        $db,
+                        $actorUserId,
+                        $badgeId,
+                        (string) (
+                            $_POST['photo_stage_token']
+                            ?? ''
+                        ),
+                        $submittedPhotos
+                    );
+                }
+
                 $notice =
-                    'Badge definition updated.';
+                    $submittedPhotos
+                        ? 'Badge definition and image updated.'
+                        : 'Badge definition updated.';
             } elseif ($action === 'award') {
                 admin_badges_award(
                     $db,
@@ -227,6 +248,9 @@ $adminPageEyebrow =
 
 $adminActiveNav =
     'badges';
+
+$adminNeedsPhotoUploader =
+    true;
 
 require __DIR__ .
     '/_header.php';
@@ -513,20 +537,57 @@ require __DIR__ .
             >
         </label>
 
-        <label class="is-wide">
-            <span>Image path</span>
+        <div class="is-wide admin-badge-image-uploader-field">
+            <span>Badge image</span>
+
+            <?php if (!empty($badge['image_src'])): ?>
+                <div class="admin-badge-current-image">
+                    <img
+                        src="<?= moderation_e((string) $badge['image_src']) ?>"
+                        alt="Current <?= moderation_e((string) $badge['name']) ?> badge"
+                    >
+
+                    <div>
+                        <strong>Current image</strong>
+                        <small>
+                            Upload another image below to replace it automatically.
+                        </small>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="admin-badge-current-image is-missing">
+                    <i class="fa-regular fa-image" aria-hidden="true"></i>
+                    <div>
+                        <strong>No badge image found</strong>
+                        <small>
+                            Upload one below. This will also repair badges that were manually uploaded but not linked correctly.
+                        </small>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <input
-                type="text"
-                name="image_src"
-                maxlength="500"
-                value="<?= moderation_e(
-                    (string) (
-                        $badge['image_src']
-                        ?? ''
-                    )
-                ) ?>"
+                type="hidden"
+                name="photo_stage_token"
+                value=""
             >
-        </label>
+
+            <input
+                type="hidden"
+                name="photos_json"
+                value="[]"
+            >
+
+            <div
+                data-photo-uploader
+                data-photo-context="badges"
+                data-photo-max="1"
+                data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
+                data-photo-endpoint="/photo-upload.php"
+                data-photo-title="Replace badge image"
+                data-photo-help="Upload one image. It becomes /uploads/badges/<?= moderation_e((string) $badge['slug']) ?>.jpg automatically."
+            ></div>
+        </div>
 
         <label class="is-wide">
             <span>Description</span>
