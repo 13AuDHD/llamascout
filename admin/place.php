@@ -540,6 +540,70 @@ function admin_place_rating_options(
     <?php endfor; ?>
     <?php
 }
+
+
+function admin_place_select_options(
+    array $options,
+    mixed $current,
+    bool $preserveLegacy = true
+): void {
+    $currentValue =
+        trim(
+            (string) (
+                $current
+                ?? ''
+            )
+        );
+
+    $normalized = [];
+
+    foreach ($options as $value => $label) {
+        $normalized[
+            (string) $value
+        ] =
+            (string) $label;
+    }
+
+    if (
+        $preserveLegacy
+        && $currentValue !== ''
+        && !array_key_exists(
+            $currentValue,
+            $normalized
+        )
+    ) {
+        $normalized =
+            [
+                $currentValue =>
+                    'Current value: ' .
+                    ucwords(
+                        str_replace(
+                            [
+                                '-',
+                                '_',
+                            ],
+                            ' ',
+                            $currentValue
+                        )
+                    ),
+            ]
+            +
+            $normalized;
+    }
+
+    foreach ($normalized as $value => $label) {
+        ?>
+        <option
+            value="<?= moderation_e($value) ?>"
+            <?= $currentValue === $value
+                ? 'selected'
+                : '' ?>
+        >
+            <?= moderation_e($label) ?>
+        </option>
+        <?php
+    }
+}
 ?>
 
 <?php if ($notice !== ''): ?>
@@ -747,55 +811,11 @@ function admin_place_rating_options(
         required
     >
         <?php
-        $placeTypes = [
-            'dispersed-camping' => 'Dispersed Camping',
-            'campground' => 'Campground',
-            'overnight-parking' => 'Overnight Parking',
-            'boondocking' => 'Boondocking',
-            'primitive-camping' => 'Primitive Camping',
-            'backcountry-camping' => 'Backcountry Camping',
-            'other' => 'Other',
-        ];
-
-        $currentPlaceType =
-            strtolower(
-                trim(
-                    (string) $place['type']
-                )
-            );
-
-        if (
-            $currentPlaceType !== ''
-            && !array_key_exists(
-                $currentPlaceType,
-                $placeTypes
-            )
-        ) {
-            $placeTypes =
-                [
-                    $currentPlaceType =>
-                        ucwords(
-                            str_replace(
-                                '-',
-                                ' ',
-                                $currentPlaceType
-                            )
-                        ),
-                ]
-                + $placeTypes;
-        }
+        admin_place_select_options(
+            community_place_types(),
+            $place['type'] ?? 'dispersed-camping'
+        );
         ?>
-
-        <?php foreach ($placeTypes as $value => $label): ?>
-            <option
-                value="<?= moderation_e($value) ?>"
-                <?= $currentPlaceType === $value
-                    ? 'selected'
-                    : '' ?>
-            >
-                <?= moderation_e($label) ?>
-            </option>
-        <?php endforeach; ?>
     </select>
 </label>
 
@@ -1030,24 +1050,60 @@ function admin_place_rating_options(
 
 <label>
     <span>Land manager</span>
-    <input
-        type="text"
-        name="land_manager"
-        value="<?= moderation_e(
-            (string) ($place['land_manager'] ?? '')
-        ) ?>"
-    >
+    <select name="land_manager">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown / not sure',
+                'U.S. Forest Service' => 'U.S. Forest Service',
+                'Bureau of Land Management' => 'Bureau of Land Management (BLM)',
+                'National Park Service' => 'National Park Service',
+                'U.S. Fish and Wildlife Service' => 'U.S. Fish and Wildlife Service',
+                'U.S. Army Corps of Engineers' => 'U.S. Army Corps of Engineers',
+                'Bureau of Reclamation' => 'Bureau of Reclamation',
+                'State government' => 'State government',
+                'County / regional government' => 'County / regional government',
+                'City / municipal government' => 'City / municipal government',
+                'Tribal government' => 'Tribal government',
+                'Private' => 'Private',
+                'Other' => 'Other / mixed management',
+            ],
+            $place['land_manager'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <label>
     <span>Land type</span>
-    <input
-        type="text"
-        name="land_type"
-        value="<?= moderation_e(
-            (string) ($place['land_type'] ?? '')
-        ) ?>"
-    >
+    <select name="land_type">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown / not sure',
+                'National Forest' => 'National Forest',
+                'BLM Land' => 'BLM Land',
+                'National Park' => 'National Park',
+                'National Monument' => 'National Monument',
+                'National Recreation Area' => 'National Recreation Area',
+                'National Wildlife Refuge' => 'National Wildlife Refuge',
+                'State Forest' => 'State Forest',
+                'State Park' => 'State Park',
+                'State Trust Land' => 'State Trust Land',
+                'Wildlife Management Area' => 'Wildlife Management Area',
+                'County / Regional Park' => 'County / Regional Park',
+                'City / Municipal Land' => 'City / Municipal Land',
+                'Army Corps of Engineers' => 'Army Corps of Engineers',
+                'Bureau of Reclamation' => 'Bureau of Reclamation',
+                'Tribal Land' => 'Tribal Land',
+                'Private Land' => 'Private Land',
+                'Roadside / Highway Right-of-Way' => 'Roadside / Highway Right-of-Way',
+                'Other' => 'Other',
+            ],
+            $place['land_type'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 </div>
@@ -1302,23 +1358,56 @@ function admin_place_rating_options(
 
 <div class="admin-place-report-grid">
 
-<?php foreach (
-    [
-        'vehicle_capacity' => 'Vehicle capacity',
-        'max_vehicle_length_feet' => 'Maximum vehicle length (ft)',
-    ] as $field => $label
-): ?>
 <label>
-    <span><?= moderation_e($label) ?></span>
-    <input
-        type="number"
-        step="1"
-        min="0"
-        name="<?= moderation_e($field) ?>"
-        value="<?= moderation_e((string) ($details[$field] ?? '')) ?>"
-    >
+    <span>Vehicle capacity</span>
+    <select name="vehicle_capacity">
+        <?php
+        $vehicleCapacityOptions = [
+            '' => 'Unknown',
+        ];
+
+        for ($i = 1; $i <= 10; $i++) {
+            $vehicleCapacityOptions[
+                (string) $i
+            ] =
+                $i .
+                ' vehicle' .
+                ($i === 1 ? '' : 's');
+        }
+
+        $vehicleCapacityOptions['11'] =
+            '10+ vehicles';
+
+        admin_place_select_options(
+            $vehicleCapacityOptions,
+            $details['vehicle_capacity'] ?? ''
+        );
+        ?>
+    </select>
 </label>
-<?php endforeach; ?>
+
+<label>
+    <span>Maximum vehicle length</span>
+    <select name="max_vehicle_length_feet">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                '15' => 'About 15 ft',
+                '20' => 'About 20 ft',
+                '25' => 'About 25 ft',
+                '30' => 'About 30 ft',
+                '35' => 'About 35 ft',
+                '40' => 'About 40 ft',
+                '45' => 'About 45 ft',
+                '50' => 'About 50 ft',
+                '60' => '50+ ft',
+            ],
+            $details['max_vehicle_length_feet'] ?? ''
+        );
+        ?>
+    </select>
+</label>
 
 <?php foreach (
     [
@@ -1341,20 +1430,47 @@ function admin_place_rating_options(
 
 <label>
     <span>Parking surface</span>
-    <input
-        type="text"
-        name="parking_surface"
-        value="<?= moderation_e((string) ($details['parking_surface'] ?? '')) ?>"
-    >
+    <select name="parking_surface">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'paved' => 'Paved / asphalt',
+                'concrete' => 'Concrete',
+                'graded-gravel' => 'Graded gravel',
+                'loose-gravel' => 'Loose gravel',
+                'hard-packed-dirt' => 'Hard-packed dirt',
+                'dirt' => 'Dirt',
+                'sand' => 'Sand',
+                'rock' => 'Rock / bedrock',
+                'grass' => 'Grass',
+                'mixed' => 'Mixed surface',
+            ],
+            $details['parking_surface'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <label>
     <span>Ground condition</span>
-    <input
-        type="text"
-        name="ground_condition"
-        value="<?= moderation_e((string) ($details['ground_condition'] ?? '')) ?>"
-    >
+    <select name="ground_condition">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'level-firm' => 'Mostly level and firm',
+                'uneven-firm' => 'Uneven but firm',
+                'rocky' => 'Rocky',
+                'soft' => 'Soft / sandy',
+                'mud-prone' => 'Mud-prone',
+                'grass' => 'Grassy',
+                'mixed' => 'Mixed',
+            ],
+            $details['ground_condition'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <?php foreach (
@@ -1404,20 +1520,44 @@ function admin_place_rating_options(
 
 <label>
     <span>Road surface</span>
-    <input
-        type="text"
-        name="road_surface"
-        value="<?= moderation_e((string) ($details['road_surface'] ?? '')) ?>"
-    >
+    <select name="road_surface">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'paved' => 'Paved / asphalt',
+                'concrete' => 'Concrete',
+                'graded-gravel' => 'Graded gravel',
+                'loose-gravel' => 'Loose gravel',
+                'hard-packed-dirt' => 'Hard-packed dirt',
+                'dirt' => 'Dirt',
+                'sand' => 'Sand',
+                'rock' => 'Rock / bedrock',
+                'mixed' => 'Mixed surface',
+            ],
+            $details['road_surface'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <label>
     <span>Road width</span>
-    <input
-        type="text"
-        name="road_width"
-        value="<?= moderation_e((string) ($details['road_width'] ?? '')) ?>"
-    >
+    <select name="road_width">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'one-lane' => 'One lane',
+                'one-and-half-lane' => 'About 1.5 lanes',
+                'two-lane' => 'Two lane',
+                'wide-two-lane' => 'Wide two lane',
+                'varies' => 'Varies significantly',
+            ],
+            $details['road_width'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <?php foreach (
@@ -1489,11 +1629,22 @@ function admin_place_rating_options(
 
 <label class="is-wide">
     <span>Walking distance from vehicle</span>
-    <input
-        type="text"
-        name="walking_distance_from_vehicle"
-        value="<?= moderation_e((string) ($details['walking_distance_from_vehicle'] ?? '')) ?>"
-    >
+    <select name="walking_distance_from_vehicle">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'at-vehicle' => 'At / beside vehicle',
+                'under-50-ft' => 'Under 50 ft',
+                '50-100-ft' => '50-100 ft',
+                '100-250-ft' => '100-250 ft',
+                '250-500-ft' => '250-500 ft',
+                '500-plus-ft' => '500+ ft / short hike',
+            ],
+            $details['walking_distance_from_vehicle'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 </div>
@@ -1683,12 +1834,25 @@ function admin_place_rating_options(
 
 <label class="is-wide">
     <span>Best months</span>
-    <input
-        type="text"
-        name="best_months"
-        value="<?= moderation_e((string) ($rules['best_months'] ?? '')) ?>"
-        placeholder="May, June, July, August..."
-    >
+    <select name="best_months">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                'year-round' => 'Year-round',
+                'spring' => 'Spring',
+                'summer' => 'Summer',
+                'fall' => 'Fall',
+                'winter' => 'Winter',
+                'spring-summer' => 'Spring through summer',
+                'summer-fall' => 'Summer through fall',
+                'late-spring-fall' => 'Late spring through fall',
+                'snow-free-months' => 'Generally snow-free months',
+            ],
+            $rules['best_months'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <label>
@@ -1747,8 +1911,26 @@ function admin_place_rating_options(
 <?php endforeach; ?>
 
 <label>
-    <span>Stay limit (days)</span>
-    <input type="number" min="0" step="1" name="stay_limit_days" value="<?= moderation_e((string) ($rules['stay_limit_days'] ?? '')) ?>">
+    <span>Stay limit</span>
+    <select name="stay_limit_days">
+        <?php
+        admin_place_select_options(
+            [
+                '' => 'Unknown',
+                '1' => '1 day',
+                '3' => '3 days',
+                '5' => '5 days',
+                '7' => '7 days',
+                '10' => '10 days',
+                '14' => '14 days',
+                '16' => '16 days',
+                '21' => '21 days',
+                '28' => '28 days',
+            ],
+            $rules['stay_limit_days'] ?? ''
+        );
+        ?>
+    </select>
 </label>
 
 <label>
