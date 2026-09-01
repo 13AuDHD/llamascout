@@ -8018,3 +8018,24 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-template-columns: 1fr;
     }
 }
+
+/* Application error log */
+.admin-error-message {
+    margin: 8px 0 0;
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.admin-error-trace {
+    max-height: 360px;
+    margin: 0;
+    padding: 10px;
+    overflow: auto;
+    border-top: 1px solid var(--border);
+    background: var(--background);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: .62rem;
+    line-height: 1.45;
+}
