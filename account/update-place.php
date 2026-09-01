@@ -52,9 +52,23 @@ $openUpdate =
         (int) $place['id']
     );
 
+$isNeedsChanges =
+    $openUpdate
+    && (string) (
+        $openUpdate['status']
+        ?? ''
+    ) === 'needs-changes';
+
+$isPendingUpdate =
+    $openUpdate
+    && (string) (
+        $openUpdate['status']
+        ?? ''
+    ) === 'pending';
+
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
-    && !$openUpdate
+    && !$isPendingUpdate
 ) {
     if (
         !community_verify_csrf(
@@ -68,19 +82,36 @@ if (
             'Your session expired. Refresh the page and try again.';
     } else {
         try {
-            submit_place_update(
-                $userId,
-                $place,
-                $_POST
-            );
+            if ($isNeedsChanges) {
+                community_resubmit_place_update(
+                    $userId,
+                    $place,
+                    (int) $openUpdate['id'],
+                    $_POST
+                );
 
-            header(
-                'Location: /contributions.php?submitted=update',
-                true,
-                303
-            );
+                header(
+                    'Location: /contributions.php?submitted=update-resubmitted',
+                    true,
+                    303
+                );
+
+            } else {
+                submit_place_update(
+                    $userId,
+                    $place,
+                    $_POST
+                );
+
+                header(
+                    'Location: /contributions.php?submitted=update',
+                    true,
+                    303
+                );
+            }
 
             exit;
+
         } catch (Throwable $exception) {
             $error =
                 (
@@ -105,6 +136,56 @@ $currentValues =
         $db,
         (int) $place['id']
     );
+
+$editProposed = [];
+$editPhotos = [];
+$editVisitedAt = '';
+$editContributorNotes = '';
+
+if ($isNeedsChanges) {
+    $decodedProposed =
+        json_decode(
+            (string) (
+                $openUpdate['proposed_changes']
+                ?? '{}'
+            ),
+            true
+        );
+
+    $editProposed =
+        is_array($decodedProposed)
+            ? $decodedProposed
+            : [];
+
+    $decodedPhotos =
+        json_decode(
+            (string) (
+                $openUpdate['photos']
+                ?? '[]'
+            ),
+            true
+        );
+
+    $editPhotos =
+        is_array($decodedPhotos)
+            ? $decodedPhotos
+            : [];
+
+    $editVisitedAt =
+        !empty($openUpdate['visited_at'])
+            ? substr(
+                (string) $openUpdate['visited_at'],
+                0,
+                10
+            )
+            : '';
+
+    $editContributorNotes =
+        (string) (
+            $openUpdate['contributor_notes']
+            ?? ''
+        );
+}
 
 $groups = [];
 
@@ -410,7 +491,7 @@ require dirname(__DIR__) .
 </header>
 
 
-<?php if ($openUpdate): ?>
+<?php if ($isPendingUpdate): ?>
 
 <div class="contribution-message">
     <i class="fa-solid fa-clock" aria-hidden="true"></i>
@@ -429,6 +510,34 @@ require dirname(__DIR__) .
 </p>
 
 <?php else: ?>
+
+
+<?php if ($isNeedsChanges): ?>
+
+<div class="contribution-message is-attention">
+    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+
+    <div>
+        <strong>Changes requested by moderation.</strong>
+
+        <?php if (!empty($openUpdate['review_notes'])): ?>
+            <span>
+                <?= nl2br(
+                    update_place_e(
+                        (string) $openUpdate['review_notes']
+                    )
+                ) ?>
+            </span>
+        <?php else: ?>
+            <span>
+                Review the proposed fields below, make the requested corrections,
+                and resubmit the same update.
+            </span>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php endif; ?>
 
 
 <?php if ($error): ?>
@@ -461,6 +570,14 @@ require dirname(__DIR__) .
     name="slug"
     value="<?= update_place_e($slug) ?>"
 >
+
+<?php if ($isNeedsChanges): ?>
+<input
+    type="hidden"
+    name="update_submission_id"
+    value="<?= (int) $openUpdate['id'] ?>"
+>
+<?php endif; ?>
 
 <input
     type="hidden"
@@ -574,7 +691,10 @@ $current =
     data-update-field-toggle="<?= update_place_e($path) ?>"
     <?= in_array(
         $path,
-        (array) ($_POST['change_fields'] ?? []),
+        (array) (
+            $_POST['change_fields']
+            ?? array_keys($editProposed)
+        ),
         true
     )
         ? 'checked'
@@ -630,7 +750,14 @@ $postValues =
 $renderValue =
     array_key_exists($path, $postValues)
         ? $postValues[$path]
-        : $current;
+        : (
+            array_key_exists(
+                $path,
+                $editProposed
+            )
+                ? $editProposed[$path]
+                : $current
+        );
 
 update_place_render_control(
     $path,
@@ -682,7 +809,7 @@ update_place_render_control(
         value="<?= update_place_e(
             (string) (
                 $_POST['visited_at']
-                ?? ''
+                ?? $editVisitedAt
             )
         ) ?>"
     >
@@ -699,7 +826,7 @@ update_place_render_control(
     ><?= update_place_e(
         (string) (
             $_POST['contributor_notes']
-            ?? ''
+            ?? $editContributorNotes
         )
     ) ?></textarea>
 </label>
@@ -725,6 +852,46 @@ update_place_render_control(
 </summary>
 
 <div class="contribution-section-body">
+
+<?php if ($isNeedsChanges && $editPhotos): ?>
+
+<div class="update-place-existing-photos">
+    <strong>Already attached to this update</strong>
+    <p>
+        These photos remain with the resubmission. Add new evidence below if
+        moderation requested it.
+    </p>
+
+    <div class="contribution-existing-photo-grid">
+        <?php foreach ($editPhotos as $photo): ?>
+            <?php
+            $existingSrc =
+                is_array($photo)
+                    ? trim(
+                        (string) (
+                            $photo['src']
+                            ?? ''
+                        )
+                    )
+                    : '';
+            ?>
+            <?php if ($existingSrc !== ''): ?>
+                <img
+                    src="https://llamascout.com<?= update_place_e($existingSrc) ?>"
+                    alt="<?= update_place_e(
+                        (string) (
+                            $photo['alt']
+                            ?? ''
+                        )
+                    ) ?>"
+                >
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<?php endif; ?>
+
 
 <div
     data-photo-uploader

@@ -25,7 +25,12 @@ require dirname(__DIR__) . '/partials/header.php';
     </header>
 
     <?php if ($submitted !== ''): ?>
-        <div class="contribution-message is-success" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Submitted for review.</div>
+        <div class="contribution-message is-success" role="status">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <?= $submitted === 'update-resubmitted'
+                ? 'Changes resubmitted for review.'
+                : 'Submitted for review.' ?>
+        </div>
     <?php endif; ?>
 
     <?php if (!$items): ?>
@@ -51,6 +56,27 @@ require dirname(__DIR__) . '/partials/header.php';
                     <div class="contribution-history-side">
                         <span class="contribution-status status-<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if (!empty($item['slug'])): ?><a href="<?= htmlspecialchars($siteUrl . '/place.php?slug=' . rawurlencode((string) $item['slug']), ENT_QUOTES, 'UTF-8') ?>">View place</a><?php endif; ?>
+                        <?php if (
+                            $status === 'needs-changes'
+                            && (string) ($item['kind'] ?? '') === 'update'
+                            && !empty($item['slug'])
+                        ): ?>
+                            <a
+                                class="contribution-resubmit-link"
+                                href="<?= htmlspecialchars(
+                                    $siteUrl .
+                                    '/account/update-place.php?slug=' .
+                                    rawurlencode(
+                                        (string) $item['slug']
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                                Edit &amp; resubmit
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>
