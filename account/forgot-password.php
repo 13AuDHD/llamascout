@@ -497,6 +497,10 @@ if (
     defer
   ></script>
 
+<link
+  rel="stylesheet"
+  href="https://llamascout.com/css/account-auth-v2.css"
+>
 </head>
 
 
