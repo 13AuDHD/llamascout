@@ -11,6 +11,29 @@ require_once dirname(__DIR__) . '/app/membership-invitations.php';
 start_llama_session();
 
 
+$requestedPlan =
+    strtolower(
+        trim(
+            (string) (
+                $_GET['plan']
+                ?? $_POST['plan']
+                ?? $_SESSION['pending_membership_plan']
+                ?? ''
+            )
+        )
+    );
+
+if (
+    !in_array(
+        $requestedPlan,
+        ['monthly', 'annual'],
+        true
+    )
+) {
+    $requestedPlan = '';
+}
+
+
 /* =====================================================
    COMPLIMENTARY INVITATION CONTEXT
    ===================================================== */
@@ -61,6 +84,17 @@ if (is_logged_in()) {
         header(
             'Location: https://account.llamascout.com/complimentary-invite.php?token='
             . rawurlencode($inviteToken)
+        );
+        exit;
+    }
+
+    if ($requestedPlan !== '') {
+        $_SESSION['pending_membership_plan'] =
+            $requestedPlan;
+
+        header(
+            'Location: https://account.llamascout.com/membership.php?plan=' .
+            rawurlencode($requestedPlan)
         );
         exit;
     }
@@ -837,6 +871,15 @@ if (
                 );
             }
 
+            if ($requestedPlan !== '') {
+                $_SESSION['pending_membership_plan'] =
+                    $requestedPlan;
+            } else {
+                unset(
+                    $_SESSION['pending_membership_plan']
+                );
+            }
+
 
             header(
                 'Location: https://account.llamascout.com/verify-email.php?sent=1'
@@ -929,6 +972,10 @@ function e(
   defer
 ></script>
 
+<link
+  rel="stylesheet"
+  href="https://llamascout.com/css/account-auth-v2.css"
+>
 </head>
 
 <body class="account-auth-body">
@@ -974,10 +1021,16 @@ function e(
 
       <p class="account-auth-intro">
 
-        Create a Llama Scout account to
-        start building your profile, save
-        places, earn badges, and manage
-        your membership.
+        <?php if ($requestedPlan !== ''): ?>
+          Create your free Llama Scout account first. After you
+          verify your email, we will bring you back to the
+          <?= e(ucfirst($requestedPlan)) ?> membership you selected
+          so you can continue to secure Stripe checkout.
+        <?php else: ?>
+          Create a Llama Scout account to start building your
+          profile, save places, earn badges, and manage your
+          membership.
+        <?php endif; ?>
 
       </p>
 
@@ -1009,6 +1062,14 @@ function e(
       method="post"
       novalidate
     >
+
+      <?php if ($requestedPlan !== ''): ?>
+        <input
+          type="hidden"
+          name="plan"
+          value="<?= e($requestedPlan) ?>"
+        >
+      <?php endif; ?>
 
       <?php if ($inviteToken !== ''): ?>
 

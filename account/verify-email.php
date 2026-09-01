@@ -290,6 +290,42 @@ if ($token !== '') {
                     exit;
                 }
             }
+
+            $pendingMembershipPlan =
+                strtolower(
+                    trim(
+                        (string) (
+                            $_SESSION[
+                                'pending_membership_plan'
+                            ]
+                            ?? ''
+                        )
+                    )
+                );
+
+            if (
+                in_array(
+                    $pendingMembershipPlan,
+                    ['monthly', 'annual'],
+                    true
+                )
+            ) {
+                unset(
+                    $_SESSION[
+                        'pending_membership_plan'
+                    ]
+                );
+
+                header(
+                    'Location: https://account.llamascout.com/membership.php?plan=' .
+                    rawurlencode(
+                        $pendingMembershipPlan
+                    ) .
+                    '&verified=1'
+                );
+
+                exit;
+            }
         }
 
 
@@ -450,6 +486,10 @@ if (
     src="https://llamascout.com/js/accessibility.js"
   ></script>
 
+<link
+  rel="stylesheet"
+  href="https://llamascout.com/css/account-auth-v2.css"
+>
 </head>
 
 
