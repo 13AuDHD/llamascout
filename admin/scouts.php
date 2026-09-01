@@ -10,6 +10,78 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser = moderation_require_admin();
 $db = db();
 
+$actorUserId =
+    (int) (
+        $adminUser['id']
+        ?? 0
+    );
+
+$inviteNotice = '';
+$inviteError = '';
+
+if (
+    $_SERVER['REQUEST_METHOD']
+    === 'POST'
+) {
+    if (
+        !moderation_verify_csrf(
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            )
+        )
+    ) {
+        $inviteError =
+            'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            $action =
+                trim(
+                    (string) (
+                        $_POST['scout_admin_action']
+                        ?? ''
+                    )
+                );
+
+            if ($action === 'invite') {
+                $result =
+                    llama_scout_admin_invite(
+                        $db,
+                        $actorUserId,
+                        (int) (
+                            $_POST['candidate_user_id']
+                            ?? 0
+                        )
+                    );
+
+                $candidate =
+                    $result['candidate'];
+
+                $inviteNotice =
+                    !empty(
+                        $result['mail_sent']
+                    )
+                        ? 'Scout invitation sent to ' .
+                            (
+                                $candidate['display_name']
+                                ?: $candidate['username']
+                                ?: $candidate['email']
+                            ) .
+                            '.'
+                        : 'The Scout invitation was created, but the email could not be sent.';
+            }
+        } catch (Throwable $exception) {
+            $inviteError =
+                $exception->getMessage();
+        }
+    }
+}
+
+$eligibleCandidates =
+    llama_scout_admin_eligible_candidates(
+        $db
+    );
+
 $allScouts = admin_scouts_list($db);
 $scoutStats = admin_scout_operational_stats($allScouts);
 
@@ -70,6 +142,120 @@ $adminActiveNav = 'scouts';
 
 require __DIR__ . '/_header.php';
 ?>
+
+<?php if ($inviteNotice !== ''): ?>
+    <div class="admin-notice is-success">
+        <?= moderation_e($inviteNotice) ?>
+    </div>
+<?php endif; ?>
+
+<?php if ($inviteError !== ''): ?>
+    <div class="admin-notice is-error">
+        <?= moderation_e($inviteError) ?>
+    </div>
+<?php endif; ?>
+
+
+<section class="admin-panel admin-scout-invite-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Recruitment</p>
+        <h2>Invite a Llama Scout</h2>
+    </div>
+
+    <span>
+        <?= number_format(
+            count($eligibleCandidates)
+        ) ?>
+        eligible
+    </span>
+</header>
+
+<?php if (!$eligibleCandidates): ?>
+    <div class="admin-empty-state">
+        <p>
+            There are no verified member accounts currently eligible
+            for a new Scout invitation.
+        </p>
+    </div>
+<?php else: ?>
+
+<form
+    class="admin-scout-invite-form"
+    method="post"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+
+    <input
+        type="hidden"
+        name="scout_admin_action"
+        value="invite"
+    >
+
+    <label>
+        <span>Member</span>
+
+        <select
+            name="candidate_user_id"
+            required
+        >
+            <option value="">
+                Choose an eligible member
+            </option>
+
+            <?php foreach ($eligibleCandidates as $candidate): ?>
+                <option
+                    value="<?= (int) $candidate['id'] ?>"
+                >
+                    <?= moderation_e(
+                        (string) (
+                            $candidate['display_name']
+                            ?: $candidate['username']
+                            ?: $candidate['email']
+                        )
+                    ) ?>
+                    <?php if (!empty($candidate['username'])): ?>
+                        (@<?= moderation_e((string) $candidate['username']) ?>)
+                    <?php endif; ?>
+                    <?php if ((string) ($candidate['scout_status'] ?? '') === 'invited'): ?>
+                        · resend invitation
+                    <?php elseif ((string) ($candidate['scout_status'] ?? '') === 'declined'): ?>
+                        · previously declined
+                    <?php endif; ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </label>
+
+    <div>
+        <strong>30-day invitation</strong>
+        <span>
+            The member receives an email and an onboarding card
+            in their Llama Scout account.
+        </span>
+    </div>
+
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        <i
+            class="fa-solid fa-paper-plane"
+            aria-hidden="true"
+        ></i>
+        Send Scout invitation
+    </button>
+</form>
+
+<?php endif; ?>
+
+</section>
+
 
 <section class="admin-scout-stat-grid">
     <div><span>Total profiles</span><strong><?= number_format($scoutStats['total']) ?></strong></div>

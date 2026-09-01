@@ -51,6 +51,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (string) ($_POST['notes'] ?? '')
                 );
                 $notice = 'Scout rank updated.';
+
+            } elseif ($action === 'onboarding-review') {
+                $reviewAction =
+                    (string) (
+                        $_POST['review_action']
+                        ?? ''
+                    );
+
+                llama_scout_admin_review(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    $reviewAction,
+                    (string) (
+                        $_POST['notes']
+                        ?? ''
+                    )
+                );
+
+                $notice =
+                    match ($reviewAction) {
+                        'approve' =>
+                            'Scout onboarding approved. Scout access is active.',
+                        'return' =>
+                            'Scout onboarding returned for changes.',
+                        'decline' =>
+                            'Scout onboarding declined.',
+                        default =>
+                            'Scout onboarding updated.',
+                    };
             }
         } catch (Throwable $exception) {
             $error = $exception->getMessage();
@@ -71,6 +101,44 @@ $activity = admin_scout_activity($db, (int) $scout['user_id']);
 $rankHistory = admin_scout_rank_history($db, (int) $scout['user_id']);
 $currentPeriod = admin_scout_current_period($db, $scout);
 $masterQualification = admin_scout_master_qualification($db, $scout);
+
+$scoutStatus =
+    (string) $scout['status'];
+
+$isOnboarding =
+    in_array(
+        $scoutStatus,
+        [
+            'invited',
+            'application_started',
+            'application_submitted',
+            'training',
+            'pending_approval',
+        ],
+        true
+    );
+
+$onboardingStep =
+    llama_scout_onboarding_step(
+        $scoutStatus
+    );
+
+$invitationExpired =
+    llama_scout_invitation_expired(
+        $scout
+    );
+
+$trainingComplete =
+    $training
+    && !empty($training['completed_at'])
+    && !empty($training['acknowledged_tools'])
+    && !empty($training['acknowledged_accuracy'])
+    && !empty($training['acknowledged_safety'])
+    && !empty($training['acknowledged_privacy']);
+
+$applicationComplete =
+    $application
+    && !empty($application['submitted_at']);
 
 $roles = explode(
     ',',
@@ -202,6 +270,217 @@ require __DIR__ . '/_header.php';
 
     <div class="admin-user-detail-main">
 
+        <?php if ($isOnboarding): ?>
+
+        <section class="admin-panel admin-scout-onboarding-review">
+
+            <header class="admin-panel-header">
+                <div>
+                    <p>Onboarding</p>
+                    <h2>Scout Candidate Progress</h2>
+                </div>
+
+                <span>
+                    Step <?= $onboardingStep ?> of 5
+                </span>
+            </header>
+
+            <div class="admin-scout-onboarding-steps">
+
+                <?php
+                $steps = [
+                    1 => 'Invitation',
+                    2 => 'About You',
+                    3 => 'Training',
+                    4 => 'Approval',
+                    5 => 'Active Scout',
+                ];
+                ?>
+
+                <?php foreach ($steps as $stepNumber => $stepLabel): ?>
+                    <div class="<?= $stepNumber < $onboardingStep
+                        ? 'is-complete'
+                        : (
+                            $stepNumber === $onboardingStep
+                                ? 'is-current'
+                                : ''
+                        ) ?>">
+                        <span><?= $stepNumber ?></span>
+                        <strong><?= moderation_e($stepLabel) ?></strong>
+                    </div>
+                <?php endforeach; ?>
+
+            </div>
+
+            <div class="admin-scout-onboarding-facts">
+                <div>
+                    <span>Invitation</span>
+                    <strong>
+                        <?= moderation_e(
+                            (string) (
+                                $scout['invited_at']
+                                ?: 'Not recorded'
+                            )
+                        ) ?>
+                    </strong>
+                    <small>
+                        Expires:
+                        <?= moderation_e(
+                            (string) (
+                                $scout['invitation_expires_at']
+                                ?: 'No expiration'
+                            )
+                        ) ?>
+                        <?= $invitationExpired ? ' · expired' : '' ?>
+                    </small>
+                </div>
+
+                <div class="<?= $applicationComplete ? 'is-good' : '' ?>">
+                    <span>Application</span>
+                    <strong>
+                        <?= $applicationComplete
+                            ? 'Submitted'
+                            : 'Not complete' ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e(
+                            (string) (
+                                $scout['application_submitted_at']
+                                ?: 'Waiting on candidate'
+                            )
+                        ) ?>
+                    </small>
+                </div>
+
+                <div class="<?= $trainingComplete ? 'is-good' : '' ?>">
+                    <span>Training</span>
+                    <strong>
+                        <?= $trainingComplete
+                            ? 'Complete'
+                            : 'Not complete' ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e(
+                            (string) (
+                                $scout['training_completed_at']
+                                ?: 'Waiting on candidate'
+                            )
+                        ) ?>
+                    </small>
+                </div>
+
+                <div class="<?= $scoutStatus === 'pending_approval' ? 'has-attention' : '' ?>">
+                    <span>Review</span>
+                    <strong>
+                        <?= $scoutStatus === 'pending_approval'
+                            ? 'Ready for review'
+                            : llama_scout_onboarding_status_label($scoutStatus) ?>
+                    </strong>
+                </div>
+            </div>
+
+            <?php if (
+                $application
+                && !empty($application['review_notes'])
+                && $scoutStatus === 'application_started'
+            ): ?>
+                <div class="admin-scout-review-note">
+                    <strong>Returned for changes</strong>
+                    <p>
+                        <?= nl2br(
+                            moderation_e(
+                                (string) $application['review_notes']
+                            )
+                        ) ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (
+                in_array(
+                    $scoutStatus,
+                    [
+                        'application_submitted',
+                        'training',
+                        'pending_approval',
+                    ],
+                    true
+                )
+            ): ?>
+
+                <form
+                    class="admin-user-form admin-scout-review-actions"
+                    method="post"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= moderation_e(moderation_csrf_token()) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="scout_profile_id"
+                        value="<?= (int) $scoutProfileId ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="scout_admin_action"
+                        value="onboarding-review"
+                    >
+
+                    <label>
+                        <span>Review notes</span>
+                        <textarea
+                            name="notes"
+                            rows="3"
+                            placeholder="Required when returning or declining. Optional welcome note when approving."
+                        ></textarea>
+                    </label>
+
+                    <div class="admin-scout-review-buttons">
+                        <?php if ($scoutStatus === 'pending_approval'): ?>
+                            <button
+                                class="admin-button"
+                                type="submit"
+                                name="review_action"
+                                value="approve"
+                            >
+                                <i
+                                    class="fa-solid fa-circle-check"
+                                    aria-hidden="true"
+                                ></i>
+                                Approve Scout
+                            </button>
+                        <?php endif; ?>
+
+                        <button
+                            class="admin-button is-muted"
+                            type="submit"
+                            name="review_action"
+                            value="return"
+                        >
+                            Return for changes
+                        </button>
+
+                        <button
+                            class="admin-button is-danger"
+                            type="submit"
+                            name="review_action"
+                            value="decline"
+                            onclick="return confirm('Decline this Scout onboarding? Their regular Llama Scout account will remain unchanged.');"
+                        >
+                            Decline onboarding
+                        </button>
+                    </div>
+                </form>
+
+            <?php endif; ?>
+
+        </section>
+
+        <?php endif; ?>
+
+
         <section class="admin-panel">
             <header class="admin-panel-header">
                 <div>
@@ -235,6 +514,9 @@ require __DIR__ . '/_header.php';
                                 <option
                                     value="<?= moderation_e($status) ?>"
                                     <?= (string) $scout['status'] === $status ? 'selected' : '' ?>
+                                    <?= $isOnboarding && $status === 'active'
+                                        ? 'disabled'
+                                        : '' ?>
                                 >
                                     <?= moderation_e(
                                         ucwords(
@@ -294,6 +576,32 @@ require __DIR__ . '/_header.php';
                 </header>
 
                 <dl class="admin-user-definition-list">
+                    <div>
+                        <dt>Legal name</dt>
+                        <dd><?= moderation_e((string) ($application['legal_name'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Mailing location</dt>
+                        <dd>
+                            <?= moderation_e(
+                                trim(
+                                    implode(
+                                        ', ',
+                                        array_filter([
+                                            $application['city'] ?? null,
+                                            $application['state_region'] ?? null,
+                                            $application['postal_code'] ?? null,
+                                            $application['country'] ?? null,
+                                        ])
+                                    )
+                                ) ?: 'Not provided'
+                            ) ?>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Phone</dt>
+                        <dd><?= moderation_e((string) ($application['phone'] ?: 'Not provided')) ?></dd>
+                    </div>
                     <div>
                         <dt>Why Scout</dt>
                         <dd><?= moderation_e((string) ($application['why_scout'] ?: 'Not provided')) ?></dd>
