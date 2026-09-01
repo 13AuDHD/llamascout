@@ -5831,3 +5831,19 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-column: 1 / -1;
     }
 }
+
+
+/* =========================================================
+   PHASE 32: PLACE TYPE + AUTOMATIC SLUG
+   ========================================================= */
+
+.admin-place-form-grid label > small {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .6rem;
+    line-height: 1.4;
+}
