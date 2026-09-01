@@ -8312,3 +8312,133 @@ html[data-reduced-motion="true"] .admin-sidebar {
     color: var(--text);
     cursor: pointer;
 }
+
+
+/* =========================================================
+   SYSTEM: TEST ACCOUNT TOOLS
+   ========================================================= */
+
+.admin-system-testing-body {
+    display: grid;
+    gap: 18px;
+    padding: 22px;
+}
+
+.admin-system-testing-copy h3 {
+    margin: 0 0 6px;
+}
+
+.admin-system-testing-copy p {
+    max-width: 850px;
+    margin: 0;
+    line-height: 1.6;
+    opacity: .78;
+}
+
+.admin-system-testing-mode {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 13px 15px;
+    border: 1px solid var(--admin-border, rgba(127,127,127,.22));
+    border-radius: 12px;
+}
+
+.admin-system-testing-mode > i {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(127,127,127,.10);
+}
+
+.admin-system-testing-mode span,
+.admin-system-testing-mode strong {
+    display: block;
+}
+
+.admin-system-testing-mode span {
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.admin-system-testing-mode.is-test {
+    border-color: rgba(88,166,106,.42);
+    background: rgba(88,166,106,.06);
+}
+
+.admin-system-testing-mode.is-live {
+    border-color: rgba(211,168,66,.48);
+    background: rgba(211,168,66,.06);
+}
+
+.admin-system-testing-form {
+    display: grid;
+    gap: 16px;
+}
+
+.admin-system-testing-user {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-system-testing-user > span {
+    font-size: .74rem;
+    font-weight: 800;
+}
+
+.admin-system-testing-user select {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 11px;
+    border: 1px solid var(--admin-border, rgba(127,127,127,.24));
+    border-radius: 9px;
+    background: var(--admin-surface, transparent);
+    color: inherit;
+    font: inherit;
+}
+
+.admin-system-testing-options {
+    display: grid;
+    gap: 10px;
+}
+
+.admin-system-testing-options .admin-system-check {
+    margin: 0;
+    padding: 13px;
+    border: 1px solid var(--admin-border, rgba(127,127,127,.18));
+    border-radius: 10px;
+}
+
+.admin-system-testing-options .admin-system-check.is-disabled {
+    opacity: .5;
+}
+
+.admin-system-testing-warning {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 13px;
+    border: 1px solid rgba(201,90,82,.40);
+    border-radius: 10px;
+    background: rgba(201,90,82,.06);
+    font-size: .78rem;
+}
+
+.admin-system-testing-warning strong,
+.admin-system-testing-warning span {
+    display: block;
+}
+
+
+.admin-system-testing-panel .admin-button.is-danger {
+    border-color: rgba(201,90,82,.72);
+    background: rgba(201,90,82,.14);
+    color: inherit;
+}
+
+.admin-system-testing-panel .admin-button.is-danger:hover {
+    background: rgba(201,90,82,.22);
+}
