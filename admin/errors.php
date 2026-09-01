@@ -133,7 +133,7 @@ function error_log_query(array $changes = []): string
 require __DIR__ . '/_header.php';
 ?>
 
-<section class="admin-panel admin-audit-console">
+<section class="admin-panel admin-audit-console admin-error-console">
     <?php if ($notice !== ''): ?>
         <div class="admin-notice is-success"><p><?= moderation_e($notice) ?></p></div>
     <?php endif; ?>
@@ -149,38 +149,44 @@ require __DIR__ . '/_header.php';
         <span>Page <?= (int) $result['page'] ?> of <?= (int) $result['pages'] ?></span>
     </header>
 
-    <div class="admin-notice">
-        <div>
-            <strong>Error-log self-test</strong>
-            <p>Creates a harmless test exception so you can verify reference IDs, database logging, the Admin viewer, and System Health without breaking a real workflow.</p>
-        </div>
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-            <input type="hidden" name="admin_action" value="self_test">
-            <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-vial" aria-hidden="true"></i> Run error-log test</button>
-        </form>
-    </div>
+    <div class="admin-error-tools">
+        <section class="admin-error-tool-card">
+            <span class="admin-error-tool-icon" aria-hidden="true"><i class="fa-solid fa-vial"></i></span>
+            <div class="admin-error-tool-copy">
+                <strong>Error-log self-test</strong>
+                <p>Creates a harmless test exception so you can verify reference IDs, database logging, the Admin viewer, and System Health without breaking a real workflow.</p>
+            </div>
+            <form method="post" class="admin-error-tool-action">
+                <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="admin_action" value="self_test">
+                <button class="admin-button" type="submit"><i class="fa-solid fa-vial" aria-hidden="true"></i> Run error-log test</button>
+            </form>
+        </section>
 
-    <div class="admin-notice">
-        <div>
-            <strong>Resolved error history</strong>
-            <p>Open issues are never removed automatically. Resolved issues are kept for the retention period below, then cleaned up automatically when new errors are recorded.</p>
-        </div>
-        <form method="post" class="admin-inline-form">
-            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-            <input type="hidden" name="admin_action" value="retention">
-            <label>
-                <span class="sr-only">Retention days</span>
-                <input type="number" name="retention_days" min="30" max="3650" step="1" value="<?= (int) $retentionDays ?>" required>
-            </label>
-            <span>days</span>
-            <button class="admin-button is-muted" type="submit">Save retention</button>
-        </form>
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-            <input type="hidden" name="admin_action" value="cleanup">
-            <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-broom" aria-hidden="true"></i> Clean up now</button>
-        </form>
+        <section class="admin-error-tool-card">
+            <span class="admin-error-tool-icon" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <div class="admin-error-tool-copy">
+                <strong>Resolved error history</strong>
+                <p>Open issues are never removed automatically. Resolved issues are kept for the retention period, then cleaned up after they age out.</p>
+            </div>
+            <div class="admin-error-retention-actions">
+                <form method="post" class="admin-inline-form">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="admin_action" value="retention">
+                    <label class="admin-retention-field">
+                        <span class="sr-only">Retention days</span>
+                        <input type="number" name="retention_days" min="30" max="3650" step="1" value="<?= (int) $retentionDays ?>" required>
+                        <span>days</span>
+                    </label>
+                    <button class="admin-button" type="submit">Save retention</button>
+                </form>
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="admin_action" value="cleanup">
+                    <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-broom" aria-hidden="true"></i> Clean up now</button>
+                </form>
+            </div>
+        </section>
     </div>
 
     <form class="admin-audit-filters" method="get">
