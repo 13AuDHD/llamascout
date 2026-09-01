@@ -1,0 +1,361 @@
+/* =========================================================
+   LLAMA SCOUT ACCOUNT: SCOUT ONBOARDING
+   ========================================================= */
+
+.account-scout-page {
+    width: min(100% - 28px, 1040px);
+    margin: 0 auto;
+    padding: 28px 0 52px;
+}
+
+.account-scout-shell {
+    display: grid;
+    gap: 16px;
+}
+
+.account-scout-back {
+    width: fit-content;
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    color: inherit;
+    text-decoration: none;
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+.account-scout-hero {
+    padding: 22px;
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 18px;
+    background: var(--surface, rgba(127,127,127,.06));
+}
+
+.account-scout-hero h1 {
+    margin: 4px 0 7px;
+    font-size: clamp(1.65rem, 4vw, 2.45rem);
+}
+
+.account-scout-hero > p:last-child {
+    max-width: 760px;
+    margin: 0;
+    line-height: 1.6;
+    opacity: .76;
+}
+
+.account-scout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.account-scout-panel {
+    padding: 20px;
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 16px;
+    background: var(--surface, rgba(127,127,127,.05));
+}
+
+.account-scout-panel h2 {
+    margin: 3px 0 9px;
+}
+
+.account-scout-panel p {
+    line-height: 1.6;
+}
+
+.account-scout-feature-list,
+.account-scout-progress-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.account-scout-feature-list > div,
+.account-scout-progress-list > div {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.account-scout-feature-list > div > i,
+.account-scout-progress-list > div > i {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(127,127,127,.10);
+}
+
+.account-scout-feature-list strong,
+.account-scout-feature-list span,
+.account-scout-progress-list strong {
+    display: block;
+}
+
+.account-scout-decision {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+}
+
+.account-scout-decision small {
+    display: block;
+    margin-top: 8px;
+    opacity: .65;
+}
+
+.account-scout-decision-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.account-scout-button {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 15px;
+    border: 1px solid #172822;
+    border-radius: 9px;
+    background: #172822;
+    color: #fff;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 850;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.account-scout-button.is-secondary {
+    background: transparent;
+    color: inherit;
+    border-color: rgba(127,127,127,.28);
+}
+
+.account-scout-form {
+    display: grid;
+    gap: 16px;
+}
+
+.account-scout-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+}
+
+.account-scout-form-grid label,
+.account-scout-form-stack label {
+    display: grid;
+    gap: 5px;
+}
+
+.account-scout-form-grid .is-wide {
+    grid-column: 1 / -1;
+}
+
+.account-scout-form label > span,
+.account-scout-image-label {
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.account-scout-form input[type="text"],
+.account-scout-form input[type="tel"],
+.account-scout-form textarea,
+.account-scout-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 11px;
+    border: 1px solid rgba(127,127,127,.24);
+    border-radius: 9px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+}
+
+.account-scout-form textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.account-scout-form-stack {
+    display: grid;
+    gap: 13px;
+}
+
+.account-scout-check-list {
+    display: grid;
+    gap: 9px;
+    margin-top: 14px;
+}
+
+.account-scout-check-list label {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 11px;
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 10px;
+}
+
+.account-scout-check-list input {
+    margin-top: 3px;
+}
+
+.account-scout-check-list strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.account-scout-check-list span {
+    font-size: .75rem;
+    line-height: 1.5;
+}
+
+.account-scout-form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.account-scout-notice {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(127,127,127,.22);
+}
+
+.account-scout-notice.is-error {
+    border-color: rgba(201,90,82,.55);
+}
+
+.account-scout-notice.is-attention {
+    border-color: rgba(211,168,66,.55);
+}
+
+.account-scout-notice p {
+    margin-bottom: 0;
+}
+
+.account-scout-status-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(127,127,127,.10);
+    font-size: 1.1rem;
+}
+
+.account-scout-status-icon.is-good,
+.account-scout-progress-list .is-complete > i {
+    color: #58a66a;
+}
+
+.account-scout-progress-list .is-current > i {
+    color: #d3a842;
+}
+
+.account-scout-awaiting {
+    max-width: 720px;
+}
+
+.account-scout-onboarding-card {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 15px 16px;
+    border: 1px solid rgba(88,166,106,.38);
+    border-radius: 14px;
+    background: rgba(88,166,106,.07);
+}
+
+.account-scout-onboarding-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(88,166,106,.12);
+    color: #58a66a;
+}
+
+.account-scout-onboarding-copy h2 {
+    margin: 2px 0 4px;
+    font-size: 1rem;
+}
+
+.account-scout-onboarding-copy p {
+    margin: 0;
+    font-size: .76rem;
+    line-height: 1.45;
+    opacity: .76;
+}
+
+.account-scout-onboarding-action {
+    display: grid;
+    gap: 5px;
+    justify-items: end;
+}
+
+.account-scout-onboarding-action > span {
+    font-size: .64rem;
+    font-weight: 800;
+    opacity: .65;
+}
+
+.account-scout-onboarding-action > a {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    color: inherit;
+    font-size: .72rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+@media (max-width: 720px) {
+    .account-scout-grid,
+    .account-scout-form-grid,
+    .account-scout-decision {
+        grid-template-columns: 1fr;
+    }
+
+    .account-scout-form-grid .is-wide {
+        grid-column: auto;
+    }
+
+    .account-scout-onboarding-card {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .account-scout-onboarding-action {
+        grid-column: 1 / -1;
+        justify-items: start;
+    }
+}
+
+@media (max-width: 480px) {
+    .account-scout-page {
+        width: min(100% - 18px, 1040px);
+        padding-top: 18px;
+    }
+
+    .account-scout-hero,
+    .account-scout-panel {
+        padding: 16px;
+    }
+
+    .account-scout-decision-actions,
+    .account-scout-decision-actions form,
+    .account-scout-button {
+        width: 100%;
+    }
+}
