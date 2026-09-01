@@ -199,6 +199,175 @@ function llama_photo_write_manifest(
     }
 }
 
+function llama_photo_process_badge_png(
+    string $source,
+    string $destination,
+    int $maxDimension = 2400
+): array {
+    if (
+        extension_loaded('imagick')
+        && class_exists('Imagick')
+    ) {
+        $image = new Imagick();
+
+        try {
+            $image->readImage($source);
+
+            if ($image->getNumberImages() > 1) {
+                $image->setIteratorIndex(0);
+            }
+
+            if (method_exists($image, 'autoOrient')) {
+                $image->autoOrient();
+            } elseif (method_exists($image, 'autoOrientImage')) {
+                $image->autoOrientImage();
+            }
+
+            $image->stripImage();
+            $image->setImageAlphaChannel(
+                Imagick::ALPHACHANNEL_ACTIVATE
+            );
+
+            $width = $image->getImageWidth();
+            $height = $image->getImageHeight();
+
+            [$newWidth, $newHeight] =
+                llama_photo_resized_dimensions(
+                    $width,
+                    $height,
+                    $maxDimension
+                );
+
+            if (
+                $newWidth !== $width
+                || $newHeight !== $height
+            ) {
+                $image->thumbnailImage(
+                    $newWidth,
+                    $newHeight,
+                    true,
+                    true
+                );
+            }
+
+            $image->setImageFormat('png');
+            $image->setOption(
+                'png:compression-level',
+                '8'
+            );
+            $image->stripImage();
+
+            if (!$image->writeImage($destination)) {
+                throw new RuntimeException(
+                    'The transparent badge image could not be saved.'
+                );
+            }
+
+            return [
+                'width' => $image->getImageWidth(),
+                'height' => $image->getImageHeight(),
+            ];
+        } finally {
+            $image->clear();
+            $image->destroy();
+        }
+    }
+
+    if (
+        !extension_loaded('gd')
+        || !function_exists('imagecreatefrompng')
+        || !function_exists('imagepng')
+    ) {
+        throw new RuntimeException(
+            'This server cannot currently preserve transparent PNG badge images.'
+        );
+    }
+
+    $sourceImage =
+        @imagecreatefrompng($source);
+
+    if (!$sourceImage) {
+        throw new RuntimeException(
+            'The PNG badge image could not be decoded.'
+        );
+    }
+
+    try {
+        $width = imagesx($sourceImage);
+        $height = imagesy($sourceImage);
+
+        [$newWidth, $newHeight] =
+            llama_photo_resized_dimensions(
+                $width,
+                $height,
+                $maxDimension
+            );
+
+        $output = imagecreatetruecolor(
+            $newWidth,
+            $newHeight
+        );
+
+        if (!$output) {
+            throw new RuntimeException(
+                'The transparent badge image could not be prepared.'
+            );
+        }
+
+        try {
+            imagealphablending($output, false);
+            imagesavealpha($output, true);
+
+            $transparent =
+                imagecolorallocatealpha(
+                    $output,
+                    0,
+                    0,
+                    0,
+                    127
+                );
+
+            imagefilledrectangle(
+                $output,
+                0,
+                0,
+                $newWidth,
+                $newHeight,
+                $transparent
+            );
+
+            imagecopyresampled(
+                $output,
+                $sourceImage,
+                0,
+                0,
+                0,
+                0,
+                $newWidth,
+                $newHeight,
+                $width,
+                $height
+            );
+
+            if (!imagepng($output, $destination, 8)) {
+                throw new RuntimeException(
+                    'The transparent badge image could not be saved.'
+                );
+            }
+        } finally {
+            imagedestroy($output);
+        }
+
+        return [
+            'width' => $newWidth,
+            'height' => $newHeight,
+        ];
+    } finally {
+        imagedestroy($sourceImage);
+    }
+}
+
+
 function llama_photo_stage_upload(
     array $files,
     int $userId,
@@ -261,11 +430,44 @@ function llama_photo_stage_upload(
                 throw new RuntimeException('One of the selected files is not a supported image.');
             }
 
-            $filename = 'photo-' . bin2hex(random_bytes(16)) . '.jpg';
-            $absolutePath = $directory . '/' . $filename;
-            $relativePath = $relativeDirectory . '/' . $filename;
+            $preserveBadgePng =
+                $context === 'badges'
+                && $format === 'png';
 
-            if (llama_photo_imagick_can_read($format)) {
+            $extension =
+                $preserveBadgePng
+                    ? 'png'
+                    : 'jpg';
+
+            $mimeType =
+                $preserveBadgePng
+                    ? 'image/png'
+                    : 'image/jpeg';
+
+            $filename =
+                'photo-' .
+                bin2hex(random_bytes(16)) .
+                '.' .
+                $extension;
+
+            $absolutePath =
+                $directory .
+                '/' .
+                $filename;
+
+            $relativePath =
+                $relativeDirectory .
+                '/' .
+                $filename;
+
+            if ($preserveBadgePng) {
+                $dimensions =
+                    llama_photo_process_badge_png(
+                        $tmp,
+                        $absolutePath,
+                        2400
+                    );
+            } elseif (llama_photo_imagick_can_read($format)) {
                 $dimensions = llama_photo_process_imagick(
                     $tmp,
                     $absolutePath,
@@ -297,7 +499,7 @@ function llama_photo_stage_upload(
                 'url' => llama_photo_public_url($relativePath),
                 'filename' => $filename,
                 'original_name' => (string) ($upload['name'] ?? ''),
-                'mime_type' => 'image/jpeg',
+                'mime_type' => $mimeType,
                 'width' => (int) ($dimensions['width'] ?? 0),
                 'height' => (int) ($dimensions['height'] ?? 0),
                 'size' => (int) filesize($absolutePath),
@@ -517,7 +719,7 @@ function llama_photo_commit_stage(
                 'url' => llama_photo_public_url($destinationRelative),
                 'filename' => $filename,
                 'original_name' => (string) ($photo['original_name'] ?? ''),
-                'mime_type' => 'image/jpeg',
+                'mime_type' => (string) ($photo['mime_type'] ?? 'image/jpeg'),
                 'width' => (int) ($photo['width'] ?? 0),
                 'height' => (int) ($photo['height'] ?? 0),
                 'size' => (int) ($photo['size'] ?? 0),

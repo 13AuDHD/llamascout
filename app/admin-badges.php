@@ -998,10 +998,26 @@ function admin_badges_replace_image_from_stage(
         dirname(__DIR__) .
         $sourcePath;
 
+    $sourceMime =
+        strtolower(
+            trim(
+                (string) (
+                    $committed[0]['mime_type']
+                    ?? ''
+                )
+            )
+        );
+
+    $finalExtension =
+        $sourceMime === 'image/png'
+            ? 'png'
+            : 'jpg';
+
     $finalRelative =
         '/images/badges/' .
         $slug .
-        '.jpg';
+        '.' .
+        $finalExtension;
 
     $finalAbsolute =
         dirname(__DIR__) .
@@ -1082,13 +1098,18 @@ function admin_badges_replace_image_from_stage(
 
     foreach (
         [
-            'png',
+            'jpg',
             'jpeg',
+            'png',
             'webp',
         ]
         as
         $legacyExtension
     ) {
+        if ($legacyExtension === $finalExtension) {
+            continue;
+        }
+
         $legacyFile =
             dirname(__DIR__) .
             '/images/badges/' .
