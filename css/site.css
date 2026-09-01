@@ -2128,3 +2128,108 @@ textarea {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   PLACE NAME SUGGESTIONS
+   ========================================================= */
+
+.add-place-name-control {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.add-place-name-control > input {
+    min-width: 0;
+}
+
+.add-place-name-refresh {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 8px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.add-place-name-refresh:hover,
+.add-place-name-refresh:focus-visible {
+    background: var(--surface);
+}
+
+.add-place-name-refresh:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.add-place-name-refresh.is-loading i {
+    animation: add-place-name-spin .7s linear infinite;
+}
+
+@keyframes add-place-name-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Placeholder text should look like a hint, not prefilled data. */
+
+:root[data-theme="dark"]
+input::placeholder,
+:root[data-theme="dark"]
+textarea::placeholder {
+    color: color-mix(
+        in srgb,
+        var(--text-muted) 35%,
+        var(--background) 65%
+    );
+
+    opacity: .78;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root:not([data-theme="light"])
+    input::placeholder,
+    :root:not([data-theme="light"])
+    textarea::placeholder {
+        color: color-mix(
+            in srgb,
+            var(--text-muted) 35%,
+            var(--background) 65%
+        );
+
+        opacity: .78;
+    }
+}
+
+@media (max-width: 560px) {
+
+    .add-place-name-control {
+        grid-template-columns: 1fr;
+    }
+
+    .add-place-name-refresh {
+        width: 100%;
+    }
+}
