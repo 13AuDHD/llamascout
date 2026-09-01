@@ -151,6 +151,26 @@ $snapshot =
         (string) $item['problem_type']
     );
 
+$placeContext =
+    admin_report_place_context(
+        $db,
+        (int) $item['place_id']
+    );
+
+$recentUpdates =
+    admin_report_recent_updates(
+        $db,
+        (int) $item['place_id'],
+        8
+    );
+
+$placeUnresolvedReports =
+    admin_report_place_unresolved(
+        $db,
+        (int) $item['place_id'],
+        $reportId
+    );
+
 require __DIR__ . '/_header.php';
 ?>
 
@@ -253,6 +273,171 @@ require __DIR__ . '/_header.php';
 </div>
 
 </section>
+
+
+<?php if ($placeContext): ?>
+
+<section class="admin-panel admin-report-place-context">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Place Operations</p>
+        <h2>Current Place Context</h2>
+    </div>
+
+    <?php if (!empty($placeContext['is_published'])): ?>
+        <span class="admin-report-published-warning">
+            <i
+                class="fa-solid fa-eye"
+                aria-hidden="true"
+            ></i>
+            This Place is published
+        </span>
+    <?php endif; ?>
+</header>
+
+
+<div class="admin-report-context-grid">
+
+<div>
+    <span>Publication</span>
+    <strong>
+        <?= moderation_e(
+            ucfirst(
+                (string) (
+                    $placeContext['status']
+                    ?? 'unknown'
+                )
+            )
+        ) ?>
+    </strong>
+</div>
+
+
+<div>
+    <span>Verification</span>
+
+    <strong
+        class="is-<?= moderation_e(
+            (string) (
+                $placeContext['verification_freshness']
+                ?? 'attention'
+            )
+        ) ?>"
+    >
+        <i
+            class="admin-report-context-light"
+            aria-hidden="true"
+        ></i>
+
+        <?= moderation_e(
+            admin_report_freshness_label(
+                (string) (
+                    $placeContext['verification_freshness']
+                    ?? 'attention'
+                ),
+                isset(
+                    $placeContext['verification_age_days']
+                )
+                    ? (int) $placeContext['verification_age_days']
+                    : null
+            )
+        ) ?>
+    </strong>
+</div>
+
+
+<div>
+    <span>Llama Scout history</span>
+
+    <strong class="<?= !empty($placeContext['ever_llama_scouted'])
+        ? 'is-scouted'
+        : '' ?>">
+        <i
+            class="fa-solid <?= !empty($placeContext['ever_llama_scouted'])
+                ? 'fa-binoculars'
+                : 'fa-circle-minus' ?>"
+            aria-hidden="true"
+        ></i>
+
+        <?= !empty($placeContext['ever_llama_scouted'])
+            ? 'Llama Scouted'
+            : 'No field Scout visit recorded' ?>
+    </strong>
+</div>
+
+
+<div class="<?= (int) ($placeContext['unresolved_report_count'] ?? 0) > 1
+    ? 'has-attention'
+    : '' ?>">
+    <span>Unresolved reports</span>
+    <strong>
+        <?= number_format(
+            (int) (
+                $placeContext['unresolved_report_count']
+                ?? 0
+            )
+        ) ?>
+    </strong>
+</div>
+
+
+<div class="<?= (int) ($placeContext['pending_update_count'] ?? 0) > 0
+    ? 'has-attention'
+    : '' ?>">
+    <span>Pending updates</span>
+    <strong>
+        <?= number_format(
+            (int) (
+                $placeContext['pending_update_count']
+                ?? 0
+            )
+        ) ?>
+    </strong>
+</div>
+
+
+<div>
+    <span>Total verifications</span>
+    <strong>
+        <?= number_format(
+            (int) (
+                $placeContext['verification_count']
+                ?? 0
+            )
+        ) ?>
+    </strong>
+</div>
+
+</div>
+
+
+<?php if (!empty($placeContext['is_published'])): ?>
+
+<div class="admin-report-public-impact-note">
+    <i
+        class="fa-solid fa-triangle-exclamation"
+        aria-hidden="true"
+    ></i>
+
+    <div>
+        <strong>
+            Public information may currently be wrong.
+        </strong>
+
+        <span>
+            This Place is visible to visitors now. Review the relevant
+            section before closing the report when the report identifies
+            incorrect or unsafe public information.
+        </span>
+    </div>
+</div>
+
+<?php endif; ?>
+
+</section>
+
+<?php endif; ?>
 
 
 <div class="admin-report-review-grid">
@@ -391,6 +576,221 @@ $src =
 <?php endif; ?>
 
 
+<?php if ($recentUpdates): ?>
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Recent Activity</p>
+        <h2>Recent Place Updates</h2>
+    </div>
+
+    <span>
+        <?= number_format(
+            count($recentUpdates)
+        ) ?>
+    </span>
+</header>
+
+
+<div class="admin-report-update-list">
+
+<?php foreach ($recentUpdates as $update): ?>
+
+<?php
+$changes =
+    json_decode(
+        (string) (
+            $update['proposed_changes']
+            ?? ''
+        ),
+        true
+    );
+
+$changeCount =
+    is_array($changes)
+        ? count($changes)
+        : 0;
+
+$updateOpen =
+    in_array(
+        (string) $update['status'],
+        [
+            'pending',
+            'needs-changes',
+        ],
+        true
+    );
+?>
+
+<article class="<?= $updateOpen
+    ? 'has-attention'
+    : '' ?>">
+
+<div>
+    <strong>
+        Update #<?= (int) $update['id'] ?>
+        ·
+        <?= moderation_e(
+            ucwords(
+                str_replace(
+                    '-',
+                    ' ',
+                    (string) $update['status']
+                )
+            )
+        ) ?>
+    </strong>
+
+    <span>
+        <?= moderation_e(
+            (string) $update['contributor_name']
+        ) ?>
+        ·
+        <?= moderation_e(
+            (string) $update['submitted_at']
+        ) ?>
+    </span>
+
+    <p>
+        <?= moderation_e(
+            ucwords(
+                str_replace(
+                    '-',
+                    ' ',
+                    (string) $update['update_type']
+                )
+            )
+        ) ?>
+        ·
+        <?= number_format($changeCount) ?>
+        change group<?= $changeCount === 1 ? '' : 's' ?>
+    </p>
+
+    <?php if (!empty($update['contributor_notes'])): ?>
+        <p>
+            <?= moderation_e(
+                mb_strimwidth(
+                    (string) $update['contributor_notes'],
+                    0,
+                    220,
+                    '…'
+                )
+            ) ?>
+        </p>
+    <?php endif; ?>
+</div>
+
+
+<?php if ($updateOpen): ?>
+    <a
+        class="admin-button is-muted"
+        href="/moderate-update.php?id=<?= (int) $update['id'] ?>"
+    >
+        Review update
+    </a>
+<?php endif; ?>
+
+</article>
+
+<?php endforeach; ?>
+
+</div>
+
+</section>
+
+<?php endif; ?>
+
+
+<?php if ($placeUnresolvedReports): ?>
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Place Pattern</p>
+        <h2>Other unresolved reports for this Place</h2>
+    </div>
+
+    <span>
+        <?= number_format(
+            count($placeUnresolvedReports)
+        ) ?>
+    </span>
+</header>
+
+
+<div class="admin-report-other-open-list">
+
+<?php foreach ($placeUnresolvedReports as $openReport): ?>
+
+<?php
+$openMeta =
+    admin_report_problem_meta(
+        (string) $openReport['problem_type']
+    );
+?>
+
+<article data-priority="<?= (int) $openMeta['priority'] ?>">
+
+<div>
+    <strong>
+        Report #<?= (int) $openReport['id'] ?>
+        ·
+        <?= moderation_e(
+            $openMeta['label']
+        ) ?>
+    </strong>
+
+    <span>
+        <?= moderation_e(
+            (string) $openReport['reporter_name']
+        ) ?>
+        ·
+        <?= moderation_e(
+            (string) $openReport['created_at']
+        ) ?>
+        ·
+        <?= moderation_e(
+            moderation_status_label(
+                (string) $openReport['status']
+            )
+        ) ?>
+    </span>
+
+    <?php if (!empty($openReport['details'])): ?>
+        <p>
+            <?= moderation_e(
+                mb_strimwidth(
+                    (string) $openReport['details'],
+                    0,
+                    220,
+                    '…'
+                )
+            ) ?>
+        </p>
+    <?php endif; ?>
+</div>
+
+<a
+    class="admin-button is-muted"
+    href="/moderate-report.php?id=<?= (int) $openReport['id'] ?>"
+>
+    Open
+</a>
+
+</article>
+
+<?php endforeach; ?>
+
+</div>
+
+</section>
+
+<?php endif; ?>
+
+
 <?php if ($related): ?>
 
 <section class="admin-panel">
@@ -483,6 +883,67 @@ $src =
 
 <header class="admin-panel-header">
     <div>
+        <p>Shortcuts</p>
+        <h2>Place Operations</h2>
+    </div>
+</header>
+
+<div class="admin-report-operation-links">
+
+<a
+    href="/place.php?id=<?= (int) $item['place_id'] ?>#<?= moderation_e(
+        $meta['place_anchor']
+    ) ?>"
+>
+    <i
+        class="fa-solid fa-pen-to-square"
+        aria-hidden="true"
+    ></i>
+    <span>
+        <strong>
+            <?= moderation_e(
+                $meta['place_action']
+            ) ?>
+        </strong>
+        <small>Jump to the affected Place section.</small>
+    </span>
+</a>
+
+<a
+    href="/place.php?id=<?= (int) $item['place_id'] ?>#verification"
+>
+    <i
+        class="fa-solid fa-shield-halved"
+        aria-hidden="true"
+    ></i>
+    <span>
+        <strong>Verification</strong>
+        <small>Review freshness or record a new verification.</small>
+    </span>
+</a>
+
+<a
+    href="/place.php?id=<?= (int) $item['place_id'] ?>#history"
+>
+    <i
+        class="fa-solid fa-clock-rotate-left"
+        aria-hidden="true"
+    ></i>
+    <span>
+        <strong>Place history</strong>
+        <small>Contributions, reports, updates, and provenance.</small>
+    </span>
+</a>
+
+</div>
+
+</section>
+
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
         <p>Workflow</p>
         <h2>Report Status</h2>
     </div>
@@ -559,7 +1020,8 @@ $src =
     ) ?></textarea>
 
     <small>
-        Required when resolving or dismissing the report.
+        Required when resolving or dismissing the report. Record what
+        was checked, what changed, and why this report can be closed.
     </small>
 </label>
 
