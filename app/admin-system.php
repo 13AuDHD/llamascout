@@ -1114,6 +1114,89 @@ function admin_system_health(
         );
 
     try {
+        llama_error_ensure_table($db);
+
+        $recentErrorStats =
+            $db->query(
+                'SELECT
+                    COUNT(*) AS total_24h,
+                    SUM(CASE WHEN severity = "fatal" THEN 1 ELSE 0 END) AS fatal_24h
+                 FROM application_errors
+                 WHERE created_at >= (UTC_TIMESTAMP() - INTERVAL 24 HOUR)'
+            )->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $recentErrors =
+            (int) ($recentErrorStats['total_24h'] ?? 0);
+
+        $recentFatals =
+            (int) ($recentErrorStats['fatal_24h'] ?? 0);
+
+        $lastError =
+            $db->query(
+                'SELECT reference_code, severity, created_at
+                 FROM application_errors
+                 ORDER BY id DESC
+                 LIMIT 1'
+            )->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $errorHealthStatus =
+            $recentFatals > 0
+                ? 'down'
+                : (
+                    $recentErrors > 0
+                        ? 'attention'
+                        : 'good'
+                );
+
+        if ($recentErrors === 0) {
+            $errorHealthValue = 'No errors in 24h';
+
+            $errorHealthDetail =
+                $lastError
+                    ? 'No errors were recorded in the last 24 hours. Most recent: ' .
+                        (string) ($lastError['reference_code'] ?? 'unknown') .
+                        ' at ' .
+                        (string) ($lastError['created_at'] ?? 'unknown time') .
+                        '.'
+                    : 'No application errors have been recorded.';
+        } else {
+            $errorHealthValue =
+                number_format($recentErrors) .
+                ' in 24h';
+
+            $errorHealthDetail =
+                ($recentFatals > 0
+                    ? number_format($recentFatals) . ' fatal; '
+                    : '') .
+                'most recent: ' .
+                (string) ($lastError['reference_code'] ?? 'unknown') .
+                ' at ' .
+                (string) ($lastError['created_at'] ?? 'unknown time') .
+                '. Review Configuration > Error Log.';
+        }
+
+        $cards[] =
+            admin_system_health_card(
+                'application_errors',
+                'Application errors',
+                $errorHealthStatus,
+                $errorHealthValue,
+                $errorHealthDetail,
+                'fa-triangle-exclamation'
+            );
+    } catch (Throwable) {
+        $cards[] =
+            admin_system_health_card(
+                'application_errors',
+                'Application errors',
+                'down',
+                'Unavailable',
+                'The application error log could not be checked.',
+                'fa-triangle-exclamation'
+            );
+    }
+
+    try {
         $auditCount =
             (int)
             $db->query(
