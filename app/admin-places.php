@@ -248,6 +248,504 @@ function admin_place_status_history(
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+
+function admin_place_provenance(
+    PDO $db,
+    int $placeId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            pp.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                CASE
+                    WHEN pp.original_contributor_id IS NULL
+                        THEN NULL
+                    ELSE "Former Llama Scout Member"
+                END
+            ) AS contributor_name,
+            u.username AS contributor_username
+         FROM place_provenance pp
+         LEFT JOIN users u
+            ON u.id = pp.original_contributor_id
+         WHERE pp.place_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+}
+
+
+function admin_place_contributions(
+    PDO $db,
+    int $placeId,
+    int $limit = 50
+): array {
+    $limit = max(1, min(100, $limit));
+
+    $stmt = $db->prepare(
+        'SELECT
+            pc.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                "Former Llama Scout Member"
+            ) AS contributor_name,
+            u.username AS contributor_username,
+            COALESCE(
+                NULLIF(m.display_name, ""),
+                NULLIF(m.username, ""),
+                CASE
+                    WHEN pc.moderated_by IS NULL
+                        THEN NULL
+                    ELSE "System"
+                END
+            ) AS moderator_name
+         FROM place_contributions pc
+         LEFT JOIN users u
+            ON u.id = pc.user_id
+         LEFT JOIN users m
+            ON m.id = pc.moderated_by
+         WHERE pc.place_id = ?
+         ORDER BY
+            COALESCE(pc.approved_at, pc.created_at) DESC,
+            pc.id DESC
+         LIMIT ' . $limit
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+
+function admin_place_update_history(
+    PDO $db,
+    int $placeId,
+    int $limit = 50
+): array {
+    $limit = max(1, min(100, $limit));
+
+    $stmt = $db->prepare(
+        'SELECT
+            pus.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                "Former Llama Scout Member"
+            ) AS contributor_name,
+            u.username AS contributor_username,
+            COALESCE(
+                NULLIF(r.display_name, ""),
+                NULLIF(r.username, ""),
+                CASE
+                    WHEN pus.reviewed_by IS NULL
+                        THEN NULL
+                    ELSE "System"
+                END
+            ) AS reviewer_name
+         FROM place_update_submissions pus
+         LEFT JOIN users u
+            ON u.id = pus.user_id
+         LEFT JOIN users r
+            ON r.id = pus.reviewed_by
+         WHERE pus.place_id = ?
+         ORDER BY
+            pus.submitted_at DESC,
+            pus.id DESC
+         LIMIT ' . $limit
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+
+function admin_place_reports_history(
+    PDO $db,
+    int $placeId,
+    int $limit = 50
+): array {
+    $limit = max(1, min(100, $limit));
+
+    $stmt = $db->prepare(
+        'SELECT
+            pr.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                "Former Llama Scout Member"
+            ) AS reporter_name,
+            u.username AS reporter_username,
+            COALESCE(
+                NULLIF(r.display_name, ""),
+                NULLIF(r.username, ""),
+                CASE
+                    WHEN pr.reviewed_by IS NULL
+                        THEN NULL
+                    ELSE "System"
+                END
+            ) AS reviewer_name,
+            (
+                SELECT COUNT(*)
+                FROM place_report_images pri
+                WHERE pri.report_id = pr.id
+            ) AS image_count
+         FROM place_reports pr
+         LEFT JOIN users u
+            ON u.id = pr.user_id
+         LEFT JOIN users r
+            ON r.id = pr.reviewed_by
+         WHERE pr.place_id = ?
+         ORDER BY
+            CASE pr.status
+                WHEN "open" THEN 1
+                WHEN "investigating" THEN 2
+                ELSE 3
+            END,
+            pr.created_at DESC,
+            pr.id DESC
+         LIMIT ' . $limit
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+
+function admin_place_notes(
+    PDO $db,
+    int $placeId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            pn.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                "System"
+            ) AS author_name
+         FROM place_notes pn
+         LEFT JOIN users u
+            ON u.id = pn.created_by
+         WHERE pn.place_id = ?
+         ORDER BY
+            pn.sort_order ASC,
+            pn.id ASC'
+    );
+
+    $stmt->execute([$placeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+
+function admin_place_audit_history(
+    PDO $db,
+    int $placeId,
+    int $limit = 50
+): array {
+    $limit = max(1, min(100, $limit));
+
+    try {
+        $stmt = $db->prepare(
+            'SELECT
+                aal.*,
+                COALESCE(
+                    NULLIF(u.display_name, ""),
+                    NULLIF(u.username, ""),
+                    "System"
+                ) AS actor_name
+             FROM admin_audit_log aal
+             LEFT JOIN users u
+                ON u.id = aal.actor_user_id
+             WHERE aal.action LIKE "place.%"
+               AND JSON_UNQUOTE(
+                    JSON_EXTRACT(
+                        aal.metadata,
+                        "$.place_id"
+                    )
+               ) = ?
+             ORDER BY
+                aal.created_at DESC,
+                aal.id DESC
+             LIMIT ' . $limit
+        );
+
+        $stmt->execute([(string) $placeId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+
+function admin_place_llama_scouted_state(
+    PDO $db,
+    int $placeId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            pv.*,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                "Llama Scout"
+            ) AS scout_name,
+            u.username AS scout_username
+         FROM place_verifications pv
+         LEFT JOIN users u
+            ON u.id = pv.verified_by
+         WHERE pv.place_id = ?
+           AND (
+                pv.verification_type = "field-verified"
+                OR LOWER(COALESCE(pv.source, "")) = "llama scouted"
+           )
+         ORDER BY
+            COALESCE(pv.visited_at, DATE(pv.verified_at)) ASC,
+            pv.id ASC
+         LIMIT 1'
+    );
+
+    $stmt->execute([$placeId]);
+
+    $first = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    if (!$first) {
+        return [
+            'ever_scouted' => false,
+            'first' => [],
+        ];
+    }
+
+    return [
+        'ever_scouted' => true,
+        'first' => $first,
+    ];
+}
+
+
+function admin_place_operational_counts(
+    PDO $db,
+    int $placeId
+): array {
+    $queries = [
+        'contributions' =>
+            'SELECT COUNT(*) FROM place_contributions WHERE place_id = ?',
+        'updates' =>
+            'SELECT COUNT(*) FROM place_update_submissions WHERE place_id = ?',
+        'pending_updates' =>
+            'SELECT COUNT(*) FROM place_update_submissions WHERE place_id = ? AND status IN ("pending","needs-changes")',
+        'reports' =>
+            'SELECT COUNT(*) FROM place_reports WHERE place_id = ?',
+        'open_reports' =>
+            'SELECT COUNT(*) FROM place_reports WHERE place_id = ? AND status IN ("open","investigating")',
+        'verifications' =>
+            'SELECT COUNT(*) FROM place_verifications WHERE place_id = ?',
+        'notes' =>
+            'SELECT COUNT(*) FROM place_notes WHERE place_id = ?',
+    ];
+
+    $counts = [];
+
+    foreach ($queries as $key => $sql) {
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$placeId]);
+        $counts[$key] = (int) $stmt->fetchColumn();
+    }
+
+    return $counts;
+}
+
+
+function admin_place_save_image_metadata(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    int $imageId,
+    string $altText,
+    int $sortOrder
+): void {
+    if ($imageId < 1) {
+        throw new RuntimeException(
+            'Place image not found.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM place_images
+         WHERE id = ?
+           AND place_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $imageId,
+        $placeId,
+    ]);
+
+    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$image) {
+        throw new RuntimeException(
+            'Place image not found.'
+        );
+    }
+
+    $altText = trim($altText);
+    $sortOrder = max(0, min(999, $sortOrder));
+
+    $db->prepare(
+        'UPDATE place_images
+         SET
+            alt_text = ?,
+            sort_order = ?
+         WHERE id = ?
+           AND place_id = ?'
+    )->execute([
+        $altText !== '' ? $altText : null,
+        $sortOrder,
+        $imageId,
+        $placeId,
+    ]);
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.image_metadata_updated',
+        'Updated Place photo caption/order.',
+        [
+            'place_id' => $placeId,
+            'image_id' => $imageId,
+            'before_alt_text' => $image['alt_text'] ?? null,
+            'after_alt_text' => $altText !== '' ? $altText : null,
+            'before_sort_order' => (int) ($image['sort_order'] ?? 0),
+            'after_sort_order' => $sortOrder,
+        ]
+    );
+}
+
+
+function admin_place_add_note(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    string $note
+): void {
+    $note = trim($note);
+
+    if ($note === '') {
+        throw new RuntimeException(
+            'Enter a Place note.'
+        );
+    }
+
+    if (mb_strlen($note) > 2000) {
+        throw new RuntimeException(
+            'Place notes must be 2,000 characters or fewer.'
+        );
+    }
+
+    $orderStmt = $db->prepare(
+        'SELECT COALESCE(MAX(sort_order), -1)
+         FROM place_notes
+         WHERE place_id = ?'
+    );
+
+    $orderStmt->execute([$placeId]);
+
+    $sortOrder =
+        (int) $orderStmt->fetchColumn() + 1;
+
+    $stmt = $db->prepare(
+        'INSERT INTO place_notes (
+            place_id,
+            note,
+            sort_order,
+            created_by
+         ) VALUES (?, ?, ?, ?)'
+    );
+
+    $stmt->execute([
+        $placeId,
+        $note,
+        $sortOrder,
+        $actorUserId,
+    ]);
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.note_added',
+        'Added an internal/field note to a Place.',
+        [
+            'place_id' => $placeId,
+            'note_id' => (int) $db->lastInsertId(),
+        ]
+    );
+}
+
+
+function admin_place_delete_note(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    int $noteId
+): void {
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM place_notes
+         WHERE id = ?
+           AND place_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $noteId,
+        $placeId,
+    ]);
+
+    $note = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$note) {
+        throw new RuntimeException(
+            'Place note not found.'
+        );
+    }
+
+    $db->prepare(
+        'DELETE FROM place_notes
+         WHERE id = ?
+           AND place_id = ?'
+    )->execute([
+        $noteId,
+        $placeId,
+    ]);
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.note_deleted',
+        'Deleted a Place note.',
+        [
+            'place_id' => $placeId,
+            'note_id' => $noteId,
+            'note' => $note['note'] ?? null,
+        ]
+    );
+}
+
+
 function admin_place_save_core(
     PDO $db,
     int $actorUserId,
@@ -273,6 +771,32 @@ function admin_place_save_core(
         (string) ($data['type'] ?? '')
     );
 
+    $slug = strtolower(
+        trim(
+            (string) (
+                $data['slug']
+                ?? $place['slug']
+                ?? ''
+            )
+        )
+    );
+
+    $slug = preg_replace(
+        '/[^a-z0-9]+/',
+        '-',
+        $slug
+    ) ?? '';
+
+    $slug = trim($slug, '-');
+
+    $sourceType = trim(
+        (string) (
+            $data['source_type']
+            ?? $place['source_type']
+            ?? 'llama-scouted'
+        )
+    );
+
     if ($name === '') {
         throw new RuntimeException(
             'Place name is required.'
@@ -282,6 +806,52 @@ function admin_place_save_core(
     if ($type === '') {
         throw new RuntimeException(
             'Place type is required.'
+        );
+    }
+
+    if ($slug === '') {
+        throw new RuntimeException(
+            'URL slug is required.'
+        );
+    }
+
+    if (strlen($slug) > 190) {
+        throw new RuntimeException(
+            'URL slug must be 190 characters or fewer.'
+        );
+    }
+
+    if (!in_array(
+        $sourceType,
+        [
+            'llama-scouted',
+            'community-scouted',
+            'external',
+            'legacy',
+        ],
+        true
+    )) {
+        throw new RuntimeException(
+            'Choose a valid Place source.'
+        );
+    }
+
+    $slugStmt = $db->prepare(
+        'SELECT id
+         FROM places
+         WHERE slug = ?
+           AND id <> ?
+         LIMIT 1'
+    );
+
+    $slugStmt->execute([
+        $slug,
+        $placeId,
+    ]);
+
+    if ($slugStmt->fetchColumn()) {
+        throw new RuntimeException(
+            'That URL slug is already used by another Place.'
         );
     }
 
@@ -328,8 +898,10 @@ function admin_place_save_core(
     $stmt = $db->prepare(
         'UPDATE places
          SET
+            slug = ?,
             name = ?,
             type = ?,
+            source_type = ?,
             description = ?,
             public_summary = ?,
             public_location_label = ?,
@@ -351,8 +923,10 @@ function admin_place_save_core(
     );
 
     $stmt->execute([
+        $slug,
         $name,
         $type,
+        $sourceType,
         $nullableText($data['description'] ?? ''),
         $nullableText($data['public_summary'] ?? ''),
         $nullableText($data['public_location_label'] ?? ''),
@@ -385,6 +959,10 @@ function admin_place_save_core(
             'place_id' => $placeId,
             'before_name' => $place['name'],
             'after_name' => $name,
+            'before_slug' => $place['slug'] ?? null,
+            'after_slug' => $slug,
+            'before_source_type' => $place['source_type'] ?? null,
+            'after_source_type' => $sourceType,
         ]
     );
 }
