@@ -7316,3 +7316,79 @@ html[data-reduced-motion="true"] .admin-sidebar {
     .admin-scout-period-progress { grid-template-columns: 1fr; }
     .admin-scout-list-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* =========================================================
+   PHASE 37A: SCOUT STATS SINGLE ROW
+   ========================================================= */
+
+.admin-scout-stat-grid {
+    grid-template-columns:
+        repeat(
+            5,
+            minmax(0, 1fr)
+        );
+
+    gap: 7px;
+}
+
+.admin-scout-stat-grid > div {
+    min-height: 54px;
+
+    padding: 7px 9px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.admin-scout-stat-grid span {
+    font-size: .52rem;
+    line-height: 1.15;
+}
+
+.admin-scout-stat-grid strong {
+    margin-top: 2px;
+
+    font-size: .78rem;
+    line-height: 1.1;
+}
+
+
+/*
+ * Keep all five cards on one line for normal admin tablet/desktop
+ * widths, including iPad landscape.
+ */
+@media (max-width: 1180px) {
+
+    .admin-scout-stat-grid {
+        grid-template-columns:
+            repeat(
+                5,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+
+/*
+ * Only collapse once the viewport gets genuinely narrow.
+ */
+@media (max-width: 700px) {
+
+    .admin-scout-stat-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+
+@media (max-width: 430px) {
+
+    .admin-scout-stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
