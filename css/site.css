@@ -2233,3 +2233,137 @@ textarea::placeholder {
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   STRUCTURED PLACE UPDATE FORM
+   ========================================================= */
+
+.update-place-form {
+    gap: 14px;
+}
+
+.update-place-field-list {
+    display: grid;
+    gap: 9px;
+
+    margin-top: 16px;
+}
+
+.update-place-field-card {
+    display: grid;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.update-place-change-toggle {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+
+    min-width: 52px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+
+    cursor: pointer;
+}
+
+.update-place-change-toggle input {
+    width: 19px;
+    min-width: 19px;
+    height: 19px;
+
+    margin: 0;
+}
+
+.update-place-field-main {
+    min-width: 0;
+
+    display: grid;
+    gap: 8px;
+}
+
+.update-place-field-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 5px 12px;
+}
+
+.update-place-field-heading strong {
+    font-size: .78rem;
+}
+
+.update-place-field-heading small {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+}
+
+.update-place-field-heading small b {
+    color: var(--text);
+}
+
+.update-place-field-control {
+    transition:
+        opacity .18s ease,
+        filter .18s ease;
+}
+
+.update-place-field-control.is-disabled {
+    opacity: .42;
+    filter: grayscale(.3);
+}
+
+.update-place-field-control input,
+.update-place-field-control select,
+.update-place-field-control textarea {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 8px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.update-place-field-control textarea {
+    resize: vertical;
+}
+
+@media (max-width: 560px) {
+
+    .update-place-field-card {
+        grid-template-columns: 1fr;
+    }
+
+    .update-place-change-toggle {
+        display: flex;
+        justify-items: initial;
+        align-items: center;
+        gap: 7px;
+
+        min-width: 0;
+    }
+}
