@@ -818,15 +818,10 @@ function admin_place_save_core(
         );
     }
 
-    $allowedPlaceTypes = [
-        'dispersed-camping',
-        'campground',
-        'overnight-parking',
-        'boondocking',
-        'primitive-camping',
-        'backcountry-camping',
-        'other',
-    ];
+    $allowedPlaceTypes =
+        array_keys(
+            community_place_types()
+        );
 
     $currentStoredType =
         strtolower(
