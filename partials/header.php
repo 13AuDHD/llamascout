@@ -30,6 +30,12 @@ $canAccessAdmin = $isOwner || $isAdmin;
 $pageRobots = trim((string) ($pageRobots ?? ''));
 $pageDescription = trim((string) ($pageDescription ?? ''));
 $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
+$pageSocialImage = trim((string) ($pageSocialImage ?? ''));
+$pageSocialType = trim((string) ($pageSocialType ?? 'website'));
+
+if ($pageSocialType === '') {
+    $pageSocialType = 'website';
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -58,6 +64,58 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
         <link
             rel="canonical"
             href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>"
+        >
+    <?php endif; ?>
+
+    <meta
+        property="og:title"
+        content="<?= htmlspecialchars($pageTitle ?? 'Llama Scout', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <meta
+        property="og:type"
+        content="<?= htmlspecialchars($pageSocialType, ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <?php if ($pageDescription !== ''): ?>
+        <meta
+            property="og:description"
+            content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>"
+        >
+    <?php endif; ?>
+
+    <?php if ($canonicalUrl !== ''): ?>
+        <meta
+            property="og:url"
+            content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>"
+        >
+    <?php endif; ?>
+
+    <?php if ($pageSocialImage !== ''): ?>
+        <meta
+            property="og:image"
+            content="<?= htmlspecialchars($pageSocialImage, ENT_QUOTES, 'UTF-8') ?>"
+        >
+        <meta
+            name="twitter:card"
+            content="summary_large_image"
+        >
+    <?php else: ?>
+        <meta
+            name="twitter:card"
+            content="summary"
+        >
+    <?php endif; ?>
+
+    <meta
+        name="twitter:title"
+        content="<?= htmlspecialchars($pageTitle ?? 'Llama Scout', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <?php if ($pageDescription !== ''): ?>
+        <meta
+            name="twitter:description"
+            content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>"
         >
     <?php endif; ?>
 
@@ -98,6 +156,11 @@ $canonicalUrl = trim((string) ($canonicalUrl ?? ''));
     <link
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/shop.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/share.css', ENT_QUOTES, 'UTF-8') ?>"
     >
 
     <link
