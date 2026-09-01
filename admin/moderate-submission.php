@@ -126,10 +126,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        if ($action === 'rejected') {
+        if (
+            in_array(
+                $action,
+                [
+                    'needs-changes',
+                    'rejected',
+                ],
+                true
+            )
+        ) {
             if ($notes === '') {
                 throw new InvalidArgumentException(
-                    'Add review notes explaining why the submission was not approved.'
+                    $action === 'needs-changes'
+                        ? 'Add clear review notes explaining what the contributor needs to change.'
+                        : 'Add review notes explaining why the submission was not approved.'
                 );
             }
 
@@ -141,12 +152,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notes
             );
 
+            $auditAction =
+                $action === 'needs-changes'
+                    ? 'place.submission_changes_requested'
+                    : 'place.submission_rejected';
+
+            $auditSummary =
+                $action === 'needs-changes'
+                    ? 'Requested changes to new Place submission #' . $submissionId . '.'
+                    : 'Rejected new Place submission #' . $submissionId . '.';
+
             admin_users_audit(
                 $db,
                 (int) $adminUser['id'],
                 (int) $item['user_id'],
-                'place.submission_rejected',
-                'Rejected new Place submission #' . $submissionId . '.',
+                $auditAction,
+                $auditSummary,
                 [
                     'submission_id' => $submissionId,
                     'review_notes' => $notes,
@@ -837,6 +858,15 @@ $coreChecksComplete = count(
                 value="approve"
             >
                 Approve and Publish
+            </button>
+
+            <button
+                class="admin-moderation-button is-warning"
+                type="submit"
+                name="action"
+                value="needs-changes"
+            >
+                Request Changes
             </button>
 
             <button
