@@ -91,12 +91,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
 
         } catch (Throwable $e) {
-            $error = (
-                $e instanceof InvalidArgumentException
-                || $e instanceof RuntimeException
-            )
+            $reference = llama_log_caught_exception(
+                $e,
+                'place.submit',
+                ['user_id' => $userId],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
                 ? $e->getMessage()
-                : 'The place could not be submitted. Please try again.';
+                : llama_error_message_with_reference('The place could not be submitted. Please try again.', $reference);
         }
     }
 }
