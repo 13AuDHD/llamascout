@@ -927,3 +927,170 @@ function admin_badges_revoke(
         ]
     );
 }
+
+
+function admin_badges_replace_image_from_stage(
+    PDO $db,
+    int $actorUserId,
+    int $badgeId,
+    string $photoToken,
+    array $submittedPhotos
+): ?string {
+    if (!$submittedPhotos) {
+        return null;
+    }
+
+    if (count($submittedPhotos) > 1) {
+        throw new RuntimeException(
+            'A badge can have only one image.'
+        );
+    }
+
+    $badge =
+        admin_badges_definition(
+            $db,
+            $badgeId
+        );
+
+    if (!$badge) {
+        throw new RuntimeException(
+            'Badge definition not found.'
+        );
+    }
+
+    $slug =
+        admin_badges_slugify(
+            (string) $badge['slug']
+        );
+
+    if ($slug === '') {
+        throw new RuntimeException(
+            'The badge needs a valid slug before an image can be saved.'
+        );
+    }
+
+    $committed =
+        llama_photo_commit_stage(
+            'badges',
+            $actorUserId,
+            $photoToken,
+            $submittedPhotos,
+            '/uploads/badges'
+        );
+
+    if (!$committed) {
+        return null;
+    }
+
+    $sourcePath =
+        (string) (
+            $committed[0]['path']
+            ?? ''
+        );
+
+    if ($sourcePath === '') {
+        throw new RuntimeException(
+            'The badge image could not be saved.'
+        );
+    }
+
+    $sourceAbsolute =
+        dirname(__DIR__) .
+        $sourcePath;
+
+    $finalRelative =
+        '/uploads/badges/' .
+        $slug .
+        '.jpg';
+
+    $finalAbsolute =
+        dirname(__DIR__) .
+        $finalRelative;
+
+    if (
+        !is_file($sourceAbsolute)
+    ) {
+        throw new RuntimeException(
+            'The committed badge image is missing.'
+        );
+    }
+
+    $oldImage =
+        trim(
+            (string) (
+                $badge['image_src']
+                ?? ''
+            )
+        );
+
+    if (
+        is_file($finalAbsolute)
+        && realpath($finalAbsolute) !== realpath($sourceAbsolute)
+    ) {
+        @unlink($finalAbsolute);
+    }
+
+    if (
+        $sourceAbsolute !== $finalAbsolute
+        && !@rename(
+            $sourceAbsolute,
+            $finalAbsolute
+        )
+    ) {
+        if (
+            !@copy(
+                $sourceAbsolute,
+                $finalAbsolute
+            )
+            || !@unlink($sourceAbsolute)
+        ) {
+            throw new RuntimeException(
+                'The badge image could not be renamed to its badge slug.'
+            );
+        }
+    }
+
+    if (
+        $oldImage !== ''
+        && $oldImage !== $finalRelative
+        && str_starts_with(
+            '/' . ltrim($oldImage, '/'),
+            '/uploads/badges/'
+        )
+    ) {
+        llama_photo_delete_owned_permanent_path(
+            $oldImage,
+            ['uploads/badges']
+        );
+    }
+
+    $db->prepare(
+        'UPDATE badge_definitions
+         SET image_src = ?
+         WHERE id = ?'
+    )->execute([
+        $finalRelative,
+        $badgeId,
+    ]);
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'badge.image_replaced',
+        'Uploaded badge image for "' .
+            (string) $badge['name'] .
+            '".',
+        [
+            'badge_id' => $badgeId,
+            'badge_slug' => $slug,
+            'before_image_src' =>
+                $oldImage !== ''
+                    ? $oldImage
+                    : null,
+            'after_image_src' => $finalRelative,
+        ]
+    );
+
+    return $finalRelative;
+}

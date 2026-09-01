@@ -36,6 +36,7 @@ function llama_photo_contexts(): array
         'place-report' => ['max' => 5, 'label' => 'Report photos'],
         'profile-images' => ['max' => 5, 'label' => 'Profile images'],
         'shop-products' => ['max' => 20, 'label' => 'Product photos'],
+        'badges' => ['max' => 1, 'label' => 'Badge image'],
     ];
 }
 
@@ -59,7 +60,14 @@ function llama_photo_context_allowed(string $context, int $userId): bool
 
     llama_photo_context_config($context);
 
-    if ($context !== 'shop-products') {
+    if (!in_array(
+        $context,
+        [
+            'shop-products',
+            'badges',
+        ],
+        true
+    )) {
         return true;
     }
 
