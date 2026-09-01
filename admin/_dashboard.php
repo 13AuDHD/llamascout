@@ -309,8 +309,10 @@ function admin_dashboard_queue(PDO $db): array
                     )
                 ),
                 'time' => (string) $row['occurred_at'],
-                'href' => '',
-                'action' => 'Scouts next',
+                'href' =>
+                    '/scout.php?id=' .
+                    (int) $row['id'],
+                'action' => 'Review',
             ];
         }
     } catch (Throwable $exception) {

@@ -93,7 +93,10 @@ require __DIR__ . '/_header.php';
         </div>
     </a>
 
-    <article class="admin-stat-card">
+    <a
+        class="admin-stat-card is-action"
+        href="/scouts.php?filter=attention"
+    >
         <span class="admin-stat-icon">
             <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
         </span>
@@ -102,9 +105,12 @@ require __DIR__ . '/_header.php';
             <strong><?= (int) $stats['scout_reviews'] ?></strong>
             <small>Applications or approvals</small>
         </div>
-    </article>
+    </a>
 
-    <article class="admin-stat-card">
+    <a
+        class="admin-stat-card is-action"
+        href="/orders.php"
+    >
         <span class="admin-stat-icon">
             <i class="fa-solid fa-box" aria-hidden="true"></i>
         </span>
@@ -113,7 +119,7 @@ require __DIR__ . '/_header.php';
             <strong><?= (int) $stats['orders'] ?></strong>
             <small>Paid, not completed</small>
         </div>
-    </article>
+    </a>
 
 </section>
 
@@ -242,54 +248,72 @@ require __DIR__ . '/_header.php';
 
             <header class="admin-panel-header">
                 <div>
-                    <p>Build Status</p>
-                    <h2>Admin Modules</h2>
+                    <p>Operations</p>
+                    <h2>Admin Systems</h2>
                 </div>
             </header>
 
             <div class="admin-module-list">
 
-                <div class="is-ready">
+                <a class="is-ready" href="/submissions.php">
                     <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
-                        <strong>Moderation</strong>
-                        New Places, updates, reports
+                        <strong>Place Moderation</strong>
+                        New Places and suggested updates
                     </span>
-                </div>
+                </a>
 
-                <div>
-                    <i class="fa-regular fa-circle" aria-hidden="true"></i>
+                <a class="is-ready" href="/reports.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <span>
+                        <strong>Place Operations</strong>
+                        Reports, verification, canonical records
+                    </span>
+                </a>
+
+                <a class="is-ready" href="/users.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
                         <strong>Users + Scouts</strong>
-                        Accounts, anonymization, ranks
+                        Accounts, Scout periods, Master Scout
                     </span>
-                </div>
+                </a>
 
-                <div>
-                    <i class="fa-regular fa-circle" aria-hidden="true"></i>
+                <a class="is-ready" href="/badges.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <span>
+                        <strong>Badges + Achievements</strong>
+                        Definitions, images, awards
+                    </span>
+                </a>
+
+                <a class="is-ready" href="/points.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
                         <strong>Policies + Points</strong>
-                        Versioning and point ledger
+                        Scout policy and contribution scoring
                     </span>
-                </div>
+                </a>
 
-                <div class="is-ready">
+                <a class="is-ready" href="/orders.php">
                     <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
                         <strong>Shop + Orders</strong>
                         Products, orders, fulfillment
                     </span>
-                </div>
+                </a>
 
-                <div>
-                    <i class="fa-regular fa-circle" aria-hidden="true"></i>
+                <a class="is-ready" href="/system.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
-                        <strong>System</strong>
-                        Maintenance and audit log
+                        <strong>System + Audit</strong>
+                        Health, maintenance, staging, audit log
                     </span>
-                </div>
+                </a>
 
             </div>
+
+        </section>
 
         </section>
 
