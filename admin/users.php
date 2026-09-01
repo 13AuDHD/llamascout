@@ -138,7 +138,6 @@ require __DIR__ . '/_header.php';
                         <th>Membership</th>
                         <th>Contributions</th>
                         <th>Last login</th>
-                        <th></th>
                     </tr>
                 </thead>
 
@@ -170,24 +169,49 @@ require __DIR__ . '/_header.php';
                                         >
                                     </span>
 
-                                    <div>
+                                    <div class="admin-user-identity-copy">
                                         <strong>
-                                            <?= moderation_e(
-                                                $user['display_name']
-                                                ?: $user['username']
-                                                ?: 'Unnamed account'
-                                            ) ?>
+                                            <a
+                                                class="admin-user-name-link"
+                                                href="/user.php?id=<?= (int) $user['id'] ?>"
+                                            >
+                                                <?= moderation_e(
+                                                    $user['display_name']
+                                                    ?: $user['username']
+                                                    ?: 'Unnamed account'
+                                                ) ?>
+                                            </a>
                                         </strong>
 
                                         <?php if (!empty($user['anonymized_at'])): ?>
-                                            <span>Former member · #<?= (int) $user['id'] ?></span>
-                                        <?php else: ?>
                                             <span>
-                                                <?php if (!empty($user['username'])): ?>
-                                                    @<?= moderation_e($user['username']) ?> ·
-                                                <?php endif; ?>
+                                                Former member · #<?= (int) $user['id'] ?>
+                                            </span>
+                                        <?php else: ?>
+
+                                            <?php if (!empty($user['username'])): ?>
+                                                <span class="admin-user-username">
+                                                    @<?= moderation_e($user['username']) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <span class="admin-user-email">
                                                 <?= moderation_e($user['email']) ?>
                                             </span>
+
+                                            <span class="admin-user-mobile-login">
+                                                Last login:
+                                                <?= moderation_e(
+                                                    $user['last_login_at']
+                                                    ?: 'Never'
+                                                ) ?>
+                                            </span>
+
+                                            <span class="admin-user-mobile-contributions">
+                                                <?= number_format((int) $user['contribution_count']) ?>
+                                                contribution<?= (int) $user['contribution_count'] === 1 ? '' : 's' ?>
+                                            </span>
+
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -245,14 +269,7 @@ require __DIR__ . '/_header.php';
                                 </span>
                             </td>
 
-                            <td>
-                                <a
-                                    class="admin-button"
-                                    href="/user.php?id=<?= (int) $user['id'] ?>"
-                                >
-                                    Manage
-                                </a>
-                            </td>
+
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
