@@ -173,6 +173,48 @@ function admin_badges_user_badges(
 }
 
 
+function admin_badges_user_badge(
+    PDO $db,
+    int $userId,
+    int $userBadgeId
+): ?array {
+    if (
+        $userId < 1
+        || $userBadgeId < 1
+    ) {
+        return null;
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            ub.*,
+            bd.slug,
+            bd.name,
+            bd.category,
+            bd.icon,
+            bd.image_src
+         FROM user_badges ub
+         INNER JOIN badge_definitions bd
+            ON bd.id = ub.badge_id
+         WHERE ub.id = ?
+           AND ub.user_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $userBadgeId,
+        $userId,
+    ]);
+
+    $row =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return
+        $row
+            ?: null;
+}
+
+
 function admin_badges_stats(
     PDO $db
 ): array {
