@@ -771,13 +771,22 @@ function admin_place_save_core(
         (string) ($data['type'] ?? '')
     );
 
-    $slug = strtolower(
+    $incomingSlug =
         trim(
             (string) (
                 $data['slug']
-                ?? $place['slug']
                 ?? ''
             )
+        );
+
+    $slugSource =
+        $incomingSlug !== ''
+            ? $incomingSlug
+            : $name;
+
+    $slug = strtolower(
+        trim(
+            $slugSource
         )
     );
 
@@ -806,6 +815,40 @@ function admin_place_save_core(
     if ($type === '') {
         throw new RuntimeException(
             'Place type is required.'
+        );
+    }
+
+    $allowedPlaceTypes = [
+        'dispersed-camping',
+        'campground',
+        'overnight-parking',
+        'boondocking',
+        'primitive-camping',
+        'backcountry-camping',
+        'other',
+    ];
+
+    $currentStoredType =
+        strtolower(
+            trim(
+                (string) (
+                    $place['type']
+                    ?? ''
+                )
+            )
+        );
+
+    if (
+        !in_array(
+            $type,
+            $allowedPlaceTypes,
+            true
+        )
+        &&
+        $type !== $currentStoredType
+    ) {
+        throw new RuntimeException(
+            'Choose a valid Place type.'
         );
     }
 
