@@ -726,213 +726,200 @@ function admin_scout_set_master(
     bool $makeMaster,
     string $notes = ''
 ): void {
-    if (!admin_users_current_is_owner($db, $actorUserId)) {
+    if (
+        !admin_users_current_is_owner(
+            $db,
+            $actorUserId
+        )
+    ) {
         throw new RuntimeException(
             'Only an Owner can change Master Scout status.'
         );
     }
 
-    $scout = admin_scout_get($db, $scoutProfileId);
-
-    if (!$scout) {
-        throw new RuntimeException('Scout profile not found.');
-    }
-
-    $userId = (int) $scout['user_id'];
-
-    $qualification =
-        admin_scout_master_qualification(
+    $scout =
+        admin_scout_get(
             $db,
-            $scout
+            $scoutProfileId
         );
 
-    if ($makeMaster) {
-        if ((string) $scout['status'] !== 'active') {
-            throw new RuntimeException(
-                'Only an active Llama Scout can be promoted to Master Scout.'
-            );
-        }
-
-        if (empty($qualification['eligible'])) {
-            throw new RuntimeException(
-                'This Scout has not yet completed the current Master Scout qualification requirements.'
-            );
-        }
+    if (!$scout) {
+        throw new RuntimeException(
+            'Scout profile not found.'
+        );
     }
 
-    $roleStmt = $db->prepare(
-        'SELECT id
-         FROM roles
-         WHERE slug = ?
-         LIMIT 1'
-    );
+    $userId =
+        (int) $scout['user_id'];
 
-    if ($makeMaster) {
-        foreach (['scout','master_scout'] as $slug) {
-            $roleStmt->execute([$slug]);
-            $roleId = (int) $roleStmt->fetchColumn();
+    if (
+        (string) $scout['status']
+        !== 'active'
+    ) {
+        throw new RuntimeException(
+            'Only an active Llama Scout can have Master Scout status changed.'
+        );
+    }
 
-            if ($roleId < 1) {
-                throw new RuntimeException(
-                    'Required role is missing: ' .
-                    $slug .
-                    '. Run the Phase 43 role SQL before promoting a Master Scout.'
+    $notes =
+        trim($notes);
+
+    $db->beginTransaction();
+
+    try {
+        if ($makeMaster) {
+            /*
+             * The rank engine is the sole authority for qualification,
+             * current role assignment, and permanent rank history.
+             */
+            $result =
+                llama_promote_to_master_scout(
+                    $db,
+                    $userId,
+                    $actorUserId,
+                    $notes !== ''
+                        ? $notes
+                        : null
+                );
+
+            $badgeStmt =
+                $db->prepare(
+                    'SELECT id
+                     FROM badge_definitions
+                     WHERE slug = "master-scout"
+                       AND is_active = 1
+                     LIMIT 1'
+                );
+
+            $badgeStmt->execute();
+
+            $masterBadgeId =
+                (int) $badgeStmt->fetchColumn();
+
+            if ($masterBadgeId > 0) {
+                $existingStmt =
+                    $db->prepare(
+                        'SELECT id
+                         FROM user_badges
+                         WHERE user_id = ?
+                           AND badge_id = ?
+                         LIMIT 1'
+                    );
+
+                $existingStmt->execute([
+                    $userId,
+                    $masterBadgeId,
+                ]);
+
+                $userBadgeId =
+                    (int) $existingStmt->fetchColumn();
+
+                if ($userBadgeId > 0) {
+                    $db->prepare(
+                        'UPDATE user_badges
+                         SET
+                            awarded_by = ?,
+                            review_status = "earned",
+                            note = ?
+                         WHERE id = ?'
+                    )->execute([
+                        $actorUserId,
+                        'Automatically awarded with Master Scout rank.',
+                        $userBadgeId,
+                    ]);
+                } else {
+                    $db->prepare(
+                        'INSERT INTO user_badges (
+                            user_id,
+                            badge_id,
+                            awarded_by,
+                            review_status,
+                            note
+                         ) VALUES (?, ?, ?, "earned", ?)'
+                    )->execute([
+                        $userId,
+                        $masterBadgeId,
+                        $actorUserId,
+                        'Automatically awarded with Master Scout rank.',
+                    ]);
+                }
+            }
+
+            $action =
+                'scout.master_granted';
+
+            $summary =
+                !empty($result['changed'])
+                    ? 'Granted Master Scout status.'
+                    : 'Master Scout status was already active.';
+
+        } else {
+            $currentRank =
+                llama_current_scout_rank(
+                    $db,
+                    $userId
+                );
+
+            if (
+                $currentRank ===
+                LLAMA_SCOUT_RANK_MASTER
+            ) {
+                llama_return_to_basic_scout(
+                    $db,
+                    $userId,
+                    $actorUserId,
+                    LLAMA_RANK_REASON_ADMIN_CHANGE,
+                    $notes !== ''
+                        ? $notes
+                        : 'Master Scout status removed by Owner.'
                 );
             }
 
-            $insert = $db->prepare(
-                'INSERT IGNORE INTO user_roles (
-                    user_id,
-                    role_id
-                ) VALUES (?, ?)'
-            );
-            $insert->execute([$userId, $roleId]);
-        }
-
-        $badgeStmt = $db->prepare(
-            'SELECT id
-             FROM badge_definitions
-             WHERE slug = "master-scout"
-               AND is_active = 1
-             LIMIT 1'
-        );
-        $badgeStmt->execute();
-
-        $masterBadgeId =
-            (int) $badgeStmt->fetchColumn();
-
-        if ($masterBadgeId > 0) {
-            $existingBadgeStmt = $db->prepare(
-                'SELECT id
-                 FROM user_badges
-                 WHERE user_id = ?
-                   AND badge_id = ?
-                 LIMIT 1'
-            );
-
-            $existingBadgeStmt->execute([
-                $userId,
-                $masterBadgeId,
-            ]);
-
-            $existingUserBadgeId =
-                (int) $existingBadgeStmt->fetchColumn();
-
-            if ($existingUserBadgeId > 0) {
-                $db->prepare(
-                    'UPDATE user_badges
-                     SET
-                        awarded_by = ?,
-                        review_status = "earned",
-                        note = ?
-                     WHERE id = ?'
-                )->execute([
-                    $actorUserId,
-                    'Automatically awarded with Master Scout rank.',
-                    $existingUserBadgeId,
-                ]);
-            } else {
-                $db->prepare(
-                    'INSERT INTO user_badges (
-                        user_id,
-                        badge_id,
-                        awarded_by,
-                        review_status,
-                        note
-                     ) VALUES (?, ?, ?, "earned", ?)'
-                )->execute([
-                    $userId,
-                    $masterBadgeId,
-                    $actorUserId,
-                    'Automatically awarded with Master Scout rank.',
-                ]);
-            }
-        }
-
-        $fromRank = 'scout';
-        $toRank = 'master_scout';
-        $action = 'scout.master_granted';
-        $summary = 'Granted Master Scout status.';
-    } else {
-        $stmt = $db->prepare(
-            'DELETE ur
-             FROM user_roles ur
-             INNER JOIN roles r
-                ON r.id = ur.role_id
-             WHERE ur.user_id = ?
-               AND r.slug = "master_scout"'
-        );
-        $stmt->execute([$userId]);
-
-        $badgeStmt = $db->prepare(
-            'DELETE ub
-             FROM user_badges ub
-             INNER JOIN badge_definitions bd
-                ON bd.id = ub.badge_id
-             WHERE ub.user_id = ?
-               AND bd.slug = "master-scout"
-               AND ub.review_status = "earned"'
-        );
-        $badgeStmt->execute([$userId]);
-
-        $fromRank = 'master_scout';
-        $toRank = 'scout';
-        $action = 'scout.master_removed';
-        $summary = 'Removed Master Scout status.';
-    }
-
-    $rank = $db->prepare(
-        'INSERT INTO scout_rank_history (
-            scout_profile_id,
-            user_id,
-            from_rank,
-            to_rank,
-            reason,
-            changed_by,
-            notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-    $rank->execute([
-        $scoutProfileId,
-        $userId,
-        $fromRank,
-        $toRank,
-        'admin_change',
-        $actorUserId,
-        trim($notes) !== '' ? trim($notes) : null,
-    ]);
-
-    if ($makeMaster) {
-        $snapshot = json_encode(
-            $qualification,
-            JSON_UNESCAPED_SLASHES
-            | JSON_UNESCAPED_UNICODE
-        );
-
-        if ($snapshot !== false) {
             $db->prepare(
-                'UPDATE scout_rank_history
-                 SET qualification_snapshot = ?
-                 WHERE id = ?'
+                'DELETE ub
+                 FROM user_badges ub
+                 INNER JOIN badge_definitions bd
+                    ON bd.id = ub.badge_id
+                 WHERE ub.user_id = ?
+                   AND bd.slug = "master-scout"
+                   AND ub.review_status = "earned"'
             )->execute([
-                $snapshot,
-                (int) $db->lastInsertId(),
+                $userId,
             ]);
-        }
-    }
 
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        $userId,
-        $action,
-        $summary,
-        [
-            'scout_profile_id' => $scoutProfileId,
-            'notes' => trim($notes),
-        ]
-    );
+            $action =
+                'scout.master_removed';
+
+            $summary =
+                'Returned Master Scout to basic Llama Scout.';
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $userId,
+            $action,
+            $summary,
+            [
+                'scout_profile_id' =>
+                    $scoutProfileId,
+
+                'notes' =>
+                    $notes,
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
+
 
 function admin_scout_update_policy(
     PDO $db,

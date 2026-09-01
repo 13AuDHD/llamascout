@@ -740,6 +740,39 @@ function current_user(): ?array {
     }
 
 
+    /*
+     * Run throttled application maintenance only after the
+     * authenticated account has passed status and MFA checks.
+     *
+     * Scout maintenance has its own database-backed interval,
+     * so normal requests only do meaningful work when due.
+     * A maintenance failure must never lock a member out.
+     */
+    static $maintenanceAttempted =
+        false;
+
+    if (!$maintenanceAttempted) {
+        $maintenanceAttempted =
+            true;
+
+        try {
+            require_once
+                __DIR__
+                . '/scout-maintenance.php';
+
+            llama_run_scout_renewal_maintenance(
+                db()
+            );
+        } catch (Throwable $exception) {
+            error_log(
+                'Llama Scout authenticated maintenance error: '
+                .
+                $exception->getMessage()
+            );
+        }
+    }
+
+
     return $user;
 }
 

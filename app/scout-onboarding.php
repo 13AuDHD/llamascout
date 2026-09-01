@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/admin-users.php';
+require_once __DIR__ . '/scout-ranks.php';
+require_once __DIR__ . '/stripe.php';
 
 
 const LLAMA_SCOUT_INVITE_DAYS = 30;
@@ -1262,6 +1264,59 @@ function llama_scout_admin_review(
             $userId
         );
 
+    $accountStmt =
+        $db->prepare(
+            'SELECT
+                membership_status,
+                membership_started_at,
+                membership_ends_at,
+                stripe_subscription_id
+             FROM users
+             WHERE id = ?
+             LIMIT 1'
+        );
+
+    $accountStmt->execute([
+        $userId,
+    ]);
+
+    $account =
+        $accountStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$account) {
+        throw new RuntimeException(
+            'Scout account not found.'
+        );
+    }
+
+    $hasPaidSubscription =
+        trim(
+            (string) (
+                $account['stripe_subscription_id']
+                ?? ''
+            )
+        ) !== ''
+        &&
+        in_array(
+            strtolower(
+                trim(
+                    (string) (
+                        $account['membership_status']
+                        ?? ''
+                    )
+                )
+            ),
+            [
+                'active',
+                'trialing',
+                'past_due',
+            ],
+            true
+        );
+
+    $billingTransitionNeeded =
+        false;
+
     $db->beginTransaction();
 
     try {
@@ -1311,62 +1366,96 @@ function llama_scout_admin_review(
                 )
             );
 
-            $db->prepare(
-                'UPDATE scout_profiles
-                 SET
-                    status = "active",
-                    approved_at = CURRENT_TIMESTAMP,
-                    approved_by = ?,
-                    scout_started_at =
-                        COALESCE(
-                            scout_started_at,
-                            CURRENT_TIMESTAMP
-                        ),
-                    active_through =
-                        DATE_ADD(
-                            CURRENT_TIMESTAMP,
-                            INTERVAL ' .
-                            $periodMonths .
-                            ' MONTH
-                        ),
-                    inactive_at = NULL,
-                    updated_at = CURRENT_TIMESTAMP
-                 WHERE id = ?
-                   AND user_id = ?
-                   AND status = "pending_approval"'
-            )->execute([
+            $activeThrough =
+                (new DateTimeImmutable('now'))
+                ->modify(
+                    '+' .
+                    $periodMonths .
+                    ' months'
+                )
+                ->format(
+                    'Y-m-d H:i:s'
+                );
+
+            $profileUpdate =
+                $db->prepare(
+                    'UPDATE scout_profiles
+                     SET
+                        status = "active",
+                        approved_at = CURRENT_TIMESTAMP,
+                        approved_by = ?,
+                        scout_started_at =
+                            COALESCE(
+                                scout_started_at,
+                                CURRENT_TIMESTAMP
+                            ),
+                        active_through = ?,
+                        inactive_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?
+                       AND user_id = ?
+                       AND status = "pending_approval"'
+                );
+
+            $profileUpdate->execute([
                 $actorUserId,
+                $activeThrough,
                 $profileId,
                 $userId,
             ]);
 
-            $roleStmt = $db->prepare(
-                'SELECT id
-                 FROM roles
-                 WHERE slug = "scout"
-                 LIMIT 1'
-            );
-
-            $roleStmt->execute();
-
-            $roleId =
-                (int) $roleStmt->fetchColumn();
-
-            if ($roleId < 1) {
+            if ($profileUpdate->rowCount() !== 1) {
                 throw new RuntimeException(
-                    'The Scout role is missing.'
+                    'The Scout profile changed before approval could be completed.'
                 );
             }
 
-            $db->prepare(
-                'INSERT IGNORE INTO user_roles (
-                    user_id,
-                    role_id
-                 ) VALUES (?, ?)'
-            )->execute([
+            /*
+             * One rank authority:
+             * current role + permanent initial approval history.
+             */
+            llama_change_scout_rank(
+                $db,
                 $userId,
-                $roleId,
-            ]);
+                LLAMA_SCOUT_RANK_SCOUT,
+                LLAMA_RANK_REASON_INITIAL_APPROVAL,
+                $actorUserId,
+                null,
+                $notes !== ''
+                    ? $notes
+                    : 'Initial Llama Scout approval.'
+            );
+
+            /*
+             * A non-paying Scout is represented as complimentary
+             * through the same active-through date.
+             *
+             * Paid Stripe billing stays truthful through the
+             * already-paid period. Active Scout access is provided
+             * independently by app/access.php, then Stripe renewal
+             * is scheduled to stop after the DB approval commits.
+             */
+            if (!$hasPaidSubscription) {
+                $db->prepare(
+                    'UPDATE users
+                     SET
+                        membership_status = "complimentary",
+                        membership_interval = NULL,
+                        membership_started_at =
+                            COALESCE(
+                                membership_started_at,
+                                CURRENT_TIMESTAMP
+                            ),
+                        membership_ends_at = ?
+                     WHERE id = ?'
+                )->execute([
+                    $activeThrough,
+                    $userId,
+                ]);
+            } else {
+                $billingTransitionNeeded =
+                    true;
+            }
 
             if ($application) {
                 $db->prepare(
@@ -1534,6 +1623,61 @@ function llama_scout_admin_review(
         );
 
         $db->commit();
+
+        if (
+            $action === 'approve'
+            && $billingTransitionNeeded
+        ) {
+            try {
+                $billingResult =
+                    llama_schedule_subscription_end_for_scout(
+                        $db,
+                        $userId
+                    );
+
+                admin_users_audit(
+                    $db,
+                    $actorUserId,
+                    $userId,
+                    'scout.billing_transition',
+                    'Processed paid membership transition after Scout approval.',
+                    [
+                        'scout_profile_id' =>
+                            $profileId,
+
+                        'result' =>
+                            $billingResult,
+                    ]
+                );
+
+            } catch (Throwable $billingException) {
+                error_log(
+                    'Llama Scout Scout billing transition error: '
+                    .
+                    $billingException->getMessage()
+                );
+
+                admin_users_audit(
+                    $db,
+                    $actorUserId,
+                    $userId,
+                    'scout.billing_transition_failed',
+                    'Scout approval completed, but paid subscription renewal could not be stopped automatically.',
+                    [
+                        'scout_profile_id' =>
+                            $profileId,
+
+                        'error' =>
+                            $billingException->getMessage(),
+                    ]
+                );
+
+                throw new RuntimeException(
+                    'Scout approval completed, but Stripe renewal could not be stopped automatically. Review this member\'s billing.'
+                );
+            }
+        }
+
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();

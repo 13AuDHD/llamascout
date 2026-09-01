@@ -71,6 +71,49 @@ function user_has_member_access(?int $userId = null): bool
     }
 
     /*
+     * Active Scout access.
+     *
+     * Scout status itself is an entitlement to full Llama Scout
+     * access. Billing state remains separate so a paid subscription
+     * can finish its already-paid period without causing a gap when
+     * Stripe later marks that subscription canceled.
+     */
+    $stmt = db()->prepare(
+        "
+        SELECT 1
+
+        FROM scout_profiles sp
+
+        INNER JOIN user_roles ur
+          ON ur.user_id = sp.user_id
+
+        INNER JOIN roles r
+          ON r.id = ur.role_id
+
+        WHERE sp.user_id = ?
+          AND sp.status = 'active'
+          AND (
+                sp.active_through IS NULL
+                OR sp.active_through >= NOW()
+          )
+          AND r.slug IN (
+                'scout',
+                'master-scout',
+                'master_scout'
+          )
+
+        LIMIT 1
+        "
+    );
+
+    $stmt->execute([$userId]);
+
+    if ($stmt->fetchColumn()) {
+        return true;
+    }
+
+
+    /*
      * Complimentary grant access.
      */
     $stmt = db()->prepare(
