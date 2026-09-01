@@ -78,10 +78,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        if ($action === 'rejected') {
+        if (
+            in_array(
+                $action,
+                [
+                    'needs-changes',
+                    'rejected',
+                ],
+                true
+            )
+        ) {
             if ($notes === '') {
-                throw new InvalidArgumentException('Add review notes explaining why the update was not approved.');
+                throw new InvalidArgumentException(
+                    $action === 'needs-changes'
+                        ? 'Add clear review notes explaining what the contributor needs to change.'
+                        : 'Add review notes explaining why the update was not approved.'
+                );
             }
+
             moderation_set_update_status(
                 $db,
                 $updateId,
@@ -90,12 +104,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notes
             );
 
+            $auditAction =
+                $action === 'needs-changes'
+                    ? 'place.update_changes_requested'
+                    : 'place.update_rejected';
+
+            $auditSummary =
+                $action === 'needs-changes'
+                    ? 'Requested changes to Place update #' . $updateId . '.'
+                    : 'Rejected Place update #' . $updateId . '.';
+
             admin_users_audit(
                 $db,
                 (int) $adminUser['id'],
                 (int) $item['user_id'],
-                'place.update_rejected',
-                'Rejected Place update #' . $updateId . '.',
+                $auditAction,
+                $auditSummary,
                 [
                     'update_id' => $updateId,
                     'place_id' => (int) $item['place_id'],
@@ -326,6 +350,7 @@ $type =
 
         <div class="admin-moderation-actions">
             <button class="admin-moderation-button is-primary" type="submit" name="action" value="approve">Approve Update</button>
+            <button class="admin-moderation-button is-warning" type="submit" name="action" value="needs-changes">Request Changes</button>
             <button class="admin-moderation-button is-danger" type="submit" name="action" value="rejected">Not Approved</button>
         </div>
     </form>
