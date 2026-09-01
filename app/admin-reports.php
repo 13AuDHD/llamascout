@@ -237,7 +237,44 @@ function admin_reports_queue(
                     "open",
                     "investigating"
                   )
-            ) AS matching_open_count
+            ) AS matching_open_count,
+            (
+                SELECT COUNT(*)
+                FROM place_reports place_open
+                WHERE place_open.place_id = pr.place_id
+                  AND place_open.status IN (
+                    "open",
+                    "investigating"
+                  )
+            ) AS place_open_report_count,
+            (
+                SELECT COUNT(*)
+                FROM place_update_submissions pus
+                WHERE pus.place_id = pr.place_id
+                  AND pus.status IN (
+                    "pending",
+                    "needs-changes"
+                  )
+            ) AS pending_update_count,
+            (
+                SELECT MAX(pv.verified_at)
+                FROM place_verifications pv
+                WHERE pv.place_id = pr.place_id
+            ) AS latest_verification_at,
+            (
+                SELECT COUNT(*)
+                FROM place_verifications pv
+                WHERE pv.place_id = pr.place_id
+                  AND (
+                    pv.verification_type = "field-verified"
+                    OR LOWER(
+                        COALESCE(
+                            pv.source,
+                            ""
+                        )
+                    ) = "llama scouted"
+                  )
+            ) AS llama_scouted_count
          FROM place_reports pr
          INNER JOIN places p
             ON p.id = pr.place_id
@@ -795,6 +832,330 @@ function admin_report_place_snapshot(
 
     return $snapshot;
 }
+
+
+function admin_report_place_context(
+    PDO $db,
+    int $placeId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            p.id,
+            p.name,
+            p.slug,
+            p.status,
+            p.source_type,
+            p.city,
+            p.county,
+            p.state,
+            p.last_verified_at,
+            p.updated_at,
+            (
+                SELECT MAX(pv.verified_at)
+                FROM place_verifications pv
+                WHERE pv.place_id = p.id
+            ) AS latest_verification_at,
+            (
+                SELECT COUNT(*)
+                FROM place_verifications pv
+                WHERE pv.place_id = p.id
+                  AND (
+                    pv.verification_type = "field-verified"
+                    OR LOWER(
+                        COALESCE(
+                            pv.source,
+                            ""
+                        )
+                    ) = "llama scouted"
+                  )
+            ) AS llama_scouted_count,
+            (
+                SELECT MIN(
+                    COALESCE(
+                        pv.visited_at,
+                        DATE(pv.verified_at)
+                    )
+                )
+                FROM place_verifications pv
+                WHERE pv.place_id = p.id
+                  AND (
+                    pv.verification_type = "field-verified"
+                    OR LOWER(
+                        COALESCE(
+                            pv.source,
+                            ""
+                        )
+                    ) = "llama scouted"
+                  )
+            ) AS first_llama_scouted_at,
+            (
+                SELECT COUNT(*)
+                FROM place_reports pr
+                WHERE pr.place_id = p.id
+                  AND pr.status IN (
+                    "open",
+                    "investigating"
+                  )
+            ) AS unresolved_report_count,
+            (
+                SELECT COUNT(*)
+                FROM place_update_submissions pus
+                WHERE pus.place_id = p.id
+                  AND pus.status IN (
+                    "pending",
+                    "needs-changes"
+                  )
+            ) AS pending_update_count,
+            (
+                SELECT COUNT(*)
+                FROM place_verifications pv
+                WHERE pv.place_id = p.id
+            ) AS verification_count
+         FROM places p
+         WHERE p.id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$placeId]);
+
+    $row =
+        $stmt->fetch(PDO::FETCH_ASSOC)
+        ?: [];
+
+    if (!$row) {
+        return [];
+    }
+
+    $latest =
+        trim(
+            (string) (
+                $row['latest_verification_at']
+                ?? $row['last_verified_at']
+                ?? ''
+            )
+        );
+
+    $freshness = 'never';
+
+    if ($latest !== '') {
+        try {
+            $verified =
+                new DateTimeImmutable(
+                    $latest
+                );
+
+            $days =
+                max(
+                    0,
+                    (int)
+                    floor(
+                        (
+                            time()
+                            - $verified->getTimestamp()
+                        ) / 86400
+                    )
+                );
+
+            $freshness =
+                $days > 730
+                    ? 'overdue'
+                    : (
+                        $days > 365
+                            ? 'attention'
+                            : 'current'
+                    );
+
+            $row['verification_age_days'] =
+                $days;
+        } catch (Throwable) {
+            $freshness = 'attention';
+        }
+    }
+
+    $row['verification_freshness'] =
+        $freshness;
+
+    $row['is_published'] =
+        in_array(
+            (string) (
+                $row['status']
+                ?? ''
+            ),
+            [
+                'active',
+                'featured',
+            ],
+            true
+        );
+
+    $row['ever_llama_scouted'] =
+        (int) (
+            $row['llama_scouted_count']
+            ?? 0
+        ) > 0;
+
+    return $row;
+}
+
+
+function admin_report_recent_updates(
+    PDO $db,
+    int $placeId,
+    int $limit = 8
+): array {
+    $limit =
+        max(
+            1,
+            min(
+                20,
+                $limit
+            )
+        );
+
+    $stmt =
+        $db->prepare(
+            'SELECT
+                pus.id,
+                pus.update_type,
+                pus.status,
+                pus.role_at_submission,
+                pus.visited_at,
+                pus.proposed_changes,
+                pus.contributor_notes,
+                pus.review_notes,
+                pus.points_awarded,
+                pus.submitted_at,
+                pus.updated_at,
+                COALESCE(
+                    NULLIF(u.display_name, ""),
+                    NULLIF(u.username, ""),
+                    "Former member"
+                ) AS contributor_name
+             FROM place_update_submissions pus
+             LEFT JOIN users u
+                ON u.id = pus.user_id
+             WHERE pus.place_id = ?
+             ORDER BY
+                CASE
+                    WHEN pus.status IN (
+                        "pending",
+                        "needs-changes"
+                    )
+                        THEN 0
+                    ELSE 1
+                END,
+                pus.submitted_at DESC,
+                pus.id DESC
+             LIMIT ' .
+             $limit
+        );
+
+    $stmt->execute([
+        $placeId,
+    ]);
+
+    return
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+}
+
+
+function admin_report_place_unresolved(
+    PDO $db,
+    int $placeId,
+    int $excludeReportId = 0
+): array {
+    $where =
+        'pr.place_id = ?
+         AND pr.status IN (
+            "open",
+            "investigating"
+         )';
+
+    $params = [
+        $placeId,
+    ];
+
+    if ($excludeReportId > 0) {
+        $where .=
+            ' AND pr.id <> ?';
+
+        $params[] =
+            $excludeReportId;
+    }
+
+    $stmt =
+        $db->prepare(
+            'SELECT
+                pr.id,
+                pr.problem_type,
+                pr.status,
+                pr.created_at,
+                pr.details,
+                COALESCE(
+                    NULLIF(u.display_name, ""),
+                    NULLIF(u.username, ""),
+                    "Former member"
+                ) AS reporter_name
+             FROM place_reports pr
+             LEFT JOIN users u
+                ON u.id = pr.user_id
+             WHERE ' .
+             $where .
+             ' ORDER BY
+                CASE pr.problem_type
+                    WHEN "safety" THEN 1
+                    WHEN "closure-status" THEN 1
+                    WHEN "location-access" THEN 2
+                    ELSE 3
+                END,
+                pr.created_at ASC,
+                pr.id ASC
+             LIMIT 30'
+        );
+
+    $stmt->execute(
+        $params
+    );
+
+    return
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+}
+
+
+function admin_report_freshness_label(
+    string $state,
+    ?int $days = null
+): string {
+    return match ($state) {
+        'never' =>
+            'Never verified',
+
+        'overdue' =>
+            $days !== null
+                ? number_format($days) .
+                    ' days since verification'
+                : 'Verification is over 2 years old',
+
+        'attention' =>
+            $days !== null
+                ? number_format($days) .
+                    ' days since verification'
+                : 'Verification is over 1 year old',
+
+        default =>
+            $days !== null
+                ? number_format($days) .
+                    ' days since verification'
+                : 'Verification is current',
+    };
+}
+
 
 function admin_report_set_status(
     PDO $db,
