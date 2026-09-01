@@ -286,7 +286,13 @@ require __DIR__ .
     <?php if (!empty($badge['image_src'])): ?>
         <img
             src="<?= moderation_e(
-                (string) $badge['image_src']
+                llama_profile_image_url(
+                    llama_badge_image_url(
+                        (string) $badge['slug'],
+                        (string) ($badge['image_src'] ?? '')
+                    ),
+                    'https://llamascout.com'
+                )
             ) ?>"
             alt=""
         >
@@ -543,7 +549,15 @@ require __DIR__ .
             <?php if (!empty($badge['image_src'])): ?>
                 <div class="admin-badge-current-image">
                     <img
-                        src="<?= moderation_e((string) $badge['image_src']) ?>"
+                        src="<?= moderation_e(
+                        llama_profile_image_url(
+                            llama_badge_image_url(
+                                (string) $badge['slug'],
+                                (string) ($badge['image_src'] ?? '')
+                            ),
+                            'https://llamascout.com'
+                        )
+                    ) ?>"
                         alt="Current <?= moderation_e((string) $badge['name']) ?> badge"
                     >
 
@@ -585,7 +599,7 @@ require __DIR__ .
                 data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
                 data-photo-endpoint="/photo-upload.php"
                 data-photo-title="Replace badge image"
-                data-photo-help="Upload one image. It becomes /uploads/badges/<?= moderation_e((string) $badge['slug']) ?>.jpg automatically."
+                data-photo-help="Upload one image. It becomes /images/badges/<?= moderation_e((string) $badge['slug']) ?>.jpg automatically."
             ></div>
         </div>
 

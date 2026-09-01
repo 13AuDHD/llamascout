@@ -224,7 +224,13 @@ require __DIR__ .
     <?php if (!empty($badge['image_src'])): ?>
         <img
             src="<?= moderation_e(
-                (string) $badge['image_src']
+                llama_profile_image_url(
+                    llama_badge_image_url(
+                        (string) $badge['slug'],
+                        (string) ($badge['image_src'] ?? '')
+                    ),
+                    'https://llamascout.com'
+                )
             ) ?>"
             alt=""
         >
