@@ -336,8 +336,7 @@ function llama_scout_admin_eligible_candidates(
              FROM users u
              LEFT JOIN scout_profiles sp
                 ON sp.user_id = u.id
-             WHERE u.anonymized_at IS NULL
-               AND u.status = "active"
+             WHERE u.status = "active"
                AND u.email_verified_at IS NOT NULL
                AND (
                     sp.id IS NULL
@@ -376,7 +375,6 @@ function llama_scout_admin_invite(
             username,
             display_name,
             status,
-            anonymized_at,
             email_verified_at
          FROM users
          WHERE id = ?
@@ -397,11 +395,8 @@ function llama_scout_admin_invite(
     }
 
     if (
-        !empty(
-            $candidate['anonymized_at']
-        )
-        || (string) $candidate['status']
-            !== 'active'
+        (string) $candidate['status']
+        !== 'active'
     ) {
         throw new RuntimeException(
             'That account cannot receive a Scout invitation.'
