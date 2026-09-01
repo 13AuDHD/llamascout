@@ -7412,3 +7412,76 @@ html[data-reduced-motion="true"] .admin-sidebar {
     outline: 2px solid currentColor;
     outline-offset: -2px;
 }
+
+
+/* =========================================================
+   PHASE 36A: SINGLE BADGE IMAGE UPLOADER
+   ========================================================= */
+
+.admin-badge-image-uploader-field {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-badge-image-uploader-field > span {
+    color: var(--text-muted);
+    font-size: .61rem;
+    font-weight: 850;
+}
+
+.admin-badge-image-uploader-field .llama-photo-uploader-inner {
+    padding: 12px;
+}
+
+.admin-badge-current-image {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding: 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+}
+
+.admin-badge-current-image img,
+.admin-badge-current-image > i {
+    width: 52px;
+    height: 52px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    object-fit: cover;
+}
+
+.admin-badge-current-image > i {
+    display: grid;
+    place-items: center;
+
+    color: var(--text-muted);
+}
+
+.admin-badge-current-image strong,
+.admin-badge-current-image small {
+    display: block;
+}
+
+.admin-badge-current-image strong {
+    font-size: .67rem;
+}
+
+.admin-badge-current-image small {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+    font-size: .59rem;
+    line-height: 1.4;
+}
+
+.admin-badge-current-image.is-missing {
+    border-style: dashed;
+}
