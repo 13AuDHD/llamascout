@@ -406,15 +406,14 @@ try {
     Throwable $error
 ) {
 
-    error_log(
-        'Llama Scout weather API error: '
-        .
-        $error->getMessage()
+    $reference = llama_log_caught_exception(
+        $error,
+        'weather_api'
     );
 
 
     weather_api_error(
-        'Weather is temporarily unavailable.',
+        llama_error_message_with_reference('Weather is temporarily unavailable.', $reference),
         500
     );
 }
