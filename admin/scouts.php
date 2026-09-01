@@ -97,7 +97,7 @@ $scouts = array_values(array_filter(
     static function (array $scout) use ($q, $filter): bool {
         $roles = explode(',', (string) ($scout['role_slugs'] ?? ''));
         $status = (string) ($scout['status'] ?? '');
-        $isMaster = in_array('master_scout', $roles, true);
+        $isMaster = in_array('master-scout', $roles, true) || in_array('master_scout', $roles, true);
 
         $matchesFilter = match ($filter) {
             'attention' => in_array($status, ['application_submitted','pending_approval','inactive'], true),
@@ -310,7 +310,7 @@ require __DIR__ . '/_header.php';
             <?php foreach ($scouts as $scout): ?>
                 <?php
                 $roles = explode(',', (string) ($scout['role_slugs'] ?? ''));
-                $isMaster = in_array('master_scout', $roles, true);
+                $isMaster = in_array('master-scout', $roles, true) || in_array('master_scout', $roles, true);
                 $status = (string) $scout['status'];
                 $attention = in_array($status, ['application_submitted','pending_approval','inactive'], true);
                 $period = admin_scout_current_period($db, $scout);

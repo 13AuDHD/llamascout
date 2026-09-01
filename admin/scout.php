@@ -213,11 +213,9 @@ $roles = explode(
     (string) ($scout['role_slugs'] ?? '')
 );
 
-$isMaster = in_array(
-    'master_scout',
-    $roles,
-    true
-);
+$isMaster =
+    in_array('master-scout', $roles, true)
+    || in_array('master_scout', $roles, true);
 
 $stats = admin_dashboard_stats($db);
 
