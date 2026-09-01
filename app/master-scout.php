@@ -309,11 +309,20 @@ function llama_master_scout_qualification(
         );
 
 
+    $reactivating =
+        (string) (
+            $summary['period']['type']
+            ?? ''
+        )
+        === 'reactivation';
+
+
     $active =
         (bool)
         $summary[
             'active'
-        ];
+        ]
+        && !$reactivating;
 
 
     $currentPeriodMet =
@@ -499,6 +508,13 @@ function llama_master_scout_qualification(
 
         $reason =
             'Master Scout qualification thresholds have not all been configured.';
+
+    } elseif (
+        $reactivating
+    ) {
+
+        $reason =
+            'Scout reactivation must be completed before Master Scout qualification.';
 
     } elseif (
         !$active

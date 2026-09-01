@@ -624,13 +624,21 @@ function llama_scout_summary(
 
 
     $required =
-        max(
-            1,
-            (int)
-            $period[
-                'required'
-            ]
+        (int)
+        $period[
+            'required'
+        ];
+
+
+    if (
+        $required < 1
+    ) {
+
+        throw new RuntimeException(
+            'The configured Scout period requirement must be at least 1.'
         );
+
+    }
 
 
     $remaining =

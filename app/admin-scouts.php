@@ -226,6 +226,94 @@ function admin_scout_current_period(
     PDO $db,
     array $scout
 ): array {
+    $scoutProfileId =
+        (int) ($scout['id'] ?? 0);
+
+    $userId =
+        (int) ($scout['user_id'] ?? 0);
+
+    if (
+        $scoutProfileId > 0
+        && $userId > 0
+    ) {
+        llama_ensure_scout_extensions_table($db);
+
+        $extensionStmt = $db->prepare(
+            'SELECT started_at, ends_at
+             FROM scout_extensions
+             WHERE scout_profile_id = ?
+               AND user_id = ?
+               AND status = "active"
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+
+        $extensionStmt->execute([
+            $scoutProfileId,
+            $userId,
+        ]);
+
+        $extension =
+            $extensionStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($extension) {
+            $required =
+                admin_scout_policy_int_value(
+                    $db,
+                    'reactivation_new_places_required'
+                );
+
+            $start = trim(
+                (string) ($extension['started_at'] ?? '')
+            );
+
+            $end = trim(
+                (string) ($extension['ends_at'] ?? '')
+            );
+
+            if ($start === '' || $end === '') {
+                throw new RuntimeException(
+                    'The active Scout reactivation period is missing its dates.'
+                );
+            }
+
+            $startDate = new DateTimeImmutable($start);
+            $endDate = new DateTimeImmutable($end);
+
+            $stmt = $db->prepare(
+                'SELECT COUNT(*)
+                 FROM scout_activity
+                 WHERE scout_profile_id = ?
+                   AND user_id = ?
+                   AND activity_type = "place_approved"
+                   AND occurred_at >= ?
+                   AND occurred_at < ?'
+            );
+
+            $stmt->execute([
+                $scoutProfileId,
+                $userId,
+                $startDate->format('Y-m-d H:i:s'),
+                $endDate->format('Y-m-d H:i:s'),
+            ]);
+
+            $completed = (int) $stmt->fetchColumn();
+
+            return [
+                'type' => 'reactivation',
+                'start' => $startDate->format('Y-m-d H:i:s'),
+                'end' => $endDate->format('Y-m-d H:i:s'),
+                'required' => $required,
+                'completed' => $completed,
+                'remaining' => max(0, $required - $completed),
+                'met' => $required > 0 && $completed >= $required,
+                'days_remaining' => (int) floor(
+                    ($endDate->getTimestamp() - time()) / 86400
+                ),
+            ];
+        }
+    }
+
     $months =
         admin_scout_policy_int_value(
             $db,
@@ -247,6 +335,7 @@ function admin_scout_current_period(
 
     if ($end === '') {
         return [
+            'type' => 'standard',
             'start' => null,
             'end' => null,
             'required' => $required,
@@ -299,6 +388,7 @@ function admin_scout_current_period(
         );
 
         return [
+            'type' => 'standard',
             'start' => $startDate->format('Y-m-d H:i:s'),
             'end' => $endDate->format('Y-m-d H:i:s'),
             'required' => $required,
@@ -309,6 +399,7 @@ function admin_scout_current_period(
         ];
     } catch (Throwable) {
         return [
+            'type' => 'standard',
             'start' => null,
             'end' => $end,
             'required' => $required,
@@ -319,7 +410,6 @@ function admin_scout_current_period(
         ];
     }
 }
-
 
 function admin_scout_master_qualification(
     PDO $db,
@@ -381,7 +471,10 @@ function admin_scout_master_qualification(
 
     $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $period = admin_scout_current_period($db, $scout);
-    $active = (string) $scout['status'] === 'active';
+    $reactivating = (string) ($period['type'] ?? '') === 'reactivation';
+    $active =
+        (string) $scout['status'] === 'active'
+        && !$reactivating;
 
     $requirements = [
         [
