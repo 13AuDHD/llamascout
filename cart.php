@@ -20,6 +20,17 @@ $siteUrl =
     );
 
 $error = '';
+$removedNotice = false;
+$restoredNotice = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $refererPath = (string) parse_url((string) ($_SERVER['HTTP_REFERER'] ?? ''), PHP_URL_PATH);
+    $comingFromCart = $refererPath === '/cart.php';
+
+    if (!isset($_GET['removed']) && !isset($_GET['restored']) && !$comingFromCart) {
+        shop_cart_clear_undo();
+    }
+}
 
 if (
     $_SERVER['REQUEST_METHOD']
@@ -53,6 +64,8 @@ if (
                 ?? 0
             );
 
+        $redirect = '/cart.php';
+
         if ($action === 'update') {
             shop_cart_update(
                 $db,
@@ -63,30 +76,28 @@ if (
                 )
             );
         } elseif ($action === 'remove') {
-            shop_cart_remove(
-                $variantId
-            );
+            $removed = shop_cart_remove($variantId);
+            if ($removed) {
+                $redirect = '/cart.php?removed=1';
+            }
+        } elseif ($action === 'undo-remove') {
+            shop_cart_restore_removed($db);
+            $redirect = '/cart.php?restored=1';
         } elseif ($action === 'clear') {
             shop_cart_clear();
+            shop_cart_clear_undo();
         }
 
         header(
-            'Location: /cart.php',
+            'Location: ' . $redirect,
             true,
             303
         );
 
         exit;
-    } catch (RuntimeException $exception) {
-        // Cart validation/session messages are expected user-facing errors.
-        $error = $exception->getMessage();
     } catch (Throwable $exception) {
-        $reference = llama_log_caught_exception(
-            $exception,
-            'cart_action',
-            ['cart_action' => (string) ($_POST['cart_action'] ?? '')]
-        );
-        $error = llama_error_message_with_reference('The cart could not be updated.', $reference);
+        $error =
+            $exception->getMessage();
     }
 }
 
@@ -111,6 +122,38 @@ $canonicalUrl =
 
 require __DIR__ . '/partials/header.php';
 ?>
+
+<style>
+.cart-page > .product-cart-message {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+.cart-removal-message {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+.cart-removal-message form {
+    flex: 0 0 auto;
+    margin: 0;
+}
+.cart-undo-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 850;
+    text-decoration: underline;
+    cursor: pointer;
+}
+@media (max-width: 560px) {
+    .cart-removal-message {
+        align-items: flex-start;
+    }
+}
+</style>
 
 <section class="shop-page cart-page">
 
@@ -140,6 +183,38 @@ require __DIR__ . '/partials/header.php';
 
 <div class="product-cart-message is-success">
     Added to your cart.
+</div>
+
+<?php endif; ?>
+
+<?php if (isset($_GET['removed']) && shop_cart_undo_available()): ?>
+
+<div class="product-cart-message is-error cart-removal-message">
+    <span>Item removed from your cart.</span>
+
+    <form method="post">
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= htmlspecialchars(shop_cart_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
+        >
+        <button
+            type="submit"
+            name="cart_action"
+            value="undo-remove"
+            class="cart-undo-button"
+        >
+            Undo
+        </button>
+    </form>
+</div>
+
+<?php endif; ?>
+
+<?php if (isset($_GET['restored'])): ?>
+
+<div class="product-cart-message is-success">
+    Item restored to your cart.
 </div>
 
 <?php endif; ?>
@@ -308,7 +383,7 @@ $image =
     <span>Qty</span>
 
     <select name="quantity">
-        <?php for ($quantity = 1; $quantity <= 20; $quantity++): ?>
+        <?php for ($quantity = 1; $quantity <= max(1, (int) ($item['max_quantity'] ?? 20)); $quantity++): ?>
             <option
                 value="<?= $quantity ?>"
                 <?= $quantity ===
