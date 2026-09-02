@@ -17,10 +17,17 @@ try {
         throw new RuntimeException('Stripe webhook payload or signature is missing.');
     }
 
+    /*
+     * Load the Shop webhook secret first. llama_stripe_config()
+     * loads Stripe's init.php as part of that call, so Stripe\Webhook
+     * exists before PHP resolves the static class reference below.
+     */
+    $webhookSecret = shop_checkout_webhook_secret();
+
     $event = \Stripe\Webhook::constructEvent(
         $payload,
         $signature,
-        shop_checkout_webhook_secret()
+        $webhookSecret
     );
 
     $eventId = trim((string) ($event->id ?? ''));
