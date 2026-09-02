@@ -81,6 +81,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Variant updated.';
+            } elseif ($action === 'apply-variant-defaults') {
+                $updated = admin_shop_apply_variant_defaults(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    $_POST
+                );
+
+                $notice = $updated . ' variant' . ($updated === 1 ? '' : 's') . ' updated from defaults.';
             } elseif ($action === 'add-photos') {
                 $photoToken = trim(
                     (string) ($_POST['photo_stage_token'] ?? '')
@@ -173,6 +182,8 @@ $options = admin_shop_product_options(
     $db,
     $productId
 );
+
+admin_shop_ensure_variant_sort_sequence($db, $productId);
 
 $variants = admin_shop_product_variants(
     $db,
@@ -342,6 +353,45 @@ require __DIR__ . '/_header.php';
 .admin-commerce-photo-assignment {
     display: grid;
     gap: 14px;
+}
+
+.admin-commerce-defaults {
+    display: grid;
+    gap: 16px;
+    margin: 20px 0 24px;
+    padding: 18px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.12));
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+}
+.admin-commerce-defaults-header h3 { margin: 2px 0 4px; }
+.admin-commerce-defaults-header p { margin: 0; opacity: .7; font-size: .76rem; }
+.admin-commerce-defaults-header small { opacity: .65; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-commerce-default-grid,
+.admin-commerce-variant-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+}
+.admin-commerce-default-field { display: grid; gap: 6px; min-width: 0; }
+.admin-commerce-default-field > span:first-child { font-size: .72rem; font-weight: 800; opacity: .75; }
+.admin-commerce-default-field input,
+.admin-commerce-default-field select { width: 100%; min-width: 0; }
+.admin-commerce-apply-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .68rem; opacity: .8; }
+.admin-commerce-resequence { display: flex; align-items: flex-start; gap: 9px; padding: 12px; border: 1px solid var(--admin-border, rgba(255,255,255,.12)); border-radius: 9px; }
+.admin-commerce-resequence span { display: grid; gap: 3px; }
+.admin-commerce-resequence small { opacity: .65; }
+.admin-commerce-variant-grid .is-wide { grid-column: span 2; }
+
+@media (max-width: 1100px) {
+    .admin-commerce-default-grid,
+    .admin-commerce-variant-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 650px) {
+    .admin-commerce-default-grid,
+    .admin-commerce-variant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-commerce-variant-grid .is-wide { grid-column: 1 / -1; }
 }
 
 @media (max-width: 760px) {
@@ -945,14 +995,15 @@ $valueText =
     </select>
 </label>
 
-<label class="is-wide">
+<label>
     <span>Fulfillment provider</span>
-
-    <input
-        type="text"
-        name="default_fulfillment_provider"
-        placeholder="Printful, Printify, local inventory, etc."
-    >
+    <select name="default_fulfillment_provider">
+        <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
+            <option value="<?= moderation_e($providerValue) ?>">
+                <?= moderation_e($providerLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 </label>
 
 <div class="admin-commerce-checks is-wide">
@@ -1014,6 +1065,82 @@ $valueText =
     <p>No variants configured.</p>
 </div>
 <?php else: ?>
+
+<form class="admin-commerce-defaults" method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="shop_admin_action" value="apply-variant-defaults">
+
+    <header class="admin-commerce-defaults-header">
+        <div>
+            <small>Bulk Editing</small>
+            <h3>Variant Defaults</h3>
+            <p>Check Apply beside only the fields you want written to every variant.</p>
+        </div>
+    </header>
+
+    <div class="admin-commerce-default-grid">
+        <?php
+        $defaultFields = [
+            ['price','Price','number','default_price','0.01',''],
+            ['compare_at_price','Compare at','number','default_compare_at_price','0.01',''],
+            ['inventory_quantity','Inventory','number','default_inventory_quantity','1','0'],
+            ['low_stock_threshold','Low stock at','number','default_low_stock_threshold','1','5'],
+            ['max_per_order','Max per order','number','default_max_per_order','1','0'],
+            ['fulfillment_product_id','Provider product ID','text','default_fulfillment_product_id','',''],
+            ['fulfillment_variant_id','Provider variant ID','text','default_fulfillment_variant_id','',''],
+        ];
+        foreach ($defaultFields as [$key,$label,$type,$name,$step,$value]):
+        ?>
+        <label class="admin-commerce-default-field">
+            <span><?= moderation_e($label) ?></span>
+            <input type="<?= $type ?>" name="<?= $name ?>" <?= $step !== '' ? 'step="'.moderation_e($step).'"' : '' ?> value="<?= moderation_e($value) ?>">
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[<?= moderation_e($key) ?>]" value="1"> Apply</span>
+        </label>
+        <?php endforeach; ?>
+
+        <label class="admin-commerce-default-field">
+            <span>Storefront availability</span>
+            <select name="default_availability_mode"><option value="standard">Standard</option><option value="preorder">Preorder</option></select>
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[availability_mode]" value="1"> Apply</span>
+        </label>
+
+        <label class="admin-commerce-default-field">
+            <span>Fulfillment</span>
+            <select name="default_fulfillment_type"><option value="manual">Manual</option><option value="provider">Provider</option><option value="digital">Digital</option></select>
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[fulfillment_type]" value="1"> Apply</span>
+        </label>
+
+        <label class="admin-commerce-default-field">
+            <span>Provider</span>
+            <select name="default_fulfillment_provider">
+                <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
+                    <option value="<?= moderation_e($providerValue) ?>"><?= moderation_e($providerLabel) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[fulfillment_provider]" value="1"> Apply</span>
+        </label>
+
+        <?php foreach ([
+            ['is_active','Active','default_is_active'],
+            ['track_inventory','Track inventory','default_track_inventory_value'],
+            ['allow_backorder','Allow backorder','default_allow_backorder_value'],
+        ] as [$key,$label,$name]): ?>
+        <label class="admin-commerce-default-field">
+            <span><?= moderation_e($label) ?></span>
+            <select name="<?= moderation_e($name) ?>"><option value="1">Yes</option><option value="0">No</option></select>
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[<?= moderation_e($key) ?>]" value="1"> Apply</span>
+        </label>
+        <?php endforeach; ?>
+    </div>
+
+    <label class="admin-commerce-resequence">
+        <input type="checkbox" name="resequence_sort" value="1">
+        <span><strong>Resequence sort order 1 â <?= count($variants) ?></strong><small>Preserves the current order, then rewrites clean sequential numbers.</small></span>
+    </label>
+
+    <div class="admin-user-form-actions"><button class="admin-button" type="submit">Apply selected defaults</button></div>
+</form>
 
 <div class="admin-commerce-variants">
 
@@ -1192,14 +1319,17 @@ $valueText =
 
 <label>
     <span>Provider</span>
-    <input
-        type="text"
-        name="fulfillment_provider"
-        value="<?= moderation_e(
-            (string) ($variant['fulfillment_provider'] ?? '')
-        ) ?>"
-        placeholder="Printful, Printify, manual, etc."
-    >
+    <?php $selectedProvider = admin_shop_normalize_provider((string) ($variant['fulfillment_provider'] ?? '')); ?>
+    <select name="fulfillment_provider">
+        <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
+            <option
+                value="<?= moderation_e($providerValue) ?>"
+                <?= $selectedProvider === $providerValue ? 'selected' : '' ?>
+            >
+                <?= moderation_e($providerLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 </label>
 
 <label>
