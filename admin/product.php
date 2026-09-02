@@ -214,6 +214,28 @@ $remainingProductPhotos =
 
 require __DIR__ . '/_header.php';
 ?>
+<style>
+.admin-commerce-field-help {
+    display: block;
+    margin-top: 6px;
+    color: var(--admin-muted, #a7a7a7);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+.admin-commerce-inventory-explainer {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.14));
+    border-radius: 9px;
+}
+.admin-commerce-inventory-explainer strong { font-size: .72rem; }
+.admin-commerce-inventory-explainer span {
+    color: var(--admin-muted, #a7a7a7);
+    font-size: .68rem;
+    line-height: 1.45;
+}
+</style>
 
 <style>
 .admin-commerce-product-single {
@@ -1006,25 +1028,16 @@ $valueText =
     </select>
 </label>
 
-<div class="admin-commerce-checks is-wide">
-    <label>
-        <input
-            type="checkbox"
-            name="default_track_inventory"
-            value="1"
-        >
-        <span>Track inventory</span>
-    </label>
-
-    <label>
-        <input
-            type="checkbox"
-            name="default_allow_backorder"
-            value="1"
-        >
-        <span>Allow backorder</span>
-    </label>
-</div>
+<label class="is-wide">
+    <span>Inventory &amp; selling mode</span>
+    <select name="default_inventory_mode">
+        <option value="untracked">Always available</option>
+        <option value="tracked">Track inventory</option>
+        <option value="backorder">Backorder when sold out</option>
+        <option value="preorder">Preorder</option>
+    </select>
+    <small class="admin-commerce-field-help">Always available ignores the stock count. Track inventory automatically shows Low stock and Out of stock. Backorder stays orderable after stock reaches zero. Preorder stays orderable before normal fulfillment begins.</small>
+</label>
 
 </div>
 
@@ -1085,7 +1098,7 @@ $valueText =
             ['price','Price','number','default_price','0.01',''],
             ['compare_at_price','Compare at','number','default_compare_at_price','0.01',''],
             ['inventory_quantity','Inventory','number','default_inventory_quantity','1','0'],
-            ['low_stock_threshold','Low stock at','number','default_low_stock_threshold','1','5'],
+            ['low_stock_threshold','Low stock warning at','number','default_low_stock_threshold','1','5'],
             ['max_per_order','Max per order','number','default_max_per_order','1','0'],
             ['fulfillment_product_id','Provider product ID','text','default_fulfillment_product_id','',''],
             ['fulfillment_variant_id','Provider variant ID','text','default_fulfillment_variant_id','',''],
@@ -1100,9 +1113,14 @@ $valueText =
         <?php endforeach; ?>
 
         <label class="admin-commerce-default-field">
-            <span>Storefront availability</span>
-            <select name="default_availability_mode"><option value="standard">Standard</option><option value="preorder">Preorder</option></select>
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[availability_mode]" value="1"> Apply</span>
+            <span>Inventory &amp; selling mode</span>
+            <select name="default_inventory_mode">
+                <option value="untracked">Always available</option>
+                <option value="tracked">Track inventory</option>
+                <option value="backorder">Backorder when sold out</option>
+                <option value="preorder">Preorder</option>
+            </select>
+            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[inventory_mode]" value="1"> Apply</span>
         </label>
 
         <label class="admin-commerce-default-field">
@@ -1123,8 +1141,6 @@ $valueText =
 
         <?php foreach ([
             ['is_active','Active','default_is_active'],
-            ['track_inventory','Track inventory','default_track_inventory_value'],
-            ['allow_backorder','Allow backorder','default_allow_backorder_value'],
         ] as [$key,$label,$name]): ?>
         <label class="admin-commerce-default-field">
             <span><?= moderation_e($label) ?></span>
@@ -1252,7 +1268,7 @@ $valueText =
 </label>
 
 <label>
-    <span>Inventory</span>
+    <span>On-hand inventory</span>
     <input
         type="number"
         name="inventory_quantity"
@@ -1262,25 +1278,17 @@ $valueText =
 </label>
 
 <label>
-    <span>Storefront availability</span>
-    <select name="availability_mode">
-        <option
-            value="standard"
-            <?= $storefrontMeta['availability_mode'] === 'standard' ? 'selected' : '' ?>
-        >
-            Standard
-        </option>
-        <option
-            value="preorder"
-            <?= $storefrontMeta['availability_mode'] === 'preorder' ? 'selected' : '' ?>
-        >
-            Preorder
-        </option>
+    <span>Inventory &amp; selling mode</span>
+    <select name="inventory_mode">
+        <option value="untracked" <?= $storefrontMeta['inventory_mode'] === 'untracked' ? 'selected' : '' ?>>Always available</option>
+        <option value="tracked" <?= $storefrontMeta['inventory_mode'] === 'tracked' ? 'selected' : '' ?>>Track inventory</option>
+        <option value="backorder" <?= $storefrontMeta['inventory_mode'] === 'backorder' ? 'selected' : '' ?>>Backorder when sold out</option>
+        <option value="preorder" <?= $storefrontMeta['inventory_mode'] === 'preorder' ? 'selected' : '' ?>>Preorder</option>
     </select>
 </label>
 
 <label>
-    <span>Low stock at</span>
+    <span>Low stock warning at</span>
     <input
         type="number"
         name="low_stock_threshold"
@@ -1370,26 +1378,19 @@ $valueText =
     >
 </label>
 
-<div class="admin-commerce-checks is-wide">
-    <label>
-        <input
-            type="checkbox"
-            name="track_inventory"
-            value="1"
-            <?= (int) $variant['track_inventory'] === 1 ? 'checked' : '' ?>
-        >
-        <span>Track inventory</span>
-    </label>
-
-    <label>
-        <input
-            type="checkbox"
-            name="allow_backorder"
-            value="1"
-            <?= (int) $variant['allow_backorder'] === 1 ? 'checked' : '' ?>
-        >
-        <span>Allow backorder</span>
-    </label>
+<div class="admin-commerce-inventory-explainer is-wide">
+    <strong><?= moderation_e(match ($storefrontMeta['inventory_mode']) {
+        'tracked' => 'Tracked inventory',
+        'backorder' => 'Backorder when sold out',
+        'preorder' => 'Preorder enabled',
+        default => 'Inventory not tracked',
+    }) ?></strong>
+    <span><?= moderation_e(match ($storefrontMeta['inventory_mode']) {
+        'tracked' => 'Inventory controls In stock, Low stock, and Out of stock automatically.',
+        'backorder' => 'Inventory is tracked. At zero, customers can still order and the storefront shows Backorder.',
+        'preorder' => 'Customers can order before normal fulfillment begins. Inventory count does not control availability.',
+        default => 'This variant remains available regardless of the inventory number.',
+    }) ?></span>
 </div>
 
 </div>
