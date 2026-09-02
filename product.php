@@ -409,6 +409,7 @@ require __DIR__ . '/partials/header.php';
         <span data-add-to-cart-label>
             <?= match ((string) $initialState['key']) {
                 'preorder' => 'Preorder',
+                'backorder' => 'Backorder',
                 'out_of_stock' => 'Out of stock',
                 'unavailable' => 'Unavailable',
                 default => 'Add to cart',
