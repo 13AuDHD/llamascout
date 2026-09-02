@@ -123,38 +123,6 @@ $canonicalUrl =
 require __DIR__ . '/partials/header.php';
 ?>
 
-<style>
-.cart-page > .product-cart-message {
-    margin-top: 0;
-    margin-bottom: 16px;
-}
-.cart-removal-message {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-}
-.cart-removal-message form {
-    flex: 0 0 auto;
-    margin: 0;
-}
-.cart-undo-button {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-weight: 850;
-    text-decoration: underline;
-    cursor: pointer;
-}
-@media (max-width: 560px) {
-    .cart-removal-message {
-        align-items: flex-start;
-    }
-}
-</style>
-
 <section class="shop-page cart-page">
 
 <header class="cart-header">
@@ -464,16 +432,15 @@ $image =
 </div>
 
 <p class="cart-summary-note">
-    Shipping and applicable tax will be calculated during secure checkout.
+    Shipping details and applicable tax are finalized during secure checkout.
 </p>
 
-<button
+<a
     class="shop-primary-button cart-checkout-button"
-    type="button"
-    disabled
+    href="/checkout.php"
 >
-    Checkout coming next
-</button>
+    Secure checkout
+</a>
 
 <p class="cart-summary-secure">
     <i
