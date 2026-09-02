@@ -114,7 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $actorUserId,
                     $productId,
                     (int) ($_POST['image_id'] ?? 0),
-                    (string) ($_POST['photo_assignment'] ?? '')
+                    is_array($_POST['photo_criteria'] ?? null)
+                        ? $_POST['photo_criteria']
+                        : []
                 );
 
                 $notice = 'Product photo assignment updated.';
@@ -188,6 +190,7 @@ $adminNavCounts = [
 ];
 
 $adminPageTitle = (string) $product['name'];
+$publicProductUrl = $siteUrl . '/product.php?slug=' . rawurlencode((string) $product['slug']);
 $adminPageEyebrow = 'Product Administration';
 $adminActiveNav = 'products';
 $adminNeedsPhotoUploader = true;
@@ -200,6 +203,191 @@ $remainingProductPhotos =
 
 require __DIR__ . '/_header.php';
 ?>
+
+<style>
+.admin-commerce-product-single {
+    display: grid;
+    gap: 22px;
+}
+
+.admin-commerce-collapsible {
+    padding: 0;
+    overflow: hidden;
+}
+
+.admin-commerce-collapse-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 22px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.admin-commerce-collapse-summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-commerce-collapse-summary::after {
+    content: "\f078";
+    flex: 0 0 auto;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    transition: transform .16s ease;
+}
+
+.admin-commerce-collapsible[open] > .admin-commerce-collapse-summary::after {
+    transform: rotate(180deg);
+}
+
+.admin-commerce-collapse-summary > span:first-child {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-commerce-collapse-summary small {
+    opacity: .68;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.admin-commerce-collapse-summary strong {
+    font-size: 1.05rem;
+}
+
+.admin-commerce-collapse-meta {
+    margin-left: auto;
+    opacity: .68;
+    font-size: .78rem;
+}
+
+.admin-commerce-collapse-body {
+    padding: 0 22px 22px;
+    border-top: 1px solid var(--admin-border, rgba(255,255,255,.12));
+}
+
+.admin-commerce-image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 20px;
+}
+
+.admin-commerce-photo-criteria {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.admin-commerce-photo-criteria legend {
+    margin-bottom: 8px;
+    font-size: .8rem;
+    font-weight: 800;
+}
+
+.admin-commerce-photo-help {
+    margin: 0;
+    opacity: .7;
+    font-size: .76rem;
+    line-height: 1.5;
+}
+
+.admin-commerce-photo-criteria-group {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-commerce-photo-criteria-group > strong {
+    font-size: .74rem;
+}
+
+.admin-commerce-photo-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-commerce-photo-checkboxes label {
+    position: relative;
+    cursor: pointer;
+}
+
+.admin-commerce-photo-checkboxes input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-commerce-photo-checkboxes span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.16));
+    border-radius: 9px;
+    font-size: .72rem;
+    opacity: .76;
+}
+
+.admin-commerce-photo-checkboxes input:checked + span {
+    background: var(--admin-text, #f4f4f4);
+    color: var(--admin-bg, #171717);
+    border-color: var(--admin-text, #f4f4f4);
+    opacity: 1;
+}
+
+.admin-commerce-photo-assignment {
+    display: grid;
+    gap: 14px;
+}
+
+@media (max-width: 760px) {
+    .admin-commerce-image-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-commerce-collapse-summary {
+        padding: 17px;
+    }
+
+    .admin-commerce-collapse-body {
+        padding: 0 17px 17px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const productUrl = <?= json_encode(
+        $publicProductUrl,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+    ) ?>;
+
+    [
+        document.querySelector('.admin-topbar-title strong'),
+        document.querySelector('.admin-page-header h1'),
+    ].forEach((title) => {
+        if (!title || title.querySelector('a')) {
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = productUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = title.textContent;
+        link.style.color = 'inherit';
+        link.style.textDecoration = 'none';
+        link.title = 'Open public product page';
+
+        title.replaceChildren(link);
+    });
+});
+</script>
 
 <?php if ($notice !== ''): ?>
 <div class="admin-user-notice is-success">
@@ -214,9 +402,7 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 
-<div class="admin-commerce-product-detail">
-
-<div class="admin-user-detail-main">
+<div class="admin-commerce-product-single">
 
 <section class="admin-panel">
 
@@ -350,7 +536,6 @@ require __DIR__ . '/_header.php';
 </form>
 
 </section>
-
 
 <section class="admin-panel">
 
@@ -492,15 +677,199 @@ $valueText =
 
 </section>
 
+<details class="admin-panel admin-commerce-media-panel admin-commerce-collapsible" open>
+<summary class="admin-commerce-collapse-summary">
+    <span>
+        <small>Media</small>
+        <strong>Product Images</strong>
+    </span>
+    <span class="admin-commerce-collapse-meta">
+        <?= number_format(count($images)) ?> of 20
+    </span>
+</summary>
+<div class="admin-commerce-collapse-body">
 
-<section class="admin-panel">
 
-<header class="admin-panel-header">
-    <div>
-        <p>Variant Builder</p>
-        <h2>Generate Missing Variants</h2>
-    </div>
-</header>
+
+<?php if ($images): ?>
+
+<div class="admin-commerce-image-grid">
+
+<?php foreach ($images as $image): ?>
+
+<article class="admin-commerce-image-card">
+
+<div class="admin-commerce-image-preview">
+
+<img
+    src="<?= moderation_e(
+        admin_shop_image_url(
+            (string) $image['image_url'],
+            $siteUrl
+        )
+    ) ?>"
+    alt="<?= moderation_e(
+        (string) (
+            $image['alt_text']
+            ?: $product['name']
+        )
+    ) ?>"
+    loading="lazy"
+>
+
+<?php if ((int) $image['is_primary'] === 1): ?>
+    <span class="admin-commerce-primary-badge">
+        Primary
+    </span>
+<?php endif; ?>
+
+</div>
+
+<form class="admin-form admin-commerce-photo-assignment" method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="assign-photo">
+
+    <?php $photoCriteria = admin_shop_photo_criteria($image); ?>
+
+    <fieldset class="admin-commerce-photo-criteria">
+        <legend>Photo represents</legend>
+
+        <p class="admin-commerce-photo-help">
+            Check every option value this photo can represent.
+            Leave everything unchecked to use it as a general product photo.
+        </p>
+
+        <?php foreach ($options as $photoOption): ?>
+        <?php
+        $photoOptionName = (string) $photoOption['option_name'];
+        $selectedPhotoValues = $photoCriteria[$photoOptionName] ?? [];
+        ?>
+        <div class="admin-commerce-photo-criteria-group">
+            <strong><?= moderation_e($photoOptionName) ?></strong>
+
+            <div class="admin-commerce-photo-checkboxes">
+                <?php foreach (($photoOption['values'] ?? []) as $photoValue): ?>
+                <?php $photoValueText = (string) $photoValue['option_value']; ?>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="photo_criteria[<?= moderation_e($photoOptionName) ?>][]"
+                        value="<?= moderation_e($photoValueText) ?>"
+                        <?= in_array($photoValueText, $selectedPhotoValues, true) ? 'checked' : '' ?>
+                    >
+                    <span><?= moderation_e($photoValueText) ?></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </fieldset>
+
+    <button class="admin-button is-muted" type="submit">
+        Save photo criteria
+    </button>
+</form>
+
+<div class="admin-commerce-image-actions">
+
+<?php if ((int) $image['is_primary'] !== 1): ?>
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="set-primary-photo">
+
+    <button class="admin-button is-muted" type="submit">
+        Make primary
+    </button>
+</form>
+<?php endif; ?>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="delete-photo">
+
+    <button class="admin-button admin-commerce-delete-photo" type="submit">
+        Delete
+    </button>
+</form>
+
+</div>
+
+</article>
+
+<?php endforeach; ?>
+
+</div>
+
+<?php else: ?>
+
+<div class="admin-empty-state admin-commerce-photo-empty">
+    <i class="fa-regular fa-images" aria-hidden="true"></i>
+    <h3>No product images.</h3>
+    <p>Add fresh product photos below.</p>
+</div>
+
+<?php endif; ?>
+
+
+<?php if ($remainingProductPhotos > 0): ?>
+
+<form
+    class="admin-commerce-photo-upload-form"
+    method="post"
+>
+
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+<input type="hidden" name="shop_admin_action" value="add-photos">
+<input type="hidden" name="photo_stage_token" value="">
+<input type="hidden" name="photos_json" value="[]">
+
+<div
+    data-photo-uploader
+    data-photo-context="shop-products"
+    data-photo-max="<?= (int) $remainingProductPhotos ?>"
+    data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
+    data-photo-endpoint="/photo-upload.php"
+    data-photo-title="Add product photos"
+    data-photo-help="Add up to <?= (int) $remainingProductPhotos ?> more product photo<?= $remainingProductPhotos === 1 ? '' : 's' ?>. Photos are resized and location metadata is removed before storage."
+></div>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Add photos to product
+    </button>
+</div>
+
+</form>
+
+<?php else: ?>
+
+<div class="admin-commerce-photo-limit">
+    This product already has the maximum of 20 photos.
+</div>
+
+<?php endif; ?>
+
+</div>
+</details>
+
+<details class="admin-panel admin-commerce-collapsible">
+<summary class="admin-commerce-collapse-summary">
+    <span>
+        <small>Variant Builder</small>
+        <strong>Generate Missing Variants</strong>
+    </span>
+    
+</summary>
+<div class="admin-commerce-collapse-body">
+
+
 
 <form
     class="admin-commerce-generator"
@@ -625,18 +994,20 @@ $valueText =
 
 </form>
 
-</section>
+</div>
+</details>
+
+<details class="admin-panel admin-commerce-collapsible">
+<summary class="admin-commerce-collapse-summary">
+    <span>
+        <small>Pricing + Inventory</small>
+        <strong>Variants</strong>
+    </span>
+    <span class="admin-commerce-collapse-meta"><?= number_format(count($variants)) ?> variants</span>
+</summary>
+<div class="admin-commerce-collapse-body">
 
 
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Pricing + Inventory</p>
-        <h2>Variants</h2>
-    </div>
-    <span><?= number_format(count($variants)) ?> variants</span>
-</header>
 
 <?php if (!$variants): ?>
 <div class="admin-empty-state">
@@ -907,250 +1278,8 @@ $valueText =
 
 <?php endif; ?>
 
-</section>
-
 </div>
-
-
-<aside class="admin-user-detail-side">
-
-<section class="admin-panel admin-commerce-media-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Media</p>
-        <h2>Product Images</h2>
-    </div>
-
-    <span>
-        <?= number_format(count($images)) ?> of 20
-    </span>
-</header>
-
-<?php if ($images): ?>
-
-<div class="admin-commerce-image-grid">
-
-<?php foreach ($images as $image): ?>
-
-<article class="admin-commerce-image-card">
-
-<div class="admin-commerce-image-preview">
-
-<img
-    src="<?= moderation_e(
-        admin_shop_image_url(
-            (string) $image['image_url'],
-            $siteUrl
-        )
-    ) ?>"
-    alt="<?= moderation_e(
-        (string) (
-            $image['alt_text']
-            ?: $product['name']
-        )
-    ) ?>"
-    loading="lazy"
->
-
-<?php if ((int) $image['is_primary'] === 1): ?>
-    <span class="admin-commerce-primary-badge">
-        Primary
-    </span>
-<?php endif; ?>
-
-</div>
-
-<form class="admin-form admin-commerce-photo-assignment" method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="assign-photo">
-
-    <label>
-        <span>Photo shows</span>
-
-        <select name="photo_assignment">
-            <option value="">Entire product / all variants</option>
-
-            <optgroup label="Exact variant">
-                <?php foreach ($variants as $photoVariant): ?>
-                <?php
-                $assignment = json_encode(
-                    [
-                        'type' => 'variant',
-                        'variant_id' => (int) $photoVariant['id'],
-                    ],
-                    JSON_UNESCAPED_SLASHES
-                );
-
-                $selectedAssignment =
-                    (string) ($image['option_name'] ?? '') === '__variant__'
-                    && (string) ($image['option_value'] ?? '') === (string) $photoVariant['id'];
-                ?>
-                <option
-                    value="<?= moderation_e((string) $assignment) ?>"
-                    <?= $selectedAssignment ? 'selected' : '' ?>
-                >
-                    <?= moderation_e((string) ($photoVariant['name'] ?: $photoVariant['sku'])) ?>
-                </option>
-                <?php endforeach; ?>
-            </optgroup>
-
-            <?php foreach ($options as $photoOption): ?>
-            <optgroup label="<?= moderation_e((string) $photoOption['option_name']) ?>">
-                <?php foreach (($photoOption['values'] ?? []) as $photoValue): ?>
-                <?php
-                $assignment = json_encode(
-                    [
-                        'type' => 'option',
-                        'name' => (string) $photoOption['option_name'],
-                        'value' => (string) $photoValue['option_value'],
-                    ],
-                    JSON_UNESCAPED_SLASHES
-                );
-
-                $selectedAssignment =
-                    (string) ($image['option_name'] ?? '') === (string) $photoOption['option_name']
-                    && (string) ($image['option_value'] ?? '') === (string) $photoValue['option_value'];
-                ?>
-                <option
-                    value="<?= moderation_e((string) $assignment) ?>"
-                    <?= $selectedAssignment ? 'selected' : '' ?>
-                >
-                    <?= moderation_e((string) $photoValue['option_value']) ?>
-                </option>
-                <?php endforeach; ?>
-            </optgroup>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <button class="admin-button is-muted" type="submit">
-        Save assignment
-    </button>
-</form>
-
-<div class="admin-commerce-image-actions">
-
-<?php if ((int) $image['is_primary'] !== 1): ?>
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="set-primary-photo">
-
-    <button class="admin-button is-muted" type="submit">
-        Make primary
-    </button>
-</form>
-<?php endif; ?>
-
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="delete-photo">
-
-    <button class="admin-button admin-commerce-delete-photo" type="submit">
-        Delete
-    </button>
-</form>
-
-</div>
-
-</article>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php else: ?>
-
-<div class="admin-empty-state admin-commerce-photo-empty">
-    <i class="fa-regular fa-images" aria-hidden="true"></i>
-    <h3>No product images.</h3>
-    <p>Add fresh product photos below.</p>
-</div>
-
-<?php endif; ?>
-
-
-<?php if ($remainingProductPhotos > 0): ?>
-
-<form
-    class="admin-commerce-photo-upload-form"
-    method="post"
->
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-<input type="hidden" name="shop_admin_action" value="add-photos">
-<input type="hidden" name="photo_stage_token" value="">
-<input type="hidden" name="photos_json" value="[]">
-
-<div
-    data-photo-uploader
-    data-photo-context="shop-products"
-    data-photo-max="<?= (int) $remainingProductPhotos ?>"
-    data-photo-csrf="<?= moderation_e(llama_photo_csrf_token()) ?>"
-    data-photo-endpoint="/photo-upload.php"
-    data-photo-title="Add product photos"
-    data-photo-help="Add up to <?= (int) $remainingProductPhotos ?> more product photo<?= $remainingProductPhotos === 1 ? '' : 's' ?>. Photos are resized and location metadata is removed before storage."
-></div>
-
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Add photos to product
-    </button>
-</div>
-
-</form>
-
-<?php else: ?>
-
-<div class="admin-commerce-photo-limit">
-    This product already has the maximum of 20 photos.
-</div>
-
-<?php endif; ?>
-
-</section>
-
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Public Store</p>
-        <h2>Product Link</h2>
-    </div>
-</header>
-
-<div class="admin-user-action-box">
-    <p>
-        Product slug:
-        <strong><?= moderation_e((string) $product['slug']) ?></strong>
-    </p>
-
-    <a
-        class="admin-button"
-        href="<?= moderation_e(
-            $siteUrl .
-            '/product.php?slug=' .
-            rawurlencode(
-                (string) $product['slug']
-            )
-        ) ?>"
-        target="_blank"
-        rel="noopener"
-    >
-        View product
-    </a>
-</div>
-
-</section>
-
-</aside>
+</details>
 
 </div>
 
