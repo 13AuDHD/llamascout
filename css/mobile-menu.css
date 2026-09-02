@@ -225,6 +225,23 @@
         text-align: center;
     }
 
+    /* Keep the cart label and count on the same mobile menu row. */
+    .site-nav > a.site-cart-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        white-space: nowrap;
+    }
+
+    .site-nav > a.site-cart-link > i {
+        flex: 0 0 22px;
+    }
+
+    .site-nav > a.site-cart-link .site-cart-count {
+        flex: 0 0 auto;
+        margin-left: 0;
+    }
+
     .site-nav-admin {
         margin-top: 8px;
 
