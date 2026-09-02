@@ -1323,149 +1323,163 @@ function admin_shop_variant_storefront_meta(
     ];
 }
 
+function admin_shop_photo_criteria(
+    array $image
+): array {
+    $optionName = trim((string) ($image['option_name'] ?? ''));
+    $optionValue = trim((string) ($image['option_value'] ?? ''));
+
+    if ($optionName === '' || $optionValue === '') {
+        return [];
+    }
+
+    if ($optionName === '__criteria__') {
+        $decoded = json_decode($optionValue, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $criteria = [];
+
+        foreach ($decoded as $name => $values) {
+            $name = trim((string) $name);
+
+            if ($name === '') {
+                continue;
+            }
+
+            if (!is_array($values)) {
+                $values = [$values];
+            }
+
+            $clean = [];
+
+            foreach ($values as $value) {
+                $value = trim((string) $value);
+
+                if ($value !== '') {
+                    $clean[$value] = $value;
+                }
+            }
+
+            if ($clean) {
+                $criteria[$name] = array_values($clean);
+            }
+        }
+
+        return $criteria;
+    }
+
+    if ($optionName === '__variant__') {
+        return [
+            '__variant__' => [$optionValue],
+        ];
+    }
+
+    return [
+        $optionName => [$optionValue],
+    ];
+}
+
 function admin_shop_assign_product_photo(
     PDO $db,
     int $actorUserId,
     int $productId,
     int $imageId,
-    string $assignment
+    array $submittedCriteria
 ): void {
-    $stmt = $db->prepare(
-        'SELECT *
+    $imageCheck = $db->prepare(
+        'SELECT id
          FROM shop_product_images
          WHERE id = ?
            AND product_id = ?
          LIMIT 1'
     );
 
-    $stmt->execute([
+    $imageCheck->execute([
         $imageId,
         $productId,
     ]);
 
-    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ((int) $imageCheck->fetchColumn() < 1) {
+        throw new RuntimeException('Product photo not found.');
+    }
 
-    if (!$image) {
-        throw new RuntimeException(
-            'Product photo not found.'
-        );
+    $productOptions = admin_shop_product_options(
+        $db,
+        $productId
+    );
+
+    $allowed = [];
+
+    foreach ($productOptions as $option) {
+        $name = trim((string) ($option['option_name'] ?? ''));
+
+        if ($name === '') {
+            continue;
+        }
+
+        $allowed[$name] = [];
+
+        foreach (($option['values'] ?? []) as $valueRow) {
+            $value = trim((string) ($valueRow['option_value'] ?? ''));
+
+            if ($value !== '') {
+                $allowed[$name][$value] = true;
+            }
+        }
+    }
+
+    $criteria = [];
+
+    foreach ($allowed as $name => $allowedValues) {
+        $values = $submittedCriteria[$name] ?? [];
+
+        if (!is_array($values)) {
+            $values = [$values];
+        }
+
+        $clean = [];
+
+        foreach ($values as $value) {
+            $value = trim((string) $value);
+
+            if ($value !== '' && isset($allowedValues[$value])) {
+                $clean[$value] = $value;
+            }
+        }
+
+        if ($clean) {
+            $criteria[$name] = array_values($clean);
+        }
     }
 
     $optionName = null;
     $optionValue = null;
 
-    $assignment = trim($assignment);
+    if ($criteria) {
+        $optionName = '__criteria__';
+        $optionValue = json_encode(
+            $criteria,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        );
 
-    if ($assignment !== '') {
-        $decoded =
-            json_decode(
-                $assignment,
-                true
-            );
-
-        if (!is_array($decoded)) {
+        if ($optionValue === false) {
             throw new RuntimeException(
-                'Photo assignment is invalid.'
+                'The photo criteria could not be saved.'
             );
-        }
-
-        $type =
-            trim(
-                (string) (
-                    $decoded['type']
-                    ?? 'option'
-                )
-            );
-
-        if ($type === 'variant') {
-            $variantId =
-                (int) (
-                    $decoded['variant_id']
-                    ?? 0
-                );
-
-            $variantCheck =
-                $db->prepare(
-                    'SELECT id
-                     FROM shop_product_variants
-                     WHERE id = ?
-                       AND product_id = ?
-                     LIMIT 1'
-                );
-
-            $variantCheck->execute([
-                $variantId,
-                $productId,
-            ]);
-
-            if (!$variantCheck->fetchColumn()) {
-                throw new RuntimeException(
-                    'That photo variant could not be found.'
-                );
-            }
-
-            $optionName = '__variant__';
-            $optionValue = (string) $variantId;
-        } else {
-            $candidateName =
-                trim(
-                    (string) (
-                        $decoded['name']
-                        ?? ''
-                    )
-                );
-
-            $candidateValue =
-                trim(
-                    (string) (
-                        $decoded['value']
-                        ?? ''
-                    )
-                );
-
-            if ($candidateName === '' || $candidateValue === '') {
-                throw new RuntimeException(
-                    'Photo option assignment is incomplete.'
-                );
-            }
-
-            $optionCheck =
-                $db->prepare(
-                    'SELECT COUNT(*)
-                     FROM shop_product_options o
-                     INNER JOIN shop_product_option_values ov
-                        ON ov.option_id = o.id
-                     WHERE o.product_id = ?
-                       AND o.option_name = ?
-                       AND ov.option_value = ?'
-                );
-
-            $optionCheck->execute([
-                $productId,
-                $candidateName,
-                $candidateValue,
-            ]);
-
-            if ((int) $optionCheck->fetchColumn() < 1) {
-                throw new RuntimeException(
-                    'That photo option is not part of this product.'
-                );
-            }
-
-            $optionName = $candidateName;
-            $optionValue = $candidateValue;
         }
     }
 
-    $update =
-        $db->prepare(
-            'UPDATE shop_product_images
-             SET
-                option_name = ?,
-                option_value = ?
-             WHERE id = ?
-               AND product_id = ?'
-        );
+    $update = $db->prepare(
+        'UPDATE shop_product_images
+         SET
+            option_name = ?,
+            option_value = ?
+         WHERE id = ?
+           AND product_id = ?'
+    );
 
     $update->execute([
         $optionName,
@@ -1480,12 +1494,11 @@ function admin_shop_assign_product_photo(
             $actorUserId,
             null,
             'shop.photo_assignment_updated',
-            'Updated a shop product photo assignment.',
+            'Updated shop product photo criteria.',
             [
                 'product_id' => $productId,
                 'image_id' => $imageId,
-                'option_name' => $optionName,
-                'option_value' => $optionValue,
+                'criteria' => $criteria,
             ]
         );
     }
