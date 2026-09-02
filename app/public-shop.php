@@ -426,7 +426,7 @@ function public_shop_variant_state(
                 'label' =>
                     'Low stock'
                     . ($quantity > 0
-                        ? ' Â· '
+                        ? ': '
                             . $quantity
                             . ' left'
                         : ''),
@@ -553,7 +553,7 @@ function public_shop_price_label(
     }
 
     return public_shop_money($min)
-        . ' â '
+        . ' to '
         . public_shop_money($max);
 }
 
