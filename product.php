@@ -132,6 +132,65 @@ foreach ($variants as $variant) {
     ];
 }
 
+function product_image_criteria_payload(
+    array $image
+): array {
+    $optionName = trim((string) ($image['option_name'] ?? ''));
+    $optionValue = trim((string) ($image['option_value'] ?? ''));
+
+    if ($optionName === '' || $optionValue === '') {
+        return [];
+    }
+
+    if ($optionName === '__criteria__') {
+        $decoded = json_decode($optionValue, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $criteria = [];
+
+        foreach ($decoded as $name => $values) {
+            $name = trim((string) $name);
+
+            if ($name === '') {
+                continue;
+            }
+
+            if (!is_array($values)) {
+                $values = [$values];
+            }
+
+            $clean = [];
+
+            foreach ($values as $value) {
+                $value = trim((string) $value);
+
+                if ($value !== '') {
+                    $clean[$value] = $value;
+                }
+            }
+
+            if ($clean) {
+                $criteria[$name] = array_values($clean);
+            }
+        }
+
+        return $criteria;
+    }
+
+    if ($optionName === '__variant__') {
+        return [
+            '__variant__' => [$optionValue],
+        ];
+    }
+
+    return [
+        $optionName => [$optionValue],
+    ];
+}
+
 $imagePayload = [];
 
 foreach ($images as $index => $image) {
@@ -139,8 +198,7 @@ foreach ($images as $index => $image) {
         'id' => (int) $image['id'],
         'src' => public_shop_image_url((string) ($image['image_url'] ?? ''), $siteUrl),
         'alt' => trim((string) ($image['alt_text'] ?? '')) ?: (string) $product['name'],
-        'optionName' => trim((string) ($image['option_name'] ?? '')),
-        'optionValue' => trim((string) ($image['option_value'] ?? '')),
+        'criteria' => product_image_criteria_payload($image),
         'primary' => (int) ($image['is_primary'] ?? 0) === 1,
         'index' => $index,
     ];
