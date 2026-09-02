@@ -459,6 +459,15 @@ function shop_checkout_create_stripe_session(PDO $db, array $order, array $items
         'return_url' => $returnUrl,
         'expires_at' => $expiresAt,
         'billing_address_collection' => 'auto',
+
+        // Stripe Managed Payments currently does not support the
+        // shipping_address_collection / shipping_options parameters
+        // required by Llama Scout Shop checkout. Disable it only for
+        // this Checkout Session so membership billing and the account's
+        // global Stripe settings remain untouched.
+        'managed_payments' => [
+            'enabled' => false,
+        ],
     ];
 
     if ($settings['automatic_tax']) {
