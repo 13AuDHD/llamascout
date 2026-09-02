@@ -644,6 +644,167 @@ function admin_shop_existing_variant_keys(
     return $keys;
 }
 
+function admin_shop_fulfillment_providers(): array
+{
+    return [
+        '' => 'None / not applicable',
+        'llama_scout' => 'Llama Scout / In-house',
+        'printful' => 'Printful',
+        'printify' => 'Printify',
+        'other' => 'Other / External',
+    ];
+}
+
+function admin_shop_normalize_provider(?string $value): string
+{
+    $value = strtolower(trim((string) $value));
+    $aliases = [
+        'manual' => 'llama_scout',
+        'llama scout' => 'llama_scout',
+        'llama_scout' => 'llama_scout',
+        'in-house' => 'llama_scout',
+        'in house' => 'llama_scout',
+        'printful' => 'printful',
+        'printify' => 'printify',
+        'external' => 'other',
+        'other' => 'other',
+        '' => '',
+    ];
+    return $aliases[$value] ?? '';
+}
+
+function admin_shop_ensure_variant_sort_sequence(PDO $db, int $productId): void
+{
+    $stmt = $db->prepare(
+        'SELECT id, sort_order
+         FROM shop_product_variants
+         WHERE product_id = ?
+         ORDER BY sort_order ASC, id ASC'
+    );
+    $stmt->execute([$productId]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    if (!$rows) {
+        return;
+    }
+
+    $needs = false;
+    foreach ($rows as $index => $row) {
+        if ((int) $row['sort_order'] !== $index + 1) {
+            $needs = true;
+            break;
+        }
+    }
+
+    if (!$needs) {
+        return;
+    }
+
+    $update = $db->prepare(
+        'UPDATE shop_product_variants SET sort_order = ? WHERE id = ?'
+    );
+    foreach ($rows as $index => $row) {
+        $update->execute([$index + 1, (int) $row['id']]);
+    }
+}
+
+function admin_shop_apply_variant_defaults(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    array $data
+): int {
+    $variants = admin_shop_product_variants($db, $productId);
+    if (!$variants) {
+        return 0;
+    }
+
+    $apply = is_array($data['apply'] ?? null) ? $data['apply'] : [];
+    $hasAny = false;
+    foreach ($apply as $enabled) {
+        if ((string) $enabled !== '') {
+            $hasAny = true;
+            break;
+        }
+    }
+
+    if (!$hasAny && empty($data['resequence_sort'])) {
+        throw new RuntimeException('Choose at least one default to apply.');
+    }
+
+    $providers = admin_shop_fulfillment_providers();
+    $changed = 0;
+
+    $db->beginTransaction();
+    try {
+        foreach ($variants as $variant) {
+            $updateData = [
+                'sku' => (string) $variant['sku'],
+                'price' => number_format(((int) $variant['price_cents']) / 100, 2, '.', ''),
+                'compare_at_price' => $variant['compare_at_price_cents'] !== null
+                    ? number_format(((int) $variant['compare_at_price_cents']) / 100, 2, '.', '')
+                    : '',
+                'inventory_quantity' => (int) $variant['inventory_quantity'],
+                'fulfillment_type' => (string) $variant['fulfillment_type'],
+                'fulfillment_provider' => admin_shop_normalize_provider((string) ($variant['fulfillment_provider'] ?? '')),
+                'fulfillment_product_id' => (string) ($variant['fulfillment_product_id'] ?? ''),
+                'fulfillment_variant_id' => (string) ($variant['fulfillment_variant_id'] ?? ''),
+                'sort_order' => (int) $variant['sort_order'],
+            ];
+            if ((int) $variant['is_active'] === 1) $updateData['is_active'] = '1';
+            if ((int) $variant['track_inventory'] === 1) $updateData['track_inventory'] = '1';
+            if ((int) $variant['allow_backorder'] === 1) $updateData['allow_backorder'] = '1';
+
+            $meta = admin_shop_variant_storefront_meta($variant);
+            $updateData['availability_mode'] = $meta['availability_mode'];
+            $updateData['low_stock_threshold'] = $meta['low_stock_threshold'];
+            $updateData['max_per_order'] = $meta['max_per_order'];
+
+            if (isset($apply['price'])) $updateData['price'] = (string) ($data['default_price'] ?? '');
+            if (isset($apply['compare_at_price'])) $updateData['compare_at_price'] = (string) ($data['default_compare_at_price'] ?? '');
+            if (isset($apply['inventory_quantity'])) $updateData['inventory_quantity'] = (int) ($data['default_inventory_quantity'] ?? 0);
+            if (isset($apply['availability_mode'])) $updateData['availability_mode'] = (string) ($data['default_availability_mode'] ?? 'standard');
+            if (isset($apply['low_stock_threshold'])) $updateData['low_stock_threshold'] = (int) ($data['default_low_stock_threshold'] ?? 5);
+            if (isset($apply['max_per_order'])) $updateData['max_per_order'] = (int) ($data['default_max_per_order'] ?? 0);
+            if (isset($apply['fulfillment_type'])) $updateData['fulfillment_type'] = (string) ($data['default_fulfillment_type'] ?? 'manual');
+            if (isset($apply['fulfillment_provider'])) {
+                $provider = admin_shop_normalize_provider((string) ($data['default_fulfillment_provider'] ?? ''));
+                if (!array_key_exists($provider, $providers)) throw new RuntimeException('Invalid fulfillment provider.');
+                $updateData['fulfillment_provider'] = $provider;
+            }
+            if (isset($apply['fulfillment_product_id'])) $updateData['fulfillment_product_id'] = (string) ($data['default_fulfillment_product_id'] ?? '');
+            if (isset($apply['fulfillment_variant_id'])) $updateData['fulfillment_variant_id'] = (string) ($data['default_fulfillment_variant_id'] ?? '');
+
+            if (isset($apply['is_active'])) {
+                unset($updateData['is_active']);
+                if ((string) ($data['default_is_active'] ?? '0') === '1') $updateData['is_active'] = '1';
+            }
+            if (isset($apply['track_inventory'])) {
+                unset($updateData['track_inventory']);
+                if ((string) ($data['default_track_inventory_value'] ?? '0') === '1') $updateData['track_inventory'] = '1';
+            }
+            if (isset($apply['allow_backorder'])) {
+                unset($updateData['allow_backorder']);
+                if ((string) ($data['default_allow_backorder_value'] ?? '0') === '1') $updateData['allow_backorder'] = '1';
+            }
+
+            admin_shop_save_variant($db, $actorUserId, (int) $variant['id'], $updateData);
+            $changed++;
+        }
+
+        if (!empty($data['resequence_sort'])) {
+            admin_shop_ensure_variant_sort_sequence($db, $productId);
+        }
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $exception;
+    }
+
+    return $changed;
+}
+
 function admin_shop_generate_variants(
     PDO $db,
     int $actorUserId,
@@ -730,13 +891,13 @@ function admin_shop_generate_variants(
         );
     }
 
-    $fulfillmentProvider =
-        trim(
-            (string) (
-                $data['default_fulfillment_provider']
-                ?? ''
-            )
-        );
+    $fulfillmentProvider = admin_shop_normalize_provider(
+        (string) ($data['default_fulfillment_provider'] ?? '')
+    );
+
+    if (!array_key_exists($fulfillmentProvider, admin_shop_fulfillment_providers())) {
+        throw new RuntimeException('Invalid fulfillment provider.');
+    }
 
     $skuPrefix =
         trim(
@@ -837,11 +998,13 @@ function admin_shop_generate_variants(
 
     $count = 0;
 
+    admin_shop_ensure_variant_sort_sequence($db, $productId);
+
     $sortStmt =
         $db->prepare(
             'SELECT COALESCE(
                 MAX(sort_order),
-                -1
+                0
              )
              FROM shop_product_variants
              WHERE product_id = ?'
@@ -1737,13 +1900,13 @@ function admin_shop_save_variant(
             )
         );
 
-    $fulfillmentProvider =
-        trim(
-            (string) (
-                $data['fulfillment_provider']
-                ?? ''
-            )
-        );
+    $fulfillmentProvider = admin_shop_normalize_provider(
+        (string) ($data['fulfillment_provider'] ?? '')
+    );
+
+    if (!array_key_exists($fulfillmentProvider, admin_shop_fulfillment_providers())) {
+        throw new RuntimeException('Invalid fulfillment provider.');
+    }
 
     $fulfillmentProductId =
         trim(
