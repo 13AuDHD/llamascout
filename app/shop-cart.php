@@ -78,6 +78,57 @@ function shop_cart_key(
         $variantId;
 }
 
+function shop_cart_variant_storefront_meta(
+    array $variant
+): array {
+    $data = [];
+
+    $raw =
+        $variant['fulfillment_data']
+        ?? null;
+
+    if (is_string($raw) && trim($raw) !== '') {
+        $decoded = json_decode($raw, true);
+
+        if (is_array($decoded)) {
+            $data = $decoded;
+        }
+    } elseif (is_array($raw)) {
+        $data = $raw;
+    }
+
+    $mode =
+        strtolower(
+            trim(
+                (string) (
+                    $data['storefront_availability']
+                    ?? 'standard'
+                )
+            )
+        );
+
+    if (!in_array($mode, ['standard', 'preorder'], true)) {
+        $mode = 'standard';
+    }
+
+    $maxPerOrder =
+        max(
+            0,
+            (int) (
+                $data['max_per_order']
+                ?? 0
+            )
+        );
+
+    return [
+        'availability_mode' => $mode,
+        'max_per_order' =>
+            $maxPerOrder > 0
+                ? min(20, $maxPerOrder)
+                : 20,
+    ];
+}
+
 function shop_cart_load_variant(
     PDO $db,
     int $variantId
@@ -129,6 +180,18 @@ function shop_cart_load_variant(
 function shop_cart_available_quantity(
     array $variant
 ): ?int {
+    $meta =
+        shop_cart_variant_storefront_meta(
+            $variant
+        );
+
+    if (
+        $meta['availability_mode']
+        === 'preorder'
+    ) {
+        return null;
+    }
+
     if (
         (int) (
             $variant[
@@ -180,11 +243,36 @@ function shop_cart_add(
         );
     }
 
+    if (
+        (int) (
+            $variant['price_cents']
+            ?? 0
+        ) <= 0
+    ) {
+        throw new RuntimeException(
+            'That product option is unavailable.'
+        );
+    }
+
+    $meta =
+        shop_cart_variant_storefront_meta(
+            $variant
+        );
+
+    $maxPerOrder =
+        max(
+            1,
+            (int) (
+                $meta['max_per_order']
+                ?? 20
+            )
+        );
+
     $quantity =
         max(
             1,
             min(
-                20,
+                $maxPerOrder,
                 $quantity
             )
         );
@@ -210,6 +298,14 @@ function shop_cart_add(
     $newQuantity =
         $current
         + $quantity;
+
+    if ($newQuantity > $maxPerOrder) {
+        throw new RuntimeException(
+            'You can add up to '
+            . $maxPerOrder
+            . ' of this item per order.'
+        );
+    }
 
     $available =
         shop_cart_available_quantity(
@@ -287,9 +383,23 @@ function shop_cart_update(
         return;
     }
 
+    $meta =
+        shop_cart_variant_storefront_meta(
+            $variant
+        );
+
+    $maxPerOrder =
+        max(
+            1,
+            (int) (
+                $meta['max_per_order']
+                ?? 20
+            )
+        );
+
     $quantity =
         min(
-            20,
+            $maxPerOrder,
             $quantity
         );
 
