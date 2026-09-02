@@ -411,7 +411,7 @@ function admin_shop_save_options(
                         $option['name']
                     )
                 ) {
-                    throw new RuntimeException(
+                    throw new InvalidArgumentException(
                         'Option names cannot be renamed after variants exist. Existing orders and variant combinations depend on them.'
                     );
                 }
@@ -757,12 +757,14 @@ function admin_shop_apply_variant_defaults(
 
             $meta = admin_shop_variant_storefront_meta($variant);
             $updateData['availability_mode'] = $meta['availability_mode'];
+            $updateData['inventory_mode'] = $meta['inventory_mode'];
             $updateData['low_stock_threshold'] = $meta['low_stock_threshold'];
             $updateData['max_per_order'] = $meta['max_per_order'];
 
             if (isset($apply['price'])) $updateData['price'] = (string) ($data['default_price'] ?? '');
             if (isset($apply['compare_at_price'])) $updateData['compare_at_price'] = (string) ($data['default_compare_at_price'] ?? '');
             if (isset($apply['inventory_quantity'])) $updateData['inventory_quantity'] = (int) ($data['default_inventory_quantity'] ?? 0);
+            if (isset($apply['inventory_mode'])) $updateData['inventory_mode'] = (string) ($data['default_inventory_mode'] ?? 'untracked');
             if (isset($apply['availability_mode'])) $updateData['availability_mode'] = (string) ($data['default_availability_mode'] ?? 'standard');
             if (isset($apply['low_stock_threshold'])) $updateData['low_stock_threshold'] = (int) ($data['default_low_stock_threshold'] ?? 5);
             if (isset($apply['max_per_order'])) $updateData['max_per_order'] = (int) ($data['default_max_per_order'] ?? 0);
@@ -853,19 +855,61 @@ function admin_shop_generate_variants(
             ?? 0
         );
 
+    $inventoryMode =
+        strtolower(
+            trim(
+                (string) (
+                    $data['default_inventory_mode']
+                    ?? 'untracked'
+                )
+            )
+        );
+
+    if (
+        !in_array(
+            $inventoryMode,
+            ['untracked', 'tracked', 'backorder', 'preorder'],
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid inventory and selling mode.'
+        );
+    }
+
     $trackInventory =
-        isset(
-            $data['default_track_inventory']
+        in_array(
+            $inventoryMode,
+            ['tracked', 'backorder'],
+            true
         )
             ? 1
             : 0;
 
     $allowBackorder =
-        isset(
-            $data['default_allow_backorder']
-        )
+        $inventoryMode === 'backorder'
             ? 1
             : 0;
+
+    $availabilityMode =
+        $inventoryMode === 'preorder'
+            ? 'preorder'
+            : 'standard';
+
+    $fulfillmentData = json_encode(
+        [
+            'storefront_availability' => $availabilityMode,
+            'low_stock_threshold' => 5,
+            'max_per_order' => 0,
+        ],
+        JSON_UNESCAPED_SLASHES
+    );
+
+    if ($fulfillmentData === false) {
+        throw new RuntimeException(
+            'Variant storefront settings could not be prepared.'
+        );
+    }
 
     $fulfillmentType =
         trim(
@@ -978,11 +1022,12 @@ function admin_shop_generate_variants(
                 allow_backorder,
                 fulfillment_type,
                 fulfillment_provider,
+                fulfillment_data,
                 is_active,
                 sort_order
              ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, "usd", ?, ?, ?, ?, ?, 1, ?
+                ?, "usd", ?, ?, ?, ?, ?, ?, 1, ?
              )'
         );
 
@@ -1100,6 +1145,7 @@ function admin_shop_generate_variants(
                 $fulfillmentProvider !== ''
                     ? $fulfillmentProvider
                     : null,
+                $fulfillmentData,
                 $nextSort++,
             ]);
 
@@ -1462,8 +1508,19 @@ function admin_shop_variant_storefront_meta(
         $availability = 'standard';
     }
 
+    $trackInventory = (int) ($variant['track_inventory'] ?? 0) === 1;
+    $allowBackorder = (int) ($variant['allow_backorder'] ?? 0) === 1;
+
+    $inventoryMode = match (true) {
+        $availability === 'preorder' => 'preorder',
+        !$trackInventory => 'untracked',
+        $allowBackorder => 'backorder',
+        default => 'tracked',
+    };
+
     return [
         'availability_mode' => $availability,
+        'inventory_mode' => $inventoryMode,
         'low_stock_threshold' =>
             max(
                 0,
@@ -1774,42 +1831,47 @@ function admin_shop_save_variant(
             )
             : null;
 
-    $trackInventory =
-        isset($data['track_inventory'])
-            ? 1
-            : 0;
-
     $inventoryQuantity =
         (int) (
             $data['inventory_quantity']
             ?? 0
         );
 
-    $allowBackorder =
-        isset($data['allow_backorder'])
-            ? 1
-            : 0;
-
-    $availabilityMode =
+    $inventoryMode =
         strtolower(
             trim(
                 (string) (
-                    $data['availability_mode']
-                    ?? 'standard'
+                    $data['inventory_mode']
+                    ?? ''
                 )
             )
         );
 
-    if (
-        !in_array(
-            $availabilityMode,
-            ['standard', 'preorder'],
-            true
-        )
-    ) {
-        throw new RuntimeException(
-            'Invalid storefront availability.'
-        );
+    if ($inventoryMode !== '') {
+        if (
+            !in_array(
+                $inventoryMode,
+                ['untracked', 'tracked', 'backorder', 'preorder'],
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Choose a valid inventory and selling mode.'
+            );
+        }
+
+        $trackInventory = in_array($inventoryMode, ['tracked', 'backorder'], true) ? 1 : 0;
+        $allowBackorder = $inventoryMode === 'backorder' ? 1 : 0;
+        $availabilityMode = $inventoryMode === 'preorder' ? 'preorder' : 'standard';
+    } else {
+        // Backward compatibility for older forms and existing integrations.
+        $trackInventory = isset($data['track_inventory']) ? 1 : 0;
+        $allowBackorder = isset($data['allow_backorder']) ? 1 : 0;
+        $availabilityMode = strtolower(trim((string) ($data['availability_mode'] ?? 'standard')));
+
+        if (!in_array($availabilityMode, ['standard', 'preorder'], true)) {
+            throw new InvalidArgumentException('Invalid storefront availability.');
+        }
     }
 
     $lowStockThreshold =
