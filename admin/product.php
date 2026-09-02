@@ -108,6 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $added === 1
                         ? 'Product photo added.'
                         : $added . ' product photos added.';
+            } elseif ($action === 'assign-photo') {
+                admin_shop_assign_product_photo(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    (int) ($_POST['image_id'] ?? 0),
+                    (string) ($_POST['photo_assignment'] ?? '')
+                );
+
+                $notice = 'Product photo assignment updated.';
             } elseif ($action === 'set-primary-photo') {
                 admin_shop_set_primary_photo(
                     $db,
@@ -637,6 +647,7 @@ $valueText =
 <div class="admin-commerce-variants">
 
 <?php foreach ($variants as $variant): ?>
+<?php $storefrontMeta = admin_shop_variant_storefront_meta($variant); ?>
 
 <form
     class="admin-commerce-variant"
@@ -749,6 +760,48 @@ $valueText =
         name="inventory_quantity"
         step="1"
         value="<?= (int) $variant['inventory_quantity'] ?>"
+    >
+</label>
+
+<label>
+    <span>Storefront availability</span>
+    <select name="availability_mode">
+        <option
+            value="standard"
+            <?= $storefrontMeta['availability_mode'] === 'standard' ? 'selected' : '' ?>
+        >
+            Standard
+        </option>
+        <option
+            value="preorder"
+            <?= $storefrontMeta['availability_mode'] === 'preorder' ? 'selected' : '' ?>
+        >
+            Preorder
+        </option>
+    </select>
+</label>
+
+<label>
+    <span>Low stock at</span>
+    <input
+        type="number"
+        name="low_stock_threshold"
+        min="0"
+        step="1"
+        value="<?= (int) $storefrontMeta['low_stock_threshold'] ?>"
+    >
+</label>
+
+<label>
+    <span>Max per order</span>
+    <input
+        type="number"
+        name="max_per_order"
+        min="0"
+        max="20"
+        step="1"
+        value="<?= (int) $storefrontMeta['max_per_order'] ?>"
+        placeholder="0 = automatic"
     >
 </label>
 
@@ -907,6 +960,76 @@ $valueText =
 <?php endif; ?>
 
 </div>
+
+<form class="admin-form admin-commerce-photo-assignment" method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
+    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="assign-photo">
+
+    <label>
+        <span>Photo shows</span>
+
+        <select name="photo_assignment">
+            <option value="">Entire product / all variants</option>
+
+            <optgroup label="Exact variant">
+                <?php foreach ($variants as $photoVariant): ?>
+                <?php
+                $assignment = json_encode(
+                    [
+                        'type' => 'variant',
+                        'variant_id' => (int) $photoVariant['id'],
+                    ],
+                    JSON_UNESCAPED_SLASHES
+                );
+
+                $selectedAssignment =
+                    (string) ($image['option_name'] ?? '') === '__variant__'
+                    && (string) ($image['option_value'] ?? '') === (string) $photoVariant['id'];
+                ?>
+                <option
+                    value="<?= moderation_e((string) $assignment) ?>"
+                    <?= $selectedAssignment ? 'selected' : '' ?>
+                >
+                    <?= moderation_e((string) ($photoVariant['name'] ?: $photoVariant['sku'])) ?>
+                </option>
+                <?php endforeach; ?>
+            </optgroup>
+
+            <?php foreach ($options as $photoOption): ?>
+            <optgroup label="<?= moderation_e((string) $photoOption['option_name']) ?>">
+                <?php foreach (($photoOption['values'] ?? []) as $photoValue): ?>
+                <?php
+                $assignment = json_encode(
+                    [
+                        'type' => 'option',
+                        'name' => (string) $photoOption['option_name'],
+                        'value' => (string) $photoValue['option_value'],
+                    ],
+                    JSON_UNESCAPED_SLASHES
+                );
+
+                $selectedAssignment =
+                    (string) ($image['option_name'] ?? '') === (string) $photoOption['option_name']
+                    && (string) ($image['option_value'] ?? '') === (string) $photoValue['option_value'];
+                ?>
+                <option
+                    value="<?= moderation_e((string) $assignment) ?>"
+                    <?= $selectedAssignment ? 'selected' : '' ?>
+                >
+                    <?= moderation_e((string) $photoValue['option_value']) ?>
+                </option>
+                <?php endforeach; ?>
+            </optgroup>
+            <?php endforeach; ?>
+        </select>
+    </label>
+
+    <button class="admin-button is-muted" type="submit">
+        Save assignment
+    </button>
+</form>
 
 <div class="admin-commerce-image-actions">
 
