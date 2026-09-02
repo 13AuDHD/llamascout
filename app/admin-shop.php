@@ -1266,6 +1266,231 @@ function admin_shop_save_product(
     );
 }
 
+function admin_shop_variant_storefront_meta(
+    array $variant
+): array {
+    $data = [];
+
+    $raw =
+        $variant['fulfillment_data']
+        ?? null;
+
+    if (is_string($raw) && trim($raw) !== '') {
+        $decoded = json_decode($raw, true);
+
+        if (is_array($decoded)) {
+            $data = $decoded;
+        }
+    } elseif (is_array($raw)) {
+        $data = $raw;
+    }
+
+    $availability =
+        strtolower(
+            trim(
+                (string) (
+                    $data['storefront_availability']
+                    ?? 'standard'
+                )
+            )
+        );
+
+    if (!in_array($availability, ['standard', 'preorder'], true)) {
+        $availability = 'standard';
+    }
+
+    return [
+        'availability_mode' => $availability,
+        'low_stock_threshold' =>
+            max(
+                0,
+                (int) (
+                    $data['low_stock_threshold']
+                    ?? 5
+                )
+            ),
+        'max_per_order' =>
+            max(
+                0,
+                min(
+                    20,
+                    (int) (
+                        $data['max_per_order']
+                        ?? 0
+                    )
+                )
+            ),
+    ];
+}
+
+function admin_shop_assign_product_photo(
+    PDO $db,
+    int $actorUserId,
+    int $productId,
+    int $imageId,
+    string $assignment
+): void {
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM shop_product_images
+         WHERE id = ?
+           AND product_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $imageId,
+        $productId,
+    ]);
+
+    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$image) {
+        throw new RuntimeException(
+            'Product photo not found.'
+        );
+    }
+
+    $optionName = null;
+    $optionValue = null;
+
+    $assignment = trim($assignment);
+
+    if ($assignment !== '') {
+        $decoded =
+            json_decode(
+                $assignment,
+                true
+            );
+
+        if (!is_array($decoded)) {
+            throw new RuntimeException(
+                'Photo assignment is invalid.'
+            );
+        }
+
+        $type =
+            trim(
+                (string) (
+                    $decoded['type']
+                    ?? 'option'
+                )
+            );
+
+        if ($type === 'variant') {
+            $variantId =
+                (int) (
+                    $decoded['variant_id']
+                    ?? 0
+                );
+
+            $variantCheck =
+                $db->prepare(
+                    'SELECT id
+                     FROM shop_product_variants
+                     WHERE id = ?
+                       AND product_id = ?
+                     LIMIT 1'
+                );
+
+            $variantCheck->execute([
+                $variantId,
+                $productId,
+            ]);
+
+            if (!$variantCheck->fetchColumn()) {
+                throw new RuntimeException(
+                    'That photo variant could not be found.'
+                );
+            }
+
+            $optionName = '__variant__';
+            $optionValue = (string) $variantId;
+        } else {
+            $candidateName =
+                trim(
+                    (string) (
+                        $decoded['name']
+                        ?? ''
+                    )
+                );
+
+            $candidateValue =
+                trim(
+                    (string) (
+                        $decoded['value']
+                        ?? ''
+                    )
+                );
+
+            if ($candidateName === '' || $candidateValue === '') {
+                throw new RuntimeException(
+                    'Photo option assignment is incomplete.'
+                );
+            }
+
+            $optionCheck =
+                $db->prepare(
+                    'SELECT COUNT(*)
+                     FROM shop_product_options o
+                     INNER JOIN shop_product_option_values ov
+                        ON ov.option_id = o.id
+                     WHERE o.product_id = ?
+                       AND o.option_name = ?
+                       AND ov.option_value = ?'
+                );
+
+            $optionCheck->execute([
+                $productId,
+                $candidateName,
+                $candidateValue,
+            ]);
+
+            if ((int) $optionCheck->fetchColumn() < 1) {
+                throw new RuntimeException(
+                    'That photo option is not part of this product.'
+                );
+            }
+
+            $optionName = $candidateName;
+            $optionValue = $candidateValue;
+        }
+    }
+
+    $update =
+        $db->prepare(
+            'UPDATE shop_product_images
+             SET
+                option_name = ?,
+                option_value = ?
+             WHERE id = ?
+               AND product_id = ?'
+        );
+
+    $update->execute([
+        $optionName,
+        $optionValue,
+        $imageId,
+        $productId,
+    ]);
+
+    if (function_exists('admin_users_audit')) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'shop.photo_assignment_updated',
+            'Updated a shop product photo assignment.',
+            [
+                'product_id' => $productId,
+                'image_id' => $imageId,
+                'option_name' => $optionName,
+                'option_value' => $optionValue,
+            ]
+        );
+    }
+}
+
 function admin_shop_save_variant(
     PDO $db,
     int $actorUserId,
@@ -1389,6 +1614,97 @@ function admin_shop_save_variant(
             ? 1
             : 0;
 
+    $availabilityMode =
+        strtolower(
+            trim(
+                (string) (
+                    $data['availability_mode']
+                    ?? 'standard'
+                )
+            )
+        );
+
+    if (
+        !in_array(
+            $availabilityMode,
+            ['standard', 'preorder'],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'Invalid storefront availability.'
+        );
+    }
+
+    $lowStockThreshold =
+        max(
+            0,
+            min(
+                999999,
+                (int) (
+                    $data['low_stock_threshold']
+                    ?? 5
+                )
+            )
+        );
+
+    $maxPerOrder =
+        max(
+            0,
+            min(
+                20,
+                (int) (
+                    $data['max_per_order']
+                    ?? 0
+                )
+            )
+        );
+
+    $fulfillmentData = [];
+
+    $existingFulfillmentData =
+        $variant['fulfillment_data']
+        ?? null;
+
+    if (
+        is_string($existingFulfillmentData)
+        && trim($existingFulfillmentData) !== ''
+    ) {
+        $decoded =
+            json_decode(
+                $existingFulfillmentData,
+                true
+            );
+
+        if (is_array($decoded)) {
+            $fulfillmentData = $decoded;
+        }
+    } elseif (is_array($existingFulfillmentData)) {
+        $fulfillmentData = $existingFulfillmentData;
+    }
+
+    $fulfillmentData['storefront_availability'] =
+        $availabilityMode;
+
+    $fulfillmentData['low_stock_threshold'] =
+        $lowStockThreshold;
+
+    $fulfillmentData['max_per_order'] =
+        $maxPerOrder;
+
+    $fulfillmentDataJson =
+        json_encode(
+            $fulfillmentData,
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+        );
+
+    if ($fulfillmentDataJson === false) {
+        throw new RuntimeException(
+            'Variant storefront settings could not be saved.'
+        );
+    }
+
     $isActive =
         isset($data['is_active'])
             ? 1
@@ -1462,6 +1778,7 @@ function admin_shop_save_variant(
                 fulfillment_provider = ?,
                 fulfillment_product_id = ?,
                 fulfillment_variant_id = ?,
+                fulfillment_data = ?,
                 is_active = ?,
                 sort_order = ?
              WHERE id = ?'
@@ -1484,6 +1801,7 @@ function admin_shop_save_variant(
         $fulfillmentVariantId !== ''
             ? $fulfillmentVariantId
             : null,
+        $fulfillmentDataJson,
         $isActive,
         $sortOrder,
         $variantId,
