@@ -827,6 +827,11 @@
                             'Preorder';
                     break;
 
+                case 'backorder':
+                    addButtonLabel.textContent =
+                        'Backorder';
+                    break;
+
                 case 'out_of_stock':
                     addButtonLabel
                         .textContent =
