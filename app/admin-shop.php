@@ -648,7 +648,7 @@ function admin_shop_fulfillment_providers(): array
 {
     return [
         '' => 'None / not applicable',
-        'llama_scout' => 'Llama Scout / In-house',
+        'llama_scout' => 'Llama Scout Fulfillment',
         'printful' => 'Printful',
         'printify' => 'Printify',
         'other' => 'Other / External',
@@ -671,6 +671,83 @@ function admin_shop_normalize_provider(?string $value): string
         '' => '',
     ];
     return $aliases[$value] ?? '';
+}
+
+function admin_shop_tracking_carriers(): array
+{
+    return [
+        '' => 'Not assigned',
+        'usps' => 'USPS',
+        'ups' => 'UPS',
+        'fedex' => 'FedEx',
+        'dhl' => 'DHL Express',
+        'dhl_ecommerce' => 'DHL eCommerce',
+        'ontrac' => 'OnTrac',
+        'other' => 'Other carrier',
+    ];
+}
+
+function admin_shop_normalize_tracking_carrier(?string $value): string
+{
+    $value = strtolower(trim((string) $value));
+
+    $aliases = [
+        '' => '',
+        'usps' => 'usps',
+        'united states postal service' => 'usps',
+        'ups' => 'ups',
+        'fedex' => 'fedex',
+        'fed ex' => 'fedex',
+        'dhl' => 'dhl',
+        'dhl express' => 'dhl',
+        'dhl_ecommerce' => 'dhl_ecommerce',
+        'dhl ecommerce' => 'dhl_ecommerce',
+        'dhl e-commerce' => 'dhl_ecommerce',
+        'ontrac' => 'ontrac',
+        'other' => 'other',
+    ];
+
+    return $aliases[$value] ?? '';
+}
+
+function admin_shop_tracking_url(
+    ?string $carrier,
+    ?string $trackingNumber
+): ?string {
+    $carrier = admin_shop_normalize_tracking_carrier($carrier);
+    $trackingNumber = trim((string) $trackingNumber);
+
+    if ($carrier === '' || $trackingNumber === '') {
+        return null;
+    }
+
+    $encoded = rawurlencode($trackingNumber);
+
+    return match ($carrier) {
+        'usps' => 'https://tools.usps.com/go/TrackConfirmAction?tLabels=' . $encoded,
+        'ups' => 'https://www.ups.com/track?loc=en_US&tracknum=' . $encoded,
+        'fedex' => 'https://www.fedex.com/fedextrack/?trknbr=' . $encoded,
+        'dhl' => 'https://www.dhl.com/us-en/home/tracking.html?tracking-id=' . $encoded,
+        'dhl_ecommerce' => 'https://webtrack.dhlglobalmail.com/?trackingnumber=' . $encoded,
+        'ontrac' => 'https://www.ontrac.com/tracking/?number=' . $encoded,
+        default => null,
+    };
+}
+
+function admin_shop_fulfillment_provider_label(?string $provider): string
+{
+    $provider = admin_shop_normalize_provider($provider);
+    $providers = admin_shop_fulfillment_providers();
+
+    return $providers[$provider] ?? 'Not assigned';
+}
+
+function admin_shop_tracking_carrier_label(?string $carrier): string
+{
+    $carrier = admin_shop_normalize_tracking_carrier($carrier);
+    $carriers = admin_shop_tracking_carriers();
+
+    return $carriers[$carrier] ?? 'Not assigned';
 }
 
 function admin_shop_ensure_variant_sort_sequence(PDO $db, int $productId): void
@@ -2149,7 +2226,26 @@ function admin_shop_order_items(
 
     $stmt->execute([$orderId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($items as &$item) {
+        $item['image_url'] = '';
+
+        $snapshot = json_decode(
+            (string) ($item['variant_snapshot_json'] ?? ''),
+            true
+        );
+
+        if (is_array($snapshot)) {
+            $item['image_url'] = trim(
+                (string) ($snapshot['image_url'] ?? '')
+            );
+        }
+    }
+
+    unset($item);
+
+    return $items;
 }
 
 function admin_shop_fulfillments(
@@ -2260,13 +2356,23 @@ function admin_shop_create_fulfillment(
         );
     }
 
-    $type = trim(
-        (string) ($data['fulfillment_type'] ?? 'manual')
-    );
-
-    $provider = trim(
+    $provider = admin_shop_normalize_provider(
         (string) ($data['fulfillment_provider'] ?? '')
     );
+
+    if ($provider === '') {
+        $provider = 'llama_scout';
+    }
+
+    if (!array_key_exists($provider, admin_shop_fulfillment_providers())) {
+        throw new InvalidArgumentException(
+            'Choose a valid fulfillment provider.'
+        );
+    }
+
+    $type = in_array($provider, ['printful', 'printify', 'other'], true)
+        ? 'provider'
+        : 'manual';
 
     $status = trim(
         (string) ($data['status'] ?? 'pending')
@@ -2276,8 +2382,22 @@ function admin_shop_create_fulfillment(
         (string) ($data['tracking_number'] ?? '')
     );
 
-    $trackingUrl = trim(
-        (string) ($data['tracking_url'] ?? '')
+    $trackingCarrier = admin_shop_normalize_tracking_carrier(
+        (string) ($data['tracking_carrier'] ?? '')
+    );
+
+    if (
+        $trackingNumber !== ''
+        && $trackingCarrier === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Choose the tracking carrier for that tracking number.'
+        );
+    }
+
+    $trackingUrl = admin_shop_tracking_url(
+        $trackingCarrier,
+        $trackingNumber
     );
 
     $providerOrderId = trim(
@@ -2295,7 +2415,7 @@ function admin_shop_create_fulfillment(
     ];
 
     if (!in_array($status, $allowedStatus, true)) {
-        throw new RuntimeException(
+        throw new InvalidArgumentException(
             'Invalid fulfillment status.'
         );
     }
@@ -2308,12 +2428,13 @@ function admin_shop_create_fulfillment(
             status,
             provider_order_id,
             tracking_number,
+            tracking_carrier,
             tracking_url,
             submitted_at,
             shipped_at,
             delivered_at
          ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?,
             CASE
                 WHEN ? IN ("submitted","processing","shipped","delivered")
                     THEN NOW()
@@ -2335,7 +2456,7 @@ function admin_shop_create_fulfillment(
     $stmt->execute([
         $orderId,
         $type,
-        $provider !== '' ? $provider : null,
+        $provider,
         $status,
         $providerOrderId !== ''
             ? $providerOrderId
@@ -2343,9 +2464,10 @@ function admin_shop_create_fulfillment(
         $trackingNumber !== ''
             ? $trackingNumber
             : null,
-        $trackingUrl !== ''
-            ? $trackingUrl
+        $trackingCarrier !== ''
+            ? $trackingCarrier
             : null,
+        $trackingUrl,
         $status,
         $status,
         $status,
@@ -2423,6 +2545,7 @@ function admin_shop_create_fulfillment(
             'fulfillment_id' => $fulfillmentId,
             'status' => $status,
             'provider' => $provider,
+            'tracking_carrier' => $trackingCarrier,
         ]
     );
 
@@ -2457,6 +2580,28 @@ function admin_shop_update_fulfillment(
         );
     }
 
+    $provider = admin_shop_normalize_provider(
+        (string) (
+            $data['fulfillment_provider']
+            ?? $fulfillment['fulfillment_provider']
+            ?? ''
+        )
+    );
+
+    if ($provider === '') {
+        $provider = 'llama_scout';
+    }
+
+    if (!array_key_exists($provider, admin_shop_fulfillment_providers())) {
+        throw new InvalidArgumentException(
+            'Choose a valid fulfillment provider.'
+        );
+    }
+
+    $type = in_array($provider, ['printful', 'printify', 'other'], true)
+        ? 'provider'
+        : 'manual';
+
     $status = trim(
         (string) ($data['status'] ?? 'pending')
     );
@@ -2465,8 +2610,22 @@ function admin_shop_update_fulfillment(
         (string) ($data['tracking_number'] ?? '')
     );
 
-    $trackingUrl = trim(
-        (string) ($data['tracking_url'] ?? '')
+    $trackingCarrier = admin_shop_normalize_tracking_carrier(
+        (string) ($data['tracking_carrier'] ?? '')
+    );
+
+    if (
+        $trackingNumber !== ''
+        && $trackingCarrier === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Choose the tracking carrier for that tracking number.'
+        );
+    }
+
+    $trackingUrl = admin_shop_tracking_url(
+        $trackingCarrier,
+        $trackingNumber
     );
 
     $providerOrderId = trim(
@@ -2484,7 +2643,7 @@ function admin_shop_update_fulfillment(
     ];
 
     if (!in_array($status, $allowedStatus, true)) {
-        throw new RuntimeException(
+        throw new InvalidArgumentException(
             'Invalid fulfillment status.'
         );
     }
@@ -2492,9 +2651,12 @@ function admin_shop_update_fulfillment(
     $update = $db->prepare(
         'UPDATE shop_order_fulfillments
          SET
+            fulfillment_type = ?,
+            fulfillment_provider = ?,
             status = ?,
             provider_order_id = ?,
             tracking_number = ?,
+            tracking_carrier = ?,
             tracking_url = ?,
             submitted_at = CASE
                 WHEN ? IN ("submitted","processing","shipped","delivered")
@@ -2515,6 +2677,8 @@ function admin_shop_update_fulfillment(
     );
 
     $update->execute([
+        $type,
+        $provider,
         $status,
         $providerOrderId !== ''
             ? $providerOrderId
@@ -2522,9 +2686,10 @@ function admin_shop_update_fulfillment(
         $trackingNumber !== ''
             ? $trackingNumber
             : null,
-        $trackingUrl !== ''
-            ? $trackingUrl
+        $trackingCarrier !== ''
+            ? $trackingCarrier
             : null,
+        $trackingUrl,
         $status,
         $status,
         $status,
@@ -2563,6 +2728,8 @@ function admin_shop_update_fulfillment(
             'fulfillment_id' => $fulfillmentId,
             'order_id' => (int) $fulfillment['order_id'],
             'status' => $status,
+            'provider' => $provider,
+            'tracking_carrier' => $trackingCarrier,
         ]
     );
 }
