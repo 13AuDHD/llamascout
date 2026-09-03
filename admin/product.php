@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-shop-image-order.php';
+require_once dirname(__DIR__) . '/app/admin-shop-variant-workflow.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -33,8 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (string) ($_POST['csrf_token'] ?? '')
         )
     ) {
-        $error =
-            'Your session token expired. Reload and try again.';
+        $error = 'Your session token expired. Reload and try again.';
     } else {
         try {
             $action = (string) (
@@ -51,14 +51,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice = 'Product updated.';
             } elseif ($action === 'save-options') {
-                admin_shop_save_options(
+                $result = admin_shop_save_options_flexible(
                     $db,
                     $actorUserId,
                     $productId,
                     $_POST
                 );
 
-                $notice = 'Product options updated.';
+                if (!empty($result['options_rebuilt'])) {
+                    $removed = (int) ($result['variants_removed'] ?? 0);
+
+                    $notice =
+                        'Product options updated.'
+                        . (
+                            $removed > 0
+                                ? ' ' . $removed . ' unused variant'
+                                    . ($removed === 1 ? '' : 's')
+                                    . ' removed so the new option structure can be rebuilt.'
+                                : ''
+                        );
+                } else {
+                    $notice = 'Product options updated.';
+                }
             } elseif ($action === 'generate-variants') {
                 $created = admin_shop_generate_variants(
                     $db,
@@ -69,10 +83,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice =
                     $created > 0
-                        ? $created . ' missing variant' .
-                            ($created === 1 ? '' : 's') .
-                            ' generated.'
+                        ? $created . ' missing variant'
+                            . ($created === 1 ? '' : 's')
+                            . ' generated.'
                         : 'No missing variants needed to be generated.';
+            } elseif ($action === 'rebuild-variants') {
+                $result = admin_shop_rebuild_variants(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    $_POST
+                );
+
+                $removed = (int) ($result['removed'] ?? 0);
+                $created = (int) ($result['created'] ?? 0);
+
+                $notice =
+                    'Variant batch rebuilt. '
+                    . $removed . ' unused variant'
+                    . ($removed === 1 ? '' : 's')
+                    . ' removed; '
+                    . $created . ' variant'
+                    . ($created === 1 ? '' : 's')
+                    . ' generated.';
             } elseif ($action === 'save-variant') {
                 admin_shop_save_variant(
                     $db,
@@ -82,6 +115,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Variant updated.';
+            } elseif ($action === 'delete-variant') {
+                admin_shop_delete_variant_safe(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    (int) ($_POST['variant_id'] ?? 0)
+                );
+
+                $notice = 'Unused variant deleted.';
             } elseif ($action === 'apply-variant-defaults') {
                 $updated = admin_shop_apply_variant_defaults(
                     $db,
@@ -90,7 +132,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_POST
                 );
 
-                $notice = $updated . ' variant' . ($updated === 1 ? '' : 's') . ' updated from defaults.';
+                $notice =
+                    $updated . ' variant'
+                    . ($updated === 1 ? '' : 's')
+                    . ' updated from defaults.';
             } elseif ($action === 'add-photos') {
                 $photoToken = trim(
                     (string) ($_POST['photo_stage_token'] ?? '')
@@ -118,18 +163,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $added === 1
                         ? 'Product photo added.'
                         : $added . ' product photos added.';
-            } elseif ($action === 'assign-photo') {
-                admin_shop_assign_product_photo(
+            } elseif ($action === 'save-photo') {
+                admin_shop_save_photo_editor(
                     $db,
                     $actorUserId,
                     $productId,
                     (int) ($_POST['image_id'] ?? 0),
                     is_array($_POST['photo_criteria'] ?? null)
                         ? $_POST['photo_criteria']
-                        : []
+                        : [],
+                    (int) ($_POST['photo_position'] ?? 0)
                 );
 
-                $notice = 'Product photo assignment updated.';
+                $notice = 'Product photo updated.';
             } elseif ($action === 'set-primary-photo') {
                 admin_shop_set_primary_photo(
                     $db,
@@ -139,16 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Primary product photo updated.';
-            } elseif ($action === 'save-photo-position') {
-                admin_shop_swap_product_photo_position(
-                    $db,
-                    $actorUserId,
-                    $productId,
-                    (int) ($_POST['image_id'] ?? 0),
-                    (int) ($_POST['photo_position'] ?? 0)
-                );
-
-                $notice = 'Product photo position updated.';
             } elseif ($action === 'delete-photo') {
                 admin_shop_delete_product_photo(
                     $db,
@@ -163,13 +199,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reference = llama_log_caught_exception(
                 $exception,
                 'admin.product_action',
-                ['product_id' => $productId, 'action' => $action],
+                [
+                    'product_id' => $productId,
+                    'action' => $action ?? '',
+                ],
                 [InvalidArgumentException::class]
             );
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('The product action could not be completed.', $reference);
+                : llama_error_message_with_reference(
+                    'The product action could not be completed.',
+                    $reference
+                );
         }
     }
 }
@@ -194,12 +236,21 @@ $options = admin_shop_product_options(
     $productId
 );
 
-admin_shop_ensure_variant_sort_sequence($db, $productId);
+admin_shop_ensure_variant_sort_sequence(
+    $db,
+    $productId
+);
 
 $variants = admin_shop_product_variants(
     $db,
     $productId
 );
+
+$hasOrderedVariants =
+    admin_shop_product_has_ordered_variants(
+        $db,
+        $productId
+    );
 
 $stats = admin_dashboard_stats($db);
 
@@ -212,46 +263,43 @@ $adminNavCounts = [
 ];
 
 $adminPageTitle = (string) $product['name'];
-$publicProductUrl = $siteUrl . '/product.php?slug=' . rawurlencode((string) $product['slug']);
+$publicProductUrl =
+    $siteUrl
+    . '/product.php?slug='
+    . rawurlencode((string) $product['slug']);
+
 $adminPageEyebrow = 'Product Administration';
 $adminActiveNav = 'products';
 $adminNeedsPhotoUploader = true;
 
-$remainingProductPhotos =
-    max(
-        0,
-        20 - count($images)
-    );
+$remainingProductPhotos = max(
+    0,
+    20 - count($images)
+);
+
+$optionsByPosition = [];
+
+foreach ($options as $option) {
+    $optionsByPosition[
+        (int) $option['option_position']
+    ] = $option;
+}
 
 require __DIR__ . '/_header.php';
 ?>
+
 <style>
+.admin-commerce-product-single {
+    display: grid;
+    gap: 22px;
+}
+
 .admin-commerce-field-help {
     display: block;
     margin-top: 6px;
     color: var(--admin-muted, #a7a7a7);
     font-size: .72rem;
     line-height: 1.45;
-}
-.admin-commerce-inventory-explainer {
-    display: grid;
-    gap: 3px;
-    padding: 10px 12px;
-    border: 1px solid var(--admin-border, rgba(255,255,255,.14));
-    border-radius: 9px;
-}
-.admin-commerce-inventory-explainer strong { font-size: .72rem; }
-.admin-commerce-inventory-explainer span {
-    color: var(--admin-muted, #a7a7a7);
-    font-size: .68rem;
-    line-height: 1.45;
-}
-</style>
-
-<style>
-.admin-commerce-product-single {
-    display: grid;
-    gap: 22px;
 }
 
 .admin-commerce-collapsible {
@@ -313,9 +361,22 @@ require __DIR__ . '/_header.php';
     border-top: 1px solid var(--admin-border, rgba(255,255,255,.12));
 }
 
+.admin-commerce-options-note {
+    margin-top: 16px;
+}
+
+.admin-commerce-options-note.is-warning {
+    border-color: rgba(255, 190, 80, .38);
+}
+
 .admin-commerce-image-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 20px;
+}
+
+.admin-commerce-photo-editor {
+    display: grid;
+    gap: 16px;
 }
 
 .admin-commerce-photo-criteria {
@@ -383,9 +444,30 @@ require __DIR__ . '/_header.php';
     opacity: 1;
 }
 
-.admin-commerce-photo-assignment {
+.admin-commerce-photo-position-field {
     display: grid;
-    gap: 14px;
+    grid-template-columns: auto minmax(90px, 140px);
+    align-items: center;
+    justify-content: start;
+    gap: 10px;
+}
+
+.admin-commerce-photo-position-field span {
+    font-size: .74rem;
+    font-weight: 800;
+}
+
+.admin-commerce-photo-save {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+    font-size: .88rem;
+}
+
+.admin-commerce-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .admin-commerce-defaults {
@@ -397,34 +479,131 @@ require __DIR__ . '/_header.php';
     border-radius: 12px;
     background: rgba(255,255,255,.025);
 }
-.admin-commerce-defaults-header h3 { margin: 2px 0 4px; }
-.admin-commerce-defaults-header p { margin: 0; opacity: .7; font-size: .76rem; }
-.admin-commerce-defaults-header small { opacity: .65; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+
+.admin-commerce-defaults-header h3 {
+    margin: 2px 0 4px;
+}
+
+.admin-commerce-defaults-header p {
+    margin: 0;
+    opacity: .7;
+    font-size: .76rem;
+}
+
+.admin-commerce-defaults-header small {
+    opacity: .65;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
 .admin-commerce-default-grid,
 .admin-commerce-variant-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
 }
-.admin-commerce-default-field { display: grid; gap: 6px; min-width: 0; }
-.admin-commerce-default-field > span:first-child { font-size: .72rem; font-weight: 800; opacity: .75; }
+
+.admin-commerce-default-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-commerce-default-field > span:first-child {
+    font-size: .72rem;
+    font-weight: 800;
+    opacity: .75;
+}
+
 .admin-commerce-default-field input,
-.admin-commerce-default-field select { width: 100%; min-width: 0; }
-.admin-commerce-apply-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .68rem; opacity: .8; }
-.admin-commerce-resequence { display: flex; align-items: flex-start; gap: 9px; padding: 12px; border: 1px solid var(--admin-border, rgba(255,255,255,.12)); border-radius: 9px; }
-.admin-commerce-resequence span { display: grid; gap: 3px; }
-.admin-commerce-resequence small { opacity: .65; }
-.admin-commerce-variant-grid .is-wide { grid-column: span 2; }
+.admin-commerce-default-field select {
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-commerce-apply-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .68rem;
+    opacity: .8;
+}
+
+.admin-commerce-resequence {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 12px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.12));
+    border-radius: 9px;
+}
+
+.admin-commerce-resequence span {
+    display: grid;
+    gap: 3px;
+}
+
+.admin-commerce-resequence small {
+    opacity: .65;
+}
+
+.admin-commerce-variant-grid .is-wide {
+    grid-column: span 2;
+}
+
+.admin-commerce-variant-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.admin-commerce-delete-variant {
+    border-color: rgba(255, 90, 90, .38);
+}
+
+.admin-commerce-protected {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .72rem;
+    opacity: .72;
+}
+
+.admin-commerce-builder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-commerce-builder-actions form {
+    margin: 0;
+}
+
+.admin-commerce-inventory-explainer {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.14));
+    border-radius: 9px;
+}
+
+.admin-commerce-inventory-explainer strong {
+    font-size: .72rem;
+}
+
+.admin-commerce-inventory-explainer span {
+    color: var(--admin-muted, #a7a7a7);
+    font-size: .68rem;
+    line-height: 1.45;
+}
 
 @media (max-width: 1100px) {
     .admin-commerce-default-grid,
-    .admin-commerce-variant-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-@media (max-width: 650px) {
-    .admin-commerce-default-grid,
-    .admin-commerce-variant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .admin-commerce-variant-grid .is-wide { grid-column: 1 / -1; }
+    .admin-commerce-variant-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 760px) {
@@ -438,6 +617,30 @@ require __DIR__ . '/_header.php';
 
     .admin-commerce-collapse-body {
         padding: 0 17px 17px;
+    }
+}
+
+@media (max-width: 650px) {
+    .admin-commerce-default-grid,
+    .admin-commerce-variant-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-commerce-variant-grid .is-wide {
+        grid-column: 1 / -1;
+    }
+
+    .admin-commerce-builder-actions,
+    .admin-commerce-variant-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .admin-commerce-builder-actions form,
+    .admin-commerce-builder-actions button,
+    .admin-commerce-variant-actions form,
+    .admin-commerce-variant-actions button {
+        width: 100%;
     }
 }
 </style>
@@ -469,6 +672,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         title.replaceChildren(link);
     });
+
+    document.querySelectorAll('[data-confirm-rebuild]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const message =
+                'Rebuild this variant batch? Unused variants will be removed and recreated from the current product options. Variants already used in orders will be preserved.';
+
+            if (!window.confirm(message)) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-confirm-delete-variant]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Delete this unused variant?')) {
+                event.preventDefault();
+            }
+        });
+    });
 });
 </script>
 
@@ -483,7 +705,6 @@ document.addEventListener('DOMContentLoaded', () => {
     <?= moderation_e($error) ?>
 </div>
 <?php endif; ?>
-
 
 <div class="admin-commerce-product-single">
 
@@ -657,16 +878,6 @@ document.addEventListener('DOMContentLoaded', () => {
     value="save-options"
 >
 
-<?php
-$optionsByPosition = [];
-
-foreach ($options as $option) {
-    $optionsByPosition[
-        (int) $option['option_position']
-    ] = $option;
-}
-?>
-
 <div class="admin-commerce-option-grid">
 
 <?php for ($position = 1; $position <= 3; $position++): ?>
@@ -734,17 +945,19 @@ $valueText =
 
 </div>
 
-<div class="admin-commerce-options-note">
-
-<?php if ($variants): ?>
-    Existing option groups and names are locked because this product
-    already has variants. You can safely add new values, then use
-    Generate Missing Variants below.
-<?php else: ?>
-    Leave unused option groups blank. A product can have up to three
-    options, such as Color, Size, and Style.
-<?php endif; ?>
-
+<div class="admin-commerce-options-note<?= $hasOrderedVariants ? ' is-warning' : '' ?>">
+    <?php if ($hasOrderedVariants): ?>
+        This product has order history. Ordered variants are protected.
+        You can add new values and generate new combinations, but the
+        existing ordered option structure cannot be destructively replaced.
+    <?php elseif ($variants): ?>
+        These options are editable. If you add or remove an option group,
+        rename an option, or remove a value, unused variants are cleared so
+        you can rebuild a clean batch from the new setup.
+    <?php else: ?>
+        Leave unused option groups blank. A product can have up to three
+        options, such as Color, Size, and Style.
+    <?php endif; ?>
 </div>
 
 <div class="admin-user-form-actions">
@@ -770,9 +983,8 @@ $valueText =
         <?= number_format(count($images)) ?> of 20
     </span>
 </summary>
+
 <div class="admin-commerce-collapse-body">
-
-
 
 <?php if ($images): ?>
 
@@ -808,11 +1020,30 @@ $valueText =
 
 </div>
 
-<form class="admin-form admin-commerce-photo-assignment" method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="assign-photo">
+<form
+    class="admin-form admin-commerce-photo-editor"
+    method="post"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="image_id"
+        value="<?= (int) $image['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="save-photo"
+    >
 
     <?php $photoCriteria = admin_shop_photo_criteria($image); ?>
 
@@ -826,21 +1057,34 @@ $valueText =
 
         <?php foreach ($options as $photoOption): ?>
         <?php
-        $photoOptionName = (string) $photoOption['option_name'];
-        $selectedPhotoValues = $photoCriteria[$photoOptionName] ?? [];
+        $photoOptionName =
+            (string) $photoOption['option_name'];
+
+        $selectedPhotoValues =
+            $photoCriteria[$photoOptionName]
+            ?? [];
         ?>
+
         <div class="admin-commerce-photo-criteria-group">
             <strong><?= moderation_e($photoOptionName) ?></strong>
 
             <div class="admin-commerce-photo-checkboxes">
                 <?php foreach (($photoOption['values'] ?? []) as $photoValue): ?>
-                <?php $photoValueText = (string) $photoValue['option_value']; ?>
+                <?php
+                $photoValueText =
+                    (string) $photoValue['option_value'];
+                ?>
+
                 <label>
                     <input
                         type="checkbox"
                         name="photo_criteria[<?= moderation_e($photoOptionName) ?>][]"
                         value="<?= moderation_e($photoValueText) ?>"
-                        <?= in_array($photoValueText, $selectedPhotoValues, true) ? 'checked' : '' ?>
+                        <?= in_array(
+                            $photoValueText,
+                            $selectedPhotoValues,
+                            true
+                        ) ? 'checked' : '' ?>
                     >
                     <span><?= moderation_e($photoValueText) ?></span>
                 </label>
@@ -850,67 +1094,8 @@ $valueText =
         <?php endforeach; ?>
     </fieldset>
 
-    <button class="admin-button is-muted" type="submit">
-        Save photo criteria
-    </button>
-</form>
-
-<div class="admin-commerce-image-actions">
-
-<?php if ((int) $image['is_primary'] !== 1): ?>
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="set-primary-photo">
-
-    <button class="admin-button is-muted" type="submit">
-        Make primary
-    </button>
-</form>
-<?php endif; ?>
-
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="shop_admin_action" value="delete-photo">
-
-    <button class="admin-button admin-commerce-delete-photo" type="submit">
-        Delete
-    </button>
-</form>
-
-<form
-    class="admin-commerce-photo-position"
-    method="post"
->
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= moderation_e(moderation_csrf_token()) ?>"
-    >
-
-    <input
-        type="hidden"
-        name="product_id"
-        value="<?= (int) $productId ?>"
-    >
-
-    <input
-        type="hidden"
-        name="image_id"
-        value="<?= (int) $image['id'] ?>"
-    >
-
-    <input
-        type="hidden"
-        name="shop_admin_action"
-        value="save-photo-position"
-    >
-
-    <label>
-        <span>#</span>
+    <label class="admin-commerce-photo-position-field">
+        <span>Gallery position</span>
 
         <input
             type="number"
@@ -925,10 +1110,77 @@ $valueText =
     </label>
 
     <button
+        class="admin-button admin-commerce-photo-save"
+        type="submit"
+    >
+        Save Photo
+    </button>
+</form>
+
+<div class="admin-commerce-image-actions">
+
+<?php if ((int) $image['is_primary'] !== 1): ?>
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="image_id"
+        value="<?= (int) $image['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="set-primary-photo"
+    >
+
+    <button
         class="admin-button is-muted"
         type="submit"
     >
-        Save
+        Make primary
+    </button>
+</form>
+<?php endif; ?>
+
+<form
+    method="post"
+    onsubmit="return confirm('Delete this product photo?');"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="image_id"
+        value="<?= (int) $image['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="delete-photo"
+    >
+
+    <button
+        class="admin-button admin-commerce-delete-photo"
+        type="submit"
+    >
+        Delete
     </button>
 </form>
 
@@ -950,7 +1202,6 @@ $valueText =
 
 <?php endif; ?>
 
-
 <?php if ($remainingProductPhotos > 0): ?>
 
 <form
@@ -958,11 +1209,31 @@ $valueText =
     method="post"
 >
 
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-<input type="hidden" name="shop_admin_action" value="add-photos">
-<input type="hidden" name="photo_stage_token" value="">
-<input type="hidden" name="photos_json" value="[]">
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(moderation_csrf_token()) ?>"
+>
+<input
+    type="hidden"
+    name="product_id"
+    value="<?= (int) $productId ?>"
+>
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="add-photos"
+>
+<input
+    type="hidden"
+    name="photo_stage_token"
+    value=""
+>
+<input
+    type="hidden"
+    name="photos_json"
+    value="[]"
+>
 
 <div
     data-photo-uploader
@@ -975,7 +1246,10 @@ $valueText =
 ></div>
 
 <div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
+    <button
+        class="admin-button"
+        type="submit"
+    >
         Add photos to product
     </button>
 </div>
@@ -993,17 +1267,19 @@ $valueText =
 </div>
 </details>
 
-<details class="admin-panel admin-commerce-collapsible">
+<details class="admin-panel admin-commerce-collapsible" open>
 <summary class="admin-commerce-collapse-summary">
     <span>
         <small>Variant Builder</small>
-        <strong>Generate Missing Variants</strong>
+        <strong>Create or Rebuild Variants</strong>
     </span>
-    
+
+    <span class="admin-commerce-collapse-meta">
+        <?= number_format(count($variants)) ?> current
+    </span>
 </summary>
+
 <div class="admin-commerce-collapse-body">
-
-
 
 <form
     class="admin-commerce-generator"
@@ -1020,12 +1296,6 @@ $valueText =
     type="hidden"
     name="product_id"
     value="<?= (int) $productId ?>"
->
-
-<input
-    type="hidden"
-    name="shop_admin_action"
-    value="generate-variants"
 >
 
 <div class="admin-commerce-generator-grid">
@@ -1081,6 +1351,7 @@ $valueText =
 
 <label>
     <span>Fulfillment provider</span>
+
     <select name="default_fulfillment_provider">
         <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
             <option value="<?= moderation_e($providerValue) ?>">
@@ -1092,29 +1363,56 @@ $valueText =
 
 <label class="is-wide">
     <span>Inventory &amp; selling mode</span>
+
     <select name="default_inventory_mode">
-        <option value="untracked">Always available</option>
-        <option value="tracked">Track inventory</option>
-        <option value="backorder">Backorder when sold out</option>
-        <option value="preorder">Preorder</option>
+        <option value="untracked">
+            Always available
+        </option>
+        <option value="tracked">
+            Track inventory
+        </option>
+        <option value="backorder">
+            Backorder when sold out
+        </option>
+        <option value="preorder">
+            Preorder
+        </option>
     </select>
-    <small class="admin-commerce-field-help">Always available ignores the stock count. Track inventory automatically shows Low stock and Out of stock. Backorder stays orderable after stock reaches zero. Preorder stays orderable before normal fulfillment begins.</small>
+
+    <small class="admin-commerce-field-help">
+        Always available ignores the stock count. Track inventory automatically
+        shows Low stock and Out of stock. Backorder stays orderable after stock
+        reaches zero. Preorder stays orderable before normal fulfillment begins.
+    </small>
 </label>
 
 </div>
 
 <div class="admin-commerce-options-note">
-    This creates only combinations that do not already exist.
-    Existing variants, prices, inventory, fulfillment IDs, and order
-    history are never deleted or replaced.
+    <strong>Generate Missing</strong> keeps everything you already have and adds
+    combinations that do not exist yet. <strong>Rebuild Variant Batch</strong>
+    removes every unused variant and recreates the complete set from the current
+    Color, Size, and Style options. Variants tied to order history are preserved.
 </div>
 
-<div class="admin-user-form-actions">
+<div class="admin-user-form-actions admin-commerce-builder-actions">
     <button
         class="admin-button"
         type="submit"
+        name="shop_admin_action"
+        value="generate-variants"
     >
-        Generate missing variants
+        Generate Missing Variants
+    </button>
+
+    <button
+        class="admin-button is-muted"
+        type="submit"
+        name="shop_admin_action"
+        value="rebuild-variants"
+        data-confirm-rebuild
+    >
+        Rebuild Variant Batch
     </button>
 </div>
 
@@ -1123,107 +1421,281 @@ $valueText =
 </div>
 </details>
 
-<details class="admin-panel admin-commerce-collapsible">
+<details class="admin-panel admin-commerce-collapsible" open>
 <summary class="admin-commerce-collapse-summary">
     <span>
         <small>Pricing + Inventory</small>
         <strong>Variants</strong>
     </span>
-    <span class="admin-commerce-collapse-meta"><?= number_format(count($variants)) ?> variants</span>
+
+    <span class="admin-commerce-collapse-meta">
+        <?= number_format(count($variants)) ?>
+        variant<?= count($variants) === 1 ? '' : 's' ?>
+    </span>
 </summary>
+
 <div class="admin-commerce-collapse-body">
 
-
-
 <?php if (!$variants): ?>
+
 <div class="admin-empty-state">
     <p>No variants configured.</p>
 </div>
+
 <?php else: ?>
 
-<form class="admin-commerce-defaults" method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="product_id" value="<?= (int) $productId ?>">
-    <input type="hidden" name="shop_admin_action" value="apply-variant-defaults">
+<form
+    class="admin-commerce-defaults"
+    method="post"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="apply-variant-defaults"
+    >
 
     <header class="admin-commerce-defaults-header">
         <div>
             <small>Bulk Editing</small>
             <h3>Variant Defaults</h3>
-            <p>Check Apply beside only the fields you want written to every variant.</p>
+            <p>
+                Check Apply beside only the fields you want written to every variant.
+            </p>
         </div>
     </header>
 
     <div class="admin-commerce-default-grid">
+
         <?php
         $defaultFields = [
-            ['price','Price','number','default_price','0.01',''],
-            ['compare_at_price','Compare at','number','default_compare_at_price','0.01',''],
-            ['inventory_quantity','Inventory','number','default_inventory_quantity','1','0'],
-            ['low_stock_threshold','Low stock warning at','number','default_low_stock_threshold','1','5'],
-            ['max_per_order','Max per order','number','default_max_per_order','1','0'],
-            ['fulfillment_product_id','Provider product ID','text','default_fulfillment_product_id','',''],
-            ['fulfillment_variant_id','Provider variant ID','text','default_fulfillment_variant_id','',''],
+            [
+                'price',
+                'Price',
+                'number',
+                'default_price',
+                '0.01',
+                '',
+            ],
+            [
+                'compare_at_price',
+                'Compare at',
+                'number',
+                'default_compare_at_price',
+                '0.01',
+                '',
+            ],
+            [
+                'inventory_quantity',
+                'Inventory',
+                'number',
+                'default_inventory_quantity',
+                '1',
+                '0',
+            ],
+            [
+                'low_stock_threshold',
+                'Low stock warning at',
+                'number',
+                'default_low_stock_threshold',
+                '1',
+                '5',
+            ],
+            [
+                'max_per_order',
+                'Max per order',
+                'number',
+                'default_max_per_order',
+                '1',
+                '0',
+            ],
+            [
+                'fulfillment_product_id',
+                'Provider product ID',
+                'text',
+                'default_fulfillment_product_id',
+                '',
+                '',
+            ],
+            [
+                'fulfillment_variant_id',
+                'Provider variant ID',
+                'text',
+                'default_fulfillment_variant_id',
+                '',
+                '',
+            ],
         ];
-        foreach ($defaultFields as [$key,$label,$type,$name,$step,$value]):
+
+        foreach (
+            $defaultFields
+            as [
+                $key,
+                $label,
+                $type,
+                $name,
+                $step,
+                $value,
+            ]
+        ):
         ?>
+
         <label class="admin-commerce-default-field">
             <span><?= moderation_e($label) ?></span>
-            <input type="<?= $type ?>" name="<?= $name ?>" <?= $step !== '' ? 'step="'.moderation_e($step).'"' : '' ?> value="<?= moderation_e($value) ?>">
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[<?= moderation_e($key) ?>]" value="1"> Apply</span>
+
+            <input
+                type="<?= moderation_e($type) ?>"
+                name="<?= moderation_e($name) ?>"
+                <?= $step !== ''
+                    ? 'step="' . moderation_e($step) . '"'
+                    : '' ?>
+                value="<?= moderation_e($value) ?>"
+            >
+
+            <span class="admin-commerce-apply-toggle">
+                <input
+                    type="checkbox"
+                    name="apply[<?= moderation_e($key) ?>]"
+                    value="1"
+                >
+                Apply
+            </span>
         </label>
+
         <?php endforeach; ?>
 
         <label class="admin-commerce-default-field">
             <span>Inventory &amp; selling mode</span>
+
             <select name="default_inventory_mode">
                 <option value="untracked">Always available</option>
                 <option value="tracked">Track inventory</option>
                 <option value="backorder">Backorder when sold out</option>
                 <option value="preorder">Preorder</option>
             </select>
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[inventory_mode]" value="1"> Apply</span>
+
+            <span class="admin-commerce-apply-toggle">
+                <input
+                    type="checkbox"
+                    name="apply[inventory_mode]"
+                    value="1"
+                >
+                Apply
+            </span>
         </label>
 
         <label class="admin-commerce-default-field">
             <span>Fulfillment</span>
-            <select name="default_fulfillment_type"><option value="manual">Manual</option><option value="provider">Provider</option><option value="digital">Digital</option></select>
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[fulfillment_type]" value="1"> Apply</span>
+
+            <select name="default_fulfillment_type">
+                <option value="manual">Manual</option>
+                <option value="provider">Provider</option>
+                <option value="digital">Digital</option>
+            </select>
+
+            <span class="admin-commerce-apply-toggle">
+                <input
+                    type="checkbox"
+                    name="apply[fulfillment_type]"
+                    value="1"
+                >
+                Apply
+            </span>
         </label>
 
         <label class="admin-commerce-default-field">
             <span>Provider</span>
+
             <select name="default_fulfillment_provider">
                 <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
-                    <option value="<?= moderation_e($providerValue) ?>"><?= moderation_e($providerLabel) ?></option>
+                    <option value="<?= moderation_e($providerValue) ?>">
+                        <?= moderation_e($providerLabel) ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[fulfillment_provider]" value="1"> Apply</span>
+
+            <span class="admin-commerce-apply-toggle">
+                <input
+                    type="checkbox"
+                    name="apply[fulfillment_provider]"
+                    value="1"
+                >
+                Apply
+            </span>
         </label>
 
-        <?php foreach ([
-            ['is_active','Active','default_is_active'],
-        ] as [$key,$label,$name]): ?>
         <label class="admin-commerce-default-field">
-            <span><?= moderation_e($label) ?></span>
-            <select name="<?= moderation_e($name) ?>"><option value="1">Yes</option><option value="0">No</option></select>
-            <span class="admin-commerce-apply-toggle"><input type="checkbox" name="apply[<?= moderation_e($key) ?>]" value="1"> Apply</span>
+            <span>Active</span>
+
+            <select name="default_is_active">
+                <option value="1">Yes</option>
+                <option value="0">No</option>
+            </select>
+
+            <span class="admin-commerce-apply-toggle">
+                <input
+                    type="checkbox"
+                    name="apply[is_active]"
+                    value="1"
+                >
+                Apply
+            </span>
         </label>
-        <?php endforeach; ?>
+
     </div>
 
     <label class="admin-commerce-resequence">
-        <input type="checkbox" name="resequence_sort" value="1">
-        <span><strong>Resequence sort order 1 â <?= count($variants) ?></strong><small>Preserves the current order, then rewrites clean sequential numbers.</small></span>
+        <input
+            type="checkbox"
+            name="resequence_sort"
+            value="1"
+        >
+
+        <span>
+            <strong>
+                Resequence sort order 1 â <?= count($variants) ?>
+            </strong>
+
+            <small>
+                Preserves the current order, then rewrites clean sequential numbers.
+            </small>
+        </span>
     </label>
 
-    <div class="admin-user-form-actions"><button class="admin-button" type="submit">Apply selected defaults</button></div>
+    <div class="admin-user-form-actions">
+        <button
+            class="admin-button"
+            type="submit"
+        >
+            Apply selected defaults
+        </button>
+    </div>
+
 </form>
 
 <div class="admin-commerce-variants">
 
 <?php foreach ($variants as $variant): ?>
-<?php $storefrontMeta = admin_shop_variant_storefront_meta($variant); ?>
+
+<?php
+$storefrontMeta =
+    admin_shop_variant_storefront_meta($variant);
+
+$variantProtected =
+    admin_shop_variant_has_order_history(
+        $db,
+        (int) $variant['id']
+    );
+?>
 
 <form
     class="admin-commerce-variant"
@@ -1342,10 +1814,41 @@ $valueText =
 <label>
     <span>Inventory &amp; selling mode</span>
     <select name="inventory_mode">
-        <option value="untracked" <?= $storefrontMeta['inventory_mode'] === 'untracked' ? 'selected' : '' ?>>Always available</option>
-        <option value="tracked" <?= $storefrontMeta['inventory_mode'] === 'tracked' ? 'selected' : '' ?>>Track inventory</option>
-        <option value="backorder" <?= $storefrontMeta['inventory_mode'] === 'backorder' ? 'selected' : '' ?>>Backorder when sold out</option>
-        <option value="preorder" <?= $storefrontMeta['inventory_mode'] === 'preorder' ? 'selected' : '' ?>>Preorder</option>
+        <option
+            value="untracked"
+            <?= $storefrontMeta['inventory_mode'] === 'untracked'
+                ? 'selected'
+                : '' ?>
+        >
+            Always available
+        </option>
+
+        <option
+            value="tracked"
+            <?= $storefrontMeta['inventory_mode'] === 'tracked'
+                ? 'selected'
+                : '' ?>
+        >
+            Track inventory
+        </option>
+
+        <option
+            value="backorder"
+            <?= $storefrontMeta['inventory_mode'] === 'backorder'
+                ? 'selected'
+                : '' ?>
+        >
+            Backorder when sold out
+        </option>
+
+        <option
+            value="preorder"
+            <?= $storefrontMeta['inventory_mode'] === 'preorder'
+                ? 'selected'
+                : '' ?>
+        >
+            Preorder
+        </option>
     </select>
 </label>
 
@@ -1379,7 +1882,9 @@ $valueText =
         <?php foreach (['manual','provider','digital'] as $type): ?>
             <option
                 value="<?= moderation_e($type) ?>"
-                <?= $variant['fulfillment_type'] === $type ? 'selected' : '' ?>
+                <?= $variant['fulfillment_type'] === $type
+                    ? 'selected'
+                    : '' ?>
             >
                 <?= moderation_e(ucfirst($type)) ?>
             </option>
@@ -1389,12 +1894,24 @@ $valueText =
 
 <label>
     <span>Provider</span>
-    <?php $selectedProvider = admin_shop_normalize_provider((string) ($variant['fulfillment_provider'] ?? '')); ?>
+
+    <?php
+    $selectedProvider =
+        admin_shop_normalize_provider(
+            (string) (
+                $variant['fulfillment_provider']
+                ?? ''
+            )
+        );
+    ?>
+
     <select name="fulfillment_provider">
         <?php foreach (admin_shop_fulfillment_providers() as $providerValue => $providerLabel): ?>
             <option
                 value="<?= moderation_e($providerValue) ?>"
-                <?= $selectedProvider === $providerValue ? 'selected' : '' ?>
+                <?= $selectedProvider === $providerValue
+                    ? 'selected'
+                    : '' ?>
             >
                 <?= moderation_e($providerLabel) ?>
             </option>
@@ -1441,29 +1958,91 @@ $valueText =
 </label>
 
 <div class="admin-commerce-inventory-explainer is-wide">
-    <strong><?= moderation_e(match ($storefrontMeta['inventory_mode']) {
-        'tracked' => 'Tracked inventory',
-        'backorder' => 'Backorder when sold out',
-        'preorder' => 'Preorder enabled',
-        default => 'Inventory not tracked',
-    }) ?></strong>
-    <span><?= moderation_e(match ($storefrontMeta['inventory_mode']) {
-        'tracked' => 'Inventory controls In stock, Low stock, and Out of stock automatically.',
-        'backorder' => 'Inventory is tracked. At zero, customers can still order and the storefront shows Backorder.',
-        'preorder' => 'Customers can order before normal fulfillment begins. Inventory count does not control availability.',
-        default => 'This variant remains available regardless of the inventory number.',
-    }) ?></span>
+    <strong>
+        <?= moderation_e(
+            match ($storefrontMeta['inventory_mode']) {
+                'tracked' => 'Tracked inventory',
+                'backorder' => 'Backorder when sold out',
+                'preorder' => 'Preorder enabled',
+                default => 'Inventory not tracked',
+            }
+        ) ?>
+    </strong>
+
+    <span>
+        <?= moderation_e(
+            match ($storefrontMeta['inventory_mode']) {
+                'tracked' =>
+                    'Inventory controls In stock, Low stock, and Out of stock automatically.',
+                'backorder' =>
+                    'Inventory is tracked. At zero, customers can still order and the storefront shows Backorder.',
+                'preorder' =>
+                    'Customers can order before normal fulfillment begins. Inventory count does not control availability.',
+                default =>
+                    'This variant remains available regardless of the inventory number.',
+            }
+        ) ?>
+    </span>
 </div>
 
 </div>
 
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
+<div class="admin-user-form-actions admin-commerce-variant-actions">
+    <button
+        class="admin-button"
+        type="submit"
+    >
         Save variant
     </button>
+
+    <?php if ($variantProtected): ?>
+        <span class="admin-commerce-protected">
+            <i
+                class="fa-solid fa-lock"
+                aria-hidden="true"
+            ></i>
+            Used in order history; delete disabled
+        </span>
+    <?php endif; ?>
 </div>
 
 </form>
+
+<?php if (!$variantProtected): ?>
+<form
+    method="post"
+    class="admin-commerce-variant-actions"
+    data-confirm-delete-variant
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="variant_id"
+        value="<?= (int) $variant['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="delete-variant"
+    >
+
+    <button
+        class="admin-button is-muted admin-commerce-delete-variant"
+        type="submit"
+    >
+        Delete Variant
+    </button>
+</form>
+<?php endif; ?>
 
 <?php endforeach; ?>
 
