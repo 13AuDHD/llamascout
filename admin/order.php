@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
+require_once dirname(__DIR__) . '/app/printful-orders.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -124,6 +125,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice =
                     'Shipping label purchased. Tracking: ' .
                     (string) $label['tracking_code'];
+            } elseif ($action === 'create-printful-order') {
+                $printfulOrder = llama_printful_create_fulfillment_order(
+                    $db,
+                    $actorUserId,
+                    (int) ($_POST['fulfillment_id'] ?? 0)
+                );
+
+                $printfulStatus = strtolower(
+                    trim((string) ($printfulOrder['status'] ?? 'draft'))
+                );
+
+                $notice = llama_printful_auto_confirm()
+                    ? 'Printful order submitted for fulfillment.'
+                    : 'Printful draft order created. No Printful charge was authorized.';
             }
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
@@ -575,6 +590,116 @@ require __DIR__ . '/_header.php';
 </div>
 
 </form>
+
+<?php
+$providerKey = admin_shop_normalize_provider(
+    (string) ($fulfillment['fulfillment_provider'] ?? '')
+);
+?>
+
+<?php if ($providerKey === 'printful'): ?>
+<?php
+$printfulRemoteOrder = [];
+$printfulRemoteError = '';
+$printfulProviderOrderId = trim(
+    (string) ($fulfillment['provider_order_id'] ?? '')
+);
+
+if ($printfulProviderOrderId !== '') {
+    try {
+        $printfulRemoteOrder = llama_printful_get_order(
+            $printfulProviderOrderId
+        );
+    } catch (Throwable $exception) {
+        $printfulRemoteError = $exception->getMessage();
+    }
+}
+?>
+
+<div class="admin-commerce-provider-box">
+
+<div>
+    <i class="fa-solid fa-shirt" aria-hidden="true"></i>
+
+    <div>
+        <strong>Printful Fulfillment</strong>
+
+        <?php if ($printfulProviderOrderId === ''): ?>
+        <span>
+            This fulfillment has not been sent to Printful yet.
+        </span>
+        <?php elseif ($printfulRemoteError !== ''): ?>
+        <span>
+            Printful order #<?= moderation_e($printfulProviderOrderId) ?>
+            could not be refreshed.
+        </span>
+        <?php else: ?>
+        <span>
+            Printful order #<?= moderation_e($printfulProviderOrderId) ?>
+            | <?= moderation_e(
+                ucfirst(
+                    (string) ($printfulRemoteOrder['status'] ?? 'Unknown')
+                )
+            ) ?>
+        </span>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if ($printfulProviderOrderId === ''): ?>
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="order_id"
+        value="<?= (int) $orderId ?>"
+    >
+    <input
+        type="hidden"
+        name="fulfillment_id"
+        value="<?= (int) $fulfillment['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="create-printful-order"
+    >
+
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        <?= llama_printful_auto_confirm()
+            ? 'Send to Printful'
+            : 'Create Printful draft' ?>
+    </button>
+</form>
+<?php elseif (!empty($printfulRemoteOrder['dashboard_url'])): ?>
+<a
+    class="admin-button"
+    href="<?= moderation_e(
+        (string) $printfulRemoteOrder['dashboard_url']
+    ) ?>"
+    target="_blank"
+    rel="noopener"
+>
+    Open in Printful
+</a>
+<?php endif; ?>
+
+</div>
+
+<?php if ($printfulRemoteError !== ''): ?>
+<p class="admin-commerce-provider-error">
+    <?= moderation_e($printfulRemoteError) ?>
+</p>
+<?php endif; ?>
+
+<?php endif; ?>
 
 <?php endforeach; ?>
 
