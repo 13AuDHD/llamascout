@@ -8950,3 +8950,48 @@ html[data-reduced-motion="true"] .admin-sidebar {
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   ORDER FULFILLMENT V2
+   ========================================================= */
+
+.admin-commerce-tracking-link {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-commerce-tracking-link > span {
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.admin-commerce-tracking-link > a {
+    min-height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 9px 12px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font-size: .78rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-commerce-tracking-link > a:hover,
+.admin-commerce-tracking-link > a:focus-visible {
+    border-color: var(--text-muted);
+}
