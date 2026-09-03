@@ -19,7 +19,7 @@ function llama_shipping_config(): array
         return $config;
     }
 
-    $path = dirname(__DIR__) . '/private/shipping.php';
+    $path = dirname(__DIR__, 2) . '/private/shipping.php';
 
     if (!is_file($path)) {
         return [];
