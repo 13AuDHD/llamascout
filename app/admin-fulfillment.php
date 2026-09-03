@@ -257,3 +257,779 @@ function admin_fulfillment_format_timestamp(
 
     return $value;
 }
+
+
+function admin_fulfillment_shipping_destination(
+    array $order
+): array {
+    $address = [];
+
+    if (
+        !empty(
+            $order['shipping_address_json']
+        )
+    ) {
+        $decoded =
+            json_decode(
+                (string) $order['shipping_address_json'],
+                true
+            );
+
+        if (is_array($decoded)) {
+            $address = $decoded;
+        }
+    }
+
+    $address['name'] =
+        trim(
+            (string) (
+                $order['shipping_name']
+                ?? ''
+            )
+        );
+
+    $address['phone'] =
+        trim(
+            (string) (
+                $order['shipping_phone']
+                ?? ''
+            )
+        );
+
+    $address['email'] =
+        trim(
+            (string) (
+                $order['customer_email']
+                ?? ''
+            )
+        );
+
+    return $address;
+}
+
+function admin_fulfillment_rate_rows(
+    PDO $db,
+    int $fulfillmentId
+): array {
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM shop_fulfillment_rates
+         WHERE fulfillment_id = ?
+         ORDER BY
+            rate_cents ASC,
+            carrier ASC,
+            service ASC'
+    );
+
+    $stmt->execute([
+        $fulfillmentId,
+    ]);
+
+    return $stmt->fetchAll(
+        PDO::FETCH_ASSOC
+    ) ?: [];
+}
+
+function admin_fulfillment_label(
+    PDO $db,
+    int $fulfillmentId
+): ?array {
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM shop_fulfillment_labels
+         WHERE fulfillment_id = ?
+           AND voided_at IS NULL
+         ORDER BY id DESC
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $fulfillmentId,
+    ]);
+
+    $row =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    return $row ?: null;
+}
+
+function admin_fulfillment_quote_rates(
+    PDO $db,
+    int $actorUserId,
+    int $orderId,
+    int $fulfillmentId
+): int {
+    if (!llama_shipping_easypost_configured()) {
+        throw new InvalidArgumentException(
+            'EasyPost is not configured yet.'
+        );
+    }
+
+    $fulfillmentStmt =
+        $db->prepare(
+            'SELECT
+                f.*,
+                o.order_number,
+                o.user_id,
+                o.shipping_name,
+                o.shipping_phone,
+                o.customer_email,
+                o.shipping_address_json
+             FROM shop_order_fulfillments f
+             INNER JOIN shop_orders o
+                ON o.id = f.order_id
+             WHERE f.id = ?
+               AND f.order_id = ?
+             LIMIT 1'
+        );
+
+    $fulfillmentStmt->execute([
+        $fulfillmentId,
+        $orderId,
+    ]);
+
+    $fulfillment =
+        $fulfillmentStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    if (!$fulfillment) {
+        throw new InvalidArgumentException(
+            'Fulfillment not found.'
+        );
+    }
+
+    $provider =
+        admin_shop_normalize_provider(
+            (string) (
+                $fulfillment['fulfillment_provider']
+                ?? ''
+            )
+        );
+
+    if ($provider === '') {
+        $provider = 'llama_scout';
+    }
+
+    if ($provider !== 'llama_scout') {
+        throw new InvalidArgumentException(
+            'EasyPost rates apply only to Llama Scout Fulfillment orders.'
+        );
+    }
+
+    if (
+        admin_fulfillment_label(
+            $db,
+            $fulfillmentId
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'A shipping label has already been purchased for this fulfillment.'
+        );
+    }
+
+    $package =
+        admin_fulfillment_package(
+            $db,
+            $fulfillmentId
+        );
+
+    if (!$package) {
+        throw new InvalidArgumentException(
+            'Save the package details before requesting shipping rates.'
+        );
+    }
+
+    $weight =
+        (float) (
+            $package['weight_oz']
+            ?? 0
+        );
+
+    if ($weight <= 0) {
+        throw new InvalidArgumentException(
+            'Package weight is required before requesting shipping rates.'
+        );
+    }
+
+    $parcel = [
+        'weight' => number_format(
+            $weight,
+            2,
+            '.',
+            ''
+        ),
+    ];
+
+    $length =
+        (float) (
+            $package['length_in']
+            ?? 0
+        );
+
+    $width =
+        (float) (
+            $package['width_in']
+            ?? 0
+        );
+
+    $height =
+        (float) (
+            $package['height_in']
+            ?? 0
+        );
+
+    if (
+        $length > 0
+        && $width > 0
+        && $height > 0
+    ) {
+        $parcel['length'] =
+            number_format(
+                $length,
+                2,
+                '.',
+                ''
+            );
+
+        $parcel['width'] =
+            number_format(
+                $width,
+                2,
+                '.',
+                ''
+            );
+
+        $parcel['height'] =
+            number_format(
+                $height,
+                2,
+                '.',
+                ''
+            );
+    }
+
+    $to =
+        llama_shipping_address_payload(
+            admin_fulfillment_shipping_destination(
+                $fulfillment
+            ),
+            (string) (
+                $fulfillment['shipping_name']
+                ?? ''
+            )
+        );
+
+    $from =
+        llama_shipping_address_payload(
+            llama_shipping_from_address(),
+            'Llama Scout Fulfillment'
+        );
+
+    $shipment =
+        llama_shipping_easypost_request(
+            'POST',
+            'shipments',
+            [
+                'shipment' => [
+                    'to_address' => $to,
+                    'from_address' => $from,
+                    'parcel' => $parcel,
+                    'reference' =>
+                        (string) $fulfillment['order_number'],
+                ],
+            ]
+        );
+
+    $shipmentId =
+        trim(
+            (string) (
+                $shipment['id']
+                ?? ''
+            )
+        );
+
+    if ($shipmentId === '') {
+        throw new RuntimeException(
+            'EasyPost did not return a shipment ID.'
+        );
+    }
+
+    $rates =
+        is_array(
+            $shipment['rates']
+            ?? null
+        )
+            ? $shipment['rates']
+            : [];
+
+    if (!$rates) {
+        throw new RuntimeException(
+            'No shipping rates were returned for this package.'
+        );
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $delete =
+            $db->prepare(
+                'DELETE FROM shop_fulfillment_rates
+                 WHERE fulfillment_id = ?'
+            );
+
+        $delete->execute([
+            $fulfillmentId,
+        ]);
+
+        $insert =
+            $db->prepare(
+                'INSERT INTO shop_fulfillment_rates (
+                    fulfillment_id,
+                    provider,
+                    external_shipment_id,
+                    external_rate_id,
+                    carrier,
+                    service,
+                    rate_cents,
+                    currency,
+                    delivery_days,
+                    delivery_date,
+                    created_at
+                 ) VALUES (
+                    ?, "easypost", ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP()
+                 )'
+            );
+
+        $count = 0;
+
+        foreach ($rates as $rate) {
+            if (!is_array($rate)) {
+                continue;
+            }
+
+            $rateId =
+                trim(
+                    (string) (
+                        $rate['id']
+                        ?? ''
+                    )
+                );
+
+            $carrier =
+                trim(
+                    (string) (
+                        $rate['carrier']
+                        ?? ''
+                    )
+                );
+
+            $service =
+                trim(
+                    (string) (
+                        $rate['service']
+                        ?? ''
+                    )
+                );
+
+            $rateAmount =
+                trim(
+                    (string) (
+                        $rate['rate']
+                        ?? ''
+                    )
+                );
+
+            if (
+                $rateId === ''
+                || $carrier === ''
+                || $service === ''
+                || $rateAmount === ''
+                || !is_numeric($rateAmount)
+            ) {
+                continue;
+            }
+
+            $rateCents =
+                (int) round(
+                    ((float) $rateAmount)
+                    * 100
+                );
+
+            if ($rateCents <= 0) {
+                continue;
+            }
+
+            $insert->execute([
+                $fulfillmentId,
+                $shipmentId,
+                $rateId,
+                $carrier,
+                $service,
+                $rateCents,
+                strtoupper(
+                    trim(
+                        (string) (
+                            $rate['currency']
+                            ?? 'USD'
+                        )
+                    )
+                ),
+                isset($rate['delivery_days'])
+                    && is_numeric(
+                        $rate['delivery_days']
+                    )
+                        ? (int) $rate['delivery_days']
+                        : null,
+                trim(
+                    (string) (
+                        $rate['delivery_date']
+                        ?? ''
+                    )
+                ) ?: null,
+            ]);
+
+            $count++;
+        }
+
+        if ($count < 1) {
+            throw new RuntimeException(
+                'No usable shipping rates were returned.'
+            );
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $fulfillment['user_id']
+                ? (int) $fulfillment['user_id']
+                : null,
+            'shop.fulfillment_rates_quoted',
+            'Requested shipping rates for fulfillment #' .
+                $fulfillmentId .
+                ' on order ' .
+                (string) $fulfillment['order_number'] .
+                '.',
+            [
+                'order_id' => $orderId,
+                'fulfillment_id' => $fulfillmentId,
+                'rate_count' => $count,
+                'shipment_id' => $shipmentId,
+            ]
+        );
+
+        $db->commit();
+
+        return $count;
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+}
+
+function admin_fulfillment_buy_label(
+    PDO $db,
+    int $actorUserId,
+    int $orderId,
+    int $fulfillmentId,
+    int $rateRowId
+): array {
+    if (!llama_shipping_easypost_configured()) {
+        throw new InvalidArgumentException(
+            'EasyPost is not configured yet.'
+        );
+    }
+
+    if (
+        admin_fulfillment_label(
+            $db,
+            $fulfillmentId
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'A shipping label has already been purchased for this fulfillment.'
+        );
+    }
+
+    $stmt =
+        $db->prepare(
+            'SELECT
+                r.*,
+                f.fulfillment_provider,
+                o.order_number,
+                o.user_id
+             FROM shop_fulfillment_rates r
+             INNER JOIN shop_order_fulfillments f
+                ON f.id = r.fulfillment_id
+             INNER JOIN shop_orders o
+                ON o.id = f.order_id
+             WHERE r.id = ?
+               AND r.fulfillment_id = ?
+               AND f.order_id = ?
+             LIMIT 1'
+        );
+
+    $stmt->execute([
+        $rateRowId,
+        $fulfillmentId,
+        $orderId,
+    ]);
+
+    $rate =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    if (!$rate) {
+        throw new InvalidArgumentException(
+            'The selected shipping rate is no longer available.'
+        );
+    }
+
+    if (
+        (string) $rate['provider']
+        !== 'easypost'
+    ) {
+        throw new InvalidArgumentException(
+            'The selected rate is not an EasyPost rate.'
+        );
+    }
+
+    $shipmentId =
+        trim(
+            (string) (
+                $rate['external_shipment_id']
+                ?? ''
+            )
+        );
+
+    $externalRateId =
+        trim(
+            (string) (
+                $rate['external_rate_id']
+                ?? ''
+            )
+        );
+
+    if (
+        $shipmentId === ''
+        || $externalRateId === ''
+    ) {
+        throw new RuntimeException(
+            'The shipping rate is missing its EasyPost identifiers.'
+        );
+    }
+
+    $shipment =
+        llama_shipping_easypost_request(
+            'POST',
+            'shipments/' .
+                rawurlencode(
+                    $shipmentId
+                ) .
+                '/buy',
+            [
+                'rate' => [
+                    'id' =>
+                        $externalRateId,
+                ],
+            ]
+        );
+
+    $trackingCode =
+        trim(
+            (string) (
+                $shipment['tracking_code']
+                ?? $shipment['tracker']['tracking_code']
+                ?? ''
+            )
+        );
+
+    $carrier =
+        trim(
+            (string) (
+                $shipment['selected_rate']['carrier']
+                ?? $rate['carrier']
+                ?? ''
+            )
+        );
+
+    $service =
+        trim(
+            (string) (
+                $shipment['selected_rate']['service']
+                ?? $rate['service']
+                ?? ''
+            )
+        );
+
+    $labelUrl =
+        trim(
+            (string) (
+                $shipment['postage_label']['label_pdf_url']
+                ?? $shipment['postage_label']['label_url']
+                ?? $shipment['postage_label']['label_png_url']
+                ?? ''
+            )
+        );
+
+    $trackerId =
+        trim(
+            (string) (
+                $shipment['tracker']['id']
+                ?? ''
+            )
+        );
+
+    if (
+        $trackingCode === ''
+        || $labelUrl === ''
+    ) {
+        throw new RuntimeException(
+            'EasyPost purchased the shipment but did not return complete label data.'
+        );
+    }
+
+    $postageCents =
+        (int) (
+            $rate['rate_cents']
+            ?? 0
+        );
+
+    $trackingUrl =
+        llama_shipping_tracking_url(
+            $carrier,
+            $trackingCode
+        );
+
+    $db->beginTransaction();
+
+    try {
+        $insert =
+            $db->prepare(
+                'INSERT INTO shop_fulfillment_labels (
+                    fulfillment_id,
+                    provider,
+                    external_shipment_id,
+                    external_rate_id,
+                    external_tracker_id,
+                    carrier,
+                    service,
+                    tracking_code,
+                    tracking_url,
+                    label_url,
+                    postage_cents,
+                    currency,
+                    purchased_at
+                 ) VALUES (
+                    ?, "easypost", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP()
+                 )'
+            );
+
+        $insert->execute([
+            $fulfillmentId,
+            $shipmentId,
+            $externalRateId,
+            $trackerId !== ''
+                ? $trackerId
+                : null,
+            $carrier,
+            $service,
+            $trackingCode,
+            $trackingUrl !== ''
+                ? $trackingUrl
+                : null,
+            $labelUrl,
+            $postageCents,
+            strtoupper(
+                (string) (
+                    $rate['currency']
+                    ?? 'USD'
+                )
+            ),
+        ]);
+
+        $carrierKey =
+            admin_shop_normalize_tracking_carrier(
+                $carrier
+            );
+
+        $update =
+            $db->prepare(
+                'UPDATE shop_order_fulfillments
+                 SET
+                    status = CASE
+                        WHEN status = "pending"
+                            THEN "submitted"
+                        ELSE status
+                    END,
+                    tracking_carrier = ?,
+                    tracking_number = ?,
+                    tracking_url = ?,
+                    submitted_at = COALESCE(
+                        submitted_at,
+                        UTC_TIMESTAMP()
+                    )
+                 WHERE id = ?
+                   AND order_id = ?'
+            );
+
+        $update->execute([
+            $carrierKey !== ''
+                ? $carrierKey
+                : 'other',
+            $trackingCode,
+            $trackingUrl !== ''
+                ? $trackingUrl
+                : null,
+            $fulfillmentId,
+            $orderId,
+        ]);
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $rate['user_id']
+                ? (int) $rate['user_id']
+                : null,
+            'shop.fulfillment_label_purchased',
+            'Purchased a shipping label for fulfillment #' .
+                $fulfillmentId .
+                ' on order ' .
+                (string) $rate['order_number'] .
+                '.',
+            [
+                'order_id' => $orderId,
+                'fulfillment_id' => $fulfillmentId,
+                'carrier' => $carrier,
+                'service' => $service,
+                'tracking_code' => $trackingCode,
+                'postage_cents' => $postageCents,
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+
+    return [
+        'carrier' => $carrier,
+        'service' => $service,
+        'tracking_code' => $trackingCode,
+        'tracking_url' => $trackingUrl,
+        'label_url' => $labelUrl,
+        'postage_cents' => $postageCents,
+    ];
+}
