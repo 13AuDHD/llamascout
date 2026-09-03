@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
+require_once dirname(__DIR__) . '/app/admin-fulfillment-safe.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
 require_once dirname(__DIR__) . '/app/printful-orders.php';
 require_once __DIR__ . '/_dashboard.php';
@@ -53,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice = 'Order status updated.';
             } elseif ($action === 'create-fulfillment') {
-                admin_shop_create_fulfillment(
+                admin_safe_create_fulfillment(
                     $db,
                     $actorUserId,
                     $orderId,
