@@ -179,7 +179,7 @@ require __DIR__ . '/_header.php';
 
     <span>
         <?= moderation_e((string) $order['created_at']) ?>
-        Â·
+        |
         <?= moderation_e(
             (string) (
                 $order['shipping_name']
@@ -251,10 +251,13 @@ require __DIR__ . '/_header.php';
 
     <small>
         <?= moderation_e((string) $item['sku']) ?>
-        Â· Qty <?= (int) $item['quantity'] ?>
-        Â· <?= moderation_e(
+        | Qty <?= (int) $item['quantity'] ?>
+        | <?= moderation_e(
             admin_shop_fulfillment_provider_label(
-                (string) ($item['fulfillment_provider'] ?? '')
+                (int) ($item['requires_shipping'] ?? 0) === 1
+                    && trim((string) ($item['fulfillment_provider'] ?? '')) === ''
+                        ? 'llama_scout'
+                        : (string) ($item['fulfillment_provider'] ?? '')
             )
         ) ?>
     </small>
