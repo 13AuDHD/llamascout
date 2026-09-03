@@ -5,71 +5,53 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/auth.php';
 require_once dirname(__DIR__) . '/app/mail.php';
 require_once dirname(__DIR__) . '/app/username-policy.php';
+require_once dirname(__DIR__) . '/app/timezone.php';
 require_once dirname(__DIR__) . '/app/registration-source.php';
 require_once dirname(__DIR__) . '/app/membership-invitations.php';
 
 start_llama_session();
 
-
-$requestedPlan =
-    strtolower(
-        trim(
-            (string) (
-                $_GET['plan']
-                ?? $_POST['plan']
-                ?? $_SESSION['pending_membership_plan']
-                ?? ''
-            )
+$requestedPlan = strtolower(
+    trim(
+        (string) (
+            $_GET['plan']
+            ?? $_POST['plan']
+            ?? $_SESSION['pending_membership_plan']
+            ?? ''
         )
-    );
-
-if (
-    !in_array(
-        $requestedPlan,
-        ['monthly', 'annual'],
-        true
     )
-) {
+);
+
+if (!in_array($requestedPlan, ['monthly', 'annual'], true)) {
     $requestedPlan = '';
 }
 
-
-/* =====================================================
-   COMPLIMENTARY INVITATION CONTEXT
-   ===================================================== */
-
-
-$inviteToken =
-    trim(
-        (string) (
-            $_GET['invite']
-            ?? $_POST['invite']
-            ?? ''
-        )
-    );
+$inviteToken = trim(
+    (string) (
+        $_GET['invite']
+        ?? $_POST['invite']
+        ?? ''
+    )
+);
 
 $invite = null;
 $inviteStatus = null;
 
 if ($inviteToken !== '') {
-    $invite =
-        llama_find_complimentary_invitation(
-            db(),
-            $inviteToken
-        );
+    $invite = llama_find_complimentary_invitation(
+        db(),
+        $inviteToken
+    );
 
     if ($invite) {
-        $inviteStatus =
-            llama_complimentary_invitation_status(
-                $invite
-            );
+        $inviteStatus = llama_complimentary_invitation_status(
+            $invite
+        );
     }
 
     if (
         !$invite
-        ||
-        $inviteStatus !==
-            LLAMA_COMPLIMENTARY_INVITE_STATUS_PENDING
+        || $inviteStatus !== LLAMA_COMPLIMENTARY_INVITE_STATUS_PENDING
     ) {
         $inviteToken = '';
         $invite = null;
@@ -77,20 +59,17 @@ if ($inviteToken !== '') {
     }
 }
 
-
 if (is_logged_in()) {
-
     if ($inviteToken !== '') {
         header(
-            'Location: https://account.llamascout.com/complimentary-invite.php?token='
-            . rawurlencode($inviteToken)
+            'Location: https://account.llamascout.com/complimentary-invite.php?token=' .
+            rawurlencode($inviteToken)
         );
         exit;
     }
 
     if ($requestedPlan !== '') {
-        $_SESSION['pending_membership_plan'] =
-            $requestedPlan;
+        $_SESSION['pending_membership_plan'] = $requestedPlan;
 
         header(
             'Location: https://account.llamascout.com/membership.php?plan=' .
@@ -99,392 +78,207 @@ if (is_logged_in()) {
         exit;
     }
 
-    header(
-        'Location: https://account.llamascout.com/'
-    );
+    header('Location: https://account.llamascout.com/');
     exit;
 }
-
 
 $errors = [];
 
 $values = [
     'username' => '',
     'display_name' => '',
-    'email' =>
-        $invite
-            ? strtolower(
-                trim(
-                    (string)$invite['email']
-                )
-            )
-            : '',
+    'email' => $invite
+        ? strtolower(trim((string) $invite['email']))
+        : '',
     'registration_source' => '',
 ];
 
+$config = llama_config();
 
-/* =====================================================
-   TURNSTILE CONFIG
-   ===================================================== */
+$turnstileConfig = $config['turnstile'] ?? [];
 
+$turnstileSiteKey = trim(
+    (string) ($turnstileConfig['site_key'] ?? '')
+);
 
-$config =
-    llama_config();
+$turnstileSecretKey = trim(
+    (string) ($turnstileConfig['secret_key'] ?? '')
+);
 
-$turnstileConfig =
-    $config['turnstile']
-    ?? [];
-
-$turnstileSiteKey =
-    trim(
-        (string) (
-            $turnstileConfig['site_key']
-            ?? ''
-        )
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = strtolower(
+        trim((string) ($_POST['username'] ?? ''))
     );
 
-$turnstileSecretKey =
-    trim(
-        (string) (
-            $turnstileConfig['secret_key']
-            ?? ''
-        )
+    $displayName = trim(
+        (string) ($_POST['display_name'] ?? '')
     );
 
+    $email = strtolower(
+        trim((string) ($_POST['email'] ?? ''))
+    );
 
-/* =====================================================
-   POST
-   ===================================================== */
+    $registrationSource = trim(
+        (string) ($_POST['registration_source'] ?? '')
+    );
 
+    $timezone = llama_default_timezone();
 
-if (
-    $_SERVER['REQUEST_METHOD']
-    === 'POST'
-) {
+    $password = (string) ($_POST['password'] ?? '');
+    $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
 
-    $username =
-        strtolower(
-            trim(
-                (string) (
-                    $_POST['username']
-                    ?? ''
-                )
-            )
-        );
+    $turnstileToken = trim(
+        (string) ($_POST['cf-turnstile-response'] ?? '')
+    );
 
-    $displayName =
-        trim(
-            (string) (
-                $_POST['display_name']
-                ?? ''
-            )
-        );
+    $honeypot = trim(
+        (string) ($_POST['website'] ?? '')
+    );
 
-    $email =
-        strtolower(
-            trim(
-                (string) (
-                    $_POST['email']
-                    ?? ''
-                )
-            )
-        );
-
-    $timezone =
-        trim(
-            (string) (
-                $_POST['timezone']
-                ?? llama_default_timezone()
-            )
-        );
-
-    $password =
-        (string) (
-            $_POST['password']
-            ?? ''
-        );
-
-    $passwordConfirm =
-        (string) (
-            $_POST['password_confirm']
-            ?? ''
-        );
-
-    $turnstileToken =
-        trim(
-            (string) (
-                $_POST['cf-turnstile-response']
-                ?? ''
-            )
-        );
-
-    $honeypot =
-        trim(
-            (string) (
-                $_POST['website']
-                ?? ''
-            )
-        );
-
-
-    $values['username'] =
-        $username;
-
-    $values['display_name'] =
-        $displayName;
-
-    $values['email'] =
-        $email;
-
-    $values['timezone'] =
-        $timezone;
-
-
-    /* =====================================================
-       INVITATION EMAIL BINDING
-       ===================================================== */
-
+    $values['username'] = $username;
+    $values['display_name'] = $displayName;
+    $values['email'] = $email;
+    $values['registration_source'] = $registrationSource;
 
     if ($inviteToken !== '') {
-
-        $submittedInvite =
-            llama_find_complimentary_invitation(
-                db(),
-                $inviteToken
-            );
+        $submittedInvite = llama_find_complimentary_invitation(
+            db(),
+            $inviteToken
+        );
 
         if (
             !$submittedInvite
-            ||
-            llama_complimentary_invitation_status(
+            || llama_complimentary_invitation_status(
                 $submittedInvite
-            )
-            !==
-            LLAMA_COMPLIMENTARY_INVITE_STATUS_PENDING
+            ) !== LLAMA_COMPLIMENTARY_INVITE_STATUS_PENDING
         ) {
-
             $errors[] =
                 'That complimentary membership invitation is no longer available.';
-
         } else {
-
-            $invitedEmail =
-                strtolower(
-                    trim(
-                        (string)$submittedInvite['email']
-                    )
-                );
+            $invitedEmail = strtolower(
+                trim((string) $submittedInvite['email'])
+            );
 
             if (
                 $email === ''
-                ||
-                !hash_equals(
-                    $invitedEmail,
-                    $email
-                )
+                || !hash_equals($invitedEmail, $email)
             ) {
                 $errors[] =
-                    'This invitation is reserved for '
-                    . $invitedEmail
-                    . '. Create the account using that email address.';
+                    'This invitation is reserved for ' .
+                    $invitedEmail .
+                    '. Create the account using that email address.';
             }
         }
     }
 
-
-    /* =====================================================
-       HONEYPOT
-       ===================================================== */
-
-
     if ($honeypot !== '') {
-
         error_log(
             'Llama Scout registration blocked by honeypot.'
         );
 
-        $errors[] =
-            'Unable to create account.';
+        $errors[] = 'Unable to create account.';
     }
-
-
-    /* =====================================================
-       TURNSTILE
-       ===================================================== */
-
 
     if (
         $turnstileSiteKey === ''
-        ||
-        $turnstileSecretKey === ''
+        || $turnstileSecretKey === ''
     ) {
-
         error_log(
             'Llama Scout Turnstile configuration is missing.'
         );
 
         $errors[] =
             'Security verification is temporarily unavailable.';
-
-    } elseif (
-        $turnstileToken === ''
-    ) {
-
+    } elseif ($turnstileToken === '') {
         $errors[] =
             'Please complete the security check.';
-
     } else {
-
-        $curl =
-            curl_init(
-                'https://challenges.cloudflare.com/turnstile/v0/siteverify'
-            );
+        $curl = curl_init(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+        );
 
         if ($curl === false) {
-
             error_log(
                 'Llama Scout could not initialize Turnstile verification.'
             );
 
             $errors[] =
                 'Security verification is temporarily unavailable.';
-
         } else {
-
-            $remoteIp =
-                trim(
-                    (string) (
-                        $_SERVER['REMOTE_ADDR']
-                        ?? ''
-                    )
-                );
+            $remoteIp = trim(
+                (string) ($_SERVER['REMOTE_ADDR'] ?? '')
+            );
 
             $postFields = [
-                'secret' =>
-                    $turnstileSecretKey,
-
-                'response' =>
-                    $turnstileToken,
+                'secret' => $turnstileSecretKey,
+                'response' => $turnstileToken,
             ];
 
             if ($remoteIp !== '') {
-                $postFields['remoteip'] =
-                    $remoteIp;
+                $postFields['remoteip'] = $remoteIp;
             }
-
 
             curl_setopt_array(
                 $curl,
                 [
-                    CURLOPT_POST =>
-                        true,
-
-                    CURLOPT_POSTFIELDS =>
-                        http_build_query(
-                            $postFields
-                        ),
-
-                    CURLOPT_RETURNTRANSFER =>
-                        true,
-
-                    CURLOPT_CONNECTTIMEOUT =>
-                        5,
-
-                    CURLOPT_TIMEOUT =>
-                        10,
-
-                    CURLOPT_HTTPHEADER =>
-                        [
-                            'Content-Type: application/x-www-form-urlencoded',
-                        ],
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => http_build_query($postFields),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_HTTPHEADER => [
+                        'Content-Type: application/x-www-form-urlencoded',
+                    ],
                 ]
             );
 
+            $response = curl_exec($curl);
 
-            $response =
-                curl_exec(
-                    $curl
-                );
-
-            $httpCode =
-                (int)
-                curl_getinfo(
-                    $curl,
-                    CURLINFO_HTTP_CODE
-                );
-
-            $curlError =
-                curl_error(
-                    $curl
-                );
-
-            curl_close(
-                $curl
+            $httpCode = (int) curl_getinfo(
+                $curl,
+                CURLINFO_HTTP_CODE
             );
 
+            $curlError = curl_error($curl);
+
+            curl_close($curl);
 
             if (
                 $response === false
-                ||
-                $curlError !== ''
-                ||
-                $httpCode !== 200
+                || $curlError !== ''
+                || $httpCode !== 200
             ) {
-
                 error_log(
-                    'Llama Scout Turnstile request failed. HTTP '
-                    . $httpCode
-                    . '. cURL: '
-                    . $curlError
+                    'Llama Scout Turnstile request failed. HTTP ' .
+                    $httpCode .
+                    '. cURL: ' .
+                    $curlError
                 );
 
                 $errors[] =
                     'Security verification failed. Please try again.';
-
             } else {
+                $verification = json_decode(
+                    $response,
+                    true
+                );
 
-                $verification =
-                    json_decode(
-                        $response,
-                        true
-                    );
-
-
-                if (
-                    !is_array(
-                        $verification
-                    )
-                ) {
-
+                if (!is_array($verification)) {
                     error_log(
                         'Llama Scout received an invalid Turnstile response.'
                     );
 
                     $errors[] =
                         'Security verification failed. Please try again.';
-
-                } elseif (
-                    empty(
-                        $verification['success']
-                    )
-                ) {
-
+                } elseif (empty($verification['success'])) {
                     $errorCodes =
                         $verification['error-codes']
                         ?? [];
 
-                    if (
-                        is_array(
-                            $errorCodes
-                        )
-                    ) {
-
+                    if (is_array($errorCodes)) {
                         error_log(
-                            'Llama Scout Turnstile rejected registration: '
-                            . implode(
-                                ', ',
-                                $errorCodes
-                            )
+                            'Llama Scout Turnstile rejected registration: ' .
+                            implode(', ', $errorCodes)
                         );
                     }
 
@@ -495,159 +289,88 @@ if (
         }
     }
 
+    $usernamePolicy = username_policy_check(
+        $username
+    );
 
-    /* =====================================================
-       NORMAL VALIDATION
-       ===================================================== */
-
-
-    $usernamePolicy =
-        username_policy_check(
-            $username
-        );
-
-
-    if (
-        !$usernamePolicy['allowed']
-    ) {
-
-        $errors[] =
-            $usernamePolicy['reason'];
+    if (!$usernamePolicy['allowed']) {
+        $errors[] = $usernamePolicy['reason'];
     }
-
 
     if (
         $displayName === ''
-        ||
-        mb_strlen(
-            $displayName
-        ) < 2
+        || mb_strlen($displayName) < 2
     ) {
-
-        $errors[] =
-            'Enter a display name.';
+        $errors[] = 'Enter a display name.';
     }
 
-
-    if (
-        mb_strlen(
-            $displayName
-        ) > 100
-    ) {
-
+    if (mb_strlen($displayName) > 100) {
         $errors[] =
             'Display name must be 100 characters or fewer.';
     }
 
-
-    if (
-        !filter_var(
-            $email,
-            FILTER_VALIDATE_EMAIL
-        )
-    ) {
-
-        $errors[] =
-            'Enter a valid email address.';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Enter a valid email address.';
     }
 
-
     if (
-        !llama_timezone_is_valid(
-            $timezone
+        !llama_registration_source_is_valid(
+            $registrationSource
         )
     ) {
-
         $errors[] =
-            'Choose a valid time zone.';
+            'Tell us how you heard about Llama Scout.';
     }
 
+    if (!llama_timezone_is_valid($timezone)) {
+        $errors[] =
+            'Account time zone configuration is unavailable.';
+    }
 
-    if (
-        strlen(
-            $password
-        ) < 10
-    ) {
-
+    if (strlen($password) < 10) {
         $errors[] =
             'Your password must be at least 10 characters long.';
     }
 
-
-    if (
-        $password
-        !==
-        $passwordConfirm
-    ) {
-
-        $errors[] =
-            'The passwords do not match.';
+    if ($password !== $passwordConfirm) {
+        $errors[] = 'The passwords do not match.';
     }
 
-
-    /* =====================================================
-       CHECK EXISTING ACCOUNT
-       ===================================================== */
-
-
     if (!$errors) {
-
-        $stmt =
-            db()->prepare(
-                '
-                SELECT
-                    username,
-                    email
-
-                FROM users
-
-                WHERE LOWER(username) = ?
-                   OR LOWER(email) = ?
-
-                LIMIT 1
-                '
-            );
-
+        $stmt = db()->prepare(
+            '
+            SELECT
+                username,
+                email
+            FROM users
+            WHERE LOWER(username) = ?
+               OR LOWER(email) = ?
+            LIMIT 1
+            '
+        );
 
         $stmt->execute([
             $username,
             $email,
         ]);
 
-
-        $existing =
-            $stmt->fetch();
-
+        $existing = $stmt->fetch();
 
         if ($existing) {
-
             if (
                 strtolower(
-                    (string) (
-                        $existing['username']
-                        ?? ''
-                    )
-                )
-                ===
-                $username
+                    (string) ($existing['username'] ?? '')
+                ) === $username
             ) {
-
                 $errors[] =
                     'That username is already taken.';
             }
 
-
             if (
                 strtolower(
-                    (string) (
-                        $existing['email']
-                        ?? ''
-                    )
-                )
-                ===
-                $email
+                    (string) ($existing['email'] ?? '')
+                ) === $email
             ) {
-
                 $errors[] =
                     $inviteToken !== ''
                         ? 'An account already exists with this invited email address. Sign in to accept the invitation.'
@@ -656,61 +379,45 @@ if (
         }
     }
 
-
-    /* =====================================================
-       CREATE ACCOUNT
-       ===================================================== */
-
-
     if (!$errors) {
-
         try {
-
             db()->beginTransaction();
 
+            $passwordHash = password_hash(
+                $password,
+                PASSWORD_DEFAULT
+            );
 
-            $passwordHash =
-                password_hash(
-                    $password,
-                    PASSWORD_DEFAULT
-                );
-
-
-            if (
-                $passwordHash
-                === false
-            ) {
-
+            if ($passwordHash === false) {
                 throw new RuntimeException(
                     'Password hashing failed.'
                 );
             }
 
-
-            $stmt =
-                db()->prepare(
-                    '
-                    INSERT INTO users
-                    (
-                        email,
-                        username,
-                        password_hash,
-                        display_name,
-                        timezone,
-                        status
-                    )
-                    VALUES
-                    (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?
-                    )
-                    '
-                );
-
+            $stmt = db()->prepare(
+                '
+                INSERT INTO users
+                (
+                    email,
+                    username,
+                    password_hash,
+                    display_name,
+                    timezone,
+                    registration_source,
+                    status
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )
+                '
+            );
 
             $stmt->execute([
                 $email,
@@ -718,149 +425,104 @@ if (
                 $passwordHash,
                 $displayName,
                 $timezone,
+                $registrationSource,
                 'pending',
             ]);
 
+            $userId = (int) db()->lastInsertId();
 
-            $userId =
-                (int)
-                db()->lastInsertId();
-
-
-            $roleStmt =
-                db()->prepare(
-                    '
-                    SELECT id
-
-                    FROM roles
-
-                    WHERE slug = ?
-
-                    LIMIT 1
-                    '
-                );
-
+            $roleStmt = db()->prepare(
+                '
+                SELECT id
+                FROM roles
+                WHERE slug = ?
+                LIMIT 1
+                '
+            );
 
             $roleStmt->execute([
                 'member',
             ]);
 
-
-            $memberRole =
-                $roleStmt->fetch();
-
+            $memberRole = $roleStmt->fetch();
 
             if (!$memberRole) {
-
                 throw new RuntimeException(
                     'Member role is missing.'
                 );
             }
 
-
-            $assignStmt =
-                db()->prepare(
-                    '
-                    INSERT INTO user_roles
-                    (
-                        user_id,
-                        role_id
-                    )
-                    VALUES
-                    (
-                        ?,
-                        ?
-                    )
-                    '
-                );
-
+            $assignStmt = db()->prepare(
+                '
+                INSERT INTO user_roles
+                (
+                    user_id,
+                    role_id
+                )
+                VALUES
+                (
+                    ?,
+                    ?
+                )
+                '
+            );
 
             $assignStmt->execute([
                 $userId,
                 $memberRole['id'],
             ]);
 
+            $verificationToken = bin2hex(
+                random_bytes(32)
+            );
 
-            $verificationToken =
-                bin2hex(
-                    random_bytes(
-                        32
+            $verificationHash = hash(
+                'sha256',
+                $verificationToken
+            );
+
+            $verificationStmt = db()->prepare(
+                '
+                INSERT INTO email_verifications
+                (
+                    user_id,
+                    token_hash,
+                    expires_at
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    DATE_ADD(
+                        CURRENT_TIMESTAMP,
+                        INTERVAL 24 HOUR
                     )
-                );
-
-
-            $verificationHash =
-                hash(
-                    'sha256',
-                    $verificationToken
-                );
-
-
-            $verificationStmt =
-                db()->prepare(
-                    '
-                    INSERT INTO email_verifications
-                    (
-                        user_id,
-                        token_hash,
-                        expires_at
-                    )
-                    VALUES
-                    (
-                        ?,
-                        ?,
-                        DATE_ADD(
-                            CURRENT_TIMESTAMP,
-                            INTERVAL 24 HOUR
-                        )
-                    )
-                    '
-                );
-
+                )
+                '
+            );
 
             $verificationStmt->execute([
                 $userId,
                 $verificationHash,
             ]);
 
-
             db()->commit();
-
 
             send_verification_email(
                 [
-                    'email' =>
-                        $email,
-
-                    'username' =>
-                        $username,
-
-                    'display_name' =>
-                        $displayName,
+                    'email' => $email,
+                    'username' => $username,
+                    'display_name' => $displayName,
                 ],
                 $verificationToken
             );
 
-
             start_llama_session();
+            session_regenerate_id(true);
 
-            session_regenerate_id(
-                true
-            );
+            $_SESSION['user_id'] = $userId;
+            $_SESSION['logged_in_at'] = time();
 
-
-            $_SESSION['user_id'] =
-                $userId;
-
-            $_SESSION['logged_in_at'] =
-                time();
-
-
-            /*
-             * Preserve the secure invitation token only long
-             * enough to return the newly registered user to the
-             * acceptance page after email verification.
-             */
             if ($inviteToken !== '') {
                 $_SESSION['complimentary_invite_token'] =
                     $inviteToken;
@@ -879,31 +541,20 @@ if (
                 );
             }
 
-
             header(
                 'Location: https://account.llamascout.com/verify-email.php?sent=1'
             );
 
             exit;
-
-
-        } catch (
-            Throwable $exception
-        ) {
-
-            if (
-                db()->inTransaction()
-            ) {
-
+        } catch (Throwable $exception) {
+            if (db()->inTransaction()) {
                 db()->rollBack();
             }
-
 
             $reference = llama_log_caught_exception(
                 $exception,
                 'account_registration'
             );
-
 
             $errors[] = llama_error_message_with_reference(
                 'Something went wrong while creating your account. Please try again.',
@@ -913,16 +564,9 @@ if (
     }
 }
 
-
-/* =====================================================
-   ESCAPE OUTPUT
-   ===================================================== */
-
-
 function e(
     string $value
 ): string {
-
     return htmlspecialchars(
         $value,
         ENT_QUOTES,
@@ -977,6 +621,7 @@ function e(
   rel="stylesheet"
   href="https://llamascout.com/css/account-auth-v2.css"
 >
+
 </head>
 
 <body class="account-auth-body">
@@ -1008,7 +653,7 @@ function e(
         You have been invited to receive
 
         <strong>
-          <?= (int)$invite['grant_duration_days'] ?>
+          <?= (int) $invite['grant_duration_days'] ?>
           days
         </strong>
 
@@ -1042,14 +687,10 @@ function e(
 
       <ul class="account-errors">
 
-        <?php foreach (
-            $errors as $error
-        ): ?>
+        <?php foreach ($errors as $error): ?>
 
           <li>
-            <?= e(
-                (string) $error
-            ) ?>
+            <?= e((string) $error) ?>
           </li>
 
         <?php endforeach; ?>
@@ -1077,9 +718,7 @@ function e(
         <input
           type="hidden"
           name="invite"
-          value="<?= e(
-              $inviteToken
-          ) ?>"
+          value="<?= e($inviteToken) ?>"
         >
 
       <?php endif; ?>
@@ -1100,9 +739,7 @@ function e(
           autocomplete="username"
           autocapitalize="none"
           spellcheck="false"
-          value="<?= e(
-              $values['username']
-          ) ?>"
+          value="<?= e($values['username']) ?>"
           required
         >
 
@@ -1130,9 +767,7 @@ function e(
           type="text"
           maxlength="100"
           autocomplete="name"
-          value="<?= e(
-              $values['display_name']
-          ) ?>"
+          value="<?= e($values['display_name']) ?>"
           required
         >
 
@@ -1151,13 +786,8 @@ function e(
           type="email"
           maxlength="255"
           autocomplete="email"
-          value="<?= e(
-              $values['email']
-          ) ?>"
-          <?= $invite
-              ? 'readonly'
-              : ''
-          ?>
+          value="<?= e($values['email']) ?>"
+          <?= $invite ? 'readonly' : '' ?>
           required
         >
 
@@ -1177,33 +807,33 @@ function e(
 
       <div class="account-field">
 
-        <label for="timezone">
-          Time zone
+        <label for="registration_source">
+          How did you hear about Llama Scout?
         </label>
 
         <select
-          id="timezone"
-          name="timezone"
+          id="registration_source"
+          name="registration_source"
           required
         >
 
+          <option value="">
+            Choose one
+          </option>
+
           <?php foreach (
-              llama_timezones()
-              as $zone => $label
+              llama_registration_sources()
+              as $sourceValue => $sourceLabel
           ): ?>
 
             <option
-              value="<?= e(
-                  $zone
-              ) ?>"
-              <?= $values['timezone'] === $zone
+              value="<?= e($sourceValue) ?>"
+              <?= $values['registration_source'] === $sourceValue
                   ? 'selected'
                   : ''
               ?>
             >
-              <?= e(
-                  $label
-              ) ?>
+              <?= e($sourceLabel) ?>
             </option>
 
           <?php endforeach; ?>
@@ -1213,11 +843,7 @@ function e(
       </div>
 
       <p class="account-field-note">
-
-        Controls how dates and times are
-        shown in your Llama Scout account.
-        Mountain Time is the default.
-
+        This helps us understand how people discover Llama Scout.
       </p>
 
 
@@ -1257,20 +883,8 @@ function e(
       </div>
 
 
-      <!--
-          Honeypot.
-          Humans should never see or complete this field.
-      -->
-
       <div
-        style="
-          position:absolute;
-          left:-10000px;
-          top:auto;
-          width:1px;
-          height:1px;
-          overflow:hidden;
-        "
+        class="account-auth-honeypot"
         aria-hidden="true"
       >
 
@@ -1289,13 +903,9 @@ function e(
       </div>
 
 
-      <!-- Cloudflare Turnstile -->
-
       <div
         class="cf-turnstile"
-        data-sitekey="<?= e(
-            $turnstileSiteKey
-        ) ?>"
+        data-sitekey="<?= e($turnstileSiteKey) ?>"
         data-theme="dark"
       ></div>
 
