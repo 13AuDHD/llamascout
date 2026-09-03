@@ -246,6 +246,287 @@ function admin_fulfillment_save_package(
     );
 }
 
+
+function admin_fulfillment_sync_order_status(
+    PDO $db,
+    int $orderId
+): string {
+    $orderStmt = $db->prepare(
+        'SELECT
+            order_status,
+            payment_status
+         FROM shop_orders
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $orderStmt->execute([$orderId]);
+
+    $order =
+        $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$order) {
+        throw new InvalidArgumentException(
+            'Order not found.'
+        );
+    }
+
+    $current =
+        strtolower(
+            trim(
+                (string) (
+                    $order['order_status']
+                    ?? ''
+                )
+            )
+        );
+
+    /*
+     * Manual terminal states win. A fulfillment update must never
+     * accidentally reopen a cancelled or refunded order.
+     */
+    if (
+        in_array(
+            $current,
+            [
+                'cancelled',
+                'canceled',
+                'refunded',
+            ],
+            true
+        )
+    ) {
+        return $current;
+    }
+
+    $payment =
+        strtolower(
+            trim(
+                (string) (
+                    $order['payment_status']
+                    ?? ''
+                )
+            )
+        );
+
+    if ($payment !== 'paid') {
+        return $current;
+    }
+
+    $stmt = $db->prepare(
+        'SELECT status
+         FROM shop_order_fulfillments
+         WHERE order_id = ?
+         ORDER BY id ASC'
+    );
+
+    $stmt->execute([$orderId]);
+
+    $statuses =
+        array_values(
+            array_filter(
+                array_map(
+                    static fn(mixed $value): string =>
+                        strtolower(
+                            trim(
+                                (string) $value
+                            )
+                        ),
+                    $stmt->fetchAll(
+                        PDO::FETCH_COLUMN
+                    ) ?: []
+                ),
+                static fn(string $value): bool =>
+                    $value !== ''
+            )
+        );
+
+    if (!$statuses) {
+        $target = 'paid';
+    } elseif (
+        count(
+            array_filter(
+                $statuses,
+                static fn(string $status): bool =>
+                    $status === 'delivered'
+            )
+        ) === count($statuses)
+    ) {
+        $target = 'delivered';
+    } elseif (
+        count(
+            array_filter(
+                $statuses,
+                static fn(string $status): bool =>
+                    in_array(
+                        $status,
+                        ['shipped', 'delivered'],
+                        true
+                    )
+            )
+        ) === count($statuses)
+    ) {
+        $target = 'shipped';
+    } elseif (
+        in_array(
+            'problem',
+            $statuses,
+            true
+        )
+    ) {
+        $target = 'problem';
+    } elseif (
+        count(
+            array_filter(
+                $statuses,
+                static fn(string $status): bool =>
+                    $status === 'cancelled'
+            )
+        ) === count($statuses)
+    ) {
+        $target = 'cancelled';
+    } elseif (
+        in_array(
+            'submitted',
+            $statuses,
+            true
+        )
+    ) {
+        $target = 'submitted';
+    } elseif (
+        in_array(
+            'processing',
+            $statuses,
+            true
+        )
+    ) {
+        $target = 'processing';
+    } else {
+        $target = 'paid';
+    }
+
+    if ($target === $current) {
+        return $target;
+    }
+
+    $update = $db->prepare(
+        'UPDATE shop_orders
+         SET
+            order_status = ?,
+            updated_at = UTC_TIMESTAMP()
+         WHERE id = ?'
+    );
+
+    $update->execute([
+        $target,
+        $orderId,
+    ]);
+
+    return $target;
+}
+
+function admin_fulfillment_validate_status_update(
+    PDO $db,
+    int $orderId,
+    int $fulfillmentId,
+    array $data
+): void {
+    $status =
+        strtolower(
+            trim(
+                (string) (
+                    $data['status']
+                    ?? ''
+                )
+            )
+        );
+
+    if (
+        !in_array(
+            $status,
+            [
+                'pending',
+                'processing',
+                'submitted',
+                'shipped',
+                'delivered',
+                'problem',
+                'cancelled',
+            ],
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid fulfillment status.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            id,
+            tracking_number,
+            shipped_at
+         FROM shop_order_fulfillments
+         WHERE id = ?
+           AND order_id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        $fulfillmentId,
+        $orderId,
+    ]);
+
+    $fulfillment =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$fulfillment) {
+        throw new InvalidArgumentException(
+            'Fulfillment not found.'
+        );
+    }
+
+    $submittedTracking =
+        trim(
+            (string) (
+                $data['tracking_number']
+                ?? ''
+            )
+        );
+
+    $existingTracking =
+        trim(
+            (string) (
+                $fulfillment['tracking_number']
+                ?? ''
+            )
+        );
+
+    if (
+        $status === 'shipped'
+        && $submittedTracking === ''
+        && $existingTracking === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Add a tracking number before marking a shipped order as shipped.'
+        );
+    }
+
+    if (
+        $status === 'delivered'
+        && trim(
+            (string) (
+                $fulfillment['shipped_at']
+                ?? ''
+            )
+        ) === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Mark the fulfillment shipped before marking it delivered.'
+        );
+    }
+}
+
 function admin_fulfillment_format_timestamp(
     mixed $value
 ): string {
@@ -1015,6 +1296,11 @@ function admin_fulfillment_buy_label(
         );
 
         $db->commit();
+
+        admin_fulfillment_sync_order_status(
+            $db,
+            $orderId
+        );
 
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
