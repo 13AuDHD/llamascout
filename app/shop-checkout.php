@@ -23,196 +23,100 @@ function shop_checkout_column_exists(PDO $db, string $table, string $column): bo
     return (bool) $stmt->fetchColumn();
 }
 
-function shop_checkout_add_column(PDO $db, string $table, string $column, string $definition): void
-{
-    if (shop_checkout_column_exists($db, $table, $column)) {
-        return;
-    }
-
-    if (!preg_match('/^[a-z0-9_]+$/i', $table) || !preg_match('/^[a-z0-9_]+$/i', $column)) {
-        throw new RuntimeException('Invalid Shop storage identifier.');
-    }
-
-    $db->exec('ALTER TABLE `' . $table . '` ADD COLUMN `' . $column . '` ' . $definition);
-}
-
 function shop_checkout_ensure_storage(PDO $db): void
 {
-    if ($db->inTransaction()) {
-        throw new RuntimeException('Shop checkout storage cannot be initialized inside an active transaction.');
-    }
-
-    if (!shop_checkout_table_exists($db, 'shop_orders')) {
-        $db->exec(
-            'CREATE TABLE shop_orders (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                order_number VARCHAR(40) NOT NULL,
-                user_id BIGINT UNSIGNED NULL,
-                currency CHAR(3) NOT NULL DEFAULT "usd",
-                subtotal_cents INT UNSIGNED NOT NULL DEFAULT 0,
-                shipping_cents INT UNSIGNED NOT NULL DEFAULT 0,
-                tax_cents INT UNSIGNED NOT NULL DEFAULT 0,
-                discount_cents INT UNSIGNED NOT NULL DEFAULT 0,
-                total_cents INT UNSIGNED NOT NULL DEFAULT 0,
-                order_status VARCHAR(30) NOT NULL DEFAULT "pending",
-                payment_status VARCHAR(30) NOT NULL DEFAULT "pending",
-                customer_email VARCHAR(255) NULL,
-                shipping_name VARCHAR(255) NULL,
-                shipping_phone VARCHAR(80) NULL,
-                shipping_address_json LONGTEXT NULL,
-                billing_address_json LONGTEXT NULL,
-                stripe_checkout_session_id VARCHAR(255) NULL,
-                stripe_payment_intent_id VARCHAR(255) NULL,
-                stripe_customer_id VARCHAR(255) NULL,
-                inventory_committed_at DATETIME NULL,
-                checkout_expires_at DATETIME NULL,
-                paid_at DATETIME NULL,
-                canceled_at DATETIME NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_shop_orders_number (order_number),
-                UNIQUE KEY uq_shop_orders_checkout (stripe_checkout_session_id),
-                KEY idx_shop_orders_user (user_id),
-                KEY idx_shop_orders_status (order_status, payment_status),
-                KEY idx_shop_orders_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
-    }
-
-    $orderColumns = [
-        'order_number' => 'VARCHAR(40) NULL',
-        'user_id' => 'BIGINT UNSIGNED NULL',
-        'currency' => 'CHAR(3) NOT NULL DEFAULT "usd"',
-        'subtotal_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'shipping_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'tax_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'discount_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'total_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'order_status' => 'VARCHAR(30) NOT NULL DEFAULT "pending"',
-        'payment_status' => 'VARCHAR(30) NOT NULL DEFAULT "pending"',
-        'customer_email' => 'VARCHAR(255) NULL',
-        'shipping_name' => 'VARCHAR(255) NULL',
-        'shipping_phone' => 'VARCHAR(80) NULL',
-        'shipping_address_json' => 'LONGTEXT NULL',
-        'billing_address_json' => 'LONGTEXT NULL',
-        'stripe_checkout_session_id' => 'VARCHAR(255) NULL',
-        'stripe_payment_intent_id' => 'VARCHAR(255) NULL',
-        'stripe_customer_id' => 'VARCHAR(255) NULL',
-        'inventory_committed_at' => 'DATETIME NULL',
-        'checkout_expires_at' => 'DATETIME NULL',
-        'paid_at' => 'DATETIME NULL',
-        'canceled_at' => 'DATETIME NULL',
-        'created_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
-        'updated_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    /*
+     * Production checkout must never create or alter schema.
+     * Database migrations are performed once through phpMyAdmin.
+     * This preflight only verifies that the required schema exists
+     * before a checkout or webhook attempts to use it.
+     */
+    $required = [
+        'shop_orders' => [
+            'id',
+            'order_number',
+            'user_id',
+            'currency',
+            'subtotal_cents',
+            'shipping_cents',
+            'tax_cents',
+            'discount_cents',
+            'total_cents',
+            'order_status',
+            'payment_status',
+            'customer_email',
+            'shipping_name',
+            'shipping_phone',
+            'shipping_address_json',
+            'billing_address_json',
+            'stripe_checkout_session_id',
+            'stripe_payment_intent_id',
+            'stripe_customer_id',
+            'inventory_committed_at',
+            'checkout_expires_at',
+            'paid_at',
+            'canceled_at',
+            'created_at',
+            'updated_at',
+        ],
+        'shop_order_items' => [
+            'id',
+            'order_id',
+            'product_id',
+            'variant_id',
+            'product_name',
+            'variant_name',
+            'sku',
+            'quantity',
+            'unit_price_cents',
+            'line_total_cents',
+            'currency',
+            'requires_shipping',
+            'fulfillment_type',
+            'fulfillment_provider',
+            'fulfillment_product_id',
+            'fulfillment_variant_id',
+            'variant_snapshot_json',
+            'created_at',
+        ],
+        'shop_inventory_reservations' => [
+            'id',
+            'order_id',
+            'variant_id',
+            'quantity',
+            'status',
+            'expires_at',
+            'consumed_at',
+            'released_at',
+            'created_at',
+        ],
+        'shop_stripe_events' => [
+            'id',
+            'stripe_event_id',
+            'event_type',
+            'order_id',
+            'status',
+            'error_message',
+            'received_at',
+            'processed_at',
+        ],
     ];
 
-    foreach ($orderColumns as $column => $definition) {
-        shop_checkout_add_column($db, 'shop_orders', $column, $definition);
-    }
+    foreach ($required as $table => $columns) {
+        if (!shop_checkout_table_exists($db, $table)) {
+            throw new RuntimeException(
+                'Shop database migration is incomplete. Missing table: ' . $table . '.'
+            );
+        }
 
-    if (!shop_checkout_table_exists($db, 'shop_order_items')) {
-        $db->exec(
-            'CREATE TABLE shop_order_items (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                order_id BIGINT UNSIGNED NOT NULL,
-                product_id BIGINT UNSIGNED NULL,
-                variant_id BIGINT UNSIGNED NULL,
-                product_name VARCHAR(255) NOT NULL,
-                variant_name VARCHAR(255) NULL,
-                sku VARCHAR(190) NULL,
-                quantity INT UNSIGNED NOT NULL,
-                unit_price_cents INT UNSIGNED NOT NULL,
-                line_total_cents INT UNSIGNED NOT NULL,
-                currency CHAR(3) NOT NULL DEFAULT "usd",
-                requires_shipping TINYINT(1) NOT NULL DEFAULT 1,
-                fulfillment_type VARCHAR(40) NULL,
-                fulfillment_provider VARCHAR(100) NULL,
-                fulfillment_product_id VARCHAR(255) NULL,
-                fulfillment_variant_id VARCHAR(255) NULL,
-                variant_snapshot_json LONGTEXT NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                KEY idx_shop_order_items_order (order_id),
-                KEY idx_shop_order_items_variant (variant_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
-    }
-
-    $itemColumns = [
-        'order_id' => 'BIGINT UNSIGNED NOT NULL',
-        'product_id' => 'BIGINT UNSIGNED NULL',
-        'variant_id' => 'BIGINT UNSIGNED NULL',
-        'product_name' => 'VARCHAR(255) NULL',
-        'variant_name' => 'VARCHAR(255) NULL',
-        'sku' => 'VARCHAR(190) NULL',
-        'quantity' => 'INT UNSIGNED NOT NULL DEFAULT 1',
-        'unit_price_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'line_total_cents' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'currency' => 'CHAR(3) NOT NULL DEFAULT "usd"',
-        'requires_shipping' => 'TINYINT(1) NOT NULL DEFAULT 1',
-        'fulfillment_type' => 'VARCHAR(40) NULL',
-        'fulfillment_provider' => 'VARCHAR(100) NULL',
-        'fulfillment_product_id' => 'VARCHAR(255) NULL',
-        'fulfillment_variant_id' => 'VARCHAR(255) NULL',
-        'variant_snapshot_json' => 'LONGTEXT NULL',
-        'created_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
-    ];
-
-    foreach ($itemColumns as $column => $definition) {
-        shop_checkout_add_column($db, 'shop_order_items', $column, $definition);
-    }
-
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS shop_inventory_reservations (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            order_id BIGINT UNSIGNED NOT NULL,
-            variant_id BIGINT UNSIGNED NOT NULL,
-            quantity INT UNSIGNED NOT NULL,
-            status VARCHAR(20) NOT NULL DEFAULT "active",
-            expires_at DATETIME NOT NULL,
-            consumed_at DATETIME NULL,
-            released_at DATETIME NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY uq_shop_reservation_order_variant (order_id, variant_id),
-            KEY idx_shop_reservation_variant (variant_id, status, expires_at),
-            KEY idx_shop_reservation_order (order_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-    );
-
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS shop_stripe_events (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            stripe_event_id VARCHAR(255) NOT NULL,
-            event_type VARCHAR(100) NOT NULL,
-            order_id BIGINT UNSIGNED NULL,
-            status VARCHAR(20) NOT NULL DEFAULT "processing",
-            error_message TEXT NULL,
-            received_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            processed_at DATETIME NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY uq_shop_stripe_event (stripe_event_id),
-            KEY idx_shop_stripe_order (order_id),
-            KEY idx_shop_stripe_status (status, received_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-    );
-
-    /* Existing installs may already have an older shop_stripe_events table.
-       CREATE TABLE IF NOT EXISTS does not migrate that table, so explicitly
-       add every newer column that webhook processing depends on. */
-    $stripeEventColumns = [
-        'stripe_event_id' => 'VARCHAR(255) NULL',
-        'event_type' => 'VARCHAR(100) NULL',
-        'order_id' => 'BIGINT UNSIGNED NULL',
-        'status' => 'VARCHAR(20) NOT NULL DEFAULT "processing"',
-        'error_message' => 'TEXT NULL',
-        'received_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
-        'processed_at' => 'DATETIME NULL',
-    ];
-
-    foreach ($stripeEventColumns as $column => $definition) {
-        shop_checkout_add_column($db, 'shop_stripe_events', $column, $definition);
+        foreach ($columns as $column) {
+            if (!shop_checkout_column_exists($db, $table, $column)) {
+                throw new RuntimeException(
+                    'Shop database migration is incomplete. Missing column: ' .
+                    $table . '.' . $column . '.'
+                );
+            }
+        }
     }
 }
 
