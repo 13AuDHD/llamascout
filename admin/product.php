@@ -552,6 +552,26 @@ require __DIR__ . '/_header.php';
     grid-column: span 2;
 }
 
+.admin-commerce-variant-card {
+    padding: 0 0 22px;
+    border-bottom: 1px solid var(--admin-border, rgba(255,255,255,.12));
+}
+
+.admin-commerce-variant-card:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.admin-commerce-variant-card > .admin-commerce-variant {
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.admin-commerce-variant-card > .admin-commerce-variant-actions {
+    margin-top: 12px;
+}
+
 .admin-commerce-variant-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1686,6 +1706,8 @@ $valueText =
 
 <?php foreach ($variants as $variant): ?>
 
+<article class="admin-commerce-variant-card">
+
 <?php
 $storefrontMeta =
     admin_shop_variant_storefront_meta($variant);
@@ -2043,6 +2065,8 @@ $variantProtected =
     </button>
 </form>
 <?php endif; ?>
+
+</article>
 
 <?php endforeach; ?>
 
