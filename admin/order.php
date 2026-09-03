@@ -59,13 +59,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_POST
                 );
 
+                admin_fulfillment_sync_order_status(
+                    $db,
+                    $orderId
+                );
+
                 $notice = 'Fulfillment created.';
             } elseif ($action === 'update-fulfillment') {
+                $fulfillmentId =
+                    (int) ($_POST['fulfillment_id'] ?? 0);
+
+                admin_fulfillment_validate_status_update(
+                    $db,
+                    $orderId,
+                    $fulfillmentId,
+                    $_POST
+                );
+
                 admin_shop_update_fulfillment(
                     $db,
                     $actorUserId,
-                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    $fulfillmentId,
                     $_POST
+                );
+
+                admin_fulfillment_sync_order_status(
+                    $db,
+                    $orderId
                 );
 
                 $notice = 'Fulfillment updated.';
@@ -1045,6 +1065,15 @@ $shippingLabel =
         <h2>Order State</h2>
     </div>
 </header>
+
+<div class="admin-commerce-order-status-note">
+    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+    <p>
+        Normal order status follows fulfillment automatically.
+        Use this control only for an exception such as cancellation,
+        refund, or a problem that needs manual intervention.
+    </p>
+</div>
 
 <form
     class="admin-user-action-box"
