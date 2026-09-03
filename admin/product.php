@@ -553,16 +553,10 @@ require __DIR__ . '/_header.php';
 }
 
 .admin-commerce-variant-actions {
-    margin-top: 12px;
-}
-
-.admin-user-form-actions.admin-commerce-variant-actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    justify-content: space-between;
-    width: 100%;
 }
 
 .admin-commerce-delete-variant {
@@ -636,20 +630,17 @@ require __DIR__ . '/_header.php';
         grid-column: 1 / -1;
     }
 
-    .admin-commerce-builder-actions {
+    .admin-commerce-builder-actions,
+    .admin-commerce-variant-actions {
         display: grid;
         grid-template-columns: 1fr;
     }
 
     .admin-commerce-builder-actions form,
-    .admin-commerce-builder-actions button {
+    .admin-commerce-builder-actions button,
+    .admin-commerce-variant-actions form,
+    .admin-commerce-variant-actions button {
         width: 100%;
-    }
-
-    .admin-user-form-actions.admin-commerce-variant-actions {
-        display: flex;
-        flex-wrap: nowrap;
-        justify-content: space-between;
     }
 }
 </style>
@@ -693,8 +684,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.querySelectorAll('[data-confirm-delete-variant]').forEach((button) => {
-        button.addEventListener('click', (event) => {
+    document.querySelectorAll('[data-confirm-delete-variant]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
             if (!window.confirm('Delete this unused variant?')) {
                 event.preventDefault();
             }
@@ -1195,6 +1186,8 @@ $valueText =
 
 </div>
 
+</article>
+
 <?php endforeach; ?>
 
 </div>
@@ -1669,7 +1662,7 @@ $valueText =
 
         <span>
             <strong>
-                Resequence sort order 1 to <?= count($variants) ?>
+                Resequence sort order 1 â <?= count($variants) ?>
             </strong>
 
             <small>
@@ -1692,7 +1685,6 @@ $valueText =
 <div class="admin-commerce-variants">
 
 <?php foreach ($variants as $variant): ?>
-
 
 <?php
 $storefrontMeta =
@@ -1726,6 +1718,12 @@ $variantProtected =
     type="hidden"
     name="variant_id"
     value="<?= (int) $variant['id'] ?>"
+>
+
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="save-variant"
 >
 
 <div class="admin-commerce-variant-title">
@@ -1990,17 +1988,14 @@ $variantProtected =
 </div>
 
 <div class="admin-user-form-actions admin-commerce-variant-actions">
-    <?php if (!$variantProtected): ?>
-        <button
-            class="admin-button is-muted admin-commerce-delete-variant"
-            type="submit"
-            name="shop_admin_action"
-            value="delete-variant"
-            data-confirm-delete-variant
-        >
-            Delete Variant
-        </button>
-    <?php else: ?>
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Save variant
+    </button>
+
+    <?php if ($variantProtected): ?>
         <span class="admin-commerce-protected">
             <i
                 class="fa-solid fa-lock"
@@ -2009,18 +2004,45 @@ $variantProtected =
             Used in order history; delete disabled
         </span>
     <?php endif; ?>
-
-    <button
-        class="admin-button"
-        type="submit"
-        name="shop_admin_action"
-        value="save-variant"
-    >
-        Save variant
-    </button>
 </div>
 
 </form>
+
+<?php if (!$variantProtected): ?>
+<form
+    method="post"
+    class="admin-commerce-variant-actions"
+    data-confirm-delete-variant
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+    <input
+        type="hidden"
+        name="variant_id"
+        value="<?= (int) $variant['id'] ?>"
+    >
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="delete-variant"
+    >
+
+    <button
+        class="admin-button is-muted admin-commerce-delete-variant"
+        type="submit"
+    >
+        Delete Variant
+    </button>
+</form>
+<?php endif; ?>
 
 <?php endforeach; ?>
 
