@@ -222,6 +222,8 @@ require __DIR__ . '/_header.php';
                 </div>
             </header>
 
+            <?php require __DIR__ . '/_acquisition.php'; ?>
+
             <dl class="admin-metric-list">
 
                 <div>
