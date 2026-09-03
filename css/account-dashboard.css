@@ -386,3 +386,41 @@
         display: none;
     }
 }
+
+/* =========================================================
+   SHOP ORDERS DASHBOARD CARD
+   ========================================================= */
+
+.account-glance-grid {
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+}
+
+.account-glance-orders strong {
+    font-size: .94rem;
+}
+
+.account-glance-orders .account-glance-icon {
+    color: var(--text);
+}
+
+@media (max-width: 980px) {
+
+    .account-glance-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 560px) {
+
+    .account-glance-grid {
+        grid-template-columns: 1fr;
+    }
+}
