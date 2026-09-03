@@ -175,6 +175,33 @@ try {
                     ->object;
 
 
+            /*
+             * Shop Checkout events can also be delivered to this
+             * membership endpoint when Stripe event destinations
+             * overlap. They are processed by /stripe-webhook-shop.php
+             * and are not membership failures.
+             */
+            $checkoutType =
+                strtolower(
+                    trim(
+                        (string) (
+                            $session
+                                ->metadata
+                                ->llama_checkout_type
+                            ?? ''
+                        )
+                    )
+                );
+
+
+            if (
+                $checkoutType === 'shop'
+            ) {
+
+                break;
+            }
+
+
             $userId =
                 (int) (
                     $session
