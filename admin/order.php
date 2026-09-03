@@ -105,12 +105,38 @@ $fulfillments = admin_shop_fulfillments(
 
 $shippingAddress = [];
 
-if (!empty($order['shipping_address_data'])) {
+if (!empty($order['shipping_address_json'])) {
     $shippingAddress =
         json_decode(
-            (string) $order['shipping_address_data'],
+            (string) $order['shipping_address_json'],
             true
         ) ?: [];
+}
+
+$fulfillmentProviders = admin_shop_fulfillment_providers();
+$trackingCarriers = admin_shop_tracking_carriers();
+
+$defaultFulfillmentProvider = 'llama_scout';
+$shippingItemProviders = [];
+
+foreach ($items as $item) {
+    if ((int) ($item['requires_shipping'] ?? 0) !== 1) {
+        continue;
+    }
+
+    $itemProvider = admin_shop_normalize_provider(
+        (string) ($item['fulfillment_provider'] ?? '')
+    );
+
+    if ($itemProvider === '') {
+        $itemProvider = 'llama_scout';
+    }
+
+    $shippingItemProviders[$itemProvider] = true;
+}
+
+if (count($shippingItemProviders) === 1) {
+    $defaultFulfillmentProvider = (string) array_key_first($shippingItemProviders);
 }
 
 $stats = admin_dashboard_stats($db);
@@ -153,10 +179,11 @@ require __DIR__ . '/_header.php';
 
     <span>
         <?= moderation_e((string) $order['created_at']) ?>
-        ·
+        Â·
         <?= moderation_e(
             (string) (
-                $order['customer_name']
+                $order['shipping_name']
+                ?: $order['display_name']
                 ?: $order['customer_email']
                 ?: 'Guest'
             )
@@ -224,8 +251,12 @@ require __DIR__ . '/_header.php';
 
     <small>
         <?= moderation_e((string) $item['sku']) ?>
-        · Qty <?= (int) $item['quantity'] ?>
-        · <?= moderation_e((string) $item['fulfillment_type']) ?>
+        Â· Qty <?= (int) $item['quantity'] ?>
+        Â· <?= moderation_e(
+            admin_shop_fulfillment_provider_label(
+                (string) ($item['fulfillment_provider'] ?? '')
+            )
+        ) ?>
     </small>
 </div>
 
@@ -268,20 +299,18 @@ require __DIR__ . '/_header.php';
 <input type="hidden" name="shop_admin_action" value="create-fulfillment">
 
 <label>
-    <span>Type</span>
-    <select name="fulfillment_type">
-        <option value="manual">Manual</option>
-        <option value="provider">Provider</option>
+    <span>Fulfillment provider</span>
+    <select name="fulfillment_provider">
+        <?php foreach ($fulfillmentProviders as $providerKey => $providerLabel): ?>
+            <?php if ($providerKey === '') { continue; } ?>
+            <option
+                value="<?= moderation_e($providerKey) ?>"
+                <?= $defaultFulfillmentProvider === $providerKey ? 'selected' : '' ?>
+            >
+                <?= moderation_e($providerLabel) ?>
+            </option>
+        <?php endforeach; ?>
     </select>
-</label>
-
-<label>
-    <span>Provider</span>
-    <input
-        type="text"
-        name="fulfillment_provider"
-        placeholder="USPS, Printful, Printify, etc."
-    >
 </label>
 
 <label>
@@ -314,18 +343,22 @@ require __DIR__ . '/_header.php';
 </label>
 
 <label>
+    <span>Tracking provider</span>
+    <select name="tracking_carrier">
+        <?php foreach ($trackingCarriers as $carrierKey => $carrierLabel): ?>
+            <option value="<?= moderation_e($carrierKey) ?>">
+                <?= moderation_e($carrierLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</label>
+
+<label>
     <span>Tracking number</span>
     <input
         type="text"
         name="tracking_number"
-    >
-</label>
-
-<label>
-    <span>Tracking URL</span>
-    <input
-        type="url"
-        name="tracking_url"
+        autocomplete="off"
     >
 </label>
 
@@ -368,17 +401,26 @@ require __DIR__ . '/_header.php';
 </div>
 
 <label>
-    <span>Provider</span>
-    <input
-        type="text"
-        value="<?= moderation_e(
-            (string) (
-                $fulfillment['fulfillment_provider']
-                ?: $fulfillment['fulfillment_type']
-            )
-        ) ?>"
-        disabled
-    >
+    <span>Fulfillment provider</span>
+    <select name="fulfillment_provider">
+        <?php
+        $currentProvider = admin_shop_normalize_provider(
+            (string) ($fulfillment['fulfillment_provider'] ?? '')
+        );
+        if ($currentProvider === '') {
+            $currentProvider = 'llama_scout';
+        }
+        ?>
+        <?php foreach ($fulfillmentProviders as $providerKey => $providerLabel): ?>
+            <?php if ($providerKey === '') { continue; } ?>
+            <option
+                value="<?= moderation_e($providerKey) ?>"
+                <?= $currentProvider === $providerKey ? 'selected' : '' ?>
+            >
+                <?= moderation_e($providerLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 </label>
 
 <label>
@@ -417,6 +459,25 @@ require __DIR__ . '/_header.php';
 </label>
 
 <label>
+    <span>Tracking provider</span>
+    <select name="tracking_carrier">
+        <?php
+        $currentCarrier = admin_shop_normalize_tracking_carrier(
+            (string) ($fulfillment['tracking_carrier'] ?? '')
+        );
+        ?>
+        <?php foreach ($trackingCarriers as $carrierKey => $carrierLabel): ?>
+            <option
+                value="<?= moderation_e($carrierKey) ?>"
+                <?= $currentCarrier === $carrierKey ? 'selected' : '' ?>
+            >
+                <?= moderation_e($carrierLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</label>
+
+<label>
     <span>Tracking number</span>
     <input
         type="text"
@@ -424,19 +485,27 @@ require __DIR__ . '/_header.php';
         value="<?= moderation_e(
             (string) ($fulfillment['tracking_number'] ?? '')
         ) ?>"
+        autocomplete="off"
     >
 </label>
 
-<label>
-    <span>Tracking URL</span>
-    <input
-        type="url"
-        name="tracking_url"
-        value="<?= moderation_e(
-            (string) ($fulfillment['tracking_url'] ?? '')
-        ) ?>"
+<?php if (!empty($fulfillment['tracking_url'])): ?>
+<div class="admin-commerce-tracking-link">
+    <span>Tracking link</span>
+    <a
+        href="<?= moderation_e((string) $fulfillment['tracking_url']) ?>"
+        target="_blank"
+        rel="noopener"
     >
-</label>
+        Open <?= moderation_e(
+            admin_shop_tracking_carrier_label(
+                (string) ($fulfillment['tracking_carrier'] ?? '')
+            )
+        ) ?> tracking
+        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+    </a>
+</div>
+<?php endif; ?>
 
 <div class="admin-user-form-actions">
     <button class="admin-button" type="submit">
@@ -572,7 +641,7 @@ require __DIR__ . '/_header.php';
 
 <div>
     <dt>Name</dt>
-    <dd><?= moderation_e((string) ($order['customer_name'] ?: 'Not supplied')) ?></dd>
+    <dd><?= moderation_e((string) ($order['shipping_name'] ?: $order['display_name'] ?: 'Not supplied')) ?></dd>
 </div>
 
 <div>
@@ -580,18 +649,39 @@ require __DIR__ . '/_header.php';
     <dd><?= moderation_e((string) ($order['customer_email'] ?: 'Not supplied')) ?></dd>
 </div>
 
-<?php if ($shippingAddress): ?>
 <div>
-    <dt>Address</dt>
+    <dt>Phone</dt>
+    <dd><?= moderation_e((string) ($order['shipping_phone'] ?: 'Not supplied')) ?></dd>
+</div>
+
+<div>
+    <dt>Ship to</dt>
     <dd>
-        <?php foreach ($shippingAddress as $key => $value): ?>
-            <?php if (is_scalar($value) && trim((string) $value) !== ''): ?>
-                <?= moderation_e((string) $value) ?><br>
+        <?php if ($shippingAddress): ?>
+            <?php if (!empty($shippingAddress['line1'])): ?>
+                <?= moderation_e((string) $shippingAddress['line1']) ?><br>
             <?php endif; ?>
-        <?php endforeach; ?>
+            <?php if (!empty($shippingAddress['line2'])): ?>
+                <?= moderation_e((string) $shippingAddress['line2']) ?><br>
+            <?php endif; ?>
+            <?php
+            $locality = array_filter([
+                trim((string) ($shippingAddress['city'] ?? '')),
+                trim((string) ($shippingAddress['state'] ?? '')),
+                trim((string) ($shippingAddress['postal_code'] ?? '')),
+            ], static fn(string $part): bool => $part !== '');
+            ?>
+            <?php if ($locality): ?>
+                <?= moderation_e(implode(' ', $locality)) ?><br>
+            <?php endif; ?>
+            <?php if (!empty($shippingAddress['country'])): ?>
+                <?= moderation_e((string) $shippingAddress['country']) ?>
+            <?php endif; ?>
+        <?php else: ?>
+            Not supplied
+        <?php endif; ?>
     </dd>
 </div>
-<?php endif; ?>
 
 </dl>
 
