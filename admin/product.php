@@ -700,7 +700,21 @@ $valueText =
 </summary>
 <div class="admin-commerce-collapse-body">
 
+<div class="admin-commerce-image-order-link">
 
+    <a
+        class="admin-button"
+        href="/product-image-order.php?id=<?= (int) $productId ?>"
+    >
+        <i
+            class="fa-solid fa-arrow-down-1-9"
+            aria-hidden="true"
+        ></i>
+
+        Order photos
+    </a>
+
+</div>
 
 <form
     class="admin-commerce-generator"
