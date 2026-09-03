@@ -9236,3 +9236,85 @@ html[data-reduced-motion="true"] .admin-sidebar {
     font-size: .72rem;
     line-height: 1.5;
 }
+
+
+/* =========================================================
+   ADMIN SIDEBAR VIEWPORT / SCROLL FIX
+
+   Header and account utilities remain visible.
+   Only the navigation list scrolls.
+   ========================================================= */
+
+.admin-sidebar {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+
+    overflow: hidden;
+}
+
+.admin-sidebar-top {
+    flex: 0 0 auto;
+}
+
+.admin-nav {
+    min-height: 0;
+    flex: 1 1 0;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-gutter: stable;
+}
+
+.admin-sidebar-bottom {
+    flex: 0 0 auto;
+
+    padding-bottom: max(
+        18px,
+        env(safe-area-inset-bottom)
+    );
+
+    background: var(--surface);
+}
+
+
+/* Mobile/tablet admin drawer */
+
+@media (max-width: 980px) {
+
+    .admin-sidebar {
+        top: 0;
+        bottom: auto;
+
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+
+    .admin-sidebar-top {
+        padding-top: max(
+            12px,
+            env(safe-area-inset-top)
+        );
+    }
+
+    .admin-nav {
+        min-height: 0;
+
+        padding-bottom: 16px;
+    }
+
+    .admin-sidebar-bottom {
+        padding-bottom: max(
+            18px,
+            calc(
+                env(safe-area-inset-bottom)
+                + 8px
+            )
+        );
+    }
+}
