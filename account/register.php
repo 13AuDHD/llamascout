@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/auth.php';
 require_once dirname(__DIR__) . '/app/mail.php';
 require_once dirname(__DIR__) . '/app/username-policy.php';
-require_once dirname(__DIR__) . '/app/timezone.php';
+require_once dirname(__DIR__) . '/app/registration-source.php';
 require_once dirname(__DIR__) . '/app/membership-invitations.php';
 
 start_llama_session();
@@ -119,8 +119,7 @@ $values = [
                 )
             )
             : '',
-    'timezone' =>
-        llama_default_timezone(),
+    'registration_source' => '',
 ];
 
 
