@@ -4,12 +4,64 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/printful.php';
+require_once dirname(__DIR__) . '/app/printful-mapping.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser =
     moderation_require_admin();
 
 $db = db();
+$actorUserId = (int) ($adminUser['id'] ?? 0);
+
+$notice = '';
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (
+        !moderation_verify_csrf(
+            (string) ($_POST['csrf_token'] ?? '')
+        )
+    ) {
+        $error = 'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            $action = trim(
+                (string) ($_POST['integration_action'] ?? '')
+            );
+
+            if ($action === 'apply-printful-exact-mappings') {
+                $catalogForMapping = llama_printful_catalog();
+
+                $applied = llama_printful_apply_exact_mappings(
+                    $db,
+                    $actorUserId,
+                    $catalogForMapping
+                );
+
+                $notice = $applied > 0
+                    ? number_format($applied) .
+                        ' exact Printful mapping' .
+                        ($applied === 1 ? '' : 's') .
+                        ' applied.'
+                    : 'No new exact Printful mappings were available.';
+            }
+        } catch (Throwable $exception) {
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.printful_mapping',
+                [],
+                [InvalidArgumentException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference(
+                    'Printful mappings could not be updated.',
+                    $reference
+                );
+        }
+    }
+}
 
 $stats =
     admin_dashboard_stats(
@@ -49,7 +101,7 @@ if ($printfulConfigured) {
             llama_printful_catalog();
 
         $printfulDiagnostics =
-            llama_printful_local_variant_diagnostics(
+            llama_printful_mapping_diagnostics(
                 $db,
                 $printfulCatalog
             );
@@ -110,6 +162,18 @@ $problemCount =
 
 require __DIR__ . '/_header.php';
 ?>
+
+<?php if ($notice !== ''): ?>
+<div class="admin-user-notice is-success">
+    <?= moderation_e($notice) ?>
+</div>
+<?php endif; ?>
+
+<?php if ($error !== ''): ?>
+<div class="admin-user-notice is-error">
+    <?= moderation_e($error) ?>
+</div>
+<?php endif; ?>
 
 <section class="admin-integration-grid">
 
@@ -405,6 +469,36 @@ require __DIR__ . '/_header.php';
 </div>
 
 </div>
+
+<?php if ($suggestedCount > 0): ?>
+<form
+    class="admin-integration-mapping-action"
+    method="post"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+    <input
+        type="hidden"
+        name="integration_action"
+        value="apply-printful-exact-mappings"
+    >
+
+    <div>
+        <strong>Safe exact matches available</strong>
+        <span>
+            Llama Scout found one and only one Printful variant with the same SKU for
+            <?= number_format($suggestedCount) ?> local variant<?= $suggestedCount === 1 ? '' : 's' ?>.
+        </span>
+    </div>
+
+    <button class="admin-button" type="submit">
+        Apply exact Printful mappings
+    </button>
+</form>
+<?php endif; ?>
 
 <div class="admin-integration-table-wrap">
 
