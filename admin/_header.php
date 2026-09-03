@@ -296,6 +296,14 @@ function admin_shell_nav_class(
             </a>
 
             <a
+                class="<?= admin_shell_nav_class('integrations', $adminActiveNav) ?>"
+                href="<?= moderation_e($adminUrl . '/integrations.php') ?>"
+            >
+                <i class="fa-solid fa-plug" aria-hidden="true"></i>
+                <span>Integrations</span>
+            </a>
+
+            <a
                 class="<?= admin_shell_nav_class('system', $adminActiveNav) ?>"
                 href="<?= moderation_e($adminUrl . '/system.php') ?>"
             >
