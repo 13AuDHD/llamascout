@@ -8793,3 +8793,160 @@ html[data-reduced-motion="true"] .admin-sidebar {
         grid-column: 1 / -1;
     }
 }
+
+/* =========================================================
+   COMMERCE ORDERS TABLE
+
+   Orders intentionally use their own table classes.
+   Do not inherit the responsive column rules intended for
+   .admin-user-table.
+   ========================================================= */
+
+.admin-commerce-orders-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.admin-commerce-orders-table {
+    width: 100%;
+    min-width: 1050px;
+
+    border-collapse: collapse;
+
+    font-size: .78rem;
+}
+
+.admin-commerce-orders-table th,
+.admin-commerce-orders-table td {
+    padding: 13px 14px;
+
+    border-bottom: 1px solid var(--border);
+
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.admin-commerce-orders-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-commerce-orders-table th {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 850;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.admin-commerce-order-number {
+    color: var(--text);
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.admin-commerce-order-number:hover,
+.admin-commerce-order-number:focus-visible {
+    text-decoration: underline;
+}
+
+.admin-commerce-order-action {
+    text-align: right;
+}
+
+
+/* =========================================================
+   COMMERCE ORDERS: CARD LAYOUT
+   ========================================================= */
+
+@media (max-width: 760px) {
+
+    .admin-commerce-orders-table-wrap {
+        overflow: visible;
+    }
+
+    .admin-commerce-orders-table {
+        min-width: 0;
+    }
+
+    .admin-commerce-orders-table thead {
+        display: none;
+    }
+
+    .admin-commerce-orders-table,
+    .admin-commerce-orders-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-commerce-orders-table tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 9px 14px;
+
+        padding: 15px 16px;
+
+        border-bottom: 1px solid var(--border);
+    }
+
+    .admin-commerce-orders-table tbody tr:last-child {
+        border-bottom: 0;
+    }
+
+    .admin-commerce-orders-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+
+        grid-column: 1 / -1;
+
+        padding: 0;
+
+        border: 0;
+
+        white-space: normal;
+    }
+
+    .admin-commerce-orders-table td::before {
+        content: attr(data-label);
+
+        flex: 0 0 auto;
+
+        color: var(--text-muted);
+
+        font-size: .65rem;
+        font-weight: 850;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .admin-commerce-orders-table td:first-child {
+        display: block;
+
+        margin-bottom: 3px;
+    }
+
+    .admin-commerce-orders-table td:first-child::before {
+        display: none;
+    }
+
+    .admin-commerce-order-number {
+        font-size: .92rem;
+    }
+
+    .admin-commerce-order-action {
+        display: block !important;
+
+        margin-top: 5px;
+    }
+
+    .admin-commerce-order-action::before {
+        display: none;
+    }
+
+    .admin-commerce-order-action .admin-button {
+        width: 100%;
+    }
+}
