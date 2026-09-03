@@ -24,7 +24,7 @@ function llama_printful_config(): array
         return $config;
     }
 
-    $path = dirname(__DIR__) . '/private/printful.php';
+    $path = dirname(__DIR__, 2) . '/private/printful.php';
 
     if (!is_file($path)) {
         $config = [];
