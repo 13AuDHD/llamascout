@@ -197,6 +197,23 @@ function shop_checkout_ensure_storage(PDO $db): void
             KEY idx_shop_stripe_status (status, received_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
+
+    /* Existing installs may already have an older shop_stripe_events table.
+       CREATE TABLE IF NOT EXISTS does not migrate that table, so explicitly
+       add every newer column that webhook processing depends on. */
+    $stripeEventColumns = [
+        'stripe_event_id' => 'VARCHAR(255) NULL',
+        'event_type' => 'VARCHAR(100) NULL',
+        'order_id' => 'BIGINT UNSIGNED NULL',
+        'status' => 'VARCHAR(20) NOT NULL DEFAULT "processing"',
+        'error_message' => 'TEXT NULL',
+        'received_at' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+        'processed_at' => 'DATETIME NULL',
+    ];
+
+    foreach ($stripeEventColumns as $column => $definition) {
+        shop_checkout_add_column($db, 'shop_stripe_events', $column, $definition);
+    }
 }
 
 function shop_checkout_settings(): array
@@ -459,15 +476,6 @@ function shop_checkout_create_stripe_session(PDO $db, array $order, array $items
         'return_url' => $returnUrl,
         'expires_at' => $expiresAt,
         'billing_address_collection' => 'auto',
-
-        // Stripe Managed Payments currently does not support the
-        // shipping_address_collection / shipping_options parameters
-        // required by Llama Scout Shop checkout. Disable it only for
-        // this Checkout Session so membership billing and the account's
-        // global Stripe settings remain untouched.
-        'managed_payments' => [
-            'enabled' => false,
-        ],
     ];
 
     if ($settings['automatic_tax']) {
@@ -644,7 +652,7 @@ function shop_checkout_commit_paid_session(PDO $db, object $session): void
         }
 
         $customerDetails = $session->customer_details ?? null;
-        $shippingDetails = $session->shipping_details ?? null;
+        $shippingDetails = $session->collected_information->shipping_details ?? ($session->shipping_details ?? null);
         $shippingAddress = $shippingDetails->address ?? ($customerDetails->address ?? null);
         $billingAddress = $customerDetails->address ?? null;
         $customerEmail = trim((string) ($customerDetails->email ?? $session->customer_email ?? ''));
