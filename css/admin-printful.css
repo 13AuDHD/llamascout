@@ -1,24 +1,30 @@
 /* =========================================================
-   PRINTFUL CATALOG & MAPPING
+   LLAMA SCOUT ADMIN
+   PRINTFUL CATALOG & VARIANT MAPPING
+   ========================================================= */
+
+
+/* =========================================================
+   PAGE INTRO
    ========================================================= */
 
 .admin-printful-explainer {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
 
     margin: 18px;
-    padding: 14px;
+    padding: 16px;
 
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 14px;
 
     background: var(--background);
 }
 
 .admin-printful-explainer > i {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
 
     display: grid;
     place-items: center;
@@ -26,54 +32,81 @@
     flex: 0 0 auto;
 
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 11px;
 
+    background: var(--surface);
     color: var(--text-muted);
+
+    font-size: 1rem;
 }
 
-.admin-printful-explainer strong,
+.admin-printful-explainer > div {
+    min-width: 0;
+}
+
+.admin-printful-explainer strong {
+    display: block;
+
+    color: var(--text);
+
+    font-size: .88rem;
+    font-weight: 850;
+}
+
 .admin-printful-explainer span {
     display: block;
-}
 
-.admin-printful-explainer span {
-    margin-top: 4px;
+    margin-top: 5px;
 
     color: var(--text-muted);
 
     font-size: .75rem;
-    line-height: 1.5;
+    line-height: 1.55;
 }
+
+
+/* =========================================================
+   PRODUCT LIST
+   ========================================================= */
 
 .admin-printful-products {
     display: grid;
-    gap: 18px;
+    gap: 20px;
 
     padding: 0 18px 18px;
 }
 
 .admin-printful-product {
+    min-width: 0;
+
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
 
     background: var(--background);
 
     overflow: hidden;
 }
 
+
+/* =========================================================
+   PRODUCT HEADER
+   ========================================================= */
+
 .admin-printful-product > header {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
 
-    padding: 14px 16px;
+    padding: 16px 18px;
 
     border-bottom: 1px solid var(--border);
+
+    background: var(--surface);
 }
 
 .admin-printful-product-image {
-    width: 58px;
-    height: 58px;
+    width: 72px;
+    height: 72px;
 
     display: grid;
     place-items: center;
@@ -81,7 +114,9 @@
     flex: 0 0 auto;
 
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
+
+    background: var(--background);
 
     overflow: hidden;
 }
@@ -95,35 +130,51 @@
     object-fit: cover;
 }
 
-.admin-printful-product > header p,
-.admin-printful-product > header h3 {
-    margin: 0;
+.admin-printful-product-image > i {
+    color: var(--text-muted);
+
+    font-size: 1.25rem;
+}
+
+.admin-printful-product > header > div:last-child {
+    min-width: 0;
 }
 
 .admin-printful-product > header p {
+    margin: 0;
+
     color: var(--text-muted);
 
-    font-size: .67rem;
-    font-weight: 850;
-    letter-spacing: .06em;
+    font-size: .65rem;
+    font-weight: 900;
+    letter-spacing: .09em;
     text-transform: uppercase;
 }
 
 .admin-printful-product > header h3 {
-    margin-top: 3px;
+    margin: 3px 0 0;
 
-    font-size: 1rem;
+    color: var(--text);
+
+    font-size: 1.08rem;
+    line-height: 1.2;
 }
 
 .admin-printful-product > header span {
     display: block;
 
-    margin-top: 4px;
+    margin-top: 6px;
 
     color: var(--text-muted);
 
     font-size: .7rem;
+    line-height: 1.4;
 }
+
+
+/* =========================================================
+   VARIANT LIST
+   ========================================================= */
 
 .admin-printful-variants {
     display: grid;
@@ -131,9 +182,13 @@
 
 .admin-printful-variant {
     display: grid;
-    gap: 14px;
+    grid-template-columns:
+        minmax(260px, .9fr)
+        minmax(340px, 1.3fr);
+    gap: 22px;
+    align-items: center;
 
-    padding: 14px 16px;
+    padding: 16px 18px;
 
     border-bottom: 1px solid var(--border);
 }
@@ -142,65 +197,110 @@
     border-bottom: 0;
 }
 
-.admin-printful-variant-info {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+.admin-printful-variant:hover {
+    background: var(--surface);
 }
 
-.admin-printful-variant-info strong,
+
+/* =========================================================
+   PRINTFUL VARIANT INFORMATION
+   ========================================================= */
+
+.admin-printful-variant-info {
+    min-width: 0;
+
+    display: grid;
+    gap: 9px;
+}
+
+.admin-printful-variant-info > div {
+    min-width: 0;
+}
+
+.admin-printful-variant-info strong {
+    display: block;
+
+    color: var(--text);
+
+    font-size: .82rem;
+    font-weight: 850;
+    line-height: 1.35;
+}
+
 .admin-printful-variant-info span {
     display: block;
-}
 
-.admin-printful-variant-info span {
     margin-top: 3px;
 
     color: var(--text-muted);
 
-    font-size: .7rem;
+    font-size: .67rem;
 }
 
 .admin-printful-variant-info code {
-    max-width: 48%;
+    display: block;
 
-    padding: 5px 8px;
+    width: fit-content;
+    max-width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 6px 8px;
 
     border: 1px solid var(--border);
     border-radius: 8px;
 
-    background: var(--surface);
+    background: var(--background);
     color: var(--text-muted);
 
-    font-size: .67rem;
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+    font-size: .64rem;
+    line-height: 1.35;
 
     overflow-wrap: anywhere;
 }
 
-.admin-printful-map,
-.admin-printful-mapped {
+
+/* =========================================================
+   MAPPING FORM
+   ========================================================= */
+
+.admin-printful-map {
+    min-width: 0;
+
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 10px;
     align-items: end;
 }
 
 .admin-printful-map label {
+    min-width: 0;
+
     display: grid;
     gap: 6px;
 }
 
-.admin-printful-map label > span,
-.admin-printful-mapped span {
+.admin-printful-map label > span {
     color: var(--text-muted);
 
-    font-size: .68rem;
-    font-weight: 800;
+    font-size: .66rem;
+    font-weight: 850;
+    letter-spacing: .02em;
 }
 
 .admin-printful-map select {
     width: 100%;
+    min-width: 0;
     min-height: 42px;
 
     box-sizing: border-box;
@@ -210,8 +310,45 @@
     border: 1px solid var(--border);
     border-radius: 10px;
 
-    background: var(--surface);
+    background: var(--background);
     color: var(--text);
+
+    font: inherit;
+    font-size: .76rem;
+}
+
+.admin-printful-map select:focus {
+    outline: 2px solid var(--text-muted);
+    outline-offset: 2px;
+}
+
+.admin-printful-map .admin-button {
+    min-height: 42px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   CURRENT MAPPING
+   ========================================================= */
+
+.admin-printful-mapped {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 12px;
+    align-items: center;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
 }
 
 .admin-printful-mapped > div {
@@ -221,30 +358,178 @@
     gap: 3px;
 }
 
+.admin-printful-mapped span {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.admin-printful-mapped strong {
+    color: var(--text);
+
+    font-size: .77rem;
+    line-height: 1.35;
+
+    overflow-wrap: anywhere;
+}
+
 .admin-printful-mapped small {
     color: var(--text-muted);
 
-    font-size: .7rem;
+    font-size: .65rem;
+    line-height: 1.35;
+
+    overflow-wrap: anywhere;
 }
 
-@media (max-width: 700px) {
+.admin-printful-mapped form {
+    margin: 0;
+}
 
-    .admin-printful-variant-info,
+.admin-printful-mapped .admin-button {
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   EMPTY / ERROR STATES
+   ========================================================= */
+
+.admin-panel .admin-empty-state {
+    padding: 48px 24px;
+}
+
+.admin-panel .admin-empty-state > i {
+    margin-bottom: 12px;
+
+    color: var(--text-muted);
+
+    font-size: 1.6rem;
+}
+
+.admin-panel .admin-empty-state h3 {
+    margin: 0;
+
+    color: var(--text);
+
+    font-size: 1rem;
+}
+
+.admin-panel .admin-empty-state p {
+    max-width: 520px;
+
+    margin: 8px auto 0;
+
+    color: var(--text-muted);
+
+    font-size: .75rem;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1000px) {
+
+    .admin-printful-variant {
+        grid-template-columns:
+            minmax(220px, .8fr)
+            minmax(300px, 1.2fr);
+    }
+}
+
+
+/* =========================================================
+   SMALL TABLET / PORTRAIT
+   ========================================================= */
+
+@media (max-width: 780px) {
+
+    .admin-printful-product > header {
+        padding: 14px;
+    }
+
+    .admin-printful-product-image {
+        width: 62px;
+        height: 62px;
+    }
+
+    .admin-printful-variant {
+        grid-template-columns: 1fr;
+
+        gap: 12px;
+
+        padding: 14px;
+    }
+
     .admin-printful-map,
     .admin-printful-mapped {
         grid-template-columns: 1fr;
     }
 
-    .admin-printful-variant-info {
-        flex-direction: column;
-    }
-
-    .admin-printful-variant-info code {
-        max-width: 100%;
-    }
-
     .admin-printful-map .admin-button,
     .admin-printful-mapped .admin-button {
         width: 100%;
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 520px) {
+
+    .admin-printful-explainer {
+        margin: 12px;
+        padding: 12px;
+    }
+
+    .admin-printful-products {
+        gap: 14px;
+
+        padding: 0 12px 12px;
+    }
+
+    .admin-printful-product {
+        border-radius: 12px;
+    }
+
+    .admin-printful-product > header {
+        align-items: flex-start;
+
+        gap: 11px;
+    }
+
+    .admin-printful-product-image {
+        width: 54px;
+        height: 54px;
+
+        border-radius: 9px;
+    }
+
+    .admin-printful-product > header h3 {
+        font-size: .95rem;
+    }
+
+    .admin-printful-variant {
+        padding: 13px 12px;
+    }
+
+    .admin-printful-variant-info code {
+        width: 100%;
+    }
+
+    .admin-printful-map select {
+        font-size: .72rem;
+    }
+
+    .admin-printful-mapped {
+        padding: 10px;
     }
 }
