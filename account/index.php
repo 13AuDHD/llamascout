@@ -436,6 +436,8 @@ require dirname(__DIR__) . '/partials/header.php';
             ></i>
         </a>
 
+        <?php require __DIR__ . '/_orders-dashboard-card.php'; ?>
+
     </section>
 
 
