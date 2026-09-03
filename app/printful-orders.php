@@ -134,7 +134,7 @@ function llama_printful_fulfillment_items(
          INNER JOIN shop_order_items oi
             ON oi.id = fi.order_item_id
          WHERE fi.fulfillment_id = ?
-         ORDER BY fi.id ASC'
+         ORDER BY fi.order_item_id ASC'
     );
 
     $stmt->execute([$fulfillmentId]);
