@@ -9827,3 +9827,67 @@ html[data-reduced-motion="true"] .admin-sidebar {
         width: 100%;
     }
 }
+
+
+
+/* =========================================================
+   PRODUCT PHOTO POSITION
+   ========================================================= */
+
+.admin-commerce-photo-position {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-left: auto;
+}
+
+.admin-commerce-photo-position label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.admin-commerce-photo-position label > span {
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 850;
+}
+
+.admin-commerce-photo-position input {
+    width: 48px;
+    height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font-weight: 850;
+    text-align: center;
+}
+
+.admin-commerce-photo-position .admin-button {
+    min-width: 0;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+
+@media (max-width: 560px) {
+
+    .admin-commerce-photo-position {
+        margin-left: 0;
+    }
+}
+
+
+
+
+
+
