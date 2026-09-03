@@ -9887,6 +9887,27 @@ html[data-reduced-motion="true"] .admin-sidebar {
 }
 
 
+/* =========================================================
+   INTEGRATION CARD ACTION
+   ========================================================= */
+
+.admin-integration-catalog-action {
+    padding: 14px 16px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-integration-catalog-action .admin-button {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    box-sizing: border-box;
+}
+
 
 
 
