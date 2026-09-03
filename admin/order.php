@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
+require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -67,6 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Fulfillment updated.';
+            } elseif ($action === 'save-package') {
+                admin_fulfillment_save_package(
+                    $db,
+                    $actorUserId,
+                    $orderId,
+                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    $_POST
+                );
+
+                $notice = 'Package details saved.';
             }
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
@@ -115,6 +126,7 @@ if (!empty($order['shipping_address_json'])) {
 
 $fulfillmentProviders = admin_shop_fulfillment_providers();
 $trackingCarriers = admin_shop_tracking_carriers();
+$packageTypes = admin_fulfillment_package_types();
 
 $defaultFulfillmentProvider = 'llama_scout';
 $shippingItemProviders = [];
@@ -525,6 +537,267 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 </section>
+
+
+<?php if ($fulfillments): ?>
+<?php foreach ($fulfillments as $fulfillment): ?>
+<?php
+$currentProvider = admin_shop_normalize_provider(
+    (string) ($fulfillment['fulfillment_provider'] ?? '')
+);
+
+if ($currentProvider === '') {
+    $currentProvider = 'llama_scout';
+}
+
+$package = $currentProvider === 'llama_scout'
+    ? admin_fulfillment_package(
+        $db,
+        (int) $fulfillment['id']
+    )
+    : null;
+?>
+
+<?php if ($currentProvider === 'llama_scout'): ?>
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Llama Scout Fulfillment</p>
+        <h2>Package &amp; Label</h2>
+    </div>
+
+    <span>
+        Fulfillment #<?= (int) $fulfillment['id'] ?>
+    </span>
+</header>
+
+<form
+    class="admin-commerce-package-form"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(moderation_csrf_token()) ?>"
+>
+<input
+    type="hidden"
+    name="order_id"
+    value="<?= (int) $orderId ?>"
+>
+<input
+    type="hidden"
+    name="fulfillment_id"
+    value="<?= (int) $fulfillment['id'] ?>"
+>
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="save-package"
+>
+
+<div class="admin-commerce-package-grid">
+
+<label>
+    <span>Package type</span>
+    <select name="package_type" required>
+        <?php foreach ($packageTypes as $typeKey => $typeLabel): ?>
+            <option
+                value="<?= moderation_e($typeKey) ?>"
+                <?= ($package['package_type'] ?? 'poly_mailer') === $typeKey
+                    ? 'selected'
+                    : '' ?>
+            >
+                <?= moderation_e($typeLabel) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</label>
+
+<label>
+    <span>Weight</span>
+    <div class="admin-commerce-measure-input">
+        <input
+            type="number"
+            name="weight_oz"
+            min="0.01"
+            max="9999"
+            step="0.01"
+            inputmode="decimal"
+            required
+            value="<?= moderation_e(
+                (string) ($package['weight_oz'] ?? '')
+            ) ?>"
+        >
+        <span>oz</span>
+    </div>
+</label>
+
+<label>
+    <span>Length</span>
+    <div class="admin-commerce-measure-input">
+        <input
+            type="number"
+            name="length_in"
+            min="0.01"
+            max="9999"
+            step="0.01"
+            inputmode="decimal"
+            value="<?= moderation_e(
+                (string) ($package['length_in'] ?? '')
+            ) ?>"
+        >
+        <span>in</span>
+    </div>
+</label>
+
+<label>
+    <span>Width</span>
+    <div class="admin-commerce-measure-input">
+        <input
+            type="number"
+            name="width_in"
+            min="0.01"
+            max="9999"
+            step="0.01"
+            inputmode="decimal"
+            value="<?= moderation_e(
+                (string) ($package['width_in'] ?? '')
+            ) ?>"
+        >
+        <span>in</span>
+    </div>
+</label>
+
+<label>
+    <span>Height</span>
+    <div class="admin-commerce-measure-input">
+        <input
+            type="number"
+            name="height_in"
+            min="0.01"
+            max="9999"
+            step="0.01"
+            inputmode="decimal"
+            value="<?= moderation_e(
+                (string) ($package['height_in'] ?? '')
+            ) ?>"
+        >
+        <span>in</span>
+    </div>
+</label>
+
+</div>
+
+<label class="admin-commerce-package-notes">
+    <span>Internal packing notes</span>
+    <textarea
+        name="package_notes"
+        rows="3"
+        maxlength="2000"
+        placeholder="Example: Include sticker pack. Fold bandanna flat."
+    ><?= moderation_e(
+        (string) ($package['internal_notes'] ?? '')
+    ) ?></textarea>
+</label>
+
+<div class="admin-user-form-actions">
+    <button class="admin-button" type="submit">
+        Save package
+    </button>
+</div>
+
+</form>
+
+<div class="admin-commerce-label-box">
+    <div>
+        <i class="fa-solid fa-tag" aria-hidden="true"></i>
+
+        <div>
+            <strong>Create shipping label</strong>
+            <span>
+                Package data and destination are ready for a label provider.
+            </span>
+        </div>
+    </div>
+
+    <button
+        class="admin-button"
+        type="button"
+        disabled
+        title="Connect a shipping-label provider first"
+    >
+        Label service not connected
+    </button>
+</div>
+
+</section>
+<?php endif; ?>
+
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>History</p>
+        <h2>Fulfillment Timeline</h2>
+    </div>
+</header>
+
+<dl class="admin-commerce-fulfillment-timeline">
+
+<div>
+    <dt>Created</dt>
+    <dd>
+        <?= moderation_e(
+            admin_fulfillment_format_timestamp(
+                $fulfillment['created_at'] ?? ''
+            )
+        ) ?>
+    </dd>
+</div>
+
+<div>
+    <dt>Submitted / processing</dt>
+    <dd>
+        <?= moderation_e(
+            admin_fulfillment_format_timestamp(
+                $fulfillment['submitted_at'] ?? ''
+            )
+        ) ?>
+    </dd>
+</div>
+
+<div>
+    <dt>Shipped</dt>
+    <dd>
+        <?= moderation_e(
+            admin_fulfillment_format_timestamp(
+                $fulfillment['shipped_at'] ?? ''
+            )
+        ) ?>
+    </dd>
+</div>
+
+<div>
+    <dt>Delivered</dt>
+    <dd>
+        <?= moderation_e(
+            admin_fulfillment_format_timestamp(
+                $fulfillment['delivered_at'] ?? ''
+            )
+        ) ?>
+    </dd>
+</div>
+
+</dl>
+
+</section>
+
+<?php endforeach; ?>
+<?php endif; ?>
 
 
 </div>
