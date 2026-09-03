@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/shop-checkout.php';
+require_once __DIR__ . '/app/shop-fulfillment-routing.php';
 
 $db = db();
 
@@ -73,7 +74,27 @@ try {
                 ? llama_stripe_client()->checkout->sessions->retrieve($sessionId, [])
                 : $object;
 
-            shop_checkout_commit_paid_session($db, $session);
+            shop_checkout_commit_paid_session(
+                $db,
+                $session
+            );
+
+            /*
+             * Once payment is committed, automatically split every
+             * physical order into provider-specific fulfillments.
+             *
+             * Example:
+             *   Printful shirt -> Printful fulfillment
+             *   Bandanna      -> Llama Scout Fulfillment
+             *
+             * The router is idempotent, so Stripe webhook retries
+             * cannot duplicate already-linked order items.
+             */
+            shop_fulfillment_route_paid_order(
+                $db,
+                $orderId
+            );
+
         } elseif ($eventType === 'checkout.session.async_payment_failed') {
             shop_checkout_mark_failed($db, $orderId, 'failed');
         } elseif ($eventType === 'checkout.session.expired') {
