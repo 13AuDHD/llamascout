@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
+require_once dirname(__DIR__) . '/app/shipping.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -78,6 +79,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Package details saved.';
+            } elseif ($action === 'quote-shipping-rates') {
+                $rateCount = admin_fulfillment_quote_rates(
+                    $db,
+                    $actorUserId,
+                    $orderId,
+                    (int) ($_POST['fulfillment_id'] ?? 0)
+                );
+
+                $notice =
+                    number_format($rateCount) .
+                    ' shipping rate' .
+                    ($rateCount === 1 ? '' : 's') .
+                    ' loaded.';
+            } elseif ($action === 'buy-shipping-label') {
+                $label = admin_fulfillment_buy_label(
+                    $db,
+                    $actorUserId,
+                    $orderId,
+                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    (int) ($_POST['rate_id'] ?? 0)
+                );
+
+                $notice =
+                    'Shipping label purchased. Tracking: ' .
+                    (string) $label['tracking_code'];
             }
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
@@ -711,26 +737,232 @@ $package = $currentProvider === 'llama_scout'
 
 </form>
 
+<?php
+$shippingConfigured =
+    llama_shipping_easypost_configured();
+
+$shippingRates =
+    admin_fulfillment_rate_rows(
+        $db,
+        (int) $fulfillment['id']
+    );
+
+$shippingLabel =
+    admin_fulfillment_label(
+        $db,
+        (int) $fulfillment['id']
+    );
+?>
+
 <div class="admin-commerce-label-box">
+
+<?php if ($shippingLabel): ?>
+
+<div class="admin-commerce-label-result">
+    <div>
+        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+
+        <div>
+            <strong>Shipping label ready</strong>
+            <span>
+                <?= moderation_e(
+                    (string) $shippingLabel['carrier']
+                ) ?>
+                <?= moderation_e(
+                    (string) $shippingLabel['service']
+                ) ?>
+                | <?= moderation_e(
+                    admin_shop_money(
+                        (int) $shippingLabel['postage_cents'],
+                        strtolower(
+                            (string) $shippingLabel['currency']
+                        )
+                    )
+                ) ?>
+            </span>
+        </div>
+    </div>
+
+    <div class="admin-commerce-label-actions">
+        <a
+            class="admin-button"
+            href="<?= moderation_e(
+                (string) $shippingLabel['label_url']
+            ) ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            Open label
+        </a>
+
+        <?php if (!empty($shippingLabel['tracking_url'])): ?>
+        <a
+            class="admin-button"
+            href="<?= moderation_e(
+                (string) $shippingLabel['tracking_url']
+            ) ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            Track package
+        </a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php elseif (!$shippingConfigured): ?>
+
+<div>
+    <i class="fa-solid fa-plug" aria-hidden="true"></i>
+
+    <div>
+        <strong>Connect EasyPost</strong>
+        <span>
+            Add the EasyPost API key and Llama Scout Fulfillment origin address to the private shipping configuration.
+        </span>
+    </div>
+</div>
+
+<button
+    class="admin-button"
+    type="button"
+    disabled
+>
+    Shipping not configured
+</button>
+
+<?php else: ?>
+
+<div class="admin-commerce-label-heading">
     <div>
         <i class="fa-solid fa-tag" aria-hidden="true"></i>
 
         <div>
             <strong>Create shipping label</strong>
             <span>
-                Package data and destination are ready for a label provider.
+                Get live carrier rates, choose one, then purchase the label.
             </span>
         </div>
     </div>
 
-    <button
-        class="admin-button"
-        type="button"
-        disabled
-        title="Connect a shipping-label provider first"
-    >
-        Label service not connected
-    </button>
+    <form method="post">
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= moderation_e(moderation_csrf_token()) ?>"
+        >
+        <input
+            type="hidden"
+            name="order_id"
+            value="<?= (int) $orderId ?>"
+        >
+        <input
+            type="hidden"
+            name="fulfillment_id"
+            value="<?= (int) $fulfillment['id'] ?>"
+        >
+        <input
+            type="hidden"
+            name="shop_admin_action"
+            value="quote-shipping-rates"
+        >
+
+        <button
+            class="admin-button"
+            type="submit"
+        >
+            <?= $shippingRates
+                ? 'Refresh rates'
+                : 'Get shipping rates' ?>
+        </button>
+    </form>
+</div>
+
+<?php if ($shippingRates): ?>
+<div class="admin-commerce-rate-list">
+
+<?php foreach ($shippingRates as $rate): ?>
+<form
+    class="admin-commerce-rate-row"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(moderation_csrf_token()) ?>"
+>
+<input
+    type="hidden"
+    name="order_id"
+    value="<?= (int) $orderId ?>"
+>
+<input
+    type="hidden"
+    name="fulfillment_id"
+    value="<?= (int) $fulfillment['id'] ?>"
+>
+<input
+    type="hidden"
+    name="rate_id"
+    value="<?= (int) $rate['id'] ?>"
+>
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="buy-shipping-label"
+>
+
+<div>
+    <strong>
+        <?= moderation_e(
+            (string) $rate['carrier']
+        ) ?>
+        <?= moderation_e(
+            (string) $rate['service']
+        ) ?>
+    </strong>
+
+    <span>
+        <?php if (!empty($rate['delivery_days'])): ?>
+            Estimated <?= (int) $rate['delivery_days'] ?>
+            day<?= (int) $rate['delivery_days'] === 1 ? '' : 's' ?>
+        <?php elseif (!empty($rate['delivery_date'])): ?>
+            Estimated <?= moderation_e(
+                (string) $rate['delivery_date']
+            ) ?>
+        <?php else: ?>
+            Delivery estimate unavailable
+        <?php endif; ?>
+    </span>
+</div>
+
+<strong>
+    <?= moderation_e(
+        admin_shop_money(
+            (int) $rate['rate_cents'],
+            strtolower(
+                (string) $rate['currency']
+            )
+        )
+    ) ?>
+</strong>
+
+<button
+    class="admin-button"
+    type="submit"
+>
+    Buy label
+</button>
+
+</form>
+<?php endforeach; ?>
+
+</div>
+<?php endif; ?>
+
+<?php endif; ?>
+
 </div>
 
 </section>
