@@ -94,7 +94,7 @@ require __DIR__ . '/_header.php';
         Filter
     </button>
 
-    <a class="admin-button is-muted" href="/orders.php">
+    <a class="admin-button" href="/orders.php">
         Clear
     </a>
 </div>
@@ -120,8 +120,8 @@ require __DIR__ . '/_header.php';
 </div>
 <?php else: ?>
 
-<div class="admin-user-table-wrap">
-<table class="admin-user-table">
+<div class="admin-commerce-orders-table-wrap">
+<table class="admin-commerce-orders-table">
 
 <thead>
 <tr>
@@ -133,7 +133,7 @@ require __DIR__ . '/_header.php';
     <th>Status</th>
     <th>Fulfillment</th>
     <th>Date</th>
-    <th></th>
+    <th><span class="sr-only">Actions</span></th>
 </tr>
 </thead>
 
@@ -141,13 +141,16 @@ require __DIR__ . '/_header.php';
 
 <?php foreach ($orders as $order): ?>
 <tr>
-    <td>
-        <strong>
+    <td data-label="Order">
+        <a
+            class="admin-commerce-order-number"
+            href="/order.php?id=<?= (int) $order['id'] ?>"
+        >
             <?= moderation_e((string) $order['order_number']) ?>
-        </strong>
+        </a>
     </td>
 
-    <td>
+    <td data-label="Customer">
         <?= moderation_e(
             (string) (
                 $order['customer_name']
@@ -157,11 +160,11 @@ require __DIR__ . '/_header.php';
         ) ?>
     </td>
 
-    <td>
+    <td data-label="Items">
         <?= number_format((int) $order['item_count']) ?>
     </td>
 
-    <td>
+    <td data-label="Total">
         <strong>
             <?= moderation_e(
                 admin_shop_money(
@@ -172,7 +175,7 @@ require __DIR__ . '/_header.php';
         </strong>
     </td>
 
-    <td>
+    <td data-label="Payment">
         <span class="admin-status-pill">
             <?= moderation_e(
                 ucfirst(
@@ -182,7 +185,7 @@ require __DIR__ . '/_header.php';
         </span>
     </td>
 
-    <td>
+    <td data-label="Status">
         <span class="admin-status-pill">
             <?= moderation_e(
                 ucfirst(
@@ -192,24 +195,26 @@ require __DIR__ . '/_header.php';
         </span>
     </td>
 
-    <td>
+    <td data-label="Fulfillment">
         <span class="admin-table-muted">
             <?= moderation_e(
-                (string) (
-                    $order['fulfillment_status']
-                    ?: 'Not started'
+                ucfirst(
+                    (string) (
+                        $order['fulfillment_status']
+                        ?: 'Not started'
+                    )
                 )
             ) ?>
         </span>
     </td>
 
-    <td>
+    <td data-label="Date">
         <span class="admin-table-muted">
             <?= moderation_e((string) $order['created_at']) ?>
         </span>
     </td>
 
-    <td>
+    <td class="admin-commerce-order-action">
         <a
             class="admin-button"
             href="/order.php?id=<?= (int) $order['id'] ?>"
