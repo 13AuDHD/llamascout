@@ -9318,3 +9318,140 @@ html[data-reduced-motion="true"] .admin-sidebar {
         );
     }
 }
+
+
+/* =========================================================
+   REGISTRATION ACQUISITION
+   ========================================================= */
+
+.admin-acquisition-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-acquisition-summary > div {
+    display: grid;
+    gap: 4px;
+
+    padding: 14px 18px;
+}
+
+.admin-acquisition-summary > div + div {
+    border-left: 1px solid var(--border);
+}
+
+.admin-acquisition-summary span {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-acquisition-summary strong {
+    font-size: 1.15rem;
+}
+
+.admin-acquisition-list {
+    display: grid;
+
+    padding: 8px 18px 14px;
+}
+
+.admin-acquisition-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        44px;
+    gap: 7px 12px;
+    align-items: center;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-acquisition-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-acquisition-row-copy {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+
+    min-width: 0;
+}
+
+.admin-acquisition-row-copy strong {
+    overflow: hidden;
+
+    font-size: .75rem;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-acquisition-row-copy span {
+    flex: 0 0 auto;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+}
+
+.admin-acquisition-bar {
+    width: 100%;
+    height: 6px;
+
+    border: 0;
+    border-radius: 999px;
+
+    overflow: hidden;
+
+    background: var(--background);
+}
+
+.admin-acquisition-bar::-webkit-progress-bar {
+    border-radius: 999px;
+
+    background: var(--background);
+}
+
+.admin-acquisition-bar::-webkit-progress-value {
+    border-radius: 999px;
+
+    background: var(--text-muted);
+}
+
+.admin-acquisition-bar::-moz-progress-bar {
+    border-radius: 999px;
+
+    background: var(--text-muted);
+}
+
+.admin-acquisition-count {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+
+    align-self: center;
+
+    font-size: .78rem;
+    font-weight: 850;
+    text-align: right;
+}
+
+@media (max-width: 560px) {
+
+    .admin-acquisition-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-acquisition-summary > div + div {
+        border-top: 1px solid var(--border);
+        border-left: 0;
+    }
+}
