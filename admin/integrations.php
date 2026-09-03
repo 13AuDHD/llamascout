@@ -322,6 +322,29 @@ require __DIR__ . '/_header.php';
 
 <?php endif; ?>
 
+     <?php if (
+    $printfulConfigured
+    && !$printfulError
+): ?>
+
+<div class="admin-integration-catalog-action">
+
+    <a
+        class="admin-button"
+        href="/printful.php"
+    >
+        <i
+            class="fa-solid fa-box-open"
+            aria-hidden="true"
+        ></i>
+
+        Open Printful Catalog
+    </a>
+
+</div>
+
+<?php endif; ?>
+
 </section>
 
 
