@@ -139,6 +139,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 $notice = 'Primary product photo updated.';
+            } elseif ($action === 'save-photo-position') {
+                admin_shop_swap_product_photo_position(
+                    $db,
+                    $actorUserId,
+                    $productId,
+                    (int) ($_POST['image_id'] ?? 0),
+                    (int) ($_POST['photo_position'] ?? 0)
+                );
+
+                $notice = 'Product photo position updated.';
             } elseif ($action === 'delete-photo') {
                 admin_shop_delete_product_photo(
                     $db,
@@ -215,8 +225,252 @@ $remainingProductPhotos =
 
 require __DIR__ . '/_header.php';
 ?>
+<style>
+.admin-commerce-field-help {
+    display: block;
+    margin-top: 6px;
+    color: var(--admin-muted, #a7a7a7);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+.admin-commerce-inventory-explainer {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.14));
+    border-radius: 9px;
+}
+.admin-commerce-inventory-explainer strong { font-size: .72rem; }
+.admin-commerce-inventory-explainer span {
+    color: var(--admin-muted, #a7a7a7);
+    font-size: .68rem;
+    line-height: 1.45;
+}
+</style>
 
+<style>
+.admin-commerce-product-single {
+    display: grid;
+    gap: 22px;
+}
 
+.admin-commerce-collapsible {
+    padding: 0;
+    overflow: hidden;
+}
+
+.admin-commerce-collapse-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 22px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.admin-commerce-collapse-summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-commerce-collapse-summary::after {
+    content: "\f078";
+    flex: 0 0 auto;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    transition: transform .16s ease;
+}
+
+.admin-commerce-collapsible[open] > .admin-commerce-collapse-summary::after {
+    transform: rotate(180deg);
+}
+
+.admin-commerce-collapse-summary > span:first-child {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-commerce-collapse-summary small {
+    opacity: .68;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.admin-commerce-collapse-summary strong {
+    font-size: 1.05rem;
+}
+
+.admin-commerce-collapse-meta {
+    margin-left: auto;
+    opacity: .68;
+    font-size: .78rem;
+}
+
+.admin-commerce-collapse-body {
+    padding: 0 22px 22px;
+    border-top: 1px solid var(--admin-border, rgba(255,255,255,.12));
+}
+
+.admin-commerce-image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 20px;
+}
+
+.admin-commerce-photo-criteria {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.admin-commerce-photo-criteria legend {
+    margin-bottom: 8px;
+    font-size: .8rem;
+    font-weight: 800;
+}
+
+.admin-commerce-photo-help {
+    margin: 0;
+    opacity: .7;
+    font-size: .76rem;
+    line-height: 1.5;
+}
+
+.admin-commerce-photo-criteria-group {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-commerce-photo-criteria-group > strong {
+    font-size: .74rem;
+}
+
+.admin-commerce-photo-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-commerce-photo-checkboxes label {
+    position: relative;
+    cursor: pointer;
+}
+
+.admin-commerce-photo-checkboxes input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-commerce-photo-checkboxes span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.16));
+    border-radius: 9px;
+    font-size: .72rem;
+    opacity: .76;
+}
+
+.admin-commerce-photo-checkboxes input:checked + span {
+    background: var(--admin-text, #f4f4f4);
+    color: var(--admin-bg, #171717);
+    border-color: var(--admin-text, #f4f4f4);
+    opacity: 1;
+}
+
+.admin-commerce-photo-assignment {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-commerce-defaults {
+    display: grid;
+    gap: 16px;
+    margin: 20px 0 24px;
+    padding: 18px;
+    border: 1px solid var(--admin-border, rgba(255,255,255,.12));
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+}
+.admin-commerce-defaults-header h3 { margin: 2px 0 4px; }
+.admin-commerce-defaults-header p { margin: 0; opacity: .7; font-size: .76rem; }
+.admin-commerce-defaults-header small { opacity: .65; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-commerce-default-grid,
+.admin-commerce-variant-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+}
+.admin-commerce-default-field { display: grid; gap: 6px; min-width: 0; }
+.admin-commerce-default-field > span:first-child { font-size: .72rem; font-weight: 800; opacity: .75; }
+.admin-commerce-default-field input,
+.admin-commerce-default-field select { width: 100%; min-width: 0; }
+.admin-commerce-apply-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .68rem; opacity: .8; }
+.admin-commerce-resequence { display: flex; align-items: flex-start; gap: 9px; padding: 12px; border: 1px solid var(--admin-border, rgba(255,255,255,.12)); border-radius: 9px; }
+.admin-commerce-resequence span { display: grid; gap: 3px; }
+.admin-commerce-resequence small { opacity: .65; }
+.admin-commerce-variant-grid .is-wide { grid-column: span 2; }
+
+@media (max-width: 1100px) {
+    .admin-commerce-default-grid,
+    .admin-commerce-variant-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 650px) {
+    .admin-commerce-default-grid,
+    .admin-commerce-variant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-commerce-variant-grid .is-wide { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+    .admin-commerce-image-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-commerce-collapse-summary {
+        padding: 17px;
+    }
+
+    .admin-commerce-collapse-body {
+        padding: 0 17px 17px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const productUrl = <?= json_encode(
+        $publicProductUrl,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+    ) ?>;
+
+    [
+        document.querySelector('.admin-topbar-title strong'),
+        document.querySelector('.admin-page-header h1'),
+    ].forEach((title) => {
+        if (!title || title.querySelector('a')) {
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = productUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = title.textContent;
+        link.style.color = 'inherit';
+        link.style.textDecoration = 'none';
+        link.title = 'Open public product page';
+
+        title.replaceChildren(link);
+    });
+});
+</script>
 
 <?php if ($notice !== ''): ?>
 <div class="admin-user-notice is-success">
@@ -231,10 +485,7 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 
-<div
-    class="admin-commerce-product-single"
-    data-public-product-url="<?= moderation_e($publicProductUrl) ?>"
->
+<div class="admin-commerce-product-single">
 
 <section class="admin-panel">
 
@@ -630,6 +881,57 @@ $valueText =
     </button>
 </form>
 
+<form
+    class="admin-commerce-photo-position"
+    method="post"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(moderation_csrf_token()) ?>"
+    >
+
+    <input
+        type="hidden"
+        name="product_id"
+        value="<?= (int) $productId ?>"
+    >
+
+    <input
+        type="hidden"
+        name="image_id"
+        value="<?= (int) $image['id'] ?>"
+    >
+
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="save-photo-position"
+    >
+
+    <label>
+        <span>#</span>
+
+        <input
+            type="number"
+            name="photo_position"
+            min="1"
+            max="<?= count($images) ?>"
+            step="1"
+            value="<?= max(1, (int) $image['sort_order']) ?>"
+            aria-label="Photo position"
+            required
+        >
+    </label>
+
+    <button
+        class="admin-button is-muted"
+        type="submit"
+    >
+        Save
+    </button>
+</form>
+
 </div>
 
 </article>
@@ -700,6 +1002,8 @@ $valueText =
     
 </summary>
 <div class="admin-commerce-collapse-body">
+
+
 
 <form
     class="admin-commerce-generator"
@@ -910,7 +1214,7 @@ $valueText =
 
     <label class="admin-commerce-resequence">
         <input type="checkbox" name="resequence_sort" value="1">
-        <span><strong>Resequence sort order 1 through <?= count($variants) ?></strong><small>Preserves the current order, then rewrites clean sequential numbers.</small></span>
+        <span><strong>Resequence sort order 1 â <?= count($variants) ?></strong><small>Preserves the current order, then rewrites clean sequential numbers.</small></span>
     </label>
 
     <div class="admin-user-form-actions"><button class="admin-button" type="submit">Apply selected defaults</button></div>
@@ -1171,7 +1475,5 @@ $valueText =
 </details>
 
 </div>
-
-<script src="/js/admin-product.js" defer></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
