@@ -9197,3 +9197,42 @@ html[data-reduced-motion="true"] .admin-sidebar {
         text-align: left;
     }
 }
+
+
+/* =========================================================
+   AUTOMATIC ORDER STATUS
+   ========================================================= */
+
+.admin-commerce-order-status-note {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    margin: 16px 16px 0;
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+    color: var(--text-muted);
+}
+
+.admin-commerce-order-status-note > i {
+    width: 30px;
+    height: 30px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.admin-commerce-order-status-note p {
+    margin: 0;
+
+    font-size: .72rem;
+    line-height: 1.5;
+}
