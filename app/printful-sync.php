@@ -278,6 +278,135 @@ function llama_printful_mysql_datetime(
     );
 }
 
+
+function llama_printful_order_missing_exception(
+    Throwable $exception
+): bool {
+    $message = strtolower(
+        trim(
+            $exception->getMessage()
+        )
+    );
+
+    if ($message === '') {
+        return false;
+    }
+
+    foreach (
+        [
+            'not found',
+            'order not found',
+            'does not exist',
+            'could not be found',
+            'unknown order',
+        ]
+        as $fragment
+    ) {
+        if (
+            str_contains(
+                $message,
+                $fragment
+            )
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function llama_printful_mark_removed_fulfillment(
+    PDO $db,
+    array $fulfillment,
+    int $actorUserId = 0
+): array {
+    $fulfillmentId =
+        (int) $fulfillment['id'];
+
+    $providerOrderId = trim(
+        (string) (
+            $fulfillment['provider_order_id']
+            ?? ''
+        )
+    );
+
+    $update = $db->prepare(
+        'UPDATE shop_order_fulfillments
+         SET
+            status = "cancelled",
+            tracking_number = NULL,
+            tracking_carrier = NULL,
+            tracking_url = NULL,
+            updated_at = UTC_TIMESTAMP()
+         WHERE id = ?'
+    );
+
+    $update->execute([
+        $fulfillmentId,
+    ]);
+
+    if (
+        function_exists(
+            'admin_fulfillment_sync_order_status'
+        )
+    ) {
+        admin_fulfillment_sync_order_status(
+            $db,
+            (int) $fulfillment['order_id']
+        );
+    }
+
+    if (
+        $actorUserId > 0
+        && function_exists(
+            'admin_users_audit'
+        )
+    ) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $fulfillment['user_id']
+                ? (int) $fulfillment['user_id']
+                : null,
+            'shop.printful_order_removed',
+            'Marked Printful fulfillment #' .
+                $fulfillmentId .
+                ' cancelled because Printful order #' .
+                $providerOrderId .
+                ' no longer exists.',
+            [
+                'order_id' =>
+                    (int) $fulfillment['order_id'],
+                'fulfillment_id' =>
+                    $fulfillmentId,
+                'printful_order_id' =>
+                    $providerOrderId,
+            ]
+        );
+    }
+
+    return [
+        'fulfillment_id' =>
+            $fulfillmentId,
+        'provider_order_id' =>
+            $providerOrderId,
+        'remote_status' =>
+            'removed',
+        'local_status' =>
+            'cancelled',
+        'tracking_number' =>
+            '',
+        'tracking_url' =>
+            '',
+        'remote_order' =>
+            [],
+        'shipments' =>
+            [],
+        'removed_at_provider' =>
+            true,
+    ];
+}
+
 function llama_printful_sync_fulfillment(
     PDO $db,
     int $fulfillmentId,
@@ -327,10 +456,37 @@ function llama_printful_sync_fulfillment(
         );
     }
 
-    $remoteOrder =
-        llama_printful_get_order(
-            $providerOrderId
-        );
+    try {
+        $remoteOrder =
+            llama_printful_get_order(
+                $providerOrderId
+            );
+    } catch (Throwable $exception) {
+        /*
+         * A draft can be deleted directly in Printful. In that
+         * case there is no longer a remote status to retrieve.
+         * Treat a definite "not found" response as provider-side
+         * cancellation instead of leaving the local fulfillment
+         * stuck in Processing.
+         *
+         * Network failures and all other API errors still bubble
+         * up normally and do NOT cancel the local fulfillment.
+         */
+        if (
+            llama_printful_order_missing_exception(
+                $exception
+            )
+        ) {
+            return
+                llama_printful_mark_removed_fulfillment(
+                    $db,
+                    $fulfillment,
+                    $actorUserId
+                );
+        }
+
+        throw $exception;
+    }
 
     $shipments = [];
 
