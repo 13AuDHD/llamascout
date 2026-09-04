@@ -225,22 +225,25 @@
         text-align: center;
     }
 
-    /* Keep the cart label and count on the same mobile menu row. */
-    .site-nav > a.site-cart-link {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        white-space: nowrap;
-    }
+/* Keep Cart aligned exactly like every other mobile menu item. */
+.site-nav > a.site-cart-link {
+    display: grid;
+    grid-template-columns: 28px auto auto 1fr;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+}
 
-    .site-nav > a.site-cart-link > i {
-        flex: 0 0 22px;
-    }
+.site-nav > a.site-cart-link > i {
+    width: 22px;
+    text-align: center;
+}
 
-    .site-nav > a.site-cart-link .site-cart-count {
-        flex: 0 0 auto;
-        margin-left: 0;
-    }
+.site-nav > a.site-cart-link .site-cart-count {
+    margin-left: -6px;
+    font-size: .78rem;
+    line-height: 1;
+}
 
     .site-nav-admin {
         margin-top: 8px;
