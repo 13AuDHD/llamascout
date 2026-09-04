@@ -9,6 +9,7 @@ require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment-safe.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
 require_once dirname(__DIR__) . '/app/printful-orders.php';
+require_once dirname(__DIR__) . '/app/printful-sync.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -126,6 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice =
                     'Shipping label purchased. Tracking: ' .
                     (string) $label['tracking_code'];
+            } elseif ($action === 'refresh-printful') {
+                $sync = llama_printful_sync_fulfillment(
+                    $db,
+                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    $actorUserId
+                );
+
+                $notice =
+                    'Printful fulfillment refreshed. Current status: ' .
+                    ucfirst(
+                        (string) $sync['local_status']
+                    ) .
+                    '.';
             } elseif ($action === 'create-printful-order') {
                 $printfulOrder = llama_printful_create_fulfillment_order(
                     $db,
@@ -151,7 +165,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('The order could not be updated.', $reference);
+                : llama_error_message_with_reference(
+                    'The order could not be updated.',
+                    $reference
+                );
         }
     }
 }
@@ -679,7 +696,49 @@ if ($printfulProviderOrderId !== '') {
             : 'Create Printful draft' ?>
     </button>
 </form>
-<?php elseif (!empty($printfulRemoteOrder['dashboard_url'])): ?>
+<?php else: ?>
+
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
+    >
+
+    <input
+        type="hidden"
+        name="order_id"
+        value="<?= (int) $orderId ?>"
+    >
+
+    <input
+        type="hidden"
+        name="fulfillment_id"
+        value="<?= (int) $fulfillment['id'] ?>"
+    >
+
+    <input
+        type="hidden"
+        name="shop_admin_action"
+        value="refresh-printful"
+    >
+
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        <i
+            class="fa-solid fa-arrows-rotate"
+            aria-hidden="true"
+        ></i>
+
+        Refresh from Printful
+    </button>
+</form>
+
+<?php if (!empty($printfulRemoteOrder['dashboard_url'])): ?>
 <a
     class="admin-button"
     href="<?= moderation_e(
@@ -690,6 +749,8 @@ if ($printfulProviderOrderId !== '') {
 >
     Open in Printful
 </a>
+<?php endif; ?>
+
 <?php endif; ?>
 
 </div>
