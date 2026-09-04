@@ -304,23 +304,30 @@ function llama_printful_create_fulfillment_order(
         ? 'submitted'
         : 'processing';
 
+    /*
+     * Creating a Printful draft is still the moment the local
+     * fulfillment enters the submitted/processing phase. Record
+     * that timestamp for the Admin fulfillment timeline even while
+     * auto-confirm remains disabled.
+     */
+    $submittedAt = gmdate('Y-m-d H:i:s');
+
     $update = $db->prepare(
         'UPDATE shop_order_fulfillments
          SET
             provider_order_id = ?,
             status = ?,
-            submitted_at = CASE
-                WHEN ? = "submitted"
-                    THEN COALESCE(submitted_at, UTC_TIMESTAMP())
-                ELSE submitted_at
-            END
+            submitted_at = COALESCE(
+                submitted_at,
+                ?
+            )
          WHERE id = ?'
     );
 
     $update->execute([
         $providerOrderId,
         $localStatus,
-        $localStatus,
+        $submittedAt,
         $fulfillmentId,
     ]);
 
@@ -355,4 +362,3 @@ function llama_printful_create_fulfillment_order(
     }
 
     return $order;
-}
