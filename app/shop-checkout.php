@@ -368,6 +368,19 @@ function shop_checkout_create_stripe_session(PDO $db, array $order, array $items
     $settings = shop_checkout_settings();
     $sessionData = [
         'mode' => 'payment',
+    
+        /*
+         * Shop Checkout must manage its own shipping address and
+         * shipping-rate collection. Stripe Managed Payments cannot
+         * be combined with those Checkout shipping parameters.
+         *
+         * This affects Shop Checkout only. It does not change the
+         * membership billing configuration.
+         */
+        'managed_payments' => [
+            'enabled' => false,
+        ],
+    
         'ui_mode' => 'embedded_page',
         'line_items' => shop_checkout_stripe_line_items($items),
         'client_reference_id' => (string) $order['order_number'],
