@@ -2,6 +2,40 @@
    ACCOUNT AUTH PAGES, V2
    ========================================================= */
 
+/* =========================================================
+   AUTH TYPOGRAPHY
+   ========================================================= */
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+}
+
+.account-auth,
+.account-auth-card,
+.account-auth-card h1,
+.account-auth-card p,
+.account-auth-card label,
+.account-auth-card button,
+.account-auth-card input,
+.account-auth-card select,
+.account-auth-card textarea,
+.account-auth-card a {
+    font-family: inherit;
+}
+
+
 html,
 body {
     background: var(--background, #111) !important;
