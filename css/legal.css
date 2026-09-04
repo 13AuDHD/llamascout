@@ -161,16 +161,21 @@
 }
 
 
-/* GLOBAL PRIVACY BANNER */
+/* =========================================================
+   GLOBAL PRIVACY BANNER
+   ========================================================= */
 
 .privacy-banner {
     position: fixed;
     z-index: 12000;
+
     left: 18px;
     right: 18px;
     bottom: 18px;
 
+    width: auto;
     max-width: 1120px;
+
     margin: 0 auto;
 
     border: 1px solid var(--border);
@@ -179,91 +184,282 @@
     background: var(--surface);
     color: var(--text);
 
-    box-shadow: 0 18px 60px rgba(0, 0, 0, .24);
+    box-shadow:
+        0 18px 60px
+        rgba(0, 0, 0, .24);
 }
+
 
 .privacy-banner-inner {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+
     gap: 22px;
+
     align-items: center;
+
     padding: 18px;
 }
 
-.privacy-banner-copy h2 {
-    margin: 0 0 7px;
-    font-size: 1.08rem;
+
+.privacy-banner-copy {
+    min-width: 0;
 }
+
+
+.privacy-banner-copy h2 {
+    margin: 0 0 6px;
+
+    font-size: 1.05rem;
+    line-height: 1.2;
+}
+
 
 .privacy-banner-copy p {
     max-width: 760px;
+
     margin: 0;
+
     color: var(--text-muted);
-    font-size: .9rem;
-    line-height: 1.55;
+
+    font-size: .88rem;
+    line-height: 1.5;
 }
+
 
 .privacy-banner-copy > a {
     display: inline-block;
-    margin-top: 8px;
-    font-size: .84rem;
+
+    margin-top: 7px;
+
+    font-size: .82rem;
     font-weight: 800;
 }
 
+
 .privacy-banner-actions {
     display: flex;
+
     flex-wrap: wrap;
+
     justify-content: flex-end;
+
     gap: 8px;
 }
+
 
 .privacy-banner-actions button,
 .privacy-manage-link {
     display: inline-flex;
+
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    padding: 9px 13px;
+
+    min-height: 40px;
+
+    padding: 8px 13px;
+
     border: 1px solid var(--border);
     border-radius: 999px;
+
     background: var(--background);
     color: var(--text);
+
     font: inherit;
+    font-size: .86rem;
     font-weight: 800;
+
+    line-height: 1;
+
+    white-space: nowrap;
+
     text-decoration: none;
+
     cursor: pointer;
 }
+
 
 .privacy-banner-actions .primary-btn {
     background: var(--text);
     color: var(--background);
+
     border-color: var(--text);
 }
 
 
-/* MOBILE */
+/* =========================================================
+   PRIVACY BANNER
+   TABLET / PORTRAIT
+   ========================================================= */
 
-@media (max-width: 720px) {
-    .legal-hero {
-        padding-top: 38px;
-    }
-
-    .legal-content {
-        padding-top: 30px;
-    }
+@media (max-width: 900px) {
 
     .privacy-banner {
-        left: 10px;
-        right: 10px;
-        bottom: 10px;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+
+        max-width: 760px;
+
+        border-radius: 14px;
     }
+
 
     .privacy-banner-inner {
         grid-template-columns: 1fr;
+
+        gap: 12px;
+
+        padding: 15px 16px;
     }
+
+
+    .privacy-banner-copy h2 {
+        margin-bottom: 4px;
+
+        font-size: 1rem;
+    }
+
+
+    .privacy-banner-copy p {
+        max-width: none;
+
+        font-size: .82rem;
+        line-height: 1.45;
+    }
+
+
+    .privacy-banner-copy > a {
+        margin-top: 5px;
+
+        font-size: .78rem;
+    }
+
 
     .privacy-banner-actions {
         justify-content: flex-start;
+
+        gap: 7px;
+    }
+
+
+    .privacy-banner-actions button,
+    .privacy-manage-link {
+        min-height: 38px;
+
+        padding: 7px 12px;
+
+        font-size: .8rem;
+    }
+}
+
+
+/* =========================================================
+   PRIVACY BANNER
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .privacy-banner {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+
+        max-height:
+            calc(
+                100dvh - 16px
+            );
+
+        overflow-y: auto;
+
+        border-radius: 13px;
+    }
+
+
+    .privacy-banner-inner {
+        gap: 10px;
+
+        padding: 13px;
+    }
+
+
+    .privacy-banner-copy h2 {
+        font-size: .96rem;
+    }
+
+
+    .privacy-banner-copy p {
+        font-size: .77rem;
+        line-height: 1.4;
+    }
+
+
+    .privacy-banner-copy > a {
+        margin-top: 4px;
+
+        font-size: .75rem;
+    }
+
+
+    .privacy-banner-actions {
+        display: grid;
+
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 7px;
+
+        width: 100%;
+    }
+
+
+    .privacy-banner-actions button,
+    .privacy-manage-link {
+        width: 100%;
+
+        min-height: 38px;
+
+        padding: 7px 9px;
+
+        font-size: .76rem;
+    }
+
+
+    .privacy-manage-link {
+        grid-column: 1 / -1;
+    }
+}
+
+
+/* =========================================================
+   PRIVACY BANNER
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 390px) {
+
+    .privacy-banner-inner {
+        padding: 11px;
+    }
+
+
+    .privacy-banner-copy p {
+        font-size: .74rem;
+    }
+
+
+    .privacy-banner-actions button,
+    .privacy-manage-link {
+        min-height: 36px;
+
+        font-size: .73rem;
     }
 }
 
