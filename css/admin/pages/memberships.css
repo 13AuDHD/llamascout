@@ -1,0 +1,635 @@
+/* =========================================================
+   ADMIN PAGE: PRICING & PROMOTIONS
+   Only admin/memberships.php belongs here.
+   Replaces legacy css/admin-memberships.css and the old
+   inline Pricing & Promotions style block.
+   ========================================================= */
+
+/* Overall layout */
+
+.admin-membership-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--admin-panel-gap);
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-membership-plan-list {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 16px;
+
+    padding: var(--admin-panel-padding);
+}
+
+
+/* Regular price cards */
+
+.admin-membership-plan-card,
+.admin-membership-promotion-form,
+.admin-membership-code-setting {
+    display: grid;
+    gap: 16px;
+}
+
+.admin-membership-plan-card {
+    align-content: start;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--background);
+}
+
+.admin-membership-plan-card
+.admin-button {
+    margin-top: auto;
+}
+
+.admin-membership-plan-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-membership-plan-heading > div {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-membership-plan-heading span,
+.admin-membership-plan-card label,
+.admin-membership-promotion-form label,
+.admin-membership-code-setting label {
+    font-weight: 750;
+}
+
+.admin-membership-plan-heading strong {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    line-height: 1;
+}
+
+.admin-membership-plan-heading small,
+.admin-membership-plan-card p,
+.admin-membership-code-setting p {
+    color: var(--text-muted);
+}
+
+.admin-membership-plan-card input,
+.admin-membership-promotion-form input,
+.admin-membership-promotion-form select,
+.admin-membership-promotion-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    margin-top: 7px;
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-membership-plan-card input,
+.admin-membership-promotion-form input,
+.admin-membership-promotion-form select {
+    min-height: 42px;
+}
+
+.admin-membership-promotion-form textarea {
+    resize: vertical;
+}
+
+
+/* Campaign summary */
+
+.admin-campaign-summary-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 14px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-campaign-summary-card {
+    min-width: 0;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-campaign-summary-card span {
+    display: block;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-campaign-summary-card strong {
+    display: block;
+
+    margin-top: 7px;
+
+    overflow-wrap: anywhere;
+
+    font-size: 1.45rem;
+}
+
+
+/* Promotion form */
+
+.admin-membership-promotion-form {
+    max-width: none;
+    padding: var(--admin-panel-padding);
+}
+
+.admin-membership-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.admin-membership-plan-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+
+    margin: 0;
+    padding: 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.admin-membership-plan-choice legend {
+    padding: 0 8px;
+
+    font-weight: 850;
+}
+
+.admin-membership-plan-choice label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-membership-plan-choice input {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+}
+
+.admin-campaign-form-section {
+    margin-top: 18px;
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-campaign-form-section h3 {
+    margin: 0 0 5px;
+
+    font-size: .9rem;
+}
+
+.admin-campaign-form-section > p {
+    margin: 0 0 14px;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.45;
+}
+
+
+/* Campaign toggles */
+
+.admin-campaign-toggle-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-campaign-toggle {
+    display: flex !important;
+    gap: 10px;
+    align-items: flex-start;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-campaign-toggle input {
+    width: auto !important;
+    min-height: 0 !important;
+
+    margin-top: 3px;
+}
+
+.admin-campaign-toggle strong,
+.admin-campaign-toggle span {
+    display: block;
+}
+
+.admin-campaign-toggle span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+}
+
+
+/* Editing state */
+
+.admin-campaign-edit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    margin: 16px;
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+
+    font-size: .72rem;
+}
+
+.admin-campaign-edit-banner a {
+    white-space: nowrap;
+}
+
+
+/* Campaign badges */
+
+.admin-campaign-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+
+    margin-top: 10px;
+}
+
+.admin-campaign-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 5px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 750;
+}
+
+
+/* Promotion calendar */
+
+.admin-campaign-section {
+    margin-top: var(--admin-panel-gap);
+}
+
+.admin-campaign-calendar-month {
+    margin-top: 20px;
+}
+
+.admin-campaign-calendar-month:first-child {
+    margin-top: 0;
+}
+
+.admin-campaign-calendar-month > h3 {
+    margin: 0 0 10px;
+
+    font-size: .86rem;
+}
+
+.admin-membership-promotion-list {
+    display: grid;
+    gap: 16px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-membership-promotion-card {
+    display: grid;
+    gap: 16px;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--background);
+}
+
+.admin-membership-promotion-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-membership-promotion-top > div {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-membership-promotion-top h3,
+.admin-membership-promotion-top p {
+    margin: 0;
+}
+
+.admin-membership-promotion-top h3 {
+    font-size: .9rem;
+}
+
+.admin-membership-promotion-top p {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+.admin-membership-promotion-meta {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+
+    margin: 0;
+}
+
+.admin-membership-promotion-meta > div {
+    display: grid;
+    gap: 4px;
+
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.admin-membership-promotion-meta dt {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 850;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-membership-promotion-meta dd {
+    margin: 0;
+
+    overflow-wrap: anywhere;
+
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.admin-membership-rule-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-membership-rule-list span {
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 750;
+}
+
+.admin-membership-promotion-description {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.admin-campaign-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-campaign-card-actions a {
+    text-decoration: none;
+}
+
+
+/* Campaign results */
+
+.admin-campaign-results {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-campaign-result {
+    min-width: 0;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+.admin-campaign-result span {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.admin-campaign-result strong {
+    display: block;
+
+    overflow-wrap: anywhere;
+
+    font-size: .85rem;
+}
+
+
+/* Promotion code policy */
+
+.admin-membership-policy-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+
+    padding: 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-membership-policy-note i {
+    margin-top: 3px;
+}
+
+.admin-membership-policy-note > div {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-membership-policy-note span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.admin-membership-code-setting {
+    padding: var(--admin-panel-padding);
+}
+
+.admin-membership-code-setting > label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.admin-membership-code-setting
+input[type="checkbox"] {
+    width: auto;
+    margin-top: 4px;
+}
+
+.admin-campaign-code-placeholder {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+
+/* Campaign status */
+
+.admin-status-pill.is-live {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 65%,
+        var(--border)
+    );
+}
+
+.admin-status-pill.is-scheduled {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 65%,
+        var(--border)
+    );
+}
+
+.admin-status-pill.is-ended,
+.admin-status-pill.is-disabled {
+    opacity: .7;
+}
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+
+    .admin-membership-plan-list {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-campaign-summary-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-campaign-results {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+
+    .admin-membership-form-grid,
+    .admin-membership-promotion-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-membership-promotion-top {
+        display: grid;
+    }
+
+    .admin-membership-promotion-top form,
+    .admin-membership-promotion-top
+    .admin-button {
+        width: 100%;
+    }
+
+    .admin-membership-plan-heading {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+
+    .admin-campaign-summary-grid,
+    .admin-campaign-toggle-grid,
+    .admin-campaign-results {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-campaign-edit-banner,
+    .admin-campaign-code-placeholder {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
