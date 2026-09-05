@@ -1,0 +1,280 @@
+.admin-membership-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.admin-membership-plan-list {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+}
+
+.admin-membership-plan-card,
+.admin-membership-promotion-form,
+.admin-membership-code-setting {
+    display: grid;
+    gap: 16px;
+}
+
+.admin-membership-plan-card {
+    padding: 18px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 16px;
+    background: var(--admin-surface-2, #181818);
+}
+
+.admin-membership-plan-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-membership-plan-heading div {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-membership-plan-heading span,
+.admin-membership-plan-card label,
+.admin-membership-promotion-form label,
+.admin-membership-code-setting label {
+    font-weight: 700;
+}
+
+.admin-membership-plan-heading strong {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    line-height: 1;
+}
+
+.admin-membership-plan-heading small,
+.admin-membership-plan-card p,
+.admin-membership-code-setting p {
+    color: var(--admin-muted, #aaa);
+}
+
+.admin-membership-plan-card input,
+.admin-membership-promotion-form input,
+.admin-membership-promotion-form select,
+.admin-membership-promotion-form textarea {
+    width: 100%;
+    margin-top: 7px;
+}
+
+.admin-membership-promotion-form {
+    padding: 20px;
+}
+
+.admin-membership-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.admin-membership-plan-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 14px;
+}
+
+.admin-membership-plan-choice legend {
+    padding: 0 8px;
+    font-weight: 800;
+}
+
+.admin-membership-plan-choice label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-membership-plan-choice input {
+    width: auto;
+    margin: 0;
+}
+
+.admin-membership-policy-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 14px;
+    background: var(--admin-surface-2, #181818);
+}
+
+.admin-membership-policy-note i {
+    margin-top: 3px;
+}
+
+.admin-membership-policy-note div {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-membership-policy-note span {
+    color: var(--admin-muted, #aaa);
+    line-height: 1.5;
+}
+
+.admin-membership-code-setting {
+    padding: 20px;
+}
+
+.admin-membership-code-setting > label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.admin-membership-code-setting input[type="checkbox"] {
+    width: auto;
+    margin-top: 4px;
+}
+
+.admin-membership-promotion-list {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+}
+
+.admin-membership-promotion-card {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 16px;
+    background: var(--admin-surface-2, #181818);
+}
+
+.admin-membership-promotion-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-membership-promotion-top > div {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-membership-promotion-top h3,
+.admin-membership-promotion-top p {
+    margin: 0;
+}
+
+.admin-membership-promotion-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+}
+
+.admin-membership-promotion-meta div {
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 12px;
+}
+
+.admin-membership-promotion-meta dt {
+    color: var(--admin-muted, #aaa);
+    font-size: .8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.admin-membership-promotion-meta dd {
+    margin: 0;
+    font-weight: 700;
+}
+
+.admin-membership-rule-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-membership-rule-list span {
+    padding: 8px 10px;
+    border: 1px solid var(--admin-border, #3a3a3a);
+    border-radius: 999px;
+}
+
+.admin-membership-promotion-description {
+    margin: 0;
+    color: var(--admin-muted, #aaa);
+}
+
+.admin-status-pill.is-live {
+    border-color: #2d7f50;
+}
+
+.admin-status-pill.is-scheduled {
+    border-color: #8a6a1f;
+}
+
+.admin-status-pill.is-ended,
+.admin-status-pill.is-disabled {
+    opacity: .7;
+}
+
+.membership-public-promo-note {
+    display: grid;
+    gap: 4px;
+    margin: 14px 0 18px;
+    padding: 12px 14px;
+    border: 1px solid currentColor;
+    border-radius: 12px;
+}
+
+.membership-public-promo-note span {
+    opacity: .8;
+}
+
+.membership-price-option del {
+    display: block;
+    opacity: .65;
+    font-size: .9em;
+}
+
+.membership-price-option small {
+    display: block;
+    margin-top: 4px;
+    font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    .admin-membership-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .admin-membership-form-grid,
+    .admin-membership-promotion-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-membership-promotion-top {
+        display: grid;
+    }
+
+    .admin-membership-promotion-top form,
+    .admin-membership-promotion-top .admin-button {
+        width: 100%;
+    }
+
+    .admin-membership-plan-heading {
+        align-items: flex-start;
+    }
+}
