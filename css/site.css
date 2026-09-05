@@ -2448,3 +2448,103 @@ textarea::placeholder {
         font-size: .8rem;
     }
 }
+
+
+/* =========================================================
+   CONTACT & SUPPORT
+   ========================================================= */
+
+.support-form {
+    display: grid;
+    gap: 20px;
+}
+
+.support-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.support-form label {
+    display: grid;
+    gap: 7px;
+}
+
+.support-form label > span {
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 12px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.support-form textarea {
+    min-height: 180px;
+    resize: vertical;
+}
+
+.support-form input:focus-visible,
+.support-form select:focus-visible,
+.support-form textarea:focus-visible {
+    outline: 3px solid color-mix(
+        in srgb,
+        var(--text) 24%,
+        transparent
+    );
+    outline-offset: 2px;
+}
+
+.support-form-note {
+    margin: -4px 0 0;
+
+    color: var(--text-muted);
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.support-message {
+    margin: 0 0 24px;
+    padding: 16px 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.support-message strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.support-message p {
+    margin: 0;
+}
+
+.support-message.is-success {
+    border-color: #2e9d58;
+}
+
+.support-message.is-error {
+    border-color: #b84a4a;
+}
+
+@media (max-width: 700px) {
+    .support-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
