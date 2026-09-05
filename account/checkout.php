@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/stripe.php';
 require_once dirname(__DIR__) . '/app/memberships.php';
+require_once dirname(__DIR__) . '/app/promotion-events.php';
 
 require_verified_email();
 start_llama_session();
@@ -168,22 +169,12 @@ if (!$offer) {
             ];
 
             if ($onSale) {
-                /*
-                 * Automatic holiday/signup pricing is not a reusable code.
-                 * The Stripe Coupon created by Admin determines how long the
-                 * introductory rate lasts:
-                 * monthly = 12 invoices, annual = first invoice only.
-                 */
                 $sessionData['discounts'] = [[
                     'coupon' => $couponId,
                 ]];
 
                 $sessionData['allow_promotion_codes'] = false;
             } else {
-                /*
-                 * Manual Stripe Promotion Codes are a separate feature and
-                 * appear only when explicitly enabled in Admin.
-                 */
                 $sessionData['allow_promotion_codes'] =
                     $manualPromotionCodesEnabled;
             }
@@ -196,10 +187,32 @@ if (!$offer) {
 
             $session = $stripe->checkout->sessions->create($sessionData);
             $clientSecret = trim((string) ($session->client_secret ?? ''));
+            $sessionId = trim((string) ($session->id ?? ''));
 
             if ($clientSecret === '') {
                 throw new RuntimeException(
                     'Stripe did not return an Embedded Checkout client secret.'
+                );
+            }
+
+            /*
+             * A campaign checkout start is recorded only after
+             * Stripe successfully creates the Checkout Session.
+             */
+            if ($promotionId > 0 && $sessionId !== '') {
+                llama_membership_promotion_event(
+                    $db,
+                    $promotionId,
+                    'checkout_started',
+                    (int) $account['id'],
+                    $interval,
+                    $sessionId,
+                    null,
+                    (int) ($offer['effective_price_cents'] ?? 0),
+                    [
+                        'plan_id' => (int) ($plan['id'] ?? 0),
+                        'base_price_cents' => (int) ($offer['base_price_cents'] ?? 0),
+                    ]
                 );
             }
 
