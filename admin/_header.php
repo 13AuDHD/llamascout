@@ -160,6 +160,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['user.css'],
             'features' => [],
         ],
+        'scouts.php' => [
+            'pages' => ['scouts.css'],
+            'features' => [],
+        ],
     ];
 
     $adminManifestEntry =
