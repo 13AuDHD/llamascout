@@ -136,6 +136,13 @@ function admin_dashboard_stats(PDO $db): array
              WHERE status IN ('open','investigating')"
         ),
 
+        'support' => admin_safe_count(
+            $db,
+            "SELECT COUNT(*)
+             FROM support_requests
+             WHERE status IN ('open','waiting')"
+        ),
+
         'scout_reviews' => admin_safe_count(
             $db,
             "SELECT COUNT(*)
@@ -314,7 +321,7 @@ function admin_dashboard_queue(PDO $db): array
                 'type' => 'Problem Report',
                 'icon' => 'fa-triangle-exclamation',
                 'title' => (string) $row['title'],
-                'meta' => $problem . ' · ' . (string) $row['actor'],
+                'meta' => $problem . ' Â· ' . (string) $row['actor'],
                 'time' => (string) $row['occurred_at'],
                 'href' => '/moderate-report.php?id=' . (int) $row['id'],
                 'action' => 'Review',
@@ -322,6 +329,74 @@ function admin_dashboard_queue(PDO $db): array
         }
     } catch (Throwable $exception) {
         error_log('Admin report queue error: ' . $exception->getMessage());
+    }
+
+    try {
+        $stmt = $db->query(
+            "SELECT
+                sr.id,
+                sr.ticket_number,
+                sr.subject,
+                sr.category,
+                sr.status,
+                sr.name,
+                sr.email,
+                sr.error_reference,
+                sr.created_at AS occurred_at
+             FROM support_requests sr
+             WHERE sr.status IN ('open','waiting')
+             ORDER BY sr.created_at DESC
+             LIMIT 8"
+        );
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $ticket = trim(
+                (string) ($row['ticket_number'] ?? '')
+            );
+
+            if ($ticket === '') {
+                $ticket = (string) $row['id'];
+            }
+
+            $category = ucwords(
+                str_replace(
+                    ['-', '_'],
+                    ' ',
+                    (string) ($row['category'] ?? 'support')
+                )
+            );
+
+            $meta =
+                (string) ($row['name'] ?: $row['email'])
+                . ' Â· '
+                . $category;
+
+            if (!empty($row['error_reference'])) {
+                $meta .=
+                    ' Â· '
+                    . (string) $row['error_reference'];
+            }
+
+            $items[] = [
+                'type' => 'Support Ticket',
+                'icon' => 'fa-headset',
+                'title' =>
+                    'Ticket #' . $ticket
+                    . ' Â· '
+                    . (string) $row['subject'],
+                'meta' => $meta,
+                'time' => (string) $row['occurred_at'],
+                'href' =>
+                    '/support.php?id='
+                    . (int) $row['id'],
+                'action' => 'Open',
+            ];
+        }
+    } catch (Throwable $exception) {
+        error_log(
+            'Admin support queue error: '
+            . $exception->getMessage()
+        );
     }
 
     try {
@@ -369,7 +444,7 @@ function admin_dashboard_queue(PDO $db): array
                 'type' => 'Paid Order',
                 'icon' => 'fa-box',
                 'title' => (string) $row['order_number'],
-                'meta' => $customer . ' · $' .
+                'meta' => $customer . ' Â· $' .
                     number_format(
                         ((int) $row['total_cents']) / 100,
                         2
@@ -455,7 +530,7 @@ function admin_format_datetime(
 
     try {
         $date = new DateTimeImmutable($value);
-        return $date->format('M j, Y · g:i a');
+        return $date->format('M j, Y Â· g:i a');
     } catch (Throwable) {
         return $value;
     }
