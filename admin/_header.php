@@ -38,6 +38,25 @@ if ($adminDisplayName === '') {
         : 'Admin';
 }
 
+/*
+ * Support is a global Admin queue, so calculate its active count
+ * here instead of requiring every Admin page to remember to add
+ * another entry to $adminNavCounts.
+ */
+$adminSupportCount = 0;
+
+try {
+    $adminSupportCount = (int) db()
+        ->query(
+            "SELECT COUNT(*)
+             FROM support_requests
+             WHERE status IN ('open','waiting')"
+        )
+        ->fetchColumn();
+} catch (Throwable $exception) {
+    $adminSupportCount = 0;
+}
+
 function admin_shell_nav_class(string $key, string $active): string
 {
     return $key === $active
@@ -123,6 +142,17 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
             <span>Dashboard</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('support', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/support.php') ?>"
+        >
+            <i class="fa-solid fa-headset" aria-hidden="true"></i>
+            <span>Support</span>
+            <?php if ($adminSupportCount > 0): ?>
+                <b><?= $adminSupportCount ?></b>
+            <?php endif; ?>
         </a>
 
         <p class="admin-nav-label">Places</p>
