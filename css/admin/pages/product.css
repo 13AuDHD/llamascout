@@ -1,0 +1,27 @@
+/* =========================================================
+   ADMIN PAGE: PRODUCT DETAIL
+   Only admin/product.php belongs here.
+
+   Shared editor components live in:
+   features/product-workflow.css
+   ========================================================= */
+
+.admin-commerce-product-single {
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+.admin-commerce-product-single
+> .admin-panel {
+    margin: 0;
+}
+
+.admin-commerce-product-single
+> .admin-panel
+> .admin-user-form {
+    padding: var(--admin-panel-padding);
+}
+
+.admin-commerce-media-panel {
+    margin: 0;
+}

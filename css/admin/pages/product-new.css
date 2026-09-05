@@ -1,0 +1,23 @@
+/* =========================================================
+   ADMIN PAGE: NEW PRODUCT
+   Only admin/product-new.php belongs here.
+   ========================================================= */
+
+.admin-commerce-new-product
+> .admin-user-form {
+    padding: var(--admin-panel-padding);
+}
+
+.admin-commerce-new-product-note {
+    margin: 14px 0 0;
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.5;
+}
