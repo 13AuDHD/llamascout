@@ -130,11 +130,6 @@ $localVariants =
 require __DIR__ . '/_header.php';
 ?>
 
-<link
-    rel="stylesheet"
-    href="/css/admin-printful.css"
->
-
 <?php if ($notice !== ''): ?>
 <div class="admin-user-notice is-success">
     <?= moderation_e($notice) ?>
