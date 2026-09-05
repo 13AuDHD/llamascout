@@ -1,90 +1,8 @@
 /* =========================================================
    ADMIN PAGE: USER DETAIL
    Only admin/user.php belongs here.
+   Shared person-detail components live in features/person-detail.css.
    ========================================================= */
-
-/* Account summary */
-
-.admin-user-summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-
-    margin-bottom: var(--admin-panel-gap);
-    padding: 18px;
-
-    border: 1px solid var(--border);
-    border-radius: 14px;
-
-    background: var(--surface);
-}
-
-.admin-user-summary-identity {
-    min-width: 0;
-
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.admin-user-summary-avatar {
-    width: 58px;
-    height: 58px;
-
-    display: grid;
-    place-items: center;
-    flex: 0 0 58px;
-
-    overflow: hidden;
-    padding: 0;
-
-    border: 1px solid var(--border);
-    border-radius: 50%;
-
-    background: var(--background);
-
-    font-size: 1.2rem;
-    font-weight: 900;
-}
-
-.admin-user-summary-avatar img {
-    display: block;
-
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-    border-radius: inherit;
-}
-
-.admin-user-summary-identity > div {
-    min-width: 0;
-}
-
-.admin-user-summary-heading {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 9px;
-}
-
-.admin-user-summary h2,
-.admin-user-summary p {
-    margin: 0;
-}
-
-.admin-user-summary h2 {
-    font-size: 1.3rem;
-}
-
-.admin-user-summary p {
-    margin-top: 3px;
-
-    color: var(--text-muted);
-    font-size: .75rem;
-}
-
 
 /* User statistics */
 
@@ -145,46 +63,6 @@
 }
 
 
-/* Main detail layout */
-
-.admin-user-detail-grid {
-    display: grid;
-    grid-template-columns:
-        minmax(0, 1.55fr)
-        minmax(300px, .75fr);
-    gap: var(--admin-panel-gap);
-    align-items: start;
-}
-
-.admin-user-detail-main,
-.admin-user-detail-side {
-    display: grid;
-    gap: var(--admin-panel-gap);
-    align-items: start;
-}
-
-.admin-user-detail-main > .admin-panel,
-.admin-user-detail-side > .admin-panel {
-    margin: 0;
-    align-self: start;
-    height: auto;
-}
-
-
-/* Account form */
-
-.admin-user-form-grid {
-    display: grid;
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-    gap: 13px;
-}
-
-.admin-user-form-grid .is-wide {
-    grid-column: 1 / -1;
-}
-
-
 /* Roles */
 
 .admin-user-role-form {
@@ -231,87 +109,6 @@
 }
 
 
-/* Contribution history */
-
-.admin-user-history-list {
-    display: grid;
-}
-
-.admin-user-history-list a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-
-    padding: 13px 17px;
-
-    border-bottom: 1px solid var(--border);
-
-    color: var(--text);
-    text-decoration: none;
-}
-
-.admin-user-history-list a:last-child {
-    border-bottom: 0;
-}
-
-.admin-user-history-list a:hover,
-.admin-user-history-list a:focus-visible {
-    background: var(--background);
-}
-
-.admin-user-history-list a > span:first-child {
-    min-width: 0;
-
-    display: grid;
-    gap: 2px;
-}
-
-.admin-user-history-list strong {
-    overflow: hidden;
-
-    font-size: .8rem;
-
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.admin-user-history-list small,
-.admin-user-history-list a > span:last-child {
-    color: var(--text-muted);
-    font-size: .7rem;
-}
-
-
-/* Admin activity */
-
-.admin-user-audit-list {
-    display: grid;
-}
-
-.admin-user-audit-list > div {
-    display: grid;
-    gap: 3px;
-
-    padding: 12px 16px;
-
-    border-bottom: 1px solid var(--border);
-}
-
-.admin-user-audit-list > div:last-child {
-    border-bottom: 0;
-}
-
-.admin-user-audit-list strong {
-    font-size: .75rem;
-}
-
-.admin-user-audit-list span {
-    color: var(--text-muted);
-    font-size: .68rem;
-}
-
-
 /* Responsive */
 
 @media (max-width: 1180px) {
@@ -322,40 +119,10 @@
     }
 }
 
-@media (max-width: 900px) {
-
-    .admin-user-detail-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
 @media (max-width: 620px) {
-
-    .admin-user-summary {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .admin-user-summary-identity {
-        align-items: flex-start;
-    }
 
     .admin-user-stat-grid {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
-    }
-
-    .admin-user-form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .admin-user-form-grid .is-wide {
-        grid-column: auto;
-    }
-
-    .admin-user-history-list a {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 5px;
     }
 }

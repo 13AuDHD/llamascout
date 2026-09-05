@@ -1,0 +1,511 @@
+/* =========================================================
+   ADMIN PAGE: SCOUT DETAIL
+   Only admin/scout.php belongs here.
+   Shared person-detail components live in features/person-detail.css.
+   ========================================================= */
+
+/* Operational summary */
+
+.admin-scout-operation-strip {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-scout-operation-strip > div {
+    min-width: 0;
+
+    padding: 13px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.admin-scout-operation-strip > div.is-good {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-operation-strip > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+.admin-scout-operation-strip span,
+.admin-scout-operation-strip strong {
+    display: block;
+}
+
+.admin-scout-operation-strip span {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.admin-scout-operation-strip strong {
+    margin-top: 3px;
+
+    overflow-wrap: anywhere;
+
+    font-size: .78rem;
+}
+
+
+/* Onboarding */
+
+.admin-scout-onboarding-steps {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 8px;
+
+    padding: 16px;
+}
+
+.admin-scout-onboarding-steps > div {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+
+    padding: 12px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+
+    text-align: center;
+}
+
+.admin-scout-onboarding-steps > div > span {
+    width: 28px;
+    height: 28px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 900;
+}
+
+.admin-scout-onboarding-steps strong {
+    font-size: .68rem;
+}
+
+.admin-scout-onboarding-steps .is-complete,
+.admin-scout-onboarding-steps .is-current {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-onboarding-steps .is-current {
+    background: color-mix(
+        in srgb,
+        #58a66a 7%,
+        var(--surface)
+    );
+}
+
+.admin-scout-onboarding-facts {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 10px;
+
+    padding: 0 16px 16px;
+}
+
+.admin-scout-onboarding-facts > div {
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-onboarding-facts > div.is-good {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-onboarding-facts > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+.admin-scout-onboarding-facts span,
+.admin-scout-onboarding-facts strong,
+.admin-scout-onboarding-facts small {
+    display: block;
+}
+
+.admin-scout-onboarding-facts span {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 800;
+}
+
+.admin-scout-onboarding-facts strong {
+    margin-top: 3px;
+
+    font-size: .75rem;
+}
+
+.admin-scout-onboarding-facts small {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    line-height: 1.35;
+}
+
+.admin-scout-review-note {
+    margin: 0 16px 16px;
+    padding: 12px 14px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-review-note strong {
+    font-size: .75rem;
+}
+
+.admin-scout-review-note p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.admin-scout-review-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+
+/* Reactivation */
+
+.admin-scout-reactivation-status,
+.admin-scout-reactivation-intro {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    padding: 16px;
+}
+
+.admin-scout-reactivation-status > div,
+.admin-scout-reactivation-intro > div {
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-reactivation-status span,
+.admin-scout-reactivation-status strong,
+.admin-scout-reactivation-status small,
+.admin-scout-reactivation-intro strong,
+.admin-scout-reactivation-intro span {
+    display: block;
+}
+
+.admin-scout-reactivation-status span {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 800;
+}
+
+.admin-scout-reactivation-status strong,
+.admin-scout-reactivation-intro strong {
+    margin-top: 3px;
+
+    font-size: .75rem;
+}
+
+.admin-scout-reactivation-status small,
+.admin-scout-reactivation-intro span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.4;
+}
+
+.admin-scout-reactivation-history {
+    display: grid;
+    gap: 3px;
+
+    margin: 0 16px 16px;
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-reactivation-history span,
+.admin-scout-reactivation-history small {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-scout-reactivation-history strong {
+    font-size: .75rem;
+}
+
+
+/* Scout period */
+
+.admin-scout-period-panel {
+    display: grid;
+    gap: 14px;
+
+    padding: 16px;
+}
+
+.admin-scout-period-progress {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-scout-period-progress > div {
+    padding: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-period-progress strong,
+.admin-scout-period-progress span {
+    display: block;
+}
+
+.admin-scout-period-progress strong {
+    font-size: 1.2rem;
+}
+
+.admin-scout-period-progress span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-scout-period-status {
+    display: grid;
+    grid-template-columns:
+        32px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-period-status.is-good {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-period-status.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+.admin-scout-period-status > i {
+    text-align: center;
+}
+
+.admin-scout-period-status strong,
+.admin-scout-period-status span {
+    display: block;
+}
+
+.admin-scout-period-status strong {
+    font-size: .75rem;
+}
+
+.admin-scout-period-status span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+    font-size: .66rem;
+}
+
+
+/* Master qualification */
+
+.admin-scout-master-checklist {
+    display: grid;
+
+    padding: 8px 16px;
+}
+
+.admin-scout-master-checklist > div {
+    display: grid;
+    grid-template-columns:
+        20px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-scout-master-checklist > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-scout-master-checklist > div.is-met i {
+    color: #58a66a;
+}
+
+.admin-scout-master-checklist span {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.admin-scout-master-checklist strong {
+    font-size: .72rem;
+}
+
+.admin-scout-master-checklist small {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-scout-policy-warning {
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+    border-radius: 9px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+.admin-scout-master-action small {
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.4;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1180px) {
+
+    .admin-scout-operation-strip {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-scout-onboarding-facts {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-scout-onboarding-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-scout-onboarding-steps > div {
+        grid-template-columns:
+            28px minmax(0, 1fr);
+        justify-items: start;
+        align-items: center;
+
+        text-align: left;
+    }
+}
+
+@media (max-width: 620px) {
+
+    .admin-scout-operation-strip,
+    .admin-scout-onboarding-facts,
+    .admin-scout-reactivation-status,
+    .admin-scout-reactivation-intro,
+    .admin-scout-period-progress {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-scout-review-buttons {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
