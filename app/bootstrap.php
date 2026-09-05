@@ -32,6 +32,31 @@ require_once __DIR__ . '/moderation.php';
 
 start_llama_session();
 
+/*
+ * Opportunistic promotion-email maintenance.
+ *
+ * Only authenticated activity can advance the mail queue.
+ * The worker has its own database throttle and connection lock,
+ * and sends only a tiny batch per maintenance pass.
+ *
+ * Failure must never interfere with the member's request.
+ */
+if (!empty($_SESSION['user_id'])) {
+    try {
+        require_once __DIR__ . '/promotion-campaigns.php';
+
+        llama_run_promotion_email_maintenance(
+            db(),
+            2
+        );
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout promotion email maintenance error: '
+            . $exception->getMessage()
+        );
+    }
+}
+
 llama_enforce_maintenance(
     db()
 );
