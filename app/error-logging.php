@@ -339,6 +339,12 @@ function llama_error_message_with_reference(string $message, ?string $reference)
     return rtrim($message) . ' Error reference: ' . $reference;
 }
 
+function llama_error_report_url(string $reference): string
+{
+    return 'https://llamascout.com/contact.php?error='
+        . rawurlencode($reference);
+}
+
 function llama_error_public_response(string $reference): never
 {
     if (!headers_sent()) {
@@ -357,21 +363,48 @@ function llama_error_public_response(string $reference): never
         echo json_encode([
             'error' => 'Something went wrong.',
             'reference' => $reference,
+            'report_url' => llama_error_report_url($reference),
         ]);
         exit;
     }
 
-    $safeReference = htmlspecialchars($reference, ENT_QUOTES, 'UTF-8');
+    $safeReference = htmlspecialchars(
+        $reference,
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    $safeReportUrl = htmlspecialchars(
+        llama_error_report_url($reference),
+        ENT_QUOTES,
+        'UTF-8'
+    );
 
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         . '<meta name="viewport" content="width=device-width,initial-scale=1">'
         . '<title>Something went wrong | Llama Scout</title>'
-        . '<style>body{font-family:system-ui,sans-serif;background:#111;color:#f5f5f5;margin:0;padding:32px}'
-        . 'main{max-width:640px;margin:10vh auto;background:#1c1c1c;border:1px solid #333;border-radius:16px;padding:28px}'
-        . 'h1{margin-top:0}code{background:#0d0d0d;padding:4px 8px;border-radius:6px}</style></head><body><main>'
+        . '<style>'
+        . ':root{color-scheme:dark}'
+        . '*{box-sizing:border-box}'
+        . 'body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111;color:#f5f5f5;margin:0;padding:24px}'
+        . 'main{max-width:680px;margin:10vh auto;background:#1c1c1c;border:1px solid #333;border-radius:18px;padding:30px}'
+        . 'h1{margin:0 0 14px;font-size:clamp(1.8rem,5vw,2.5rem)}'
+        . 'p{line-height:1.6;color:#d8d8d8}'
+        . 'code{display:inline-block;background:#0d0d0d;padding:5px 9px;border-radius:7px;color:#fff;font-weight:700}'
+        . '.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}'
+        . '.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 17px;border:1px solid #4b4b4b;border-radius:10px;background:#292929;color:#fff;text-decoration:none;font-weight:700}'
+        . '.button.primary{background:#f3f1e8;color:#172822;border-color:#f3f1e8}'
+        . '.note{margin-top:22px;font-size:.88rem;color:#aaa}'
+        . '@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}'
+        . '</style></head><body><main>'
         . '<h1>Something went wrong.</h1>'
         . '<p>Llama Scout recorded the error so it can be investigated.</p>'
         . '<p>Error reference: <code>' . $safeReference . '</code></p>'
+        . '<div class="actions">'
+        . '<a class="button primary" href="' . $safeReportUrl . '">Report this error</a>'
+        . '<a class="button" href="https://llamascout.com/">Return to Llama Scout</a>'
+        . '</div>'
+        . '<p class="note">Reporting the error opens a support ticket with this reference already attached. You only need to describe what you were doing when it happened.</p>'
         . '</main></body></html>';
 
     exit;
