@@ -144,7 +144,7 @@ $adminNavCounts = [
 
 $adminPageTitle = 'Promotion Codes';
 $adminPageEyebrow = 'Commerce';
-$adminActiveNav = 'memberships';
+$adminActiveNav = 'promotion-codes';
 
 $codes = [];
 $codeStats = [];
