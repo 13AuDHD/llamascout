@@ -381,13 +381,18 @@ require __DIR__ . '/_header.php';
             </label>
         </div>
 
-        <label>
+        <label class="admin-toggle">
             <input
                 type="checkbox"
                 name="first_time_customers_only"
                 value="1"
             >
-            First-time customers only
+            <span class="admin-toggle-track" aria-hidden="true">
+                <span class="admin-toggle-knob"></span>
+            </span>
+            <span class="admin-toggle-copy">
+                <strong>First-time customers only</strong>
+            </span>
         </label>
 
         <button class="admin-button" type="submit">
@@ -468,8 +473,18 @@ require __DIR__ . '/_header.php';
                                 value="<?= !empty($code['is_enabled']) ? '0' : '1' ?>"
                             >
 
-                            <button class="admin-button" type="submit">
-                                <?= !empty($code['is_enabled']) ? 'Disable' : 'Enable' ?>
+                            <button
+                                class="admin-toggle-action"
+                                type="submit"
+                                aria-pressed="<?= !empty($code['is_enabled']) ? 'true' : 'false' ?>"
+                                title="<?= !empty($code['is_enabled']) ? 'Disable code' : 'Enable code' ?>"
+                            >
+                                <span class="admin-toggle-track" aria-hidden="true">
+                                    <span class="admin-toggle-knob"></span>
+                                </span>
+                                <span class="admin-toggle-action-label">
+                                    <?= !empty($code['is_enabled']) ? 'Enabled' : 'Disabled' ?>
+                                </span>
                             </button>
                         </form>
                     </div>
