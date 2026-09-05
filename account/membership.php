@@ -9,66 +9,38 @@ start_llama_session();
 
 $db = db();
 
-$plan =
-    strtolower(
-        trim(
-            (string) (
-                $_GET['plan']
-                ?? $_SESSION['pending_membership_plan']
-                ?? ''
-            )
+$plan = strtolower(
+    trim(
+        (string) (
+            $_GET['plan']
+            ?? $_SESSION['pending_membership_plan']
+            ?? ''
         )
-    );
-
-if (
-    !in_array(
-        $plan,
-        ['monthly', 'annual'],
-        true
     )
-) {
+);
+
+if (!in_array($plan, ['monthly', 'annual'], true)) {
     $plan = '';
 }
 
 if ($plan !== '') {
-    $_SESSION['pending_membership_plan'] =
-        $plan;
+    $_SESSION['pending_membership_plan'] = $plan;
 }
 
-$offers =
-    llama_membership_offers(
-        $db
-    );
+$offers = llama_membership_offers($db);
 
-$monthlyOffer =
-    $offers['monthly']
-    ?? null;
+$monthlyOffer = $offers['monthly'] ?? null;
+$annualOffer = $offers['annual'] ?? null;
 
-$annualOffer =
-    $offers['annual']
-    ?? null;
-
-$user =
-    current_user();
-
-$isLoggedIn =
-    is_logged_in();
+$user = current_user();
+$isLoggedIn = is_logged_in();
 
 $isVerified =
     $user
-    && !empty(
-        $user['email_verified_at']
-    );
+    && !empty($user['email_verified_at']);
 
-if (
-    $isLoggedIn
-    && !$isVerified
-) {
-    header(
-        'Location: /verify-email.php',
-        true,
-        303
-    );
+if ($isLoggedIn && !$isVerified) {
+    header('Location: /verify-email.php', true, 303);
     exit;
 }
 
@@ -91,137 +63,69 @@ if ($isLoggedIn) {
          LIMIT 1'
     );
 
-    $stmt->execute([
-        (int) $user['id'],
-    ]);
+    $stmt->execute([(int) $user['id']]);
 
-    $account =
-        $stmt->fetch(PDO::FETCH_ASSOC)
-        ?: null;
+    $account = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-$membershipStatus =
-    strtolower(
-        trim(
-            (string) (
-                $account['membership_status']
-                ?? 'none'
-            )
-        )
-    );
+$membershipStatus = strtolower(
+    trim((string) ($account['membership_status'] ?? 'none'))
+);
 
-$membershipInterval =
-    strtolower(
-        trim(
-            (string) (
-                $account['membership_interval']
-                ?? ''
-            )
-        )
-    );
+$membershipInterval = strtolower(
+    trim((string) ($account['membership_interval'] ?? ''))
+);
 
 $hasPaidMembership =
     $account
     && in_array(
         $membershipStatus,
-        [
-            'active',
-            'trialing',
-            'past_due',
-        ],
+        ['active', 'trialing', 'past_due'],
         true
     )
-    && trim(
-        (string) (
-            $account['stripe_subscription_id']
-            ?? ''
-        )
-    ) !== '';
+    && trim((string) ($account['stripe_subscription_id'] ?? '')) !== '';
 
-if (
-    empty(
-        $_SESSION[
-            'membership_checkout_csrf'
-        ]
-    )
-) {
-    $_SESSION[
-        'membership_checkout_csrf'
-    ] =
-        bin2hex(
-            random_bytes(32)
-        );
+if (empty($_SESSION['membership_checkout_csrf'])) {
+    $_SESSION['membership_checkout_csrf'] = bin2hex(random_bytes(32));
 }
 
-$csrfToken =
-    (string)
-    $_SESSION[
-        'membership_checkout_csrf'
-    ];
+$csrfToken = (string) $_SESSION['membership_checkout_csrf'];
 
-function signup_membership_e(
-    mixed $value
-): string {
-    return htmlspecialchars(
-        (string) $value,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+function signup_membership_e(mixed $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-function signup_membership_price(
-    ?array $offer
-): string {
+function signup_membership_price(?array $offer): string
+{
     if (!$offer) {
         return 'Unavailable';
     }
 
     return llama_membership_format_money(
-        (int)
-        $offer[
-            'effective_price_cents'
-        ],
-        (string)
-        $offer[
-            'plan'
-        ][
-            'currency'
-        ]
+        (int) $offer['effective_price_cents'],
+        (string) $offer['plan']['currency']
     );
 }
 
-function signup_membership_regular_price(
-    ?array $offer
-): string {
+function signup_membership_regular_price(?array $offer): string
+{
     if (!$offer) {
         return '';
     }
 
     return llama_membership_format_money(
-        (int)
-        $offer[
-            'base_price_cents'
-        ],
-        (string)
-        $offer[
-            'plan'
-        ][
-            'currency'
-        ]
+        (int) $offer['base_price_cents'],
+        (string) $offer['plan']['currency']
     );
 }
 
-$pageTitle =
-    'Membership | Llama Scout';
-
-$pageRobots =
-    'noindex,nofollow';
-
+$pageTitle = 'Membership | Llama Scout';
+$pageRobots = 'noindex,nofollow';
 $pageDescription =
     'Choose a Llama Scout membership plan and complete secure checkout without leaving Llama Scout.';
 
-require dirname(__DIR__) .
-    '/partials/header.php';
+require dirname(__DIR__) . '/partials/header.php';
 ?>
 
 <link
@@ -237,20 +141,13 @@ require dirname(__DIR__) .
     class="signup-membership-back"
     href="https://llamascout.com/membership"
 >
-    <i
-        class="fa-solid fa-arrow-left"
-        aria-hidden="true"
-    ></i>
+    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
     Membership details
 </a>
 
-<p class="eyebrow">
-    Llama Scout Membership
-</p>
+<p class="eyebrow">Llama Scout Membership</p>
 
-<h1>
-    Choose how you want to join.
-</h1>
+<h1>Choose how you want to join.</h1>
 
 <p>
     Monthly and annual memberships unlock the same complete
@@ -260,16 +157,10 @@ require dirname(__DIR__) .
 </header>
 
 
-<?php if (
-    isset($_GET['verified'])
-): ?>
+<?php if (isset($_GET['verified'])): ?>
 
 <div class="signup-membership-notice is-success">
-    <i
-        class="fa-solid fa-circle-check"
-        aria-hidden="true"
-    ></i>
-
+    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
     Email verified. Your account is ready. Continue with the
     membership you selected.
 </div>
@@ -283,11 +174,7 @@ require dirname(__DIR__) .
 ): ?>
 
 <div class="signup-membership-notice is-success">
-    <i
-        class="fa-solid fa-circle-check"
-        aria-hidden="true"
-    ></i>
-
+    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
     Payment completed. Stripe is confirming your membership and
     your account will update automatically.
 </div>
@@ -349,63 +236,66 @@ require dirname(__DIR__) .
 <?php if (!$offer) continue; ?>
 
 <?php
-$isSelected =
-    $plan === $interval;
-
-$onSale =
-    !empty(
-        $offer['on_sale']
-    );
+$isSelected = $plan === $interval;
+$onSale = !empty($offer['on_sale']);
+$promotion = $offer['promotion'] ?? null;
 ?>
 
 <article
-    class="signup-membership-plan <?= $isSelected
-        ? 'is-selected'
-        : '' ?>"
+    class="signup-membership-plan <?= $isSelected ? 'is-selected' : '' ?>"
 >
 
 <?php if ($isSelected): ?>
-
 <span class="signup-membership-selected">
     You selected this plan
 </span>
-
 <?php endif; ?>
 
-<h2>
-    <?= $interval === 'annual'
-        ? 'Annual'
-        : 'Monthly' ?>
-</h2>
+<h2><?= $interval === 'annual' ? 'Annual' : 'Monthly' ?></h2>
 
 <div class="signup-membership-price">
 
 <?php if ($onSale): ?>
     <del>
         <?= signup_membership_e(
-            signup_membership_regular_price(
-                $offer
-            )
+            signup_membership_regular_price($offer)
         ) ?>
     </del>
 <?php endif; ?>
 
 <strong>
     <?= signup_membership_e(
-        signup_membership_price(
-            $offer
-        )
+        signup_membership_price($offer)
     ) ?>
 </strong>
 
 <span>
-    /
-    <?= $interval === 'annual'
-        ? 'year'
-        : 'month' ?>
+    / <?= $interval === 'annual' ? 'year' : 'month' ?>
 </span>
 
 </div>
+
+<?php if ($onSale): ?>
+<div class="signup-membership-notice is-success">
+    <strong>
+        <?= signup_membership_e(
+            (string) (
+                $promotion['public_label']
+                ?? $promotion['promotion_name']
+                ?? 'Limited-time promotion'
+            )
+        ) ?>
+    </strong>
+    <span>
+        Introductory price for your first year only.
+        After the first year, the membership renews at
+        <?= signup_membership_e(
+            signup_membership_regular_price($offer)
+        ) ?>
+        <?= $interval === 'annual' ? 'per year' : 'per month' ?>.
+    </span>
+</div>
+<?php endif; ?>
 
 <ul>
     <li>Exact Place locations and coordinates</li>
@@ -420,9 +310,7 @@ $onSale =
 
 <a
     class="signup-membership-button"
-    href="/register.php?plan=<?= signup_membership_e(
-        $interval
-    ) ?>"
+    href="/register.php?plan=<?= signup_membership_e($interval) ?>"
 >
     Create account to continue
 </a>
@@ -430,8 +318,7 @@ $onSale =
 <a
     class="signup-membership-signin"
     href="/login.php?return=<?= rawurlencode(
-        'https://account.llamascout.com/membership.php?plan=' .
-        $interval
+        'https://account.llamascout.com/membership.php?plan=' . $interval
     ) ?>"
 >
     Already have an account? Sign in
@@ -447,17 +334,13 @@ $onSale =
 <input
     type="hidden"
     name="csrf_token"
-    value="<?= signup_membership_e(
-        $csrfToken
-    ) ?>"
+    value="<?= signup_membership_e($csrfToken) ?>"
 >
 
 <input
     type="hidden"
     name="interval"
-    value="<?= signup_membership_e(
-        $interval
-    ) ?>"
+    value="<?= signup_membership_e($interval) ?>"
 >
 
 <button
@@ -480,15 +363,10 @@ $onSale =
 
 <div class="signup-membership-security">
 
-<i
-    class="fa-solid fa-lock"
-    aria-hidden="true"
-></i>
+<i class="fa-solid fa-lock" aria-hidden="true"></i>
 
 <div>
-    <strong>
-        Secure checkout stays on Llama Scout
-    </strong>
+    <strong>Secure checkout stays on Llama Scout</strong>
 
     <span>
         Stripe securely handles the payment fields inside Llama Scout.
@@ -503,7 +381,4 @@ $onSale =
 
 </section>
 
-<?php
-require dirname(__DIR__) .
-    '/partials/footer.php';
-?>
+<?php require dirname(__DIR__) . '/partials/footer.php'; ?>
