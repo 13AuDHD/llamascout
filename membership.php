@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
+require_once __DIR__ . '/app/memberships.php';
 
 $pageTitle = 'Membership | Llama Scout';
 $pageDescription = 'Compare free Llama Scout access with full paid membership and see current monthly and annual membership pricing.';
@@ -19,31 +20,10 @@ function membership_public_money(int $cents): string
 }
 
 $db = db();
+$offers = llama_membership_offers($db);
 
-$stmt = $db->query(
-    "SELECT
-        mp.id,
-        mp.interval_slug,
-        mp.name,
-        mp.description,
-        mp.currency,
-        COALESCE(mpp.amount_cents, mp.base_price_cents) AS amount_cents
-     FROM membership_plans mp
-     LEFT JOIN membership_plan_prices mpp
-       ON mpp.plan_id = mp.id
-      AND mpp.is_current = 1
-     WHERE mp.is_active = 1
-     ORDER BY mp.sort_order ASC, mp.id ASC"
-);
-
-$plans = [];
-
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $plan) {
-    $plans[(string) $plan['interval_slug']] = $plan;
-}
-
-$monthly = $plans['monthly'] ?? null;
-$annual = $plans['annual'] ?? null;
+$monthly = $offers['monthly'] ?? null;
+$annual = $offers['annual'] ?? null;
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -119,42 +99,84 @@ require __DIR__ . '/partials/header.php';
                 <article class="membership-public-plan is-paid">
                     <span class="membership-public-kicker">Complete access</span>
                     <h2>Paid Member</h2>
-                    
-<div class="membership-public-paid-prices">
 
-    <?php if ($monthly): ?>
-        <div class="membership-price-option">
-            <strong>
-                <?= membership_public_e(
-                    membership_public_money(
-                        (int) $monthly['amount_cents']
-                    )
-                ) ?>
-            </strong>
-            <span>/ month</span>
-        </div>
-    <?php endif; ?>
+                    <div class="membership-public-paid-prices">
 
-    <?php if ($monthly && $annual): ?>
-        <div class="membership-price-separator">
-            <span>or</span>
-        </div>
-    <?php endif; ?>
+                        <?php if ($monthly): ?>
+                            <div class="membership-price-option">
+                                <?php if (!empty($monthly['on_sale'])): ?>
+                                    <del>
+                                        <?= membership_public_e(
+                                            membership_public_money((int) $monthly['base_price_cents'])
+                                        ) ?>
+                                    </del>
+                                <?php endif; ?>
+                                <strong>
+                                    <?= membership_public_e(
+                                        membership_public_money((int) $monthly['effective_price_cents'])
+                                    ) ?>
+                                </strong>
+                                <span>/ month</span>
+                                <?php if (!empty($monthly['on_sale'])): ?>
+                                    <small>First year only</small>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
 
-    <?php if ($annual): ?>
-        <div class="membership-price-option">
-            <strong>
-                <?= membership_public_e(
-                    membership_public_money(
-                        (int) $annual['amount_cents']
-                    )
-                ) ?>
-            </strong>
-            <span>/ year</span>
-        </div>
-    <?php endif; ?>
+                        <?php if ($monthly && $annual): ?>
+                            <div class="membership-price-separator">
+                                <span>or</span>
+                            </div>
+                        <?php endif; ?>
 
-</div>
+                        <?php if ($annual): ?>
+                            <div class="membership-price-option">
+                                <?php if (!empty($annual['on_sale'])): ?>
+                                    <del>
+                                        <?= membership_public_e(
+                                            membership_public_money((int) $annual['base_price_cents'])
+                                        ) ?>
+                                    </del>
+                                <?php endif; ?>
+                                <strong>
+                                    <?= membership_public_e(
+                                        membership_public_money((int) $annual['effective_price_cents'])
+                                    ) ?>
+                                </strong>
+                                <span>/ year</span>
+                                <?php if (!empty($annual['on_sale'])): ?>
+                                    <small>First year only</small>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+
+                    <?php
+                    $activePromo = $monthly['promotion'] ?? $annual['promotion'] ?? null;
+                    ?>
+                    <?php if ($activePromo): ?>
+                        <div class="membership-public-promo-note">
+                            <strong>
+                                <?= membership_public_e(
+                                    (string) (
+                                        $activePromo['public_label']
+                                        ?? $activePromo['promotion_name']
+                                        ?? 'Limited-time promotion'
+                                    )
+                                ) ?>
+                            </strong>
+                            <span>
+                                <?= membership_public_e(
+                                    (string) (
+                                        $activePromo['public_description']
+                                        ?? 'Introductory pricing applies during the first year, then renews at the regular price.'
+                                    )
+                                ) ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
+
                     <p>The complete Llama Scout Place report. Still no actual llama included.</p>
 
                     <ul>
@@ -244,34 +266,6 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 
-    <section class="membership-public-explainer">
-        <div class="public-home-container membership-public-explainer-grid">
-
-            <div>
-                <p class="public-home-eyebrow">Why the split?</p>
-                <h2>Public information stays useful without giving away the exact place.</h2>
-            </div>
-
-            <div>
-                <p>
-                    Public Llama Scout information is designed to help someone
-                    decide whether a place deserves a closer look. Paid information
-                    is the part that identifies and describes the actual site:
-                    the exact coordinates, road, access, sensory conditions,
-                    connectivity, complete photos, and the full Scout Report.
-                </p>
-
-                <p>
-                    Paid membership supports the work involved in finding,
-                    documenting, reviewing, maintaining, and presenting those
-                    place-specific details.
-                </p>
-            </div>
-
-        </div>
-    </section>
-
-
     <section class="membership-public-faq">
         <div class="public-home-container">
             <div class="public-home-section-heading">
@@ -293,21 +287,21 @@ require __DIR__ . '/partials/header.php';
                 </details>
 
                 <details>
-                    <summary>Why are exact locations paid information?</summary>
+                    <summary>How do automatic promotional prices work?</summary>
                     <p>
-                        Exact coordinates and identifying location details are part
-                        of the complete Place report. That information is separated
-                        from the public planning view both to support Llama Scout
-                        and to avoid casually publishing exact site locations.
+                        A holiday or signup promotion applies automatically to a new
+                        membership started during the promotional window. The
+                        introductory rate lasts for the first year only. After that,
+                        the membership renews at the regular recurring price.
                     </p>
                 </details>
 
                 <details>
-                    <summary>Does paid membership change what I can contribute?</summary>
+                    <summary>Are promotion codes the same thing as promotional pricing?</summary>
                     <p>
-                        No. Contribution tools belong to the free member account.
-                        Paid membership is about access to the complete Place report,
-                        not buying community status.
+                        No. Automatic promotional pricing is tied to a scheduled
+                        signup period. Promotion codes are separate special offers
+                        that may be made available for specific occasions.
                     </p>
                 </details>
 
@@ -328,7 +322,7 @@ require __DIR__ . '/partials/header.php';
                         platinum llama lounge exists for annual members.
                     </p>
                 </details>
-                
+
                 <details>
                     <summary>What do llamas eat?</summary>
                     <p>
