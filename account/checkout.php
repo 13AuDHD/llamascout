@@ -22,7 +22,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     exit;
 }
 
-llama_ensure_membership_storage($db);
+/*
+ * Membership schema is installed deliberately through phpMyAdmin.
+ * Do not run CREATE/ALTER statements in ordinary checkout traffic.
+ */
+$requiredTables = [
+    'membership_plans',
+    'membership_plan_prices',
+    'membership_promotions',
+    'membership_promotion_plans',
+    'membership_checkout_settings',
+];
+
+foreach ($requiredTables as $requiredTable) {
+    if (!llama_membership_table_exists($db, $requiredTable)) {
+        http_response_code(503);
+        exit('Membership checkout is temporarily unavailable while configuration is completed.');
+    }
+}
 
 $expectedToken = $_SESSION['membership_checkout_csrf'] ?? '';
 $submittedToken = $_POST['csrf_token'] ?? '';
@@ -85,6 +102,19 @@ $clientSecret = '';
 $publishableKey = '';
 $plan = null;
 
+$manualPromotionCodesEnabled = false;
+
+$manualCodesStmt = $db->query(
+    'SELECT manual_promotion_codes_enabled
+     FROM membership_checkout_settings
+     WHERE id = 1
+     LIMIT 1'
+);
+
+if ($manualCodesStmt) {
+    $manualPromotionCodesEnabled = (bool) $manualCodesStmt->fetchColumn();
+}
+
 if (!$offer) {
     http_response_code(409);
     $checkoutError = 'That membership plan is not currently available.';
@@ -120,6 +150,7 @@ if (!$offer) {
                     'membership_interval' => $interval,
                     'membership_plan_id' => (string) $plan['id'],
                     'membership_promotion_id' => $promotionId > 0 ? (string) $promotionId : '',
+                    'membership_promotion_policy' => $promotionId > 0 ? 'first_year_only' : '',
                 ],
                 'subscription_data' => [
                     'metadata' => [
@@ -127,6 +158,7 @@ if (!$offer) {
                         'membership_interval' => $interval,
                         'membership_plan_id' => (string) $plan['id'],
                         'membership_promotion_id' => $promotionId > 0 ? (string) $promotionId : '',
+                        'membership_promotion_policy' => $promotionId > 0 ? 'first_year_only' : '',
                     ],
                 ],
                 'return_url' =>
@@ -136,12 +168,24 @@ if (!$offer) {
             ];
 
             if ($onSale) {
+                /*
+                 * Automatic holiday/signup pricing is not a reusable code.
+                 * The Stripe Coupon created by Admin determines how long the
+                 * introductory rate lasts:
+                 * monthly = 12 invoices, annual = first invoice only.
+                 */
                 $sessionData['discounts'] = [[
                     'coupon' => $couponId,
                 ]];
+
                 $sessionData['allow_promotion_codes'] = false;
             } else {
-                $sessionData['allow_promotion_codes'] = true;
+                /*
+                 * Manual Stripe Promotion Codes are a separate feature and
+                 * appear only when explicitly enabled in Admin.
+                 */
+                $sessionData['allow_promotion_codes'] =
+                    $manualPromotionCodesEnabled;
             }
 
             if (!empty($account['stripe_customer_id'])) {
@@ -168,6 +212,7 @@ if (!$offer) {
                     'user_id' => (int) $account['id'],
                     'interval' => $interval,
                     'plan_id' => (int) ($plan['id'] ?? 0),
+                    'promotion_id' => $promotionId,
                 ]
             );
 
@@ -252,11 +297,16 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <?php if (!empty($offer['on_sale'])): ?>
     <p class="checkout-sale-note">
-        Promotion applied automatically.
+        Introductory promotion applied automatically.
         Regular price <?= checkout_e(checkout_money(
             (int) ($offer['base_price_cents'] ?? 0),
             (string) ($plan['currency'] ?? 'usd')
         )) ?>.
+        The promotional rate applies only during your first year, then renews at the regular price.
+    </p>
+    <?php elseif ($manualPromotionCodesEnabled): ?>
+    <p class="checkout-sale-note">
+        Have a special promotion code? Enter it in the secure Stripe checkout form.
     </p>
     <?php endif; ?>
 
