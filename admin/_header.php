@@ -180,6 +180,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['submissions.css'],
             'features' => ['moderation-queue.css'],
         ],
+        'moderate-submission.php' => [
+            'pages' => ['moderate-submission.css'],
+            'features' => ['moderation-review.css'],
+        ],
     ];
 
     $adminManifestEntry =
