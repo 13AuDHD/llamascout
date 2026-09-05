@@ -140,7 +140,8 @@ function llama_promotion_email_recipients(
      * - no current paid/complimentary membership access
      * - no active Scout access
      * - no active complimentary grant
-     * - no delivery already recorded for this campaign/type
+     * - no successful delivery already recorded for this campaign/type
+     * - failed delivery may retry after a one-hour cooldown
      *
      * This mirrors user_has_member_access() without making
      * multiple database calls for every queued recipient.
@@ -199,7 +200,17 @@ function llama_promotion_email_recipients(
                   AND mg.ends_at >= UTC_TIMESTAMP()
            )
 
-           AND d.id IS NULL
+           AND (
+                d.id IS NULL
+                OR (
+                    d.status = \'failed\'
+                    AND d.failed_at IS NOT NULL
+                    AND d.failed_at <= DATE_SUB(
+                        UTC_TIMESTAMP(),
+                        INTERVAL 1 HOUR
+                    )
+                )
+           )
          ORDER BY u.id ASC
          LIMIT ' . $limit;
 
@@ -422,7 +433,10 @@ function llama_promotion_send_batch(
                   AND mg.ends_at >= UTC_TIMESTAMP()
            )
 
-           AND d.id IS NULL'
+           AND (
+                d.id IS NULL
+                OR d.status = \'failed\'
+           )'
     );
     $remainingStmt->execute([$promotionId, $deliveryType]);
 
