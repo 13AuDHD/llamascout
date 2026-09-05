@@ -345,3 +345,103 @@ function llama_set_membership_promotion_code_enabled(
         $id,
     ]);
 }
+
+
+/* =========================================================
+   PROMOTION CODE REDEMPTION TRACKING
+   ========================================================= */
+
+function llama_record_membership_promotion_code_redemption(
+    PDO $db,
+    string $stripePromotionCodeId,
+    int $userId,
+    string $membershipInterval,
+    string $checkoutSessionId,
+    string $subscriptionId,
+    ?int $amountCents
+): void {
+    $stripePromotionCodeId = trim($stripePromotionCodeId);
+    $checkoutSessionId = trim($checkoutSessionId);
+
+    if (
+        $stripePromotionCodeId === ''
+        || $userId < 1
+        || $checkoutSessionId === ''
+    ) {
+        return;
+    }
+
+    $lookup = $db->prepare(
+        'SELECT id
+         FROM membership_promotion_codes
+         WHERE stripe_promotion_code_id = ?
+         LIMIT 1'
+    );
+    $lookup->execute([$stripePromotionCodeId]);
+
+    $promotionCodeId = (int) $lookup->fetchColumn();
+
+    if ($promotionCodeId < 1) {
+        return;
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO membership_promotion_code_events
+         (
+            promotion_code_id,
+            user_id,
+            membership_interval,
+            stripe_checkout_session_id,
+            stripe_subscription_id,
+            amount_cents
+         )
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            stripe_subscription_id = VALUES(stripe_subscription_id),
+            amount_cents = VALUES(amount_cents)'
+    );
+
+    $stmt->execute([
+        $promotionCodeId,
+        $userId,
+        $membershipInterval !== '' ? $membershipInterval : null,
+        $checkoutSessionId,
+        $subscriptionId !== '' ? $subscriptionId : null,
+        $amountCents !== null ? max(0, $amountCents) : null,
+    ]);
+}
+
+
+function llama_membership_promotion_code_stats(PDO $db): array
+{
+    $stats = [];
+
+    $table = $db->query(
+        "SELECT COUNT(*)
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = 'membership_promotion_code_events'"
+    );
+
+    if (!$table || (int) $table->fetchColumn() < 1) {
+        return $stats;
+    }
+
+    $rows = $db->query(
+        'SELECT
+            promotion_code_id,
+            COUNT(*) AS redemptions,
+            COALESCE(SUM(amount_cents), 0) AS revenue_cents
+         FROM membership_promotion_code_events
+         GROUP BY promotion_code_id'
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($rows as $row) {
+        $stats[(int) $row['promotion_code_id']] = [
+            'redemptions' => (int) ($row['redemptions'] ?? 0),
+            'revenue_cents' => (int) ($row['revenue_cents'] ?? 0),
+        ];
+    }
+
+    return $stats;
+}
