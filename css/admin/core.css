@@ -912,6 +912,54 @@
     }
 }
 
+
+
+/* =========================================================
+   SHARED DESTRUCTIVE ACTIONS
+   ========================================================= */
+
+.admin-danger-panel {
+    border-color: color-mix(
+        in srgb,
+        #c94a4a 60%,
+        var(--border)
+    );
+}
+
+.admin-danger-button {
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 7px 12px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #c94a4a;
+    border-radius: var(--admin-control-radius);
+
+    background: transparent;
+    color: #d85b5b;
+
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 900;
+
+    cursor: pointer;
+}
+
+.admin-danger-button:hover,
+.admin-danger-button:focus-visible {
+    background: color-mix(
+        in srgb,
+        #c94a4a 12%,
+        transparent
+    );
+}
+
 /* =========================================================
    RESPONSIVE SHELL
    ========================================================= */
