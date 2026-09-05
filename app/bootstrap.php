@@ -62,6 +62,14 @@ if (!empty($_SESSION['user_id'])) {
             5
         );
 
+        require_once __DIR__ . '/shop-maintenance.php';
+
+        shop_run_checkout_cleanup_maintenance(
+            db(),
+            50,
+            300
+        );
+
     } catch (Throwable $exception) {
         error_log(
             'Llama Scout opportunistic maintenance error: '
