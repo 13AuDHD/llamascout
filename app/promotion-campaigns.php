@@ -427,3 +427,198 @@ function llama_promotion_finish_delivery_if_complete(
 
     $stmt->execute([$sentCount, $promotionId]);
 }
+
+
+/* =========================================================
+   OPPORTUNISTIC PROMOTION EMAIL MAINTENANCE
+
+   Porkbun does not provide cron on this hosting plan.
+
+   Like Scout maintenance, campaign email is advanced by
+   ordinary authenticated site activity. The database-backed
+   throttle keeps this from running on every request.
+
+   Each maintenance pass sends only a small number of messages
+   so a member page load is not turned into a large mail job.
+   ========================================================= */
+
+function llama_promotion_email_maintenance_is_due(
+    PDO $db,
+    int $intervalSeconds = 60
+): bool {
+    $intervalSeconds = max(30, $intervalSeconds);
+
+    $db->exec(
+        'CREATE TABLE IF NOT EXISTS app_maintenance
+         (
+            maintenance_key VARCHAR(100) NOT NULL,
+            last_run_at DATETIME NULL,
+            updated_at DATETIME NOT NULL
+                DEFAULT CURRENT_TIMESTAMP
+                ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (maintenance_key)
+         )
+         ENGINE=InnoDB
+         DEFAULT CHARSET=utf8mb4
+         COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $stmt = $db->prepare(
+        'SELECT last_run_at
+         FROM app_maintenance
+         WHERE maintenance_key = ?
+         LIMIT 1'
+    );
+    $stmt->execute(['membership_promotion_email']);
+
+    $lastRun = $stmt->fetchColumn();
+
+    if (!$lastRun) {
+        return true;
+    }
+
+    $timestamp = strtotime((string) $lastRun);
+
+    if ($timestamp === false) {
+        return true;
+    }
+
+    return (time() - $timestamp) >= $intervalSeconds;
+}
+
+
+function llama_mark_promotion_email_maintenance_run(
+    PDO $db
+): void {
+    $stmt = $db->prepare(
+        'INSERT INTO app_maintenance
+         (
+            maintenance_key,
+            last_run_at
+         )
+         VALUES (?, UTC_TIMESTAMP())
+         ON DUPLICATE KEY UPDATE
+            last_run_at = UTC_TIMESTAMP()'
+    );
+
+    $stmt->execute([
+        'membership_promotion_email',
+    ]);
+}
+
+
+function llama_run_promotion_email_maintenance(
+    PDO $db,
+    int $batchSize = 2
+): array {
+    $summary = [
+        'ran' => false,
+        'campaigns' => 0,
+        'attempted' => 0,
+        'sent' => 0,
+        'failed' => 0,
+    ];
+
+    if (!llama_promotion_email_maintenance_is_due($db)) {
+        return $summary;
+    }
+
+    /*
+     * Prevent two simultaneous page requests from both becoming
+     * mail workers. The lock is connection-scoped and released
+     * automatically if this request ends unexpectedly.
+     */
+    $lockStmt = $db->query(
+        "SELECT GET_LOCK('llamascout_promotion_email', 0)"
+    );
+
+    if (!$lockStmt || (int) $lockStmt->fetchColumn() !== 1) {
+        return $summary;
+    }
+
+    try {
+        /*
+         * Check the throttle again after acquiring the lock in
+         * case another request completed maintenance while this
+         * request was waiting.
+         */
+        if (!llama_promotion_email_maintenance_is_due($db)) {
+            return $summary;
+        }
+
+        $summary['ran'] = true;
+        $batchSize = max(1, min(5, $batchSize));
+
+        $jobs = llama_due_promotion_email_jobs($db);
+
+        foreach ($jobs as $promotion) {
+            $promotionId = (int) ($promotion['id'] ?? 0);
+
+            if ($promotionId < 1) {
+                continue;
+            }
+
+            if (
+                !empty($promotion['email_enabled'])
+                && !empty($promotion['email_send_at'])
+                && empty($promotion['email_sent_at'])
+                && strtotime((string) $promotion['email_send_at']) <= time()
+            ) {
+                $stats = llama_promotion_send_batch(
+                    $db,
+                    $promotion,
+                    'announcement',
+                    $batchSize
+                );
+
+                llama_promotion_finish_delivery_if_complete(
+                    $db,
+                    $promotionId,
+                    'announcement'
+                );
+
+                $summary['campaigns']++;
+                $summary['attempted'] += (int) $stats['attempted'];
+                $summary['sent'] += (int) $stats['sent'];
+                $summary['failed'] += (int) $stats['failed'];
+            }
+
+            if (
+                !empty($promotion['reminder_enabled'])
+                && !empty($promotion['reminder_send_at'])
+                && empty($promotion['reminder_sent_at'])
+                && strtotime((string) $promotion['reminder_send_at']) <= time()
+            ) {
+                $stats = llama_promotion_send_batch(
+                    $db,
+                    $promotion,
+                    'reminder',
+                    $batchSize
+                );
+
+                llama_promotion_finish_delivery_if_complete(
+                    $db,
+                    $promotionId,
+                    'reminder'
+                );
+
+                $summary['campaigns']++;
+                $summary['attempted'] += (int) $stats['attempted'];
+                $summary['sent'] += (int) $stats['sent'];
+                $summary['failed'] += (int) $stats['failed'];
+            }
+        }
+
+        llama_mark_promotion_email_maintenance_run($db);
+
+        return $summary;
+    } finally {
+        try {
+            $db->query(
+                "SELECT RELEASE_LOCK('llamascout_promotion_email')"
+            );
+        } catch (Throwable) {
+            // Connection cleanup will release the lock.
+        }
+    }
+}
