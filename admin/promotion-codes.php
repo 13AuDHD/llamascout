@@ -234,6 +234,18 @@ require __DIR__ . '/_header.php';
     display:block;
     font-size:1rem;
 }
+.promo-code-share {
+    display:grid;
+    gap:7px;
+}
+.promo-code-share label {
+    font-size:.78rem;
+    font-weight:700;
+    opacity:.75;
+}
+.promo-code-share input {
+    width:100%;
+}
 @media (max-width:760px) {
     .promo-code-grid {
         grid-template-columns:1fr;
@@ -460,6 +472,23 @@ require __DIR__ . '/_header.php';
                                 <?= !empty($code['is_enabled']) ? 'Disable' : 'Enable' ?>
                             </button>
                         </form>
+                    </div>
+
+                    <div class="promo-code-share">
+                        <label
+                            for="promotion-share-link-<?= (int) $code['id'] ?>"
+                        >
+                            Share link
+                        </label>
+                        <input
+                            id="promotion-share-link-<?= (int) $code['id'] ?>"
+                            type="text"
+                            readonly
+                            value="<?= moderation_e(
+                                'https://account.llamascout.com/promo.php?code='
+                                . rawurlencode((string) $code['code'])
+                            ) ?>"
+                        >
                     </div>
 
                     <div class="promo-code-results">
