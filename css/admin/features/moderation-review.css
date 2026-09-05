@@ -1,0 +1,298 @@
+/* =========================================================
+   ADMIN FEATURE: MODERATION REVIEW
+   Shared by moderation decision/detail pages.
+   ========================================================= */
+
+/* Review cards */
+
+.admin-moderation-detail {
+    margin-bottom: var(--admin-panel-gap);
+    padding: 22px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-panel-radius);
+
+    background: var(--surface);
+}
+
+.admin-moderation-detail h2 {
+    margin-top: 0;
+}
+
+.admin-moderation-detail > :last-child {
+    margin-bottom: 0;
+}
+
+.admin-moderation-eyebrow {
+    margin-bottom: 6px;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+
+/* Section heading */
+
+.admin-moderation-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-bottom: 16px;
+}
+
+.admin-moderation-section-header h2,
+.admin-moderation-section-header p {
+    margin: 0;
+}
+
+.admin-moderation-section-header h2 {
+    margin-top: 3px;
+}
+
+.admin-moderation-section-header
+> div:first-child
+> p:last-child {
+    max-width: 760px;
+    margin-top: 5px;
+
+    color: var(--text-muted);
+
+    line-height: 1.5;
+}
+
+
+/* Field grids */
+
+.admin-moderation-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-moderation-field {
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    overflow-wrap: anywhere;
+}
+
+.admin-moderation-field > span {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+
+/* Existing value vs proposed value */
+
+.admin-moderation-change {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-top: 10px;
+}
+
+.admin-moderation-old,
+.admin-moderation-new {
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    overflow-wrap: anywhere;
+}
+
+.admin-moderation-new {
+    border-width: 2px;
+}
+
+
+/* Evidence photos */
+
+.admin-moderation-photo-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.admin-moderation-photo-grid img {
+    display: block;
+
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    object-fit: cover;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+
+/* Review form */
+
+.admin-moderation-form {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-moderation-form label {
+    display: grid;
+    gap: 7px;
+
+    font-weight: 800;
+}
+
+.admin-moderation-form textarea,
+.admin-moderation-form input,
+.admin-moderation-form select {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-moderation-form textarea {
+    resize: vertical;
+}
+
+
+/* Decision actions */
+
+.admin-moderation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.admin-moderation-button {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 9px 14px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.admin-moderation-button.is-primary {
+    background: var(--text);
+    color: var(--background);
+}
+
+.admin-moderation-button.is-warning {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 74%,
+        var(--border)
+    );
+
+    background: color-mix(
+        in srgb,
+        #d3a842 14%,
+        transparent
+    );
+}
+
+.admin-moderation-button.is-warning:hover,
+.admin-moderation-button.is-warning:focus-visible {
+    background: color-mix(
+        in srgb,
+        #d3a842 22%,
+        transparent
+    );
+}
+
+.admin-moderation-button.is-danger {
+    border-color: color-mix(
+        in srgb,
+        #c95a52 68%,
+        var(--border)
+    );
+
+    border-style: dashed;
+}
+
+.admin-moderation-button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+
+/* Notices */
+
+.admin-moderation-notice {
+    margin-bottom: var(--admin-panel-gap);
+    padding: 13px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+
+/* Responsive */
+
+@media (max-width: 760px) {
+
+    .admin-moderation-section-header {
+        display: grid;
+    }
+
+    .admin-moderation-grid,
+    .admin-moderation-change {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-moderation-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
