@@ -1,0 +1,26 @@
+/* =========================================================
+   ADMIN PAGE: MODERATE PLACE UPDATE
+   Only admin/moderate-update.php belongs here.
+
+   Shared review components live in:
+   features/moderation-review.css
+   ========================================================= */
+
+.admin-update-comparison {
+    margin-top: 12px;
+}
+
+.admin-update-comparison:first-of-type {
+    margin-top: 0;
+}
+
+.admin-update-comparison
+.admin-moderation-old strong,
+.admin-update-comparison
+.admin-moderation-new strong {
+    display: inline-block;
+
+    margin-bottom: 5px;
+
+    font-size: .7rem;
+}
