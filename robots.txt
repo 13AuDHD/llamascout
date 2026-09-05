@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /account/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /private/
+Disallow: /uploads/staging/
+
+Sitemap: https://llamascout.com/sitemap.xml
