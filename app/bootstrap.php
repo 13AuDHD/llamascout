@@ -33,13 +33,12 @@ require_once __DIR__ . '/moderation.php';
 start_llama_session();
 
 /*
- * Opportunistic promotion-email maintenance.
+ * Opportunistic background maintenance.
  *
- * Only authenticated activity can advance the mail queue.
- * The worker has its own database throttle and connection lock,
- * and sends only a tiny batch per maintenance pass.
- *
- * Failure must never interfere with the member's request.
+ * Porkbun does not provide cron on this hosting plan. Small
+ * maintenance jobs advance during ordinary authenticated site
+ * activity. Every worker has its own database throttle and lock,
+ * and failure must never interfere with the user's request.
  */
 if (!empty($_SESSION['user_id'])) {
     try {
@@ -55,9 +54,17 @@ if (!empty($_SESSION['user_id'])) {
         llama_sync_membership_promotion_codes(
             db()
         );
+
+        require_once __DIR__ . '/shop-order-mail.php';
+
+        shop_run_shipment_email_maintenance(
+            db(),
+            5
+        );
+
     } catch (Throwable $exception) {
         error_log(
-            'Llama Scout promotion email maintenance error: '
+            'Llama Scout opportunistic maintenance error: '
             . $exception->getMessage()
         );
     }
