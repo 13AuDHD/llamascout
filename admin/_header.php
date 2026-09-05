@@ -154,7 +154,7 @@ function admin_shell_nav_class(string $key, string $active): string
         ],
         'users.php' => [
             'pages' => ['users.css'],
-            'features' => [],
+            'features' => ['list-filters.css'],
         ],
         'user.php' => [
             'pages' => ['user.css'],
@@ -167,6 +167,10 @@ function admin_shell_nav_class(string $key, string $active): string
         'scout.php' => [
             'pages' => ['scout.css'],
             'features' => ['person-detail.css'],
+        ],
+        'places.php' => [
+            'pages' => ['places.css'],
+            'features' => ['list-filters.css'],
         ],
     ];
 
