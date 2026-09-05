@@ -29,6 +29,7 @@ require_once __DIR__ . '/shop-images.php';
 require_once __DIR__ . '/place-reports.php';
 require_once __DIR__ . '/community-contributions.php';
 require_once __DIR__ . '/moderation.php';
+require_once __DIR__ . '/shop-order-mail-maintenance.php';
 
 start_llama_session();
 
@@ -68,8 +69,6 @@ if (!empty($_SESSION['user_id'])) {
         llama_sync_membership_promotion_codes(
             db()
         );
-
-        require_once __DIR__ . '/shop-order-mail.php';
 
         shop_run_shipment_email_maintenance(
             db(),
