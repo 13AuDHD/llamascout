@@ -6,6 +6,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/shop-checkout.php';
 require_once __DIR__ . '/app/shop-fulfillment-routing.php';
 require_once __DIR__ . '/app/shop-order-mail.php';
+require_once __DIR__ . '/app/shop-refunds.php';
 
 $db = db();
 
@@ -41,6 +42,58 @@ try {
     }
 
     $checkoutType = trim((string) ($object->metadata->llama_checkout_type ?? ''));
+
+    $refundEvent = in_array(
+        $eventType,
+        [
+            'refund.created',
+            'refund.updated',
+            'refund.failed',
+        ],
+        true
+    );
+
+    if ($refundEvent && $checkoutType === 'shop_refund') {
+        $orderId = (int) ($object->metadata->llama_order_id ?? 0);
+
+        if ($orderId < 1) {
+            throw new RuntimeException(
+                'Stripe Shop refund event is missing its order ID.'
+            );
+        }
+
+        if (!shop_checkout_record_event($db, $eventId, $eventType, $orderId)) {
+            http_response_code(200);
+            echo 'duplicate';
+            exit;
+        }
+
+        try {
+            shop_sync_refund_from_stripe(
+                $db,
+                $object
+            );
+
+            shop_checkout_finish_event(
+                $db,
+                $eventId,
+                'processed'
+            );
+        } catch (Throwable $exception) {
+            shop_checkout_finish_event(
+                $db,
+                $eventId,
+                'failed',
+                $exception->getMessage()
+            );
+
+            throw $exception;
+        }
+
+        http_response_code(200);
+        echo 'ok';
+        exit;
+    }
 
     if ($checkoutType !== 'shop') {
         http_response_code(200);
