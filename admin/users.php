@@ -36,6 +36,14 @@ $adminPageTitle = 'Users';
 $adminPageEyebrow = 'People';
 $adminActiveNav = 'users';
 
+$adminUsesSplitCss = true;
+
+$adminPageStyles = [
+    'users.css',
+];
+
+$adminFeatureStyles = [];
+
 require __DIR__ . '/_header.php';
 ?>
 
@@ -48,8 +56,13 @@ require __DIR__ . '/_header.php';
     >
         <label class="admin-user-search">
             <span>Search accounts</span>
+
             <div>
-                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <i
+                    class="fa-solid fa-magnifying-glass"
+                    aria-hidden="true"
+                ></i>
+
                 <input
                     type="search"
                     name="q"
@@ -61,14 +74,28 @@ require __DIR__ . '/_header.php';
 
         <label>
             <span>Status</span>
+
             <select name="status">
                 <option value="">All statuses</option>
-                <?php foreach (['active','pending','suspended','disabled'] as $option): ?>
+
+                <?php foreach (
+                    [
+                        'active',
+                        'pending',
+                        'suspended',
+                        'disabled',
+                    ]
+                    as $option
+                ): ?>
                     <option
                         value="<?= moderation_e($option) ?>"
-                        <?= $status === $option ? 'selected' : '' ?>
+                        <?= $status === $option
+                            ? 'selected'
+                            : '' ?>
                     >
-                        <?= moderation_e(ucfirst($option)) ?>
+                        <?= moderation_e(
+                            ucfirst($option)
+                        ) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -76,6 +103,7 @@ require __DIR__ . '/_header.php';
 
         <label>
             <span>Role</span>
+
             <select name="role">
                 <option value="">All roles</option>
                 <option value="owner" <?= $role === 'owner' ? 'selected' : '' ?>>Owner</option>
@@ -87,6 +115,7 @@ require __DIR__ . '/_header.php';
 
         <label>
             <span>Membership</span>
+
             <select name="membership">
                 <option value="">All memberships</option>
                 <option value="paid" <?= $membership === 'paid' ? 'selected' : '' ?>>Paid</option>
@@ -95,11 +124,17 @@ require __DIR__ . '/_header.php';
         </label>
 
         <div class="admin-user-filter-actions">
-            <button class="admin-button" type="submit">
+            <button
+                class="admin-button"
+                type="submit"
+            >
                 Filter
             </button>
 
-            <a class="admin-button is-muted" href="/users.php">
+            <a
+                class="admin-button is-muted"
+                href="/users.php"
+            >
                 Clear
             </a>
         </div>
@@ -113,22 +148,34 @@ require __DIR__ . '/_header.php';
     <header class="admin-panel-header">
         <div>
             <p>Accounts</p>
-            <h2><?= number_format(count($users)) ?> shown</h2>
+            <h2>
+                <?= number_format(count($users)) ?>
+                shown
+            </h2>
         </div>
+
         <span>Up to 250 accounts</span>
     </header>
 
     <?php if (!$users): ?>
 
         <div class="admin-empty-state">
-            <i class="fa-solid fa-user-slash" aria-hidden="true"></i>
+            <i
+                class="fa-solid fa-user-slash"
+                aria-hidden="true"
+            ></i>
+
             <h3>No accounts found.</h3>
-            <p>Try changing the filters or search term.</p>
+
+            <p>
+                Try changing the filters or search term.
+            </p>
         </div>
 
     <?php else: ?>
 
         <div class="admin-user-table-wrap">
+
             <table class="admin-user-table">
                 <thead>
                     <tr>
@@ -142,138 +189,219 @@ require __DIR__ . '/_header.php';
                 </thead>
 
                 <tbody>
-                    <?php foreach ($users as $user): ?>
-                        <?php
-                        $roles = array_values(
-                            array_filter(
-                                explode(
-                                    ',',
-                                    (string) ($user['role_slugs'] ?? '')
-                                )
+
+                <?php foreach ($users as $user): ?>
+                <?php
+                $roles = array_values(
+                    array_filter(
+                        explode(
+                            ',',
+                            (string) (
+                                $user['role_slugs']
+                                ?? ''
                             )
-                        );
-                        ?>
-                        <tr>
-                            <td>
-                                <div class="admin-user-identity">
-                                    <span class="admin-user-table-avatar">
-                                        <img
-                                            src="<?= moderation_e(
-                                                admin_user_avatar_src(
-                                                    (string) ($user['profile_image_src'] ?? ''),
-                                                    $siteUrl
-                                                )
-                                            ) ?>"
-                                            alt=""
-                                            loading="lazy"
-                                        >
-                                    </span>
+                        )
+                    )
+                );
+                ?>
 
-                                    <div class="admin-user-identity-copy">
-                                        <strong>
-                                            <a
-                                                class="admin-user-name-link"
-                                                href="/user.php?id=<?= (int) $user['id'] ?>"
-                                            >
-                                                <?= moderation_e(
-                                                    $user['display_name']
-                                                    ?: $user['username']
-                                                    ?: 'Unnamed account'
-                                                ) ?>
-                                            </a>
-                                        </strong>
+                <tr>
+                    <td>
+                        <div class="admin-user-identity">
 
-                                        <?php if (!empty($user['anonymized_at'])): ?>
-                                            <span>
-                                                Former member · #<?= (int) $user['id'] ?>
-                                            </span>
-                                        <?php else: ?>
+                            <span class="admin-user-table-avatar">
+                                <img
+                                    src="<?= moderation_e(
+                                        admin_user_avatar_src(
+                                            (string) (
+                                                $user[
+                                                    'profile_image_src'
+                                                ]
+                                                ?? ''
+                                            ),
+                                            $siteUrl
+                                        )
+                                    ) ?>"
+                                    alt=""
+                                    loading="lazy"
+                                >
+                            </span>
 
-                                            <?php if (!empty($user['username'])): ?>
-                                                <span class="admin-user-username">
-                                                    @<?= moderation_e($user['username']) ?>
-                                                </span>
-                                            <?php endif; ?>
+                            <div class="admin-user-identity-copy">
 
-                                            <span class="admin-user-email">
-                                                <?= moderation_e($user['email']) ?>
-                                            </span>
+                                <strong>
+                                    <a
+                                        class="admin-user-name-link"
+                                        href="/user.php?id=<?= (int) $user['id'] ?>"
+                                    >
+                                        <?= moderation_e(
+                                            $user['display_name']
+                                            ?: $user['username']
+                                            ?: 'Unnamed account'
+                                        ) ?>
+                                    </a>
+                                </strong>
 
-                                            <span class="admin-user-mobile-login">
-                                                Last login:
-                                                <?= moderation_e(
-                                                    $user['last_login_at']
-                                                    ?: 'Never'
-                                                ) ?>
-                                            </span>
-
-                                            <span class="admin-user-mobile-contributions">
-                                                <?= number_format((int) $user['contribution_count']) ?>
-                                                contribution<?= (int) $user['contribution_count'] === 1 ? '' : 's' ?>
-                                            </span>
-
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="admin-role-chips">
-                                    <?php if (!$roles): ?>
-                                        <span>None</span>
-                                    <?php else: ?>
-                                        <?php foreach ($roles as $roleSlug): ?>
-                                            <span><?= moderation_e(ucfirst($roleSlug)) ?></span>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-
-                            <td>
-                                <?php if (!empty($user['anonymized_at'])): ?>
-                                    <span class="admin-status-pill">Anonymized</span>
-                                <?php else: ?>
-                                    <span class="admin-status-pill">
-                                        <?= moderation_e(ucfirst((string) $user['status'])) ?>
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-
-                            <td>
                                 <?php if (
-                                    in_array(
-                                        (string) $user['membership_status'],
-                                        ['active','trialing'],
-                                        true
+                                    !empty(
+                                        $user['anonymized_at']
                                     )
                                 ): ?>
-                                    <strong>
-                                        Paid
-                                        <?php if (!empty($user['membership_interval'])): ?>
-                                            · <?= moderation_e(ucfirst((string) $user['membership_interval'])) ?>
-                                        <?php endif; ?>
-                                    </strong>
+
+                                    <span>
+                                        Former member
+                                        | #<?= (int) $user['id'] ?>
+                                    </span>
+
                                 <?php else: ?>
-                                    <span class="admin-table-muted">Free</span>
+
+                                    <?php if (
+                                        !empty($user['username'])
+                                    ): ?>
+                                        <span class="admin-user-username">
+                                            @<?= moderation_e(
+                                                $user['username']
+                                            ) ?>
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <span class="admin-user-email">
+                                        <?= moderation_e(
+                                            $user['email']
+                                        ) ?>
+                                    </span>
+
+                                    <span class="admin-user-mobile-login">
+                                        Last login:
+                                        <?= moderation_e(
+                                            $user['last_login_at']
+                                            ?: 'Never'
+                                        ) ?>
+                                    </span>
+
+                                    <span class="admin-user-mobile-contributions">
+                                        <?= number_format(
+                                            (int) $user[
+                                                'contribution_count'
+                                            ]
+                                        ) ?>
+                                        contribution<?= (int) $user[
+                                            'contribution_count'
+                                        ] === 1 ? '' : 's' ?>
+                                    </span>
+
                                 <?php endif; ?>
-                            </td>
 
-                            <td><?= number_format((int) $user['contribution_count']) ?></td>
+                            </div>
+                        </div>
+                    </td>
 
-                            <td>
-                                <span class="admin-table-muted">
+                    <td>
+                        <div class="admin-role-chips">
+
+                            <?php if (!$roles): ?>
+                                <span>None</span>
+                            <?php else: ?>
+
+                                <?php foreach (
+                                    $roles
+                                    as $roleSlug
+                                ): ?>
+                                    <span>
+                                        <?= moderation_e(
+                                            ucfirst($roleSlug)
+                                        ) ?>
+                                    </span>
+                                <?php endforeach; ?>
+
+                            <?php endif; ?>
+
+                        </div>
+                    </td>
+
+                    <td>
+                        <?php if (
+                            !empty($user['anonymized_at'])
+                        ): ?>
+                            <span class="admin-status-pill">
+                                Anonymized
+                            </span>
+                        <?php else: ?>
+                            <span class="admin-status-pill">
+                                <?= moderation_e(
+                                    ucfirst(
+                                        (string) $user[
+                                            'status'
+                                        ]
+                                    )
+                                ) ?>
+                            </span>
+                        <?php endif; ?>
+                    </td>
+
+                    <td>
+                        <?php if (
+                            in_array(
+                                (string) $user[
+                                    'membership_status'
+                                ],
+                                [
+                                    'active',
+                                    'trialing',
+                                ],
+                                true
+                            )
+                        ): ?>
+                            <strong>
+                                Paid
+
+                                <?php if (
+                                    !empty(
+                                        $user[
+                                            'membership_interval'
+                                        ]
+                                    )
+                                ): ?>
+                                    |
                                     <?= moderation_e(
-                                        $user['last_login_at']
-                                        ?: 'Never'
+                                        ucfirst(
+                                            (string) $user[
+                                                'membership_interval'
+                                            ]
+                                        )
                                     ) ?>
-                                </span>
-                            </td>
+                                <?php endif; ?>
+                            </strong>
+                        <?php else: ?>
+                            <span class="admin-table-muted">
+                                Free
+                            </span>
+                        <?php endif; ?>
+                    </td>
 
+                    <td>
+                        <?= number_format(
+                            (int) $user[
+                                'contribution_count'
+                            ]
+                        ) ?>
+                    </td>
 
-                        </tr>
-                    <?php endforeach; ?>
+                    <td>
+                        <span class="admin-table-muted">
+                            <?= moderation_e(
+                                $user['last_login_at']
+                                ?: 'Never'
+                            ) ?>
+                        </span>
+                    </td>
+                </tr>
+
+                <?php endforeach; ?>
+
                 </tbody>
             </table>
+
         </div>
 
     <?php endif; ?>
