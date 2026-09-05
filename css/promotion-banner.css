@@ -1,0 +1,76 @@
+.site-promotion-banner {
+    position: relative;
+    z-index: 80;
+    width: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, .18);
+    background: #172822;
+    color: #fff;
+}
+
+.site-promotion-banner-inner {
+    width: min(100% - 32px, 1440px);
+    min-height: 48px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 9px 0;
+    text-align: center;
+}
+
+.site-promotion-banner-link {
+    color: inherit;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.site-promotion-banner-link:hover,
+.site-promotion-banner-link:focus-visible {
+    text-decoration: underline;
+}
+
+.site-promotion-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: .9rem;
+    font-weight: 700;
+    opacity: .9;
+}
+
+.site-promotion-countdown-label {
+    font-weight: 500;
+    opacity: .8;
+}
+
+.site-promotion-countdown[hidden] {
+    display: none;
+}
+
+@media (max-width: 680px) {
+    .site-promotion-banner-inner {
+        width: min(100% - 24px, 1440px);
+        min-height: 44px;
+        gap: 7px;
+        flex-direction: column;
+        padding: 8px 0;
+        line-height: 1.25;
+    }
+
+    .site-promotion-countdown {
+        font-size: .78rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-promotion-banner *,
+    .site-promotion-banner *::before,
+    .site-promotion-banner *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+        animation: none !important;
+    }
+}
