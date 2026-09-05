@@ -200,6 +200,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['moderate-report.css'],
             'features' => [],
         ],
+        'verifications.php' => [
+            'pages' => ['verifications.css'],
+            'features' => ['list-filters.css'],
+        ],
     ];
 
     $adminManifestEntry =
