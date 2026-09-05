@@ -1,0 +1,460 @@
+/* =========================================================
+   ADMIN PAGE: BADGES
+   Only admin/badges.php belongs here.
+
+   Shared badge forms live in:
+   features/badge-forms.css
+   ========================================================= */
+
+/* Member badge manager */
+
+.admin-member-badge-manager {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-member-badge-summary {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    padding: 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-member-badge-summary > div {
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-member-badge-summary span,
+.admin-member-badge-summary strong {
+    display: block;
+}
+
+.admin-member-badge-summary span {
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 800;
+}
+
+.admin-member-badge-summary strong {
+    margin-top: 3px;
+
+    font-size: 1.2rem;
+}
+
+.admin-member-badge-list {
+    display: grid;
+}
+
+.admin-member-badge-row {
+    display: grid;
+    grid-template-columns:
+        56px minmax(0, 1fr) auto;
+    gap: 13px;
+    align-items: center;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-member-badge-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-member-badge-art {
+    width: 54px;
+    height: 54px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--background);
+}
+
+.admin-member-badge-art img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+}
+
+.admin-member-badge-copy {
+    min-width: 0;
+}
+
+.admin-member-badge-copy > span,
+.admin-member-badge-copy > strong,
+.admin-member-badge-copy > small {
+    display: block;
+}
+
+.admin-member-badge-copy > span,
+.admin-member-badge-copy > small {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+}
+
+.admin-member-badge-copy > strong {
+    margin-top: 2px;
+
+    font-size: .8rem;
+}
+
+.admin-member-badge-copy > small {
+    margin-top: 3px;
+}
+
+.admin-member-badge-copy > p {
+    margin: 6px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    line-height: 1.45;
+}
+
+.admin-member-badge-actions {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-member-badge-actions form {
+    display: flex;
+    gap: 6px;
+}
+
+.admin-member-badge-actions input {
+    min-width: 150px;
+    min-height: 38px;
+
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .7rem;
+}
+
+
+/* Manual award */
+
+.admin-member-badge-award {
+    display: grid;
+    gap: 14px;
+
+    padding: 16px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-member-badge-award h3,
+.admin-member-badge-award p {
+    margin: 0;
+}
+
+.admin-member-badge-award > div > p {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.admin-member-badge-award h3 {
+    margin-top: 3px;
+
+    font-size: .9rem;
+}
+
+.admin-member-badge-award form {
+    display: grid;
+    grid-template-columns:
+        minmax(180px, .8fr)
+        minmax(180px, 1fr)
+        minmax(180px, 1fr)
+        auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.admin-member-badge-award label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-member-badge-award label > span {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.admin-member-badge-award input,
+.admin-member-badge-award select {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 8px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+
+/* Badge statistics */
+
+.admin-badge-stat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-badge-stat-grid > div {
+    min-width: 0;
+
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.admin-badge-stat-grid > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+.admin-badge-stat-grid span,
+.admin-badge-stat-grid strong {
+    display: block;
+}
+
+.admin-badge-stat-grid span {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 800;
+}
+
+.admin-badge-stat-grid strong {
+    margin-top: 4px;
+
+    font-size: 1.25rem;
+}
+
+
+/* Badge definition catalog */
+
+.admin-badge-definition-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    padding: 16px;
+}
+
+.admin-badge-definition-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        58px minmax(0, 1fr);
+    gap: 12px;
+
+    padding: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+    color: var(--text);
+
+    text-decoration: none;
+}
+
+.admin-badge-definition-card:hover,
+.admin-badge-definition-card:focus-visible {
+    border-color: var(--text-muted);
+}
+
+.admin-badge-definition-card.is-inactive {
+    opacity: .62;
+}
+
+.admin-badge-definition-icon {
+    width: 56px;
+    height: 56px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--surface);
+}
+
+.admin-badge-definition-icon img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+}
+
+.admin-badge-definition-copy {
+    min-width: 0;
+}
+
+.admin-badge-definition-copy > span,
+.admin-badge-definition-copy > strong {
+    display: block;
+}
+
+.admin-badge-definition-copy > span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.admin-badge-definition-copy > strong {
+    margin-top: 2px;
+
+    font-size: .8rem;
+}
+
+.admin-badge-definition-copy > p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.4;
+}
+
+.admin-badge-definition-stats {
+    grid-column: 1 / -1;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    padding-top: 9px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-badge-definition-stats > span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+}
+
+.admin-badge-definition-stats > span.is-inactive {
+    color: #d3a842;
+}
+
+
+/* Create panel */
+
+.admin-badge-create-panel {
+    margin-top: var(--admin-panel-gap);
+}
+
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+
+    .admin-badge-definition-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-member-badge-award form {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-member-badge-award form > button {
+        justify-self: start;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-member-badge-row {
+        grid-template-columns:
+            54px minmax(0, 1fr);
+    }
+
+    .admin-member-badge-actions {
+        grid-column: 1 / -1;
+    }
+
+    .admin-member-badge-actions form {
+        flex-wrap: wrap;
+    }
+
+    .admin-badge-stat-grid,
+    .admin-badge-definition-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+
+    .admin-member-badge-summary,
+    .admin-member-badge-award form,
+    .admin-badge-stat-grid,
+    .admin-badge-definition-grid {
+        grid-template-columns: 1fr;
+    }
+}
