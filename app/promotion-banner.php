@@ -9,11 +9,40 @@ declare(strict_types=1);
    membership promotion calendar.
 
    Campaign timestamps are stored in UTC.
+
+   Membership-sale banners are acquisition messaging, so they
+   are hidden from authenticated users who already have full
+   member access through Stripe, Scout status, or a
+   complimentary grant.
    ========================================================= */
 
 function llama_active_website_promotion(PDO $db): ?array
 {
     try {
+        /*
+         * The shared public header calls current_user() before
+         * this helper, so the authenticated user ID is already
+         * available in the shared session.
+         *
+         * Use the same authoritative access helper as the rest
+         * of Llama Scout. This keeps paid members, active Scouts,
+         * and complimentary members from seeing upgrade-sale
+         * advertising.
+         */
+        if (function_exists('user_has_member_access')) {
+            $viewerId = (int) (
+                $_SESSION['user_id']
+                ?? 0
+            );
+
+            if (
+                $viewerId > 0
+                && user_has_member_access($viewerId)
+            ) {
+                return null;
+            }
+        }
+
         $table = $db->query(
             "SELECT COUNT(*)
              FROM information_schema.tables
