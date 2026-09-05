@@ -1,0 +1,449 @@
+/* =========================================================
+   ADMIN FEATURE: ORDER WORKFLOW
+   Shared by admin/order.php and admin/refund-order.php.
+   ========================================================= */
+
+/* Order items */
+
+.admin-commerce-order-items {
+    display: grid;
+}
+
+.admin-commerce-order-items > article {
+    display: grid;
+    grid-template-columns:
+        58px minmax(0, 1fr) auto;
+    gap: 13px;
+    align-items: center;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-commerce-order-items > article:last-child {
+    border-bottom: 0;
+}
+
+.admin-commerce-order-item-image {
+    width: 56px;
+    height: 56px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-commerce-order-item-image img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+.admin-commerce-order-items > article > div:nth-child(2) {
+    min-width: 0;
+}
+
+.admin-commerce-order-items strong,
+.admin-commerce-order-items span,
+.admin-commerce-order-items small {
+    display: block;
+}
+
+.admin-commerce-order-items > article > div:nth-child(2) > strong {
+    font-size: .76rem;
+}
+
+.admin-commerce-order-items span,
+.admin-commerce-order-items small {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+}
+
+
+/* Fulfillment forms */
+
+.admin-commerce-fulfillments {
+    display: grid;
+    gap: 14px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-commerce-fulfillment-form,
+.admin-commerce-package-form {
+    display: grid;
+    gap: 13px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-commerce-fulfillments
+.admin-commerce-fulfillment-form {
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-commerce-fulfillment-form label,
+.admin-commerce-package-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-commerce-fulfillment-form label > span,
+.admin-commerce-package-form label > span {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 850;
+}
+
+.admin-commerce-fulfillment-form input,
+.admin-commerce-fulfillment-form select,
+.admin-commerce-package-form input,
+.admin-commerce-package-form select,
+.admin-commerce-package-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-commerce-fulfillment-form input,
+.admin-commerce-fulfillment-form select,
+.admin-commerce-package-form input,
+.admin-commerce-package-form select {
+    min-height: 40px;
+}
+
+.admin-commerce-package-form textarea {
+    resize: vertical;
+}
+
+.admin-commerce-fulfillment-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-commerce-fulfillment-heading strong {
+    font-size: .75rem;
+}
+
+
+/* Package measurements */
+
+.admin-commerce-package-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-commerce-package-grid > label:first-child,
+.admin-commerce-package-grid > label:nth-child(2) {
+    grid-column: span 1;
+}
+
+.admin-commerce-measure-input {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr) auto;
+    align-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--surface);
+}
+
+.admin-commerce-measure-input input {
+    min-width: 0;
+
+    border: 0;
+    border-radius: 0;
+
+    background: transparent;
+}
+
+.admin-commerce-measure-input > span {
+    padding: 0 10px;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 800;
+}
+
+.admin-commerce-package-notes {
+    grid-column: 1 / -1;
+}
+
+
+/* Label box */
+
+.admin-commerce-label-box {
+    display: grid;
+    gap: 12px;
+
+    margin: 0 var(--admin-panel-padding) var(--admin-panel-padding);
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-commerce-label-box > div,
+.admin-commerce-label-heading,
+.admin-commerce-label-result {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.admin-commerce-label-heading > div,
+.admin-commerce-label-result > div:first-child {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.admin-commerce-label-heading strong,
+.admin-commerce-label-heading span,
+.admin-commerce-label-result strong,
+.admin-commerce-label-result span {
+    display: block;
+}
+
+.admin-commerce-label-heading strong,
+.admin-commerce-label-result strong {
+    font-size: .73rem;
+}
+
+.admin-commerce-label-heading span,
+.admin-commerce-label-result span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.4;
+}
+
+.admin-commerce-label-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+
+/* Shipping rates */
+
+.admin-commerce-rate-list {
+    display: grid;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-commerce-rate-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr) auto auto;
+    gap: 12px;
+    align-items: center;
+
+    padding: 11px 0;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-commerce-rate-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-commerce-rate-row strong,
+.admin-commerce-rate-row span {
+    display: block;
+}
+
+.admin-commerce-rate-row > div > strong {
+    font-size: .7rem;
+}
+
+.admin-commerce-rate-row span {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .63rem;
+}
+
+
+/* Provider feedback */
+
+.admin-commerce-provider-error {
+    margin: 8px 0 0;
+
+    color: #c95a52;
+
+    font-size: .67rem;
+    line-height: 1.45;
+}
+
+
+/* Timeline */
+
+.admin-commerce-fulfillment-timeline {
+    display: grid;
+
+    margin: 0;
+}
+
+.admin-commerce-fulfillment-timeline > div {
+    display: grid;
+    grid-template-columns:
+        minmax(130px, .6fr)
+        minmax(0, 1fr);
+    gap: 12px;
+
+    padding: 11px 15px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-commerce-fulfillment-timeline > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-commerce-fulfillment-timeline dt {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.admin-commerce-fulfillment-timeline dd {
+    margin: 0;
+
+    font-size: .68rem;
+}
+
+
+/* Refund/action forms */
+
+.admin-user-action-box label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-user-action-box label > span {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 850;
+}
+
+.admin-user-action-box input,
+.admin-user-action-box select,
+.admin-user-action-box textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-user-action-box input,
+.admin-user-action-box select {
+    min-height: 40px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 760px) {
+
+    .admin-commerce-order-items > article {
+        grid-template-columns:
+            54px minmax(0, 1fr);
+    }
+
+    .admin-commerce-order-items > article > strong:last-child {
+        grid-column: 2;
+    }
+
+    .admin-commerce-package-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-commerce-label-heading,
+    .admin-commerce-label-result {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-commerce-rate-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+
+    .admin-commerce-package-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-commerce-package-grid > label:first-child,
+    .admin-commerce-package-grid > label:nth-child(2),
+    .admin-commerce-package-notes {
+        grid-column: auto;
+    }
+
+    .admin-commerce-fulfillment-timeline > div {
+        grid-template-columns: 1fr;
+    }
+}
