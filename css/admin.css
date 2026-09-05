@@ -513,6 +513,14 @@
     overflow: hidden;
 }
 
+/* =========================================================
+   ADMIN PANEL SPACING
+   ========================================================= */
+
+.admin-panel + .admin-panel {
+    margin-top: 20px;
+}
+
 .admin-panel-header {
     min-height: 68px;
 
