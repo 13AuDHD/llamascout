@@ -115,8 +115,68 @@ function admin_shell_nav_class(string $key, string $active): string
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     >
     <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
-    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/admin.css') ?>">
-    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>">
+
+    <?php
+    $adminUsesSplitCss = !empty($adminUsesSplitCss);
+
+    $adminPageStyles = isset($adminPageStyles) && is_array($adminPageStyles)
+        ? $adminPageStyles
+        : [];
+
+    $adminFeatureStyles = isset($adminFeatureStyles) && is_array($adminFeatureStyles)
+        ? $adminFeatureStyles
+        : [];
+    ?>
+
+    <?php if ($adminUsesSplitCss): ?>
+
+        <link
+            rel="stylesheet"
+            href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
+        >
+
+        <?php foreach ($adminPageStyles as $adminStyle): ?>
+            <?php
+            $adminStyle = basename((string) $adminStyle);
+            ?>
+            <link
+                rel="stylesheet"
+                href="<?= moderation_e(
+                    $siteUrl
+                    . '/css/admin/pages/'
+                    . $adminStyle
+                ) ?>"
+            >
+        <?php endforeach; ?>
+
+        <?php foreach ($adminFeatureStyles as $adminStyle): ?>
+            <?php
+            $adminStyle = basename((string) $adminStyle);
+            ?>
+            <link
+                rel="stylesheet"
+                href="<?= moderation_e(
+                    $siteUrl
+                    . '/css/admin/features/'
+                    . $adminStyle
+                ) ?>"
+            >
+        <?php endforeach; ?>
+
+    <?php else: ?>
+
+        <!-- Temporary fallback while Admin pages are migrated. -->
+        <link
+            rel="stylesheet"
+            href="<?= moderation_e($siteUrl . '/css/admin.css') ?>"
+        >
+
+        <link
+            rel="stylesheet"
+            href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>"
+        >
+
+    <?php endif; ?>
 
     <?php if (!empty($adminNeedsPhotoUploader)): ?>
         <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>">
