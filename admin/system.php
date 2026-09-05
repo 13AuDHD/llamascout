@@ -225,7 +225,7 @@ function admin_system_run_time_label(
 
         return $date
             ->setTimezone($mountain)
-            ->format('M j, Y Â· g:i a');
+            ->format('M j, Y, g:i a');
     } catch (Throwable) {
         return $value;
     }
@@ -863,7 +863,7 @@ require __DIR__ . '/_header.php';
                     ?: $testAccount['email']
                 )
             ) ?>
-            Â· User #<?= (int) $testAccount['id'] ?>
+            | User #<?= (int) $testAccount['id'] ?>
 
             <?php if (
                 !empty(
@@ -872,7 +872,7 @@ require __DIR__ . '/_header.php';
                     ]
                 )
             ): ?>
-                Â· Scout:
+                | Scout:
                 <?= moderation_e(
                     (string) $testAccount[
                         'scout_status'
@@ -1234,7 +1234,7 @@ require __DIR__ . '/_header.php';
                     'actor_name'
                 ]
             ) ?>
-            Â·
+            |
             <?= moderation_e(
                 (string) $historyRow[
                     'created_at'
