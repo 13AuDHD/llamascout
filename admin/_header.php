@@ -57,6 +57,25 @@ try {
     $adminSupportCount = 0;
 }
 
+/*
+ * Newsletter queue count is also global. Keep this optional so
+ * Admin still loads safely before the newsletter migration exists.
+ */
+$adminNewsletterQueueCount = 0;
+
+try {
+    $adminNewsletterQueueCount = (int) db()
+        ->query(
+            "SELECT COUNT(*)
+             FROM newsletter_issues
+             WHERE status IN ('scheduled','sending')
+               AND sent_at IS NULL"
+        )
+        ->fetchColumn();
+} catch (Throwable $exception) {
+    $adminNewsletterQueueCount = 0;
+}
+
 function admin_shell_nav_class(string $key, string $active): string
 {
     return $key === $active
@@ -250,6 +269,19 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i class="fa-solid fa-award" aria-hidden="true"></i>
             <span>Badges</span>
+        </a>
+
+        <p class="admin-nav-label">Communications</p>
+
+        <a
+            class="<?= admin_shell_nav_class('newsletters', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/newsletters.php') ?>"
+        >
+            <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+            <span>Newsletters</span>
+            <?php if ($adminNewsletterQueueCount > 0): ?>
+                <b><?= $adminNewsletterQueueCount ?></b>
+            <?php endif; ?>
         </a>
 
         <p class="admin-nav-label">Commerce</p>
