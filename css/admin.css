@@ -10052,4 +10052,27 @@ html[data-reduced-motion="true"] .admin-sidebar {
 }
 
 
+/* =========================================================
+   SYSTEM OPERATIONS GRID
+   Keep independent cards from stretching or inheriting
+   global stacked-panel spacing.
+   ========================================================= */
+
+.admin-system-operations-grid {
+    align-items: start;
+}
+
+.admin-system-operations-grid > .admin-panel {
+    align-self: start;
+    height: auto;
+    margin-top: 0 !important;
+}
+
+
+
+
+
+
+
+
 
