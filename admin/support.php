@@ -55,12 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
             );
 
-            $notice = 'Support request updated.';
+            $notice = 'Support ticket updated.';
 
         } catch (Throwable $exception) {
-            $error = $exception instanceof InvalidArgumentException
+            $error =
+                $exception
+                    instanceof InvalidArgumentException
                 ? $exception->getMessage()
-                : 'The support request could not be updated.';
+                : 'The support ticket could not be updated.';
         }
     }
 }
@@ -147,13 +149,30 @@ require __DIR__ . '/_header.php';
 
 
 <?php if ($selected): ?>
+<?php
+$selectedTicket = trim(
+    (string) (
+        $selected['ticket_number']
+        ?? $selected['id']
+    )
+);
+
+$replySubject =
+    'Re: '
+    . (string) $selected['subject']
+    . ' [Ticket #'
+    . $selectedTicket
+    . ']';
+?>
 
 <section class="admin-panel">
 
 <header class="admin-panel-header">
 <div>
     <p>
-        Support #<?= (int) $selected['id'] ?>
+        Ticket #<?= moderation_e(
+            $selectedTicket
+        ) ?>
     </p>
 
     <h2>
@@ -187,11 +206,7 @@ require __DIR__ . '/_header.php';
         href="mailto:<?= moderation_e(
             (string) $selected['email']
         ) ?>?subject=<?= rawurlencode(
-            'Re: '
-            . (string) $selected['subject']
-            . ' [Support #'
-            . (int) $selected['id']
-            . ']'
+            $replySubject
         ) ?>"
     >
         <?= moderation_e(
@@ -218,6 +233,23 @@ require __DIR__ . '/_header.php';
     <?= moderation_e(
         (string) $selected['order_number']
     ) ?>
+</p>
+<?php endif; ?>
+
+<?php if (
+    !empty($selected['error_reference'])
+): ?>
+<p>
+    <strong>Error:</strong>
+    <a
+        href="/errors.php?q=<?= rawurlencode(
+            (string) $selected['error_reference']
+        ) ?>"
+    >
+        <?= moderation_e(
+            (string) $selected['error_reference']
+        ) ?>
+    </a>
 </p>
 <?php endif; ?>
 
@@ -319,11 +351,7 @@ require __DIR__ . '/_header.php';
     href="mailto:<?= moderation_e(
         (string) $selected['email']
     ) ?>?subject=<?= rawurlencode(
-        'Re: '
-        . (string) $selected['subject']
-        . ' [Support #'
-        . (int) $selected['id']
-        . ']'
+        $replySubject
     ) ?>"
 >
     Reply by email
@@ -352,7 +380,7 @@ require __DIR__ . '/_header.php';
         <?= number_format(
             count($requests)
         ) ?>
-        request<?= count($requests) === 1
+        ticket<?= count($requests) === 1
             ? ''
             : 's' ?>
     </h2>
@@ -367,7 +395,7 @@ require __DIR__ . '/_header.php';
         aria-hidden="true"
     ></i>
 
-    <h3>No support requests here.</h3>
+    <h3>No support tickets here.</h3>
 </div>
 
 <?php else: ?>
@@ -375,6 +403,14 @@ require __DIR__ . '/_header.php';
 <div class="admin-inbox-list">
 
 <?php foreach ($requests as $request): ?>
+<?php
+$requestTicket = trim(
+    (string) (
+        $request['ticket_number']
+        ?? $request['id']
+    )
+);
+?>
 
 <article class="admin-inbox-item">
 
@@ -388,6 +424,10 @@ require __DIR__ . '/_header.php';
 <div class="admin-inbox-content">
 
 <span class="admin-inbox-type">
+    Ticket #<?= moderation_e(
+        $requestTicket
+    ) ?>
+    |
     <?= moderation_e(
         $categories[
             (string) $request['category']
@@ -410,6 +450,15 @@ require __DIR__ . '/_header.php';
     <?= moderation_e(
         (string) $request['email']
     ) ?>
+
+    <?php if (
+        !empty($request['error_reference'])
+    ): ?>
+        |
+        <?= moderation_e(
+            (string) $request['error_reference']
+        ) ?>
+    <?php endif; ?>
 </p>
 
 <time>
