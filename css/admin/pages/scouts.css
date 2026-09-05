@@ -1,0 +1,376 @@
+/* =========================================================
+   ADMIN PAGE: SCOUTS
+   Only admin/scouts.php belongs here.
+   ========================================================= */
+
+/* Invite panel */
+
+.admin-scout-invite-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-scout-invite-form {
+    display: grid;
+    grid-template-columns:
+        minmax(240px, 1.2fr)
+        minmax(220px, .9fr)
+        auto;
+    gap: 14px;
+    align-items: end;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-scout-invite-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-scout-invite-form label > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-scout-invite-form select {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-scout-invite-form > div {
+    display: grid;
+    gap: 3px;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-invite-form > div strong {
+    font-size: .75rem;
+}
+
+.admin-scout-invite-form > div span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+
+/* Scout statistics */
+
+.admin-scout-stat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-scout-stat-grid > div {
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.admin-scout-stat-grid > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 65%,
+        var(--border)
+    );
+}
+
+.admin-scout-stat-grid span,
+.admin-scout-stat-grid strong {
+    display: block;
+}
+
+.admin-scout-stat-grid span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-scout-stat-grid strong {
+    margin-top: 4px;
+
+    font-size: 1.3rem;
+}
+
+
+/* Filters */
+
+.admin-scout-filter-form {
+    display: grid;
+    grid-template-columns:
+        minmax(240px, 1.3fr)
+        minmax(180px, .7fr)
+        auto
+        auto;
+    gap: 12px;
+    align-items: end;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-scout-filter-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-scout-filter-form label > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-scout-filter-form input,
+.admin-scout-filter-form select {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+
+/* Scout list */
+
+.admin-scout-list {
+    display: grid;
+}
+
+.admin-scout-list-row {
+    display: grid;
+    grid-template-columns:
+        minmax(220px, 1fr)
+        minmax(420px, 1.5fr)
+        minmax(210px, .8fr)
+        auto;
+    gap: 18px;
+    align-items: center;
+
+    padding: 15px 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-scout-list-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-scout-list-row.has-attention {
+    border-left: 3px solid #d3a842;
+}
+
+.admin-scout-list-row
+.admin-user-identity a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.admin-scout-list-row
+.admin-user-identity a:hover,
+.admin-scout-list-row
+.admin-user-identity a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.admin-scout-list-facts {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-scout-list-facts > span {
+    min-width: 0;
+}
+
+.admin-scout-list-facts small,
+.admin-scout-list-facts strong {
+    display: block;
+}
+
+.admin-scout-list-facts small {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+}
+
+.admin-scout-list-facts strong {
+    margin-top: 2px;
+
+    overflow: hidden;
+
+    font-size: .72rem;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* Scout period summary */
+
+.admin-scout-period-mini {
+    display: grid;
+    gap: 3px;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-scout-period-mini.is-good {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-period-mini strong {
+    font-size: .72rem;
+}
+
+.admin-scout-period-mini span {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.35;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1250px) {
+
+    .admin-scout-list-row {
+        grid-template-columns:
+            minmax(220px, 1fr)
+            minmax(0, 1.5fr)
+            auto;
+    }
+
+    .admin-scout-period-mini {
+        grid-column: 2;
+    }
+
+    .admin-scout-list-row > .admin-button {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+    }
+
+    .admin-scout-list-facts {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1000px) {
+
+    .admin-scout-stat-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-scout-invite-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-scout-invite-form > .admin-button {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+
+    .admin-scout-list-row {
+        grid-template-columns:
+            minmax(220px, .8fr)
+            minmax(0, 1.2fr);
+    }
+
+    .admin-scout-period-mini {
+        grid-column: 1;
+    }
+
+    .admin-scout-list-row > .admin-button {
+        grid-column: 2;
+        grid-row: auto;
+        justify-self: start;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-scout-filter-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-scout-list-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .admin-scout-list-facts {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-scout-period-mini,
+    .admin-scout-list-row > .admin-button {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 620px) {
+
+    .admin-scout-stat-grid,
+    .admin-scout-filter-form,
+    .admin-scout-invite-form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-scout-invite-form > .admin-button {
+        grid-column: auto;
+    }
+}

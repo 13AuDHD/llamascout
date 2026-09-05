@@ -109,80 +109,6 @@
 }
 
 
-/* User identity */
-
-.admin-user-identity {
-    min-width: 220px;
-
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.admin-user-table-avatar {
-    width: 38px;
-    height: 38px;
-
-    display: grid;
-    place-items: center;
-    flex: 0 0 38px;
-
-    overflow: hidden;
-    padding: 0;
-
-    border: 1px solid var(--border);
-    border-radius: 50%;
-
-    background: var(--background);
-
-    font-weight: 900;
-}
-
-.admin-user-table-avatar img {
-    display: block;
-
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-    border-radius: inherit;
-}
-
-.admin-user-identity-copy {
-    min-width: 0;
-
-    display: grid;
-    gap: 2px;
-}
-
-.admin-user-name-link {
-    color: var(--text);
-    text-decoration: none;
-}
-
-.admin-user-name-link:hover,
-.admin-user-name-link:focus-visible {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-.admin-user-username,
-.admin-user-email,
-.admin-table-muted {
-    color: var(--text-muted);
-    font-size: .7rem;
-}
-
-.admin-user-email {
-    max-width: 280px;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-
 /* Role chips */
 
 .admin-role-chips {
@@ -258,17 +184,6 @@
 
     .admin-user-table td:not(:first-child) {
         display: none;
-    }
-
-    .admin-user-identity {
-        min-width: 0;
-        align-items: flex-start;
-    }
-
-    .admin-user-table-avatar {
-        width: 46px;
-        height: 46px;
-        flex-basis: 46px;
     }
 
     .admin-user-mobile-login,
