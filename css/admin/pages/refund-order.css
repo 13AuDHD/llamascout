@@ -1,0 +1,46 @@
+/* =========================================================
+   ADMIN PAGE: REFUND ORDER
+   Only admin/refund-order.php belongs here.
+
+   Shared refund/action form controls live in:
+   features/order-workflow.css
+   ========================================================= */
+
+.admin-panel
+> .admin-user-action-box {
+    margin: 16px;
+}
+
+.admin-panel
+> form.admin-user-action-box {
+    display: grid;
+    gap: 13px;
+}
+
+.admin-panel
+> .admin-user-action-box p {
+    margin: 0;
+
+    font-size: .71rem;
+    line-height: 1.5;
+}
+
+.admin-panel
+> .admin-user-action-box p + p {
+    margin-top: 7px;
+}
+
+.admin-panel
+> form.admin-user-action-box
+> .admin-button {
+    justify-self: start;
+}
+
+@media (max-width: 520px) {
+
+    .admin-panel
+    > form.admin-user-action-box
+    > .admin-button {
+        width: 100%;
+    }
+}

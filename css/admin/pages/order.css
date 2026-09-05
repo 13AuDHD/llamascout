@@ -1,0 +1,142 @@
+/* =========================================================
+   ADMIN PAGE: ORDER DETAIL
+   Only admin/order.php belongs here.
+
+   Shared fulfillment/order workflow controls live in:
+   features/order-workflow.css
+   ========================================================= */
+
+/* Summary */
+
+.admin-commerce-order-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-bottom: var(--admin-panel-gap);
+    padding: 17px 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-commerce-order-summary p,
+.admin-commerce-order-summary h2,
+.admin-commerce-order-summary span {
+    margin: 0;
+}
+
+.admin-commerce-order-summary p {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-commerce-order-summary h2 {
+    margin-top: 3px;
+
+    font-size: 1.1rem;
+}
+
+.admin-commerce-order-summary span {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+}
+
+.admin-commerce-order-summary > strong {
+    font-size: 1.2rem;
+}
+
+
+/* Main/detail stack */
+
+.admin-user-detail-main,
+.admin-user-detail-side {
+    min-width: 0;
+}
+
+.admin-user-detail-main > .admin-panel,
+.admin-user-detail-side > .admin-panel {
+    margin: 0;
+}
+
+.admin-user-detail-main,
+.admin-user-detail-side {
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+
+/* Status note */
+
+.admin-commerce-order-status-note {
+    display: grid;
+    grid-template-columns:
+        24px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+
+    padding: 13px 15px;
+
+    border-bottom: 1px solid var(--border);
+
+    color: var(--text-muted);
+}
+
+.admin-commerce-order-status-note p {
+    margin: 0;
+
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+
+/* Printful/provider blocks */
+
+.admin-commerce-provider-box {
+    display: grid;
+    gap: 10px;
+
+    margin-top: 12px;
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+.admin-commerce-provider-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+
+    .admin-user-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+
+    .admin-commerce-order-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
