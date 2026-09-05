@@ -1,0 +1,165 @@
+/* =========================================================
+   ADMIN FEATURE: BADGE FORMS
+   Shared by admin/badges.php and admin/badge-admin.php.
+   ========================================================= */
+
+.admin-badge-definition-form,
+.admin-badge-award-form {
+    display: grid;
+    gap: 16px;
+
+    padding: 16px;
+}
+
+.admin-badge-definition-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 13px;
+}
+
+.admin-badge-definition-form-grid > .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-badge-definition-form label,
+.admin-badge-award-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-badge-definition-form label > span,
+.admin-badge-award-form label > span,
+.admin-badge-image-uploader-field > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 850;
+}
+
+.admin-badge-definition-form input:not([type="checkbox"]),
+.admin-badge-definition-form select,
+.admin-badge-definition-form textarea,
+.admin-badge-award-form input,
+.admin-badge-award-form select,
+.admin-badge-award-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-badge-definition-form input:not([type="checkbox"]),
+.admin-badge-definition-form select,
+.admin-badge-award-form input,
+.admin-badge-award-form select {
+    min-height: 42px;
+}
+
+.admin-badge-definition-form textarea,
+.admin-badge-award-form textarea {
+    resize: vertical;
+}
+
+.admin-badge-definition-form small,
+.admin-badge-award-form small {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.45;
+}
+
+.admin-badge-active-field {
+    display: grid !important;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 8px !important;
+    align-items: center;
+}
+
+.admin-badge-active-field input {
+    width: auto;
+    margin: 0;
+}
+
+.admin-badge-image-uploader-field {
+    display: grid;
+    gap: 9px;
+}
+
+.admin-badge-current-image {
+    display: grid;
+    grid-template-columns:
+        56px minmax(0, 1fr);
+    gap: 11px;
+    align-items: center;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-badge-current-image img {
+    display: block;
+
+    width: 56px;
+    height: 56px;
+
+    object-fit: contain;
+}
+
+.admin-badge-current-image > i {
+    width: 56px;
+    height: 56px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+
+    color: var(--text-muted);
+}
+
+.admin-badge-current-image strong,
+.admin-badge-current-image small {
+    display: block;
+}
+
+.admin-badge-current-image strong {
+    font-size: .73rem;
+}
+
+.admin-badge-current-image small {
+    margin-top: 3px;
+}
+
+.admin-badge-current-image.is-missing {
+    border-style: dashed;
+}
+
+.admin-badge-award-form > button {
+    justify-self: start;
+}
+
+@media (max-width: 620px) {
+
+    .admin-badge-definition-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-definition-form-grid > .is-wide {
+        grid-column: auto;
+    }
+}
