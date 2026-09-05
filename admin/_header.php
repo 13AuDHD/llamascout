@@ -117,15 +117,94 @@ function admin_shell_nav_class(string $key, string $active): string
     <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
 
     <?php
-    $adminUsesSplitCss = !empty($adminUsesSplitCss);
+    /*
+     * Admin CSS migration manifest.
+     *
+     * Migrated pages are listed once here. Pages not listed continue
+     * using legacy admin.css until their own stylesheet is extracted.
+     *
+     * Explicit page variables still work, so already-migrated pages
+     * remain compatible while the migration is in progress.
+     */
+    $adminScriptName = basename(
+        (string) (
+            parse_url(
+                (string) (
+                    $_SERVER['SCRIPT_NAME']
+                    ?? ''
+                ),
+                PHP_URL_PATH
+            )
+            ?: ''
+        )
+    );
 
-    $adminPageStyles = isset($adminPageStyles) && is_array($adminPageStyles)
-        ? $adminPageStyles
-        : [];
+    $adminCssManifest = [
+        'index.php' => [
+            'pages' => ['dashboard.css'],
+            'features' => [],
+        ],
+        'system.php' => [
+            'pages' => ['system.css'],
+            'features' => ['testing.css'],
+        ],
+        'support.php' => [
+            'pages' => ['support.css'],
+            'features' => [],
+        ],
+        'users.php' => [
+            'pages' => ['users.css'],
+            'features' => [],
+        ],
+        'user.php' => [
+            'pages' => ['user.css'],
+            'features' => [],
+        ],
+    ];
 
-    $adminFeatureStyles = isset($adminFeatureStyles) && is_array($adminFeatureStyles)
-        ? $adminFeatureStyles
-        : [];
+    $adminManifestEntry =
+        $adminCssManifest[$adminScriptName]
+        ?? null;
+
+    if (
+        !isset($adminUsesSplitCss)
+        && is_array($adminManifestEntry)
+    ) {
+        $adminUsesSplitCss = true;
+    }
+
+    $adminUsesSplitCss =
+        !empty($adminUsesSplitCss);
+
+    if (
+        !isset($adminPageStyles)
+        && is_array($adminManifestEntry)
+    ) {
+        $adminPageStyles =
+            $adminManifestEntry['pages']
+            ?? [];
+    }
+
+    if (
+        !isset($adminFeatureStyles)
+        && is_array($adminManifestEntry)
+    ) {
+        $adminFeatureStyles =
+            $adminManifestEntry['features']
+            ?? [];
+    }
+
+    $adminPageStyles =
+        isset($adminPageStyles)
+        && is_array($adminPageStyles)
+            ? $adminPageStyles
+            : [];
+
+    $adminFeatureStyles =
+        isset($adminFeatureStyles)
+        && is_array($adminFeatureStyles)
+            ? $adminFeatureStyles
+            : [];
     ?>
 
     <?php if ($adminUsesSplitCss): ?>
