@@ -10070,6 +10070,57 @@ html[data-reduced-motion="true"] .admin-sidebar {
 
 
 
+/* =========================================================
+   PRINTFUL VARIANT MAPPING
+   ========================================================= */
+
+.admin-integration-sort {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+
+    padding: 14px 18px;
+
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-integration-sort label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-integration-sort label > span {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+.admin-integration-sort select {
+    min-height: 38px;
+    padding: 7px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-mapping-status.is-unmapped,
+.admin-mapping-status.is-invalid,
+.admin-mapping-status.is-ambiguous,
+.admin-mapping-status.is-missing_sku {
+    border-color: #b84a4a;
+    background: color-mix(
+        in srgb,
+        #b84a4a 18%,
+        transparent
+    );
+    color: #ffaaaa;
+}
 
 
 
