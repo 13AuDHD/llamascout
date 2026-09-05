@@ -208,6 +208,14 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['moderation.css'],
             'features' => [],
         ],
+        'badges.php' => [
+            'pages' => ['badges.css'],
+            'features' => ['badge-forms.css'],
+        ],
+        'badge-admin.php' => [
+            'pages' => ['badge-admin.css'],
+            'features' => ['badge-forms.css'],
+        ],
     ];
 
     $adminManifestEntry =
@@ -641,3 +649,4 @@ function admin_shell_nav_class(string $key, string $active): string
         </div>
     <?php endif; ?>
 </header>
+ 
