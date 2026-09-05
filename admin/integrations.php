@@ -160,6 +160,144 @@ $problemCount =
         )
     );
 
+$sort = trim(
+    (string) ($_GET['sort'] ?? 'attention')
+);
+
+if (
+    !in_array(
+        $sort,
+        [
+            'attention',
+            'sku',
+            'product',
+            'status',
+        ],
+        true
+    )
+) {
+    $sort = 'attention';
+}
+
+$statusPriority = [
+    'unmapped' => 0,
+    'invalid' => 1,
+    'ambiguous' => 2,
+    'missing_sku' => 3,
+    'suggested' => 4,
+    'mapped' => 5,
+];
+
+usort(
+    $printfulDiagnostics,
+    static function (
+        array $a,
+        array $b
+    ) use (
+        $sort,
+        $statusPriority
+    ): int {
+        $aLocal = $a['local'] ?? [];
+        $bLocal = $b['local'] ?? [];
+
+        $aStatus = (string) ($a['status'] ?? '');
+        $bStatus = (string) ($b['status'] ?? '');
+
+        $aSku = strtolower(
+            trim((string) ($aLocal['sku'] ?? ''))
+        );
+
+        $bSku = strtolower(
+            trim((string) ($bLocal['sku'] ?? ''))
+        );
+
+        $aProduct = strtolower(
+            trim(
+                (string) (
+                    $aLocal['product_name']
+                    ?? ''
+                )
+            )
+        );
+
+        $bProduct = strtolower(
+            trim(
+                (string) (
+                    $bLocal['product_name']
+                    ?? ''
+                )
+            )
+        );
+
+        $aVariant = strtolower(
+            trim(
+                (string) (
+                    $aLocal['variant_name']
+                    ?? ''
+                )
+            )
+        );
+
+        $bVariant = strtolower(
+            trim(
+                (string) (
+                    $bLocal['variant_name']
+                    ?? ''
+                )
+            )
+        );
+
+        if ($sort === 'sku') {
+            $compare = $aSku <=> $bSku;
+
+            if ($compare !== 0) {
+                return $compare;
+            }
+        } elseif ($sort === 'product') {
+            $compare = $aProduct <=> $bProduct;
+
+            if ($compare !== 0) {
+                return $compare;
+            }
+
+            $compare = $aVariant <=> $bVariant;
+
+            if ($compare !== 0) {
+                return $compare;
+            }
+        } elseif ($sort === 'status') {
+            $compare = $aStatus <=> $bStatus;
+
+            if ($compare !== 0) {
+                return $compare;
+            }
+        } else {
+            $aPriority =
+                $statusPriority[$aStatus]
+                ?? 99;
+
+            $bPriority =
+                $statusPriority[$bStatus]
+                ?? 99;
+
+            $compare =
+                $aPriority <=> $bPriority;
+
+            if ($compare !== 0) {
+                return $compare;
+            }
+        }
+
+        $compare = $aProduct <=> $bProduct;
+
+        if ($compare !== 0) {
+            return $compare;
+        }
+
+        return $aVariant <=> $bVariant;
+    }
+);
+
 require __DIR__ . '/_header.php';
 ?>
 
@@ -322,7 +460,7 @@ require __DIR__ . '/_header.php';
 
 <?php endif; ?>
 
-     <?php if (
+<?php if (
     $printfulConfigured
     && !$printfulError
 ): ?>
@@ -493,6 +631,60 @@ require __DIR__ . '/_header.php';
 
 </div>
 
+<form
+    class="admin-integration-sort"
+    method="get"
+>
+    <label>
+        <span>Sort variants</span>
+
+        <select name="sort">
+            <option
+                value="attention"
+                <?= $sort === 'attention'
+                    ? 'selected'
+                    : '' ?>
+            >
+                Needs attention first
+            </option>
+
+            <option
+                value="sku"
+                <?= $sort === 'sku'
+                    ? 'selected'
+                    : '' ?>
+            >
+                SKU
+            </option>
+
+            <option
+                value="product"
+                <?= $sort === 'product'
+                    ? 'selected'
+                    : '' ?>
+            >
+                Product
+            </option>
+
+            <option
+                value="status"
+                <?= $sort === 'status'
+                    ? 'selected'
+                    : '' ?>
+            >
+                Status
+            </option>
+        </select>
+    </label>
+
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Sort
+    </button>
+</form>
+
 <?php if ($suggestedCount > 0): ?>
 <form
     class="admin-integration-mapping-action"
@@ -532,7 +724,6 @@ require __DIR__ . '/_header.php';
     <th>Llama Scout variant</th>
     <th>SKU</th>
     <th>Status</th>
-    <th>Printful match</th>
     <th>IDs</th>
 </tr>
 </thead>
@@ -600,45 +791,6 @@ $firstMatch =
             (string) $diagnostic['message']
         ) ?>
     </small>
-</td>
-
-<td data-label="Printful match">
-
-<?php if ($firstMatch): ?>
-
-<strong>
-    <?= moderation_e(
-        (string) $firstMatch['sync_product_name']
-    ) ?>
-</strong>
-
-<span>
-    <?= moderation_e(
-        (string) $firstMatch['name']
-    ) ?>
-</span>
-
-<?php elseif (count($matches) > 1): ?>
-
-<strong>
-    <?= number_format(
-        count($matches)
-    ) ?>
-    exact SKU matches
-</strong>
-
-<span>
-    Resolve the duplicate SKU in Printful.
-</span>
-
-<?php else: ?>
-
-<span>
-    No exact SKU match.
-</span>
-
-<?php endif; ?>
-
 </td>
 
 <td data-label="IDs">
