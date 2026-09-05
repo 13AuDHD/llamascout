@@ -95,6 +95,14 @@ $adminPageTitle = 'Support';
 $adminPageEyebrow = 'Operations';
 $adminActiveNav = 'support';
 
+$adminUsesSplitCss = true;
+
+$adminPageStyles = [
+    'support.css',
+];
+
+$adminFeatureStyles = [];
+
 require __DIR__ . '/_header.php';
 ?>
 
@@ -113,10 +121,14 @@ require __DIR__ . '/_header.php';
 
 <section class="admin-panel admin-user-filter-panel">
 
-<form method="get">
+<form
+    method="get"
+    class="admin-support-filter-form"
+>
 
 <label>
     <span>Status</span>
+
     <select name="status">
         <?php foreach (
             [
@@ -165,7 +177,7 @@ $replySubject =
     . ']';
 ?>
 
-<section class="admin-panel">
+<section class="admin-panel admin-support-ticket-panel">
 
 <header class="admin-panel-header">
 <div>
@@ -275,7 +287,7 @@ $replySubject =
 
 <div class="admin-user-action-box">
 
-<p style="white-space:pre-wrap;"><?= moderation_e(
+<p class="admin-support-message"><?= moderation_e(
     (string) $selected['message']
 ) ?></p>
 
@@ -370,7 +382,7 @@ $replySubject =
 <?php endif; ?>
 
 
-<section class="admin-panel">
+<section class="admin-panel admin-support-queue">
 
 <header class="admin-panel-header">
 <div>
