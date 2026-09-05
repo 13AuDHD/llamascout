@@ -1,0 +1,617 @@
+/* =========================================================
+   ADMIN PAGE: PLACE DETAIL
+   Only admin/place.php belongs here.
+   Shared detail layout/form/history primitives live in
+   features/person-detail.css.
+   Photo uploader styling remains in css/photo-uploader.css.
+   ========================================================= */
+
+/* Summary */
+
+.admin-place-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-bottom: var(--admin-panel-gap);
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-place-summary-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-place-summary-heading p,
+.admin-place-summary-heading h2 {
+    margin: 0;
+}
+
+.admin-place-summary-heading p {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-place-summary-heading h2 {
+    font-size: 1.2rem;
+}
+
+.admin-place-summary > div:first-child > span {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+    font-size: .72rem;
+}
+
+.admin-place-summary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-place-report-alert {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+
+/* Operational summary */
+
+.admin-place-operations-strip {
+    display: grid;
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-place-operations-strip > div {
+    min-width: 0;
+
+    padding: 12px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
+}
+
+.admin-place-operations-strip > div.has-attention {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+}
+
+.admin-place-operations-strip > div.has-alert {
+    border-color: color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+}
+
+.admin-place-operations-strip span,
+.admin-place-operations-strip strong {
+    display: block;
+}
+
+.admin-place-operations-strip span {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 800;
+}
+
+.admin-place-operations-strip strong {
+    margin-top: 3px;
+
+    overflow-wrap: anywhere;
+
+    font-size: .75rem;
+}
+
+.admin-place-operations-strip strong.is-good {
+    color: #58a66a;
+}
+
+
+/* Section navigation */
+
+.admin-place-section-nav {
+    position: sticky;
+    top: calc(var(--admin-topbar-height) + 8px);
+    z-index: 40;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    margin-bottom: var(--admin-panel-gap);
+    padding: 9px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: color-mix(
+        in srgb,
+        var(--surface) 94%,
+        transparent
+    );
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.admin-place-section-nav a {
+    padding: 6px 9px;
+
+    border-radius: 8px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-place-section-nav a:hover,
+.admin-place-section-nav a:focus-visible {
+    background: var(--background);
+    color: var(--text);
+}
+
+
+/* Main editor layout */
+
+.admin-place-editor-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.55fr)
+        minmax(280px, .62fr);
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.admin-place-editor-grid > .admin-user-detail-main,
+.admin-place-editor-grid > .admin-user-detail-side {
+    min-width: 0;
+}
+
+.admin-place-editor-section,
+.admin-place-history-hub,
+.admin-place-editor-grid [id] {
+    scroll-margin-top:
+        calc(var(--admin-topbar-height) + 74px);
+}
+
+
+/* Compact Place forms */
+
+.admin-place-compact-form {
+    display: grid;
+    gap: 16px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-place-compact-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-place-compact-form label > span {
+    color: var(--text-muted);
+
+    font-size: .69rem;
+    font-weight: 850;
+}
+
+.admin-place-compact-form input:not([type="checkbox"]),
+.admin-place-compact-form select,
+.admin-place-compact-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-place-compact-form input:not([type="checkbox"]),
+.admin-place-compact-form select {
+    min-height: 42px;
+}
+
+.admin-place-compact-form textarea {
+    resize: vertical;
+}
+
+.admin-place-compact-form label small {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.4;
+}
+
+
+/* Reusable grids within Place editor */
+
+.admin-place-tristate-grid,
+.admin-place-rating-grid,
+.admin-place-report-grid,
+.admin-place-verification-form {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-place-tristate-grid .is-wide,
+.admin-place-rating-grid .is-wide,
+.admin-place-report-grid .is-wide,
+.admin-place-verification-form .is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-subsection-title {
+    margin: 8px 0 0;
+    padding-top: 16px;
+
+    border-top: 1px solid var(--border);
+
+    font-size: .78rem;
+}
+
+.admin-place-subsection-title:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.admin-place-inline-check {
+    display: grid !important;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 9px !important;
+    align-items: start;
+}
+
+.admin-place-inline-check input {
+    margin-top: 2px;
+}
+
+
+/* Photo management */
+
+.admin-place-image-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 9px;
+
+    padding: 14px;
+}
+
+.admin-place-image-grid > article {
+    min-width: 0;
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-place-image-grid img {
+    display: block;
+
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    object-fit: cover;
+}
+
+.admin-place-image-meta {
+    display: grid;
+    gap: 8px;
+
+    padding: 10px;
+}
+
+.admin-place-image-meta label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-place-image-meta label > span {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 800;
+}
+
+.admin-place-image-meta input,
+.admin-place-image-meta textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 7px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .7rem;
+}
+
+.admin-place-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    padding: 0 10px 10px;
+}
+
+.admin-place-image-actions form {
+    margin: 0;
+}
+
+.admin-place-photo-upload {
+    padding: 14px;
+
+    border-top: 1px solid var(--border);
+}
+
+
+/* Notes and history rows */
+
+.admin-place-history-list {
+    display: grid;
+}
+
+.admin-place-history-list > div {
+    display: grid;
+    gap: 4px;
+
+    padding: 12px 15px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-place-history-list > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-place-history-list > div.has-attention {
+    border-left: 3px solid #d3a842;
+}
+
+.admin-place-history-list strong {
+    font-size: .75rem;
+}
+
+.admin-place-history-list span,
+.admin-place-history-list p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    line-height: 1.45;
+}
+
+.admin-place-history-list a {
+    overflow-wrap: anywhere;
+}
+
+.admin-inline-link {
+    justify-self: start;
+
+    color: var(--text);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+
+/* History hub */
+
+.admin-place-history-hub {
+    scroll-margin-top: 90px;
+}
+
+.admin-place-history-tabs {
+    display: grid;
+}
+
+.admin-place-history-tabs > details {
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-place-history-tabs > details:last-child {
+    border-bottom: 0;
+}
+
+.admin-place-history-tabs summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    padding: 12px 15px;
+
+    cursor: pointer;
+
+    font-size: .72rem;
+    font-weight: 850;
+    list-style: none;
+}
+
+.admin-place-history-tabs summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-place-history-tabs summary > span {
+    min-width: 22px;
+
+    padding: 2px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    text-align: center;
+}
+
+.admin-place-history-detail {
+    border-top: 1px solid var(--border);
+}
+
+.admin-place-history-footer {
+    padding: 12px 15px;
+
+    border-top: 1px solid var(--border);
+}
+
+
+/* Historical Llama Scouted distinction */
+
+.admin-place-llama-scouted-banner {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    margin: 14px;
+    padding: 12px 14px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+    border-radius: 10px;
+
+    background: color-mix(
+        in srgb,
+        #58a66a 7%,
+        var(--surface)
+    );
+}
+
+.admin-place-llama-scouted-banner > i {
+    padding-top: 2px;
+
+    text-align: center;
+}
+
+.admin-place-llama-scouted-banner strong,
+.admin-place-llama-scouted-banner span {
+    display: block;
+}
+
+.admin-place-llama-scouted-banner strong {
+    font-size: .76rem;
+}
+
+.admin-place-llama-scouted-banner span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    line-height: 1.45;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1180px) {
+
+    .admin-place-operations-strip {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-place-tristate-grid,
+    .admin-place-rating-grid,
+    .admin-place-report-grid,
+    .admin-place-verification-form {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-place-image-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1100px) {
+
+    .admin-place-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-section-nav {
+        position: static;
+    }
+}
+
+@media (max-width: 700px) {
+
+    .admin-place-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-place-operations-strip,
+    .admin-place-tristate-grid,
+    .admin-place-rating-grid,
+    .admin-place-report-grid,
+    .admin-place-verification-form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-tristate-grid .is-wide,
+    .admin-place-rating-grid .is-wide,
+    .admin-place-report-grid .is-wide,
+    .admin-place-verification-form .is-wide {
+        grid-column: auto;
+    }
+
+    .admin-place-image-grid {
+        grid-template-columns: 1fr;
+    }
+}
