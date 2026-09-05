@@ -13,6 +13,7 @@ function llama_support_categories(): array
         'membership' => 'Membership or billing',
         'shop' => 'Shop or order',
         'place' => 'Place information',
+        'technical' => 'Technical problem or site error',
         'accessibility' => 'Accessibility',
         'privacy' => 'Privacy or legal',
     ];
@@ -43,6 +44,64 @@ function llama_support_verify_csrf(string $token): bool
     return $known !== ''
         && $token !== ''
         && hash_equals($known, $token);
+}
+
+
+function llama_support_normalize_error_reference(
+    ?string $reference
+): ?string {
+    $reference = strtoupper(
+        trim((string) $reference)
+    );
+
+    if ($reference === '') {
+        return null;
+    }
+
+    if (
+        !preg_match(
+            '/^LS-[A-Z0-9]{8,32}$/',
+            $reference
+        )
+    ) {
+        return null;
+    }
+
+    return $reference;
+}
+
+
+function llama_support_ticket_base(): string
+{
+    $mountain = new DateTimeZone(
+        'America/Denver'
+    );
+
+    $now = new DateTimeImmutable(
+        'now',
+        $mountain
+    );
+
+    return $now->format('ymd-His');
+}
+
+
+function llama_support_ticket_candidate(
+    string $base,
+    int $attempt
+): string {
+    if ($attempt <= 1) {
+        return $base;
+    }
+
+    return $base
+        . '-'
+        . str_pad(
+            (string) $attempt,
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
 }
 
 
@@ -142,6 +201,14 @@ function llama_support_create(
         (string) ($data['order_number'] ?? '')
     );
 
+    $errorReference =
+        llama_support_normalize_error_reference(
+            (string) (
+                $data['error_reference']
+                ?? ''
+            )
+        );
+
     if ($name === '') {
         throw new InvalidArgumentException(
             'Enter your name.'
@@ -217,43 +284,80 @@ function llama_support_create(
         ? (int) $user['id']
         : null;
 
-    $stmt = $db->prepare(
-        'INSERT INTO support_requests
-         (
-            user_id,
-            name,
-            email,
-            category,
-            subject,
-            message,
-            order_number,
-            status,
-            requester_ip_hash,
-            created_at,
-            updated_at
-         )
-         VALUES
-         (
-            ?, ?, ?, ?, ?, ?, ?, "open", ?,
-            UTC_TIMESTAMP(),
-            UTC_TIMESTAMP()
-         )'
-    );
+    $ticketBase =
+        llama_support_ticket_base();
 
-    $stmt->execute([
-        $userId,
-        $name,
-        $email,
-        $category,
-        $subject,
-        $message,
-        $orderNumber !== ''
-            ? $orderNumber
-            : null,
-        $ipHash,
-    ]);
+    $requestId = 0;
 
-    $requestId = (int) $db->lastInsertId();
+    for ($attempt = 1; $attempt <= 99; $attempt++) {
+        $ticketNumber =
+            llama_support_ticket_candidate(
+                $ticketBase,
+                $attempt
+            );
+
+        try {
+            $stmt = $db->prepare(
+                'INSERT INTO support_requests
+                 (
+                    ticket_number,
+                    user_id,
+                    name,
+                    email,
+                    category,
+                    subject,
+                    message,
+                    order_number,
+                    error_reference,
+                    status,
+                    requester_ip_hash,
+                    created_at,
+                    updated_at
+                 )
+                 VALUES
+                 (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    "open", ?,
+                    UTC_TIMESTAMP(),
+                    UTC_TIMESTAMP()
+                 )'
+            );
+
+            $stmt->execute([
+                $ticketNumber,
+                $userId,
+                $name,
+                $email,
+                $category,
+                $subject,
+                $message,
+                $orderNumber !== ''
+                    ? $orderNumber
+                    : null,
+                $errorReference,
+                $ipHash,
+            ]);
+
+            $requestId =
+                (int) $db->lastInsertId();
+
+            break;
+
+        } catch (PDOException $exception) {
+            if (
+                (string) $exception->getCode() !== '23000'
+                || $attempt >= 99
+            ) {
+                throw $exception;
+            }
+        }
+    }
+
+    if ($requestId < 1) {
+        throw new RuntimeException(
+            'A unique support ticket number could not be generated.'
+        );
+    }
 
     llama_support_send_notifications(
         $db,
@@ -285,6 +389,25 @@ function llama_support_request(
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
+}
+
+
+function llama_support_ticket_number(
+    PDO $db,
+    int $requestId
+): string {
+    $stmt = $db->prepare(
+        'SELECT ticket_number
+         FROM support_requests
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$requestId]);
+
+    return trim(
+        (string) ($stmt->fetchColumn() ?: '')
+    );
 }
 
 
@@ -327,6 +450,18 @@ function llama_support_send_notifications(
         return;
     }
 
+    $ticketNumber = trim(
+        (string) (
+            $request['ticket_number']
+            ?? ''
+        )
+    );
+
+    if ($ticketNumber === '') {
+        $ticketNumber =
+            (string) $requestId;
+    }
+
     $categories = llama_support_categories();
 
     $categoryLabel =
@@ -340,12 +475,12 @@ function llama_support_send_notifications(
 
     if ($adminEmail !== '') {
         $adminSubject =
-            '[Support #' . $requestId . '] '
+            '[Ticket #' . $ticketNumber . '] '
             . (string) $request['subject'];
 
         $adminText =
-            "New Llama Scout support request\n\n"
-            . "Request: #" . $requestId . "\n"
+            "New Llama Scout support ticket\n\n"
+            . "Ticket: #" . $ticketNumber . "\n"
             . "Category: " . $categoryLabel . "\n"
             . "Name: " . (string) $request['name'] . "\n"
             . "Email: " . (string) $request['email'] . "\n";
@@ -354,6 +489,13 @@ function llama_support_send_notifications(
             $adminText .=
                 "Order: "
                 . (string) $request['order_number']
+                . "\n";
+        }
+
+        if (!empty($request['error_reference'])) {
+            $adminText .=
+                "Error: "
+                . (string) $request['error_reference']
                 . "\n";
         }
 
@@ -387,7 +529,12 @@ function llama_support_send_notifications(
                 llama_log_caught_exception(
                     $exception,
                     'support.admin_notification',
-                    ['support_request_id' => $requestId]
+                    [
+                        'support_request_id' =>
+                            $requestId,
+                        'ticket_number' =>
+                            $ticketNumber,
+                    ]
                 );
             }
         }
@@ -404,20 +551,31 @@ function llama_support_send_notifications(
         )
     ) {
         $customerSubject =
-            'We received your Llama Scout support request';
+            'Ticket #'
+            . $ticketNumber
+            . ' received by Llama Scout';
 
         $customerText =
             'Hi '
             . (string) $request['name']
             . ",\n\n"
-            . "We received your Llama Scout support request.\n\n"
-            . "Reference: #"
-            . $requestId
+            . "We received your Llama Scout support ticket.\n\n"
+            . "Ticket: #"
+            . $ticketNumber
             . "\n"
             . "Subject: "
             . (string) $request['subject']
-            . "\n\n"
-            . "Keep the reference number above if you need to follow up.\n\n"
+            . "\n";
+
+        if (!empty($request['error_reference'])) {
+            $customerText .=
+                "Error reference: "
+                . (string) $request['error_reference']
+                . "\n";
+        }
+
+        $customerText .=
+            "\nKeep the ticket number above if you need to follow up.\n\n"
             . "Llama Scout\n"
             . "Know the place before you go.\n";
 
@@ -443,7 +601,12 @@ function llama_support_send_notifications(
                 llama_log_caught_exception(
                     $exception,
                     'support.customer_confirmation',
-                    ['support_request_id' => $requestId]
+                    [
+                        'support_request_id' =>
+                            $requestId,
+                        'ticket_number' =>
+                            $ticketNumber,
+                    ]
                 );
             }
         }
