@@ -136,9 +136,14 @@ function llama_promotion_email_recipients(
     /*
      * Free members only:
      * - verified email
-     * - marketing email still enabled
-     * - no active/paid/complimentary membership
+     * - promotional email still enabled
+     * - no current paid/complimentary membership access
+     * - no active Scout access
+     * - no active complimentary grant
      * - no delivery already recorded for this campaign/type
+     *
+     * This mirrors user_has_member_access() without making
+     * multiple database calls for every queued recipient.
      */
     $sql =
         'SELECT
@@ -154,8 +159,46 @@ function llama_promotion_email_recipients(
           AND d.delivery_type = ?
          WHERE u.email_verified_at IS NOT NULL
            AND u.marketing_email_enabled = 1
-           AND COALESCE(u.membership_status, \'none\')
-               NOT IN (\'active\', \'trialing\', \'past_due\', \'complimentary\')
+
+           AND NOT (
+                LOWER(COALESCE(u.membership_status, \'none\'))
+                    IN (\'active\', \'trialing\', \'past_due\', \'complimentary\')
+                AND (
+                    u.membership_ends_at IS NULL
+                    OR u.membership_ends_at >= UTC_TIMESTAMP()
+                )
+           )
+
+           AND NOT EXISTS (
+                SELECT 1
+                FROM scout_profiles sp
+                INNER JOIN user_roles ur
+                    ON ur.user_id = sp.user_id
+                INNER JOIN roles r
+                    ON r.id = ur.role_id
+                WHERE sp.user_id = u.id
+                  AND sp.status = \'active\'
+                  AND (
+                        sp.active_through IS NULL
+                        OR sp.active_through >= UTC_TIMESTAMP()
+                  )
+                  AND r.slug IN (
+                        \'scout\',
+                        \'master-scout\',
+                        \'master_scout\'
+                  )
+           )
+
+           AND NOT EXISTS (
+                SELECT 1
+                FROM membership_grants mg
+                WHERE mg.user_id = u.id
+                  AND mg.grant_type = \'complimentary\'
+                  AND mg.revoked_at IS NULL
+                  AND mg.starts_at <= UTC_TIMESTAMP()
+                  AND mg.ends_at >= UTC_TIMESTAMP()
+           )
+
            AND d.id IS NULL
          ORDER BY u.id ASC
          LIMIT ' . $limit;
@@ -339,8 +382,46 @@ function llama_promotion_send_batch(
           AND d.delivery_type = ?
          WHERE u.email_verified_at IS NOT NULL
            AND u.marketing_email_enabled = 1
-           AND COALESCE(u.membership_status, \'none\')
-               NOT IN (\'active\', \'trialing\', \'past_due\', \'complimentary\')
+
+           AND NOT (
+                LOWER(COALESCE(u.membership_status, \'none\'))
+                    IN (\'active\', \'trialing\', \'past_due\', \'complimentary\')
+                AND (
+                    u.membership_ends_at IS NULL
+                    OR u.membership_ends_at >= UTC_TIMESTAMP()
+                )
+           )
+
+           AND NOT EXISTS (
+                SELECT 1
+                FROM scout_profiles sp
+                INNER JOIN user_roles ur
+                    ON ur.user_id = sp.user_id
+                INNER JOIN roles r
+                    ON r.id = ur.role_id
+                WHERE sp.user_id = u.id
+                  AND sp.status = \'active\'
+                  AND (
+                        sp.active_through IS NULL
+                        OR sp.active_through >= UTC_TIMESTAMP()
+                  )
+                  AND r.slug IN (
+                        \'scout\',
+                        \'master-scout\',
+                        \'master_scout\'
+                  )
+           )
+
+           AND NOT EXISTS (
+                SELECT 1
+                FROM membership_grants mg
+                WHERE mg.user_id = u.id
+                  AND mg.grant_type = \'complimentary\'
+                  AND mg.revoked_at IS NULL
+                  AND mg.starts_at <= UTC_TIMESTAMP()
+                  AND mg.ends_at >= UTC_TIMESTAMP()
+           )
+
            AND d.id IS NULL'
     );
     $remainingStmt->execute([$promotionId, $deliveryType]);
