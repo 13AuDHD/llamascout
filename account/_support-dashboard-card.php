@@ -148,3 +148,8 @@ if ($accountLatestSupport) {
         aria-hidden="true"
     ></i>
 </a>
+
+<?php
+require __DIR__
+    . '/_email-preferences-dashboard-card.php';
+?>
