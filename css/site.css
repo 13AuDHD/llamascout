@@ -2548,3 +2548,42 @@ textarea::placeholder {
         grid-template-columns: 1fr;
     }
 }
+
+
+
+/* =========================================================
+   PUBLIC PROFILE SCOUT STATUS
+   ========================================================= */
+
+.public-community-profile-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.public-community-profile-name-row h1 {
+    margin: 0;
+}
+
+.public-community-profile-scout-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: .75rem;
+    font-weight: 800;
+    line-height: 1;
+
+    background: var(--surface);
+    color: var(--text);
+}
+
+.public-community-profile-scout-badge.is-master {
+    border-width: 2px;
+}
