@@ -342,6 +342,16 @@ $adminPageTitle = 'System';
 $adminPageEyebrow = 'Configuration';
 $adminActiveNav = 'system';
 
+$adminUsesSplitCss = true;
+
+$adminPageStyles = [
+    'system.css',
+];
+
+$adminFeatureStyles = [
+    'testing.css',
+];
+
 require __DIR__ . '/_header.php';
 ?>
 
