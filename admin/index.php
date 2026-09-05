@@ -93,6 +93,17 @@ require __DIR__ . '/_header.php';
         </div>
     </a>
 
+    <a class="admin-stat-card is-action" href="/support.php">
+        <span class="admin-stat-icon">
+            <i class="fa-solid fa-headset" aria-hidden="true"></i>
+        </span>
+        <div>
+            <span>Support Tickets</span>
+            <strong><?= (int) $stats['support'] ?></strong>
+            <small>Open or waiting</small>
+        </div>
+    </a>
+
     <a
         class="admin-stat-card is-action"
         href="/scouts.php?filter=attention"
@@ -145,8 +156,8 @@ require __DIR__ . '/_header.php';
                 <i class="fa-solid fa-mug-hot" aria-hidden="true"></i>
                 <h3>Nothing is yelling for attention.</h3>
                 <p>
-                    The moderation queues, Scout reviews, and paid-order queue
-                    are currently clear.
+                    Moderation, support, Scout reviews, and paid-order
+                    queues are currently clear.
                 </p>
             </div>
 
@@ -277,6 +288,14 @@ require __DIR__ . '/_header.php';
 
             <div class="admin-module-list">
 
+                <a class="is-ready" href="/support.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <span>
+                        <strong>Support</strong>
+                        Customer tickets and linked error reports
+                    </span>
+                </a>
+
                 <a class="is-ready" href="/submissions.php">
                     <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
                     <span>
@@ -334,8 +353,6 @@ require __DIR__ . '/_header.php';
                 </a>
 
             </div>
-
-        </section>
 
         </section>
 
