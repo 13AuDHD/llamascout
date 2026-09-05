@@ -10228,6 +10228,140 @@ html[data-reduced-motion="true"] .admin-sidebar {
 }
 
 
+/* =========================================================
+   V2 SHARED ADMIN PANEL LAYOUT
+   ========================================================= */
+
+/*
+ * One shared spacing value for Admin panel layouts.
+ *
+ * Change this one value if we ever want the standard
+ * distance between Admin boxes to change everywhere.
+ */
+:root {
+    --admin-panel-gap: 18px;
+}
+
+
+/*
+ * A panel controls only its own appearance.
+ * It does NOT decide how far away the next panel should be.
+ */
+.admin-panel {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+
+/*
+ * Kill the old adjacent-panel margin rule.
+ *
+ * The older rule:
+ *
+ * .admin-panel + .admin-panel {
+ *     margin-top: 20px;
+ * }
+ *
+ * caused panels inside grids to become vertically misaligned.
+ */
+.admin-panel + .admin-panel {
+    margin-top: 0;
+}
+
+
+/*
+ * Standard reusable vertical stack.
+ *
+ * Any Admin page that needs a column of panels can use:
+ *
+ * <div class="admin-panel-stack">
+ *     <section class="admin-panel">...</section>
+ *     <section class="admin-panel">...</section>
+ * </div>
+ */
+.admin-panel-stack {
+    display: grid;
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+
+/*
+ * Existing shared Admin layouts.
+ *
+ * These containers, not the panels inside them,
+ * control spacing.
+ */
+.admin-dashboard-side,
+.admin-user-detail-main,
+.admin-user-detail-side,
+.admin-report-review-main,
+.admin-report-review-side,
+.admin-badge-detail-main,
+.admin-badge-detail-side {
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+
+/*
+ * System page card grid.
+ */
+.admin-system-operations-grid {
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+
+/*
+ * Panels inside shared layouts should never invent
+ * their own outside spacing or stretch to match
+ * another card's height.
+ */
+.admin-dashboard-side > .admin-panel,
+.admin-panel-stack > .admin-panel,
+.admin-system-operations-grid > .admin-panel,
+.admin-user-detail-main > .admin-panel,
+.admin-user-detail-side > .admin-panel,
+.admin-report-review-main > .admin-panel,
+.admin-report-review-side > .admin-panel,
+.admin-badge-detail-main > .admin-panel,
+.admin-badge-detail-side > .admin-panel {
+    margin: 0;
+    align-self: start;
+    height: auto;
+}
+
+
+/*
+ * Keep the two-column System cards aligned at the top.
+ */
+.admin-system-operations-grid > .admin-panel {
+    align-self: start;
+}
+
+
+/*
+ * Responsive layouts keep using the same shared gap.
+ */
+@media (max-width: 760px) {
+
+    .admin-panel-stack,
+    .admin-dashboard-side,
+    .admin-system-operations-grid,
+    .admin-user-detail-main,
+    .admin-user-detail-side,
+    .admin-report-review-main,
+    .admin-report-review-side,
+    .admin-badge-detail-main,
+    .admin-badge-detail-side {
+        gap: var(--admin-panel-gap);
+    }
+}
+
+
+
+
 
 
 
