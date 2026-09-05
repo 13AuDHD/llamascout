@@ -473,7 +473,10 @@ function llama_support_send_notifications(
     $adminEmail =
         llama_support_admin_email();
 
-    if ($adminEmail !== '') {
+    if (
+        $adminEmail !== ''
+        && empty($request['admin_notified_at'])
+    ) {
         $adminSubject =
             '[Ticket #' . $ticketNumber . '] '
             . (string) $request['subject'];
@@ -508,11 +511,17 @@ function llama_support_send_notifications(
             . "\n";
 
         try {
-            send_llama_mail(
+            $sent = send_llama_mail(
                 $adminEmail,
                 $adminSubject,
                 $adminText
             );
+
+            if (!$sent) {
+                throw new RuntimeException(
+                    'Mail server rejected the support admin notification.'
+                );
+            }
 
             $db->prepare(
                 'UPDATE support_requests
@@ -549,6 +558,7 @@ function llama_support_send_notifications(
             $customerEmail,
             FILTER_VALIDATE_EMAIL
         )
+        && empty($request['customer_confirmed_at'])
     ) {
         $customerSubject =
             'Ticket #'
@@ -580,11 +590,17 @@ function llama_support_send_notifications(
             . "Know the place before you go.\n";
 
         try {
-            send_llama_mail(
+            $sent = send_llama_mail(
                 $customerEmail,
                 $customerSubject,
                 $customerText
             );
+
+            if (!$sent) {
+                throw new RuntimeException(
+                    'Mail server rejected the support customer confirmation.'
+                );
+            }
 
             $db->prepare(
                 'UPDATE support_requests
@@ -751,11 +767,17 @@ function llama_support_send_status_notification(
         . "Know the place before you go.\n";
 
     try {
-        send_llama_mail(
+        $sent = send_llama_mail(
             $email,
             $subject,
             $body
         );
+
+        if (!$sent) {
+            throw new RuntimeException(
+                'Mail server rejected the support status notification.'
+            );
+        }
     } catch (Throwable $exception) {
         if (
             function_exists(
@@ -862,3 +884,183 @@ function llama_support_update(
         $status
     );
 }
+
+
+/* =========================================================
+   SUPPORT EMAIL MAINTENANCE
+
+   Support tickets are stored before email is attempted. If the
+   mail server is temporarily unavailable, the ticket remains
+   valid and unsent initial notifications are retried later during
+   authenticated site activity.
+   ========================================================= */
+
+function llama_support_email_maintenance_is_due(
+    PDO $db,
+    int $intervalSeconds = 600
+): bool {
+    $intervalSeconds = max(
+        300,
+        $intervalSeconds
+    );
+
+    $db->exec(
+        'CREATE TABLE IF NOT EXISTS app_maintenance
+         (
+            maintenance_key VARCHAR(100) NOT NULL,
+            last_run_at DATETIME NULL,
+            updated_at DATETIME NOT NULL
+                DEFAULT CURRENT_TIMESTAMP
+                ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (maintenance_key)
+         )
+         ENGINE=InnoDB
+         DEFAULT CHARSET=utf8mb4
+         COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $stmt = $db->prepare(
+        'SELECT last_run_at
+         FROM app_maintenance
+         WHERE maintenance_key = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'support_email_notifications',
+    ]);
+
+    $lastRun = $stmt->fetchColumn();
+
+    if (!$lastRun) {
+        return true;
+    }
+
+    $timestamp = strtotime(
+        (string) $lastRun
+    );
+
+    if ($timestamp === false) {
+        return true;
+    }
+
+    return
+        (time() - $timestamp)
+        >= $intervalSeconds;
+}
+
+
+function llama_support_mark_email_maintenance_run(
+    PDO $db
+): void {
+    $stmt = $db->prepare(
+        'INSERT INTO app_maintenance
+         (
+            maintenance_key,
+            last_run_at
+         )
+         VALUES (?, UTC_TIMESTAMP())
+         ON DUPLICATE KEY UPDATE
+            last_run_at = UTC_TIMESTAMP()'
+    );
+
+    $stmt->execute([
+        'support_email_notifications',
+    ]);
+}
+
+
+function llama_run_support_email_maintenance(
+    PDO $db,
+    int $limit = 10
+): array {
+    $summary = [
+        'ran' => false,
+        'tickets' => 0,
+    ];
+
+    if (
+        !llama_support_email_maintenance_is_due(
+            $db
+        )
+    ) {
+        return $summary;
+    }
+
+    $lockStmt = $db->query(
+        "SELECT GET_LOCK('llamascout_support_email', 0)"
+    );
+
+    if (
+        !$lockStmt
+        || (int) $lockStmt->fetchColumn()
+            !== 1
+    ) {
+        return $summary;
+    }
+
+    try {
+        if (
+            !llama_support_email_maintenance_is_due(
+                $db
+            )
+        ) {
+            return $summary;
+        }
+
+        $summary['ran'] = true;
+        $limit = max(
+            1,
+            min(50, $limit)
+        );
+
+        $stmt = $db->query(
+            'SELECT id
+             FROM support_requests
+             WHERE
+                (
+                    admin_notified_at IS NULL
+                    OR customer_confirmed_at IS NULL
+                )
+               AND created_at <= DATE_SUB(
+                    UTC_TIMESTAMP(),
+                    INTERVAL 2 MINUTE
+               )
+             ORDER BY created_at ASC, id ASC
+             LIMIT ' . $limit
+        );
+
+        $requestIds = $stmt
+            ? (
+                $stmt->fetchAll(
+                    PDO::FETCH_COLUMN
+                )
+                ?: []
+            )
+            : [];
+
+        foreach ($requestIds as $requestId) {
+            llama_support_send_notifications(
+                $db,
+                (int) $requestId
+            );
+
+            $summary['tickets']++;
+        }
+
+        llama_support_mark_email_maintenance_run(
+            $db
+        );
+
+        return $summary;
+    } finally {
+        try {
+            $db->query(
+                "SELECT RELEASE_LOCK('llamascout_support_email')"
+            );
+        } catch (Throwable) {
+            // Connection cleanup releases the lock.
+        }
+    }
+}
+
