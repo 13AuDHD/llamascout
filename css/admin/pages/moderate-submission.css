@@ -1,0 +1,213 @@
+/* =========================================================
+   ADMIN PAGE: MODERATE NEW PLACE SUBMISSION
+   Only admin/moderate-submission.php belongs here.
+
+   Shared review components live in:
+   features/moderation-review.css
+   ========================================================= */
+
+/* Section completeness */
+
+.admin-moderation-section-counts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.admin-moderation-section-counts span {
+    display: inline-flex;
+
+    padding: 5px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: .68rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-moderation-section-counts .is-known {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 46%,
+        var(--border)
+    );
+}
+
+.admin-moderation-section-counts .is-unknown {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 48%,
+        var(--border)
+    );
+}
+
+
+/* Complete Place field review */
+
+.admin-moderation-full-grid {
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+}
+
+.admin-moderation-field.is-unknown {
+    border-style: dashed;
+
+    background: color-mix(
+        in srgb,
+        #d3a842 4.5%,
+        var(--surface)
+    );
+}
+
+.admin-moderation-field.is-unknown > div {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.admin-moderation-field.is-provided {
+    background: color-mix(
+        in srgb,
+        #58a66a 2.5%,
+        var(--surface)
+    );
+}
+
+
+/* Readiness summary */
+
+.admin-moderation-review-readiness {
+    border-width: 2px;
+}
+
+.admin-moderation-readiness-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: 14px;
+}
+
+.admin-moderation-readiness-grid > div {
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-moderation-readiness-grid span,
+.admin-moderation-readiness-grid strong,
+.admin-moderation-readiness-grid small {
+    display: block;
+}
+
+.admin-moderation-readiness-grid span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.admin-moderation-readiness-grid strong {
+    margin-top: 4px;
+
+    font-size: 1.2rem;
+}
+
+.admin-moderation-readiness-grid small {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    line-height: 1.4;
+}
+
+
+/* Core checks */
+
+.admin-moderation-core-checks {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.admin-moderation-core-checks > div {
+    display: grid;
+    grid-template-columns:
+        20px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+}
+
+.admin-moderation-core-checks
+> div.is-met
+> i {
+    color: #58a66a;
+}
+
+.admin-moderation-core-checks
+> div.is-missing {
+    border-color: color-mix(
+        in srgb,
+        #d3a842 48%,
+        var(--border)
+    );
+}
+
+.admin-moderation-core-checks
+> div.is-missing
+> i {
+    color: #d3a842;
+}
+
+.admin-moderation-core-checks span {
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+.admin-moderation-core-checks strong {
+    font-size: .7rem;
+}
+
+
+/* Responsive */
+
+@media (max-width: 980px) {
+
+    .admin-moderation-full-grid,
+    .admin-moderation-readiness-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-moderation-section-counts {
+        justify-content: flex-start;
+    }
+
+    .admin-moderation-full-grid,
+    .admin-moderation-readiness-grid,
+    .admin-moderation-core-checks {
+        grid-template-columns: 1fr;
+    }
+}
