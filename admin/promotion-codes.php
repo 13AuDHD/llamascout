@@ -147,6 +147,7 @@ $adminPageEyebrow = 'Commerce';
 $adminActiveNav = 'memberships';
 
 $codes = [];
+$codeStats = [];
 
 if ($error === '') {
     $codes = $db->query(
@@ -154,6 +155,8 @@ if ($error === '') {
          FROM membership_promotion_codes
          ORDER BY starts_at DESC, id DESC'
     )->fetchAll(PDO::FETCH_ASSOC);
+
+    $codeStats = llama_membership_promotion_code_stats($db);
 }
 
 require __DIR__ . '/_header.php';
@@ -208,12 +211,38 @@ require __DIR__ . '/_header.php';
     background:rgba(127,127,127,.10);
     font-size:.8rem;
 }
+.promo-code-results {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+}
+.promo-code-result {
+    padding:11px 12px;
+    border:1px solid var(--admin-border,rgba(127,127,127,.25));
+    border-radius:12px;
+    background:rgba(127,127,127,.055);
+}
+.promo-code-result span {
+    display:block;
+    margin-bottom:4px;
+    font-size:.72rem;
+    opacity:.68;
+    text-transform:uppercase;
+    letter-spacing:.045em;
+}
+.promo-code-result strong {
+    display:block;
+    font-size:1rem;
+}
 @media (max-width:760px) {
     .promo-code-grid {
         grid-template-columns:1fr;
     }
     .promo-code-card-top {
         display:grid;
+    }
+    .promo-code-results {
+        grid-template-columns:1fr;
     }
 }
 </style>
@@ -390,6 +419,10 @@ require __DIR__ . '/_header.php';
                 $discount = (string) $code['discount_type'] === 'percent'
                     ? ((int) $code['discount_value']) . '% off'
                     : promotion_code_money((int) $code['discount_value']) . ' off';
+
+                $results = $codeStats[(int) $code['id']] ?? [];
+                $redemptions = (int) ($results['redemptions'] ?? 0);
+                $revenueCents = (int) ($results['revenue_cents'] ?? 0);
                 ?>
                 <article class="promo-code-card">
                     <div class="promo-code-card-top">
@@ -427,6 +460,17 @@ require __DIR__ . '/_header.php';
                                 <?= !empty($code['is_enabled']) ? 'Disable' : 'Enable' ?>
                             </button>
                         </form>
+                    </div>
+
+                    <div class="promo-code-results">
+                        <div class="promo-code-result">
+                            <span>Redemptions</span>
+                            <strong><?= number_format($redemptions) ?></strong>
+                        </div>
+                        <div class="promo-code-result">
+                            <span>Revenue</span>
+                            <strong><?= moderation_e(promotion_code_money($revenueCents)) ?></strong>
+                        </div>
                     </div>
 
                     <div class="promo-code-meta">
