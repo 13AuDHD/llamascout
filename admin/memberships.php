@@ -835,6 +835,22 @@ require __DIR__ . '/_header.php';
 >
 
 <style>
+/* Pricing & Promotions page layout */
+.admin-membership-grid {
+    grid-template-columns: 1fr !important;
+}
+.admin-membership-plan-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.admin-membership-plan-card {
+    align-content: start;
+}
+.admin-membership-plan-card .admin-button {
+    margin-top: auto;
+}
+.admin-membership-promotion-form {
+    max-width: none;
+}
 .admin-campaign-summary-grid {
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
@@ -948,6 +964,9 @@ require __DIR__ . '/_header.php';
     align-items:flex-start;
 }
 @media (max-width:900px) {
+    .admin-membership-plan-list {
+        grid-template-columns: 1fr;
+    }
     .admin-campaign-summary-grid {
         grid-template-columns:repeat(2,minmax(0,1fr));
     }
@@ -1070,10 +1089,6 @@ foreach ($promotions as $promotion) {
                         </span>
                     </div>
 
-                    <p>
-                        Saving creates a new immutable Stripe Price for future signups.
-                        Existing subscriptions keep the recurring price they already have.
-                    </p>
 
                     <button class="admin-button" type="submit">
                         Create new regular price
@@ -1214,7 +1229,6 @@ foreach ($promotions as $promotion) {
 
             <div class="admin-campaign-form-section">
                 <h3>Website promotion</h3>
-                <p>Choose what Llama Scout should show while this promotion is active.</p>
 
                 <div class="admin-campaign-toggle-grid">
                     <label class="admin-campaign-toggle">
@@ -1228,7 +1242,6 @@ foreach ($promotions as $promotion) {
                         >
                         <span>
                             <strong>Show site banner</strong>
-                            <span>Display the promotion across eligible Llama Scout pages.</span>
                         </span>
                     </label>
 
@@ -1241,7 +1254,6 @@ foreach ($promotions as $promotion) {
                         >
                         <span>
                             <strong>Show countdown</strong>
-                            <span>Show time remaining until the scheduled promotion ends.</span>
                         </span>
                     </label>
                 </div>
@@ -1273,10 +1285,6 @@ foreach ($promotions as $promotion) {
 
             <div class="admin-campaign-form-section">
                 <h3>Campaign email</h3>
-                <p>
-                    Schedule an announcement for free registered members. Saving the campaign
-                    stores the schedule; the campaign worker will send it when due.
-                </p>
 
                 <label class="admin-campaign-toggle">
                     <input
@@ -1287,7 +1295,6 @@ foreach ($promotions as $promotion) {
                     >
                     <span>
                         <strong>Send campaign announcement</strong>
-                        <span>Audience: free registered Llama Scout members.</span>
                     </span>
                 </label>
 
@@ -1338,7 +1345,6 @@ foreach ($promotions as $promotion) {
 
             <div class="admin-campaign-form-section">
                 <h3>Final reminder</h3>
-                <p>Optional second message before the promotion ends.</p>
 
                 <label class="admin-campaign-toggle">
                     <input
@@ -1349,7 +1355,6 @@ foreach ($promotions as $promotion) {
                     >
                     <span>
                         <strong>Send final reminder</strong>
-                        <span>Useful for a final-hours or last-day message.</span>
                     </span>
                 </label>
 
@@ -1387,19 +1392,6 @@ foreach ($promotions as $promotion) {
                 </label>
             </div>
 
-            <?php if (!$editingPromotion): ?>
-                <div class="admin-membership-policy-note">
-                    <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
-                    <div>
-                        <strong>Automatic introductory promotion</strong>
-                        <span>
-                            Monthly signups receive the discounted rate for 12 monthly invoices.
-                            Annual signups receive the discount on their first annual invoice.
-                            Stripe then returns the subscription to its normal recurring price.
-                        </span>
-                    </div>
-                </div>
-            <?php endif; ?>
 
             <button class="admin-button" type="submit">
                 <?= $editingPromotion ? 'Save campaign details' : 'Create promotion in Stripe' ?>
@@ -1591,17 +1583,6 @@ foreach ($promotions as $promotion) {
         <span><?= $manualCodesEnabled ? 'Checkout enabled' : 'Checkout disabled' ?></span>
     </header>
 
-    <div class="admin-campaign-code-placeholder">
-        <i class="fa-solid fa-ticket" aria-hidden="true"></i>
-        <div>
-            <strong>Promotion-code checkout support is already present.</strong>
-            <p>
-                The switch below controls whether Stripe's promotion-code field appears
-                when no automatic sale is active. Code creation and expiration management
-                will be connected to this admin page next.
-            </p>
-        </div>
-    </div>
 
     <form class="admin-membership-code-setting" method="post">
         <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
