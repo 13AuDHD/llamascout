@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/stripe.php';
+require_once dirname(__DIR__) . '/app/promotion-events.php';
 
 
 /*
@@ -249,6 +250,66 @@ try {
                 $subscription,
                 $userId
             );
+
+
+            /*
+             * Campaign attribution is taken from metadata Llama
+             * Scout placed on the Checkout Session itself.
+             * Stripe's signed webhook is authoritative for the
+             * completed conversion.
+             */
+            $promotionId =
+                (int) (
+                    $session
+                        ->metadata
+                        ->membership_promotion_id
+                    ?? 0
+                );
+
+            if ($promotionId > 0) {
+                $interval =
+                    strtolower(
+                        trim(
+                            (string) (
+                                $session
+                                    ->metadata
+                                    ->membership_interval
+                                ?? ''
+                            )
+                        )
+                    );
+
+                $sessionId =
+                    trim(
+                        (string) (
+                            $session
+                                ->id
+                            ?? ''
+                        )
+                    );
+
+                $amountTotal =
+                    isset($session->amount_total)
+                        ? (int) $session->amount_total
+                        : null;
+
+                llama_membership_promotion_event(
+                    $db,
+                    $promotionId,
+                    'membership_purchased',
+                    $userId,
+                    $interval,
+                    $sessionId,
+                    $subscriptionId,
+                    $amountTotal,
+                    [
+                        'stripe_event_id' =>
+                            (string) ($event->id ?? ''),
+                        'payment_status' =>
+                            (string) ($session->payment_status ?? ''),
+                    ]
+                );
+            }
 
 
             break;
