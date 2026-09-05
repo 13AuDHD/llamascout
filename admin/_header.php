@@ -118,13 +118,10 @@ function admin_shell_nav_class(string $key, string $active): string
 
     <?php
     /*
-     * Admin CSS migration manifest.
+     * Admin CSS manifest.
      *
-     * Migrated pages are listed once here. Pages not listed continue
-     * using legacy admin.css until their own stylesheet is extracted.
-     *
-     * Explicit page variables still work, so already-migrated pages
-     * remain compatible while the migration is in progress.
+     * Every rendered Admin page loads the shared core stylesheet,
+     * followed by only the page and reusable feature styles it needs.
      */
     $adminScriptName = basename(
         (string) (
@@ -288,98 +285,55 @@ function admin_shell_nav_class(string $key, string $active): string
 
     $adminManifestEntry =
         $adminCssManifest[$adminScriptName]
-        ?? null;
-
-    if (
-        !isset($adminUsesSplitCss)
-        && is_array($adminManifestEntry)
-    ) {
-        $adminUsesSplitCss = true;
-    }
-
-    $adminUsesSplitCss =
-        !empty($adminUsesSplitCss);
-
-    if (
-        !isset($adminPageStyles)
-        && is_array($adminManifestEntry)
-    ) {
-        $adminPageStyles =
-            $adminManifestEntry['pages']
-            ?? [];
-    }
-
-    if (
-        !isset($adminFeatureStyles)
-        && is_array($adminManifestEntry)
-    ) {
-        $adminFeatureStyles =
-            $adminManifestEntry['features']
-            ?? [];
-    }
+        ?? [
+            'pages' => [],
+            'features' => [],
+        ];
 
     $adminPageStyles =
-        isset($adminPageStyles)
-        && is_array($adminPageStyles)
-            ? $adminPageStyles
+        is_array($adminManifestEntry['pages'] ?? null)
+            ? $adminManifestEntry['pages']
             : [];
 
     $adminFeatureStyles =
-        isset($adminFeatureStyles)
-        && is_array($adminFeatureStyles)
-            ? $adminFeatureStyles
+        is_array($adminManifestEntry['features'] ?? null)
+            ? $adminManifestEntry['features']
             : [];
     ?>
 
-    <?php if ($adminUsesSplitCss): ?>
+    <link
+        rel="stylesheet"
+        href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
+    >
 
+    <?php foreach ($adminPageStyles as $adminStyle): ?>
+        <?php
+        $adminStyle = basename((string) $adminStyle);
+        ?>
         <link
             rel="stylesheet"
-            href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
+            href="<?= moderation_e(
+                $siteUrl
+                . '/css/admin/pages/'
+                . $adminStyle
+            ) ?>"
         >
+    <?php endforeach; ?>
 
-        <?php foreach ($adminPageStyles as $adminStyle): ?>
-            <?php
-            $adminStyle = basename((string) $adminStyle);
-            ?>
-            <link
-                rel="stylesheet"
-                href="<?= moderation_e(
-                    $siteUrl
-                    . '/css/admin/pages/'
-                    . $adminStyle
-                ) ?>"
-            >
-        <?php endforeach; ?>
-
-        <?php foreach ($adminFeatureStyles as $adminStyle): ?>
-            <?php
-            $adminStyle = basename((string) $adminStyle);
-            ?>
-            <link
-                rel="stylesheet"
-                href="<?= moderation_e(
-                    $siteUrl
-                    . '/css/admin/features/'
-                    . $adminStyle
-                ) ?>"
-            >
-        <?php endforeach; ?>
-
-    <?php else: ?>
-
-        <!-- Temporary fallback while Admin pages are migrated. -->
+    <?php foreach ($adminFeatureStyles as $adminStyle): ?>
+        <?php
+        $adminStyle = basename((string) $adminStyle);
+        ?>
         <link
             rel="stylesheet"
-            href="<?= moderation_e($siteUrl . '/css/admin.css') ?>"
+            href="<?= moderation_e(
+                $siteUrl
+                . '/css/admin/features/'
+                . $adminStyle
+            ) ?>"
         >
+    <?php endforeach; ?>
 
-        <link
-            rel="stylesheet"
-            href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>"
-        >
-
-    <?php endif; ?>
 
     <?php if (!empty($adminNeedsPhotoUploader)): ?>
         <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>">
