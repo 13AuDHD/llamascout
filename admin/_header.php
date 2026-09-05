@@ -321,6 +321,14 @@ function admin_shell_nav_class(string $key, string $active): string
             <?php endif; ?>
         </a>
 
+        <a
+            class="<?= admin_shell_nav_class('printful-orders', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/printful-orders.php') ?>"
+        >
+            <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+            <span>Printful Orders</span>
+        </a>
+
         <p class="admin-nav-label">Configuration</p>
 
         <a
