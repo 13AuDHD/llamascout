@@ -115,6 +115,202 @@ if ((int) $state['started_by'] > 0) {
 $lastScoutMaintenance =
     admin_system_last_scout_maintenance($db);
 
+
+/*
+ * Opportunistic maintenance timestamps.
+ *
+ * Not every worker historically recorded its own last-run value,
+ * so the System page checks the shared app_maintenance table when
+ * available and falls back to "No run recorded yet".
+ */
+function admin_system_automation_last_run(
+    PDO $db,
+    array $exactKeys = [],
+    array $likePatterns = []
+): ?string {
+    try {
+        $tableStmt = $db->query(
+            "SELECT COUNT(*)
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE()
+               AND table_name = 'app_maintenance'"
+        );
+
+        if (!$tableStmt || (int) $tableStmt->fetchColumn() < 1) {
+            return null;
+        }
+
+        $clauses = [];
+        $params = [];
+
+        foreach ($exactKeys as $key) {
+            $key = trim((string) $key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $clauses[] = 'maintenance_key = ?';
+            $params[] = $key;
+        }
+
+        foreach ($likePatterns as $pattern) {
+            $pattern = trim((string) $pattern);
+
+            if ($pattern === '') {
+                continue;
+            }
+
+            $clauses[] = 'maintenance_key LIKE ?';
+            $params[] = $pattern;
+        }
+
+        if (!$clauses) {
+            return null;
+        }
+
+        $stmt = $db->prepare(
+            'SELECT MAX(last_run_at)
+             FROM app_maintenance
+             WHERE (' . implode(' OR ', $clauses) . ')
+               AND last_run_at IS NOT NULL'
+        );
+
+        $stmt->execute($params);
+
+        $value = $stmt->fetchColumn();
+
+        return is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : null;
+
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+
+function admin_system_setting_last_run(
+    PDO $db,
+    string $settingKey
+): ?string {
+    try {
+        $stmt = $db->prepare(
+            'SELECT setting_value
+             FROM site_settings
+             WHERE setting_key = ?
+             LIMIT 1'
+        );
+
+        $stmt->execute([$settingKey]);
+
+        $value = $stmt->fetchColumn();
+
+        return is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : null;
+
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+
+function admin_system_run_time_label(
+    ?string $value
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return 'No run recorded yet';
+    }
+
+    try {
+        $utc = new DateTimeZone('UTC');
+        $mountain = new DateTimeZone('America/Denver');
+
+        $date = new DateTimeImmutable(
+            $value,
+            $utc
+        );
+
+        return $date
+            ->setTimezone($mountain)
+            ->format('M j, Y Â· g:i a');
+
+    } catch (Throwable $exception) {
+        return $value;
+    }
+}
+
+
+$lastPromotionEmailMaintenance =
+    admin_system_automation_last_run(
+        $db,
+        [
+            'promotion_campaign_email',
+            'promotion_email',
+            'membership_promotion_email',
+        ],
+        [
+            '%promotion%email%',
+            '%campaign%email%',
+        ]
+    );
+
+$lastPromotionCodeMaintenance =
+    admin_system_automation_last_run(
+        $db,
+        [
+            'promotion_code_sync',
+            'membership_promotion_code_sync',
+        ],
+        [
+            '%promotion%code%',
+        ]
+    );
+
+$lastShopNotificationMaintenance =
+    admin_system_automation_last_run(
+        $db,
+        [
+            'shop_shipment_email',
+        ],
+        [
+            '%shop%shipment%email%',
+            '%shop%refund%email%',
+        ]
+    );
+
+$lastExpiredCheckoutMaintenance =
+    admin_system_automation_last_run(
+        $db,
+        [
+            'shop_expired_checkouts',
+        ],
+        [
+            '%shop%expired%checkout%',
+        ]
+    );
+
+$lastPhotoStagingMaintenance =
+    admin_system_automation_last_run(
+        $db,
+        [
+            'photo_staging_cleanup',
+        ],
+        [
+            '%photo%staging%',
+        ]
+    );
+
+$lastErrorCleanup =
+    admin_system_setting_last_run(
+        $db,
+        'error_log_last_cleanup_at'
+    );
+
+
 $health =
     admin_system_health(
         $db
@@ -181,7 +377,6 @@ require __DIR__ . '/_header.php';
     </span>
 
 </section>
-
 
 
 <section class="admin-panel admin-system-health-panel">
@@ -469,7 +664,6 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-
 <section class="admin-panel admin-system-testing-panel">
 
     <header class="admin-panel-header">
@@ -522,9 +716,9 @@ require __DIR__ . '/_header.php';
                             <?= moderation_e(
                                 (string) ($testAccount['username'] ?: $testAccount['display_name'] ?: $testAccount['email'])
                             ) ?>
-                            · User #<?= (int) $testAccount['id'] ?>
+                            Â· User #<?= (int) $testAccount['id'] ?>
                             <?php if (!empty($testAccount['scout_status'])): ?>
-                                · Scout: <?= moderation_e((string) $testAccount['scout_status']) ?>
+                                Â· Scout: <?= moderation_e((string) $testAccount['scout_status']) ?>
                             <?php endif; ?>
                         </option>
                     <?php endforeach; ?>
@@ -600,18 +794,64 @@ require __DIR__ . '/_header.php';
         <header class="admin-panel-header">
             <div>
                 <p>Automation</p>
-                <h2>Scheduled Maintenance</h2>
+                <h2>Automated Maintenance</h2>
             </div>
         </header>
 
         <div class="admin-system-operation-body">
             <dl class="admin-user-definition-list">
+
                 <div>
                     <dt>Scout renewal maintenance</dt>
                     <dd>
                         <?= moderation_e(
-                            $lastScoutMaintenance
-                            ?: 'No run recorded'
+                            admin_system_run_time_label(
+                                $lastScoutMaintenance
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Promotion campaign emails</dt>
+                    <dd>
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastPromotionEmailMaintenance
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Promotion Code sync</dt>
+                    <dd>
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastPromotionCodeMaintenance
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Shop notification queue</dt>
+                    <dd>
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastShopNotificationMaintenance
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Expired Shop checkouts</dt>
+                    <dd>
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastExpiredCheckoutMaintenance
+                            )
                         ) ?>
                     </dd>
                 </div>
@@ -619,10 +859,32 @@ require __DIR__ . '/_header.php';
                 <div>
                     <dt>Photo staging cleanup</dt>
                     <dd>
-                        Runs opportunistically during photo upload activity.
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastPhotoStagingMaintenance
+                            )
+                        ) ?>
                     </dd>
                 </div>
+
+                <div>
+                    <dt>Error log cleanup</dt>
+                    <dd>
+                        <?= moderation_e(
+                            admin_system_run_time_label(
+                                $lastErrorCleanup
+                            )
+                        ) ?>
+                    </dd>
+                </div>
+
             </dl>
+
+            <p>
+                These jobs run opportunistically because this hosting
+                plan does not provide cron. A timestamp appears when
+                that worker records its own maintenance run.
+            </p>
         </div>
 
     </section>
@@ -759,7 +1021,7 @@ require __DIR__ . '/_header.php';
                                 <?= moderation_e(
                                     (string) $historyRow['actor_name']
                                 ) ?>
-                                ·
+                                Â·
                                 <?= moderation_e(
                                     (string) $historyRow['created_at']
                                 ) ?>
