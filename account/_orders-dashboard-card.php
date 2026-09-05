@@ -124,3 +124,5 @@ if ($accountOrderCount > 0) {
         aria-hidden="true"
     ></i>
 </a>
+
+<?php require __DIR__ . '/_support-dashboard-card.php'; ?>
