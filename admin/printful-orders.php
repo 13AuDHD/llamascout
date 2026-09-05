@@ -220,15 +220,12 @@ require __DIR__
     </a>
 </header>
 
-<div
-    class="admin-user-notice"
-    style="margin:18px;"
->
+<div class="admin-user-notice admin-printful-order-warning">
     <strong>
         Provider cancellation and customer refund are separate.
     </strong>
 
-    <p style="margin:.45rem 0 0;">
+    <p>
         Cancelling here stops an eligible Printful order and
         returns Printful's charge to Llama Scout. It does not
         refund the customer. Paid customer orders are moved to
@@ -325,10 +322,7 @@ $canCancel =
             Unavailable
         </span>
 
-        <small
-            class="admin-table-muted"
-            style="display:block;margin-top:4px;"
-        >
+        <small class="admin-printful-remote-error">
             <?= moderation_e(
                 $remoteError
             ) ?>
@@ -376,7 +370,7 @@ $canCancel =
 
 <td>
 
-<div class="admin-user-form-actions">
+<div class="admin-user-form-actions admin-printful-order-actions">
 
     <a
         class="admin-button"
