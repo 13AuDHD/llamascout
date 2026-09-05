@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/stripe.php';
 require_once dirname(__DIR__) . '/app/memberships.php';
 require_once dirname(__DIR__) . '/app/promotion-events.php';
+require_once dirname(__DIR__) . '/app/promotion-codes.php';
 
 require_verified_email();
 start_llama_session();
@@ -105,6 +106,17 @@ $plan = null;
 
 $manualPromotionCodesEnabled = false;
 
+$pendingPromotionCodeValue = strtoupper(
+    trim(
+        (string) (
+            $_SESSION['pending_membership_promo_code']
+            ?? ''
+        )
+    )
+);
+
+$linkedPromotionCode = null;
+
 $manualCodesStmt = $db->query(
     'SELECT manual_promotion_codes_enabled
      FROM membership_checkout_settings
@@ -126,6 +138,23 @@ if (!$offer) {
     $promotion = $offer['promotion'] ?? null;
     $promotionId = $promotion ? (int) ($promotion['promotion_id'] ?? 0) : 0;
     $onSale = !empty($offer['on_sale']);
+
+    if (!$onSale && $pendingPromotionCodeValue !== '') {
+        $linkedPromotionCode =
+            llama_membership_promotion_code_by_code(
+                $db,
+                $pendingPromotionCodeValue,
+                $interval
+            );
+
+        if (!$linkedPromotionCode) {
+            unset(
+                $_SESSION['pending_membership_promo_code']
+            );
+
+            $pendingPromotionCodeValue = '';
+        }
+    }
 
     if ($priceId === '') {
         http_response_code(503);
@@ -174,6 +203,27 @@ if (!$offer) {
                 ]];
 
                 $sessionData['allow_promotion_codes'] = false;
+
+            } elseif ($linkedPromotionCode) {
+                $sessionData['discounts'] = [[
+                    'promotion_code' =>
+                        (string) $linkedPromotionCode[
+                            'stripe_promotion_code_id'
+                        ],
+                ]];
+
+                $sessionData['allow_promotion_codes'] = false;
+
+                $sessionData['metadata'][
+                    'llama_promotion_code'
+                ] =
+                    (string) $linkedPromotionCode['code'];
+
+                $sessionData['subscription_data']['metadata'][
+                    'llama_promotion_code'
+                ] =
+                    (string) $linkedPromotionCode['code'];
+
             } else {
                 $sessionData['allow_promotion_codes'] =
                     $manualPromotionCodesEnabled;
@@ -216,7 +266,10 @@ if (!$offer) {
                 );
             }
 
-            unset($_SESSION['pending_membership_plan']);
+            unset(
+                $_SESSION['pending_membership_plan'],
+                $_SESSION['pending_membership_promo_code']
+            );
         } catch (Throwable $exception) {
             $checkoutReference = llama_log_caught_exception(
                 $exception,
@@ -316,6 +369,12 @@ require dirname(__DIR__) . '/partials/header.php';
             (string) ($plan['currency'] ?? 'usd')
         )) ?>.
         The promotional rate applies only during your first year, then renews at the regular price.
+    </p>
+    <?php elseif ($linkedPromotionCode): ?>
+    <p class="checkout-sale-note">
+        Promotion code
+        <strong><?= checkout_e((string) $linkedPromotionCode['code']) ?></strong>
+        will be applied automatically in Stripe checkout.
     </p>
     <?php elseif ($manualPromotionCodesEnabled): ?>
     <p class="checkout-sale-note">
