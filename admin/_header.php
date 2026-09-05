@@ -38,10 +38,8 @@ if ($adminDisplayName === '') {
         : 'Admin';
 }
 
-function admin_shell_nav_class(
-    string $key,
-    string $active
-): string {
+function admin_shell_nav_class(string $key, string $active): string
+{
     return $key === $active
         ? 'admin-nav-link is-active'
         : 'admin-nav-link';
@@ -54,7 +52,6 @@ function admin_shell_nav_class(
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title><?= moderation_e($adminPageTitle) ?> | Llama Scout Admin</title>
-
     <meta name="robots" content="noindex,nofollow,noarchive">
 
     <script>
@@ -64,14 +61,8 @@ function admin_shell_nav_class(
                 const fontSize = localStorage.getItem('llama-font-size');
                 const reducedMotion = localStorage.getItem('llama-reduced-motion');
 
-                if (theme) {
-                    document.documentElement.dataset.theme = theme;
-                }
-
-                if (fontSize) {
-                    document.documentElement.dataset.fontSize = fontSize;
-                }
-
+                if (theme) document.documentElement.dataset.theme = theme;
+                if (fontSize) document.documentElement.dataset.fontSize = fontSize;
                 if (reducedMotion === 'true') {
                     document.documentElement.dataset.reducedMotion = 'true';
                 }
@@ -85,27 +76,12 @@ function admin_shell_nav_class(
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     >
-
-    <link
-        rel="stylesheet"
-        href="<?= moderation_e($siteUrl . '/css/site.css') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= moderation_e($siteUrl . '/css/admin.css') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>"
-    >
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/admin.css') ?>">
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/admin-moderation.css') ?>">
 
     <?php if (!empty($adminNeedsPhotoUploader)): ?>
-        <link
-            rel="stylesheet"
-            href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>"
-        >
+        <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>">
     <?php endif; ?>
 </head>
 
@@ -115,296 +91,288 @@ function admin_shell_nav_class(
 
 <div class="admin-app">
 
-    <aside class="admin-sidebar" id="admin-sidebar">
+<aside class="admin-sidebar" id="admin-sidebar">
 
-        <div class="admin-sidebar-top">
+    <div class="admin-sidebar-top">
+        <a
+            class="admin-brand"
+            href="<?= moderation_e($adminUrl . '/') ?>"
+            aria-label="Llama Scout Admin dashboard"
+        >
+            <img src="<?= moderation_e($siteUrl . '/images/logo.png') ?>" alt="Llama Scout">
+            <span>Admin</span>
+        </a>
 
-            <a
-                class="admin-brand"
-                href="<?= moderation_e($adminUrl . '/') ?>"
-                aria-label="Llama Scout Admin dashboard"
-            >
-                <img
-                    src="<?= moderation_e($siteUrl . '/images/logo.png') ?>"
-                    alt="Llama Scout"
-                >
-                <span>Admin</span>
-            </a>
+        <button
+            class="admin-sidebar-close"
+            type="button"
+            data-admin-menu-close
+            aria-label="Close admin navigation"
+        >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </div>
 
-            <button
-                class="admin-sidebar-close"
-                type="button"
-                data-admin-menu-close
-                aria-label="Close admin navigation"
-            >
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            </button>
+    <nav class="admin-nav" aria-label="Admin">
 
+        <p class="admin-nav-label">Overview</p>
+
+        <a
+            class="<?= admin_shell_nav_class('dashboard', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/') ?>"
+        >
+            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <p class="admin-nav-label">Places</p>
+
+        <a
+            class="<?= admin_shell_nav_class('moderation', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/moderation.php') ?>"
+        >
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+            <span>Moderation</span>
+            <?php
+            $moderationTotal =
+                (int) ($adminNavCounts['new_places'] ?? 0)
+                + (int) ($adminNavCounts['updates'] ?? 0)
+                + (int) ($adminNavCounts['reports'] ?? 0);
+            ?>
+            <?php if ($moderationTotal > 0): ?>
+                <b><?= $moderationTotal ?></b>
+            <?php endif; ?>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('places', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/places.php') ?>"
+        >
+            <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+            <span>Places</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('verifications', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
+        >
+            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <span>Verifications</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('submissions', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/submissions.php') ?>"
+        >
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <span>New Places</span>
+            <?php if (!empty($adminNavCounts['new_places'])): ?>
+                <b><?= (int) $adminNavCounts['new_places'] ?></b>
+            <?php endif; ?>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('updates', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/updates.php') ?>"
+        >
+            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+            <span>Place Updates</span>
+            <?php if (!empty($adminNavCounts['updates'])): ?>
+                <b><?= (int) $adminNavCounts['updates'] ?></b>
+            <?php endif; ?>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('reports', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/reports.php') ?>"
+        >
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <span>Reports</span>
+            <?php if (!empty($adminNavCounts['reports'])): ?>
+                <b><?= (int) $adminNavCounts['reports'] ?></b>
+            <?php endif; ?>
+        </a>
+
+        <p class="admin-nav-label">People</p>
+
+        <a
+            class="<?= admin_shell_nav_class('users', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/users.php') ?>"
+        >
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
+            <span>Users</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('scouts', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/scouts.php') ?>"
+        >
+            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <span>Scouts</span>
+            <?php if (!empty($adminNavCounts['scout_reviews'])): ?>
+                <b><?= (int) $adminNavCounts['scout_reviews'] ?></b>
+            <?php endif; ?>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('badges', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/badges.php') ?>"
+        >
+            <i class="fa-solid fa-award" aria-hidden="true"></i>
+            <span>Badges</span>
+        </a>
+
+        <p class="admin-nav-label">Commerce</p>
+
+        <a
+            class="<?= admin_shell_nav_class('memberships', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/memberships.php') ?>"
+        >
+            <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+            <span>Membership Pricing</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('products', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/products.php') ?>"
+        >
+            <i class="fa-solid fa-shirt" aria-hidden="true"></i>
+            <span>Products</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('orders', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/orders.php') ?>"
+        >
+            <i class="fa-solid fa-box" aria-hidden="true"></i>
+            <span>Orders</span>
+            <?php if (!empty($adminNavCounts['orders'])): ?>
+                <b><?= (int) $adminNavCounts['orders'] ?></b>
+            <?php endif; ?>
+        </a>
+
+        <p class="admin-nav-label">Configuration</p>
+
+        <a
+            class="<?= admin_shell_nav_class('policies', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/policies.php') ?>"
+        >
+            <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+            <span>Policies</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('points', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/points.php') ?>"
+        >
+            <i class="fa-solid fa-star" aria-hidden="true"></i>
+            <span>Points</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('integrations', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/integrations.php') ?>"
+        >
+            <i class="fa-solid fa-plug" aria-hidden="true"></i>
+            <span>Integrations</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('system', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/system.php') ?>"
+        >
+            <i class="fa-solid fa-gears" aria-hidden="true"></i>
+            <span>System</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/errors.php') ?>"
+        >
+            <i class="fa-solid fa-bug" aria-hidden="true"></i>
+            <span>Error Log</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('audit', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/audit.php') ?>"
+        >
+            <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+            <span>Audit Log</span>
+        </a>
+
+    </nav>
+
+    <div class="admin-sidebar-bottom">
+        <a
+            class="admin-sidebar-utility"
+            href="<?= moderation_e($siteUrl . '/') ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            View public site
+        </a>
+
+        <a
+            class="admin-sidebar-utility"
+            href="<?= moderation_e($accountUrl . '/') ?>"
+        >
+            <i class="fa-solid fa-user" aria-hidden="true"></i>
+            My account
+        </a>
+    </div>
+
+</aside>
+
+<div class="admin-sidebar-scrim" data-admin-menu-close></div>
+
+<div class="admin-workspace">
+
+<header class="admin-topbar">
+
+    <button
+        class="admin-menu-button"
+        type="button"
+        data-admin-menu-open
+        aria-controls="admin-sidebar"
+        aria-expanded="false"
+        aria-label="Open admin navigation"
+    >
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+    </button>
+
+    <div class="admin-topbar-title">
+        <span><?= moderation_e($adminPageEyebrow) ?></span>
+        <strong><?= moderation_e($adminPageTitle) ?></strong>
+    </div>
+
+    <div class="admin-topbar-user">
+        <span class="admin-user-avatar" aria-hidden="true">
+            <?= moderation_e(strtoupper(substr($adminDisplayName, 0, 1))) ?>
+        </span>
+
+        <div>
+            <strong><?= moderation_e($adminDisplayName) ?></strong>
+            <?php if ($adminUsername !== ''): ?>
+                <span>@<?= moderation_e($adminUsername) ?></span>
+            <?php endif; ?>
         </div>
+    </div>
 
+</header>
 
-        <nav class="admin-nav" aria-label="Admin">
+<main class="admin-main" id="admin-main">
 
-            <p class="admin-nav-label">Overview</p>
+<header class="admin-page-header">
+    <div>
+        <p><?= moderation_e($adminPageEyebrow) ?></p>
+        <h1><?= moderation_e($adminPageTitle) ?></h1>
+    </div>
 
-            <a
-                class="<?= admin_shell_nav_class('dashboard', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/') ?>"
-            >
-                <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
-                <span>Dashboard</span>
-            </a>
-
-
-            <p class="admin-nav-label">Places</p>
-
-            <a
-                class="<?= admin_shell_nav_class('moderation', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/moderation.php') ?>"
-            >
-                <i class="fa-solid fa-list-check" aria-hidden="true"></i>
-                <span>Moderation</span>
-                <?php
-                $moderationTotal =
-                    (int) ($adminNavCounts['new_places'] ?? 0)
-                    + (int) ($adminNavCounts['updates'] ?? 0)
-                    + (int) ($adminNavCounts['reports'] ?? 0);
-                ?>
-                <?php if ($moderationTotal > 0): ?>
-                    <b><?= $moderationTotal ?></b>
-                <?php endif; ?>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('places', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/places.php') ?>"
-            >
-                <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
-                <span>Places</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('verifications', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
-            >
-                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-                <span>Verifications</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('submissions', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/submissions.php') ?>"
-            >
-                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                <span>New Places</span>
-                <?php if (!empty($adminNavCounts['new_places'])): ?>
-                    <b><?= (int) $adminNavCounts['new_places'] ?></b>
-                <?php endif; ?>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('updates', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/updates.php') ?>"
-            >
-                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                <span>Place Updates</span>
-                <?php if (!empty($adminNavCounts['updates'])): ?>
-                    <b><?= (int) $adminNavCounts['updates'] ?></b>
-                <?php endif; ?>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('reports', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/reports.php') ?>"
-            >
-                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                <span>Reports</span>
-                <?php if (!empty($adminNavCounts['reports'])): ?>
-                    <b><?= (int) $adminNavCounts['reports'] ?></b>
-                <?php endif; ?>
-            </a>
-
-
-            <p class="admin-nav-label">People</p>
-
-            <a
-                class="<?= admin_shell_nav_class('users', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/users.php') ?>"
-            >
-                <i class="fa-solid fa-users" aria-hidden="true"></i>
-                <span>Users</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('scouts', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/scouts.php') ?>"
-            >
-                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-                <span>Scouts</span>
-                <?php if (!empty($adminNavCounts['scout_reviews'])): ?>
-                    <b><?= (int) $adminNavCounts['scout_reviews'] ?></b>
-                <?php endif; ?>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('badges', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/badges.php') ?>"
-            >
-                <i class="fa-solid fa-award" aria-hidden="true"></i>
-                <span>Badges</span>
-            </a>
-
-
-            <p class="admin-nav-label">Commerce</p>
-
-            <a
-                class="<?= admin_shell_nav_class('products', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/products.php') ?>"
-            >
-                <i class="fa-solid fa-shirt" aria-hidden="true"></i>
-                <span>Products</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('orders', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/orders.php') ?>"
-            >
-                <i class="fa-solid fa-box" aria-hidden="true"></i>
-                <span>Orders</span>
-                <?php if (!empty($adminNavCounts['orders'])): ?>
-                    <b><?= (int) $adminNavCounts['orders'] ?></b>
-                <?php endif; ?>
-            </a>
-
-
-            <p class="admin-nav-label">Configuration</p>
-
-            <a
-                class="<?= admin_shell_nav_class('policies', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/policies.php') ?>"
-            >
-                <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
-                <span>Policies</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('points', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/points.php') ?>"
-            >
-                <i class="fa-solid fa-star" aria-hidden="true"></i>
-                <span>Points</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('integrations', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/integrations.php') ?>"
-            >
-                <i class="fa-solid fa-plug" aria-hidden="true"></i>
-                <span>Integrations</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('system', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/system.php') ?>"
-            >
-                <i class="fa-solid fa-gears" aria-hidden="true"></i>
-                <span>System</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/errors.php') ?>"
-            >
-                <i class="fa-solid fa-bug" aria-hidden="true"></i>
-                <span>Error Log</span>
-            </a>
-
-            <a
-                class="<?= admin_shell_nav_class('audit', $adminActiveNav) ?>"
-                href="<?= moderation_e($adminUrl . '/audit.php') ?>"
-            >
-                <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
-                <span>Audit Log</span>
-            </a>
-
-        </nav>
-
-
-        <div class="admin-sidebar-bottom">
-
-            <a
-                class="admin-sidebar-utility"
-                href="<?= moderation_e($siteUrl . '/') ?>"
-                target="_blank"
-                rel="noopener"
-            >
-                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                View public site
-            </a>
-
-            <a
-                class="admin-sidebar-utility"
-                href="<?= moderation_e($accountUrl . '/') ?>"
-            >
-                <i class="fa-solid fa-user" aria-hidden="true"></i>
-                My account
-            </a>
-
+    <?php if ($adminPageActions !== ''): ?>
+        <div class="admin-page-actions">
+            <?= $adminPageActions ?>
         </div>
-
-    </aside>
-
-
-    <div class="admin-sidebar-scrim" data-admin-menu-close></div>
-
-
-    <div class="admin-workspace">
-
-        <header class="admin-topbar">
-
-            <button
-                class="admin-menu-button"
-                type="button"
-                data-admin-menu-open
-                aria-controls="admin-sidebar"
-                aria-expanded="false"
-                aria-label="Open admin navigation"
-            >
-                <i class="fa-solid fa-bars" aria-hidden="true"></i>
-            </button>
-
-            <div class="admin-topbar-title">
-                <span><?= moderation_e($adminPageEyebrow) ?></span>
-                <strong><?= moderation_e($adminPageTitle) ?></strong>
-            </div>
-
-            <div class="admin-topbar-user">
-                <span class="admin-user-avatar" aria-hidden="true">
-                    <?= moderation_e(strtoupper(substr($adminDisplayName, 0, 1))) ?>
-                </span>
-
-                <div>
-                    <strong><?= moderation_e($adminDisplayName) ?></strong>
-                    <?php if ($adminUsername !== ''): ?>
-                        <span>@<?= moderation_e($adminUsername) ?></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-        </header>
-
-
-        <main class="admin-main" id="admin-main">
-
-            <header class="admin-page-header">
-                <div>
-                    <p><?= moderation_e($adminPageEyebrow) ?></p>
-                    <h1><?= moderation_e($adminPageTitle) ?></h1>
-                </div>
-
-                <?php if ($adminPageActions !== ''): ?>
-                    <div class="admin-page-actions">
-                        <?= $adminPageActions ?>
-                    </div>
-                <?php endif; ?>
-            </header>
+    <?php endif; ?>
+</header>
