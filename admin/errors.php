@@ -132,105 +132,6 @@ function error_log_query(array $changes = []): string
 
 require __DIR__ . '/_header.php';
 ?>
-<style>
-.admin-error-ticket-list {
-    display: grid;
-    gap: 10px;
-    padding: 16px 20px 20px;
-}
-.admin-error-ticket {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--admin-border, rgba(255,255,255,.14));
-    border-left-width: 5px;
-    border-radius: 12px;
-    background: var(--admin-surface, #202020);
-}
-.admin-error-ticket.is-open.is-error { border-left-color: #d7a72f; }
-.admin-error-ticket.is-open.is-fatal { border-left-color: #d85858; }
-.admin-error-ticket.is-resolved {
-    border-left-color: #68716b;
-    opacity: .82;
-}
-.admin-error-ticket-summary {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-    padding: 14px 16px;
-    cursor: pointer;
-    list-style: none;
-}
-.admin-error-ticket-summary::-webkit-details-marker { display: none; }
-.admin-error-ticket-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #68716b;
-    box-shadow: 0 0 0 4px rgba(104,113,107,.12);
-}
-.is-open.is-error .admin-error-ticket-dot {
-    background: #d7a72f;
-    box-shadow: 0 0 0 4px rgba(215,167,47,.12);
-}
-.is-open.is-fatal .admin-error-ticket-dot {
-    background: #d85858;
-    box-shadow: 0 0 0 4px rgba(216,88,88,.12);
-}
-.admin-error-ticket-heading {
-    min-width: 0;
-    display: grid;
-    gap: 3px;
-}
-.admin-error-ticket-heading strong { font-size: .88rem; }
-.admin-error-ticket-heading small {
-    overflow: hidden;
-    color: var(--admin-muted, #a7a7a7);
-    font-size: .68rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.admin-error-ticket-badges {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-}
-.admin-error-ticket-body {
-    padding: 0 16px 16px 46px;
-    border-top: 1px solid var(--admin-border, rgba(255,255,255,.12));
-}
-.admin-error-ticket-message {
-    margin: 14px 0;
-    padding: 10px 12px;
-    border-left: 3px solid var(--admin-border, rgba(255,255,255,.18));
-    border-radius: 0 8px 8px 0;
-    background: rgba(0,0,0,.22);
-    font-size: .76rem;
-    line-height: 1.5;
-}
-.admin-error-ticket-meta {
-    display: grid;
-    gap: 4px;
-    margin-top: 12px;
-    color: var(--admin-muted, #a7a7a7);
-    font-size: .68rem;
-}
-.admin-error-ticket .admin-error-resolution { margin-top: 14px; }
-@media (max-width: 700px) {
-    .admin-error-ticket-list { padding: 12px; }
-    .admin-error-ticket-summary {
-        grid-template-columns: 14px minmax(0, 1fr);
-        padding: 12px;
-    }
-    .admin-error-ticket-badges {
-        grid-column: 2;
-        justify-content: flex-start;
-    }
-    .admin-error-ticket-body { padding: 0 12px 12px 38px; }
-}
-</style>
-
 <section class="admin-panel admin-audit-console admin-error-console">
     <?php if ($notice !== ''): ?>
         <div class="admin-notice is-success"><p><?= moderation_e($notice) ?></p></div>
@@ -345,8 +246,8 @@ require __DIR__ . '/_header.php';
                         <span class="admin-error-ticket-heading">
                             <strong><?= moderation_e((string) $row['reference_code']) ?></strong>
                             <small>
-                                <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?> &middot;
-                                <?= $isResolved ? 'Resolved' : 'Open' ?> &middot; 
+                                <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?> Â·
+                                <?= $isResolved ? 'Resolved' : 'Open' ?> Â·
                                 Last seen <?= moderation_e((string) ($row['last_seen_at'] ?: $row['created_at'])) ?> UTC
                             </small>
                         </span>
