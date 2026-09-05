@@ -62,6 +62,14 @@ $adminPageTitle = 'Dashboard';
 $adminPageEyebrow = 'Operations Center';
 $adminActiveNav = 'dashboard';
 
+$adminUsesSplitCss = true;
+
+$adminPageStyles = [
+    'dashboard.css',
+];
+
+$adminFeatureStyles = [];
+
 require __DIR__ . '/_header.php';
 ?>
 
@@ -331,7 +339,7 @@ require __DIR__ . '/_header.php';
 
             </dl>
 
-            <p style="margin:0;padding:0 18px 14px;color:var(--text-muted);font-size:.67rem;line-height:1.45;">
+            <p class="admin-dashboard-activity-note">
                 Online Now = activity within 5 minutes.
                 Active Today begins at midnight Mountain Time.
             </p>
