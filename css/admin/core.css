@@ -16,6 +16,10 @@
     --admin-panel-padding: 18px;
 }
 
+/* =========================================================
+   SHELL
+   ========================================================= */
+
 .admin-body {
     margin: 0;
     background: var(--background);
@@ -375,6 +379,10 @@
     gap: 8px;
 }
 
+/* =========================================================
+   LAYOUT PRIMITIVES
+   ========================================================= */
+
 .admin-panel-stack,
 .admin-stack {
     display: grid;
@@ -387,6 +395,10 @@
     gap: var(--admin-panel-gap);
     align-items: start;
 }
+
+/* =========================================================
+   PANEL
+   ========================================================= */
 
 .admin-panel {
     min-width: 0;
@@ -446,6 +458,10 @@
     font-weight: 800;
     text-decoration: none;
 }
+
+/* =========================================================
+   BUTTONS + STATUS
+   ========================================================= */
 
 .admin-button {
     min-height: 38px;
@@ -508,6 +524,10 @@
     white-space: nowrap;
 }
 
+/* =========================================================
+   NOTICES
+   ========================================================= */
+
 .admin-user-notice {
     margin-bottom: var(--admin-panel-gap);
     padding: 13px 15px;
@@ -537,12 +557,63 @@
     );
 }
 
+/* =========================================================
+   FORMS
+   ========================================================= */
+
 .admin-form,
 .admin-user-form {
     display: grid;
     gap: 16px;
 
     padding: var(--admin-panel-padding);
+}
+
+.admin-form label,
+.admin-user-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-form label > span,
+.admin-user-form label > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea,
+.admin-user-form input,
+.admin-user-form select,
+.admin-user-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-user-form input,
+.admin-user-form select {
+    min-height: 42px;
+}
+
+.admin-form textarea,
+.admin-user-form textarea {
+    resize: vertical;
 }
 
 .admin-user-form-actions {
@@ -553,6 +624,10 @@
 
     margin-top: 16px;
 }
+
+/* =========================================================
+   CHECK / OPTION CARD
+   ========================================================= */
 
 .admin-check-card,
 .admin-system-check {
@@ -569,25 +644,33 @@
     background: var(--background);
 }
 
+.admin-check-card input,
 .admin-system-check input {
     margin-top: 2px;
 }
 
+.admin-check-card > span,
 .admin-system-check > span {
     display: grid;
     gap: 2px;
 }
 
+.admin-check-card strong,
 .admin-system-check strong {
     font-size: .78rem;
 }
 
+.admin-check-card small,
 .admin-system-check small {
     color: var(--text-muted);
 
     font-size: .7rem;
     line-height: 1.45;
 }
+
+/* =========================================================
+   DEFINITION LIST
+   ========================================================= */
 
 .admin-user-definition-list {
     margin: 0;
@@ -635,6 +718,203 @@
     font-weight: 500;
     line-height: 1.4;
 }
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.admin-empty-state {
+    display: grid;
+    place-items: center;
+
+    padding: 54px 24px;
+
+    text-align: center;
+}
+
+.admin-empty-state > i {
+    margin-bottom: 12px;
+
+    color: var(--text-muted);
+    font-size: 1.7rem;
+}
+
+.admin-empty-state h2,
+.admin-empty-state h3,
+.admin-empty-state p {
+    margin: 0;
+}
+
+.admin-empty-state p {
+    max-width: 520px;
+    margin-top: 6px;
+
+    color: var(--text-muted);
+    font-size: .82rem;
+}
+
+
+
+/* =========================================================
+   SHARED ADMIN LIST / ACTION COMPONENTS
+   ========================================================= */
+
+.admin-user-filter-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-user-action-box {
+    display: grid;
+    gap: 12px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-user-action-box + .admin-user-action-box {
+    border-top: 1px solid var(--border);
+}
+
+.admin-user-action-box p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .75rem;
+    line-height: 1.55;
+}
+
+.admin-user-action-box p strong {
+    color: var(--text);
+}
+
+.admin-user-action-box a {
+    overflow-wrap: anywhere;
+}
+
+.admin-user-action-box label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-user-action-box label > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-user-action-box input,
+.admin-user-action-box select,
+.admin-user-action-box textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-user-action-box input,
+.admin-user-action-box select {
+    min-height: 42px;
+}
+
+.admin-user-action-box textarea {
+    resize: vertical;
+}
+
+.admin-inbox-list {
+    display: grid;
+}
+
+.admin-inbox-item {
+    display: grid;
+    grid-template-columns:
+        40px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+
+    padding: 14px 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-inbox-item:last-child {
+    border-bottom: 0;
+}
+
+.admin-inbox-icon {
+    width: 40px;
+    height: 40px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.admin-inbox-content {
+    min-width: 0;
+
+    display: grid;
+    gap: 2px;
+}
+
+.admin-inbox-type {
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 900;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.admin-inbox-content strong,
+.admin-inbox-content p {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-inbox-content strong {
+    font-size: .9rem;
+}
+
+.admin-inbox-content p,
+.admin-inbox-content time {
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: .74rem;
+}
+
+@media (max-width: 620px) {
+
+    .admin-inbox-item {
+        grid-template-columns:
+            38px minmax(0, 1fr);
+    }
+
+    .admin-inbox-item > .admin-button {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
+
+/* =========================================================
+   RESPONSIVE SHELL
+   ========================================================= */
 
 @media (max-width: 860px) {
 
@@ -702,5 +982,15 @@
     .admin-user-definition-list dd {
         max-width: none;
         text-align: left;
+    }
+}
+
+html[data-reduced-motion="true"] .admin-sidebar {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-sidebar {
+        transition: none;
     }
 }
