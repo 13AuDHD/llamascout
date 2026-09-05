@@ -1665,7 +1665,9 @@ foreach ($promotions as $promotion) {
             <p>Customer-entered codes</p>
             <h2>Promotion Codes</h2>
         </div>
-        <span><?= $manualCodesEnabled ? 'Checkout enabled' : 'Checkout disabled' ?></span>
+        <a class="admin-button" href="/promotion-codes.php">
+            Manage codes
+        </a>
     </header>
 
 
