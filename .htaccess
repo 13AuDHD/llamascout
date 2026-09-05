@@ -1,7 +1,15 @@
 RewriteEngine On
 
+# =========================================================
+# LLAMA SCOUT
+# ROOT .HTACCESS
+# =========================================================
+
+
+# ---------------------------------------------------------
 # CUSTOM SAFETY / ERROR ROUTING
-# Keep these on the root domain so missing pages never fall back to Apache's generic error page.
+# ---------------------------------------------------------
+
 ErrorDocument 400 /safety.php?reason=400
 ErrorDocument 401 /safety.php?reason=401
 ErrorDocument 403 /safety.php?reason=403
@@ -11,42 +19,97 @@ ErrorDocument 429 /safety.php?reason=429
 ErrorDocument 500 /safety.php?reason=500
 ErrorDocument 503 /safety.php?reason=503
 
+
+# ---------------------------------------------------------
 # FORCE HTTPS
+# ---------------------------------------------------------
+
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
+
+# ---------------------------------------------------------
 # ROOT HOMEPAGE
+# ---------------------------------------------------------
+
 RewriteRule ^$ index.php [L]
 
-# PUBLIC-FACING CLEAN ROUTES
+
+# ---------------------------------------------------------
+# PUBLIC CLEAN ROUTES
+# ---------------------------------------------------------
+
 RewriteRule ^field-guides/?$ field-guides.php [L]
+
 RewriteRule ^field-guides/([a-z0-9-]+)/?$ field-guide.php?slug=$1 [QSA,L]
+
 RewriteRule ^membership/?$ membership.php [L]
+
 RewriteRule ^badges/([a-z0-9-]+)/?$ badge.php?slug=$1 [QSA,L]
+
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
 
+
+# ---------------------------------------------------------
 # PUBLIC MEMBER PROFILES
 # Existing files and directories always win.
+# ---------------------------------------------------------
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([A-Za-z0-9_]{4,16})/?$ profile.php?user=$1 [QSA,L]
 
+
+# ---------------------------------------------------------
 # DEFAULT INDEX
+# ---------------------------------------------------------
+
 DirectoryIndex index.php index.html
 
-# CACHE CONTROL
+
+# ---------------------------------------------------------
+# SECURITY + CACHE HEADERS
+# ---------------------------------------------------------
+
 <IfModule mod_headers.c>
+
+    # Prevent MIME-type guessing.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Prevent Llama Scout pages from being embedded by outside sites.
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Limit how much referring URL information leaves Llama Scout.
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Disable browser features the public site does not need.
+    # Geolocation remains available because Add a Place uses Locate Me.
+    Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=()"
+
+    # Disable legacy Adobe cross-domain policy files.
+    Header always set X-Permitted-Cross-Domain-Policies "none"
+
+    # HTTPS-only browser protection for the root site.
+    Header always set Strict-Transport-Security "max-age=31536000"
+
+
+    # Dynamic application files should not be cached.
     <FilesMatch "\.(html?|php|json|js|css)$">
         Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header always set Pragma "no-cache"
         Header always set Expires "0"
     </FilesMatch>
 
+
+    # Static assets may be cached for one day.
     <FilesMatch "\.(png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf)$">
         Header always set Cache-Control "public, max-age=86400"
     </FilesMatch>
 
+
     Header unset ETag
+
 </IfModule>
+
 
 FileETag None
