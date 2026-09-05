@@ -1,0 +1,108 @@
+/* =========================================================
+   ADMIN PAGE: SUPPORT
+   Only admin/support.php belongs here.
+   ========================================================= */
+
+/* Filter */
+
+.admin-support-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px;
+
+    padding: var(--admin-panel-padding);
+}
+
+.admin-support-filter-form label {
+    display: grid;
+    gap: 6px;
+
+    min-width: 180px;
+}
+
+.admin-support-filter-form label > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-support-filter-form select {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+
+/* Selected ticket */
+
+.admin-support-ticket-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-support-message {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    color: var(--text) !important;
+}
+
+.admin-support-ticket-panel
+.admin-user-action-box:last-child {
+    border-bottom: 0;
+}
+
+.admin-support-ticket-panel
+.admin-user-form-actions {
+    margin-top: 0;
+}
+
+
+/* Queue */
+
+.admin-support-queue .admin-inbox-type {
+    text-transform: none;
+    letter-spacing: .03em;
+}
+
+.admin-support-queue
+.admin-inbox-content p {
+    overflow-wrap: anywhere;
+}
+
+
+/* Responsive */
+
+@media (max-width: 620px) {
+
+    .admin-support-filter-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-support-filter-form label {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .admin-support-filter-form .admin-button {
+        align-self: flex-start;
+    }
+
+    .admin-support-queue
+    .admin-inbox-content p {
+        white-space: normal;
+    }
+}
