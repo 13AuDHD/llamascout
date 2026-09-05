@@ -1,1 +1,170 @@
+/* =========================================================
+   ADMIN FEATURE: TEST ACCOUNT RESET
+   Reusable owner testing tool.
+   ========================================================= */
 
+.admin-system-testing-body {
+    display: grid;
+    gap: 16px;
+
+    padding: 18px;
+}
+
+.admin-system-testing-copy h3,
+.admin-system-testing-copy p {
+    margin: 0;
+}
+
+.admin-system-testing-copy h3 {
+    font-size: .95rem;
+}
+
+.admin-system-testing-copy p {
+    margin-top: 5px;
+
+    color: var(--text-muted);
+
+    font-size: .74rem;
+    line-height: 1.55;
+}
+
+.admin-system-testing-mode {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 11px;
+    align-items: center;
+
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-system-testing-mode > i {
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.admin-system-testing-mode > span {
+    display: grid;
+    gap: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.45;
+}
+
+.admin-system-testing-mode strong {
+    color: var(--text);
+    font-size: .76rem;
+}
+
+.admin-system-testing-mode.is-test {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-system-testing-mode.is-live {
+    border-color: color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+}
+
+.admin-system-testing-form {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-system-testing-user {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-system-testing-user > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-system-testing-user select {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-system-testing-options {
+    display: grid;
+    gap: 10px;
+}
+
+.admin-system-check.is-disabled {
+    opacity: .55;
+}
+
+.admin-system-testing-warning {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding: 12px 14px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+    border-radius: 10px;
+
+    background: color-mix(
+        in srgb,
+        #c95a52 8%,
+        var(--surface)
+    );
+}
+
+.admin-system-testing-warning > i {
+    text-align: center;
+}
+
+.admin-system-testing-warning > span {
+    display: grid;
+    gap: 2px;
+
+    font-size: .72rem;
+}
+
+.admin-system-testing-warning strong {
+    font-size: .76rem;
+}
+
+.admin-system-testing-form
+.admin-user-form-actions {
+    margin-top: 0;
+}
