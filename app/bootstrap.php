@@ -56,6 +56,13 @@ if (!empty($_SESSION['user_id'])) {
             2
         );
 
+        require_once __DIR__ . '/support.php';
+
+        llama_run_support_email_maintenance(
+            db(),
+            10
+        );
+
         require_once __DIR__ . '/promotion-codes.php';
 
         llama_sync_membership_promotion_codes(
