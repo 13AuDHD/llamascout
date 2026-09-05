@@ -47,31 +47,6 @@
     font: inherit;
 }
 
-.admin-user-search > div {
-    position: relative;
-}
-
-.admin-user-search i {
-    position: absolute;
-    top: 50%;
-    left: 12px;
-
-    transform: translateY(-50%);
-
-    color: var(--text-muted);
-    pointer-events: none;
-}
-
-.admin-user-search input {
-    padding-left: 36px;
-}
-
-.admin-user-filter-actions {
-    display: flex;
-    gap: 7px;
-}
-
-
 /* User table */
 
 .admin-user-table-wrap {
@@ -207,11 +182,4 @@
         grid-template-columns: 1fr;
     }
 
-    .admin-user-filter-actions {
-        justify-content: stretch;
-    }
-
-    .admin-user-filter-actions > * {
-        flex: 1 1 0;
-    }
 }
