@@ -753,6 +753,7 @@ $promotions = [];
 $manualCodesEnabled = false;
 $editingPromotion = null;
 $promotionStats = [];
+$promotionEventStats = [];
 
 if ($error === '') {
     $plans = llama_membership_plans($db, false);
@@ -805,6 +806,31 @@ if ($error === '') {
     if ($statsStmt) {
         foreach ($statsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $promotionStats[(int) $row['promotion_id']] = $row;
+        }
+    }
+
+    $eventStatsStmt = $db->query(
+        'SELECT
+            promotion_id,
+            SUM(event_type = "checkout_started") AS checkout_started,
+            SUM(event_type = "membership_purchased") AS membership_purchased,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN event_type = "membership_purchased"
+                        THEN amount_cents
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS revenue_cents
+         FROM membership_promotion_events
+         GROUP BY promotion_id'
+    );
+
+    if ($eventStatsStmt) {
+        foreach ($eventStatsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $promotionEventStats[(int) $row['promotion_id']] = $row;
         }
     }
 
@@ -933,6 +959,31 @@ require __DIR__ . '/_header.php';
     background:rgba(127,127,127,.12);
     font-size:.78rem;
 }
+.admin-campaign-results {
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:10px;
+}
+.admin-campaign-result {
+    min-width:0;
+    padding:11px 12px;
+    border:1px solid var(--admin-border, rgba(127,127,127,.25));
+    border-radius:12px;
+    background:rgba(127,127,127,.055);
+}
+.admin-campaign-result span {
+    display:block;
+    margin-bottom:4px;
+    font-size:.72rem;
+    opacity:.68;
+    text-transform:uppercase;
+    letter-spacing:.045em;
+}
+.admin-campaign-result strong {
+    display:block;
+    font-size:1rem;
+    overflow-wrap:anywhere;
+}
 .admin-campaign-edit-banner {
     display:flex;
     justify-content:space-between;
@@ -970,10 +1021,14 @@ require __DIR__ . '/_header.php';
     .admin-campaign-summary-grid {
         grid-template-columns:repeat(2,minmax(0,1fr));
     }
+    .admin-campaign-results {
+        grid-template-columns:repeat(3,minmax(0,1fr));
+    }
 }
 @media (max-width:640px) {
     .admin-campaign-summary-grid,
-    .admin-campaign-toggle-grid {
+    .admin-campaign-toggle-grid,
+    .admin-campaign-results {
         grid-template-columns:1fr;
     }
 }
@@ -996,13 +1051,17 @@ require __DIR__ . '/_header.php';
 <?php
 $activeCount = 0;
 $scheduledCount = 0;
-$enabledEmailCount = 0;
+$totalCampaignPurchases = 0;
+$totalCampaignRevenueCents = 0;
 
 foreach ($promotions as $promotion) {
     $status = membership_admin_status_label($promotion);
     if ($status === 'active') $activeCount++;
     if ($status === 'scheduled') $scheduledCount++;
-    if (!empty($promotion['email_enabled'])) $enabledEmailCount++;
+
+    $eventSummary = $promotionEventStats[(int) $promotion['id']] ?? [];
+    $totalCampaignPurchases += (int) ($eventSummary['membership_purchased'] ?? 0);
+    $totalCampaignRevenueCents += (int) ($eventSummary['revenue_cents'] ?? 0);
 }
 ?>
 
@@ -1016,12 +1075,12 @@ foreach ($promotions as $promotion) {
         <strong><?= number_format($scheduledCount) ?></strong>
     </div>
     <div class="admin-campaign-summary-card">
-        <span>Campaigns</span>
-        <strong><?= number_format(count($promotions)) ?></strong>
+        <span>Memberships sold</span>
+        <strong><?= number_format($totalCampaignPurchases) ?></strong>
     </div>
     <div class="admin-campaign-summary-card">
-        <span>Email campaigns</span>
-        <strong><?= number_format($enabledEmailCount) ?></strong>
+        <span>Campaign revenue</span>
+        <strong><?= moderation_e(membership_admin_money($totalCampaignRevenueCents)) ?></strong>
     </div>
 </div>
 
@@ -1427,6 +1486,15 @@ foreach ($promotions as $promotion) {
                         $status = membership_admin_status_label($promotion);
                         $rules = array_filter(explode('|', (string) ($promotion['plan_rules'] ?? '')));
                         $delivery = $promotionStats[(int) $promotion['id']] ?? [];
+                        $events = $promotionEventStats[(int) $promotion['id']] ?? [];
+
+                        $emailSent = (int) ($delivery['sent_count'] ?? 0);
+                        $checkoutStarts = (int) ($events['checkout_started'] ?? 0);
+                        $membershipsPurchased = (int) ($events['membership_purchased'] ?? 0);
+                        $campaignRevenueCents = (int) ($events['revenue_cents'] ?? 0);
+                        $conversionRate = $checkoutStarts > 0
+                            ? ($membershipsPurchased / $checkoutStarts) * 100
+                            : 0.0;
                         ?>
                         <article class="admin-membership-promotion-card">
                             <div class="admin-membership-promotion-top">
@@ -1514,6 +1582,29 @@ foreach ($promotions as $promotion) {
                                 <?php endforeach; ?>
                             </div>
 
+                            <div class="admin-campaign-results">
+                                <div class="admin-campaign-result">
+                                    <span>Emails sent</span>
+                                    <strong><?= number_format($emailSent) ?></strong>
+                                </div>
+                                <div class="admin-campaign-result">
+                                    <span>Checkout starts</span>
+                                    <strong><?= number_format($checkoutStarts) ?></strong>
+                                </div>
+                                <div class="admin-campaign-result">
+                                    <span>Memberships</span>
+                                    <strong><?= number_format($membershipsPurchased) ?></strong>
+                                </div>
+                                <div class="admin-campaign-result">
+                                    <span>Conversion</span>
+                                    <strong><?= moderation_e(number_format($conversionRate, 1)) ?>%</strong>
+                                </div>
+                                <div class="admin-campaign-result">
+                                    <span>Revenue</span>
+                                    <strong><?= moderation_e(membership_admin_money($campaignRevenueCents)) ?></strong>
+                                </div>
+                            </div>
+
                             <div class="admin-campaign-badges">
                                 <?php if (!empty($promotion['show_site_banner'])): ?>
                                     <span class="admin-campaign-badge">
@@ -1540,12 +1631,6 @@ foreach ($promotions as $promotion) {
                                     <span class="admin-campaign-badge">
                                         <i class="fa-solid fa-bell" aria-hidden="true"></i>
                                         Reminder scheduled
-                                    </span>
-                                <?php endif; ?>
-
-                                <?php if ((int) ($delivery['sent_count'] ?? 0) > 0): ?>
-                                    <span class="admin-campaign-badge">
-                                        <?= number_format((int) $delivery['sent_count']) ?> sent
                                     </span>
                                 <?php endif; ?>
 
