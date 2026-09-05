@@ -37,6 +37,105 @@ if (!$isPublic && !$isOwner && !$isSignedIn) {
     exit;
 }
 
+$publicScoutStatus = '';
+$publicScoutRoles = [];
+
+try {
+    $scoutStmt = $db->prepare(
+        'SELECT
+            sp.status,
+            GROUP_CONCAT(
+                DISTINCT r.slug
+                ORDER BY r.id
+                SEPARATOR ","
+            ) AS role_slugs
+         FROM scout_profiles sp
+         LEFT JOIN user_roles ur
+            ON ur.user_id = sp.user_id
+         LEFT JOIN roles r
+            ON r.id = ur.role_id
+         WHERE sp.user_id = ?
+         GROUP BY sp.id
+         ORDER BY sp.id DESC
+         LIMIT 1'
+    );
+
+    $scoutStmt->execute([
+        (int) $profile['id'],
+    ]);
+
+    $scoutIdentity =
+        $scoutStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($scoutIdentity) {
+        $publicScoutStatus =
+            strtolower(
+                trim(
+                    (string) (
+                        $scoutIdentity['status']
+                        ?? ''
+                    )
+                )
+            );
+
+        $publicScoutRoles =
+            array_values(
+                array_filter(
+                    array_map(
+                        'trim',
+                        explode(
+                            ',',
+                            strtolower(
+                                (string) (
+                                    $scoutIdentity['role_slugs']
+                                    ?? ''
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+    }
+} catch (Throwable $exception) {
+    if (function_exists('llama_log_caught_exception')) {
+        llama_log_caught_exception(
+            $exception,
+            'profile.scout_identity',
+            [
+                'user_id' =>
+                    (int) $profile['id'],
+            ]
+        );
+    }
+}
+
+$isActiveScout =
+    $publicScoutStatus === 'active';
+
+$isMasterScout =
+    $isActiveScout
+    && (
+        in_array(
+            'master-scout',
+            $publicScoutRoles,
+            true
+        )
+        || in_array(
+            'master_scout',
+            $publicScoutRoles,
+            true
+        )
+    );
+
+$publicScoutLabel =
+    $isMasterScout
+        ? 'Master Scout'
+        : (
+            $isActiveScout
+                ? 'Llama Scout'
+                : ''
+        );
+
 $config = llama_config();
 $siteUrl = rtrim((string) ($config['app']['url'] ?? 'https://llamascout.com'), '/');
 $accountUrl = rtrim((string) ($config['app']['account_url'] ?? 'https://account.llamascout.com'), '/');
@@ -128,7 +227,25 @@ require __DIR__ . '/partials/header.php';
 
         <div class="public-community-profile-heading">
             <p class="account-eyebrow">Llama Scout member</p>
-            <h1><?= public_profile_e($displayName) ?></h1>
+
+            <div class="public-community-profile-name-row">
+                <h1><?= public_profile_e($displayName) ?></h1>
+
+                <?php if ($publicScoutLabel !== ''): ?>
+                    <span
+                        class="public-community-profile-scout-badge <?= $isMasterScout ? 'is-master' : '' ?>"
+                    >
+                        <i
+                            class="fa-solid fa-binoculars"
+                            aria-hidden="true"
+                        ></i>
+                        <?= public_profile_e(
+                            $publicScoutLabel
+                        ) ?>
+                    </span>
+                <?php endif; ?>
+            </div>
+
             <p class="public-community-profile-handle">@<?= public_profile_e($profile['username']) ?></p>
 
             <?php if ($joinedAt): ?>
