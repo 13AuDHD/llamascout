@@ -228,8 +228,16 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('memberships', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/memberships.php') ?>"
         >
-            <i class="fa-solid fa-id-card" aria-hidden="true"></i>
-            <span>Membership Pricing</span>
+            <i class="fa-solid fa-tags" aria-hidden="true"></i>
+            <span>Pricing & Promotions</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('promotion-codes', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/promotion-codes.php') ?>"
+        >
+            <i class="fa-solid fa-ticket" aria-hidden="true"></i>
+            <span>Promotion Codes</span>
         </a>
 
         <a
