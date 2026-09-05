@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/stripe.php';
+require_once __DIR__ . '/shop-order-mail.php';
 
 
 function shop_refund_table_exists(PDO $db): bool
@@ -86,6 +87,25 @@ function shop_refund_apply_order_status(
     );
 
     $stmt->execute([$orderId]);
+
+    /*
+     * Financial state is authoritative. Email is best-effort and
+     * retryable through the existing no-cron Shop mail maintenance.
+     */
+    try {
+        shop_send_refund_confirmation(
+            $db,
+            $orderId
+        );
+    } catch (Throwable $exception) {
+        if (function_exists('llama_log_caught_exception')) {
+            llama_log_caught_exception(
+                $exception,
+                'shop.refund_confirmation',
+                ['order_id' => $orderId]
+            );
+        }
+    }
 }
 
 
