@@ -160,6 +160,10 @@ $footerUser = current_user();
                     Terms of Use
                 </a>
 
+                <a href="<?= htmlspecialchars($footerSiteBase . '/returns.php', ENT_QUOTES, 'UTF-8') ?>">
+                    Returns &amp; Refunds
+                </a>
+
                 <a href="<?= htmlspecialchars($footerSiteBase . '/accessibility.php', ENT_QUOTES, 'UTF-8') ?>">
                     Accessibility
                 </a>
