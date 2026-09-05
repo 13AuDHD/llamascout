@@ -116,6 +116,10 @@ $footerUser = current_user();
                     About Llama Scout
                 </a>
 
+                <a href="<?= htmlspecialchars($footerSiteBase . '/contact.php', ENT_QUOTES, 'UTF-8') ?>">
+                    Contact &amp; Support
+                </a>
+
                 <a href="<?= htmlspecialchars($footerSiteBase . '/membership', ENT_QUOTES, 'UTF-8') ?>">
                     Membership
                 </a>
