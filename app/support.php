@@ -663,6 +663,124 @@ function llama_support_requests(
 }
 
 
+function llama_support_send_status_notification(
+    PDO $db,
+    int $requestId,
+    string $oldStatus,
+    string $newStatus
+): void {
+    if ($oldStatus === $newStatus) {
+        return;
+    }
+
+    $request = llama_support_request(
+        $db,
+        $requestId
+    );
+
+    if (!$request) {
+        return;
+    }
+
+    $email = trim(
+        (string) ($request['email'] ?? '')
+    );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return;
+    }
+
+    $ticketNumber = trim(
+        (string) (
+            $request['ticket_number']
+            ?? ''
+        )
+    );
+
+    if ($ticketNumber === '') {
+        $ticketNumber = (string) $requestId;
+    }
+
+    $name = trim(
+        (string) ($request['name'] ?? '')
+    );
+
+    $greeting =
+        $name !== ''
+            ? 'Hi ' . $name . ','
+            : 'Hi,';
+
+    $statusLabel = match ($newStatus) {
+        'waiting' => 'Waiting',
+        'resolved' => 'Resolved',
+        default => 'Open',
+    };
+
+    $statusMessage = match ($newStatus) {
+        'waiting' =>
+            'Your support ticket is currently waiting. If Llama Scout requested additional information, reply to the most recent support email so we can continue.',
+        'resolved' =>
+            'Your support ticket has been marked resolved. If the problem returns or you still need help, you can create another support ticket.',
+        default =>
+            'Your support ticket has been reopened and is active again.',
+    };
+
+    $subject =
+        'Ticket #'
+        . $ticketNumber
+        . ' is now '
+        . $statusLabel;
+
+    $body =
+        $greeting
+        . "\n\n"
+        . $statusMessage
+        . "\n\nTicket: #"
+        . $ticketNumber
+        . "\nSubject: "
+        . (string) ($request['subject'] ?? '')
+        . "\nStatus: "
+        . $statusLabel
+        . "\n\nLlama Scout\n"
+        . "Know the place before you go.\n";
+
+    try {
+        send_llama_mail(
+            $email,
+            $subject,
+            $body
+        );
+    } catch (Throwable $exception) {
+        if (
+            function_exists(
+                'llama_log_caught_exception'
+            )
+        ) {
+            llama_log_caught_exception(
+                $exception,
+                'support.status_notification',
+                [
+                    'support_request_id' =>
+                        $requestId,
+                    'ticket_number' =>
+                        $ticketNumber,
+                    'old_status' =>
+                        $oldStatus,
+                    'new_status' =>
+                        $newStatus,
+                ]
+            );
+        }
+    }
+}
+
+
 function llama_support_update(
     PDO $db,
     int $requestId,
@@ -684,6 +802,30 @@ function llama_support_update(
     if (mb_strlen($internalNotes) > 10000) {
         throw new InvalidArgumentException(
             'Internal notes must be 10,000 characters or fewer.'
+        );
+    }
+
+    $currentStmt = $db->prepare(
+        'SELECT status
+         FROM support_requests
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $currentStmt->execute([
+        $requestId,
+    ]);
+
+    $oldStatus = trim(
+        (string) (
+            $currentStmt->fetchColumn()
+            ?: ''
+        )
+    );
+
+    if ($oldStatus === '') {
+        throw new InvalidArgumentException(
+            'Support ticket not found.'
         );
     }
 
@@ -712,4 +854,11 @@ function llama_support_update(
         $status,
         $requestId,
     ]);
+
+    llama_support_send_status_notification(
+        $db,
+        $requestId,
+        $oldStatus,
+        $status
+    );
 }
