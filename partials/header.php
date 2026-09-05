@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/shop-cart.php';
+require_once dirname(__DIR__) . '/app/promotion-banner.php';
 
 $user = current_user();
 $config = llama_config();
@@ -36,6 +37,28 @@ $pageSocialType = trim((string) ($pageSocialType ?? 'website'));
 if ($pageSocialType === '') {
     $pageSocialType = 'website';
 }
+
+$activeWebsitePromotion = null;
+
+try {
+    $activeWebsitePromotion = llama_active_website_promotion(db());
+} catch (Throwable) {
+    $activeWebsitePromotion = null;
+}
+
+$promotionBannerText = $activeWebsitePromotion
+    ? llama_promotion_banner_text($activeWebsitePromotion)
+    : '';
+
+$promotionBannerUrl = $activeWebsitePromotion
+    ? llama_promotion_banner_url($activeWebsitePromotion, $siteUrl)
+    : '';
+
+$promotionBannerEndsAt = $activeWebsitePromotion
+    ? llama_promotion_banner_end_iso(
+        (string) ($activeWebsitePromotion['ends_at'] ?? '')
+    )
+    : '';
 ?>
 <!doctype html>
 <html lang="en">
@@ -177,7 +200,7 @@ if ($pageSocialType === '') {
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>"
     >
-    
+
     <link
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>"
@@ -212,6 +235,11 @@ if ($pageSocialType === '') {
         rel="stylesheet"
         href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>"
     >
+
+    <link
+        rel="stylesheet"
+        href="<?= htmlspecialchars($siteUrl . '/css/promotion-banner.css', ENT_QUOTES, 'UTF-8') ?>"
+    >
 </head>
 
 <body>
@@ -219,6 +247,39 @@ if ($pageSocialType === '') {
 <a class="skip-link" href="#main-content">
     Skip to main content
 </a>
+
+<?php if ($activeWebsitePromotion && $promotionBannerText !== ''): ?>
+<div
+    class="site-promotion-banner"
+    data-promotion-id="<?= (int) ($activeWebsitePromotion['id'] ?? 0) ?>"
+>
+    <div class="site-promotion-banner-inner">
+        <a
+            class="site-promotion-banner-link"
+            href="<?= htmlspecialchars($promotionBannerUrl, ENT_QUOTES, 'UTF-8') ?>"
+        >
+            <?= htmlspecialchars($promotionBannerText, ENT_QUOTES, 'UTF-8') ?>
+        </a>
+
+        <?php if (
+            !empty($activeWebsitePromotion['show_countdown'])
+            && $promotionBannerEndsAt !== ''
+        ): ?>
+            <span
+                class="site-promotion-countdown"
+                data-promotion-countdown
+                data-ends-at="<?= htmlspecialchars($promotionBannerEndsAt, ENT_QUOTES, 'UTF-8') ?>"
+                aria-label="Promotion time remaining"
+            >
+                <span class="site-promotion-countdown-label">
+                    Ends in
+                </span>
+                <strong data-promotion-countdown-value>--:--:--</strong>
+            </span>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <header class="site-header" id="site-header">
 
@@ -442,3 +503,8 @@ if ($pageSocialType === '') {
 </header>
 
 <main class="site-main" id="main-content">
+
+<script
+    src="<?= htmlspecialchars($siteUrl . '/js/promotion-banner.js', ENT_QUOTES, 'UTF-8') ?>"
+    defer
+></script>
