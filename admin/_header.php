@@ -216,6 +216,74 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['badge-admin.css'],
             'features' => ['badge-forms.css'],
         ],
+        'newsletters.php' => [
+            'pages' => ['newsletters.css'],
+            'features' => [],
+        ],
+        'memberships.php' => [
+            'pages' => ['memberships.css'],
+            'features' => [],
+        ],
+        'promotion-codes.php' => [
+            'pages' => ['promotion-codes.css'],
+            'features' => [],
+        ],
+        'orders.php' => [
+            'pages' => ['orders.css'],
+            'features' => [],
+        ],
+        'order.php' => [
+            'pages' => ['order.css'],
+            'features' => ['order-workflow.css'],
+        ],
+        'refund-order.php' => [
+            'pages' => ['refund-order.css'],
+            'features' => ['order-workflow.css'],
+        ],
+        'products.php' => [
+            'pages' => ['products.css'],
+            'features' => [],
+        ],
+        'product-new.php' => [
+            'pages' => ['product-new.css'],
+            'features' => ['product-workflow.css'],
+        ],
+        'product.php' => [
+            'pages' => ['product.css'],
+            'features' => ['product-workflow.css'],
+        ],
+        'printful.php' => [
+            'pages' => ['printful.css'],
+            'features' => [],
+        ],
+        'printful-sync.php' => [
+            'pages' => ['printful-sync.css'],
+            'features' => [],
+        ],
+        'printful-orders.php' => [
+            'pages' => ['printful-orders.css'],
+            'features' => [],
+        ],
+        'integrations.php' => [
+            'pages' => ['integrations.css'],
+            'features' => [],
+        ],
+        'policies.php' => [
+            'pages' => ['policies.css'],
+            'features' => ['policy-forms.css'],
+        ],
+        'points.php' => [
+            'pages' => ['points.css'],
+            'features' => ['policy-forms.css'],
+        ],
+        'errors.php' => [
+            'pages' => ['errors.css'],
+            'features' => ['audit-console.css'],
+        ],
+        'audit.php' => [
+            'pages' => ['audit.css'],
+            'features' => ['audit-console.css'],
+        ],
     ];
 
     $adminManifestEntry =
@@ -649,4 +717,3 @@ function admin_shell_nav_class(string $key, string $active): string
         </div>
     <?php endif; ?>
 </header>
- 
