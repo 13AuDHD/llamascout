@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/stripe.php';
 require_once dirname(__DIR__) . '/app/promotion-events.php';
+require_once dirname(__DIR__) . '/app/promotion-codes.php';
 
 
 /*
@@ -309,6 +310,104 @@ try {
                             (string) ($session->payment_status ?? ''),
                     ]
                 );
+            }
+
+
+            /*
+             * Customer-entered Stripe Promotion Codes are not
+             * known when Llama Scout creates the Checkout Session.
+             * After checkout succeeds, retrieve the completed
+             * Session with its Discount objects expanded. Stripe
+             * exposes the Promotion Code ID on the Discount.
+             */
+            $completedSessionId =
+                trim(
+                    (string) (
+                        $session
+                            ->id
+                        ?? ''
+                    )
+                );
+
+            if ($completedSessionId !== '') {
+                $completedSession =
+                    llama_stripe_client()
+                        ->checkout
+                        ->sessions
+                        ->retrieve(
+                            $completedSessionId,
+                            [
+                                'expand' => [
+                                    'discounts',
+                                ],
+                            ]
+                        );
+
+                $interval =
+                    strtolower(
+                        trim(
+                            (string) (
+                                $session
+                                    ->metadata
+                                    ->membership_interval
+                                ?? ''
+                            )
+                        )
+                    );
+
+                $amountTotal =
+                    isset($completedSession->amount_total)
+                        ? (int) $completedSession->amount_total
+                        : (
+                            isset($session->amount_total)
+                                ? (int) $session->amount_total
+                                : null
+                        );
+
+                foreach (
+                    (array) (
+                        $completedSession->discounts
+                        ?? []
+                    )
+                    as $discount
+                ) {
+                    if (!is_object($discount)) {
+                        continue;
+                    }
+
+                    $promotionCode =
+                        $discount->promotion_code
+                        ?? null;
+
+                    $stripePromotionCodeId = '';
+
+                    if (is_string($promotionCode)) {
+                        $stripePromotionCodeId =
+                            trim($promotionCode);
+                    } elseif (
+                        is_object($promotionCode)
+                        && isset($promotionCode->id)
+                    ) {
+                        $stripePromotionCodeId =
+                            trim(
+                                (string) $promotionCode->id
+                            );
+                    }
+
+                    if ($stripePromotionCodeId === '') {
+                        continue;
+                    }
+
+                    llama_record_membership_promotion_code_redemption(
+                        $db,
+                        $stripePromotionCodeId,
+                        $userId,
+                        $interval,
+                        $completedSessionId,
+                        $subscriptionId,
+                        $amountTotal
+                    );
+                }
             }
 
 
