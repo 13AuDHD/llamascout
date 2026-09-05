@@ -12,6 +12,44 @@ $maintenanceState = llama_maintenance_state($db);
 $stats = admin_dashboard_stats($db);
 $queue = admin_dashboard_queue($db);
 
+/*
+ * Newsletters are optional until their migration is installed.
+ * Keep the main Admin dashboard safe if that table does not
+ * exist yet.
+ */
+$newsletterQueueCount = 0;
+$newsletterNextSendAt = null;
+
+try {
+    $newsletterQueueCount = (int) $db
+        ->query(
+            "SELECT COUNT(*)
+             FROM newsletter_issues
+             WHERE status IN ('scheduled','sending')
+               AND sent_at IS NULL"
+        )
+        ->fetchColumn();
+
+    $newsletterNextSendAt = $db
+        ->query(
+            "SELECT send_at
+             FROM newsletter_issues
+             WHERE status IN ('scheduled','sending')
+               AND sent_at IS NULL
+               AND send_at IS NOT NULL
+             ORDER BY send_at ASC, id ASC
+             LIMIT 1"
+        )
+        ->fetchColumn();
+
+    if (!$newsletterNextSendAt) {
+        $newsletterNextSendAt = null;
+    }
+} catch (Throwable $exception) {
+    $newsletterQueueCount = 0;
+    $newsletterNextSendAt = null;
+}
+
 $adminNavCounts = [
     'new_places' => $stats['new_places'],
     'updates' => $stats['updates'],
@@ -129,6 +167,30 @@ require __DIR__ . '/_header.php';
             <span>Orders to Fulfill</span>
             <strong><?= (int) $stats['orders'] ?></strong>
             <small>Paid, not completed</small>
+        </div>
+    </a>
+
+    <a
+        class="admin-stat-card is-action"
+        href="/newsletters.php"
+    >
+        <span class="admin-stat-icon">
+            <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+        </span>
+        <div>
+            <span>Newsletter Queue</span>
+            <strong><?= $newsletterQueueCount ?></strong>
+            <small>
+                <?php if ($newsletterNextSendAt): ?>
+                    Next: <?= moderation_e(
+                        admin_format_datetime(
+                            (string) $newsletterNextSendAt
+                        )
+                    ) ?>
+                <?php else: ?>
+                    No scheduled issues
+                <?php endif; ?>
+            </small>
         </div>
     </a>
 
@@ -293,6 +355,14 @@ require __DIR__ . '/_header.php';
                     <span>
                         <strong>Support</strong>
                         Customer tickets and linked error reports
+                    </span>
+                </a>
+
+                <a class="is-ready" href="/newsletters.php">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <span>
+                        <strong>Newsletters</strong>
+                        Monthly and member-only email publications
                     </span>
                 </a>
 
