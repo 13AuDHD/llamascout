@@ -1,0 +1,370 @@
+/* =========================================================
+   ADMIN FEATURE: AUDIT CONSOLE
+   Shared by admin/audit.php and admin/errors.php.
+   ========================================================= */
+
+.admin-audit-console {
+    min-width: 0;
+}
+
+
+/* Notices */
+
+.admin-notice {
+    margin: 16px;
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-notice p {
+    margin: 0;
+
+    font-size: .7rem;
+    line-height: 1.45;
+}
+
+.admin-notice.is-success {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-notice.is-error {
+    border-color: color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+}
+
+
+/* Filters */
+
+.admin-audit-filters {
+    display: grid;
+    grid-template-columns:
+        minmax(260px, 1.5fr)
+        repeat(4, minmax(140px, .7fr))
+        auto;
+    gap: 12px;
+    align-items: end;
+
+    padding: 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-audit-filters label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-audit-filters label > span {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.admin-audit-filters input,
+.admin-audit-filters select {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 8px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-audit-filter-actions {
+    display: flex;
+    gap: 7px;
+}
+
+
+/* Audit list */
+
+.admin-audit-list {
+    display: grid;
+}
+
+.admin-audit-row {
+    display: grid;
+    grid-template-columns:
+        42px minmax(0, 1fr);
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-audit-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-audit-icon {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+    color: var(--text-muted);
+}
+
+.admin-audit-main {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.admin-audit-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.admin-audit-title-row strong {
+    min-width: 0;
+
+    font-size: .74rem;
+}
+
+.admin-audit-main > span,
+.admin-audit-main > small {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    line-height: 1.4;
+}
+
+.admin-audit-category {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .6rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+
+/* Links */
+
+.admin-audit-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 3px;
+}
+
+.admin-audit-links a {
+    color: var(--text);
+
+    font-size: .63rem;
+    font-weight: 800;
+}
+
+
+/* Stored details */
+
+.admin-audit-details {
+    margin-top: 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+
+    overflow: hidden;
+}
+
+.admin-audit-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    padding: 9px 11px;
+
+    cursor: pointer;
+    list-style: none;
+
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.admin-audit-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-audit-details summary span {
+    min-width: 22px;
+
+    padding: 2px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    text-align: center;
+}
+
+.admin-audit-metadata {
+    display: grid;
+
+    margin: 0;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-audit-metadata > div {
+    display: grid;
+    grid-template-columns:
+        minmax(120px, .45fr)
+        minmax(0, 1fr);
+    gap: 12px;
+
+    padding: 9px 11px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-audit-metadata > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-audit-metadata dt {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+}
+
+.admin-audit-metadata dd {
+    min-width: 0;
+    margin: 0;
+
+    overflow-wrap: anywhere;
+
+    font-size: .64rem;
+}
+
+
+/* Pagination */
+
+.admin-audit-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    padding: 16px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-audit-pagination > span {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1200px) {
+
+    .admin-audit-filters {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-audit-search {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-audit-filters {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-audit-search {
+        grid-column: 1 / -1;
+    }
+
+    .admin-audit-filter-actions {
+        grid-column: 1 / -1;
+    }
+
+    .admin-audit-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+
+    .admin-audit-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-audit-search,
+    .admin-audit-filter-actions {
+        grid-column: auto;
+    }
+
+    .admin-audit-filter-actions > * {
+        flex: 1 1 0;
+    }
+
+    .admin-audit-row {
+        grid-template-columns:
+            36px minmax(0, 1fr);
+
+        padding: 12px;
+    }
+
+    .admin-audit-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .admin-audit-metadata > div {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}
