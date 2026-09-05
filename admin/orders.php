@@ -221,6 +221,18 @@ require __DIR__ . '/_header.php';
         >
             Manage
         </a>
+
+        <?php if (
+            (string) $order['payment_status'] === 'paid'
+            && !empty($order['stripe_payment_intent_id'])
+        ): ?>
+        <a
+            class="admin-button"
+            href="/refund-order.php?id=<?= (int) $order['id'] ?>"
+        >
+            Refund
+        </a>
+        <?php endif; ?>
     </td>
 </tr>
 <?php endforeach; ?>
