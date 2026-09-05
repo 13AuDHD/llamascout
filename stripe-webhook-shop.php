@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/shop-checkout.php';
 require_once __DIR__ . '/app/shop-fulfillment-routing.php';
+require_once __DIR__ . '/app/shop-order-mail.php';
 
 $db = db();
 
@@ -82,15 +83,20 @@ try {
             /*
              * Once payment is committed, automatically split every
              * physical order into provider-specific fulfillments.
-             *
-             * Example:
-             *   Printful shirt -> Printful fulfillment
-             *   Bandanna      -> Llama Scout Fulfillment
-             *
-             * The router is idempotent, so Stripe webhook retries
-             * cannot duplicate already-linked order items.
              */
             shop_fulfillment_route_paid_order(
+                $db,
+                $orderId
+            );
+
+            /*
+             * Payment confirmation is also the authoritative trigger
+             * for the customer receipt. The notification helper has
+             * its own order-level duplicate protection because Stripe
+             * can deliver more than one successful event for a
+             * Checkout Session.
+             */
+            shop_send_order_confirmation(
                 $db,
                 $orderId
             );
