@@ -172,6 +172,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['places.css'],
             'features' => ['list-filters.css'],
         ],
+        'place.php' => [
+            'pages' => ['place.css'],
+            'features' => ['person-detail.css'],
+        ],
     ];
 
     $adminManifestEntry =
