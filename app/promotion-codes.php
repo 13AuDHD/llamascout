@@ -445,3 +445,61 @@ function llama_membership_promotion_code_stats(PDO $db): array
 
     return $stats;
 }
+
+
+/* =========================================================
+   ACTIVE CUSTOMER PROMOTION CODE
+   ========================================================= */
+
+function llama_membership_promotion_code_by_code(
+    PDO $db,
+    string $code,
+    ?string $membershipInterval = null
+): ?array {
+    $code = strtoupper(trim($code));
+
+    if ($code === '') {
+        return null;
+    }
+
+    $membershipInterval = strtolower(trim((string) $membershipInterval));
+
+    if (
+        $membershipInterval !== ''
+        && !in_array($membershipInterval, ['monthly', 'annual'], true)
+    ) {
+        return null;
+    }
+
+    $sql =
+        'SELECT *
+         FROM membership_promotion_codes
+         WHERE UPPER(code) = ?
+           AND is_enabled = 1
+           AND stripe_active = 1
+           AND starts_at <= UTC_TIMESTAMP()
+           AND ends_at > UTC_TIMESTAMP()
+           AND stripe_promotion_code_id IS NOT NULL
+           AND stripe_promotion_code_id <> ""';
+
+    $params = [$code];
+
+    if ($membershipInterval !== '') {
+        $sql .=
+            ' AND (
+                plan_scope = "all"
+                OR plan_scope = ?
+              )';
+
+        $params[] = $membershipInterval;
+    }
+
+    $sql .= ' LIMIT 1';
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
