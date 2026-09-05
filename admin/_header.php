@@ -184,6 +184,14 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['moderate-submission.css'],
             'features' => ['moderation-review.css'],
         ],
+        'updates.php' => [
+            'pages' => ['updates.css'],
+            'features' => ['moderation-queue.css'],
+        ],
+        'moderate-update.php' => [
+            'pages' => ['moderate-update.css'],
+            'features' => ['moderation-review.css'],
+        ],
     ];
 
     $adminManifestEntry =
