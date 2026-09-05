@@ -1,0 +1,55 @@
+/* =========================================================
+   ADMIN FEATURE: LIST FILTERS
+   Shared search and filter controls for Admin list pages.
+   ========================================================= */
+
+.admin-user-filter-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-user-search {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-user-search > span {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    font-weight: 850;
+}
+
+.admin-user-search > div {
+    position: relative;
+}
+
+.admin-user-search i {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+
+    transform: translateY(-50%);
+
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.admin-user-search input {
+    padding-left: 36px !important;
+}
+
+.admin-user-filter-actions {
+    display: flex;
+    gap: 7px;
+}
+
+@media (max-width: 620px) {
+
+    .admin-user-filter-actions {
+        justify-content: stretch;
+    }
+
+    .admin-user-filter-actions > * {
+        flex: 1 1 0;
+    }
+}
