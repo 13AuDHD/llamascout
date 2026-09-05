@@ -1,0 +1,577 @@
+/* =========================================================
+   ADMIN PAGE: MODERATE PROBLEM REPORT
+   Only admin/moderate-report.php belongs here.
+   ========================================================= */
+
+/* Summary */
+
+.admin-report-review-summary {
+    display: grid;
+    grid-template-columns:
+        48px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+
+    margin-bottom: var(--admin-panel-gap);
+    padding: 16px 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-report-review-icon {
+    width: 46px;
+    height: 46px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.admin-report-review-summary > div:nth-child(2) {
+    min-width: 0;
+}
+
+.admin-report-review-summary p,
+.admin-report-review-summary h2,
+.admin-report-review-summary span {
+    margin: 0;
+}
+
+.admin-report-review-summary p {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    font-weight: 850;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-report-review-summary h2 {
+    margin-top: 3px;
+
+    font-size: 1.1rem;
+}
+
+.admin-report-review-summary > div:nth-child(2) > span {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+}
+
+.admin-report-review-summary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+
+/* Current Place context */
+
+.admin-report-place-context {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-report-published-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    color: #d3a842 !important;
+}
+
+.admin-report-context-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+    gap: 0;
+}
+
+.admin-report-context-grid > div {
+    min-width: 0;
+
+    padding: 13px 14px;
+
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-report-context-grid > div:last-child {
+    border-right: 0;
+}
+
+.admin-report-context-grid > div.has-attention {
+    background: color-mix(
+        in srgb,
+        #d3a842 6%,
+        var(--surface)
+    );
+}
+
+.admin-report-context-grid span,
+.admin-report-context-grid strong {
+    display: block;
+}
+
+.admin-report-context-grid span {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 800;
+}
+
+.admin-report-context-grid strong {
+    margin-top: 4px;
+
+    overflow-wrap: anywhere;
+
+    font-size: .72rem;
+}
+
+.admin-report-context-grid strong.is-current,
+.admin-report-context-grid strong.is-scouted {
+    color: #58a66a;
+}
+
+.admin-report-context-grid strong.is-attention,
+.admin-report-context-grid strong.is-overdue {
+    color: #d3a842;
+}
+
+.admin-report-context-light {
+    display: inline-block;
+
+    width: 7px;
+    height: 7px;
+
+    margin-right: 4px;
+
+    border-radius: 50%;
+
+    background: currentColor;
+}
+
+.admin-report-public-impact-note {
+    display: grid;
+    grid-template-columns:
+        28px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    margin: 14px;
+    padding: 12px 14px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #d3a842 60%,
+        var(--border)
+    );
+    border-radius: 10px;
+
+    background: color-mix(
+        in srgb,
+        #d3a842 6%,
+        var(--surface)
+    );
+}
+
+.admin-report-public-impact-note strong,
+.admin-report-public-impact-note span {
+    display: block;
+}
+
+.admin-report-public-impact-note strong {
+    font-size: .74rem;
+}
+
+.admin-report-public-impact-note span {
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    line-height: 1.45;
+}
+
+
+/* Review layout */
+
+.admin-report-review-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.55fr)
+        minmax(300px, .72fr);
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.admin-report-review-main,
+.admin-report-review-side {
+    display: grid;
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.admin-report-review-main > .admin-panel,
+.admin-report-review-side > .admin-panel {
+    margin: 0;
+}
+
+
+/* Report copy and snapshot */
+
+.admin-report-details-copy {
+    padding: 18px;
+
+    color: var(--text);
+
+    font-size: .78rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.admin-report-snapshot-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+}
+
+.admin-report-snapshot-grid > div {
+    min-width: 0;
+
+    padding: 13px 15px;
+
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-report-snapshot-grid > div:nth-child(2n) {
+    border-right: 0;
+}
+
+.admin-report-snapshot-grid span,
+.admin-report-snapshot-grid strong {
+    display: block;
+}
+
+.admin-report-snapshot-grid span {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 800;
+}
+
+.admin-report-snapshot-grid strong {
+    margin-top: 4px;
+
+    overflow-wrap: anywhere;
+
+    font-size: .72rem;
+}
+
+
+/* Evidence */
+
+.admin-report-photo-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+
+    padding: 14px;
+}
+
+.admin-report-photo-grid a {
+    position: relative;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text);
+    text-decoration: none;
+}
+
+.admin-report-photo-grid img {
+    display: block;
+
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    object-fit: cover;
+}
+
+.admin-report-photo-grid a > span {
+    display: block;
+
+    padding: 7px 9px;
+
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 800;
+}
+
+
+/* Recent updates, related reports, other open reports */
+
+.admin-report-update-list,
+.admin-report-other-open-list,
+.admin-report-related-list {
+    display: grid;
+}
+
+.admin-report-update-list > article,
+.admin-report-other-open-list > article,
+.admin-report-related-list > article {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+
+    padding: 13px 15px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-report-update-list > article:last-child,
+.admin-report-other-open-list > article:last-child,
+.admin-report-related-list > article:last-child {
+    border-bottom: 0;
+}
+
+.admin-report-update-list > article.has-attention,
+.admin-report-other-open-list > article[data-priority="1"],
+.admin-report-other-open-list > article[data-priority="2"] {
+    border-left: 3px solid #d3a842;
+}
+
+.admin-report-update-list strong,
+.admin-report-other-open-list strong,
+.admin-report-related-list strong {
+    font-size: .73rem;
+}
+
+.admin-report-update-list span,
+.admin-report-update-list p,
+.admin-report-other-open-list span,
+.admin-report-other-open-list p,
+.admin-report-related-list span,
+.admin-report-related-list p {
+    margin: 3px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+.admin-report-related-list > article > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+
+/* Operation shortcuts */
+
+.admin-report-operation-links {
+    display: grid;
+}
+
+.admin-report-operation-links > a {
+    display: grid;
+    grid-template-columns:
+        28px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+
+    padding: 12px 15px;
+
+    border-bottom: 1px solid var(--border);
+
+    color: var(--text);
+    text-decoration: none;
+}
+
+.admin-report-operation-links > a:last-child {
+    border-bottom: 0;
+}
+
+.admin-report-operation-links > a:hover,
+.admin-report-operation-links > a:focus-visible {
+    background: var(--background);
+}
+
+.admin-report-operation-links i {
+    padding-top: 2px;
+
+    text-align: center;
+}
+
+.admin-report-operation-links span {
+    display: grid;
+    gap: 2px;
+}
+
+.admin-report-operation-links strong {
+    font-size: .73rem;
+}
+
+.admin-report-operation-links small {
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.4;
+}
+
+
+/* Status form */
+
+.admin-report-status-form {
+    display: grid;
+    gap: 13px;
+
+    padding: 16px;
+}
+
+.admin-report-status-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-report-status-form label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 850;
+}
+
+.admin-report-status-form select,
+.admin-report-status-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.admin-report-status-form select {
+    min-height: 42px;
+}
+
+.admin-report-status-form textarea {
+    resize: vertical;
+}
+
+.admin-report-status-form small {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.45;
+}
+
+
+/* Timeline */
+
+.admin-report-history {
+    display: grid;
+}
+
+.admin-report-history > div {
+    display: grid;
+    gap: 3px;
+
+    padding: 12px 15px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-report-history > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-report-history strong {
+    font-size: .72rem;
+}
+
+.admin-report-history span,
+.admin-report-history p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.45;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1180px) {
+
+    .admin-report-context-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-report-context-grid > div:nth-child(3n) {
+        border-right: 0;
+    }
+}
+
+@media (max-width: 900px) {
+
+    .admin-report-review-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+
+    .admin-report-review-summary {
+        grid-template-columns:
+            42px minmax(0, 1fr);
+    }
+
+    .admin-report-review-summary-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+
+    .admin-report-context-grid,
+    .admin-report-snapshot-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-report-context-grid > div,
+    .admin-report-snapshot-grid > div {
+        border-right: 0;
+    }
+
+    .admin-report-update-list > article,
+    .admin-report-other-open-list > article,
+    .admin-report-related-list > article {
+        flex-direction: column;
+    }
+}
