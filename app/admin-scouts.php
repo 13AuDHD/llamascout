@@ -188,6 +188,42 @@ function admin_scout_rank_history(
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function admin_scout_status_history(
+    PDO $db,
+    int $scoutProfileId,
+    int $userId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            ssh.*,
+            COALESCE(
+                NULLIF(actor.display_name, ""),
+                NULLIF(actor.username, ""),
+                CASE
+                    WHEN ssh.actor_type = "candidate" THEN "Candidate"
+                    WHEN ssh.actor_type = "admin" THEN "Admin"
+                    ELSE "System"
+                END
+            ) AS actor_name
+         FROM scout_status_history ssh
+         LEFT JOIN users actor
+            ON actor.id = ssh.actor_user_id
+         WHERE ssh.scout_profile_id = ?
+           AND ssh.user_id = ?
+         ORDER BY
+            ssh.occurred_at DESC,
+            ssh.id DESC
+         LIMIT 100'
+    );
+
+    $stmt->execute([
+        $scoutProfileId,
+        $userId,
+    ]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
 function admin_scout_policy_rows(PDO $db): array
 {
     $stmt = $db->query(
@@ -606,7 +642,6 @@ function admin_scout_set_status(
     string $status,
     string $notes = ''
 ): void {
-
     $allowed = [
         'invited',
         'application_started',
@@ -650,24 +685,31 @@ function admin_scout_set_status(
         return;
     }
 
+    if ($status === 'active') {
+        throw new RuntimeException(
+            'Scout activation must be completed through onboarding approval or an admin-granted reactivation window.'
+        );
+    }
 
-    /*
-     * RESTART ONBOARDING
-     *
-     * "Invited" means a genuine fresh invitation.
-     *
-     * Previous application/training data is cleared,
-     * current Scout authority/access is ended, and a new
-     * 30-day invitation begins.
-     *
-     * Historical audit and rank-history records remain.
-     */
+    if ($before === 'active') {
+        $activeExtension =
+            llama_active_scout_extension(
+                $db,
+                $scoutProfileId,
+                $userId
+            );
+
+        if ($activeExtension !== null) {
+            throw new RuntimeException(
+                'This Scout is in an active reactivation window. Cancel the reactivation window instead of changing the Scout status directly.'
+            );
+        }
+    }
+
     if ($status === 'invited') {
-
         $db->beginTransaction();
 
         try {
-
             $currentRank =
                 llama_current_scout_rank(
                     $db,
@@ -678,7 +720,6 @@ function admin_scout_set_status(
                 $currentRank
                 !== LLAMA_SCOUT_RANK_NONE
             ) {
-
                 llama_end_current_scout_rank(
                     $db,
                     $userId,
@@ -688,20 +729,13 @@ function admin_scout_set_status(
                         ? $cleanNotes
                         : 'Scout onboarding restarted by Admin.'
                 );
-
             } else {
-
                 llama_clear_current_scout_rank(
                     $db,
                     $userId
                 );
-
             }
 
-
-            /*
-             * Remove current Master Scout badge if present.
-             */
             $db->prepare(
                 'DELETE ub
                  FROM user_badges ub
@@ -714,20 +748,11 @@ function admin_scout_set_status(
                 $userId,
             ]);
 
-
-            /*
-             * End Scout complimentary access.
-             */
             llama_end_scout_complimentary_membership(
                 $db,
                 $userId
             );
 
-
-            /*
-             * A restarted onboarding gets a completely new
-             * About You application.
-             */
             $db->prepare(
                 'DELETE FROM scout_applications
                  WHERE scout_profile_id = ?
@@ -737,10 +762,6 @@ function admin_scout_set_status(
                 $userId,
             ]);
 
-
-            /*
-             * Training must also be completed again.
-             */
             $db->prepare(
                 'DELETE FROM scout_training
                  WHERE scout_profile_id = ?
@@ -750,58 +771,55 @@ function admin_scout_set_status(
                 $userId,
             ]);
 
-
-            /*
-             * Reset the Scout profile to a genuine new
-             * invitation.
-             */
-            $stmt =
-                $db->prepare(
-                    'UPDATE scout_profiles
-                     SET
-                        status = "invited",
-
-                        invited_at =
+            $stmt = $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    status = "invited",
+                    invited_at = CURRENT_TIMESTAMP,
+                    invited_by = ?,
+                    invitation_expires_at =
+                        DATE_ADD(
                             CURRENT_TIMESTAMP,
-
-                        invited_by = ?,
-
-                        invitation_expires_at =
-                            DATE_ADD(
-                                CURRENT_TIMESTAMP,
-                                INTERVAL 30 DAY
-                            ),
-
-                        application_started_at = NULL,
-                        application_submitted_at = NULL,
-
-                        training_started_at = NULL,
-                        training_completed_at = NULL,
-
-                        approved_at = NULL,
-                        approved_by = NULL,
-
-                        scout_started_at = NULL,
-                        active_through = NULL,
-
-                        inactive_at = NULL,
-
-                        removed_at = NULL,
-                        removed_by = NULL,
-                        removal_reason = NULL,
-
-                        updated_at =
-                            CURRENT_TIMESTAMP
-
-                     WHERE id = ?'
-                );
-
+                            INTERVAL 30 DAY
+                        ),
+                    application_started_at = NULL,
+                    application_submitted_at = NULL,
+                    training_started_at = NULL,
+                    training_completed_at = NULL,
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
+                    inactive_at = NULL,
+                    removed_at = NULL,
+                    removed_by = NULL,
+                    removal_reason = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            );
 
             $stmt->execute([
                 $actorUserId,
                 $scoutProfileId,
             ]);
 
+            llama_scout_status_history_add(
+                $db,
+                $scoutProfileId,
+                $userId,
+                'onboarding_restarted',
+                $before,
+                'invited',
+                $actorUserId,
+                'admin',
+                'Scout onboarding restarted with a new invitation.',
+                [
+                    'notes' =>
+                        $cleanNotes !== ''
+                            ? $cleanNotes
+                            : null,
+                ]
+            );
 
             admin_users_audit(
                 $db,
@@ -812,23 +830,17 @@ function admin_scout_set_status(
                 [
                     'scout_profile_id' =>
                         $scoutProfileId,
-
                     'before' =>
                         $before,
-
                     'after' =>
                         'invited',
-
                     'notes' =>
                         $cleanNotes,
                 ]
             );
 
-
             $db->commit();
-
         } catch (Throwable $exception) {
-
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
@@ -836,99 +848,352 @@ function admin_scout_set_status(
             throw $exception;
         }
 
-
-        /*
-         * Send the fresh invitation after the database
-         * transaction succeeds.
-         */
         llama_scout_send_invitation_email(
             $scout
         );
 
-
         return;
     }
-
-
-    /*
-     * "active" is not a generic Admin status toggle.
-     */
-    if ($status === 'active') {
-
-        throw new RuntimeException(
-            'Scout activation must be completed through onboarding approval or an admin-granted reactivation window.'
-        );
-
-    }
-
-
-    /*
-     * Active reactivation windows must be handled through
-     * their dedicated workflow.
-     */
-    if ($before === 'active') {
-
-        $activeExtension =
-            llama_active_scout_extension(
-                $db,
-                $scoutProfileId,
-                $userId
-            );
-
-        if ($activeExtension !== null) {
-
-            throw new RuntimeException(
-                'This Scout is in an active reactivation window. Cancel the reactivation window instead of changing the Scout status directly.'
-            );
-
-        }
-    }
-
 
     $db->beginTransaction();
 
     try {
+        $application =
+            admin_scout_application(
+                $db,
+                $scoutProfileId
+            );
+
+        $training =
+            admin_scout_training(
+                $db,
+                $scoutProfileId
+            );
+
+        $onboardingStatuses = [
+            'application_started',
+            'application_submitted',
+            'training',
+            'pending_approval',
+        ];
+
+        if (
+            in_array(
+                $status,
+                $onboardingStatuses,
+                true
+            )
+        ) {
+            $currentRank =
+                llama_current_scout_rank(
+                    $db,
+                    $userId
+                );
+
+            if (
+                $currentRank
+                !== LLAMA_SCOUT_RANK_NONE
+            ) {
+                llama_end_current_scout_rank(
+                    $db,
+                    $userId,
+                    LLAMA_RANK_REASON_ADMIN_CHANGE,
+                    $actorUserId,
+                    $cleanNotes !== ''
+                        ? $cleanNotes
+                        : 'Scout returned to onboarding by Admin.'
+                );
+            } else {
+                llama_clear_current_scout_rank(
+                    $db,
+                    $userId
+                );
+            }
+
+            llama_end_scout_complimentary_membership(
+                $db,
+                $userId
+            );
+
+            $db->prepare(
+                'DELETE ub
+                 FROM user_badges ub
+                 INNER JOIN badge_definitions bd
+                    ON bd.id = ub.badge_id
+                 WHERE ub.user_id = ?
+                   AND bd.slug = "master-scout"
+                   AND ub.review_status = "earned"'
+            )->execute([
+                $userId,
+            ]);
+        }
+
+        if ($status === 'application_started') {
+            if ($application) {
+                $db->prepare(
+                    'UPDATE scout_applications
+                     SET
+                        submitted_at = NULL,
+                        reviewed_at = NULL,
+                        reviewed_by = NULL,
+                        review_notes = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?'
+                )->execute([
+                    (int) $application['id'],
+                ]);
+            }
+
+            if ($training) {
+                $db->prepare(
+                    'UPDATE scout_training
+                     SET
+                        video_completed_at = NULL,
+                        acknowledged_tools = 0,
+                        acknowledged_accuracy = 0,
+                        acknowledged_safety = 0,
+                        acknowledged_privacy = 0,
+                        completed_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?'
+                )->execute([
+                    (int) $training['id'],
+                ]);
+            }
+
+            $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    application_started_at =
+                        COALESCE(
+                            application_started_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    application_submitted_at = NULL,
+                    training_completed_at = NULL,
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
+                    inactive_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            )->execute([
+                $scoutProfileId,
+            ]);
+        }
+
+        if ($status === 'application_submitted') {
+            if (!$application) {
+                throw new RuntimeException(
+                    'This candidate does not have an About You application to advance.'
+                );
+            }
+
+            $db->prepare(
+                'UPDATE scout_applications
+                 SET
+                    submitted_at =
+                        COALESCE(
+                            submitted_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    reviewed_at = NULL,
+                    reviewed_by = NULL,
+                    review_notes = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            )->execute([
+                (int) $application['id'],
+            ]);
+
+            if ($training) {
+                $db->prepare(
+                    'UPDATE scout_training
+                     SET
+                        video_completed_at = NULL,
+                        acknowledged_tools = 0,
+                        acknowledged_accuracy = 0,
+                        acknowledged_safety = 0,
+                        acknowledged_privacy = 0,
+                        completed_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?'
+                )->execute([
+                    (int) $training['id'],
+                ]);
+            }
+
+            $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    application_started_at =
+                        COALESCE(
+                            application_started_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    application_submitted_at =
+                        COALESCE(
+                            application_submitted_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    training_completed_at = NULL,
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
+                    inactive_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            )->execute([
+                $scoutProfileId,
+            ]);
+        }
+
+        if ($status === 'training') {
+            if (
+                !$application
+                || empty(
+                    $application['submitted_at']
+                )
+            ) {
+                throw new RuntimeException(
+                    'The About You application must be submitted before training.'
+                );
+            }
+
+            if (!$training) {
+                $db->prepare(
+                    'INSERT INTO scout_training (
+                        scout_profile_id,
+                        user_id,
+                        training_version,
+                        video_started_at
+                     ) VALUES (?, ?, ?, CURRENT_TIMESTAMP)'
+                )->execute([
+                    $scoutProfileId,
+                    $userId,
+                    LLAMA_SCOUT_TRAINING_VERSION,
+                ]);
+            } else {
+                $db->prepare(
+                    'UPDATE scout_training
+                     SET
+                        video_started_at =
+                            COALESCE(
+                                video_started_at,
+                                CURRENT_TIMESTAMP
+                            ),
+                        video_completed_at = NULL,
+                        acknowledged_tools = 0,
+                        acknowledged_accuracy = 0,
+                        acknowledged_safety = 0,
+                        acknowledged_privacy = 0,
+                        completed_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?'
+                )->execute([
+                    (int) $training['id'],
+                ]);
+            }
+
+            $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    application_submitted_at =
+                        COALESCE(
+                            application_submitted_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    training_started_at =
+                        COALESCE(
+                            training_started_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    training_completed_at = NULL,
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
+                    inactive_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            )->execute([
+                $scoutProfileId,
+            ]);
+        }
+
+        if ($status === 'pending_approval') {
+            if (
+                !$application
+                || empty(
+                    $application['submitted_at']
+                )
+                || !$training
+                || empty(
+                    $training['completed_at']
+                )
+                || empty(
+                    $training['acknowledged_tools']
+                )
+                || empty(
+                    $training['acknowledged_accuracy']
+                )
+                || empty(
+                    $training['acknowledged_safety']
+                )
+                || empty(
+                    $training['acknowledged_privacy']
+                )
+            ) {
+                throw new RuntimeException(
+                    'Application and training must be complete before moving this candidate to Pending Approval.'
+                );
+            }
+
+            $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
+                    inactive_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            )->execute([
+                $scoutProfileId,
+            ]);
+        }
 
         $sql =
             'UPDATE scout_profiles
              SET
                 status = ?,
-
                 inactive_at = CASE
                     WHEN ? = "inactive"
                         THEN NOW()
                     ELSE inactive_at
                 END,
-
                 removed_at = CASE
                     WHEN ? = "removed"
                         THEN NOW()
                     ELSE removed_at
                 END,
-
                 removed_by = CASE
                     WHEN ? = "removed"
                         THEN ?
                     ELSE removed_by
                 END,
-
                 removal_reason = CASE
                     WHEN ? = "removed"
                         THEN ?
                     ELSE removal_reason
                 END,
-
-                updated_at =
-                    CURRENT_TIMESTAMP
-
+                updated_at = CURRENT_TIMESTAMP
              WHERE id = ?';
 
-
-        $stmt =
-            $db->prepare(
-                $sql
-            );
-
+        $stmt = $db->prepare($sql);
 
         $stmt->execute([
             $status,
@@ -943,7 +1208,6 @@ function admin_scout_set_status(
             $scoutProfileId,
         ]);
 
-
         if (
             in_array(
                 $status,
@@ -955,24 +1219,20 @@ function admin_scout_set_status(
                 true
             )
         ) {
-
             $currentRank =
                 llama_current_scout_rank(
                     $db,
                     $userId
                 );
 
-
             if (
                 $currentRank
                 !== LLAMA_SCOUT_RANK_NONE
             ) {
-
                 $rankReason =
                     $status === 'removed'
                         ? LLAMA_RANK_REASON_REMOVED
                         : LLAMA_RANK_REASON_ADMIN_CHANGE;
-
 
                 llama_end_current_scout_rank(
                     $db,
@@ -983,16 +1243,12 @@ function admin_scout_set_status(
                         ? $cleanNotes
                         : 'Scout authority ended by Admin status change.'
                 );
-
             } else {
-
                 llama_clear_current_scout_rank(
                     $db,
                     $userId
                 );
-
             }
-
 
             $db->prepare(
                 'DELETE ub
@@ -1006,13 +1262,33 @@ function admin_scout_set_status(
                 $userId,
             ]);
 
-
             llama_end_scout_complimentary_membership(
                 $db,
                 $userId
             );
         }
 
+        llama_scout_status_history_add(
+            $db,
+            $scoutProfileId,
+            $userId,
+            'admin_status_changed',
+            $before,
+            $status,
+            $actorUserId,
+            'admin',
+            'Scout status changed from '
+                . llama_scout_onboarding_status_label($before)
+                . ' to '
+                . llama_scout_onboarding_status_label($status)
+                . '.',
+            [
+                'notes' =>
+                    $cleanNotes !== ''
+                        ? $cleanNotes
+                        : null,
+            ]
+        );
 
         admin_users_audit(
             $db,
@@ -1020,30 +1296,24 @@ function admin_scout_set_status(
             $userId,
             'scout.status_updated',
             'Changed Scout status from '
-            . $before
-            . ' to '
-            . $status
-            . '.',
+                . $before
+                . ' to '
+                . $status
+                . '.',
             [
                 'scout_profile_id' =>
                     $scoutProfileId,
-
                 'before' =>
                     $before,
-
                 'after' =>
                     $status,
-
                 'notes' =>
                     $cleanNotes,
             ]
         );
 
-
         $db->commit();
-
     } catch (Throwable $exception) {
-
         if ($db->inTransaction()) {
             $db->rollBack();
         }
@@ -1101,10 +1371,6 @@ function admin_scout_set_master(
 
     try {
         if ($makeMaster) {
-            /*
-             * The rank engine is the sole authority for qualification,
-             * current role assignment, and permanent rank history.
-             */
             $result =
                 llama_promote_to_master_scout(
                     $db,
@@ -1306,10 +1572,6 @@ function admin_scout_update_policy(
 }
 
 
-/* =========================================================
-   SCOUT REACTIVATION OPERATIONS
-   ========================================================= */
-
 function admin_scout_latest_extension(
     PDO $db,
     int $scoutProfileId,
@@ -1506,11 +1768,6 @@ function admin_scout_grant_reactivation(
             );
         }
 
-        /*
-         * Reactivation is probationary basic Scout access.
-         * It does not restore Master Scout and creates no new
-         * earned-rank history until the window is completed.
-         */
         llama_grant_basic_scout_role(
             $db,
             $userId
@@ -1673,10 +1930,6 @@ function admin_scout_cancel_reactivation(
             (int) $extension['id'],
         ]);
 
-        /*
-         * Temporary access is removed without creating a fake
-         * Scout-rank expiration event.
-         */
         llama_expire_scout_access(
             $db,
             $scoutProfileId,
