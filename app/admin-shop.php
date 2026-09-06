@@ -2648,6 +2648,60 @@ function admin_shop_update_fulfillment(
         );
     }
 
+    /*
+     * A Printful fulfillment with a provider order ID represents a
+     * real remote provider order. The generic order editor must not
+     * be able to sever that relationship or claim the order was
+     * cancelled locally without cancelling it at Printful first.
+     *
+     * Provider cancellation belongs to:
+     * Admin > Commerce > Printful Orders
+     */
+    $existingProvider =
+        admin_shop_normalize_provider(
+            (string) (
+                $fulfillment['fulfillment_provider']
+                ?? ''
+            )
+        );
+
+    $existingProviderOrderId =
+        trim(
+            (string) (
+                $fulfillment['provider_order_id']
+                ?? ''
+            )
+        );
+
+    if (
+        $existingProvider === 'printful'
+        && $existingProviderOrderId !== ''
+    ) {
+        if ($status === 'cancelled') {
+            throw new InvalidArgumentException(
+                'This fulfillment has a live Printful order. Cancel it from Commerce > Printful Orders so the provider is cancelled before the local fulfillment is updated.'
+            );
+        }
+
+        if ($provider !== 'printful') {
+            throw new InvalidArgumentException(
+                'A submitted Printful fulfillment cannot be moved to another provider. Manage the Printful order from Commerce > Printful Orders.'
+            );
+        }
+
+        if (
+            $providerOrderId === ''
+            || !hash_equals(
+                $existingProviderOrderId,
+                $providerOrderId
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'The Printful order ID for a submitted fulfillment cannot be changed here. Manage the provider order from Commerce > Printful Orders.'
+            );
+        }
+    }
+
     $update = $db->prepare(
         'UPDATE shop_order_fulfillments
          SET
