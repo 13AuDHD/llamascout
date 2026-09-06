@@ -426,3 +426,166 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   DASHBOARD BASE COMPONENTS
+   Extracted from legacy site.css
+   ========================================================= */
+
+.saved-places-grid {
+    display: grid;
+}
+
+.saved-place-card {
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.saved-place-card-image {
+    overflow: hidden;
+}
+
+.saved-place-card-image img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+.saved-place-card-body {
+    display: grid;
+}
+
+.saved-place-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.saved-place-card-title-row h3 {
+    margin: 0;
+}
+
+.saved-place-card-location,
+.saved-place-card-meta,
+.saved-place-card-unavailable {
+    margin: 0;
+
+    color: var(--text-muted);
+}
+
+.saved-place-card-location {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.saved-place-card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: 4px;
+
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.saved-place-remove-form {
+    margin: 0;
+}
+
+.saved-place-remove-button {
+    width: 34px;
+    height: 34px;
+
+    display: inline-grid;
+    place-items: center;
+
+    padding: 0;
+
+    border: 0;
+    border-radius: 999px;
+
+    background: transparent;
+    color: var(--text);
+
+    font: inherit;
+
+    cursor: pointer;
+}
+
+.saved-place-remove-button:hover,
+.saved-place-remove-button:focus-visible {
+    background: var(--background);
+}
+
+.account-action-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.account-action-card {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    text-decoration: none;
+}
+
+.account-action-card:hover,
+.account-action-card:focus-visible {
+    text-decoration: none;
+}
+
+.account-action-card > i {
+    width: 28px;
+
+    flex: 0 0 auto;
+
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.account-action-card > span {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.account-action-card strong {
+    font-size: 1rem;
+}
+
+.account-action-card small {
+    color: var(--text-muted);
+
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+    .account-action-grid {
+        grid-template-columns: 1fr;
+    }
+}
