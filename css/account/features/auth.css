@@ -125,13 +125,13 @@
 .account-auth .account-field input:focus-visible,
 .account-auth .account-field select:focus-visible,
 .account-auth .account-field textarea:focus-visible {
-    border-color: currentColor;
+    border-color: var(--focus, currentColor);
 
     box-shadow:
         0 0 0 3px
         color-mix(
             in srgb,
-            currentColor 18%,
+            var(--focus, currentColor) 18%,
             transparent
         );
 }
@@ -240,6 +240,7 @@
 }
 
 .account-auth .account-error,
+.account-auth .account-errors,
 .account-auth .account-status,
 .account-auth .account-success {
     margin-top: 20px;
@@ -254,7 +255,8 @@
     line-height: 1.55;
 }
 
-.account-auth .account-error {
+.account-auth .account-error,
+.account-auth .account-errors {
     border-color: #b9554d;
 
     background:
@@ -265,6 +267,15 @@
         );
 
     font-weight: 700;
+}
+
+.account-auth .account-errors {
+    margin-bottom: 0;
+    padding-left: 34px;
+}
+
+.account-auth .account-errors li + li {
+    margin-top: 6px;
 }
 
 .account-auth .account-success {
