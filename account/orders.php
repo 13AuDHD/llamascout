@@ -33,7 +33,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <link
     rel="stylesheet"
     href="<?= htmlspecialchars(
-        $siteUrl . '/css/account-orders.css',
+        $siteUrl . '/css/account/pages/orders.css',
         ENT_QUOTES,
         'UTF-8'
     ) ?>"
