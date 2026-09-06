@@ -208,17 +208,17 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <link
     rel="stylesheet"
-    href="<?= htmlspecialchars($siteUrl . '/css/account-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
+    href="<?= htmlspecialchars($siteUrl . '/css/account/pages/dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
 >
 
 <link
     rel="stylesheet"
-    href="<?= htmlspecialchars($siteUrl . '/css/account-scout-onboarding.css', ENT_QUOTES, 'UTF-8') ?>"
+    href="<?= htmlspecialchars($siteUrl . '/css/account/features/scout-onboarding.css', ENT_QUOTES, 'UTF-8') ?>"
 >
 
 <link
     rel="stylesheet"
-    href="<?= htmlspecialchars($siteUrl . '/css/account-scout-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
+    href="<?= htmlspecialchars($siteUrl . '/css/account/features/scout-dashboard.css', ENT_QUOTES, 'UTF-8') ?>"
 >
 
 <section class="account-page account-dashboard-page">
