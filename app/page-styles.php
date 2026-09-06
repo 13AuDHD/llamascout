@@ -66,6 +66,7 @@ function llama_page_styles(string $scriptName = ''): array
      */
     if (!$isAccount && $basename === 'place.php') {
         $styles[] = 'place-detail.css';
+        $styles[] = 'site/features/place-shared.css';
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
     }
@@ -86,6 +87,10 @@ function llama_page_styles(string $scriptName = ''): array
         )
     ) {
         $styles[] = 'community-profiles.css';
+
+        if ($basename === 'profile.php') {
+            $styles[] = 'site/features/public-profile-scout.css';
+        }
     }
 
     /*
@@ -143,21 +148,27 @@ function llama_page_styles(string $scriptName = ''): array
     /*
      * Universal photo uploader only where the uploader is actually used.
      */
+    if (!$isAccount && $basename === 'add-place.php') {
+        $styles[] = 'site/pages/add-place.css';
+        $styles[] = 'photo-uploader.css';
+    }
+
     if (
-        (!$isAccount && $basename === 'add-place.php')
-        || (
-            $isAccount
-            && in_array(
-                $basename,
-                [
-                    'profile.php',
-                    'update-place.php',
-                ],
-                true
-            )
+        $isAccount
+        && in_array(
+            $basename,
+            [
+                'profile.php',
+                'update-place.php',
+            ],
+            true
         )
     ) {
         $styles[] = 'photo-uploader.css';
+
+        if ($basename === 'update-place.php') {
+            $styles[] = 'account/pages/update-place.css';
+        }
     }
 
     /*
