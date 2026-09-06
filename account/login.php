@@ -687,7 +687,7 @@ function e(
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/auth.css"
+    href="https://llamascout.com/css/account/features/auth.css"
   >
 
 
