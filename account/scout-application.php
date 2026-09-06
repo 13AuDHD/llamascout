@@ -118,7 +118,7 @@ function scout_app_value(
 
 <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account-scout-onboarding.css"
+    href="https://llamascout.com/css/account/features/scout-onboarding.css"
 >
 
 <section class="account-scout-page">
