@@ -146,39 +146,15 @@ function llama_membership_add_column_if_missing(
             $column
         )
     ) {
-
         return;
     }
 
-
-    $safeTable =
-        str_replace(
-            '`',
-            '``',
-            $table
-        );
-
-
-    $safeColumn =
-        str_replace(
-            '`',
-            '``',
-            $column
-        );
-
-
-    $db->exec(
-        'ALTER TABLE `'
-        .
-        $safeTable
-        .
-        '` ADD COLUMN `'
-        .
-        $safeColumn
-        .
-        '` '
-        .
-        $definition
+    throw new RuntimeException(
+        'Membership storage is missing '
+        . $table
+        . '.'
+        . $column
+        . '.'
     );
 }
 
@@ -191,464 +167,65 @@ function llama_ensure_membership_storage(
     PDO $db
 ): void {
 
-    if (
-        $db->inTransaction()
+    $requiredTables = [
+        'membership_plans',
+        'membership_plan_prices',
+        'membership_promotions',
+        'membership_promotion_plans',
+        'membership_grants',
+        'membership_audit_log',
+    ];
+
+
+    foreach (
+        $requiredTables as
+        $table
     ) {
 
-        throw new RuntimeException(
-            'Membership storage cannot be initialized inside an active transaction.'
-        );
+        if (
+            !llama_membership_table_exists(
+                $db,
+                $table
+            )
+        ) {
+
+            throw new RuntimeException(
+                'Membership storage is not initialized.'
+            );
+
+        }
+
     }
 
 
-    /* =====================================================
-       STABLE MEMBERSHIP PLANS
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_plans
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            interval_slug VARCHAR(30)
-                NOT NULL,
-
-            name VARCHAR(100)
-                NOT NULL,
-
-            description TEXT
-                NULL,
-
-            currency CHAR(3)
-                NOT NULL DEFAULT \'usd\',
-
-            base_price_cents INT UNSIGNED
-                NOT NULL,
-
-            stripe_product_id VARCHAR(255)
-                NULL,
-
-            stripe_price_id VARCHAR(255)
-                NULL,
-
-            is_active TINYINT(1)
-                NOT NULL DEFAULT 1,
-
-            sort_order INT
-                NOT NULL DEFAULT 0,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            UNIQUE KEY uq_membership_plan_interval
-                (interval_slug),
-
-            KEY idx_membership_plan_active
-                (is_active, sort_order)
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       IMMUTABLE PRICE VERSIONS
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_plan_prices
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            plan_id BIGINT UNSIGNED
-                NOT NULL,
-
-            amount_cents INT UNSIGNED
-                NOT NULL,
-
-            currency CHAR(3)
-                NOT NULL DEFAULT \'usd\',
-
-            stripe_price_id VARCHAR(255)
-                NULL,
-
-            is_current TINYINT(1)
-                NOT NULL DEFAULT 0,
-
-            effective_from DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            effective_to DATETIME
-                NULL,
-
-            created_by BIGINT UNSIGNED
-                NULL,
-
-            change_reason VARCHAR(255)
-                NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_membership_plan_price_plan
-                (plan_id, is_current, id),
-
-            KEY idx_membership_plan_price_current
-                (is_current, plan_id),
-
-            UNIQUE KEY uq_membership_plan_price_stripe
-                (stripe_price_id),
-
-            CONSTRAINT fk_membership_plan_price_plan
-                FOREIGN KEY (plan_id)
-                REFERENCES membership_plans(id)
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_membership_plan_price_creator
-                FOREIGN KEY (created_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       PROMOTIONS
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_promotions
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            name VARCHAR(150)
-                NOT NULL,
-
-            public_label VARCHAR(150)
-                NULL,
-
-            public_description TEXT
-                NULL,
-
-            starts_at DATETIME
-                NOT NULL,
-
-            ends_at DATETIME
-                NOT NULL,
-
-            is_enabled TINYINT(1)
-                NOT NULL DEFAULT 1,
-
-            created_by BIGINT UNSIGNED
-                NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_membership_promotion_window
-                (
-                    is_enabled,
-                    starts_at,
-                    ends_at
-                ),
-
-            KEY idx_membership_promotion_created_by
-                (created_by),
-
-            CONSTRAINT fk_membership_promotion_created_by
-                FOREIGN KEY (created_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       PROMOTION -> PLAN RULES
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_promotion_plans
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            promotion_id BIGINT UNSIGNED
-                NOT NULL,
-
-            plan_id BIGINT UNSIGNED
-                NOT NULL,
-
-            plan_price_id BIGINT UNSIGNED
-                NULL,
-
-            discount_type VARCHAR(20)
-                NOT NULL,
-
-            discount_value INT UNSIGNED
-                NOT NULL,
-
-            stripe_coupon_id VARCHAR(255)
-                NULL,
-
-            discount_duration VARCHAR(30)
-                NOT NULL DEFAULT \'stripe_managed\',
-
-            duration_count INT UNSIGNED
-                NULL,
-
-            allow_manual_promotion_codes TINYINT(1)
-                NOT NULL DEFAULT 0,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            UNIQUE KEY uq_membership_promotion_plan
-                (
-                    promotion_id,
-                    plan_id
-                ),
-
-            KEY idx_membership_promotion_plan_plan
-                (plan_id),
-
-            KEY idx_membership_promotion_plan_price
-                (plan_price_id),
-
-            CONSTRAINT fk_membership_promotion_plan_promotion
-                FOREIGN KEY (promotion_id)
-                REFERENCES membership_promotions(id)
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_membership_promotion_plan_plan
-                FOREIGN KEY (plan_id)
-                REFERENCES membership_plans(id)
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_membership_promotion_plan_price
-                FOREIGN KEY (plan_price_id)
-                REFERENCES membership_plan_prices(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /*
-     * Existing installations created before versioned pricing
-     * already have membership_promotion_plans. Add the newer
-     * columns in place without destroying existing rows.
-     */
-
-    llama_membership_add_column_if_missing(
-        $db,
-        'membership_promotion_plans',
+    $requiredPromotionColumns = [
         'plan_price_id',
-        'BIGINT UNSIGNED NULL'
-    );
-
-    llama_membership_add_column_if_missing(
-        $db,
-        'membership_promotion_plans',
         'discount_duration',
-        'VARCHAR(30) NOT NULL DEFAULT \'stripe_managed\''
-    );
-
-    llama_membership_add_column_if_missing(
-        $db,
-        'membership_promotion_plans',
         'duration_count',
-        'INT UNSIGNED NULL'
-    );
-
-    llama_membership_add_column_if_missing(
-        $db,
-        'membership_promotion_plans',
         'allow_manual_promotion_codes',
-        'TINYINT(1) NOT NULL DEFAULT 0'
-    );
+    ];
 
 
-    /* =====================================================
-       COMPLIMENTARY MEMBERSHIP GRANTS
-       ===================================================== */
+    foreach (
+        $requiredPromotionColumns as
+        $column
+    ) {
 
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_grants
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
+        if (
+            !llama_membership_column_exists(
+                $db,
+                'membership_promotion_plans',
+                $column
+            )
+        ) {
 
-            user_id BIGINT UNSIGNED
-                NOT NULL,
+            throw new RuntimeException(
+                'Membership promotion storage is not initialized.'
+            );
 
-            grant_type VARCHAR(30)
-                NOT NULL DEFAULT \'complimentary\',
+        }
 
-            starts_at DATETIME
-                NOT NULL,
-
-            ends_at DATETIME
-                NOT NULL,
-
-            reason VARCHAR(255)
-                NULL,
-
-            notes TEXT
-                NULL,
-
-            granted_by BIGINT UNSIGNED
-                NULL,
-
-            revoked_at DATETIME
-                NULL,
-
-            revoked_by BIGINT UNSIGNED
-                NULL,
-
-            revoke_reason VARCHAR(255)
-                NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_membership_grant_user
-                (
-                    user_id,
-                    grant_type,
-                    starts_at,
-                    ends_at,
-                    revoked_at
-                ),
-
-            KEY idx_membership_grant_granted_by
-                (granted_by),
-
-            KEY idx_membership_grant_revoked_by
-                (revoked_by),
-
-            CONSTRAINT fk_membership_grant_user
-                FOREIGN KEY (user_id)
-                REFERENCES users(id)
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_membership_grant_granted_by
-                FOREIGN KEY (granted_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL,
-
-            CONSTRAINT fk_membership_grant_revoked_by
-                FOREIGN KEY (revoked_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       AUDIT HISTORY
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS membership_audit_log
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            actor_user_id BIGINT UNSIGNED
-                NULL,
-
-            action VARCHAR(100)
-                NOT NULL,
-
-            subject_type VARCHAR(50)
-                NOT NULL,
-
-            subject_id BIGINT UNSIGNED
-                NULL,
-
-            details_json JSON
-                NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_membership_audit_actor
-                (actor_user_id),
-
-            KEY idx_membership_audit_subject
-                (
-                    subject_type,
-                    subject_id
-                ),
-
-            KEY idx_membership_audit_created
-                (created_at),
-
-            CONSTRAINT fk_membership_audit_actor
-                FOREIGN KEY (actor_user_id)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
+    }
 
 
     llama_seed_membership_plans(
@@ -661,15 +238,6 @@ function llama_ensure_membership_storage(
     );
 
 
-    /*
-     * Older Llama Scout checkout stored the Stripe monthly and
-     * annual Price IDs only in private/stripe.php. Import those
-     * existing IDs into the current immutable price versions
-     * when the new catalog does not have them yet.
-     *
-     * This is migration-only compatibility. Once imported, the
-     * database catalog remains authoritative.
-     */
     llama_membership_import_legacy_stripe_price_ids(
         $db
     );
@@ -679,6 +247,7 @@ function llama_ensure_membership_storage(
         $db
     );
 }
+
 
 
 /* =========================================================
