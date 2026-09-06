@@ -432,17 +432,21 @@ try {
     Throwable $exception
 ) {
 
-    $reference = llama_log_caught_exception(
-        $exception,
-        'mfa_setup_initialization',
-        ['user_id' => $userId]
+    error_log(
+        'Llama Scout MFA setup initialization error for user #'
+        .
+        $userId
+        .
+        ': '
+        .
+        $exception
+            ->getMessage()
     );
 
 
-    $error = llama_error_message_with_reference(
-        'MFA setup could not be loaded.',
-        $reference
-    );
+    $error =
+        $exception
+            ->getMessage();
 }
 
 
@@ -620,17 +624,21 @@ if (
             Throwable $exception
         ) {
 
-            $reference = llama_log_caught_exception(
-                $exception,
-                'mfa_enrollment_confirmation',
-                ['user_id' => $userId]
+            error_log(
+                'Llama Scout MFA enrollment confirmation error for user #'
+                .
+                $userId
+                .
+                ': '
+                .
+                $exception
+                    ->getMessage()
             );
 
 
-            $error = llama_error_message_with_reference(
-                'MFA enrollment could not be completed.',
-                $reference
-            );
+            $error =
+                $exception
+                    ->getMessage();
         }
     }
 }
@@ -688,7 +696,7 @@ $displayName =
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/auth.css"
+    href="https://llamascout.com/css/account/features/auth.css"
   >
 
   <link
