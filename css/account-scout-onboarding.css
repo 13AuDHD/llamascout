@@ -1,6 +1,0 @@
-/*
- * Compatibility loader during the Account CSS migration.
- * Real styles: /css/account/features/scout-onboarding.css
- */
-
-@import url("./account/features/scout-onboarding.css");
