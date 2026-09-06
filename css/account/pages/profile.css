@@ -35,7 +35,6 @@
 
 .community-profile-editor-header h1 {
     margin: 0;
-
     overflow-wrap: anywhere;
 }
 
@@ -48,7 +47,6 @@
         0;
 
     color: var(--text-muted);
-
     line-height: 1.55;
 }
 
@@ -56,7 +54,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-
     flex: 0 0 auto;
 }
 
@@ -99,7 +96,6 @@
         0;
 
     color: var(--text-muted);
-
     line-height: 1.6;
 }
 
@@ -151,7 +147,6 @@
 
 .community-profile-image-card {
     min-width: 0;
-
     overflow: hidden;
 
     border: 1px solid var(--border);
@@ -162,11 +157,8 @@
 
 .community-profile-image-card > img {
     width: 100%;
-
     display: block;
-
     aspect-ratio: 1 / 1;
-
     object-fit: cover;
 }
 
@@ -204,17 +196,36 @@
     gap: 14px;
 }
 
+/*
+ * photo-uploader.css owns the uploader component itself.
+ * These rules only make the shared component sit naturally
+ * inside the Profile Photos panel.
+ */
+.community-profile-photo-upload-form .llama-photo-uploader {
+    margin-top: 0;
+}
+
+.community-profile-photo-upload-form .llama-photo-drop {
+    background: var(--background);
+}
+
+.community-profile-photo-upload-form .contribution-submit {
+    justify-self: stretch;
+}
+
 
 /* =========================================================
    BADGES
+   Two fixed columns on normal account layouts so a single badge
+   does not stretch across the entire section.
    ========================================================= */
 
 .community-badge-grid {
     display: grid;
     grid-template-columns:
         repeat(
-            auto-fit,
-            minmax(220px, 1fr)
+            2,
+            minmax(0, 1fr)
         );
     gap: 12px;
 }
@@ -257,7 +268,6 @@
     height: 100%;
 
     display: block;
-
     object-fit: contain;
 }
 
@@ -335,13 +345,11 @@
 
 .community-profile-field textarea {
     resize: vertical;
-
     line-height: 1.55;
 }
 
 .community-profile-field small {
     color: var(--text-muted);
-
     line-height: 1.45;
 }
 
@@ -378,14 +386,12 @@
         12px;
 
     color: var(--text-muted);
-
     font-weight: 800;
 }
 
 .profile-handle-input input {
     border: 0;
     border-radius: 0;
-
     background: transparent;
 }
 
@@ -421,7 +427,6 @@
 
 .community-profile-visibility-toggle small {
     color: var(--text-muted);
-
     line-height: 1.5;
 }
 
@@ -445,7 +450,6 @@
             );
 
         gap: 22px;
-
         padding-top: 24px;
     }
 
@@ -453,7 +457,8 @@
         display: grid;
     }
 
-    .community-profile-form-grid {
+    .community-profile-form-grid,
+    .community-badge-grid {
         grid-template-columns: 1fr;
     }
 
@@ -468,7 +473,6 @@
     .community-profile-avatar-large {
         width: 110px;
         height: 110px;
-
         flex-basis: 110px;
     }
 }
