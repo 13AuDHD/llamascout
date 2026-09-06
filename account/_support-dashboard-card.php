@@ -101,7 +101,7 @@ if ($accountLatestSupport) {
 
     if ($accountSupportCount > 1) {
         $accountSupportDetail .=
-            ' Â· '
+            ' | '
             . number_format(
                 $accountSupportCount
             )
@@ -150,6 +150,10 @@ if ($accountLatestSupport) {
 </a>
 
 <?php
-require __DIR__
-    . '/_email-preferences-dashboard-card.php';
+$accountEmailPreferencesCard =
+    __DIR__ . '/_email-preferences-dashboard-card.php';
+
+if (is_file($accountEmailPreferencesCard)) {
+    require $accountEmailPreferencesCard;
+}
 ?>
