@@ -125,4 +125,11 @@ if ($accountOrderCount > 0) {
     ></i>
 </a>
 
-<?php require __DIR__ . '/_support-dashboard-card.php'; ?>
+<?php
+$accountSupportCard =
+    __DIR__ . '/_support-dashboard-card.php';
+
+if (is_file($accountSupportCard)) {
+    require $accountSupportCard;
+}
+?>
