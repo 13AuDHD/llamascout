@@ -76,7 +76,11 @@ const LLAMA_CONTRIBUTION_REMOVED =
 
 
 /* =========================================================
-   ENSURE CONTRIBUTION TABLE
+   CONTRIBUTION STORAGE VALIDATION
+
+   Schema creation and migration are deployment-time work.
+   Normal requests must never CREATE or ALTER tables because
+   MariaDB/MySQL DDL can implicitly commit active transactions.
    ========================================================= */
 
 function llama_place_contributions_table_exists(
@@ -111,190 +115,9 @@ function llama_place_contributions_table_exists(
 }
 
 
-/* =========================================================
-   ENSURE CONTRIBUTION TABLE
-   ========================================================= */
-
-function llama_ensure_place_contributions_table(
+function llama_place_contribution_scoring_snapshot_exists(
     PDO $db
-): void {
-
-    if (
-        llama_place_contributions_table_exists(
-            $db
-        )
-    ) {
-
-        llama_ensure_place_contribution_scoring_snapshot_column(
-            $db
-        );
-
-
-        return;
-
-    }
-
-
-    /*
-     * CREATE TABLE causes an implicit COMMIT in MySQL.
-     *
-     * Never initialize this table from inside a moderation
-     * transaction because doing so would silently break the
-     * transaction boundary.
-     */
-
-    if (
-        $db->inTransaction()
-    ) {
-
-        throw new RuntimeException(
-            'Place contribution storage must be initialized before starting a transaction.'
-        );
-
-    }
-
-
-    $db->exec(
-        '
-        CREATE TABLE place_contributions
-        (
-            id
-                BIGINT UNSIGNED
-                NOT NULL
-                AUTO_INCREMENT,
-
-            place_id
-                BIGINT UNSIGNED
-                NOT NULL,
-
-            user_id
-                BIGINT UNSIGNED
-                NOT NULL,
-
-            submission_id
-                BIGINT UNSIGNED
-                NULL,
-
-            scout_activity_id
-                BIGINT UNSIGNED
-                NULL,
-
-            contribution_type
-                VARCHAR(50)
-                NOT NULL,
-
-            status
-                VARCHAR(30)
-                NOT NULL
-                DEFAULT \'approved\',
-
-            role_at_time
-                VARCHAR(50)
-                NOT NULL
-                DEFAULT \'user\',
-
-            visited_at
-                DATETIME
-                NULL,
-
-            submitted_at
-                DATETIME
-                NULL,
-
-            approved_at
-                DATETIME
-                NULL,
-
-            moderated_by
-                BIGINT UNSIGNED
-                NULL,
-
-            points_awarded
-                INT UNSIGNED
-                NOT NULL
-                DEFAULT 0,
-
-            fields_changed
-                JSON
-                NULL,
-
-            scoring_snapshot
-                JSON
-                NULL,
-
-            notes
-                TEXT
-                NULL,
-
-            created_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY
-                (id),
-
-            KEY idx_place_contributions_place
-                (
-                    place_id,
-                    status,
-                    approved_at
-                ),
-
-            KEY idx_place_contributions_user
-                (
-                    user_id,
-                    status,
-                    approved_at
-                ),
-
-            KEY idx_place_contributions_submission
-                (
-                    submission_id
-                ),
-
-            KEY idx_place_contributions_activity
-                (
-                    scout_activity_id
-                ),
-
-            KEY idx_place_contributions_role
-                (
-                    place_id,
-                    role_at_time,
-                    status
-                ),
-
-            KEY idx_place_contributions_visited
-                (
-                    place_id,
-                    visited_at
-                ),
-
-            UNIQUE KEY uq_place_contribution_submission
-                (
-                    submission_id,
-                    contribution_type
-                )
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-}
-
-
-function llama_ensure_place_contribution_scoring_snapshot_column(
-    PDO $db
-): void {
+): bool {
 
     $stmt =
         $db->prepare(
@@ -319,45 +142,42 @@ function llama_ensure_place_contribution_scoring_snapshot_column(
     $stmt->execute();
 
 
-    if (
+    return
         $stmt->fetchColumn()
         !==
-        false
-    ) {
+        false;
 
-        return;
-
-    }
+}
 
 
-    /*
-     * ALTER TABLE also causes an implicit COMMIT in MySQL.
-     * Never run this migration from inside an approval
-     * transaction.
-     */
+function llama_ensure_place_contributions_table(
+    PDO $db
+): void {
 
     if (
-        $db->inTransaction()
+        !llama_place_contributions_table_exists(
+            $db
+        )
     ) {
 
         throw new RuntimeException(
-            'Place contribution scoring storage must be initialized before starting a transaction.'
+            'Place contribution storage is not initialized.'
         );
 
     }
 
 
-    $db->exec(
-        '
-        ALTER TABLE place_contributions
+    if (
+        !llama_place_contribution_scoring_snapshot_exists(
+            $db
+        )
+    ) {
 
-        ADD COLUMN scoring_snapshot
-            JSON
-            NULL
+        throw new RuntimeException(
+            'Place contribution scoring storage is not initialized.'
+        );
 
-        AFTER fields_changed
-        '
-    );
+    }
 
 }
 
