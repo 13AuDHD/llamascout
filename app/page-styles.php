@@ -24,9 +24,6 @@ function llama_page_styles(string $scriptName = ''): array
 
     $isAccount = str_contains($path, '/account/');
 
-    /*
-     * Public landing and editorial pages.
-     */
     if (
         !$isAccount
         && in_array(
@@ -43,10 +40,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'public-facing.css';
     }
 
-    /*
-     * Homepage and dedicated map.
-     * The homepage contains the embedded discovery map.
-     */
     if (
         !$isAccount
         && in_array(
@@ -61,9 +54,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'map.css';
     }
 
-    /*
-     * Place detail.
-     */
     if (!$isAccount && $basename === 'place.php') {
         $styles[] = 'place-detail.css';
         $styles[] = 'site/features/place-shared.css';
@@ -71,9 +61,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'share.css';
     }
 
-    /*
-     * Public profiles, community directory, and badges.
-     */
     if (
         !$isAccount
         && in_array(
@@ -94,7 +81,8 @@ function llama_page_styles(string $scriptName = ''): array
     }
 
     /*
-     * Public commerce.
+     * Public commerce pages only.
+     * Internal fulfillment routing lives under app/ and is not a page.
      */
     if (
         !$isAccount
@@ -107,7 +95,6 @@ function llama_page_styles(string $scriptName = ''): array
                 'checkout.php',
                 'checkout-complete.php',
                 'returns.php',
-                'shop-fulfillment-routing.php',
             ],
             true
         )
@@ -115,9 +102,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'shop.css';
     }
 
-    /*
-     * Legal and policy pages.
-     */
     if (
         !$isAccount
         && in_array(
@@ -145,9 +129,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'support.css';
     }
 
-    /*
-     * Universal photo uploader only where the uploader is actually used.
-     */
     if (!$isAccount && $basename === 'add-place.php') {
         $styles[] = 'site/pages/add-place.css';
         $styles[] = 'photo-uploader.css';
@@ -171,26 +152,9 @@ function llama_page_styles(string $scriptName = ''): array
         }
     }
 
-    /*
-     * Account pages own their Account-specific CSS themselves.
-     * The shared header supplies only the universal shell here.
-     */
-
     return array_values(array_unique($styles));
 }
 
-/**
- * Merge manifest styles with optional page-supplied styles.
- *
- * A page can set:
- *
- * $pageStyles = [
- *     'some-page.css',
- *     'some-feature.css',
- * ];
- *
- * before requiring partials/header.php.
- */
 function llama_merge_page_styles(
     array $manifestStyles,
     mixed $pageStyles
