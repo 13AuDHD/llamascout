@@ -130,7 +130,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account-membership-v2.css"
+    href="https://llamascout.com/css/account/pages/membership.css"
 >
 
 <section class="signup-membership-page">
