@@ -321,13 +321,36 @@ function llama_log_caught_exception(
     array $context = [],
     array $expectedClasses = []
 ): ?string {
+    /*
+     * PDOException extends RuntimeException.
+     *
+     * RuntimeException is commonly listed as an expected class for
+     * validation and workflow errors, but database failures must never
+     * be silently treated as expected application behavior.
+     */
+    if ($exception instanceof PDOException) {
+        return llama_log_exception(
+            $exception,
+            $action,
+            $context
+        );
+    }
+
     foreach ($expectedClasses as $className) {
-        if (is_string($className) && $className !== '' && $exception instanceof $className) {
+        if (
+            is_string($className)
+            && $className !== ''
+            && $exception instanceof $className
+        ) {
             return null;
         }
     }
 
-    return llama_log_exception($exception, $action, $context);
+    return llama_log_exception(
+        $exception,
+        $action,
+        $context
+    );
 }
 
 function llama_error_message_with_reference(string $message, ?string $reference): string
