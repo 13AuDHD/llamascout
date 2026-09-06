@@ -388,7 +388,7 @@ require __DIR__ . '/_header.php';
             </div>
 
             <div class="admin-scout-onboarding-facts">
-                <div>
+                <div class="<?= !empty($scout['invited_at']) && !$invitationExpired ? 'is-good' : '' ?>">
                     <span>Invitation</span>
                     <strong>
                         <?= moderation_e(
