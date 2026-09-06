@@ -32,6 +32,10 @@ if (!$order) {
 
     require dirname(__DIR__) . '/partials/header.php';
     ?>
+    <link
+        rel="stylesheet"
+        href="https://llamascout.com/css/account/pages/orders.css"
+    >
     <section class="account-page account-orders-page">
         <section class="account-orders-empty">
             <i class="fa-solid fa-box-open" aria-hidden="true"></i>
@@ -78,7 +82,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <link
     rel="stylesheet"
     href="<?= htmlspecialchars(
-        $siteUrl . '/css/account-orders.css',
+        $siteUrl . '/css/account/pages/orders.css',
         ENT_QUOTES,
         'UTF-8'
     ) ?>"
