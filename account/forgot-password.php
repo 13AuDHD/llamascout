@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 require_once
     dirname(__DIR__)
     . '/app/auth.php';
@@ -197,11 +196,7 @@ function verify_turnstile(
         );
 }
 
-
-if (
-    $_SERVER['REQUEST_METHOD']
-    === 'POST'
-) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $email =
         strtolower(
@@ -212,7 +207,6 @@ if (
                 )
             )
         );
-
 
     $turnstileToken =
         trim(
@@ -277,11 +271,9 @@ if (
                 '
             );
 
-
         $stmt->execute([
             $email
         ]);
-
 
         $user =
             $stmt->fetch(
@@ -306,7 +298,6 @@ if (
 
                 $db->beginTransaction();
 
-
                 $expireStmt =
                     $db->prepare(
                         '
@@ -320,7 +311,6 @@ if (
                         '
                     );
 
-
                 $expireStmt->execute([
                     $user['id']
                 ]);
@@ -328,18 +318,14 @@ if (
 
                 $rawToken =
                     bin2hex(
-                        random_bytes(
-                            32
-                        )
+                        random_bytes(32)
                     );
-
 
                 $tokenHash =
                     hash(
                         'sha256',
                         $rawToken
                     );
-
 
                 $insertStmt =
                     $db->prepare(
@@ -362,19 +348,16 @@ if (
                         '
                     );
 
-
                 $insertStmt->execute([
                     $user['id'],
                     $tokenHash,
                 ]);
 
-
                 $db->commit();
 
 
                 $resetUrl =
-                    'https://account.llamascout.com/reset-password.php?token='
-                    .
+                    'https://account.llamascout.com/reset-password.php?token=' .
                     rawurlencode(
                         $rawToken
                     );
@@ -384,10 +367,8 @@ if (
                     trim(
                         (string) (
                             $user['display_name']
-                            ?:
-                            $user['username']
-                            ?:
-                            'Scout'
+                            ?: $user['username']
+                            ?: 'Scout'
                         )
                     );
 
@@ -397,20 +378,13 @@ if (
 
 
                 $body =
-                    "Hi {$name},\n\n"
-                    .
-                    "A password reset was requested for your Llama Scout account.\n\n"
-                    .
-                    "Use this secure link to choose a new password:\n\n"
-                    .
-                    $resetUrl
-                    .
-                    "\n\n"
-                    .
-                    "This link expires in 60 minutes and can only be used once.\n\n"
-                    .
-                    "If you did not request this, you can ignore this email.\n\n"
-                    .
+                    "Hi {$name},\n\n" .
+                    "A password reset was requested for your Llama Scout account.\n\n" .
+                    "Use this secure link to choose a new password:\n\n" .
+                    $resetUrl .
+                    "\n\n" .
+                    "This link expires in 60 minutes and can only be used once.\n\n" .
+                    "If you did not request this, you can ignore this email.\n\n" .
                     "Llama Scout";
 
 
@@ -428,10 +402,8 @@ if (
                 if (
                     $db->inTransaction()
                 ) {
-
                     $db->rollBack();
                 }
-
 
                 // Keep the public response deliberately generic so account
                 // existence is never disclosed, but retain the failure for Admin.
@@ -457,59 +429,51 @@ if (
 
 ?>
 <!doctype html>
-
 <html lang="en">
 
 <head>
 
-  <meta charset="utf-8">
+<meta charset="utf-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1"
+>
 
-  <title>
-    Forgot Password | Llama Scout
-  </title>
+<title>
+  Forgot Password | Llama Scout
+</title>
 
-  <meta
-    name="description"
-    content="Reset your Llama Scout password."
-  >
-
-  <link
-    rel="stylesheet"
-    href="https://llamascout.com/css/style.css"
-  >
-
-  <link
-    rel="stylesheet"
-    href="https://llamascout.com/css/account.css"
-  >
-
-  <script
-    src="https://llamascout.com/js/accessibility.js"
-  ></script>
-
-  <script
-    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-    async
-    defer
-  ></script>
+<meta
+  name="description"
+  content="Reset your Llama Scout password."
+>
 
 <link
   rel="stylesheet"
-  href="https://llamascout.com/css/account-auth-v2.css"
+  href="https://llamascout.com/css/site.css"
 >
+
+<link
+  rel="stylesheet"
+  href="https://llamascout.com/css/account/features/auth.css"
+>
+
+<script
+  src="https://llamascout.com/js/accessibility.js"
+></script>
+
+<script
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+  async
+  defer
+></script>
+
 </head>
 
-
-<body class="account-auth-body">
-
+<body>
 
 <main class="account-auth">
-
 
   <a href="https://llamascout.com">
 
@@ -524,15 +488,12 @@ if (
 
   <section class="account-auth-card">
 
-
     <h1>
       Reset your password
     </h1>
 
 
-    <?php if (
-        $submitted
-    ): ?>
+    <?php if ($submitted): ?>
 
       <div
         class="account-success"
@@ -543,10 +504,9 @@ if (
         to a Llama Scout account, a
         password reset link has been sent.
 
-        Check your inbox and spam/junk folder.
+        Check your inbox and spam folder.
 
       </div>
-
 
       <p class="account-auth-footer">
 
@@ -556,9 +516,7 @@ if (
 
       </p>
 
-
     <?php else: ?>
-
 
       <p class="account-auth-intro">
 
@@ -570,24 +528,19 @@ if (
       </p>
 
 
-      <?php if (
-          $error !== ''
-      ): ?>
+      <?php if ($error): ?>
 
         <div
           class="account-error"
           role="alert"
         >
-          <?= e(
-              $error
-          ) ?>
+          <?= e($error) ?>
         </div>
 
       <?php endif; ?>
 
 
       <form method="post">
-
 
         <div class="account-field">
 
@@ -600,9 +553,7 @@ if (
             name="email"
             type="email"
             autocomplete="email"
-            value="<?= e(
-                $email
-            ) ?>"
+            value="<?= e($email) ?>"
             required
           >
 
@@ -632,7 +583,6 @@ if (
           Send Reset Link
         </button>
 
-
       </form>
 
 
@@ -646,15 +596,11 @@ if (
 
       </p>
 
-
     <?php endif; ?>
-
 
   </section>
 
-
 </main>
-
 
 </body>
 
