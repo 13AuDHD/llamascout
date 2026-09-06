@@ -94,7 +94,24 @@ function llama_user_badges(PDO $db, int $userId): array
     );
     $stmt->execute([$userId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $badges = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    /*
+     * Public profile.php renders resolved_image_src. Populate it here
+     * from the uploaded/admin image first, then fall back to the normal
+     * badge-file resolver. This keeps public and account badge artwork
+     * using the same source of truth.
+     */
+    foreach ($badges as &$badge) {
+        $badge['resolved_image_src'] =
+            llama_badge_image_url(
+                (string) ($badge['slug'] ?? ''),
+                (string) ($badge['image_src'] ?? '')
+            );
+    }
+    unset($badge);
+
+    return $badges;
 }
 
 function llama_profile_stats(PDO $db, int $userId): array
