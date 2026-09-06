@@ -1,0 +1,384 @@
+@import url("../core.css");
+
+/* =========================================================
+   LLAMA SCOUT EMAIL PREFERENCES
+   ========================================================= */
+
+.email-preferences-page {
+    padding:
+        34px
+        0
+        72px;
+}
+
+.email-preferences-container {
+    width:
+        min(
+            760px,
+            calc(100% - 32px)
+        );
+
+    margin: 0 auto;
+}
+
+.email-preferences-header {
+    margin-bottom: 24px;
+}
+
+.email-preferences-header h1 {
+    margin:
+        4px
+        0
+        8px;
+
+    color: var(--text);
+
+    font-size:
+        clamp(
+            2rem,
+            6vw,
+            3.5rem
+        );
+
+    line-height: 1;
+    letter-spacing: -.035em;
+}
+
+.email-preferences-header > p:last-child {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    line-height: 1.55;
+}
+
+
+/* =========================================================
+   NOTICES
+   ========================================================= */
+
+.email-preferences-notice {
+    margin-bottom: 16px;
+
+    padding:
+        12px
+        14px;
+
+    border:
+        1px solid
+        color-mix(
+            in srgb,
+            var(--account-success) 55%,
+            var(--border)
+        );
+
+    border-radius: var(--account-control-radius);
+
+    background: var(--surface);
+    color: var(--text);
+
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.email-preferences-notice.is-error {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-danger) 60%,
+            var(--border)
+        );
+}
+
+
+/* =========================================================
+   PREFERENCE CARDS
+   ========================================================= */
+
+.email-preferences-form {
+    display: grid;
+    gap: 12px;
+}
+
+.email-preference-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 20px;
+    align-items: center;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-radius);
+
+    background: var(--surface);
+}
+
+.email-preference-card.is-required {
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 92%,
+            var(--text) 8%
+        );
+}
+
+.email-preference-card.is-locked {
+    opacity: .72;
+}
+
+.email-preference-copy {
+    min-width: 0;
+}
+
+.email-preference-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.email-preference-heading > div {
+    min-width: 0;
+}
+
+.email-preference-heading h2 {
+    margin: 0;
+
+    color: var(--text);
+
+    font-size: .95rem;
+    line-height: 1.25;
+}
+
+.email-preference-heading > div > span {
+    display: inline-block;
+
+    margin-top: 3px;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 800;
+}
+
+.email-preference-required {
+    color: var(--text) !important;
+}
+
+.email-preference-icon {
+    width: 40px;
+    height: 40px;
+
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 40px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+}
+
+.email-preference-copy > p {
+    max-width: 610px;
+
+    margin:
+        10px
+        0
+        0;
+
+    color: var(--text-muted);
+
+    font-size: .76rem;
+    line-height: 1.55;
+}
+
+.email-preference-copy > small {
+    display: block;
+
+    margin-top: 8px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+
+/* =========================================================
+   SWITCH
+   ========================================================= */
+
+.email-preference-switch {
+    position: relative;
+
+    width: 48px;
+    height: 28px;
+
+    display: block;
+
+    flex: 0 0 48px;
+
+    cursor: pointer;
+}
+
+.email-preference-switch input {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+}
+
+.email-preference-switch > span {
+    position: absolute;
+    inset: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+
+    transition:
+        background-color .15s ease,
+        border-color .15s ease;
+}
+
+.email-preference-switch > span::after {
+    content: "";
+
+    position: absolute;
+    top: 3px;
+    left: 3px;
+
+    width: 20px;
+    height: 20px;
+
+    border-radius: 50%;
+
+    background: var(--text-muted);
+
+    transition:
+        transform .15s ease,
+        background-color .15s ease;
+}
+
+.email-preference-switch input:checked + span {
+    border-color: var(--text);
+
+    background: var(--text);
+}
+
+.email-preference-switch input:checked + span::after {
+    transform: translateX(20px);
+
+    background: var(--background);
+}
+
+.email-preference-switch input:focus-visible + span {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+}
+
+.email-preference-switch.is-locked {
+    cursor: default;
+    opacity: .65;
+}
+
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+
+.email-preferences-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+
+    margin-top: 8px;
+}
+
+.email-preferences-back {
+    color: var(--text-muted);
+
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .email-preferences-page {
+        padding-top: 24px;
+    }
+
+    .email-preferences-container {
+        width:
+            min(
+                100% - 20px,
+                760px
+            );
+    }
+
+    .email-preference-card {
+        grid-template-columns:
+            minmax(0, 1fr)
+            auto;
+
+        gap: 12px;
+
+        padding: 15px;
+    }
+
+    .email-preference-heading {
+        align-items: flex-start;
+    }
+
+    .email-preference-icon {
+        width: 36px;
+        height: 36px;
+
+        flex-basis: 36px;
+    }
+
+    .email-preferences-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .email-preferences-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .email-preferences-back {
+        text-align: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .email-preference-switch > span,
+    .email-preference-switch > span::after {
+        transition: none;
+    }
+}
+
+:root[data-reduced-motion="true"]
+.email-preference-switch > span,
+:root[data-reduced-motion="true"]
+.email-preference-switch > span::after {
+    transition: none;
+}

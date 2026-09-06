@@ -1,0 +1,283 @@
+@import url("../core.css");
+
+/* =========================================================
+   LLAMA SCOUT CONTRIBUTION HISTORY
+   ========================================================= */
+
+.contribution-history-page {
+    width:
+        min(
+            980px,
+            calc(100% - 32px)
+        );
+}
+
+
+/* =========================================================
+   ACTIONS + MESSAGES
+   ========================================================= */
+
+.contribution-submit {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    box-sizing: border-box;
+
+    padding:
+        9px
+        14px;
+
+    border: 1px solid var(--text);
+    border-radius: var(--account-control-radius);
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 850;
+    line-height: 1.1;
+
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.contribution-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+
+    margin-bottom: 18px;
+
+    padding:
+        12px
+        14px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-control-radius);
+
+    background: var(--surface);
+
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.contribution-message.is-success {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-success) 60%,
+            var(--border)
+        );
+}
+
+.contribution-message.is-error {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-danger) 60%,
+            var(--border)
+        );
+}
+
+.contribution-message p {
+    margin: 0;
+}
+
+
+/* =========================================================
+   CONTRIBUTION LIST
+   ========================================================= */
+
+.contribution-history-list {
+    display: grid;
+    gap: 12px;
+}
+
+.contribution-history-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 22px;
+    align-items: center;
+
+    padding: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-radius);
+
+    background: var(--surface);
+}
+
+.contribution-history-main {
+    min-width: 0;
+}
+
+.contribution-history-main h2 {
+    margin:
+        3px
+        0
+        4px;
+
+    color: var(--text);
+
+    font-size: 1rem;
+    line-height: 1.3;
+
+    overflow-wrap: anywhere;
+}
+
+.contribution-history-date {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+}
+
+.contribution-review-note {
+    max-width: 680px;
+
+    margin:
+        12px
+        0
+        0;
+
+    padding:
+        10px
+        12px;
+
+    border-left:
+        3px solid
+        var(--account-warning);
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .74rem;
+    line-height: 1.55;
+}
+
+.contribution-history-side {
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+
+    min-width: 130px;
+}
+
+.contribution-history-side a {
+    color: var(--text);
+
+    font-size: .72rem;
+    font-weight: 800;
+
+    text-decoration: none;
+}
+
+.contribution-history-side a:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.contribution-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding:
+        5px
+        8px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+}
+
+.contribution-status.status-approved {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-success) 60%,
+            var(--border)
+        );
+}
+
+.contribution-status.status-needs-changes {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-warning) 65%,
+            var(--border)
+        );
+}
+
+.contribution-status.status-rejected {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--account-danger) 60%,
+            var(--border)
+        );
+}
+
+.contribution-resubmit-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 650px) {
+
+    .contribution-history-page {
+        width:
+            min(
+                100% - 20px,
+                980px
+            );
+    }
+
+    .contribution-history-page .account-page-header {
+        display: grid;
+    }
+
+    .contribution-history-page .account-page-header > a {
+        width: 100%;
+    }
+
+    .contribution-history-card {
+        grid-template-columns: 1fr;
+
+        gap: 14px;
+
+        padding: 15px;
+    }
+
+    .contribution-history-side {
+        justify-items: start;
+
+        min-width: 0;
+    }
+}
