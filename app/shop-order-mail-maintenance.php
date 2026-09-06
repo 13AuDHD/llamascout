@@ -815,11 +815,65 @@ function shop_run_shipment_email_maintenance(
             min(25, $limit)
         );
 
+        /*
+         * Select only fulfillments that still have notification work.
+         *
+         * The previous query limited the oldest shipped/delivered
+         * fulfillments first and then checked notification state in PHP.
+         * Once enough old rows had already been notified, newer rows could
+         * sit behind the LIMIT forever.
+         *
+         * Keep the send functions as the final race-safe eligibility check,
+         * but make the SQL LIMIT apply to actual unsent or retryable work.
+         */
         $fulfillmentStmt = $db->query(
-            'SELECT id, status
-             FROM shop_order_fulfillments
-             WHERE status IN ("shipped","delivered")
-             ORDER BY updated_at ASC, id ASC
+            'SELECT
+                f.id,
+                f.status
+             FROM shop_order_fulfillments f
+             LEFT JOIN shop_order_notifications shipped_notice
+                ON shipped_notice.order_id = f.order_id
+               AND shipped_notice.notification_type =
+                    CONCAT("fulfillment_shipped_", f.id)
+             LEFT JOIN shop_order_notifications delivered_notice
+                ON delivered_notice.order_id = f.order_id
+               AND delivered_notice.notification_type =
+                    CONCAT("fulfillment_delivered_", f.id)
+             WHERE f.status IN ("shipped","delivered")
+               AND (
+                    (
+                        shipped_notice.id IS NULL
+                        OR (
+                            shipped_notice.status <> "sent"
+                            AND (
+                                shipped_notice.failed_at IS NULL
+                                OR shipped_notice.failed_at <=
+                                    DATE_SUB(
+                                        UTC_TIMESTAMP(),
+                                        INTERVAL 1 HOUR
+                                    )
+                            )
+                        )
+                    )
+                    OR (
+                        f.status = "delivered"
+                        AND (
+                            delivered_notice.id IS NULL
+                            OR (
+                                delivered_notice.status <> "sent"
+                                AND (
+                                    delivered_notice.failed_at IS NULL
+                                    OR delivered_notice.failed_at <=
+                                        DATE_SUB(
+                                            UTC_TIMESTAMP(),
+                                            INTERVAL 1 HOUR
+                                        )
+                                )
+                            )
+                        )
+                    )
+               )
+             ORDER BY f.updated_at ASC, f.id ASC
              LIMIT ' . $limit
         );
 
@@ -880,11 +934,33 @@ function shop_run_shipment_email_maintenance(
             }
         }
 
+        /*
+         * Apply the refund LIMIT only to orders whose confirmation has
+         * never been sent or whose previous failure is old enough to retry.
+         */
         $refundStmt = $db->query(
-            'SELECT id
-             FROM shop_orders
-             WHERE payment_status = "refunded"
-             ORDER BY updated_at ASC, id ASC
+            'SELECT o.id
+             FROM shop_orders o
+             LEFT JOIN shop_order_notifications refund_notice
+                ON refund_notice.order_id = o.id
+               AND refund_notice.notification_type =
+                    "refund_confirmation"
+             WHERE o.payment_status = "refunded"
+               AND (
+                    refund_notice.id IS NULL
+                    OR (
+                        refund_notice.status <> "sent"
+                        AND (
+                            refund_notice.failed_at IS NULL
+                            OR refund_notice.failed_at <=
+                                DATE_SUB(
+                                    UTC_TIMESTAMP(),
+                                    INTERVAL 1 HOUR
+                                )
+                        )
+                    )
+               )
+             ORDER BY o.updated_at ASC, o.id ASC
              LIMIT ' . $limit
         );
 
