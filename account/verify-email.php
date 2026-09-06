@@ -476,22 +476,18 @@ if (
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/style.css"
+    href="https://llamascout.com/css/site.css"
   >
 
   <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account.css"
+    href="https://llamascout.com/css/account/features/auth.css"
   >
 
   <script
     src="https://llamascout.com/js/accessibility.js"
   ></script>
 
-<link
-  rel="stylesheet"
-  href="https://llamascout.com/css/account-auth-v2.css"
->
 </head>
 
 
