@@ -1,1 +1,581 @@
+/* =========================================================
+   LLAMA SCOUT ADD PLACE
+   ========================================================= */
 
+.contribution-page {
+    width: min(100%, 1120px);
+
+    display: grid;
+    gap: 28px;
+
+    margin-inline: auto;
+}
+
+.contribution-header {
+    display: grid;
+    gap: 8px;
+}
+
+.contribution-header h1,
+.contribution-header p {
+    margin: 0;
+}
+
+.contribution-header > p:last-child {
+    max-width: 760px;
+
+    color: var(--text-muted);
+
+    line-height: 1.65;
+}
+
+.contribution-form {
+    display: grid;
+    gap: 24px;
+}
+
+.contribution-form fieldset {
+    min-width: 0;
+
+    display: grid;
+    gap: 18px;
+
+    margin: 0;
+    padding: 22px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.contribution-form legend {
+    padding: 0 8px;
+
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.contribution-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.contribution-field {
+    min-width: 0;
+
+    display: grid;
+    align-content: start;
+    gap: 7px;
+}
+
+.contribution-field-wide {
+    grid-column: 1 / -1;
+}
+
+.contribution-field > span {
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.contribution-field input,
+.contribution-field select,
+.contribution-field textarea {
+    width: 100%;
+    min-width: 0;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.contribution-field textarea {
+    resize: vertical;
+
+    line-height: 1.55;
+}
+
+.contribution-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+}
+
+.contribution-submit {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 9px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.contribution-submit:hover,
+.contribution-submit:focus-visible {
+    text-decoration: none;
+}
+
+.contribution-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+
+    line-height: 1.55;
+}
+
+.contribution-message.is-error,
+.contribution-message.is-success {
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   ADD PLACE SECTIONS
+   ========================================================= */
+
+.add-place-page {
+    max-width: 1120px;
+}
+
+.add-place-form-note {
+    max-width: 760px;
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    margin-top: 18px;
+    padding: 13px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+    color: var(--text-muted);
+
+    font-size: .82rem;
+    line-height: 1.55;
+}
+
+.add-place-form-note i {
+    margin-top: 3px;
+}
+
+.add-place-form {
+    gap: 14px;
+}
+
+.contribution-section {
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.contribution-section > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    padding: 16px 18px;
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.contribution-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.contribution-section > summary::after {
+    content: "+";
+
+    flex: 0 0 auto;
+
+    color: var(--text-muted);
+
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.contribution-section[open] > summary::after {
+    content: "−";
+}
+
+.contribution-section > summary > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    font-weight: 850;
+}
+
+.contribution-section > summary > small {
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    text-align: right;
+}
+
+.contribution-section-body {
+    padding: 0 18px 18px;
+
+    border-top: 1px solid var(--border);
+}
+
+.contribution-section-body > .contribution-grid {
+    margin-top: 16px;
+}
+
+.contribution-section-help {
+    margin: 16px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .76rem;
+    line-height: 1.55;
+}
+
+.contribution-subheading {
+    margin: 20px 0 10px;
+
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+
+    text-transform: uppercase;
+}
+
+.add-place-locate-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-top: 16px;
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.add-place-locate-panel > div {
+    display: grid;
+    gap: 3px;
+}
+
+.add-place-locate-panel strong {
+    font-size: .82rem;
+}
+
+.add-place-locate-panel span {
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.add-place-locate-button {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 8px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 850;
+
+    cursor: pointer;
+}
+
+.add-place-locate-button:disabled {
+    opacity: .55;
+
+    cursor: wait;
+}
+
+.add-place-location-status {
+    display: none;
+
+    margin-top: 10px;
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.add-place-location-status.is-visible {
+    display: block;
+}
+
+.add-place-location-status.is-success {
+    border-color:
+        color-mix(
+            in srgb,
+            #2e9d58 55%,
+            var(--border)
+        );
+}
+
+.add-place-location-status.is-warning {
+    border-color:
+        color-mix(
+            in srgb,
+            #d7a43c 60%,
+            var(--border)
+        );
+}
+
+.add-place-location-status.is-error {
+    border-color:
+        color-mix(
+            in srgb,
+            #c94a4a 60%,
+            var(--border)
+        );
+}
+
+.contribution-checkbox-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 8px;
+
+    margin-top: 14px;
+}
+
+.contribution-check {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+
+    cursor: pointer;
+}
+
+.contribution-check input {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+
+    margin: 0;
+}
+
+.contribution-check span {
+    color: var(--text);
+
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+.add-place-submit-bar {
+    position: sticky;
+    bottom: 12px;
+
+    z-index: 60;
+
+    padding: 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
+
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+}
+
+
+/* =========================================================
+   PLACE NAME SUGGESTIONS
+   ========================================================= */
+
+.add-place-name-control {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.add-place-name-control > input {
+    min-width: 0;
+}
+
+.add-place-name-refresh {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 8px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+}
+
+.add-place-name-refresh:hover,
+.add-place-name-refresh:focus-visible {
+    background: var(--surface);
+}
+
+.add-place-name-refresh:disabled {
+    opacity: .55;
+
+    cursor: wait;
+}
+
+.add-place-name-refresh.is-loading i {
+    animation: add-place-name-spin .7s linear infinite;
+}
+
+@keyframes add-place-name-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+:root[data-theme="dark"]
+input::placeholder,
+:root[data-theme="dark"]
+textarea::placeholder {
+    color:
+        color-mix(
+            in srgb,
+            var(--text-muted) 35%,
+            var(--background) 65%
+        );
+
+    opacity: .78;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"])
+    input::placeholder,
+    :root:not([data-theme="light"])
+    textarea::placeholder {
+        color:
+            color-mix(
+                in srgb,
+                var(--text-muted) 35%,
+                var(--background) 65%
+            );
+
+        opacity: .78;
+    }
+}
+
+@media (max-width: 700px) {
+    .contribution-grid,
+    .contribution-checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .contribution-section > summary {
+        position: relative;
+
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .contribution-section > summary > small {
+        text-align: left;
+    }
+
+    .contribution-section > summary::after {
+        position: absolute;
+        right: 18px;
+    }
+
+    .add-place-locate-panel {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .add-place-locate-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .add-place-name-control {
+        grid-template-columns: 1fr;
+    }
+
+    .add-place-name-refresh {
+        width: 100%;
+    }
+}
