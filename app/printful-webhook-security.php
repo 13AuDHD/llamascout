@@ -141,3 +141,72 @@ function llama_printful_secure_webhook_active(): bool
         $configuredUrl
     );
 }
+
+function llama_printful_system_health_card(): array
+{
+    if (!llama_printful_configured()) {
+        return [
+            'key' => 'printful_webhook',
+            'label' => 'Printful webhook',
+            'status' => 'down',
+            'value' => 'Not configured',
+            'detail' =>
+                'The private Printful API token is missing. '
+                . 'Printful fulfillment and webhook verification cannot operate.',
+            'icon' => 'fa-shield-halved',
+        ];
+    }
+
+    try {
+        $secureActive =
+            llama_printful_secure_webhook_active();
+
+        if ($secureActive) {
+            return [
+                'key' => 'printful_webhook',
+                'label' => 'Printful webhook',
+                'status' => 'good',
+                'value' => 'Protected',
+                'detail' =>
+                    'Printful is reachable and its configured webhook '
+                    . 'matches the protected keyed Llama Scout callback.',
+                'icon' => 'fa-shield-halved',
+            ];
+        }
+
+        return [
+            'key' => 'printful_webhook',
+            'label' => 'Printful webhook',
+            'status' => 'attention',
+            'value' => 'Needs protection',
+            'detail' =>
+                'Printful is connected, but its configured webhook '
+                . 'does not match the protected Llama Scout callback. '
+                . 'Open Integrations > Printful Webhook and activate protection.',
+            'icon' => 'fa-shield-halved',
+        ];
+    } catch (Throwable $exception) {
+        if (
+            function_exists(
+                'llama_log_caught_exception'
+            )
+        ) {
+            llama_log_caught_exception(
+                $exception,
+                'admin.system_health.printful_webhook'
+            );
+        }
+
+        return [
+            'key' => 'printful_webhook',
+            'label' => 'Printful webhook',
+            'status' => 'down',
+            'value' => 'Check failed',
+            'detail' =>
+                'Llama Scout could not verify the Printful webhook with Printful. '
+                . 'Check the Printful connection in Integrations.',
+            'icon' => 'fa-shield-halved',
+        ];
+    }
+}
+
