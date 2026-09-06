@@ -246,8 +246,8 @@ require __DIR__ . '/_header.php';
                         <span class="admin-error-ticket-heading">
                             <strong><?= moderation_e((string) $row['reference_code']) ?></strong>
                             <small>
-                                <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?> Â·
-                                <?= $isResolved ? 'Resolved' : 'Open' ?> Â·
+                                <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?> &middot;
+                                <?= $isResolved ? 'Resolved' : 'Open' ?> &middot;
                                 Last seen <?= moderation_e((string) ($row['last_seen_at'] ?: $row['created_at'])) ?> UTC
                             </small>
                         </span>
