@@ -1,0 +1,171 @@
+/* =========================================================
+   LLAMA SCOUT CONTACT + SUPPORT
+   Only contact.php belongs here.
+   ========================================================= */
+
+.support-form {
+    display: grid;
+    gap: 18px;
+}
+
+.support-form > label,
+.support-form-grid label {
+    display: grid;
+    gap: 7px;
+}
+
+.support-form > label > span,
+.support-form-grid label > span {
+    font-weight: 800;
+}
+
+.support-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.support-form input,
+.support-form select {
+    min-height: 48px;
+
+    padding: 10px 13px;
+}
+
+.support-form textarea {
+    min-height: 190px;
+
+    padding: 12px 13px;
+
+    resize: vertical;
+}
+
+.support-form input:focus-visible,
+.support-form select:focus-visible,
+.support-form textarea:focus-visible {
+    outline: 3px solid color-mix(
+        in srgb,
+        var(--text) 24%,
+        transparent
+    );
+    outline-offset: 2px;
+}
+
+.support-form-note {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    line-height: 1.55;
+}
+
+
+/* Submit button */
+
+.support-form > .button {
+    width: fit-content;
+    min-height: 46px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 10px 18px;
+
+    border: 1px solid var(--text);
+    border-radius: 999px;
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-weight: 850;
+    line-height: 1;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    cursor: pointer;
+}
+
+.support-form > .button:hover {
+    opacity: .9;
+}
+
+.support-form > .button:focus-visible {
+    outline: 3px solid color-mix(
+        in srgb,
+        var(--text) 28%,
+        transparent
+    );
+    outline-offset: 3px;
+}
+
+
+/* Support notices */
+
+.support-message {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--surface);
+}
+
+.support-message strong {
+    display: block;
+}
+
+.support-message p {
+    margin: 5px 0 0;
+}
+
+.support-message.is-success {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.support-message.is-error {
+    border-color: color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+}
+
+
+/* Responsive */
+
+@media (max-width: 700px) {
+
+    .support-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .support-form > .button {
+        width: 100%;
+    }
+}
