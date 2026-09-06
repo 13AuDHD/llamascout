@@ -128,7 +128,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account-scout-onboarding.css"
+    href="https://llamascout.com/css/account/features/scout-onboarding.css"
 >
 
 <section class="account-scout-page">
