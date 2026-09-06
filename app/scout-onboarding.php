@@ -100,6 +100,64 @@ function llama_scout_onboarding_training(
 }
 
 
+function llama_scout_status_history_add(
+    PDO $db,
+    int $scoutProfileId,
+    int $userId,
+    string $eventType,
+    ?string $fromStatus,
+    ?string $toStatus,
+    ?int $actorUserId,
+    string $actorType,
+    string $summary,
+    array $metadata = []
+): void {
+    $metadataJson =
+        $metadata
+            ? json_encode(
+                $metadata,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+            )
+            : null;
+
+    if (
+        $metadata !== []
+        && $metadataJson === false
+    ) {
+        throw new RuntimeException(
+            'Scout status history could not be encoded.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO scout_status_history (
+            scout_profile_id,
+            user_id,
+            event_type,
+            from_status,
+            to_status,
+            actor_user_id,
+            actor_type,
+            summary,
+            metadata_json
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+
+    $stmt->execute([
+        $scoutProfileId,
+        $userId,
+        $eventType,
+        $fromStatus,
+        $toStatus,
+        $actorUserId,
+        $actorType,
+        $summary,
+        $metadataJson,
+    ]);
+}
+
+
 function llama_scout_onboarding_status_label(
     string $status
 ): string {
@@ -437,6 +495,11 @@ function llama_scout_admin_invite(
         );
     }
 
+    $beforeStatus =
+        $existing
+            ? (string) $existing['status']
+            : null;
+
     $db->beginTransaction();
 
     try {
@@ -506,10 +569,6 @@ function llama_scout_admin_invite(
                 (int) $db->lastInsertId();
         }
 
-        /*
-         * A re-invitation starts the application and training
-         * cleanly while preserving the Scout profile history.
-         */
         $db->prepare(
             'DELETE FROM scout_applications
              WHERE scout_profile_id = ?
@@ -527,6 +586,24 @@ function llama_scout_admin_invite(
             $profileId,
             $candidateId,
         ]);
+
+        llama_scout_status_history_add(
+            $db,
+            $profileId,
+            $candidateId,
+            'invitation_sent',
+            $beforeStatus,
+            'invited',
+            $actorUserId,
+            'admin',
+            $beforeStatus === null
+                ? 'Scout invitation sent.'
+                : 'Scout invitation sent again.',
+            [
+                'expires_days' =>
+                    LLAMA_SCOUT_INVITE_DAYS,
+            ]
+        );
 
         admin_users_audit(
             $db,
@@ -605,34 +682,58 @@ function llama_scout_accept_invitation(
         );
     }
 
-    $stmt = $db->prepare(
-        'UPDATE scout_profiles
-         SET
-            status = "application_started",
-            application_started_at =
-                COALESCE(
-                    application_started_at,
-                    CURRENT_TIMESTAMP
-                ),
-            updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?
-           AND user_id = ?
-           AND status = "invited"
-           AND (
-                invitation_expires_at IS NULL
-                OR invitation_expires_at >= CURRENT_TIMESTAMP
-           )'
-    );
+    $db->beginTransaction();
 
-    $stmt->execute([
-        (int) $profile['id'],
-        $userId,
-    ]);
-
-    if ($stmt->rowCount() < 1) {
-        throw new RuntimeException(
-            'The invitation could not be accepted. Reload and try again.'
+    try {
+        $stmt = $db->prepare(
+            'UPDATE scout_profiles
+             SET
+                status = "application_started",
+                application_started_at =
+                    COALESCE(
+                        application_started_at,
+                        CURRENT_TIMESTAMP
+                    ),
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+               AND user_id = ?
+               AND status = "invited"
+               AND (
+                    invitation_expires_at IS NULL
+                    OR invitation_expires_at >= CURRENT_TIMESTAMP
+               )'
         );
+
+        $stmt->execute([
+            (int) $profile['id'],
+            $userId,
+        ]);
+
+        if ($stmt->rowCount() < 1) {
+            throw new RuntimeException(
+                'The invitation could not be accepted. Reload and try again.'
+            );
+        }
+
+        llama_scout_status_history_add(
+            $db,
+            (int) $profile['id'],
+            $userId,
+            'invitation_accepted',
+            'invited',
+            'application_started',
+            $userId,
+            'candidate',
+            'Scout invitation accepted.'
+        );
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
     }
 }
 
@@ -641,23 +742,64 @@ function llama_scout_decline_invitation(
     PDO $db,
     int $userId
 ): void {
-    $stmt = $db->prepare(
-        'UPDATE scout_profiles
-         SET
-            status = "declined",
-            updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = ?
-           AND status = "invited"'
-    );
+    $profile =
+        llama_scout_onboarding_profile(
+            $db,
+            $userId
+        );
 
-    $stmt->execute([
-        $userId,
-    ]);
-
-    if ($stmt->rowCount() < 1) {
+    if (
+        !$profile
+        || (string) $profile['status'] !== 'invited'
+    ) {
         throw new RuntimeException(
             'This invitation can no longer be declined.'
         );
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $stmt = $db->prepare(
+            'UPDATE scout_profiles
+             SET
+                status = "declined",
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+               AND user_id = ?
+               AND status = "invited"'
+        );
+
+        $stmt->execute([
+            (int) $profile['id'],
+            $userId,
+        ]);
+
+        if ($stmt->rowCount() < 1) {
+            throw new RuntimeException(
+                'This invitation can no longer be declined.'
+            );
+        }
+
+        llama_scout_status_history_add(
+            $db,
+            (int) $profile['id'],
+            $userId,
+            'invitation_declined',
+            'invited',
+            'declined',
+            $userId,
+            'candidate',
+            'Scout invitation declined.'
+        );
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
     }
 }
 
@@ -946,6 +1088,18 @@ function llama_scout_save_application(
             $userId,
         ]);
 
+        llama_scout_status_history_add(
+            $db,
+            (int) $profile['id'],
+            $userId,
+            'application_submitted',
+            'application_started',
+            'application_submitted',
+            $userId,
+            'candidate',
+            'About You application submitted.'
+        );
+
         $db->commit();
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
@@ -984,67 +1138,96 @@ function llama_scout_begin_training(
         );
     }
 
-    $training =
-        llama_scout_onboarding_training(
-            $db,
-            (int) $profile['id'],
-            $userId
-        );
+    $beforeStatus =
+        (string) $profile['status'];
 
-    if (
-        !$training
-        && (string) $profile['status']
-            !== 'pending_approval'
-    ) {
-        $stmt = $db->prepare(
-            'INSERT INTO scout_training (
-                scout_profile_id,
-                user_id,
-                training_version,
-                video_started_at
-             ) VALUES (?, ?, ?, CURRENT_TIMESTAMP)'
-        );
+    $db->beginTransaction();
 
-        $stmt->execute([
-            (int) $profile['id'],
-            $userId,
-            LLAMA_SCOUT_TRAINING_VERSION,
-        ]);
-
+    try {
         $training =
             llama_scout_onboarding_training(
                 $db,
                 (int) $profile['id'],
                 $userId
             );
-    }
 
-    if (
-        (string) $profile['status']
-        === 'application_submitted'
-    ) {
-        $db->prepare(
-            'UPDATE scout_profiles
-             SET
-                status = "training",
-                training_started_at =
-                    COALESCE(
-                        training_started_at,
-                        CURRENT_TIMESTAMP
-                    ),
-                updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?
-               AND user_id = ?
-               AND status = "application_submitted"'
-        )->execute([
-            (int) $profile['id'],
-            $userId,
-        ]);
-    }
+        if (
+            !$training
+            && $beforeStatus !== 'pending_approval'
+        ) {
+            $stmt = $db->prepare(
+                'INSERT INTO scout_training (
+                    scout_profile_id,
+                    user_id,
+                    training_version,
+                    video_started_at
+                 ) VALUES (?, ?, ?, CURRENT_TIMESTAMP)'
+            );
 
-    return
-        $training
-        ?: [];
+            $stmt->execute([
+                (int) $profile['id'],
+                $userId,
+                LLAMA_SCOUT_TRAINING_VERSION,
+            ]);
+
+            $training =
+                llama_scout_onboarding_training(
+                    $db,
+                    (int) $profile['id'],
+                    $userId
+                );
+        }
+
+        if ($beforeStatus === 'application_submitted') {
+            $update = $db->prepare(
+                'UPDATE scout_profiles
+                 SET
+                    status = "training",
+                    training_started_at =
+                        COALESCE(
+                            training_started_at,
+                            CURRENT_TIMESTAMP
+                        ),
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?
+                   AND user_id = ?
+                   AND status = "application_submitted"'
+            );
+
+            $update->execute([
+                (int) $profile['id'],
+                $userId,
+            ]);
+
+            if ($update->rowCount() !== 1) {
+                throw new RuntimeException(
+                    'Scout training could not be started. Reload and try again.'
+                );
+            }
+
+            llama_scout_status_history_add(
+                $db,
+                (int) $profile['id'],
+                $userId,
+                'training_started',
+                'application_submitted',
+                'training',
+                $userId,
+                'candidate',
+                'Scout training started.'
+            );
+        }
+
+        $db->commit();
+
+        return $training ?: [];
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
 
 
@@ -1118,15 +1301,6 @@ function llama_scout_complete_training(
     $db->beginTransaction();
 
     try {
-        /*
-         * Training version 2 restores the Scout orientation video.
-         * The page requires the video to reach its end before the
-         * candidate can attest that it was watched. The remaining
-         * acknowledgements are individually required by the POST
-         * validation above. The four historical acknowledgement
-         * columns remain the compact persisted completion summary
-         * used by existing readiness checks.
-         */
         $db->prepare(
             'UPDATE scout_training
              SET
@@ -1161,7 +1335,7 @@ function llama_scout_complete_training(
             $userId,
         ]);
 
-        $db->prepare(
+        $update = $db->prepare(
             'UPDATE scout_profiles
              SET
                 status = "pending_approval",
@@ -1179,10 +1353,34 @@ function llama_scout_complete_training(
              WHERE id = ?
                AND user_id = ?
                AND status = "training"'
-        )->execute([
+        );
+
+        $update->execute([
             (int) $profile['id'],
             $userId,
         ]);
+
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Scout training completion could not be saved. Reload and try again.'
+            );
+        }
+
+        llama_scout_status_history_add(
+            $db,
+            (int) $profile['id'],
+            $userId,
+            'training_completed',
+            'training',
+            'pending_approval',
+            $userId,
+            'candidate',
+            'Scout training and acknowledgements completed.',
+            [
+                'training_version' =>
+                    LLAMA_SCOUT_TRAINING_VERSION,
+            ]
+        );
 
         $db->commit();
     } catch (Throwable $exception) {
@@ -1259,6 +1457,9 @@ function llama_scout_admin_review(
     $userId =
         (int) $profile['user_id'];
 
+    $beforeStatus =
+        (string) $profile['status'];
+
     $application =
         llama_scout_onboarding_application(
             $db,
@@ -1331,7 +1532,7 @@ function llama_scout_admin_review(
     try {
         if ($action === 'approve') {
             if (
-                (string) $profile['status']
+                $beforeStatus
                 !== 'pending_approval'
             ) {
                 throw new RuntimeException(
@@ -1416,10 +1617,6 @@ function llama_scout_admin_review(
                 );
             }
 
-            /*
-             * One rank authority:
-             * current role + permanent initial approval history.
-             */
             llama_change_scout_rank(
                 $db,
                 $userId,
@@ -1432,15 +1629,6 @@ function llama_scout_admin_review(
                     : 'Initial Llama Scout approval.'
             );
 
-            /*
-             * A non-paying Scout is represented as complimentary
-             * through the same active-through date.
-             *
-             * Paid Stripe billing stays truthful through the
-             * already-paid period. Active Scout access is provided
-             * independently by app/access.php, then Stripe renewal
-             * is scheduled to stop after the DB approval commits.
-             */
             if (!$hasPaidSubscription) {
                 $db->prepare(
                     'UPDATE users
@@ -1486,10 +1674,16 @@ function llama_scout_admin_review(
             $summary =
                 'Approved Scout onboarding and activated Scout access.';
 
+            $historyEvent =
+                'onboarding_approved';
+
+            $historyStatus =
+                'active';
+
         } elseif ($action === 'return') {
             if (
                 !in_array(
-                    (string) $profile['status'],
+                    $beforeStatus,
                     [
                         'application_submitted',
                         'training',
@@ -1508,8 +1702,11 @@ function llama_scout_admin_review(
                  SET
                     status = "application_started",
                     application_submitted_at = NULL,
-                    training_started_at = NULL,
                     training_completed_at = NULL,
+                    approved_at = NULL,
+                    approved_by = NULL,
+                    scout_started_at = NULL,
+                    active_through = NULL,
                     updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?
                    AND user_id = ?'
@@ -1538,7 +1735,6 @@ function llama_scout_admin_review(
                 $db->prepare(
                     'UPDATE scout_training
                      SET
-                        video_started_at = NULL,
                         video_completed_at = NULL,
                         acknowledged_tools = 0,
                         acknowledged_accuracy = 0,
@@ -1558,10 +1754,16 @@ function llama_scout_admin_review(
             $summary =
                 'Returned Scout onboarding for changes.';
 
+            $historyEvent =
+                'onboarding_returned';
+
+            $historyStatus =
+                'application_started';
+
         } else {
             if (
                 !in_array(
-                    (string) $profile['status'],
+                    $beforeStatus,
                     [
                         'invited',
                         'application_started',
@@ -1609,7 +1811,31 @@ function llama_scout_admin_review(
 
             $summary =
                 'Declined Scout onboarding.';
+
+            $historyEvent =
+                'onboarding_declined';
+
+            $historyStatus =
+                'declined';
         }
+
+        llama_scout_status_history_add(
+            $db,
+            $profileId,
+            $userId,
+            $historyEvent,
+            $beforeStatus,
+            $historyStatus,
+            $actorUserId,
+            'admin',
+            $summary,
+            [
+                'notes' =>
+                    $notes !== ''
+                        ? $notes
+                        : null,
+            ]
+        );
 
         admin_users_audit(
             $db,
