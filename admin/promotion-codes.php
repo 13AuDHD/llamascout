@@ -437,7 +437,7 @@ require __DIR__ . '/_header.php';
                                     'M j, Y g:i A T'
                                 )
                             ) ?>
-                            â
+                            &rarr;
                             <?= moderation_e(
                                 llama_format_datetime(
                                     (string) $code['ends_at'],
