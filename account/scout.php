@@ -441,7 +441,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account-scout-dashboard.css"
+    href="https://llamascout.com/css/account/features/scout-dashboard.css"
 >
 
 <section class="scout-basecamp-page">
