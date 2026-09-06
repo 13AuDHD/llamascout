@@ -4,53 +4,77 @@ declare(strict_types=1);
 
 function llama_error_ensure_table(PDO $db): void
 {
-    $db->exec(
-        "CREATE TABLE IF NOT EXISTS application_errors (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            reference_code VARCHAR(24) NOT NULL,
-            severity VARCHAR(20) NOT NULL DEFAULT 'error',
-            exception_class VARCHAR(190) NULL,
-            message TEXT NOT NULL,
-            action VARCHAR(190) NULL,
-            request_method VARCHAR(12) NULL,
-            request_path VARCHAR(500) NULL,
-            user_id BIGINT UNSIGNED NULL,
-            file_path VARCHAR(500) NULL,
-            line_number INT UNSIGNED NULL,
-            trace MEDIUMTEXT NULL,
-            context_json MEDIUMTEXT NULL,
-            signature_hash CHAR(64) NULL,
-            occurrence_count INT UNSIGNED NOT NULL DEFAULT 1,
-            first_seen_at DATETIME NULL,
-            last_seen_at DATETIME NULL,
-            resolution_status VARCHAR(20) NOT NULL DEFAULT 'open',
-            resolved_at DATETIME NULL,
-            resolved_by BIGINT UNSIGNED NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY uq_application_errors_reference (reference_code),
-            KEY idx_application_errors_created (created_at),
-            KEY idx_application_errors_user (user_id),
-            KEY idx_application_errors_action (action),
-            KEY idx_application_errors_signature (signature_hash)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    /*
+     * Database schema belongs to deployment/migration work.
+     */
+
+    $requiredColumns = [
+        'id',
+        'reference_code',
+        'severity',
+        'exception_class',
+        'message',
+        'action',
+        'request_method',
+        'request_path',
+        'user_id',
+        'file_path',
+        'line_number',
+        'trace',
+        'context_json',
+        'signature_hash',
+        'occurrence_count',
+        'first_seen_at',
+        'last_seen_at',
+        'resolution_status',
+        'resolved_at',
+        'resolved_by',
+        'created_at',
+    ];
+
+    $placeholders = implode(
+        ',',
+        array_fill(
+            0,
+            count($requiredColumns),
+            '?'
+        )
     );
 
-    // Keep existing installations in sync when this feature is added after
-    // the table was originally created. MariaDB 10.11 supports IF NOT EXISTS.
-    $db->exec(
-        "ALTER TABLE application_errors
-            ADD COLUMN IF NOT EXISTS signature_hash CHAR(64) NULL AFTER context_json,
-            ADD COLUMN IF NOT EXISTS occurrence_count INT UNSIGNED NOT NULL DEFAULT 1 AFTER signature_hash,
-            ADD COLUMN IF NOT EXISTS first_seen_at DATETIME NULL AFTER occurrence_count,
-            ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL AFTER first_seen_at,
-            ADD COLUMN IF NOT EXISTS resolution_status VARCHAR(20) NOT NULL DEFAULT 'open' AFTER last_seen_at,
-            ADD COLUMN IF NOT EXISTS resolved_at DATETIME NULL AFTER resolution_status,
-            ADD COLUMN IF NOT EXISTS resolved_by BIGINT UNSIGNED NULL AFTER resolved_at,
-            ADD INDEX IF NOT EXISTS idx_application_errors_signature (signature_hash),
-            ADD INDEX IF NOT EXISTS idx_application_errors_resolution (resolution_status),
-            ADD INDEX IF NOT EXISTS idx_application_errors_resolved_by (resolved_by)"
+    $stmt = $db->prepare(
+        'SELECT COLUMN_NAME
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME IN (' . $placeholders . ')'
     );
+
+    $stmt->execute(
+        array_merge(
+            ['application_errors'],
+            $requiredColumns
+        )
+    );
+
+    $foundColumns = $stmt->fetchAll(
+        PDO::FETCH_COLUMN
+    ) ?: [];
+
+    if (
+        count(
+            array_diff(
+                $requiredColumns,
+                array_map(
+                    'strval',
+                    $foundColumns
+                )
+            )
+        ) > 0
+    ) {
+        throw new RuntimeException(
+            'Application error storage is not initialized.'
+        );
+    }
 }
 
 function llama_error_retention_days(PDO $db): int
