@@ -74,9 +74,39 @@ function llama_ensure_scout_rank_history_table(
     PDO $db
 ): void {
 
+    /*
+     * Do not execute CREATE TABLE from inside an active transaction.
+     * MariaDB/MySQL DDL causes an implicit COMMIT, which would destroy
+     * the atomicity of workflows such as Scout onboarding approval.
+     */
+    $existsStmt =
+        $db->prepare(
+            '
+            SELECT 1
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+            LIMIT 1
+            '
+        );
+
+    $existsStmt->execute([
+        'scout_rank_history'
+    ]);
+
+    if ($existsStmt->fetchColumn()) {
+        return;
+    }
+
+    if ($db->inTransaction()) {
+        throw new RuntimeException(
+            'Scout rank history storage is unavailable. No Scout changes were saved.'
+        );
+    }
+
     $db->exec(
         '
-        CREATE TABLE IF NOT EXISTS scout_rank_history
+        CREATE TABLE scout_rank_history
         (
             id
                 BIGINT UNSIGNED
@@ -153,9 +183,7 @@ function llama_ensure_scout_rank_history_table(
         COLLATE=utf8mb4_unicode_ci
         '
     );
-
 }
-
 
 /* =========================================================
    NORMALIZE RANK
