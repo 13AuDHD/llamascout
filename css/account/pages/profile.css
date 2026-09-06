@@ -1,0 +1,502 @@
+@import url("../core.css");
+
+/* =========================================================
+   LLAMA SCOUT ACCOUNT PROFILE EDITOR
+   ========================================================= */
+
+.community-profile-editor {
+    width:
+        min(
+            1100px,
+            calc(100% - 32px)
+        );
+
+    display: grid;
+    gap: 28px;
+
+    margin: 0 auto;
+
+    padding:
+        34px
+        0
+        72px;
+}
+
+.community-profile-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.community-profile-editor-header > div:first-child {
+    min-width: 0;
+}
+
+.community-profile-editor-header h1 {
+    margin: 0;
+
+    overflow-wrap: anywhere;
+}
+
+.community-profile-editor-header p {
+    max-width: 680px;
+
+    margin:
+        6px
+        0
+        0;
+
+    color: var(--text-muted);
+
+    line-height: 1.55;
+}
+
+.community-profile-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    flex: 0 0 auto;
+}
+
+
+/* =========================================================
+   SECTIONS
+   ========================================================= */
+
+.community-profile-section {
+    min-width: 0;
+
+    display: grid;
+    gap: 20px;
+
+    padding: 22px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-radius);
+
+    background: var(--surface);
+}
+
+.community-profile-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.community-profile-section-heading h2 {
+    margin: 0;
+}
+
+.community-profile-section-copy {
+    max-width: 760px;
+
+    margin:
+        -4px
+        0
+        0;
+
+    color: var(--text-muted);
+
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   PROFILE PHOTOS
+   ========================================================= */
+
+.community-profile-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.community-profile-avatar-row p {
+    margin:
+        4px
+        0
+        0;
+
+    color: var(--text-muted);
+}
+
+.community-profile-avatar-large {
+    width: 128px;
+    height: 128px;
+
+    display: block;
+
+    flex: 0 0 128px;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--background);
+
+    object-fit: cover;
+}
+
+.community-profile-image-manager {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(170px, 1fr)
+        );
+    gap: 14px;
+}
+
+.community-profile-image-card {
+    min-width: 0;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-radius);
+
+    background: var(--background);
+}
+
+.community-profile-image-card > img {
+    width: 100%;
+
+    display: block;
+
+    aspect-ratio: 1 / 1;
+
+    object-fit: cover;
+}
+
+.community-profile-image-card-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    padding: 11px;
+}
+
+.community-profile-image-card-body form {
+    margin: 0;
+}
+
+.community-profile-primary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding:
+        6px
+        9px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: .8rem;
+    font-weight: 800;
+}
+
+.community-profile-photo-upload-form {
+    display: grid;
+    gap: 14px;
+}
+
+
+/* =========================================================
+   BADGES
+   ========================================================= */
+
+.community-badge-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(220px, 1fr)
+        );
+    gap: 12px;
+}
+
+.community-badge-card {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        52px
+        minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.community-badge-icon {
+    width: 50px;
+    height: 50px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--surface);
+}
+
+.community-badge-icon img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: contain;
+}
+
+.community-badge-card strong,
+.community-badge-card p {
+    margin: 0;
+}
+
+.community-badge-card p {
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+
+/* =========================================================
+   PROFILE FORM
+   ========================================================= */
+
+.community-profile-form {
+    display: grid;
+    gap: 24px;
+}
+
+.community-profile-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 16px;
+}
+
+.community-profile-field {
+    min-width: 0;
+
+    display: grid;
+    gap: 7px;
+}
+
+.community-profile-field-wide {
+    grid-column: 1 / -1;
+}
+
+.community-profile-field > span {
+    color: var(--text);
+
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.community-profile-field input,
+.community-profile-field textarea {
+    width: 100%;
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    padding:
+        11px
+        12px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.community-profile-field textarea {
+    resize: vertical;
+
+    line-height: 1.55;
+}
+
+.community-profile-field small {
+    color: var(--text-muted);
+
+    line-height: 1.45;
+}
+
+.community-profile-field input:focus-visible,
+.community-profile-field textarea:focus-visible {
+    border-color: var(--focus);
+}
+
+
+/* =========================================================
+   SOCIAL HANDLE INPUTS
+   ========================================================= */
+
+.profile-handle-input {
+    display: grid;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+    align-items: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: var(--account-control-radius);
+
+    background: var(--background);
+}
+
+.profile-handle-input > span {
+    padding:
+        10px
+        0
+        10px
+        12px;
+
+    color: var(--text-muted);
+
+    font-weight: 800;
+}
+
+.profile-handle-input input {
+    border: 0;
+    border-radius: 0;
+
+    background: transparent;
+}
+
+.profile-handle-input:focus-within {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   VISIBILITY
+   ========================================================= */
+
+.community-profile-visibility-toggle {
+    display: grid;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+
+    cursor: pointer;
+}
+
+.community-profile-visibility-toggle input {
+    margin-top: 4px;
+}
+
+.community-profile-visibility-toggle > span {
+    display: grid;
+    gap: 5px;
+}
+
+.community-profile-visibility-toggle small {
+    color: var(--text-muted);
+
+    line-height: 1.5;
+}
+
+.community-profile-save-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+    .community-profile-editor {
+        width:
+            min(
+                100% - 20px,
+                1100px
+            );
+
+        gap: 22px;
+
+        padding-top: 24px;
+    }
+
+    .community-profile-editor-header {
+        display: grid;
+    }
+
+    .community-profile-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .community-profile-field-wide {
+        grid-column: auto;
+    }
+
+    .community-profile-avatar-row {
+        align-items: flex-start;
+    }
+
+    .community-profile-avatar-large {
+        width: 110px;
+        height: 110px;
+
+        flex-basis: 110px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .community-profile-section {
+        padding: 16px;
+    }
+
+    .community-profile-avatar-row {
+        display: grid;
+    }
+
+    .community-profile-avatar-large {
+        width: 96px;
+        height: 96px;
+    }
+
+    .community-profile-editor-actions,
+    .community-profile-editor-actions a,
+    .community-profile-save-row,
+    .community-profile-save-row button {
+        width: 100%;
+    }
+
+    .community-profile-editor-actions a,
+    .community-profile-save-row button {
+        justify-content: center;
+    }
+}
