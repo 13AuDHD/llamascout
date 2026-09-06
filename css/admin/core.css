@@ -396,13 +396,6 @@
     align-items: start;
 }
 
-
-/* =========================================================
-   TOP-LEVEL PAGE FLOW
-   The page container owns spacing between direct child panels.
-   Panels themselves remain spacing-neutral.
-   ========================================================= */
-
 .admin-main > .admin-panel + .admin-panel {
     margin-top: var(--admin-panel-gap);
 }
@@ -770,10 +763,6 @@
     font-size: .82rem;
 }
 
-
-
-
-
 /* =========================================================
    SHARED USER IDENTITY
    ========================================================= */
@@ -1003,8 +992,6 @@
     }
 }
 
-
-
 /* =========================================================
    SHARED DESTRUCTIVE ACTIONS
    ========================================================= */
@@ -1051,10 +1038,8 @@
     );
 }
 
-
 /* =========================================================
    ADMIN TOGGLES
-   Shared switch controls used throughout Admin.
    ========================================================= */
 
 .admin-toggle {
@@ -1150,9 +1135,6 @@
     line-height: 1.4;
 }
 
-
-/* Toggle used as a submit action */
-
 .admin-toggle-action {
     display: inline-flex;
     align-items: center;
@@ -1200,9 +1182,6 @@
     font-weight: 800;
 }
 
-
-/* Accessibility */
-
 html[data-reduced-motion="true"] .admin-toggle-track,
 html[data-reduced-motion="true"] .admin-toggle-knob {
     transition: none;
@@ -1223,8 +1202,88 @@ html[data-reduced-motion="true"] .admin-toggle-knob {
 @media (max-width: 860px) {
 
     .admin-sidebar {
+        width: min(260px, 88vw);
         transform: translateX(-102%);
         transition: transform .2s ease;
+    }
+
+    /*
+     * Tablet/mobile Admin navigation needs to fit the growing
+     * navigation set without making ordinary items feel oversized.
+     */
+    .admin-sidebar-top {
+        min-height: 60px;
+        gap: 10px;
+        padding: 8px 12px;
+    }
+
+    .admin-brand {
+        gap: 7px;
+    }
+
+    .admin-brand img {
+        width: 108px;
+        height: 30px;
+    }
+
+    .admin-brand span {
+        padding: 3px 6px;
+        font-size: .6rem;
+    }
+
+    .admin-sidebar-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+    }
+
+    .admin-nav {
+        padding: 7px 9px 10px;
+        scrollbar-width: thin;
+    }
+
+    .admin-nav-label {
+        margin: 10px 8px 3px;
+        font-size: .59rem;
+        letter-spacing: .1em;
+    }
+
+    .admin-nav-label:first-child {
+        margin-top: 2px;
+    }
+
+    .admin-nav-link {
+        min-height: 34px;
+        grid-template-columns: 20px minmax(0, 1fr) auto;
+        gap: 6px;
+        padding: 4px 7px;
+        border-radius: 8px;
+        font-size: .79rem;
+    }
+
+    .admin-nav-link > i {
+        width: 20px;
+        font-size: .88rem;
+    }
+
+    .admin-nav-link b,
+    .admin-nav-link small {
+        min-width: 19px;
+        padding: 2px 5px;
+        font-size: .59rem;
+    }
+
+    .admin-sidebar-bottom {
+        gap: 3px;
+        padding: 7px 9px 9px;
+    }
+
+    .admin-sidebar-utility {
+        min-height: 31px;
+        gap: 7px;
+        padding: 4px 7px;
+        border-radius: 8px;
+        font-size: .73rem;
     }
 
     .admin-sidebar-close {
