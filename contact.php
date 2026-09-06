@@ -9,17 +9,8 @@ $db = db();
 $user = current_user();
 
 $pageTitle = 'Contact & Support | Llama Scout';
-$pageDescription = 'Contact Llama Scout for account, membership, Shop order, place information, accessibility, privacy, technical problems, or general support.';
+$pageDescription = 'Contact Llama Scout for account, membership, Shop order, place information, accessibility, privacy, or general support.';
 $canonicalUrl = 'https://llamascout.com/contact.php';
-
-$errorReference =
-    llama_support_normalize_error_reference(
-        (string) (
-            $_POST['error_reference']
-            ?? $_GET['error']
-            ?? ''
-        )
-    );
 
 $name = trim(
     (string) (
@@ -38,27 +29,17 @@ $email = trim(
     )
 );
 
-$defaultCategory =
-    $errorReference !== null
-        ? 'technical'
-        : 'general';
-
 $category = trim(
     (string) (
         $_POST['category']
-        ?? $defaultCategory
+        ?? 'general'
     )
 );
-
-$defaultSubject =
-    $errorReference !== null
-        ? 'Report site error ' . $errorReference
-        : '';
 
 $subject = trim(
     (string) (
         $_POST['subject']
-        ?? $defaultSubject
+        ?? ''
     )
 );
 
@@ -79,7 +60,6 @@ $message = trim(
 $error = '';
 $success = '';
 $requestId = 0;
-$ticketNumber = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
@@ -101,22 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $user
                 );
 
-            $ticketNumber =
-                llama_support_ticket_number(
-                    $db,
-                    $requestId
-                );
-
             $success =
-                'Your support ticket was sent. Ticket #'
-                . $ticketNumber
+                'Your support request was sent. Reference #'
+                . $requestId
                 . '.';
 
             $subject = '';
             $orderNumber = '';
             $message = '';
-            $errorReference = null;
-            $category = 'general';
 
         } catch (InvalidArgumentException $exception) {
             $error = $exception->getMessage();
@@ -133,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     : null;
 
             $error = $reference
-                ? 'Your request could not be submitted. Error reference '
+                ? 'Your request could not be submitted. Reference '
                     . $reference
                     . '.'
                 : 'Your request could not be submitted.';
@@ -146,6 +118,15 @@ $categories = llama_support_categories();
 require __DIR__ . '/partials/header.php';
 ?>
 
+<link
+    rel="stylesheet"
+    href="<?= htmlspecialchars(
+        $siteUrl . '/css/support.css',
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+>
+
 <div class="legal-page">
 
 <section class="legal-hero">
@@ -157,8 +138,8 @@ require __DIR__ . '/partials/header.php';
 
     <p class="legal-lede">
         Questions about your account, membership, an order,
-        a place listing, accessibility, privacy, a technical
-        problem, or Llama Scout in general can be sent here.
+        a place listing, accessibility, privacy, or Llama Scout
+        in general can be sent here.
     </p>
 
 </div>
@@ -172,7 +153,7 @@ require __DIR__ . '/partials/header.php';
 
 <?php if ($success !== ''): ?>
     <div class="support-message is-success">
-        <strong>Ticket created</strong>
+        <strong>Message received</strong>
         <p><?= htmlspecialchars(
             $success,
             ENT_QUOTES,
@@ -192,24 +173,6 @@ require __DIR__ . '/partials/header.php';
     </div>
 <?php endif; ?>
 
-<?php if ($errorReference !== null): ?>
-    <div class="support-message">
-        <strong>
-            Reporting <?= htmlspecialchars(
-                $errorReference,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </strong>
-        <p>
-            This ticket will be linked to the Llama Scout
-            error reference above. Describe what you were
-            doing when the error appeared and anything you
-            noticed immediately before it happened.
-        </p>
-    </div>
-<?php endif; ?>
-
 <form method="post" class="support-form">
 
 <input
@@ -221,18 +184,6 @@ require __DIR__ . '/partials/header.php';
         'UTF-8'
     ) ?>"
 >
-
-<?php if ($errorReference !== null): ?>
-<input
-    type="hidden"
-    name="error_reference"
-    value="<?= htmlspecialchars(
-        $errorReference,
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
->
-<?php endif; ?>
 
 <div class="support-form-grid">
 
@@ -347,7 +298,7 @@ require __DIR__ . '/partials/header.php';
 </p>
 
 <button type="submit" class="button">
-    Create support ticket
+    Send support request
 </button>
 
 </form>
