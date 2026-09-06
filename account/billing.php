@@ -295,7 +295,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <h2>
                 <?php if (!empty($billingSnapshot['payment_method'])): ?>
                     <?= billing_e(billing_brand((string) $billingSnapshot['payment_method']['brand'])) ?>
-                    â¢â¢â¢â¢ <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
+                    •••• <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
                 <?php elseif ($hasStripeCustomer): ?>
                     Securely stored with Stripe
                 <?php else: ?>

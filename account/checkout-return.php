@@ -113,7 +113,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="eyebrow">Membership checkout</p>
-        <h1><?= $status === 'success' ? 'Youâre in.' : 'Checkout update' ?></h1>
+        <h1><?= $status === 'success' ? 'You’re in.' : 'Checkout update' ?></h1>
         <p><?= checkout_return_e($message) ?></p>
 
         <div class="checkout-return-actions">
