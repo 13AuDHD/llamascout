@@ -396,6 +396,23 @@
     align-items: start;
 }
 
+
+/* =========================================================
+   TOP-LEVEL PAGE FLOW
+   The page container owns spacing between direct child panels.
+   Panels themselves remain spacing-neutral.
+   ========================================================= */
+
+.admin-main > .admin-panel + .admin-panel {
+    margin-top: var(--admin-panel-gap);
+}
+
+.admin-main > .admin-panel-stack + .admin-panel,
+.admin-main > .admin-stack + .admin-panel,
+.admin-main > .admin-grid + .admin-panel {
+    margin-top: var(--admin-panel-gap);
+}
+
 /* =========================================================
    PANEL
    ========================================================= */
@@ -754,6 +771,9 @@
 }
 
 
+
+
+
 /* =========================================================
    SHARED USER IDENTITY
    ========================================================= */
@@ -984,6 +1004,7 @@
 }
 
 
+
 /* =========================================================
    SHARED DESTRUCTIVE ACTIONS
    ========================================================= */
@@ -1028,6 +1049,171 @@
         #c94a4a 12%,
         transparent
     );
+}
+
+
+/* =========================================================
+   ADMIN TOGGLES
+   Shared switch controls used throughout Admin.
+   ========================================================= */
+
+.admin-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+
+    cursor: pointer;
+    user-select: none;
+}
+
+.admin-toggle > input {
+    position: absolute;
+
+    inline-size: 1px;
+    block-size: 1px;
+
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-toggle-track {
+    position: relative;
+
+    width: 46px;
+    height: 26px;
+
+    display: inline-block;
+    flex: 0 0 auto;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+
+    transition:
+        background-color .18s ease,
+        border-color .18s ease;
+}
+
+.admin-toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 50%;
+
+    background: var(--text-muted);
+
+    transition:
+        transform .18s ease,
+        background-color .18s ease;
+}
+
+.admin-toggle > input:checked + .admin-toggle-track {
+    border-color: #2e9d58;
+    background: #2e9d58;
+}
+
+.admin-toggle > input:checked + .admin-toggle-track
+.admin-toggle-knob {
+    transform: translateX(20px);
+    background: #ffffff;
+}
+
+.admin-toggle > input:focus-visible + .admin-toggle-track {
+    outline: 3px solid color-mix(
+        in srgb,
+        var(--text) 28%,
+        transparent
+    );
+    outline-offset: 3px;
+}
+
+.admin-toggle-copy {
+    display: grid;
+    gap: 2px;
+}
+
+.admin-toggle-copy strong {
+    font-size: .88rem;
+}
+
+.admin-toggle-copy small {
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+
+/* Toggle used as a submit action */
+
+.admin-toggle-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 5px 8px;
+
+    border: 0;
+    border-radius: var(--admin-control-radius);
+
+    background: transparent;
+    color: var(--text);
+
+    font: inherit;
+    cursor: pointer;
+}
+
+.admin-toggle-action .admin-toggle-track {
+    pointer-events: none;
+}
+
+.admin-toggle-action[aria-pressed="true"]
+.admin-toggle-track {
+    border-color: #2e9d58;
+    background: #2e9d58;
+}
+
+.admin-toggle-action[aria-pressed="true"]
+.admin-toggle-knob {
+    transform: translateX(20px);
+    background: #ffffff;
+}
+
+.admin-toggle-action:focus-visible {
+    outline: 3px solid color-mix(
+        in srgb,
+        var(--text) 28%,
+        transparent
+    );
+    outline-offset: 2px;
+}
+
+.admin-toggle-action-label {
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+
+/* Accessibility */
+
+html[data-reduced-motion="true"] .admin-toggle-track,
+html[data-reduced-motion="true"] .admin-toggle-knob {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .admin-toggle-track,
+    .admin-toggle-knob {
+        transition: none;
+    }
 }
 
 /* =========================================================
