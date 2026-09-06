@@ -70,70 +70,57 @@ function llama_mfa_ensure_tables(
         ?: db();
 
 
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS user_mfa
-        (
-            user_id BIGINT UNSIGNED NOT NULL,
+    $requiredTables = [
+        'user_mfa',
+        'user_mfa_recovery_codes',
+    ];
 
-            secret_ciphertext TEXT NULL,
 
-            enabled_at DATETIME NULL,
+    $stmt =
+        $db->prepare(
+            '
+            SELECT TABLE_NAME
 
-            last_used_step BIGINT NULL,
+            FROM information_schema.TABLES
 
-            created_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
+            WHERE TABLE_SCHEMA = DATABASE()
 
-            updated_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
+              AND TABLE_NAME IN (?, ?)
+            '
+        );
 
-            PRIMARY KEY (user_id),
 
-            CONSTRAINT fk_user_mfa_user
-                FOREIGN KEY (user_id)
-                REFERENCES users(id)
-                ON DELETE CASCADE
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
+    $stmt->execute(
+        $requiredTables
     );
 
 
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS user_mfa_recovery_codes
-        (
-            id BIGINT UNSIGNED NOT NULL
-                AUTO_INCREMENT,
-
-            user_id BIGINT UNSIGNED NOT NULL,
-
-            code_hash VARCHAR(255) NOT NULL,
-
-            used_at DATETIME NULL,
-
-            created_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_user_mfa_recovery_user
-                (user_id),
-
-            CONSTRAINT fk_user_mfa_recovery_user
-                FOREIGN KEY (user_id)
-                REFERENCES users(id)
-                ON DELETE CASCADE
+    $found =
+        $stmt->fetchAll(
+            PDO::FETCH_COLUMN
         )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
+        ?: [];
+
+
+    $missing =
+        array_diff(
+            $requiredTables,
+            array_map(
+                'strval',
+                $found
+            )
+        );
+
+
+    if (
+        $missing
+    ) {
+
+        throw new RuntimeException(
+            'MFA storage is not initialized.'
+        );
+
+    }
 }
 
 
