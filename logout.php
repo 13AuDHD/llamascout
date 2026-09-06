@@ -2,11 +2,22 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/app/bootstrap.php';
+require_once __DIR__ . '/app/auth.php';
 
-$_SESSION = [];
+/*
+ * Use the authoritative logout helper so both the session cookie
+ * and persistent Remember Me authentication are cleared.
+ */
 
-session_destroy();
+logout_user();
 
-header('Location: /login.php');
+header('Cache-Control: no-store, max-age=0');
+header('Pragma: no-cache');
+
+header(
+    'Location: https://account.llamascout.com/login.php',
+    true,
+    303
+);
+
 exit;
