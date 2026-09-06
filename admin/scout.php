@@ -138,6 +138,11 @@ $application = admin_scout_application($db, $scoutProfileId);
 $training = admin_scout_training($db, $scoutProfileId);
 $activity = admin_scout_activity($db, (int) $scout['user_id']);
 $rankHistory = admin_scout_rank_history($db, (int) $scout['user_id']);
+$statusHistory = admin_scout_status_history(
+    $db,
+    $scoutProfileId,
+    (int) $scout['user_id']
+);
 $currentPeriod = admin_scout_current_period($db, $scout);
 $masterQualification = admin_scout_master_qualification($db, $scout);
 $latestExtension =
@@ -216,6 +221,223 @@ $trainingComplete =
 $applicationComplete =
     $application
     && !empty($application['submitted_at']);
+
+$timelineEntries = [];
+
+foreach ($statusHistory as $entry) {
+    $metadata = [];
+
+    if (!empty($entry['metadata_json'])) {
+        $decoded =
+            json_decode(
+                (string) $entry['metadata_json'],
+                true
+            );
+
+        if (is_array($decoded)) {
+            $metadata = $decoded;
+        }
+    }
+
+    $details = [];
+
+    $fromStatus =
+        trim(
+            (string) (
+                $entry['from_status']
+                ?? ''
+            )
+        );
+
+    $toStatus =
+        trim(
+            (string) (
+                $entry['to_status']
+                ?? ''
+            )
+        );
+
+    if ($fromStatus !== '' && $toStatus !== '') {
+        $details[] =
+            llama_scout_onboarding_status_label(
+                $fromStatus
+            )
+            . ' â '
+            . llama_scout_onboarding_status_label(
+                $toStatus
+            );
+    }
+
+    $note =
+        trim(
+            (string) (
+                $metadata['notes']
+                ?? ''
+            )
+        );
+
+    if ($note !== '') {
+        $details[] = $note;
+    }
+
+    $timelineEntries[] = [
+        'occurred_at' =>
+            (string) (
+                $entry['occurred_at']
+                ?? ''
+            ),
+
+        'summary' =>
+            (string) (
+                $entry['summary']
+                ?? 'Scout status updated.'
+            ),
+
+        'actor' =>
+            (string) (
+                $entry['actor_name']
+                ?? 'System'
+            ),
+
+        'detail' =>
+            implode(
+                ' Â· ',
+                $details
+            ),
+
+        'kind' =>
+            'status',
+    ];
+}
+
+foreach ($rankHistory as $entry) {
+    $fromRank =
+        trim(
+            (string) (
+                $entry['from_rank']
+                ?? 'none'
+            )
+        );
+
+    $toRank =
+        trim(
+            (string) (
+                $entry['to_rank']
+                ?? 'none'
+            )
+        );
+
+    $details = [];
+
+    $reason =
+        trim(
+            (string) (
+                $entry['reason']
+                ?? ''
+            )
+        );
+
+    if ($reason !== '') {
+        $details[] =
+            ucwords(
+                str_replace(
+                    '_',
+                    ' ',
+                    $reason
+                )
+            );
+    }
+
+    $rankNotes =
+        trim(
+            (string) (
+                $entry['notes']
+                ?? ''
+            )
+        );
+
+    if ($rankNotes !== '') {
+        $details[] = $rankNotes;
+    }
+
+    $changedBy =
+        (int) (
+            $entry['changed_by']
+            ?? 0
+        );
+
+    $timelineEntries[] = [
+        'occurred_at' =>
+            (string) (
+                $entry['occurred_at']
+                ?? ''
+            ),
+
+        'summary' =>
+            'Rank changed from '
+            . ucwords(
+                str_replace(
+                    ['_', '-'],
+                    ' ',
+                    $fromRank
+                )
+            )
+            . ' to '
+            . ucwords(
+                str_replace(
+                    ['_', '-'],
+                    ' ',
+                    $toRank
+                )
+            )
+            . '.',
+
+        'actor' =>
+            $changedBy > 0
+                ? 'User #' . $changedBy
+                : 'System',
+
+        'detail' =>
+            implode(
+                ' Â· ',
+                $details
+            ),
+
+        'kind' =>
+            'rank',
+    ];
+}
+
+usort(
+    $timelineEntries,
+    static function (
+        array $a,
+        array $b
+    ): int {
+        $aTime =
+            strtotime(
+                (string) (
+                    $a['occurred_at']
+                    ?? ''
+                )
+            )
+            ?: 0;
+
+        $bTime =
+            strtotime(
+                (string) (
+                    $b['occurred_at']
+                    ?? ''
+                )
+            )
+            ?: 0;
+
+        return
+            $bTime
+            <=>
+            $aTime;
+    }
+);
 
 $roles = explode(
     ',',
@@ -304,7 +526,7 @@ require __DIR__ . '/_header.php';
 
             <p>
                 @<?= moderation_e((string) $scout['username']) ?>
-                · Scout profile #<?= (int) $scout['id'] ?>
+                Â· Scout profile #<?= (int) $scout['id'] ?>
             </p>
         </div>
     </div>
@@ -406,7 +628,7 @@ require __DIR__ . '/_header.php';
                                 ?: 'No expiration'
                             )
                         ) ?>
-                        <?= $invitationExpired ? ' · expired' : '' ?>
+                        <?= $invitationExpired ? ' Â· expired' : '' ?>
                     </small>
                 </div>
 
@@ -881,7 +1103,7 @@ require __DIR__ . '/_header.php';
                         <?= moderation_e((string) $latestExtension['started_at']) ?>
                         to
                         <?= moderation_e((string) $latestExtension['ends_at']) ?>
-                        · granted by
+                        Â· granted by
                         <?= moderation_e((string) ($latestExtension['granted_by_name'] ?: 'System')) ?>
                     </small>
                 </div>
@@ -1094,32 +1316,46 @@ require __DIR__ . '/_header.php';
         <section class="admin-panel">
             <header class="admin-panel-header">
                 <div>
-                    <p>Rank History</p>
-                    <h2>Scout Timeline</h2>
+                    <p>History</p>
+                    <h2>Status History</h2>
                 </div>
             </header>
 
-            <?php if (!$rankHistory): ?>
+            <?php if (!$timelineEntries): ?>
                 <div class="admin-empty-state">
-                    <p>No rank changes recorded yet.</p>
+                    <p>No Scout status history recorded yet.</p>
                 </div>
             <?php else: ?>
                 <div class="admin-user-audit-list">
-                    <?php foreach ($rankHistory as $entry): ?>
+                    <?php foreach ($timelineEntries as $entry): ?>
                         <div>
                             <strong>
                                 <?= moderation_e(
-                                    (string) $entry['from_rank']
-                                ) ?>
-                                →
-                                <?= moderation_e(
-                                    (string) $entry['to_rank']
+                                    (string) $entry['summary']
                                 ) ?>
                             </strong>
+
                             <span>
-                                <?= moderation_e((string) $entry['reason']) ?>
-                                · <?= moderation_e((string) $entry['occurred_at']) ?>
+                                <?= moderation_e(
+                                    (string) $entry['actor']
+                                ) ?>
+                                Â·
+                                <?= moderation_e(
+                                    (string) $entry['occurred_at']
+                                ) ?>
                             </span>
+
+                            <?php if (
+                                trim(
+                                    (string) $entry['detail']
+                                ) !== ''
+                            ): ?>
+                                <span>
+                                    <?= moderation_e(
+                                        (string) $entry['detail']
+                                    ) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
