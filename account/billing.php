@@ -177,7 +177,7 @@ $pageDescription = '';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<link rel="stylesheet" href="<?= billing_e($siteUrl . '/css/account-billing.css') ?>">
+<link rel="stylesheet" href="<?= billing_e($siteUrl . '/css/account/pages/billing.css') ?>">
 
 <section class="billing-page">
 
@@ -295,7 +295,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <h2>
                 <?php if (!empty($billingSnapshot['payment_method'])): ?>
                     <?= billing_e(billing_brand((string) $billingSnapshot['payment_method']['brand'])) ?>
-                    •••• <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
+                    â¢â¢â¢â¢ <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
                 <?php elseif ($hasStripeCustomer): ?>
                     Securely stored with Stripe
                 <?php else: ?>
