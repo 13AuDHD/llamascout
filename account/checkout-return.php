@@ -95,9 +95,12 @@ $pageDescription = '';
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<link rel="stylesheet" href="https://llamascout.com/css/account-billing.css">
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/checkout.css"
+>
 
-<section class="billing-page checkout-return-page">
+<section class="checkout-page checkout-return-page">
     <div class="checkout-return-card is-<?= checkout_return_e($status) ?>">
         <div class="checkout-return-icon">
             <?php if ($status === 'success'): ?>
@@ -110,14 +113,14 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="eyebrow">Membership checkout</p>
-        <h1><?= $status === 'success' ? 'You’re in.' : 'Checkout update' ?></h1>
+        <h1><?= $status === 'success' ? 'Youâre in.' : 'Checkout update' ?></h1>
         <p><?= checkout_return_e($message) ?></p>
 
         <div class="checkout-return-actions">
-            <a class="billing-primary-button" href="/billing.php">
+            <a class="checkout-primary-button" href="/billing.php">
                 Membership & billing
             </a>
-            <a class="billing-secondary-button" href="https://llamascout.com/">
+            <a class="checkout-secondary-button" href="https://llamascout.com/">
                 Return to Llama Scout
             </a>
         </div>
