@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-system.php';
+require_once dirname(__DIR__) . '/app/printful-webhook-security.php';
 require_once dirname(__DIR__) . '/app/admin-testing.php';
 require_once __DIR__ . '/_dashboard.php';
 
@@ -309,6 +310,45 @@ $lastErrorCleanup =
 
 $health =
     admin_system_health($db);
+
+/*
+ * Provider-specific integration checks join the same synchronous
+ * System Health card collection. No separate endpoint or JavaScript
+ * renderer is used.
+ */
+$health['cards'][] =
+    llama_printful_system_health_card();
+
+$health['summary'] = [
+    'good' => 0,
+    'attention' => 0,
+    'down' => 0,
+];
+
+foreach ($health['cards'] as $healthCard) {
+    $healthStatus =
+        (string) (
+            $healthCard['status']
+            ?? 'attention'
+        );
+
+    if (
+        !array_key_exists(
+            $healthStatus,
+            $health['summary']
+        )
+    ) {
+        $healthStatus =
+            'attention';
+    }
+
+    $health['summary'][$healthStatus]++;
+}
+
+unset(
+    $healthCard,
+    $healthStatus
+);
 
 $testAccounts =
     admin_testing_accounts($db);
