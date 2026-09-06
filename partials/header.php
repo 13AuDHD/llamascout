@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/shop-cart.php';
 require_once dirname(__DIR__) . '/app/promotion-banner.php';
+require_once dirname(__DIR__) . '/app/page-styles.php';
 
 $user = current_user();
 $config = llama_config();
@@ -37,6 +38,13 @@ $pageSocialType = trim((string) ($pageSocialType ?? 'website'));
 if ($pageSocialType === '') {
     $pageSocialType = 'website';
 }
+
+$requestScript = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+
+$pageStylesheets = llama_merge_page_styles(
+    llama_page_styles($requestScript),
+    $pageStyles ?? []
+);
 
 $activeWebsitePromotion = null;
 
@@ -176,70 +184,16 @@ $promotionBannerEndsAt = $activeWebsitePromotion
         href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>"
     >
 
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/shop.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/share.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/mobile-menu.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/contributor-attribution.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/community-profiles.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/public-facing.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/footer.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/legal.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/about.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/map.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/place-detail.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/photo-uploader.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
-
-    <link
-        rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/promotion-banner.css', ENT_QUOTES, 'UTF-8') ?>"
-    >
+    <?php foreach ($pageStylesheets as $stylesheet): ?>
+        <link
+            rel="stylesheet"
+            href="<?= htmlspecialchars(
+                $siteUrl . '/css/' . $stylesheet,
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
+    <?php endforeach; ?>
 </head>
 
 <body>
