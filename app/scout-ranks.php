@@ -74,11 +74,6 @@ function llama_ensure_scout_rank_history_table(
     PDO $db
 ): void {
 
-    /*
-     * Do not execute CREATE TABLE from inside an active transaction.
-     * MariaDB/MySQL DDL causes an implicit COMMIT, which would destroy
-     * the atomicity of workflows such as Scout onboarding approval.
-     */
     $existsStmt =
         $db->prepare(
             '
@@ -98,90 +93,8 @@ function llama_ensure_scout_rank_history_table(
         return;
     }
 
-    if ($db->inTransaction()) {
-        throw new RuntimeException(
-            'Scout rank history storage is unavailable. No Scout changes were saved.'
-        );
-    }
-
-    $db->exec(
-        '
-        CREATE TABLE scout_rank_history
-        (
-            id
-                BIGINT UNSIGNED
-                NOT NULL
-                AUTO_INCREMENT,
-
-            scout_profile_id
-                BIGINT UNSIGNED
-                NULL,
-
-            user_id
-                BIGINT UNSIGNED
-                NOT NULL,
-
-            from_rank
-                VARCHAR(50)
-                NOT NULL
-                DEFAULT \'none\',
-
-            to_rank
-                VARCHAR(50)
-                NOT NULL
-                DEFAULT \'none\',
-
-            reason
-                VARCHAR(100)
-                NOT NULL,
-
-            changed_by
-                BIGINT UNSIGNED
-                NULL,
-
-            qualification_snapshot
-                JSON
-                NULL,
-
-            notes
-                TEXT
-                NULL,
-
-            occurred_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
-
-            created_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
-
-            PRIMARY KEY
-                (id),
-
-            KEY idx_rank_history_user
-                (
-                    user_id,
-                    occurred_at
-                ),
-
-            KEY idx_rank_history_profile
-                (
-                    scout_profile_id,
-                    occurred_at
-                ),
-
-            KEY idx_rank_history_reason
-                (
-                    reason,
-                    occurred_at
-                )
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
+    throw new RuntimeException(
+        'Scout rank history storage is not initialized.'
     );
 }
 
