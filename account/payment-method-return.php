@@ -103,7 +103,14 @@ $pageRobots = 'noindex,nofollow';
 $pageDescription = '';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<link rel="stylesheet" href="https://llamascout.com/css/account-billing.css">
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/billing.css"
+>
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/checkout.css"
+>
 <section class="billing-page checkout-return-page">
     <div class="checkout-return-card is-<?= payment_return_e($status) ?>">
         <div class="checkout-return-icon">
