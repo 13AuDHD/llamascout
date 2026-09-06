@@ -1,0 +1,525 @@
+/* =========================================================
+   LLAMA SCOUT ACCOUNT: SCOUT BASECAMP
+   ========================================================= */
+
+.account-active-scout-card {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 15px 16px;
+    border: 1px solid rgba(88,166,106,.38);
+    border-radius: 14px;
+    background: rgba(88,166,106,.07);
+}
+
+.account-active-scout-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(88,166,106,.12);
+    color: #58a66a;
+}
+
+.account-active-scout-copy h2 {
+    margin: 2px 0 4px;
+    font-size: 1rem;
+}
+
+.account-active-scout-copy p {
+    margin: 0;
+    font-size: .76rem;
+    line-height: 1.45;
+    opacity: .76;
+}
+
+.account-active-scout-action {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    color: inherit;
+    font-size: .72rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.scout-basecamp-page {
+    width: min(100% - 28px, 1180px);
+    margin: 0 auto;
+    padding: 28px 0 54px;
+}
+
+.scout-basecamp-shell {
+    display: grid;
+    gap: 14px;
+}
+
+.scout-basecamp-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 17px;
+    background: var(--surface, rgba(127,127,127,.05));
+}
+
+.scout-basecamp-hero h1 {
+    margin: 3px 0 6px;
+    font-size: clamp(1.5rem, 4vw, 2.3rem);
+}
+
+.scout-basecamp-hero > div:first-child > p:last-child {
+    max-width: 720px;
+    margin: 0;
+    opacity: .72;
+    line-height: 1.55;
+}
+
+.scout-basecamp-rank {
+    display: grid;
+    min-width: 150px;
+    justify-items: center;
+    gap: 4px;
+    padding: 13px;
+    border: 1px solid rgba(88,166,106,.32);
+    border-radius: 12px;
+    background: rgba(88,166,106,.07);
+}
+
+.scout-basecamp-rank > i {
+    font-size: 1.15rem;
+    color: #58a66a;
+}
+
+.scout-basecamp-rank > span {
+    font-size: .78rem;
+    font-weight: 900;
+}
+
+.scout-basecamp-rank > small {
+    font-size: .59rem;
+    opacity: .67;
+}
+
+.scout-basecamp-notice {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 11px 13px;
+    border: 1px solid rgba(211,168,66,.46);
+    border-radius: 10px;
+}
+
+.scout-basecamp-notice > i {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    color: #d3a842;
+}
+
+.scout-basecamp-notice strong,
+.scout-basecamp-notice span {
+    display: block;
+}
+
+.scout-basecamp-notice strong {
+    font-size: .72rem;
+}
+
+.scout-basecamp-notice span {
+    margin-top: 2px;
+    font-size: .65rem;
+    line-height: 1.45;
+    opacity: .72;
+}
+
+.scout-basecamp-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.scout-basecamp-stat-grid > div {
+    padding: 10px 11px;
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 10px;
+    background: var(--surface, rgba(127,127,127,.05));
+}
+
+.scout-basecamp-stat-grid span,
+.scout-basecamp-stat-grid strong {
+    display: block;
+}
+
+.scout-basecamp-stat-grid span {
+    font-size: .56rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    opacity: .64;
+}
+
+.scout-basecamp-stat-grid strong {
+    margin-top: 3px;
+    font-size: .82rem;
+}
+
+.scout-basecamp-panel {
+    border: 1px solid rgba(127,127,127,.18);
+    border-radius: 14px;
+    background: var(--surface, rgba(127,127,127,.04));
+    overflow: hidden;
+}
+
+.scout-basecamp-panel > header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: start;
+    padding: 13px 14px;
+    border-bottom: 1px solid rgba(127,127,127,.16);
+}
+
+.scout-basecamp-panel > header p,
+.scout-basecamp-panel > header h2 {
+    margin: 0;
+}
+
+.scout-basecamp-panel > header h2 {
+    margin-top: 2px;
+    font-size: .92rem;
+}
+
+.scout-basecamp-panel > header > span {
+    font-size: .61rem;
+    font-weight: 750;
+    opacity: .65;
+}
+
+.scout-basecamp-panel > header > span.is-good {
+    color: #58a66a;
+    opacity: 1;
+}
+
+.scout-basecamp-period-copy {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px;
+}
+
+.scout-basecamp-period-copy strong,
+.scout-basecamp-period-copy span {
+    font-size: .72rem;
+}
+
+.scout-basecamp-period-copy span {
+    opacity: .68;
+}
+
+.scout-basecamp-progress {
+    height: 9px;
+    margin: 0 14px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(127,127,127,.12);
+}
+
+.scout-basecamp-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #58a66a;
+}
+
+.scout-basecamp-period-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 14px;
+}
+
+.scout-basecamp-button {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #172822;
+    border-radius: 8px;
+    background: #172822;
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.scout-basecamp-button.is-secondary {
+    border-color: rgba(127,127,127,.24);
+    background: transparent;
+    color: inherit;
+}
+
+.scout-basecamp-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.scout-basecamp-main-column,
+.scout-basecamp-side-column {
+    display: grid;
+    gap: 14px;
+}
+
+.scout-basecamp-list {
+    display: grid;
+}
+
+.scout-basecamp-list article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(127,127,127,.14);
+}
+
+.scout-basecamp-list article:last-child {
+    border-bottom: 0;
+}
+
+.scout-basecamp-list article span,
+.scout-basecamp-list article strong,
+.scout-basecamp-list article small {
+    display: block;
+}
+
+.scout-basecamp-list article span {
+    font-size: .53rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    opacity: .62;
+}
+
+.scout-basecamp-list article strong {
+    margin-top: 2px;
+    font-size: .7rem;
+}
+
+.scout-basecamp-list article small {
+    margin-top: 2px;
+    font-size: .56rem;
+    opacity: .63;
+}
+
+.scout-basecamp-list article > a {
+    color: inherit;
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.scout-basecamp-list-points {
+    color: #58a66a;
+    font-size: .68rem;
+    font-weight: 900;
+}
+
+.scout-basecamp-attention {
+    color: #d3a842;
+}
+
+.scout-basecamp-empty,
+.scout-basecamp-muted {
+    padding: 14px;
+    font-size: .65rem;
+    opacity: .67;
+}
+
+.scout-basecamp-definition-list {
+    margin: 0;
+}
+
+.scout-basecamp-definition-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(127,127,127,.14);
+}
+
+.scout-basecamp-definition-list > div:last-child {
+    border-bottom: 0;
+}
+
+.scout-basecamp-definition-list dt,
+.scout-basecamp-definition-list dd {
+    margin: 0;
+    font-size: .66rem;
+}
+
+.scout-basecamp-definition-list dt {
+    opacity: .68;
+}
+
+.scout-basecamp-definition-list dd {
+    font-weight: 900;
+}
+
+.scout-basecamp-requirements {
+    display: grid;
+    padding: 7px 13px;
+}
+
+.scout-basecamp-requirements > div {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    align-items: start;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(127,127,127,.14);
+}
+
+.scout-basecamp-requirements > div:last-child {
+    border-bottom: 0;
+}
+
+.scout-basecamp-requirements > div > i {
+    margin-top: 2px;
+    font-size: .65rem;
+    opacity: .5;
+}
+
+.scout-basecamp-requirements > div.is-met > i {
+    color: #58a66a;
+    opacity: 1;
+}
+
+.scout-basecamp-requirements strong,
+.scout-basecamp-requirements small {
+    display: block;
+}
+
+.scout-basecamp-requirements strong {
+    font-size: .64rem;
+}
+
+.scout-basecamp-requirements small {
+    margin-top: 2px;
+    font-size: .56rem;
+    opacity: .64;
+}
+
+.scout-basecamp-master-panel {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+}
+
+.scout-basecamp-master-panel > i {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(88,166,106,.10);
+    color: #58a66a;
+}
+
+.scout-basecamp-master-panel h2,
+.scout-basecamp-master-panel p {
+    margin: 0;
+}
+
+.scout-basecamp-master-panel h2 {
+    margin-top: 2px;
+    font-size: .9rem;
+}
+
+.scout-basecamp-master-panel p:last-child {
+    margin-top: 5px;
+    font-size: .64rem;
+    line-height: 1.45;
+    opacity: .68;
+}
+
+.scout-basecamp-links {
+    display: grid;
+}
+
+.scout-basecamp-links a {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(127,127,127,.14);
+    color: inherit;
+    font-size: .65rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.scout-basecamp-links a:last-child {
+    border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .scout-basecamp-stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .scout-basecamp-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .account-active-scout-card,
+    .scout-basecamp-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .account-active-scout-icon {
+        display: none;
+    }
+
+    .scout-basecamp-rank {
+        justify-items: start;
+    }
+
+    .scout-basecamp-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .scout-basecamp-period-copy {
+        display: grid;
+    }
+}
+
+@media (max-width: 430px) {
+    .scout-basecamp-page {
+        width: min(100% - 18px, 1180px);
+        padding-top: 18px;
+    }
+
+    .scout-basecamp-stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .scout-basecamp-list article {
+        grid-template-columns: 1fr auto;
+    }
+
+    .scout-basecamp-list article > a {
+        grid-column: 1 / -1;
+    }
+}
