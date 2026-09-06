@@ -1202,6 +1202,20 @@ html[data-reduced-motion="true"] .admin-toggle-knob {
     }
 }
 
+
+/* =========================================================
+   WIDESCREEN SAFARI SIDEBAR HEIGHT
+   Keep both bottom utility links inside the visible viewport.
+   Mobile/tablet behavior is intentionally unchanged.
+   ========================================================= */
+
+@media (min-width: 861px) {
+    .admin-sidebar {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+}
+
 /* =========================================================
    RESPONSIVE SHELL
    ========================================================= */
