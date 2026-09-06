@@ -312,16 +312,19 @@ $pageDescription = '';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<link rel="stylesheet" href="https://llamascout.com/css/account-billing.css">
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/checkout.css"
+>
 
 <?php if ($clientSecret !== ''): ?>
 <script src="https://js.stripe.com/clover/stripe.js"></script>
 <?php endif; ?>
 
-<section class="billing-page checkout-page">
+<section class="checkout-page">
 
-<header class="billing-page-header checkout-page-header">
-    <a class="billing-back-link" href="/membership.php?plan=<?= checkout_e($interval) ?>">
+<header class="checkout-page-header">
+    <a class="checkout-back-link" href="/membership.php?plan=<?= checkout_e($interval) ?>">
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
         Change membership
     </a>
@@ -336,11 +339,11 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <?php if ($checkoutError !== ''): ?>
 
-<div class="billing-error-card checkout-error-card">
+<div class="checkout-error-card">
     <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
     <h2>Checkout could not start.</h2>
     <p><?= checkout_e($checkoutError) ?></p>
-    <a class="billing-primary-button" href="/membership.php?plan=<?= checkout_e($interval) ?>">
+    <a class="checkout-primary-button" href="/membership.php?plan=<?= checkout_e($interval) ?>">
         Return to membership
     </a>
 </div>
@@ -403,7 +406,7 @@ require dirname(__DIR__) . '/partials/header.php';
     >
         <div class="checkout-loading">
             <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-            Loading secure payment formâ¦
+            Loading secure payment form&hellip;
         </div>
     </div>
 
