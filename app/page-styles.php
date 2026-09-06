@@ -22,7 +22,32 @@ function llama_page_styles(string $scriptName = ''): array
         'promotion-banner.css',
     ];
 
-    $isAccount = str_contains($path, '/account/');
+    /*
+     * On the account subdomain SCRIPT_NAME is normally just
+     * /profile.php, /index.php, etc. Checking the path alone therefore
+     * misclassified account pages as public pages. Use both the path
+     * and the request host so account.llamascout.com always gets the
+     * account stylesheet manifest.
+     */
+    $requestHost = strtolower(
+        trim(
+            (string) (
+                $_SERVER['HTTP_HOST']
+                ?? ''
+            )
+        )
+    );
+
+    $requestHost = preg_replace(
+        '/:\d+$/',
+        '',
+        $requestHost
+    ) ?: $requestHost;
+
+    $isAccount =
+        str_contains($path, '/account/')
+        || $requestHost === 'account.llamascout.com'
+        || str_starts_with($requestHost, 'account.');
 
     if (
         !$isAccount
