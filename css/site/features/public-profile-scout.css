@@ -34,3 +34,59 @@
 .public-community-profile-scout-badge.is-master {
     border-width: 2px;
 }
+
+
+/* =========================================================
+   PUBLIC PROFILE ACTIONS
+   ========================================================= */
+
+.public-community-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.public-community-profile-actions .place-save-button {
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    box-sizing: border-box;
+
+    margin: 0;
+    padding: 9px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-weight: 750;
+    line-height: 1;
+
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.public-community-profile-actions .place-save-button:hover,
+.public-community-profile-actions .place-save-button:focus-visible {
+    background: var(--background);
+}
+
+@media (max-width: 480px) {
+    .public-community-profile-actions {
+        gap: 8px;
+    }
+
+    .public-community-profile-actions .place-save-button {
+        min-height: 38px;
+        padding: 8px 12px;
+    }
+}
