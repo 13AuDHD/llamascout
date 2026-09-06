@@ -243,6 +243,11 @@ require dirname(__DIR__)
     . '/partials/header.php';
 ?>
 
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/email-preferences.css"
+>
+
 <section class="email-preferences-page">
 
 <div class="email-preferences-container">
