@@ -107,7 +107,14 @@ $pageDescription = '';
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
-<link rel="stylesheet" href="https://llamascout.com/css/account-billing.css">
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/billing.css"
+>
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/account/pages/checkout.css"
+>
 <?php if ($clientSecret !== ''): ?>
 <script src="https://js.stripe.com/v3/"></script>
 <?php endif; ?>
@@ -158,7 +165,7 @@ require dirname(__DIR__) . '/partials/header.php';
             >
                 <div class="checkout-loading" id="payment-method-loading">
                     <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                    Loading secure payment form…
+                    Loading secure payment formâ¦
                 </div>
             </div>
 
@@ -168,7 +175,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <span class="payment-method-submit-label">Save payment method</span>
                 <span class="payment-method-submit-working" hidden>
                     <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                    Saving…
+                    Savingâ¦
                 </span>
             </button>
         </form>
