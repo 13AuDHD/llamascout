@@ -176,9 +176,9 @@ require dirname(__DIR__) . '/partials/header.php';
     <h2>Awaiting Basecamp approval</h2>
 
     <p>
-        There is nothing else you need to submit right now.
-        An Admin can review your About You application and training
-        acknowledgements from Basecamp.
+        You’ve finished everything required for onboarding. Your application
+        and training are now at Basecamp for final review. We’ll update your
+        Scout status once the review is complete.
     </p>
 
     <div class="account-scout-progress-list">
@@ -233,17 +233,19 @@ require dirname(__DIR__) . '/partials/header.php';
         <p class="account-eyebrow">Scout orientation</p>
         <h2>Watch the complete Scout training video</h2>
         <p>
-            This orientation covers what Llama Scout expects in the field,
-            how observations should be collected, and the limits of Scout
-            authority. The final production video is expected to run about
-            four to five minutes. The current file may be a shorter test video.
+            This orientation covers Llama Scout field standards, how
+            observations should be collected and reported, and the
+            responsibilities that come with representing Llama Scout. Watch
+            the complete orientation before continuing to the Scout
+            commitments below.
         </p>
 
         <div class="account-scout-video-wrap">
             <video
-                controls
                 playsinline
                 preload="metadata"
+                controlslist="nodownload noplaybackrate noremoteplayback"
+                disablepictureinpicture
                 data-scout-training-video
             >
                 <source
@@ -252,6 +254,34 @@ require dirname(__DIR__) . '/partials/header.php';
                 >
                 Your browser does not support the Scout training video.
             </video>
+
+            <div class="account-scout-video-controls">
+                <button
+                    type="button"
+                    class="account-scout-video-toggle"
+                    data-scout-video-toggle
+                    aria-label="Play Scout training video"
+                >
+                    <i class="fa-solid fa-play" aria-hidden="true"></i>
+                    <span>Play training</span>
+                </button>
+
+                <div
+                    class="account-scout-video-progress"
+                    role="progressbar"
+                    aria-label="Scout training video progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                    data-scout-video-progress-track
+                >
+                    <span data-scout-video-progress></span>
+                </div>
+
+                <span class="account-scout-video-time" data-scout-video-time>
+                    0:00 watched
+                </span>
+            </div>
         </div>
 
         <div
@@ -395,7 +425,76 @@ require dirname(__DIR__) . '/partials/header.php';
     const confirmLabel = form.querySelector('[data-scout-video-confirm]');
     const status = form.querySelector('[data-scout-video-status]');
     const submit = form.querySelector('[data-scout-training-submit]');
+    const toggle = form.querySelector('[data-scout-video-toggle]');
+    const progress = form.querySelector('[data-scout-video-progress]');
+    const progressTrack = form.querySelector('[data-scout-video-progress-track]');
+    const timeLabel = form.querySelector('[data-scout-video-time]');
+
+    let maxWatched = 0;
+    let guardingSeek = false;
+    let unlocked = false;
+
+    const formatTime = (seconds) => {
+        const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+        const minutes = Math.floor(safe / 60);
+        const remainder = String(safe % 60).padStart(2, '0');
+        return `${minutes}:${remainder}`;
+    };
+
+    const updateVideoUi = () => {
+        if (!video) return;
+
+        const duration = Number.isFinite(video.duration) && video.duration > 0
+            ? video.duration
+            : 0;
+        const percent = duration > 0
+            ? Math.min(100, Math.max(0, (maxWatched / duration) * 100))
+            : 0;
+
+        if (progress) {
+            progress.style.width = `${percent}%`;
+        }
+
+        if (progressTrack) {
+            progressTrack.setAttribute('aria-valuenow', String(Math.round(percent)));
+        }
+
+        if (timeLabel) {
+            timeLabel.textContent = `${formatTime(maxWatched)} watched`;
+        }
+    };
+
+    const updateToggle = () => {
+        if (!toggle || !video) return;
+
+        const icon = toggle.querySelector('i');
+        const label = toggle.querySelector('span');
+        const playing = !video.paused && !video.ended;
+
+        if (icon) {
+            icon.className = playing
+                ? 'fa-solid fa-pause'
+                : 'fa-solid fa-play';
+        }
+
+        if (label) {
+            label.textContent = playing ? 'Pause training' : 'Play training';
+        }
+
+        toggle.setAttribute(
+            'aria-label',
+            playing ? 'Pause Scout training video' : 'Play Scout training video'
+        );
+    };
+
+    const refreshSubmit = () => {
+        const required = [...form.querySelectorAll('input[type="checkbox"][required]')];
+        submit.disabled = watched.value !== '1' || required.some((box) => box.disabled || !box.checked);
+    };
+
     const unlockVideoConfirmation = () => {
+        if (unlocked) return;
+        unlocked = true;
         watched.value = '1';
         confirmBox.disabled = false;
         confirmLabel.classList.remove('is-locked');
@@ -404,13 +503,71 @@ require dirname(__DIR__) . '/partials/header.php';
         refreshSubmit();
     };
 
-    const refreshSubmit = () => {
-        const required = [...form.querySelectorAll('input[type="checkbox"][required]')];
-        submit.disabled = watched.value !== '1' || required.some((box) => box.disabled || !box.checked);
-    };
+    toggle?.addEventListener('click', async () => {
+        if (!video) return;
 
-    video?.addEventListener('ended', unlockVideoConfirmation);
+        try {
+            if (video.paused || video.ended) {
+                await video.play();
+            } else {
+                video.pause();
+            }
+        } catch (error) {
+            status.innerHTML = '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span>The training video could not start. Tap Play training again.</span>';
+        }
+
+        updateToggle();
+    });
+
+    video?.addEventListener('play', updateToggle);
+    video?.addEventListener('pause', updateToggle);
+    video?.addEventListener('loadedmetadata', updateVideoUi);
+
+    video?.addEventListener('timeupdate', () => {
+        if (!video || guardingSeek || unlocked) return;
+
+        const current = video.currentTime;
+
+        if (current <= maxWatched + 1.5) {
+            maxWatched = Math.max(maxWatched, current);
+        }
+
+        updateVideoUi();
+    });
+
+    video?.addEventListener('seeking', () => {
+        if (!video || unlocked || guardingSeek) return;
+
+        if (video.currentTime > maxWatched + 1.5) {
+            guardingSeek = true;
+            video.currentTime = maxWatched;
+            window.setTimeout(() => {
+                guardingSeek = false;
+            }, 0);
+        }
+    });
+
+    video?.addEventListener('ended', () => {
+        if (!video) return;
+
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        const reachedEnd = duration > 0 && maxWatched >= Math.max(0, duration - 1.5);
+
+        if (reachedEnd) {
+            maxWatched = duration;
+            updateVideoUi();
+            unlockVideoConfirmation();
+        } else {
+            video.currentTime = maxWatched;
+            status.innerHTML = '<i class="fa-solid fa-circle-play" aria-hidden="true"></i><span>Continue watching the training video through to the end.</span>';
+        }
+
+        updateToggle();
+    });
+
     form.addEventListener('change', refreshSubmit);
+    updateVideoUi();
+    updateToggle();
     refreshSubmit();
 })();
 </script>
