@@ -164,18 +164,10 @@ function scout_basecamp_date(
         return 'Not set';
     }
 
-    $timestamp =
-        strtotime($value);
-
-    if ($timestamp === false) {
-        return $value;
-    }
-
-    return
-        date(
-            'M j, Y',
-            $timestamp
-        );
+    return llama_format_viewer_date(
+        $value,
+        'M j, Y'
+    );
 }
 
 
