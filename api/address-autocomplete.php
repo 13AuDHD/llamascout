@@ -6,19 +6,200 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store, max-age=0');
+header('Vary: Origin');
 
-$user = current_user();
-$userId = (int) ($user['id'] ?? 0);
+function llama_address_json(
+    array $payload,
+    int $status = 200
+): never {
+    http_response_code($status);
 
-if ($userId < 1) {
-    http_response_code(401);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Sign in to use address lookup.',
-    ]);
+    echo json_encode(
+        $payload,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+    );
 
     exit;
+}
+
+function llama_address_allowed_host(
+    string $host
+): bool {
+    $host =
+        strtolower(
+            trim(
+                preg_replace(
+                    '/:\d+$/',
+                    '',
+                    $host
+                )
+                ?? ''
+            )
+        );
+
+    if ($host === 'llamascout.com') {
+        return true;
+    }
+
+    return str_ends_with(
+        $host,
+        '.llamascout.com'
+    );
+}
+
+function llama_address_request_is_allowed(): bool
+{
+    $origin =
+        trim(
+            (string) (
+                $_SERVER['HTTP_ORIGIN']
+                ?? ''
+            )
+        );
+
+    if ($origin !== '') {
+        $originHost =
+            (string) (
+                parse_url(
+                    $origin,
+                    PHP_URL_HOST
+                )
+                ?? ''
+            );
+
+        return llama_address_allowed_host(
+            $originHost
+        );
+    }
+
+    $referer =
+        trim(
+            (string) (
+                $_SERVER['HTTP_REFERER']
+                ?? ''
+            )
+        );
+
+    if ($referer !== '') {
+        $refererHost =
+            (string) (
+                parse_url(
+                    $referer,
+                    PHP_URL_HOST
+                )
+                ?? ''
+            );
+
+        return llama_address_allowed_host(
+            $refererHost
+        );
+    }
+
+    return false;
+}
+
+$origin =
+    trim(
+        (string) (
+            $_SERVER['HTTP_ORIGIN']
+            ?? ''
+        )
+    );
+
+if ($origin !== '') {
+    $originHost =
+        (string) (
+            parse_url(
+                $origin,
+                PHP_URL_HOST
+            )
+            ?? ''
+        );
+
+    if (
+        llama_address_allowed_host(
+            $originHost
+        )
+    ) {
+        header(
+            'Access-Control-Allow-Origin: '
+            . $origin
+        );
+    }
+}
+
+if (
+    strtoupper(
+        (string) (
+            $_SERVER['REQUEST_METHOD']
+            ?? 'GET'
+        )
+    ) === 'OPTIONS'
+) {
+    if (
+        !llama_address_request_is_allowed()
+    ) {
+        llama_address_json(
+            [
+                'success' => false,
+                'message' => 'Address lookup request is not allowed.',
+            ],
+            403
+        );
+    }
+
+    header(
+        'Access-Control-Allow-Methods: GET, OPTIONS'
+    );
+    header(
+        'Access-Control-Allow-Headers: Accept'
+    );
+    header(
+        'Access-Control-Max-Age: 600'
+    );
+
+    http_response_code(204);
+    exit;
+}
+
+if (
+    strtoupper(
+        (string) (
+            $_SERVER['REQUEST_METHOD']
+            ?? 'GET'
+        )
+    ) !== 'GET'
+) {
+    header('Allow: GET, OPTIONS');
+
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Method not allowed.',
+        ],
+        405
+    );
+}
+
+/*
+ * This is intentionally a reusable browser-facing Llama Scout API.
+ * It is not tied to Scout authentication so checkout, account forms,
+ * admin tools, and future public forms can all use the same service.
+ *
+ * The Geoapify key stays on the server. Browser requests are accepted
+ * only when they originate from llamascout.com or one of its subdomains.
+ */
+if (
+    !llama_address_request_is_allowed()
+) {
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Address lookup request is not allowed.',
+        ],
+        403
+    );
 }
 
 $query =
@@ -29,18 +210,22 @@ $query =
         )
     );
 
+$queryLength =
+    function_exists('mb_strlen')
+        ? mb_strlen($query)
+        : strlen($query);
+
 if (
-    mb_strlen($query) < 3
-    || mb_strlen($query) > 150
+    $queryLength < 3
+    || $queryLength > 150
 ) {
-    http_response_code(400);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Enter at least 3 characters of an address.',
-    ]);
-
-    exit;
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Enter at least 3 characters of an address.',
+        ],
+        400
+    );
 }
 
 $config = llama_config();
@@ -54,14 +239,13 @@ $apiKey =
     );
 
 if ($apiKey === '') {
-    http_response_code(503);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Address lookup is not configured.',
-    ]);
-
-    exit;
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Address lookup is not configured.',
+        ],
+        503
+    );
 }
 
 $url =
@@ -82,14 +266,13 @@ $url =
 $curl = curl_init($url);
 
 if ($curl === false) {
-    http_response_code(503);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Address lookup could not start.',
-    ]);
-
-    exit;
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Address lookup could not start.',
+        ],
+        503
+    );
 }
 
 curl_setopt_array(
@@ -126,21 +309,22 @@ if (
     || $httpStatus >= 300
 ) {
     error_log(
-        'Geoapify Scout address lookup failed. HTTP '
+        'Geoapify address lookup failed. HTTP '
         . $httpStatus
-        . ($curlError !== ''
-            ? ' | ' . $curlError
-            : '')
+        . (
+            $curlError !== ''
+                ? ' | ' . $curlError
+                : ''
+        )
     );
 
-    http_response_code(502);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Address lookup is temporarily unavailable.',
-    ]);
-
-    exit;
+    llama_address_json(
+        [
+            'success' => false,
+            'message' => 'Address lookup is temporarily unavailable.',
+        ],
+        502
+    );
 }
 
 $decoded =
@@ -302,11 +486,9 @@ foreach ($rows as $row) {
     ];
 }
 
-echo json_encode(
+llama_address_json(
     [
         'success' => true,
         'results' => $results,
-    ],
-    JSON_UNESCAPED_SLASHES
-    | JSON_UNESCAPED_UNICODE
+    ]
 );
