@@ -5,6 +5,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/promotion-codes.php';
 
 
+function llama_ensure_promotion_code_maintenance_storage(
+    PDO $db
+): void {
+    $stmt = $db->prepare(
+        'SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'app_maintenance',
+    ]);
+
+    if (!$stmt->fetchColumn()) {
+        throw new RuntimeException(
+            'Promotion code maintenance storage is not initialized. Missing table: app_maintenance'
+        );
+    }
+}
+
+
 function llama_promotion_code_maintenance_is_due(
     PDO $db,
     int $intervalSeconds = 300
@@ -14,19 +37,8 @@ function llama_promotion_code_maintenance_is_due(
         $intervalSeconds
     );
 
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS app_maintenance
-         (
-            maintenance_key VARCHAR(100) NOT NULL,
-            last_run_at DATETIME NULL,
-            updated_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (maintenance_key)
-         )
-         ENGINE=InnoDB
-         DEFAULT CHARSET=utf8mb4
-         COLLATE=utf8mb4_unicode_ci'
+    llama_ensure_promotion_code_maintenance_storage(
+        $db
     );
 
     $stmt = $db->prepare(
@@ -59,6 +71,10 @@ function llama_promotion_code_maintenance_is_due(
 function llama_mark_promotion_code_maintenance_run(
     PDO $db
 ): void {
+    llama_ensure_promotion_code_maintenance_storage(
+        $db
+    );
+
     $stmt = $db->prepare(
         'INSERT INTO app_maintenance
          (
