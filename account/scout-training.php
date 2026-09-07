@@ -136,14 +136,18 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="account-scout-page">
 
-<div class="account-scout-shell">
+<div class="account-scout-shell<?= $status === 'pending_approval'
+    ? ' account-scout-pending-shell'
+    : '' ?>">
 
 <a class="account-scout-back" href="/">
     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
     My account
 </a>
 
-<header class="account-scout-hero">
+<header class="account-scout-hero<?= $status === 'pending_approval'
+    ? ' account-scout-pending-hero'
+    : '' ?>">
     <p class="account-eyebrow">
         <?= $status === 'pending_approval'
             ? 'Step 4 of 5'
@@ -158,7 +162,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <p>
         <?= $status === 'pending_approval'
-            ? 'Your application and training are complete. Basecamp will review your onboarding before Scout access becomes active.'
+            ? 'Your application and training are complete. Basecamp is reviewing your onboarding before Scout access becomes active.'
             : 'Review the Scout operating expectations below and acknowledge each section before finishing training.' ?>
     </p>
 </header>
