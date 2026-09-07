@@ -281,10 +281,6 @@ function admin_fulfillment_sync_order_status(
             )
         );
 
-    /*
-     * Manual terminal states win. A fulfillment update must never
-     * accidentally reopen a cancelled or refunded order.
-     */
     if (
         in_array(
             $current,
@@ -536,7 +532,9 @@ function admin_fulfillment_format_timestamp(
         return 'Not yet';
     }
 
-    return $value;
+    return llama_format_viewer_datetime(
+        $value
+    );
 }
 
 
