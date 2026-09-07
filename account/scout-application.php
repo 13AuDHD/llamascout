@@ -719,7 +719,7 @@ function scout_app_value(
 
         if (!hasResults) {
             setStatus(
-                'No matching addresses found. Keep typing or enter the address manually.'
+                'The llama can\'t find your address. Keep typing or enter the address manually.'
             );
         }
     };
@@ -752,7 +752,7 @@ function scout_app_value(
         try {
             const response =
                 await fetch(
-                    '/api/scout-address-autocomplete.php?q='
+                    '/api/address-autocomplete.php?q='
                     + encodeURIComponent(query),
                     {
                         method: 'GET',
@@ -794,7 +794,7 @@ function scout_app_value(
             closeSuggestions();
 
             setStatus(
-                'Address lookup is temporarily unavailable. You can enter the address manually.',
+                'The llama says address lookup is temporarily unavailable. You can enter the address manually.',
                 'error'
             );
         }
