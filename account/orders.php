@@ -112,9 +112,11 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <small>
             <?= htmlspecialchars(
-                (string) (
-                    $order['paid_at']
-                    ?: $order['created_at']
+                llama_format_viewer_datetime(
+                    (string) (
+                        $order['paid_at']
+                        ?: $order['created_at']
+                    )
                 ),
                 ENT_QUOTES,
                 'UTF-8'
