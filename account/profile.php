@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     } else {
         try {
             llama_profile_save($db, $userId, $_POST);
+            $user = current_user();
             $success = 'Your Profile has been updated.';
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
@@ -64,6 +65,7 @@ $profile = llama_community_profile($db, $userId);
 $profileImages = llama_community_profile_images($db, $userId);
 $primaryImage = llama_primary_profile_image($db, $userId);
 $userBadges = llama_user_badges($db, $userId);
+$selectedTimezone = llama_user_timezone($user);
 
 $config = llama_config();
 $siteUrl = rtrim(
@@ -217,63 +219,21 @@ require dirname(__DIR__) . '/partials/header.php';
                                     Profile picture
                                 </span>
                             <?php else: ?>
-                                <form
-                                    method="post"
-                                    action="/profile-image-action.php"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="csrf_token"
-                                        value="<?= profile_e(
-                                            $profileImageCsrf
-                                        ) ?>"
-                                    >
-                                    <input
-                                        type="hidden"
-                                        name="image_id"
-                                        value="<?= (int) $image['id'] ?>"
-                                    >
-                                    <button
-                                        class="photo-manager-button"
-                                        type="submit"
-                                        name="action"
-                                        value="primary"
-                                    >
-                                        <i
-                                            class="fa-solid fa-user"
-                                            aria-hidden="true"
-                                        ></i>
+                                <form method="post" action="/profile-image-action.php">
+                                    <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                                    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                                    <button class="photo-manager-button" type="submit" name="action" value="primary">
+                                        <i class="fa-solid fa-user" aria-hidden="true"></i>
                                         Make primary
                                     </button>
                                 </form>
                             <?php endif; ?>
 
-                            <form
-                                method="post"
-                                action="/profile-image-action.php"
-                            >
-                                <input
-                                    type="hidden"
-                                    name="csrf_token"
-                                    value="<?= profile_e(
-                                        $profileImageCsrf
-                                    ) ?>"
-                                >
-                                <input
-                                    type="hidden"
-                                    name="image_id"
-                                    value="<?= (int) $image['id'] ?>"
-                                >
-                                <button
-                                    class="photo-manager-button"
-                                    type="submit"
-                                    name="action"
-                                    value="delete"
-                                >
-                                    <i
-                                        class="fa-solid fa-trash"
-                                        aria-hidden="true"
-                                    ></i>
+                            <form method="post" action="/profile-image-action.php">
+                                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                                <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                                <button class="photo-manager-button" type="submit" name="action" value="delete">
+                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
                                     Remove
                                 </button>
                             </form>
@@ -289,42 +249,22 @@ require dirname(__DIR__) . '/partials/header.php';
                 action="/save-profile-images.php"
                 class="community-profile-photo-upload-form"
             >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= profile_e($profileImageCsrf) ?>"
-                >
-                <input
-                    type="hidden"
-                    name="photo_stage_token"
-                    value=""
-                >
-                <input
-                    type="hidden"
-                    name="photos_json"
-                    value="[]"
-                >
+                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+                <input type="hidden" name="photo_stage_token" value="">
+                <input type="hidden" name="photos_json" value="[]">
 
                 <div
                     data-photo-uploader
                     data-photo-context="profile-images"
                     data-photo-max="<?= 5 - count($profileImages) ?>"
-                    data-photo-csrf="<?= profile_e(
-                        llama_photo_csrf_token()
-                    ) ?>"
+                    data-photo-csrf="<?= profile_e(llama_photo_csrf_token()) ?>"
                     data-photo-endpoint="/photo-upload.php"
                     data-photo-title="Add profile photos"
                     data-photo-help="Choose up to <?= 5 - count($profileImages) ?> more. You can remove photos before saving."
                 ></div>
 
-                <button
-                    type="submit"
-                    class="contribution-submit"
-                >
-                    <i
-                        class="fa-solid fa-cloud-arrow-up"
-                        aria-hidden="true"
-                    ></i>
+                <button type="submit" class="contribution-submit">
+                    <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
                     Save selected photos
                 </button>
             </form>
@@ -363,26 +303,16 @@ require dirname(__DIR__) . '/partials/header.php';
                                 >
                             <?php else: ?>
                                 <i
-                                    class="fa-solid <?= profile_e(
-                                        $badge['icon']
-                                        ?: 'fa-award'
-                                    ) ?>"
+                                    class="fa-solid <?= profile_e($badge['icon'] ?: 'fa-award') ?>"
                                     aria-hidden="true"
                                 ></i>
                             <?php endif; ?>
                         </span>
 
                         <div>
-                            <strong>
-                                <?= profile_e($badge['name']) ?>
-                            </strong>
-
+                            <strong><?= profile_e($badge['name']) ?></strong>
                             <?php if (!empty($badge['description'])): ?>
-                                <p>
-                                    <?= profile_e(
-                                        $badge['description']
-                                    ) ?>
-                                </p>
+                                <p><?= profile_e($badge['description']) ?></p>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -390,10 +320,7 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
         <?php else: ?>
             <div class="account-empty-state">
-                <i
-                    class="fa-solid fa-award"
-                    aria-hidden="true"
-                ></i>
+                <i class="fa-solid fa-award" aria-hidden="true"></i>
                 <h3>No badges yet</h3>
                 <p>
                     Badges appear here as you earn Llama Scout
@@ -404,15 +331,8 @@ require dirname(__DIR__) . '/partials/header.php';
         <?php endif; ?>
     </section>
 
-    <form
-        method="post"
-        class="community-profile-form"
-    >
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= profile_e($profileCsrf) ?>"
-        >
+    <form method="post" class="community-profile-form">
+        <input type="hidden" name="csrf_token" value="<?= profile_e($profileCsrf) ?>">
 
         <section class="community-profile-section">
             <div class="community-profile-section-heading">
@@ -423,18 +343,14 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
 
             <div class="community-profile-form-grid">
-                <label
-                    class="community-profile-field community-profile-field-wide"
-                >
+                <label class="community-profile-field community-profile-field-wide">
                     <span>Bio</span>
                     <textarea
                         name="bio"
                         rows="6"
                         maxlength="1000"
                         placeholder="Tell the herd a little about yourself."
-                    ><?= profile_e(
-                        profile_value($profile, 'bio')
-                    ) ?></textarea>
+                    ><?= profile_e(profile_value($profile, 'bio')) ?></textarea>
                 </label>
 
                 <label class="community-profile-field">
@@ -443,13 +359,28 @@ require dirname(__DIR__) . '/partials/header.php';
                         type="text"
                         name="location"
                         maxlength="150"
-                        value="<?= profile_e(
-                            profile_value($profile, 'location')
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'location')) ?>"
                         placeholder="Durango, Colorado"
                     >
+                    <small>Keep it general. Do not enter a street address.</small>
+                </label>
+
+                <label class="community-profile-field">
+                    <span>Timezone</span>
+                    <select name="timezone" required>
+                        <?php foreach (llama_timezones() as $timezone => $timezoneLabel): ?>
+                            <option
+                                value="<?= profile_e($timezone) ?>"
+                                <?= $timezone === $selectedTimezone ? 'selected' : '' ?>
+                            >
+                                <?= profile_e($timezoneLabel) ?>
+                                (<?= profile_e($timezone) ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                     <small>
-                        Keep it general. Do not enter a street address.
+                        All times across Llama Scout, including Admin,
+                        use this timezone while you are signed in.
                     </small>
                 </label>
 
@@ -459,9 +390,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         type="text"
                         name="squad"
                         maxlength="150"
-                        value="<?= profile_e(
-                            profile_value($profile, 'squad')
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'squad')) ?>"
                         placeholder="Trail club, camping group, etc."
                     >
                 </label>
@@ -472,12 +401,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         type="text"
                         name="camping_style"
                         maxlength="255"
-                        value="<?= profile_e(
-                            profile_value(
-                                $profile,
-                                'camping_style'
-                            )
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'camping_style')) ?>"
                         placeholder="Overlanding, tent camping, vanlife..."
                     >
                 </label>
@@ -488,30 +412,18 @@ require dirname(__DIR__) . '/partials/header.php';
                         type="text"
                         name="favorite_places"
                         maxlength="255"
-                        value="<?= profile_e(
-                            profile_value(
-                                $profile,
-                                'favorite_places'
-                            )
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'favorite_places')) ?>"
                         placeholder="High desert, alpine forest, riverside..."
                     >
                 </label>
 
-                <label
-                    class="community-profile-field community-profile-field-wide"
-                >
+                <label class="community-profile-field community-profile-field-wide">
                     <span>Camping soundtrack</span>
                     <input
                         type="text"
                         name="favorite_camping_music"
                         maxlength="255"
-                        value="<?= profile_e(
-                            profile_value(
-                                $profile,
-                                'favorite_camping_music'
-                            )
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'favorite_camping_music')) ?>"
                         placeholder="What belongs on the camp playlist?"
                     >
                 </label>
@@ -532,74 +444,34 @@ require dirname(__DIR__) . '/partials/header.php';
             </p>
 
             <div class="community-profile-form-grid">
-                <label
-                    class="community-profile-field community-profile-field-wide"
-                >
+                <label class="community-profile-field community-profile-field-wide">
                     <span>
-                        <i
-                            class="fa-solid fa-globe"
-                            aria-hidden="true"
-                        ></i>
+                        <i class="fa-solid fa-globe" aria-hidden="true"></i>
                         Website
                     </span>
                     <input
                         type="url"
                         name="website_url"
                         maxlength="500"
-                        value="<?= profile_e(
-                            profile_value(
-                                $profile,
-                                'website_url'
-                            )
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'website_url')) ?>"
                         placeholder="https://example.com"
                     >
                 </label>
 
                 <?php
                 $socialFields = [
-                    [
-                        'name' => 'instagram_url',
-                        'label' => 'Instagram',
-                        'icon' => 'fa-brands fa-instagram',
-                        'placeholder' => 'username',
-                    ],
-                    [
-                        'name' => 'facebook_url',
-                        'label' => 'Facebook',
-                        'icon' => 'fa-brands fa-facebook',
-                        'placeholder' => 'username',
-                    ],
-                    [
-                        'name' => 'bluesky_url',
-                        'label' => 'Bluesky',
-                        'icon' => 'fa-solid fa-cloud',
-                        'placeholder' => 'name.bsky.social',
-                    ],
-                    [
-                        'name' => 'youtube_url',
-                        'label' => 'YouTube',
-                        'icon' => 'fa-brands fa-youtube',
-                        'placeholder' => 'channelhandle',
-                    ],
-                    [
-                        'name' => 'tiktok_url',
-                        'label' => 'TikTok',
-                        'icon' => 'fa-brands fa-tiktok',
-                        'placeholder' => 'username',
-                    ],
+                    ['name' => 'instagram_url', 'label' => 'Instagram', 'icon' => 'fa-brands fa-instagram', 'placeholder' => 'username'],
+                    ['name' => 'facebook_url', 'label' => 'Facebook', 'icon' => 'fa-brands fa-facebook', 'placeholder' => 'username'],
+                    ['name' => 'bluesky_url', 'label' => 'Bluesky', 'icon' => 'fa-solid fa-cloud', 'placeholder' => 'name.bsky.social'],
+                    ['name' => 'youtube_url', 'label' => 'YouTube', 'icon' => 'fa-brands fa-youtube', 'placeholder' => 'channelhandle'],
+                    ['name' => 'tiktok_url', 'label' => 'TikTok', 'icon' => 'fa-brands fa-tiktok', 'placeholder' => 'username'],
                 ];
                 ?>
 
                 <?php foreach ($socialFields as $field): ?>
                     <label class="community-profile-field">
                         <span>
-                            <i
-                                class="<?= profile_e(
-                                    $field['icon']
-                                ) ?>"
-                                aria-hidden="true"
-                            ></i>
+                            <i class="<?= profile_e($field['icon']) ?>" aria-hidden="true"></i>
                             <?= profile_e($field['label']) ?>
                         </span>
 
@@ -607,19 +479,10 @@ require dirname(__DIR__) . '/partials/header.php';
                             <span>@</span>
                             <input
                                 type="text"
-                                name="<?= profile_e(
-                                    $field['name']
-                                ) ?>"
+                                name="<?= profile_e($field['name']) ?>"
                                 maxlength="150"
-                                value="<?= profile_e(
-                                    profile_value(
-                                        $profile,
-                                        $field['name']
-                                    )
-                                ) ?>"
-                                placeholder="<?= profile_e(
-                                    $field['placeholder']
-                                ) ?>"
+                                value="<?= profile_e(profile_value($profile, $field['name'])) ?>"
+                                placeholder="<?= profile_e($field['placeholder']) ?>"
                                 autocapitalize="none"
                                 spellcheck="false"
                             >
@@ -629,22 +492,14 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <label class="community-profile-field">
                     <span>
-                        <i
-                            class="fa-solid fa-link"
-                            aria-hidden="true"
-                        ></i>
+                        <i class="fa-solid fa-link" aria-hidden="true"></i>
                         Other link
                     </span>
                     <input
                         type="url"
                         name="other_social_url"
                         maxlength="500"
-                        value="<?= profile_e(
-                            profile_value(
-                                $profile,
-                                'other_social_url'
-                            )
-                        ) ?>"
+                        value="<?= profile_e(profile_value($profile, 'other_social_url')) ?>"
                         placeholder="https://"
                     >
                 </label>
@@ -664,9 +519,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     type="checkbox"
                     name="is_public"
                     value="1"
-                    <?= !empty($profile['is_public'])
-                        ? 'checked'
-                        : '' ?>
+                    <?= !empty($profile['is_public']) ? 'checked' : '' ?>
                 >
                 <span>
                     <strong>Create my public profile</strong>
@@ -689,10 +542,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 value="1"
                 class="contribution-submit"
             >
-                <i
-                    class="fa-solid fa-floppy-disk"
-                    aria-hidden="true"
-                ></i>
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
                 Save Profile
             </button>
         </div>
