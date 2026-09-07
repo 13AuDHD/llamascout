@@ -239,14 +239,15 @@ require dirname(__DIR__) . '/partials/header.php';
         </p>
         <small>
             Invitation expires:
-            <?= htmlspecialchars(
-                (string) (
-                    $profile['invitation_expires_at']
-                    ?: 'No expiration'
-                ),
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
+            <?= !empty($profile['invitation_expires_at'])
+                ? htmlspecialchars(
+                    llama_format_viewer_datetime(
+                        (string) $profile['invitation_expires_at']
+                    ),
+                    ENT_QUOTES,
+                    'UTF-8'
+                )
+                : 'No expiration' ?>
         </small>
     </div>
 
