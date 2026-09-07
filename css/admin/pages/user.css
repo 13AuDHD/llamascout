@@ -109,6 +109,30 @@
 }
 
 
+/* Admin activity */
+
+.admin-user-detail-side .admin-user-audit-list {
+    max-height: 560px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
+.admin-user-detail-side .admin-user-audit-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-user-detail-side .admin-user-audit-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(127,127,127,.28);
+}
+
+.admin-user-detail-side .admin-user-audit-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
 /* Responsive */
 
 @media (max-width: 1180px) {
@@ -119,10 +143,21 @@
     }
 }
 
+@media (max-width: 900px) {
+
+    .admin-user-detail-side .admin-user-audit-list {
+        max-height: 440px;
+    }
+}
+
 @media (max-width: 620px) {
 
     .admin-user-stat-grid {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-user-detail-side .admin-user-audit-list {
+        max-height: 360px;
     }
 }
