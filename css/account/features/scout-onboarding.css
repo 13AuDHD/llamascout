@@ -546,10 +546,11 @@
    SCOUT TRAINING MEDIA READINESS
    ========================================================= */
 
-.account-scout-media-checks {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+.account-scout-test-card {
+    overflow: hidden;
+    border: 1px solid rgba(88,166,106,.40);
+    border-radius: 12px;
+    background: rgba(88,166,106,.06);
 }
 
 .account-scout-media-check {
@@ -559,24 +560,16 @@
     gap: 10px;
     align-items: center;
     padding: 12px;
-    border: 1px solid rgba(88,166,106,.40);
-    border-radius: 11px;
-    background: rgba(88,166,106,.06);
     color: inherit;
-    font: inherit;
-    text-align: left;
     cursor: pointer;
+    user-select: none;
 }
 
 .account-scout-media-check:hover,
-.account-scout-media-check:focus-visible {
-    border-color: rgba(88,166,106,.72);
+.account-scout-media-check:focus-visible,
+.account-scout-media-check.is-open {
+    outline: 0;
     background: rgba(88,166,106,.10);
-}
-
-.account-scout-media-check.is-ready {
-    border-color: rgba(88,166,106,.72);
-    background: rgba(88,166,106,.12);
 }
 
 .account-scout-media-check-icon {
@@ -589,34 +582,62 @@
     color: #58a66a;
 }
 
-.account-scout-media-check > span:nth-child(2) {
+.account-scout-media-check-copy {
     min-width: 0;
 }
 
-.account-scout-media-check strong,
-.account-scout-media-check small {
+.account-scout-media-check-copy strong,
+.account-scout-media-check-copy small {
     display: block;
 }
 
-.account-scout-media-check strong {
+.account-scout-media-check-copy strong {
     font-size: .8rem;
 }
 
-.account-scout-media-check small {
+.account-scout-media-check-copy small {
     margin-top: 2px;
     font-size: .66rem;
     line-height: 1.35;
     opacity: .68;
 }
 
-.account-scout-media-check-state {
+.account-scout-test-actions {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.account-scout-test-play {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(88,166,106,.46);
+    border-radius: 999px;
+    background: rgba(88,166,106,.12);
     color: #58a66a;
+    cursor: pointer;
+}
+
+.account-scout-test-play:hover,
+.account-scout-test-play:focus-visible {
+    outline: 0;
+    border-color: rgba(88,166,106,.80);
+    background: rgba(88,166,106,.20);
+}
+
+.account-scout-test-chevron {
+    width: 14px;
+    color: #58a66a;
+    text-align: center;
+    transition: transform .16s ease;
 }
 
 .account-scout-test-preview {
     overflow: hidden;
-    border: 1px solid rgba(88,166,106,.34);
-    border-radius: 12px;
+    border-top: 1px solid rgba(88,166,106,.34);
     background: #000;
 }
 
@@ -627,28 +648,10 @@
 .account-scout-test-preview video {
     display: block;
     width: 100%;
+    max-height: 420px;
     aspect-ratio: 16 / 9;
-    max-height: 360px;
     object-fit: contain;
     background: #000;
-}
-
-.account-scout-test-preview-copy {
-    display: grid;
-    gap: 3px;
-    padding: 10px 12px;
-    background: rgba(255,255,255,.06);
-    color: #fff;
-}
-
-.account-scout-test-preview-copy strong {
-    font-size: .74rem;
-}
-
-.account-scout-test-preview-copy span {
-    color: rgba(255,255,255,.72);
-    font-size: .68rem;
-    line-height: 1.4;
 }
 
 .account-scout-video-wrap video[poster],
@@ -656,6 +659,23 @@
     object-fit: contain;
 }
 
+@media (max-width: 560px) {
+    .account-scout-media-check {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .account-scout-media-check-icon,
+    .account-scout-test-play {
+        width: 32px;
+        height: 32px;
+    }
+
+    .account-scout-test-actions {
+        gap: 7px;
+    }
+}
 
 
 /* =========================================================
