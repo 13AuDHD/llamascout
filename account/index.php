@@ -735,6 +735,17 @@ require dirname(__DIR__) . '/partials/header.php';
                 </span>
             </a>
 
+            <a class="account-action-card" href="/email-preferences.php">
+                <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                <span>
+                    <strong>Email preferences</strong>
+                    <small>
+                        Choose which optional Llama Scout newsletters,
+                        member updates, and promotional emails you receive.
+                    </small>
+                </span>
+            </a>
+
             <a class="account-action-card" href="/forgot-password.php">
                 <i class="fa-solid fa-key" aria-hidden="true"></i>
                 <span>
