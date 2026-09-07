@@ -140,6 +140,11 @@
     opacity: .72;
 }
 
+
+/* =========================================================
+   TOP STATS
+   ========================================================= */
+
 .scout-basecamp-stat-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -170,7 +175,13 @@
     font-size: .82rem;
 }
 
+
+/* =========================================================
+   PANELS
+   ========================================================= */
+
 .scout-basecamp-panel {
+    min-width: 0;
     border: 1px solid rgba(127,127,127,.18);
     border-radius: 14px;
     background: var(--surface, rgba(127,127,127,.04));
@@ -182,7 +193,7 @@
     justify-content: space-between;
     gap: 12px;
     align-items: start;
-    padding: 13px 14px;
+    padding: 11px 12px;
     border-bottom: 1px solid rgba(127,127,127,.16);
 }
 
@@ -193,11 +204,13 @@
 
 .scout-basecamp-panel > header h2 {
     margin-top: 2px;
-    font-size: .92rem;
+    font-size: .84rem;
+    line-height: 1.2;
 }
 
 .scout-basecamp-panel > header > span {
-    font-size: .61rem;
+    flex: 0 0 auto;
+    font-size: .58rem;
     font-weight: 750;
     opacity: .65;
 }
@@ -206,6 +219,12 @@
     color: #58a66a;
     opacity: 1;
 }
+
+
+/* =========================================================
+   CURRENT SCOUT PERIOD
+   This intentionally remains full width.
+   ========================================================= */
 
 .scout-basecamp-period-copy {
     display: flex;
@@ -267,29 +286,54 @@
     color: inherit;
 }
 
+
+/* =========================================================
+   COMPACT BASECAMP CARD GRID
+   Wide: 4 cards
+   Portrait/tablet: 3 cards
+   Narrow tablet/mobile: 2 cards
+   Small phone: 1 card
+
+   The PHP still groups panels into main/side columns. display:contents
+   lets those panels participate in one responsive card grid without
+   changing the underlying content or data.
+   ========================================================= */
+
 .scout-basecamp-main-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr);
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
     align-items: start;
 }
 
 .scout-basecamp-main-column,
 .scout-basecamp-side-column {
-    display: grid;
-    gap: 14px;
+    display: contents;
+}
+
+/*
+ * Every post-period Basecamp panel is now a compact dashboard card.
+ * Lists scroll inside the card instead of forcing the whole card tall.
+ */
+.scout-basecamp-main-grid > .scout-basecamp-panel,
+.scout-basecamp-main-column > .scout-basecamp-panel,
+.scout-basecamp-side-column > .scout-basecamp-panel {
+    align-self: start;
 }
 
 .scout-basecamp-list {
     display: grid;
+    max-height: 310px;
+    overflow: auto;
+    overscroll-behavior: contain;
 }
 
 .scout-basecamp-list article {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
     align-items: center;
-    padding: 10px 14px;
+    padding: 9px 11px;
     border-bottom: 1px solid rgba(127,127,127,.14);
 }
 
@@ -304,7 +348,7 @@
 }
 
 .scout-basecamp-list article span {
-    font-size: .53rem;
+    font-size: .5rem;
     font-weight: 850;
     text-transform: uppercase;
     opacity: .62;
@@ -312,37 +356,47 @@
 
 .scout-basecamp-list article strong {
     margin-top: 2px;
-    font-size: .7rem;
+    font-size: .66rem;
+    line-height: 1.3;
 }
 
 .scout-basecamp-list article small {
     margin-top: 2px;
-    font-size: .56rem;
+    font-size: .53rem;
     opacity: .63;
 }
 
 .scout-basecamp-list article > a {
+    grid-column: 1 / -1;
+    width: fit-content;
     color: inherit;
-    font-size: .62rem;
+    font-size: .58rem;
     font-weight: 850;
 }
 
 .scout-basecamp-list-points {
     color: #58a66a;
-    font-size: .68rem;
+    font-size: .64rem;
     font-weight: 900;
 }
 
 .scout-basecamp-attention {
     color: #d3a842;
+    font-size: .62rem;
 }
 
 .scout-basecamp-empty,
 .scout-basecamp-muted {
-    padding: 14px;
-    font-size: .65rem;
+    padding: 12px;
+    font-size: .62rem;
+    line-height: 1.45;
     opacity: .67;
 }
+
+
+/* =========================================================
+   CONTRIBUTION MIX
+   ========================================================= */
 
 .scout-basecamp-definition-list {
     margin: 0;
@@ -352,7 +406,7 @@
     display: flex;
     justify-content: space-between;
     gap: 10px;
-    padding: 9px 14px;
+    padding: 8px 11px;
     border-bottom: 1px solid rgba(127,127,127,.14);
 }
 
@@ -363,7 +417,7 @@
 .scout-basecamp-definition-list dt,
 .scout-basecamp-definition-list dd {
     margin: 0;
-    font-size: .66rem;
+    font-size: .62rem;
 }
 
 .scout-basecamp-definition-list dt {
@@ -374,9 +428,14 @@
     font-weight: 900;
 }
 
+
+/* =========================================================
+   MASTER SCOUT PROGRESS
+   ========================================================= */
+
 .scout-basecamp-requirements {
     display: grid;
-    padding: 7px 13px;
+    padding: 5px 11px;
 }
 
 .scout-basecamp-requirements > div {
@@ -384,7 +443,7 @@
     grid-template-columns: 18px minmax(0, 1fr);
     gap: 7px;
     align-items: start;
-    padding: 7px 0;
+    padding: 6px 0;
     border-bottom: 1px solid rgba(127,127,127,.14);
 }
 
@@ -394,7 +453,7 @@
 
 .scout-basecamp-requirements > div > i {
     margin-top: 2px;
-    font-size: .65rem;
+    font-size: .62rem;
     opacity: .5;
 }
 
@@ -409,25 +468,26 @@
 }
 
 .scout-basecamp-requirements strong {
-    font-size: .64rem;
+    font-size: .61rem;
+    line-height: 1.3;
 }
 
 .scout-basecamp-requirements small {
     margin-top: 2px;
-    font-size: .56rem;
+    font-size: .53rem;
     opacity: .64;
 }
 
 .scout-basecamp-master-panel {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 10px;
-    padding: 14px;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 9px;
+    padding: 12px;
 }
 
 .scout-basecamp-master-panel > i {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     display: grid;
     place-items: center;
     border-radius: 999px;
@@ -442,15 +502,20 @@
 
 .scout-basecamp-master-panel h2 {
     margin-top: 2px;
-    font-size: .9rem;
+    font-size: .82rem;
 }
 
 .scout-basecamp-master-panel p:last-child {
     margin-top: 5px;
-    font-size: .64rem;
-    line-height: 1.45;
+    font-size: .6rem;
+    line-height: 1.4;
     opacity: .68;
 }
+
+
+/* =========================================================
+   QUICK LINKS
+   ========================================================= */
 
 .scout-basecamp-links {
     display: grid;
@@ -460,10 +525,10 @@
     display: flex;
     gap: 8px;
     align-items: center;
-    padding: 10px 14px;
+    padding: 9px 11px;
     border-bottom: 1px solid rgba(127,127,127,.14);
     color: inherit;
-    font-size: .65rem;
+    font-size: .62rem;
     font-weight: 800;
     text-decoration: none;
 }
@@ -472,13 +537,26 @@
     border-bottom: 0;
 }
 
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1050px) {
+    .scout-basecamp-main-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 900px) {
     .scout-basecamp-stat-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+}
 
+@media (max-width: 760px) {
     .scout-basecamp-main-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -505,21 +583,23 @@
     }
 }
 
-@media (max-width: 430px) {
+@media (max-width: 480px) {
     .scout-basecamp-page {
         width: min(100% - 18px, 1180px);
         padding-top: 18px;
     }
 
-    .scout-basecamp-stat-grid {
+    .scout-basecamp-main-grid {
         grid-template-columns: 1fr;
     }
 
-    .scout-basecamp-list article {
-        grid-template-columns: 1fr auto;
+    .scout-basecamp-panel > header {
+        padding: 10px 11px;
     }
+}
 
-    .scout-basecamp-list article > a {
-        grid-column: 1 / -1;
+@media (max-width: 430px) {
+    .scout-basecamp-stat-grid {
+        grid-template-columns: 1fr;
     }
 }
