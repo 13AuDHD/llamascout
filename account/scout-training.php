@@ -106,7 +106,10 @@ if (
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('Scout training could not be saved.', $reference);
+                : llama_error_message_with_reference(
+                    'Scout training could not be saved.',
+                    $reference
+                );
         }
     }
 }
@@ -176,8 +179,8 @@ require dirname(__DIR__) . '/partials/header.php';
     <h2>Awaiting Basecamp approval</h2>
 
     <p>
-        You’ve finished everything required for onboarding. Your application
-        and training are now at Basecamp for final review. We’ll update your
+        Youâve finished everything required for onboarding. Your application
+        and training are now at Basecamp for final review. Weâll update your
         Scout status once the review is complete.
     </p>
 
@@ -240,10 +243,83 @@ require dirname(__DIR__) . '/partials/header.php';
             commitments below.
         </p>
 
+        <div class="account-scout-media-checks">
+            <button
+                type="button"
+                class="account-scout-media-check"
+                data-scout-test-video
+            >
+                <span class="account-scout-media-check-icon">
+                    <i class="fa-solid fa-display" aria-hidden="true"></i>
+                </span>
+
+                <span>
+                    <strong>Test video</strong>
+                    <small>Make sure the training video plays on this device.</small>
+                </span>
+
+                <i
+                    class="fa-solid fa-play account-scout-media-check-state"
+                    aria-hidden="true"
+                    data-scout-test-video-state
+                ></i>
+            </button>
+
+            <button
+                type="button"
+                class="account-scout-media-check"
+                data-scout-test-audio
+            >
+                <span class="account-scout-media-check-icon">
+                    <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
+                </span>
+
+                <span>
+                    <strong>Test audio</strong>
+                    <small>Check volume, mute, headphones, or Bluetooth output.</small>
+                </span>
+
+                <i
+                    class="fa-solid fa-play account-scout-media-check-state"
+                    aria-hidden="true"
+                    data-scout-test-audio-state
+                ></i>
+            </button>
+        </div>
+
+        <div
+            class="account-scout-test-preview"
+            data-scout-test-preview
+            hidden
+        >
+            <video
+                playsinline
+                preload="metadata"
+                poster="https://llamascout.com/images/logo-footer.png"
+                controlslist="nodownload noplaybackrate noremoteplayback"
+                disablepictureinpicture
+                data-scout-test-media
+            >
+                <source
+                    src="https://llamascout.com/videos/scout-training.mp4"
+                    type="video/mp4"
+                >
+            </video>
+
+            <div class="account-scout-test-preview-copy">
+                <strong data-scout-test-heading>Media test</strong>
+                <span data-scout-test-copy>
+                    This short test uses the same video file and playback method
+                    as Scout training.
+                </span>
+            </div>
+        </div>
+
         <div class="account-scout-video-wrap">
             <video
                 playsinline
                 preload="metadata"
+                poster="https://llamascout.com/images/logo-footer.png"
                 controlslist="nodownload noplaybackrate noremoteplayback"
                 disablepictureinpicture
                 data-scout-training-video
@@ -290,7 +366,10 @@ require dirname(__DIR__) . '/partials/header.php';
             role="status"
         >
             <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
-            <span>Watch the video through to the end to unlock the final acknowledgements.</span>
+            <span>
+                Watch the video through to the end to unlock the final
+                acknowledgements.
+            </span>
         </div>
     </section>
 
@@ -430,9 +509,20 @@ require dirname(__DIR__) . '/partials/header.php';
     const progressTrack = form.querySelector('[data-scout-video-progress-track]');
     const timeLabel = form.querySelector('[data-scout-video-time]');
 
+    const testVideoButton = form.querySelector('[data-scout-test-video]');
+    const testAudioButton = form.querySelector('[data-scout-test-audio]');
+    const testVideoState = form.querySelector('[data-scout-test-video-state]');
+    const testAudioState = form.querySelector('[data-scout-test-audio-state]');
+    const testPreview = form.querySelector('[data-scout-test-preview]');
+    const testMedia = form.querySelector('[data-scout-test-media]');
+    const testHeading = form.querySelector('[data-scout-test-heading]');
+    const testCopy = form.querySelector('[data-scout-test-copy]');
+
     let maxWatched = 0;
     let guardingSeek = false;
     let unlocked = false;
+    let activeTest = '';
+    let testTimer = null;
 
     const formatTime = (seconds) => {
         const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -440,6 +530,106 @@ require dirname(__DIR__) . '/partials/header.php';
         const remainder = String(safe % 60).padStart(2, '0');
         return `${minutes}:${remainder}`;
     };
+
+    const markTestReady = (kind) => {
+        const button =
+            kind === 'video'
+                ? testVideoButton
+                : testAudioButton;
+
+        const icon =
+            kind === 'video'
+                ? testVideoState
+                : testAudioState;
+
+        button?.classList.add('is-ready');
+
+        if (icon) {
+            icon.className =
+                'fa-solid fa-circle-check account-scout-media-check-state';
+        }
+    };
+
+    const stopTest = () => {
+        if (testTimer) {
+            window.clearTimeout(testTimer);
+            testTimer = null;
+        }
+
+        if (testMedia) {
+            testMedia.pause();
+            try {
+                testMedia.currentTime = 0;
+            } catch (error) {
+                // Metadata may not be loaded yet. Nothing else is required.
+            }
+            testMedia.muted = false;
+        }
+
+        activeTest = '';
+    };
+
+    const runMediaTest = async (kind) => {
+        if (!testMedia || !testPreview) return;
+
+        stopTest();
+
+        activeTest = kind;
+        testPreview.hidden = false;
+
+        if (kind === 'video') {
+            testMedia.muted = true;
+
+            if (testHeading) {
+                testHeading.textContent = 'Video test';
+            }
+
+            if (testCopy) {
+                testCopy.textContent =
+                    'If you can see this clip playing smoothly, your device is ready for Scout training video.';
+            }
+        } else {
+            testMedia.muted = false;
+            testMedia.volume = 1;
+
+            if (testHeading) {
+                testHeading.textContent = 'Audio test';
+            }
+
+            if (testCopy) {
+                testCopy.textContent =
+                    'Listen for the training audio. Adjust volume, headphones, Bluetooth, or mute settings as needed.';
+            }
+        }
+
+        try {
+            testMedia.currentTime = 0;
+            await testMedia.play();
+
+            markTestReady(kind);
+
+            testTimer = window.setTimeout(() => {
+                if (activeTest === kind) {
+                    stopTest();
+                }
+            }, 5000);
+        } catch (error) {
+            if (testCopy) {
+                testCopy.textContent =
+                    'Playback did not start. Check this browserâs media permissions and try again.';
+            }
+        }
+    };
+
+    testVideoButton?.addEventListener('click', () => {
+        runMediaTest('video');
+    });
+
+    testAudioButton?.addEventListener('click', () => {
+        runMediaTest('audio');
+    });
+
+    testMedia?.addEventListener('ended', stopTest);
 
     const updateVideoUi = () => {
         if (!video) return;
@@ -456,11 +646,15 @@ require dirname(__DIR__) . '/partials/header.php';
         }
 
         if (progressTrack) {
-            progressTrack.setAttribute('aria-valuenow', String(Math.round(percent)));
+            progressTrack.setAttribute(
+                'aria-valuenow',
+                String(Math.round(percent))
+            );
         }
 
         if (timeLabel) {
-            timeLabel.textContent = `${formatTime(maxWatched)} watched`;
+            timeLabel.textContent =
+                `${formatTime(maxWatched)} watched`;
         }
     };
 
@@ -478,33 +672,55 @@ require dirname(__DIR__) . '/partials/header.php';
         }
 
         if (label) {
-            label.textContent = playing ? 'Pause training' : 'Play training';
+            label.textContent =
+                playing
+                    ? 'Pause training'
+                    : 'Play training';
         }
 
         toggle.setAttribute(
             'aria-label',
-            playing ? 'Pause Scout training video' : 'Play Scout training video'
+            playing
+                ? 'Pause Scout training video'
+                : 'Play Scout training video'
         );
     };
 
     const refreshSubmit = () => {
-        const required = [...form.querySelectorAll('input[type="checkbox"][required]')];
-        submit.disabled = watched.value !== '1' || required.some((box) => box.disabled || !box.checked);
+        const required = [
+            ...form.querySelectorAll(
+                'input[type="checkbox"][required]'
+            ),
+        ];
+
+        submit.disabled =
+            watched.value !== '1'
+            || required.some(
+                (box) =>
+                    box.disabled
+                    || !box.checked
+            );
     };
 
     const unlockVideoConfirmation = () => {
         if (unlocked) return;
+
         unlocked = true;
         watched.value = '1';
         confirmBox.disabled = false;
         confirmLabel.classList.remove('is-locked');
         status.classList.add('is-complete');
-        status.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Video complete. Finish the acknowledgements below.</span>';
+        status.innerHTML =
+            '<i class="fa-solid fa-circle-check" aria-hidden="true"></i>'
+            + '<span>Video complete. Finish the acknowledgements below.</span>';
+
         refreshSubmit();
     };
 
     toggle?.addEventListener('click', async () => {
         if (!video) return;
+
+        stopTest();
 
         try {
             if (video.paused || video.ended) {
@@ -513,7 +729,9 @@ require dirname(__DIR__) . '/partials/header.php';
                 video.pause();
             }
         } catch (error) {
-            status.innerHTML = '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span>The training video could not start. Tap Play training again.</span>';
+            status.innerHTML =
+                '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>'
+                + '<span>The training video could not start. Tap Play training again.</span>';
         }
 
         updateToggle();
@@ -529,7 +747,11 @@ require dirname(__DIR__) . '/partials/header.php';
         const current = video.currentTime;
 
         if (current <= maxWatched + 1.5) {
-            maxWatched = Math.max(maxWatched, current);
+            maxWatched =
+                Math.max(
+                    maxWatched,
+                    current
+                );
         }
 
         updateVideoUi();
@@ -541,6 +763,7 @@ require dirname(__DIR__) . '/partials/header.php';
         if (video.currentTime > maxWatched + 1.5) {
             guardingSeek = true;
             video.currentTime = maxWatched;
+
             window.setTimeout(() => {
                 guardingSeek = false;
             }, 0);
@@ -550,8 +773,18 @@ require dirname(__DIR__) . '/partials/header.php';
     video?.addEventListener('ended', () => {
         if (!video) return;
 
-        const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const reachedEnd = duration > 0 && maxWatched >= Math.max(0, duration - 1.5);
+        const duration =
+            Number.isFinite(video.duration)
+                ? video.duration
+                : 0;
+
+        const reachedEnd =
+            duration > 0
+            && maxWatched
+                >= Math.max(
+                    0,
+                    duration - 1.5
+                );
 
         if (reachedEnd) {
             maxWatched = duration;
@@ -559,13 +792,16 @@ require dirname(__DIR__) . '/partials/header.php';
             unlockVideoConfirmation();
         } else {
             video.currentTime = maxWatched;
-            status.innerHTML = '<i class="fa-solid fa-circle-play" aria-hidden="true"></i><span>Continue watching the training video through to the end.</span>';
+            status.innerHTML =
+                '<i class="fa-solid fa-circle-play" aria-hidden="true"></i>'
+                + '<span>Continue watching the training video through to the end.</span>';
         }
 
         updateToggle();
     });
 
     form.addEventListener('change', refreshSubmit);
+
     updateVideoUi();
     updateToggle();
     refreshSubmit();
