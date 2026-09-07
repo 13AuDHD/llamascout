@@ -14,19 +14,30 @@ $actorUserId = (int) ($adminUser['id'] ?? 0);
 $notice = '';
 $error = '';
 
-function promotion_code_local_to_utc(string $value): string
+$viewerTimezone = llama_viewer_timezone();
+$timezoneLabels = llama_timezones();
+$viewerTimezoneLabel =
+    (string) (
+        $timezoneLabels[$viewerTimezone]
+        ?? $viewerTimezone
+    );
+
+function promotion_code_local_to_utc(
+    string $value,
+    string $timezone
+): string
 {
     $value = trim($value);
 
     $local = DateTimeImmutable::createFromFormat(
         'Y-m-d\TH:i',
         $value,
-        new DateTimeZone('America/Denver')
+        new DateTimeZone($timezone)
     );
 
     if (!$local) {
         throw new InvalidArgumentException(
-            'A valid Mountain Time date and time is required.'
+            'A valid date and time is required.'
         );
     }
 
@@ -84,10 +95,12 @@ try {
                     'discount_value' => $discountValue,
                     'plan_scope' => $_POST['plan_scope'] ?? 'all',
                     'starts_at' => promotion_code_local_to_utc(
-                        (string) ($_POST['starts_at'] ?? '')
+                        (string) ($_POST['starts_at'] ?? ''),
+                        $viewerTimezone
                     ),
                     'ends_at' => promotion_code_local_to_utc(
-                        (string) ($_POST['ends_at'] ?? '')
+                        (string) ($_POST['ends_at'] ?? ''),
+                        $viewerTimezone
                     ),
                     'first_time_customers_only' =>
                         isset($_POST['first_time_customers_only']),
@@ -266,7 +279,7 @@ require __DIR__ . '/_header.php';
             </label>
 
             <label>
-                Starts, Mountain Time
+                Starts, <?= moderation_e($viewerTimezoneLabel) ?>
                 <input
                     type="datetime-local"
                     name="starts_at"
@@ -275,7 +288,7 @@ require __DIR__ . '/_header.php';
             </label>
 
             <label>
-                Ends, Mountain Time
+                Ends, <?= moderation_e($viewerTimezoneLabel) ?>
                 <input
                     type="datetime-local"
                     name="ends_at"
@@ -283,6 +296,11 @@ require __DIR__ . '/_header.php';
                 >
             </label>
         </div>
+
+        <p class="admin-table-muted">
+            Times entered here use your profile timezone:
+            <?= moderation_e($viewerTimezone) ?>.
+        </p>
 
         <label class="admin-toggle">
             <input
@@ -323,8 +341,19 @@ require __DIR__ . '/_header.php';
             <?php foreach ($codes as $code): ?>
                 <?php
                 $now = time();
-                $starts = strtotime((string) $code['starts_at']) ?: 0;
-                $ends = strtotime((string) $code['ends_at']) ?: 0;
+
+                $startsDate = new DateTimeImmutable(
+                    (string) $code['starts_at'],
+                    new DateTimeZone('UTC')
+                );
+
+                $endsDate = new DateTimeImmutable(
+                    (string) $code['ends_at'],
+                    new DateTimeZone('UTC')
+                );
+
+                $starts = $startsDate->getTimestamp();
+                $ends = $endsDate->getTimestamp();
 
                 if (empty($code['is_enabled'])) {
                     $status = 'Disabled';
@@ -431,18 +460,14 @@ require __DIR__ . '/_header.php';
                         <?php endif; ?>
                         <span>
                             <?= moderation_e(
-                                llama_format_datetime(
-                                    (string) $code['starts_at'],
-                                    'America/Denver',
-                                    'M j, Y g:i A T'
+                                llama_format_viewer_datetime(
+                                    (string) $code['starts_at']
                                 )
                             ) ?>
                             &rarr;
                             <?= moderation_e(
-                                llama_format_datetime(
-                                    (string) $code['ends_at'],
-                                    'America/Denver',
-                                    'M j, Y g:i A T'
+                                llama_format_viewer_datetime(
+                                    (string) $code['ends_at']
                                 )
                             ) ?>
                         </span>
