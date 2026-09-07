@@ -370,7 +370,9 @@ require __DIR__ .
 
                             ·
                             <?= moderation_e(
-                                (string) $row['created_at']
+                                llama_format_viewer_datetime(
+                                    (string) $row['created_at']
+                                )
                             ) ?>
                         </span>
 

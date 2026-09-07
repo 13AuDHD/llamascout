@@ -491,13 +491,17 @@ $published = in_array(
 
     · verified
     <?= moderation_e(
-        (string) $item['verified_at']
+        llama_format_viewer_datetime(
+            (string) $item['verified_at']
+        )
     ) ?>
 
     <?php if (!empty($item['visited_at'])): ?>
         · visited
         <?= moderation_e(
-            (string) $item['visited_at']
+            llama_format_viewer_datetime(
+                (string) $item['visited_at']
+            )
         ) ?>
     <?php endif; ?>
 </p>
