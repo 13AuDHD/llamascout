@@ -52,17 +52,47 @@ $query =
         )
     );
 
+$latitude = null;
+$longitude = null;
+
+if (
+    isset($_GET['lat'], $_GET['lon'])
+    && is_numeric((string) $_GET['lat'])
+    && is_numeric((string) $_GET['lon'])
+) {
+    $candidateLat =
+        (float) $_GET['lat'];
+
+    $candidateLon =
+        (float) $_GET['lon'];
+
+    if (
+        $candidateLat >= -90
+        && $candidateLat <= 90
+        && $candidateLon >= -180
+        && $candidateLon <= 180
+    ) {
+        $latitude = $candidateLat;
+        $longitude = $candidateLon;
+    }
+}
+
 try {
     $results =
         llama_address_autocomplete_query(
             $query,
-            6
+            6,
+            $latitude,
+            $longitude
         );
 
     account_address_json(
         [
             'success' => true,
             'results' => $results,
+            'location_bias' =>
+                $latitude !== null
+                && $longitude !== null,
         ]
     );
 } catch (InvalidArgumentException $exception) {
