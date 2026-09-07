@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/points.php';
+require_once __DIR__ . '/timezone.php';
 
 const LLAMA_DEFAULT_PROFILE_IMAGE = '/images/default-profile.png';
 
@@ -96,18 +97,11 @@ function llama_user_badges(PDO $db, int $userId): array
 
     $badges = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-    /*
-     * Public profile.php renders resolved_image_src. Populate it here
-     * from the uploaded/admin image first, then fall back to the normal
-     * badge-file resolver. This keeps public and account badge artwork
-     * using the same source of truth.
-     */
     foreach ($badges as &$badge) {
-        $badge['resolved_image_src'] =
-            llama_badge_image_url(
-                (string) ($badge['slug'] ?? ''),
-                (string) ($badge['image_src'] ?? '')
-            );
+        $badge['resolved_image_src'] = llama_badge_image_url(
+            (string) ($badge['slug'] ?? ''),
+            (string) ($badge['image_src'] ?? '')
+        );
     }
     unset($badge);
 
@@ -162,31 +156,19 @@ function llama_profile_image_url(string $src, ?string $siteUrl = null): string
     return rtrim($siteUrl, '/') . '/' . ltrim($src, '/');
 }
 
-
-function llama_badge_image_url(
-    string $slug,
-    string $imageSrc = ''
-): string {
+function llama_badge_image_url(string $slug, string $imageSrc = ''): string
+{
     $imageSrc = trim($imageSrc);
-
     if ($imageSrc !== '') {
         return $imageSrc;
     }
 
     $slug = strtolower(trim($slug));
-
-    if (
-        $slug === ''
-        || !preg_match(
-            '/^[a-z0-9-]+$/',
-            $slug
-        )
-    ) {
+    if ($slug === '' || !preg_match('/^[a-z0-9-]+$/', $slug)) {
         return '';
     }
 
     $root = dirname(__DIR__);
-
     $candidates = [
         '/images/badges/' . $slug . '.jpg',
         '/images/badges/' . $slug . '.jpeg',
@@ -199,18 +181,13 @@ function llama_badge_image_url(
     ];
 
     foreach ($candidates as $candidate) {
-        if (
-            is_file(
-                $root . $candidate
-            )
-        ) {
+        if (is_file($root . $candidate)) {
             return $candidate;
         }
     }
 
     return '';
 }
-
 
 function llama_profile_url(string $username, ?string $siteUrl = null): string
 {
@@ -234,7 +211,10 @@ function llama_profile_social_handle(string $value): string
     if (preg_match('~^https?://~i', $value)) {
         $path = trim((string) parse_url($value, PHP_URL_PATH), '/');
         if ($path !== '') {
-            $parts = array_values(array_filter(explode('/', $path), static fn (string $part): bool => $part !== ''));
+            $parts = array_values(array_filter(
+                explode('/', $path),
+                static fn (string $part): bool => $part !== ''
+            ));
             $value = (string) end($parts);
         }
     }
@@ -309,6 +289,11 @@ function llama_profile_save(PDO $db, int $userId, array $input): void
 {
     llama_ensure_community_profile($db, $userId);
 
+    $timezone = trim((string) ($input['timezone'] ?? ''));
+    if (!llama_timezone_is_valid($timezone)) {
+        throw new InvalidArgumentException('Choose a valid timezone.');
+    }
+
     $fields = [
         'is_public' => !empty($input['is_public']) ? 1 : 0,
         'bio' => trim((string) ($input['bio'] ?? '')),
@@ -348,34 +333,61 @@ function llama_profile_save(PDO $db, int $userId, array $input): void
 
     foreach (['website_url', 'other_social_url'] as $field) {
         if ($fields[$field] !== '' && !filter_var($fields[$field], FILTER_VALIDATE_URL)) {
-            throw new InvalidArgumentException('Website and other links must be complete URLs, including https://.');
+            throw new InvalidArgumentException(
+                'Website and other links must be complete URLs, including https://.'
+            );
         }
     }
 
-    $stmt = $db->prepare(
-        'UPDATE community_profiles SET
-            is_public = ?, bio = ?, location = ?, squad = ?,
-            website_url = ?, instagram_url = ?, facebook_url = ?, bluesky_url = ?,
-            youtube_url = ?, tiktok_url = ?, other_social_url = ?,
-            camping_style = ?, favorite_places = ?, favorite_camping_music = ?
-         WHERE user_id = ?'
-    );
+    $ownsTransaction = !$db->inTransaction();
+    if ($ownsTransaction) {
+        $db->beginTransaction();
+    }
 
-    $stmt->execute([
-        $fields['is_public'],
-        $fields['bio'] !== '' ? $fields['bio'] : null,
-        $fields['location'] !== '' ? $fields['location'] : null,
-        $fields['squad'] !== '' ? $fields['squad'] : null,
-        $fields['website_url'] !== '' ? $fields['website_url'] : null,
-        $fields['instagram_url'] !== '' ? $fields['instagram_url'] : null,
-        $fields['facebook_url'] !== '' ? $fields['facebook_url'] : null,
-        $fields['bluesky_url'] !== '' ? $fields['bluesky_url'] : null,
-        $fields['youtube_url'] !== '' ? $fields['youtube_url'] : null,
-        $fields['tiktok_url'] !== '' ? $fields['tiktok_url'] : null,
-        $fields['other_social_url'] !== '' ? $fields['other_social_url'] : null,
-        $fields['camping_style'] !== '' ? $fields['camping_style'] : null,
-        $fields['favorite_places'] !== '' ? $fields['favorite_places'] : null,
-        $fields['favorite_camping_music'] !== '' ? $fields['favorite_camping_music'] : null,
-        $userId,
-    ]);
+    try {
+        $stmt = $db->prepare(
+            'UPDATE community_profiles SET
+                is_public = ?, bio = ?, location = ?, squad = ?,
+                website_url = ?, instagram_url = ?, facebook_url = ?, bluesky_url = ?,
+                youtube_url = ?, tiktok_url = ?, other_social_url = ?,
+                camping_style = ?, favorite_places = ?, favorite_camping_music = ?
+             WHERE user_id = ?'
+        );
+
+        $stmt->execute([
+            $fields['is_public'],
+            $fields['bio'] !== '' ? $fields['bio'] : null,
+            $fields['location'] !== '' ? $fields['location'] : null,
+            $fields['squad'] !== '' ? $fields['squad'] : null,
+            $fields['website_url'] !== '' ? $fields['website_url'] : null,
+            $fields['instagram_url'] !== '' ? $fields['instagram_url'] : null,
+            $fields['facebook_url'] !== '' ? $fields['facebook_url'] : null,
+            $fields['bluesky_url'] !== '' ? $fields['bluesky_url'] : null,
+            $fields['youtube_url'] !== '' ? $fields['youtube_url'] : null,
+            $fields['tiktok_url'] !== '' ? $fields['tiktok_url'] : null,
+            $fields['other_social_url'] !== '' ? $fields['other_social_url'] : null,
+            $fields['camping_style'] !== '' ? $fields['camping_style'] : null,
+            $fields['favorite_places'] !== '' ? $fields['favorite_places'] : null,
+            $fields['favorite_camping_music'] !== '' ? $fields['favorite_camping_music'] : null,
+            $userId,
+        ]);
+
+        $timezoneStmt = $db->prepare(
+            'UPDATE users
+             SET timezone = ?
+             WHERE id = ?'
+        );
+        $timezoneStmt->execute([$timezone, $userId]);
+
+        if ($ownsTransaction) {
+            $db->commit();
+        }
+
+        llama_reset_viewer_timezone_cache();
+    } catch (Throwable $exception) {
+        if ($ownsTransaction && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $exception;
+    }
 }
