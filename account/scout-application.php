@@ -265,13 +265,6 @@ function scout_app_value(
                     ></div>
                 </div>
 
-                <small class="account-scout-field-help">
-                    Start typing and choose the correct address. Llama Scout
-                    will fill the city, state, postal code, and country for you.
-                    You can still enter everything manually.
-                    Address search is powered by Geoapify.
-                </small>
-
                 <div class="account-scout-address-tools">
                     <button
                         type="button"
@@ -282,18 +275,15 @@ function scout_app_value(
                         <span>Use my location</span>
                     </button>
 
-                    <small>
-                        Optional. This only biases search results toward your
-                        current area. It does not change the mailing address.
+                    <small
+                        class="account-scout-address-status"
+                        data-scout-address-status
+                        role="status"
+                        aria-live="polite"
+                    >
+                        Start typing to search addresses.
                     </small>
                 </div>
-
-                <small
-                    class="account-scout-address-status"
-                    data-scout-address-status
-                    role="status"
-                    aria-live="polite"
-                ></small>
             </label>
 
             <label class="is-wide">
@@ -675,7 +665,7 @@ function scout_app_value(
         closeSuggestions();
 
         setStatus(
-            'Address selected. Check the filled fields before submitting.',
+            'Address selected.',
             'good'
         );
     };
@@ -740,7 +730,7 @@ function scout_app_value(
 
         if (!hasResults) {
             setStatus(
-                'The llama can\'t find your address. Keep typing or enter the address manually.'
+                'No match yet. Keep typing.'
             );
         }
     };
@@ -754,7 +744,7 @@ function scout_app_value(
 
             if (query.length > 0) {
                 setStatus(
-                    'Type at least 3 characters to search.'
+                    'Keep typing...'
                 );
             } else {
                 setStatus('');
@@ -834,7 +824,7 @@ function scout_app_value(
             closeSuggestions();
 
             setStatus(
-                'The llama says address lookup is temporarily unavailable. You can enter the address manually.',
+                'Address search unavailable. Enter it manually.',
                 'error'
             );
         }
@@ -863,7 +853,7 @@ function scout_app_value(
             }
 
             setStatus(
-                'Finding your approximate location to improve nearby address results.'
+                'Finding your location...'
             );
 
             navigator.geolocation.getCurrentPosition(
@@ -888,7 +878,7 @@ function scout_app_value(
                     }
 
                     setStatus(
-                        'Nearby address results are now prioritized. You can still search for an address anywhere.',
+                        'Nearby results enabled.',
                         'good'
                     );
 
@@ -908,14 +898,14 @@ function scout_app_value(
                     }
 
                     let message =
-                        'Location was not available. Address search will still work normally.';
+                        'Location unavailable. Search still works.';
 
                     if (
                         error
                         && error.code === 1
                     ) {
                         message =
-                            'Location permission was not allowed. Address search will still work normally.';
+                            'Location not allowed. Search still works.';
                     }
 
                     setStatus(
