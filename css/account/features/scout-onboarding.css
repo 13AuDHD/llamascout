@@ -540,3 +540,119 @@
         grid-row: 2;
     }
 }
+
+
+/* =========================================================
+   SCOUT TRAINING MEDIA READINESS
+   ========================================================= */
+
+.account-scout-media-checks {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+
+.account-scout-media-check {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid rgba(88,166,106,.40);
+    border-radius: 11px;
+    background: rgba(88,166,106,.06);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.account-scout-media-check:hover,
+.account-scout-media-check:focus-visible {
+    border-color: rgba(88,166,106,.72);
+    background: rgba(88,166,106,.10);
+}
+
+.account-scout-media-check.is-ready {
+    border-color: rgba(88,166,106,.72);
+    background: rgba(88,166,106,.12);
+}
+
+.account-scout-media-check-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(88,166,106,.14);
+    color: #58a66a;
+}
+
+.account-scout-media-check > span:nth-child(2) {
+    min-width: 0;
+}
+
+.account-scout-media-check strong,
+.account-scout-media-check small {
+    display: block;
+}
+
+.account-scout-media-check strong {
+    font-size: .8rem;
+}
+
+.account-scout-media-check small {
+    margin-top: 2px;
+    font-size: .66rem;
+    line-height: 1.35;
+    opacity: .68;
+}
+
+.account-scout-media-check-state {
+    color: #58a66a;
+}
+
+.account-scout-test-preview {
+    overflow: hidden;
+    border: 1px solid rgba(88,166,106,.34);
+    border-radius: 12px;
+    background: #000;
+}
+
+.account-scout-test-preview[hidden] {
+    display: none;
+}
+
+.account-scout-test-preview video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 360px;
+    object-fit: contain;
+    background: #000;
+}
+
+.account-scout-test-preview-copy {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+}
+
+.account-scout-test-preview-copy strong {
+    font-size: .74rem;
+}
+
+.account-scout-test-preview-copy span {
+    color: rgba(255,255,255,.72);
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+.account-scout-video-wrap video[poster],
+.account-scout-test-preview video[poster] {
+    object-fit: contain;
+}
+
