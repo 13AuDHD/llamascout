@@ -656,3 +656,91 @@
     object-fit: contain;
 }
 
+
+
+/* =========================================================
+   SCOUT MAILING ADDRESS LOOKUP
+   ========================================================= */
+
+.account-scout-address-field {
+    position: relative;
+}
+
+.account-scout-address-input-wrap {
+    position: relative;
+}
+
+.account-scout-address-input-wrap > i {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    z-index: 2;
+    transform: translateY(-50%);
+    color: #58a66a;
+    pointer-events: none;
+}
+
+.account-scout-address-input-wrap
+    input[data-scout-mailing-address] {
+    padding-right: 38px;
+}
+
+.account-scout-address-suggestions {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid rgba(127,127,127,.26);
+    border-radius: 10px;
+    background: var(--surface, #fff);
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+}
+
+.account-scout-address-suggestions[hidden] {
+    display: none;
+}
+
+.account-scout-address-suggestion {
+    width: 100%;
+    padding: 10px 11px;
+    border: 0;
+    border-bottom: 1px solid rgba(127,127,127,.14);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: .72rem;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+}
+
+.account-scout-address-suggestion:last-child {
+    border-bottom: 0;
+}
+
+.account-scout-address-suggestion:hover,
+.account-scout-address-suggestion:focus-visible {
+    outline: 0;
+    background: rgba(88,166,106,.10);
+}
+
+.account-scout-address-status {
+    min-height: 1em;
+    font-size: .64rem;
+    line-height: 1.4;
+    opacity: .72;
+}
+
+.account-scout-address-status.is-good {
+    color: #58a66a;
+    opacity: 1;
+}
+
+.account-scout-address-status.is-error {
+    color: #c65c52;
+    opacity: 1;
+}
