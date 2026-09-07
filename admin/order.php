@@ -269,7 +269,11 @@ require __DIR__ . '/_header.php';
     <h2><?= moderation_e((string) $order['order_number']) ?></h2>
 
     <span>
-        <?= moderation_e((string) $order['created_at']) ?>
+        <?= moderation_e(
+            llama_format_viewer_datetime(
+                (string) $order['created_at']
+            )
+        ) ?>
         |
         <?= moderation_e(
             (string) (
@@ -430,10 +434,7 @@ require __DIR__ . '/_header.php';
 
 <label>
     <span>Provider order ID</span>
-    <input
-        type="text"
-        name="provider_order_id"
-    >
+    <input type="text" name="provider_order_id">
 </label>
 
 <label>
@@ -449,11 +450,7 @@ require __DIR__ . '/_header.php';
 
 <label>
     <span>Tracking number</span>
-    <input
-        type="text"
-        name="tracking_number"
-        autocomplete="off"
-    >
+    <input type="text" name="tracking_number" autocomplete="off">
 </label>
 
 <div class="admin-user-form-actions">
@@ -470,27 +467,16 @@ require __DIR__ . '/_header.php';
 
 <?php foreach ($fulfillments as $fulfillment): ?>
 
-<form
-    class="admin-commerce-fulfillment-form"
-    method="post"
->
-
+<form class="admin-commerce-fulfillment-form" method="post">
 <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
 <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
 <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
 <input type="hidden" name="shop_admin_action" value="update-fulfillment">
 
 <div class="admin-commerce-fulfillment-heading">
-    <strong>
-        Fulfillment #<?= (int) $fulfillment['id'] ?>
-    </strong>
-
+    <strong>Fulfillment #<?= (int) $fulfillment['id'] ?></strong>
     <span class="admin-status-pill">
-        <?= moderation_e(
-            ucfirst(
-                (string) $fulfillment['status']
-            )
-        ) ?>
+        <?= moderation_e(ucfirst((string) $fulfillment['status'])) ?>
     </span>
 </div>
 
@@ -521,15 +507,8 @@ require __DIR__ . '/_header.php';
     <span>Status</span>
     <select name="status">
         <?php foreach (
-            [
-                'pending',
-                'processing',
-                'submitted',
-                'shipped',
-                'delivered',
-                'problem',
-                'cancelled',
-            ] as $status
+            ['pending','processing','submitted','shipped','delivered','problem','cancelled']
+            as $status
         ): ?>
             <option
                 value="<?= moderation_e($status) ?>"
@@ -546,20 +525,14 @@ require __DIR__ . '/_header.php';
     <input
         type="text"
         name="provider_order_id"
-        value="<?= moderation_e(
-            (string) ($fulfillment['provider_order_id'] ?? '')
-        ) ?>"
+        value="<?= moderation_e((string) ($fulfillment['provider_order_id'] ?? '')) ?>"
     >
 </label>
 
 <label>
     <span>Tracking provider</span>
     <select name="tracking_carrier">
-        <?php
-        $currentCarrier = admin_shop_normalize_tracking_carrier(
-            (string) ($fulfillment['tracking_carrier'] ?? '')
-        );
-        ?>
+        <?php $currentCarrier = admin_shop_normalize_tracking_carrier((string) ($fulfillment['tracking_carrier'] ?? '')); ?>
         <?php foreach ($trackingCarriers as $carrierKey => $carrierLabel): ?>
             <option
                 value="<?= moderation_e($carrierKey) ?>"
@@ -576,9 +549,7 @@ require __DIR__ . '/_header.php';
     <input
         type="text"
         name="tracking_number"
-        value="<?= moderation_e(
-            (string) ($fulfillment['tracking_number'] ?? '')
-        ) ?>"
+        value="<?= moderation_e((string) ($fulfillment['tracking_number'] ?? '')) ?>"
         autocomplete="off"
     >
 </label>
@@ -586,27 +557,16 @@ require __DIR__ . '/_header.php';
 <?php if (!empty($fulfillment['tracking_url'])): ?>
 <div class="admin-commerce-tracking-link">
     <span>Tracking link</span>
-    <a
-        href="<?= moderation_e((string) $fulfillment['tracking_url']) ?>"
-        target="_blank"
-        rel="noopener"
-    >
-        Open <?= moderation_e(
-            admin_shop_tracking_carrier_label(
-                (string) ($fulfillment['tracking_carrier'] ?? '')
-            )
-        ) ?> tracking
+    <a href="<?= moderation_e((string) $fulfillment['tracking_url']) ?>" target="_blank" rel="noopener">
+        Open <?= moderation_e(admin_shop_tracking_carrier_label((string) ($fulfillment['tracking_carrier'] ?? ''))) ?> tracking
         <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
     </a>
 </div>
 <?php endif; ?>
 
 <div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Update fulfillment
-    </button>
+    <button class="admin-button" type="submit">Update fulfillment</button>
 </div>
-
 </form>
 
 <?php
@@ -619,46 +579,29 @@ $providerKey = admin_shop_normalize_provider(
 <?php
 $printfulRemoteOrder = [];
 $printfulRemoteError = '';
-$printfulProviderOrderId = trim(
-    (string) ($fulfillment['provider_order_id'] ?? '')
-);
+$printfulProviderOrderId = trim((string) ($fulfillment['provider_order_id'] ?? ''));
 
 if ($printfulProviderOrderId !== '') {
     try {
-        $printfulRemoteOrder = llama_printful_get_order(
-            $printfulProviderOrderId
-        );
+        $printfulRemoteOrder = llama_printful_get_order($printfulProviderOrderId);
     } catch (Throwable $exception) {
         $printfulRemoteError = $exception->getMessage();
     }
 }
 ?>
-
 <div class="admin-commerce-provider-box">
-
 <div>
     <i class="fa-solid fa-shirt" aria-hidden="true"></i>
-
     <div>
         <strong>Printful Fulfillment</strong>
-
         <?php if ($printfulProviderOrderId === ''): ?>
-        <span>
-            This fulfillment has not been sent to Printful yet.
-        </span>
+        <span>This fulfillment has not been sent to Printful yet.</span>
         <?php elseif ($printfulRemoteError !== ''): ?>
-        <span>
-            Printful order #<?= moderation_e($printfulProviderOrderId) ?>
-            could not be refreshed.
-        </span>
+        <span>Printful order #<?= moderation_e($printfulProviderOrderId) ?> could not be refreshed.</span>
         <?php else: ?>
         <span>
             Printful order #<?= moderation_e($printfulProviderOrderId) ?>
-            | <?= moderation_e(
-                ucfirst(
-                    (string) ($printfulRemoteOrder['status'] ?? 'Unknown')
-                )
-            ) ?>
+            | <?= moderation_e(ucfirst((string) ($printfulRemoteOrder['status'] ?? 'Unknown'))) ?>
         </span>
         <?php endif; ?>
     </div>
@@ -666,107 +609,40 @@ if ($printfulProviderOrderId !== '') {
 
 <?php if ($printfulProviderOrderId === ''): ?>
 <form method="post">
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= moderation_e(moderation_csrf_token()) ?>"
-    >
-    <input
-        type="hidden"
-        name="order_id"
-        value="<?= (int) $orderId ?>"
-    >
-    <input
-        type="hidden"
-        name="fulfillment_id"
-        value="<?= (int) $fulfillment['id'] ?>"
-    >
-    <input
-        type="hidden"
-        name="shop_admin_action"
-        value="create-printful-order"
-    >
-
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        <?= llama_printful_auto_confirm()
-            ? 'Send to Printful'
-            : 'Create Printful draft' ?>
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="create-printful-order">
+    <button class="admin-button" type="submit">
+        <?= llama_printful_auto_confirm() ? 'Send to Printful' : 'Create Printful draft' ?>
     </button>
 </form>
 <?php else: ?>
-
 <form method="post">
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= moderation_e(
-            moderation_csrf_token()
-        ) ?>"
-    >
-
-    <input
-        type="hidden"
-        name="order_id"
-        value="<?= (int) $orderId ?>"
-    >
-
-    <input
-        type="hidden"
-        name="fulfillment_id"
-        value="<?= (int) $fulfillment['id'] ?>"
-    >
-
-    <input
-        type="hidden"
-        name="shop_admin_action"
-        value="refresh-printful"
-    >
-
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        <i
-            class="fa-solid fa-arrows-rotate"
-            aria-hidden="true"
-        ></i>
-
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="refresh-printful">
+    <button class="admin-button" type="submit">
+        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
         Refresh from Printful
     </button>
 </form>
-
 <?php if (!empty($printfulRemoteOrder['dashboard_url'])): ?>
-<a
-    class="admin-button"
-    href="<?= moderation_e(
-        (string) $printfulRemoteOrder['dashboard_url']
-    ) ?>"
-    target="_blank"
-    rel="noopener"
->
+<a class="admin-button" href="<?= moderation_e((string) $printfulRemoteOrder['dashboard_url']) ?>" target="_blank" rel="noopener">
     Open in Printful
 </a>
 <?php endif; ?>
-
 <?php endif; ?>
-
 </div>
 
 <?php if ($printfulRemoteError !== ''): ?>
-<p class="admin-commerce-provider-error">
-    <?= moderation_e($printfulRemoteError) ?>
-</p>
+<p class="admin-commerce-provider-error"><?= moderation_e($printfulRemoteError) ?></p>
 <?php endif; ?>
-
 <?php endif; ?>
 
 <?php endforeach; ?>
-
 </div>
-
 <?php endif; ?>
 
 </section>
@@ -778,479 +654,199 @@ if ($printfulProviderOrderId !== '') {
 $currentProvider = admin_shop_normalize_provider(
     (string) ($fulfillment['fulfillment_provider'] ?? '')
 );
-
 if ($currentProvider === '') {
     $currentProvider = 'llama_scout';
 }
-
 $package = $currentProvider === 'llama_scout'
-    ? admin_fulfillment_package(
-        $db,
-        (int) $fulfillment['id']
-    )
+    ? admin_fulfillment_package($db, (int) $fulfillment['id'])
     : null;
 ?>
 
 <?php if ($currentProvider === 'llama_scout'): ?>
 <section class="admin-panel">
-
 <header class="admin-panel-header">
-    <div>
-        <p>Llama Scout Fulfillment</p>
-        <h2>Package &amp; Label</h2>
-    </div>
-
-    <span>
-        Fulfillment #<?= (int) $fulfillment['id'] ?>
-    </span>
+    <div><p>Llama Scout Fulfillment</p><h2>Package &amp; Label</h2></div>
+    <span>Fulfillment #<?= (int) $fulfillment['id'] ?></span>
 </header>
 
-<form
-    class="admin-commerce-package-form"
-    method="post"
->
-
-<input
-    type="hidden"
-    name="csrf_token"
-    value="<?= moderation_e(moderation_csrf_token()) ?>"
->
-<input
-    type="hidden"
-    name="order_id"
-    value="<?= (int) $orderId ?>"
->
-<input
-    type="hidden"
-    name="fulfillment_id"
-    value="<?= (int) $fulfillment['id'] ?>"
->
-<input
-    type="hidden"
-    name="shop_admin_action"
-    value="save-package"
->
+<form class="admin-commerce-package-form" method="post">
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+<input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+<input type="hidden" name="shop_admin_action" value="save-package">
 
 <div class="admin-commerce-package-grid">
-
 <label>
     <span>Package type</span>
     <select name="package_type" required>
         <?php foreach ($packageTypes as $typeKey => $typeLabel): ?>
-            <option
-                value="<?= moderation_e($typeKey) ?>"
-                <?= ($package['package_type'] ?? 'poly_mailer') === $typeKey
-                    ? 'selected'
-                    : '' ?>
-            >
+            <option value="<?= moderation_e($typeKey) ?>" <?= ($package['package_type'] ?? 'poly_mailer') === $typeKey ? 'selected' : '' ?>>
                 <?= moderation_e($typeLabel) ?>
             </option>
         <?php endforeach; ?>
     </select>
 </label>
-
 <label>
     <span>Weight</span>
     <div class="admin-commerce-measure-input">
-        <input
-            type="number"
-            name="weight_oz"
-            min="0.01"
-            max="9999"
-            step="0.01"
-            inputmode="decimal"
-            required
-            value="<?= moderation_e(
-                (string) ($package['weight_oz'] ?? '')
-            ) ?>"
-        >
+        <input type="number" name="weight_oz" min="0.01" max="9999" step="0.01" inputmode="decimal" required value="<?= moderation_e((string) ($package['weight_oz'] ?? '')) ?>">
         <span>oz</span>
     </div>
 </label>
-
 <label>
     <span>Length</span>
     <div class="admin-commerce-measure-input">
-        <input
-            type="number"
-            name="length_in"
-            min="0.01"
-            max="9999"
-            step="0.01"
-            inputmode="decimal"
-            value="<?= moderation_e(
-                (string) ($package['length_in'] ?? '')
-            ) ?>"
-        >
+        <input type="number" name="length_in" min="0.01" max="9999" step="0.01" inputmode="decimal" value="<?= moderation_e((string) ($package['length_in'] ?? '')) ?>">
         <span>in</span>
     </div>
 </label>
-
 <label>
     <span>Width</span>
     <div class="admin-commerce-measure-input">
-        <input
-            type="number"
-            name="width_in"
-            min="0.01"
-            max="9999"
-            step="0.01"
-            inputmode="decimal"
-            value="<?= moderation_e(
-                (string) ($package['width_in'] ?? '')
-            ) ?>"
-        >
+        <input type="number" name="width_in" min="0.01" max="9999" step="0.01" inputmode="decimal" value="<?= moderation_e((string) ($package['width_in'] ?? '')) ?>">
         <span>in</span>
     </div>
 </label>
-
 <label>
     <span>Height</span>
     <div class="admin-commerce-measure-input">
-        <input
-            type="number"
-            name="height_in"
-            min="0.01"
-            max="9999"
-            step="0.01"
-            inputmode="decimal"
-            value="<?= moderation_e(
-                (string) ($package['height_in'] ?? '')
-            ) ?>"
-        >
+        <input type="number" name="height_in" min="0.01" max="9999" step="0.01" inputmode="decimal" value="<?= moderation_e((string) ($package['height_in'] ?? '')) ?>">
         <span>in</span>
     </div>
 </label>
-
 </div>
 
 <label class="admin-commerce-package-notes">
     <span>Internal packing notes</span>
-    <textarea
-        name="package_notes"
-        rows="3"
-        maxlength="2000"
-        placeholder="Example: Include sticker pack. Fold bandanna flat."
-    ><?= moderation_e(
-        (string) ($package['internal_notes'] ?? '')
-    ) ?></textarea>
+    <textarea name="package_notes" rows="3" maxlength="2000" placeholder="Example: Include sticker pack. Fold bandanna flat."><?= moderation_e((string) ($package['internal_notes'] ?? '')) ?></textarea>
 </label>
 
 <div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Save package
-    </button>
+    <button class="admin-button" type="submit">Save package</button>
 </div>
-
 </form>
 
 <?php
-$shippingConfigured =
-    llama_shipping_easypost_configured();
-
-$shippingRates =
-    admin_fulfillment_rate_rows(
-        $db,
-        (int) $fulfillment['id']
-    );
-
-$shippingLabel =
-    admin_fulfillment_label(
-        $db,
-        (int) $fulfillment['id']
-    );
+$shippingConfigured = llama_shipping_easypost_configured();
+$shippingRates = admin_fulfillment_rate_rows($db, (int) $fulfillment['id']);
+$shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 ?>
 
 <div class="admin-commerce-label-box">
-
 <?php if ($shippingLabel): ?>
-
 <div class="admin-commerce-label-result">
     <div>
         <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-
         <div>
             <strong>Shipping label ready</strong>
             <span>
-                <?= moderation_e(
-                    (string) $shippingLabel['carrier']
-                ) ?>
-                <?= moderation_e(
-                    (string) $shippingLabel['service']
-                ) ?>
-                | <?= moderation_e(
-                    admin_shop_money(
-                        (int) $shippingLabel['postage_cents'],
-                        strtolower(
-                            (string) $shippingLabel['currency']
-                        )
-                    )
-                ) ?>
+                <?= moderation_e((string) $shippingLabel['carrier']) ?>
+                <?= moderation_e((string) $shippingLabel['service']) ?>
+                | <?= moderation_e(admin_shop_money((int) $shippingLabel['postage_cents'], strtolower((string) $shippingLabel['currency']))) ?>
             </span>
         </div>
     </div>
-
     <div class="admin-commerce-label-actions">
-        <a
-            class="admin-button"
-            href="<?= moderation_e(
-                (string) $shippingLabel['label_url']
-            ) ?>"
-            target="_blank"
-            rel="noopener"
-        >
-            Open label
-        </a>
-
+        <a class="admin-button" href="<?= moderation_e((string) $shippingLabel['label_url']) ?>" target="_blank" rel="noopener">Open label</a>
         <?php if (!empty($shippingLabel['tracking_url'])): ?>
-        <a
-            class="admin-button"
-            href="<?= moderation_e(
-                (string) $shippingLabel['tracking_url']
-            ) ?>"
-            target="_blank"
-            rel="noopener"
-        >
-            Track package
-        </a>
+        <a class="admin-button" href="<?= moderation_e((string) $shippingLabel['tracking_url']) ?>" target="_blank" rel="noopener">Track package</a>
         <?php endif; ?>
     </div>
 </div>
-
 <?php elseif (!$shippingConfigured): ?>
-
 <div>
     <i class="fa-solid fa-plug" aria-hidden="true"></i>
-
     <div>
         <strong>Connect EasyPost</strong>
-        <span>
-            Add the EasyPost API key and Llama Scout Fulfillment origin address to the private shipping configuration.
-        </span>
+        <span>Add the EasyPost API key and Llama Scout Fulfillment origin address to the private shipping configuration.</span>
     </div>
 </div>
-
-<button
-    class="admin-button"
-    type="button"
-    disabled
->
-    Shipping not configured
-</button>
-
+<button class="admin-button" type="button" disabled>Shipping not configured</button>
 <?php else: ?>
-
 <div class="admin-commerce-label-heading">
     <div>
         <i class="fa-solid fa-tag" aria-hidden="true"></i>
-
         <div>
             <strong>Create shipping label</strong>
-            <span>
-                Get live carrier rates, choose one, then purchase the label.
-            </span>
+            <span>Get live carrier rates, choose one, then purchase the label.</span>
         </div>
     </div>
-
     <form method="post">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= moderation_e(moderation_csrf_token()) ?>"
-        >
-        <input
-            type="hidden"
-            name="order_id"
-            value="<?= (int) $orderId ?>"
-        >
-        <input
-            type="hidden"
-            name="fulfillment_id"
-            value="<?= (int) $fulfillment['id'] ?>"
-        >
-        <input
-            type="hidden"
-            name="shop_admin_action"
-            value="quote-shipping-rates"
-        >
-
-        <button
-            class="admin-button"
-            type="submit"
-        >
-            <?= $shippingRates
-                ? 'Refresh rates'
-                : 'Get shipping rates' ?>
-        </button>
+        <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+        <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+        <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+        <input type="hidden" name="shop_admin_action" value="quote-shipping-rates">
+        <button class="admin-button" type="submit"><?= $shippingRates ? 'Refresh rates' : 'Get shipping rates' ?></button>
     </form>
 </div>
 
 <?php if ($shippingRates): ?>
 <div class="admin-commerce-rate-list">
-
 <?php foreach ($shippingRates as $rate): ?>
-<form
-    class="admin-commerce-rate-row"
-    method="post"
->
-
-<input
-    type="hidden"
-    name="csrf_token"
-    value="<?= moderation_e(moderation_csrf_token()) ?>"
->
-<input
-    type="hidden"
-    name="order_id"
-    value="<?= (int) $orderId ?>"
->
-<input
-    type="hidden"
-    name="fulfillment_id"
-    value="<?= (int) $fulfillment['id'] ?>"
->
-<input
-    type="hidden"
-    name="rate_id"
-    value="<?= (int) $rate['id'] ?>"
->
-<input
-    type="hidden"
-    name="shop_admin_action"
-    value="buy-shipping-label"
->
-
+<form class="admin-commerce-rate-row" method="post">
+<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+<input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+<input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+<input type="hidden" name="rate_id" value="<?= (int) $rate['id'] ?>">
+<input type="hidden" name="shop_admin_action" value="buy-shipping-label">
 <div>
-    <strong>
-        <?= moderation_e(
-            (string) $rate['carrier']
-        ) ?>
-        <?= moderation_e(
-            (string) $rate['service']
-        ) ?>
-    </strong>
-
+    <strong><?= moderation_e((string) $rate['carrier']) ?> <?= moderation_e((string) $rate['service']) ?></strong>
     <span>
         <?php if (!empty($rate['delivery_days'])): ?>
-            Estimated <?= (int) $rate['delivery_days'] ?>
-            day<?= (int) $rate['delivery_days'] === 1 ? '' : 's' ?>
+            Estimated <?= (int) $rate['delivery_days'] ?> day<?= (int) $rate['delivery_days'] === 1 ? '' : 's' ?>
         <?php elseif (!empty($rate['delivery_date'])): ?>
-            Estimated <?= moderation_e(
-                (string) $rate['delivery_date']
-            ) ?>
+            Estimated <?= moderation_e((string) $rate['delivery_date']) ?>
         <?php else: ?>
             Delivery estimate unavailable
         <?php endif; ?>
     </span>
 </div>
-
-<strong>
-    <?= moderation_e(
-        admin_shop_money(
-            (int) $rate['rate_cents'],
-            strtolower(
-                (string) $rate['currency']
-            )
-        )
-    ) ?>
-</strong>
-
-<button
-    class="admin-button"
-    type="submit"
->
-    Buy label
-</button>
-
+<strong><?= moderation_e(admin_shop_money((int) $rate['rate_cents'], strtolower((string) $rate['currency']))) ?></strong>
+<button class="admin-button" type="submit">Buy label</button>
 </form>
 <?php endforeach; ?>
-
 </div>
 <?php endif; ?>
-
 <?php endif; ?>
-
 </div>
-
 </section>
 <?php endif; ?>
 
-
 <section class="admin-panel">
-
 <header class="admin-panel-header">
-    <div>
-        <p>History</p>
-        <h2>Fulfillment Timeline</h2>
-    </div>
+    <div><p>History</p><h2>Fulfillment Timeline</h2></div>
 </header>
 
 <dl class="admin-commerce-fulfillment-timeline">
-
 <div>
     <dt>Created</dt>
-    <dd>
-        <?= moderation_e(
-            admin_fulfillment_format_timestamp(
-                $fulfillment['created_at'] ?? ''
-            )
-        ) ?>
-    </dd>
+    <dd><?= moderation_e(admin_fulfillment_format_timestamp($fulfillment['created_at'] ?? '')) ?></dd>
 </div>
-
 <div>
     <dt>Submitted / processing</dt>
-    <dd>
-        <?= moderation_e(
-            admin_fulfillment_format_timestamp(
-                $fulfillment['submitted_at'] ?? ''
-            )
-        ) ?>
-    </dd>
+    <dd><?= moderation_e(admin_fulfillment_format_timestamp($fulfillment['submitted_at'] ?? '')) ?></dd>
 </div>
-
 <div>
     <dt>Shipped</dt>
-    <dd>
-        <?= moderation_e(
-            admin_fulfillment_format_timestamp(
-                $fulfillment['shipped_at'] ?? ''
-            )
-        ) ?>
-    </dd>
+    <dd><?= moderation_e(admin_fulfillment_format_timestamp($fulfillment['shipped_at'] ?? '')) ?></dd>
 </div>
-
 <div>
     <dt>Delivered</dt>
-    <dd>
-        <?= moderation_e(
-            admin_fulfillment_format_timestamp(
-                $fulfillment['delivered_at'] ?? ''
-            )
-        ) ?>
-    </dd>
+    <dd><?= moderation_e(admin_fulfillment_format_timestamp($fulfillment['delivered_at'] ?? '')) ?></dd>
 </div>
-
 </dl>
-
 </section>
 
 <?php endforeach; ?>
 <?php endif; ?>
-
-
 </div>
 
 
 <aside class="admin-user-detail-side">
 
 <section class="admin-panel">
-
 <header class="admin-panel-header">
-    <div>
-        <p>Status</p>
-        <h2>Order State</h2>
-    </div>
+    <div><p>Status</p><h2>Order State</h2></div>
 </header>
 
 <div class="admin-commerce-order-status-note">
@@ -1262,11 +858,7 @@ $shippingLabel =
     </p>
 </div>
 
-<form
-    class="admin-user-action-box"
-    method="post"
->
-
+<form class="admin-user-action-box" method="post">
 <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
 <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
 <input type="hidden" name="shop_admin_action" value="order-status">
@@ -1275,119 +867,50 @@ $shippingLabel =
     <span>Order status</span>
     <select name="order_status">
         <?php foreach (
-            [
-                'pending',
-                'paid',
-                'processing',
-                'submitted',
-                'shipped',
-                'delivered',
-                'cancelled',
-                'refunded',
-                'problem',
-            ] as $status
+            ['pending','paid','processing','submitted','shipped','delivered','cancelled','refunded','problem']
+            as $status
         ): ?>
-            <option
-                value="<?= moderation_e($status) ?>"
-                <?= $order['order_status'] === $status ? 'selected' : '' ?>
-            >
+            <option value="<?= moderation_e($status) ?>" <?= $order['order_status'] === $status ? 'selected' : '' ?>>
                 <?= moderation_e(ucfirst($status)) ?>
             </option>
         <?php endforeach; ?>
     </select>
 </label>
 
-<button class="admin-button" type="submit">
-    Save order status
-</button>
-
+<button class="admin-button" type="submit">Save order status</button>
 </form>
-
 </section>
 
 
 <section class="admin-panel">
-
 <header class="admin-panel-header">
-    <div>
-        <p>Payment</p>
-        <h2>Totals</h2>
-    </div>
+    <div><p>Payment</p><h2>Totals</h2></div>
 </header>
-
 <dl class="admin-user-definition-list">
-
-<div>
-    <dt>Subtotal</dt>
-    <dd><?= moderation_e(admin_shop_money((int) $order['subtotal_cents'])) ?></dd>
-</div>
-
-<div>
-    <dt>Discount</dt>
-    <dd>-<?= moderation_e(admin_shop_money((int) $order['discount_cents'])) ?></dd>
-</div>
-
-<div>
-    <dt>Shipping</dt>
-    <dd><?= moderation_e(admin_shop_money((int) $order['shipping_cents'])) ?></dd>
-</div>
-
-<div>
-    <dt>Tax</dt>
-    <dd><?= moderation_e(admin_shop_money((int) $order['tax_cents'])) ?></dd>
-</div>
-
-<div>
-    <dt>Total</dt>
-    <dd><?= moderation_e(admin_shop_money((int) $order['total_cents'])) ?></dd>
-</div>
-
-<div>
-    <dt>Payment status</dt>
-    <dd><?= moderation_e((string) $order['payment_status']) ?></dd>
-</div>
-
+<div><dt>Subtotal</dt><dd><?= moderation_e(admin_shop_money((int) $order['subtotal_cents'])) ?></dd></div>
+<div><dt>Discount</dt><dd>-<?= moderation_e(admin_shop_money((int) $order['discount_cents'])) ?></dd></div>
+<div><dt>Shipping</dt><dd><?= moderation_e(admin_shop_money((int) $order['shipping_cents'])) ?></dd></div>
+<div><dt>Tax</dt><dd><?= moderation_e(admin_shop_money((int) $order['tax_cents'])) ?></dd></div>
+<div><dt>Total</dt><dd><?= moderation_e(admin_shop_money((int) $order['total_cents'])) ?></dd></div>
+<div><dt>Payment status</dt><dd><?= moderation_e((string) $order['payment_status']) ?></dd></div>
 </dl>
-
 </section>
 
 
 <section class="admin-panel">
-
 <header class="admin-panel-header">
-    <div>
-        <p>Customer</p>
-        <h2>Shipping Details</h2>
-    </div>
+    <div><p>Customer</p><h2>Shipping Details</h2></div>
 </header>
-
 <dl class="admin-user-definition-list">
-
-<div>
-    <dt>Name</dt>
-    <dd><?= moderation_e((string) ($order['shipping_name'] ?: $order['display_name'] ?: 'Not supplied')) ?></dd>
-</div>
-
-<div>
-    <dt>Email</dt>
-    <dd><?= moderation_e((string) ($order['customer_email'] ?: 'Not supplied')) ?></dd>
-</div>
-
-<div>
-    <dt>Phone</dt>
-    <dd><?= moderation_e((string) ($order['shipping_phone'] ?: 'Not supplied')) ?></dd>
-</div>
-
+<div><dt>Name</dt><dd><?= moderation_e((string) ($order['shipping_name'] ?: $order['display_name'] ?: 'Not supplied')) ?></dd></div>
+<div><dt>Email</dt><dd><?= moderation_e((string) ($order['customer_email'] ?: 'Not supplied')) ?></dd></div>
+<div><dt>Phone</dt><dd><?= moderation_e((string) ($order['shipping_phone'] ?: 'Not supplied')) ?></dd></div>
 <div>
     <dt>Ship to</dt>
     <dd>
         <?php if ($shippingAddress): ?>
-            <?php if (!empty($shippingAddress['line1'])): ?>
-                <?= moderation_e((string) $shippingAddress['line1']) ?><br>
-            <?php endif; ?>
-            <?php if (!empty($shippingAddress['line2'])): ?>
-                <?= moderation_e((string) $shippingAddress['line2']) ?><br>
-            <?php endif; ?>
+            <?php if (!empty($shippingAddress['line1'])): ?><?= moderation_e((string) $shippingAddress['line1']) ?><br><?php endif; ?>
+            <?php if (!empty($shippingAddress['line2'])): ?><?= moderation_e((string) $shippingAddress['line2']) ?><br><?php endif; ?>
             <?php
             $locality = array_filter([
                 trim((string) ($shippingAddress['city'] ?? '')),
@@ -1395,47 +918,28 @@ $shippingLabel =
                 trim((string) ($shippingAddress['postal_code'] ?? '')),
             ], static fn(string $part): bool => $part !== '');
             ?>
-            <?php if ($locality): ?>
-                <?= moderation_e(implode(' ', $locality)) ?><br>
-            <?php endif; ?>
-            <?php if (!empty($shippingAddress['country'])): ?>
-                <?= moderation_e((string) $shippingAddress['country']) ?>
-            <?php endif; ?>
+            <?php if ($locality): ?><?= moderation_e(implode(' ', $locality)) ?><br><?php endif; ?>
+            <?php if (!empty($shippingAddress['country'])): ?><?= moderation_e((string) $shippingAddress['country']) ?><?php endif; ?>
         <?php else: ?>
             Not supplied
         <?php endif; ?>
     </dd>
 </div>
-
 </dl>
-
 </section>
-
 
 <?php if ((int) ($order['shipping_needs_review'] ?? 0) === 1): ?>
 <section class="admin-panel admin-danger-panel">
 <header class="admin-panel-header">
-    <div>
-        <p>Shipping Review</p>
-        <h2>Needs Attention</h2>
-    </div>
+    <div><p>Shipping Review</p><h2>Needs Attention</h2></div>
 </header>
-
 <div class="admin-user-action-box">
-    <p>
-        <?= moderation_e(
-            (string) (
-                $order['shipping_review_reason']
-                ?: 'Shipping quote requires manual review.'
-            )
-        ) ?>
-    </p>
+    <p><?= moderation_e((string) ($order['shipping_review_reason'] ?: 'Shipping quote requires manual review.')) ?></p>
 </div>
 </section>
 <?php endif; ?>
 
 </aside>
-
 </div>
 
 <?php require __DIR__ . '/_footer.php'; ?>

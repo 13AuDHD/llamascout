@@ -719,7 +719,11 @@ $coreChecksComplete = count(
             ) ?>
         </strong>
         on
-        <?= moderation_e($item['submitted_at']) ?>.
+        <?= moderation_e(
+            llama_format_viewer_datetime(
+                (string) $item['submitted_at']
+            )
+        ) ?>.
     </p>
 </div>
 
