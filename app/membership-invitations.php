@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 /* =========================================================
    LLAMA SCOUT
    COMPLIMENTARY MEMBERSHIP INVITATIONS
@@ -18,9 +17,7 @@ declare(strict_types=1);
    the matching account.
    ========================================================= */
 
-
 require_once __DIR__ . '/memberships.php';
-
 
 const LLAMA_COMPLIMENTARY_INVITE_STATUS_PENDING =
     'pending';
@@ -36,115 +33,31 @@ const LLAMA_COMPLIMENTARY_INVITE_DEFAULT_EXPIRY_DAYS =
 
 
 /* =========================================================
-   STORAGE
+   STORAGE VALIDATION
    ========================================================= */
-
 
 function llama_ensure_membership_invitation_storage(
     PDO $db
 ): void {
-
-    if ($db->inTransaction()) {
-        throw new RuntimeException(
-            'Membership invitation storage cannot be initialized inside an active transaction.'
-        );
-    }
-
-    $db->exec(
+    $stmt = $db->prepare(
         '
-        CREATE TABLE IF NOT EXISTS membership_invitations
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            email VARCHAR(254)
-                NOT NULL,
-
-            token_hash CHAR(64)
-                NOT NULL,
-
-            grant_duration_days INT UNSIGNED
-                NOT NULL,
-
-            reason VARCHAR(255)
-                NULL,
-
-            notes TEXT
-                NULL,
-
-            invited_by BIGINT UNSIGNED
-                NULL,
-
-            expires_at DATETIME
-                NOT NULL,
-
-            accepted_at DATETIME
-                NULL,
-
-            accepted_by BIGINT UNSIGNED
-                NULL,
-
-            grant_id BIGINT UNSIGNED
-                NULL,
-
-            revoked_at DATETIME
-                NULL,
-
-            revoked_by BIGINT UNSIGNED
-                NULL,
-
-            revoke_reason VARCHAR(255)
-                NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            UNIQUE KEY uq_membership_invitation_token
-                (token_hash),
-
-            KEY idx_membership_invitation_email
-                (email, expires_at, accepted_at, revoked_at),
-
-            KEY idx_membership_invitation_invited_by
-                (invited_by),
-
-            KEY idx_membership_invitation_accepted_by
-                (accepted_by),
-
-            KEY idx_membership_invitation_grant
-                (grant_id),
-
-            CONSTRAINT fk_membership_invitation_invited_by
-                FOREIGN KEY (invited_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL,
-
-            CONSTRAINT fk_membership_invitation_accepted_by
-                FOREIGN KEY (accepted_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL,
-
-            CONSTRAINT fk_membership_invitation_grant
-                FOREIGN KEY (grant_id)
-                REFERENCES membership_grants(id)
-                ON DELETE SET NULL,
-
-            CONSTRAINT fk_membership_invitation_revoked_by
-                FOREIGN KEY (revoked_by)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = ?
+        LIMIT 1
         '
     );
+
+    $stmt->execute([
+        'membership_invitations',
+    ]);
+
+    if (!$stmt->fetchColumn()) {
+        throw new RuntimeException(
+            'Membership invitation storage is not initialized.'
+        );
+    }
 }
 
 
@@ -152,19 +65,16 @@ function llama_ensure_membership_invitation_storage(
    NORMALIZATION
    ========================================================= */
 
-
 function llama_membership_invitation_normalize_email(
     string $email
 ): string {
-
     $email = strtolower(
         trim($email)
     );
 
     if (
         $email === ''
-        ||
-        !filter_var(
+        || !filter_var(
             $email,
             FILTER_VALIDATE_EMAIL
         )
@@ -188,7 +98,6 @@ function llama_membership_invitation_normalize_email(
    CREATE
    ========================================================= */
 
-
 function llama_create_complimentary_invitation(
     PDO $db,
     string $email,
@@ -199,7 +108,6 @@ function llama_create_complimentary_invitation(
     int $expiresInDays =
         LLAMA_COMPLIMENTARY_INVITE_DEFAULT_EXPIRY_DAYS
 ): array {
-
     llama_ensure_membership_invitation_storage(
         $db
     );
@@ -211,8 +119,7 @@ function llama_create_complimentary_invitation(
 
     if (
         $durationDays < 1
-        ||
-        $durationDays > 3660
+        || $durationDays > 3660
     ) {
         throw new InvalidArgumentException(
             'Complimentary membership duration must be between 1 day and 10 years.'
@@ -221,8 +128,7 @@ function llama_create_complimentary_invitation(
 
     if (
         $expiresInDays < 1
-        ||
-        $expiresInDays > 90
+        || $expiresInDays > 90
     ) {
         throw new InvalidArgumentException(
             'Invitation expiration must be between 1 and 90 days.'
@@ -230,15 +136,14 @@ function llama_create_complimentary_invitation(
     }
 
     $reason =
-        trim((string)$reason);
+        trim((string) $reason);
 
     $notes =
-        trim((string)$notes);
+        trim((string) $notes);
 
     if (
         $reason !== ''
-        &&
-        mb_strlen($reason) > 255
+        && mb_strlen($reason) > 255
     ) {
         throw new InvalidArgumentException(
             'Invitation reason is too long.'
@@ -247,34 +152,25 @@ function llama_create_complimentary_invitation(
 
     if (
         $notes !== ''
-        &&
-        mb_strlen($notes) > 5000
+        && mb_strlen($notes) > 5000
     ) {
         throw new InvalidArgumentException(
             'Private notes are too long.'
         );
     }
 
-    /*
-     * Revoke older still-pending invitations to the same email
-     * before issuing a new one. This keeps one live invitation
-     * per recipient and prevents confusing parallel tokens.
-     */
     $db->beginTransaction();
 
     try {
-
         $revokeStmt =
             $db->prepare(
                 '
                 UPDATE membership_invitations
-
                 SET
                     revoked_at = UTC_TIMESTAMP(),
                     revoked_by = ?,
                     revoke_reason =
                         \'Superseded by a newer invitation\'
-
                 WHERE LOWER(email) = ?
                   AND accepted_at IS NULL
                   AND revoked_at IS NULL
@@ -311,7 +207,6 @@ function llama_create_complimentary_invitation(
                     invited_by,
                     expires_at
                 )
-
                 VALUES
                 (
                     ?,
@@ -332,14 +227,18 @@ function llama_create_complimentary_invitation(
             $email,
             $tokenHash,
             $durationDays,
-            $reason !== '' ? $reason : null,
-            $notes !== '' ? $notes : null,
+            $reason !== ''
+                ? $reason
+                : null,
+            $notes !== ''
+                ? $notes
+                : null,
             $invitedBy,
             $expiresInDays,
         ]);
 
         $invitationId =
-            (int)$db->lastInsertId();
+            (int) $db->lastInsertId();
 
         llama_membership_audit(
             $db,
@@ -382,9 +281,7 @@ function llama_create_complimentary_invitation(
             'expires_in_days' =>
                 $expiresInDays,
         ];
-
     } catch (Throwable $exception) {
-
         if ($db->inTransaction()) {
             $db->rollBack();
         }
@@ -398,12 +295,10 @@ function llama_create_complimentary_invitation(
    LOOKUP
    ========================================================= */
 
-
 function llama_find_complimentary_invitation(
     PDO $db,
     string $token
 ): ?array {
-
     llama_ensure_membership_invitation_storage(
         $db
     );
@@ -413,8 +308,7 @@ function llama_find_complimentary_invitation(
 
     if (
         $token === ''
-        ||
-        !preg_match(
+        || !preg_match(
             '/^[a-f0-9]{64}$/i',
             $token
         )
@@ -452,7 +346,7 @@ function llama_find_complimentary_invitation(
         );
 
     $stmt->execute([
-        $tokenHash
+        $tokenHash,
     ]);
 
     $invitation =
@@ -470,11 +364,9 @@ function llama_find_complimentary_invitation(
    STATUS
    ========================================================= */
 
-
 function llama_complimentary_invitation_status(
     array $invitation
 ): string {
-
     if (
         !empty(
             $invitation['revoked_at']
@@ -495,7 +387,7 @@ function llama_complimentary_invitation_status(
 
     $expiresAt =
         strtotime(
-            (string)(
+            (string) (
                 $invitation['expires_at']
                 ?? ''
             )
@@ -503,8 +395,7 @@ function llama_complimentary_invitation_status(
 
     if (
         $expiresAt === false
-        ||
-        $expiresAt <= time()
+        || $expiresAt <= time()
     ) {
         return 'expired';
     }
@@ -518,13 +409,11 @@ function llama_complimentary_invitation_status(
    ACCEPT
    ========================================================= */
 
-
 function llama_accept_complimentary_invitation(
     PDO $db,
     string $token,
     int $userId
 ): int {
-
     llama_ensure_membership_invitation_storage(
         $db
     );
@@ -558,7 +447,6 @@ function llama_accept_complimentary_invitation(
     $db->beginTransaction();
 
     try {
-
         $inviteStmt =
             $db->prepare(
                 '
@@ -575,7 +463,7 @@ function llama_accept_complimentary_invitation(
             );
 
         $inviteStmt->execute([
-            $tokenHash
+            $tokenHash,
         ]);
 
         $invitation =
@@ -633,7 +521,7 @@ function llama_accept_complimentary_invitation(
             );
 
         $userStmt->execute([
-            $userId
+            $userId,
         ]);
 
         $user =
@@ -650,26 +538,20 @@ function llama_accept_complimentary_invitation(
         $accountEmail =
             strtolower(
                 trim(
-                    (string)$user['email']
+                    (string) $user['email']
                 )
             );
 
         $inviteEmail =
             strtolower(
                 trim(
-                    (string)$invitation['email']
+                    (string) $invitation['email']
                 )
             );
 
-        /*
-         * The token alone is not enough. The logged-in or newly
-         * registered account must use the exact email address
-         * the Owner invited.
-         */
         if (
             $accountEmail === ''
-            ||
-            !hash_equals(
+            || !hash_equals(
                 $inviteEmail,
                 $accountEmail
             )
@@ -679,10 +561,6 @@ function llama_accept_complimentary_invitation(
             );
         }
 
-        /*
-         * Do not stack a complimentary grant over another
-         * currently-active complimentary grant.
-         */
         $existingGrantStmt =
             $db->prepare(
                 '
@@ -716,7 +594,7 @@ function llama_accept_complimentary_invitation(
         }
 
         $durationDays =
-            (int)$invitation[
+            (int) $invitation[
                 'grant_duration_days'
             ];
 
@@ -763,7 +641,7 @@ function llama_accept_complimentary_invitation(
         ]);
 
         $grantId =
-            (int)$db->lastInsertId();
+            (int) $db->lastInsertId();
 
         $acceptStmt =
             $db->prepare(
@@ -784,7 +662,7 @@ function llama_accept_complimentary_invitation(
         $acceptStmt->execute([
             $userId,
             $grantId,
-            (int)$invitation['id'],
+            (int) $invitation['id'],
         ]);
 
         if (
@@ -800,7 +678,7 @@ function llama_accept_complimentary_invitation(
             $userId,
             'complimentary_membership_invitation_accepted',
             'membership_invitation',
-            (int)$invitation['id'],
+            (int) $invitation['id'],
             [
                 'grant_id' =>
                     $grantId,
@@ -816,9 +694,7 @@ function llama_accept_complimentary_invitation(
         $db->commit();
 
         return $grantId;
-
     } catch (Throwable $exception) {
-
         if ($db->inTransaction()) {
             $db->rollBack();
         }
@@ -832,14 +708,12 @@ function llama_accept_complimentary_invitation(
    REVOKE PENDING INVITATION
    ========================================================= */
 
-
 function llama_revoke_complimentary_invitation(
     PDO $db,
     int $invitationId,
     int $revokedBy,
     string $reason
 ): void {
-
     llama_ensure_membership_invitation_storage(
         $db
     );
@@ -862,7 +736,6 @@ function llama_revoke_complimentary_invitation(
     $db->beginTransaction();
 
     try {
-
         $stmt =
             $db->prepare(
                 '
@@ -906,9 +779,7 @@ function llama_revoke_complimentary_invitation(
         );
 
         $db->commit();
-
     } catch (Throwable $exception) {
-
         if ($db->inTransaction()) {
             $db->rollBack();
         }
@@ -922,12 +793,10 @@ function llama_revoke_complimentary_invitation(
    LIST
    ========================================================= */
 
-
 function llama_complimentary_invitations(
     PDO $db,
     int $limit = 100
 ): array {
-
     llama_ensure_membership_invitation_storage(
         $db
     );
