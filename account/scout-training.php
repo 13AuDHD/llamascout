@@ -243,56 +243,63 @@ require dirname(__DIR__) . '/partials/header.php';
             commitments below.
         </p>
 
-        <div class="account-scout-media-checks">
-            <button
-                type="button"
+        <div class="account-scout-test-card">
+            <div
                 class="account-scout-media-check"
-                data-scout-test-media-button
+                data-scout-test-media-toggle
+                role="button"
+                tabindex="0"
+                aria-expanded="false"
+                aria-controls="scout-test-video"
             >
                 <span class="account-scout-media-check-icon">
                     <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
                 </span>
 
-                <span>
+                <span class="account-scout-media-check-copy">
                     <strong>Test audio / video</strong>
                     <small>
-                        Play a short llama clip to check picture, sound,
-                        volume, headphones, Bluetooth, and browser playback.
+                        Make sure picture and sound are working before training.
                     </small>
                 </span>
 
-                <i
-                    class="fa-solid fa-play account-scout-media-check-state"
-                    aria-hidden="true"
-                    data-scout-test-media-state
-                ></i>
-            </button>
-        </div>
+                <span class="account-scout-test-actions">
+                    <button
+                        type="button"
+                        class="account-scout-test-play"
+                        data-scout-test-media-play
+                        aria-label="Play test audio and video"
+                    >
+                        <i class="fa-solid fa-play" aria-hidden="true"></i>
+                    </button>
 
-        <div
-            class="account-scout-test-preview"
-            data-scout-test-preview
-            hidden
-        >
-            <video
-                playsinline
-                preload="metadata"
-                poster="https://llamascout.com/images/logo-footer.png"
-                controlslist="nodownload noplaybackrate noremoteplayback"
-                disablepictureinpicture
-                data-scout-test-media
-            >
-                <source
-                    src="https://llamascout.com/videos/grumpy-llama-spits.mp4"
-                    type="video/mp4"
-                >
-            </video>
-
-            <div class="account-scout-test-preview-copy">
-                <strong data-scout-test-heading>Audio / video test</strong>
-                <span data-scout-test-copy>
-                    This short llama clip checks both picture and sound using the same browser playback path as Scout training.
+                    <i
+                        class="fa-solid fa-chevron-down account-scout-test-chevron"
+                        aria-hidden="true"
+                        data-scout-test-chevron
+                    ></i>
                 </span>
+            </div>
+
+            <div
+                id="scout-test-video"
+                class="account-scout-test-preview"
+                data-scout-test-preview
+                hidden
+            >
+                <video
+                    playsinline
+                    preload="metadata"
+                    poster="https://llamascout.com/images/logo-footer.png"
+                    controlslist="nodownload noplaybackrate noremoteplayback"
+                    disablepictureinpicture
+                    data-scout-test-media
+                >
+                    <source
+                        src="https://llamascout.com/videos/grumpy-llama-spits.mp4"
+                        type="video/mp4"
+                    >
+                </video>
             </div>
         </div>
 
@@ -490,17 +497,15 @@ require dirname(__DIR__) . '/partials/header.php';
     const progressTrack = form.querySelector('[data-scout-video-progress-track]');
     const timeLabel = form.querySelector('[data-scout-video-time]');
 
-    const testButton = form.querySelector('[data-scout-test-media-button]');
-    const testState = form.querySelector('[data-scout-test-media-state]');
+    const testToggle = form.querySelector('[data-scout-test-media-toggle]');
+    const testPlay = form.querySelector('[data-scout-test-media-play]');
+    const testChevron = form.querySelector('[data-scout-test-chevron]');
     const testPreview = form.querySelector('[data-scout-test-preview]');
     const testMedia = form.querySelector('[data-scout-test-media]');
-    const testHeading = form.querySelector('[data-scout-test-heading]');
-    const testCopy = form.querySelector('[data-scout-test-copy]');
 
     let maxWatched = 0;
     let guardingSeek = false;
     let unlocked = false;
-    let testTimer = null;
 
     const formatTime = (seconds) => {
         const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -509,79 +514,149 @@ require dirname(__DIR__) . '/partials/header.php';
         return `${minutes}:${remainder}`;
     };
 
-    const markTestReady = () => {
-        testButton?.classList.add('is-ready');
+    const setTestExpanded = (expanded) => {
+        if (!testToggle || !testPreview) return;
 
-        if (testState) {
-            testState.className =
-                'fa-solid fa-circle-check account-scout-media-check-state';
+        testPreview.hidden = !expanded;
+        testToggle.setAttribute(
+            'aria-expanded',
+            expanded ? 'true' : 'false'
+        );
+        testToggle.classList.toggle(
+            'is-open',
+            expanded
+        );
+
+        if (testChevron) {
+            testChevron.className =
+                expanded
+                    ? 'fa-solid fa-chevron-up account-scout-test-chevron'
+                    : 'fa-solid fa-chevron-down account-scout-test-chevron';
         }
 
-        if (testHeading) {
-            testHeading.textContent = 'Audio / video ready';
-        }
-
-        if (testCopy) {
-            testCopy.textContent =
-                'If you can see the llama clip and hear its audio, this device is ready for Scout training.';
-        }
-    };
-
-    const stopTest = () => {
-        if (testTimer) {
-            window.clearTimeout(testTimer);
-            testTimer = null;
-        }
-
-        if (testMedia) {
+        if (!expanded && testMedia && !testMedia.paused) {
             testMedia.pause();
-
-            try {
-                testMedia.currentTime = 0;
-            } catch (error) {
-                // Metadata may not be loaded yet.
-            }
-
-            testMedia.muted = false;
         }
     };
 
-    const runMediaTest = async () => {
+    const updateTestPlayButton = () => {
+        if (!testPlay || !testMedia) return;
+
+        const icon = testPlay.querySelector('i');
+        const playing =
+            !testMedia.paused
+            && !testMedia.ended;
+
+        if (icon) {
+            icon.className =
+                playing
+                    ? 'fa-solid fa-pause'
+                    : 'fa-solid fa-play';
+        }
+
+        testPlay.setAttribute(
+            'aria-label',
+            playing
+                ? 'Pause test audio and video'
+                : 'Play test audio and video'
+        );
+    };
+
+    const toggleTestPanel = () => {
+        if (!testPreview || !testToggle) return;
+
+        const opening =
+            testPreview.hidden;
+
+        setTestExpanded(opening);
+    };
+
+    const toggleTestPlayback = async () => {
         if (!testMedia || !testPreview) return;
 
-        stopTest();
-        testPreview.hidden = false;
+        setTestExpanded(true);
         testMedia.muted = false;
         testMedia.volume = 1;
 
-        if (testHeading) {
-            testHeading.textContent = 'Testing audio / video';
-        }
-
-        if (testCopy) {
-            testCopy.textContent =
-                'Watch the llama clip and make sure you can both see the picture and hear the sound.';
-        }
-
         try {
-            testMedia.currentTime = 0;
-            await testMedia.play();
-            markTestReady();
-        } catch (error) {
-            if (testCopy) {
-                testCopy.textContent =
-                    'Playback did not start. Check your browser media permissions, volume, mute, or audio output and try again.';
-            }
+            if (testMedia.paused || testMedia.ended) {
+                if (testMedia.ended) {
+                    testMedia.currentTime = 0;
+                }
 
-            if (testState) {
-                testState.className =
-                    'fa-solid fa-triangle-exclamation account-scout-media-check-state';
+                await testMedia.play();
+            } else {
+                testMedia.pause();
             }
+        } catch (error) {
+            // Leave the panel open so the user can retry.
         }
+
+        updateTestPlayButton();
     };
 
-    testButton?.addEventListener('click', runMediaTest);
-    testMedia?.addEventListener('ended', stopTest);
+    testToggle?.addEventListener(
+        'click',
+        (event) => {
+            if (
+                event.target.closest(
+                    '[data-scout-test-media-play]'
+                )
+            ) {
+                return;
+            }
+
+            toggleTestPanel();
+        }
+    );
+
+    testToggle?.addEventListener(
+        'keydown',
+        (event) => {
+            if (
+                event.key !== 'Enter'
+                && event.key !== ' '
+            ) {
+                return;
+            }
+
+            if (
+                event.target.closest(
+                    '[data-scout-test-media-play]'
+                )
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            toggleTestPanel();
+        }
+    );
+
+    testPlay?.addEventListener(
+        'click',
+        (event) => {
+            event.stopPropagation();
+            void toggleTestPlayback();
+        }
+    );
+
+    testMedia?.addEventListener(
+        'play',
+        updateTestPlayButton
+    );
+
+    testMedia?.addEventListener(
+        'pause',
+        updateTestPlayButton
+    );
+
+    testMedia?.addEventListener(
+        'ended',
+        updateTestPlayButton
+    );
+
+    updateTestPlayButton();
 
     const updateVideoUi = () => {
         if (!video) return;
@@ -672,7 +747,9 @@ require dirname(__DIR__) . '/partials/header.php';
     toggle?.addEventListener('click', async () => {
         if (!video) return;
 
-        stopTest();
+        if (testMedia && !testMedia.paused) {
+            testMedia.pause();
+        }
 
         try {
             if (video.paused || video.ended) {
@@ -746,7 +823,7 @@ require dirname(__DIR__) . '/partials/header.php';
             video.currentTime = maxWatched;
             status.innerHTML =
                 '<i class="fa-solid fa-circle-play" aria-hidden="true"></i>'
-                + '<span>Nice try! Continue watching the training video through to the end.</span>';
+                + '<span>Continue watching the training video through to the end.</span>';
         }
 
         updateToggle();
