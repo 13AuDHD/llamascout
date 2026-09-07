@@ -12,10 +12,10 @@ $userId = (int) ($user['id'] ?? 0);
 $db = db();
 
 $config = llama_config();
-$googleMapsBrowserKey =
+$geoapifyApiKey =
     trim(
         (string) (
-            $config['google_maps']['browser_key']
+            $config['geoapify']['api_key']
             ?? ''
         )
     );
@@ -269,6 +269,7 @@ function scout_app_value(
                     Start typing and choose the correct address. Llama Scout
                     will fill the city, state, postal code, and country for you.
                     You can still enter everything manually.
+                    Address search is powered by Geoapify.
                 </small>
 
                 <small
@@ -537,7 +538,7 @@ function scout_app_value(
 </div>
 </section>
 
-<?php if ($googleMapsBrowserKey !== ''): ?>
+<?php if ($geoapifyApiKey !== ''): ?>
 
 <script>
 (() => {
@@ -554,9 +555,6 @@ function scout_app_value(
     const status =
         document.querySelector('[data-scout-address-status]');
 
-    const addressLine2 =
-        document.querySelector('[data-scout-address-line-2]');
-
     const city =
         document.querySelector('[data-scout-address-city]');
 
@@ -569,11 +567,8 @@ function scout_app_value(
     const country =
         document.querySelector('[data-scout-address-country]');
 
-    let AutocompleteSessionToken = null;
-    let AutocompleteSuggestion = null;
-    let sessionToken = null;
     let debounceTimer = null;
-    let newestRequestId = 0;
+    let requestController = null;
 
     const setStatus = (message, kind = '') => {
         if (!status) {
@@ -598,245 +593,87 @@ function scout_app_value(
 
         suggestionsBox.replaceChildren();
         suggestionsBox.hidden = true;
+
         addressInput.setAttribute(
             'aria-expanded',
             'false'
         );
     };
 
-    const newSession = () => {
-        if (!AutocompleteSessionToken) {
-            return;
+    const fillAddress = (result) => {
+        const line1 =
+            String(
+                result.address_line_1
+                ?? ''
+            ).trim();
+
+        const locality =
+            String(
+                result.city
+                ?? ''
+            ).trim();
+
+        const region =
+            String(
+                result.state
+                ?? ''
+            ).trim();
+
+        const postcode =
+            String(
+                result.postal_code
+                ?? ''
+            ).trim();
+
+        const countryName =
+            String(
+                result.country
+                ?? ''
+            ).trim();
+
+        if (line1 !== '') {
+            addressInput.value = line1;
         }
 
-        sessionToken =
-            new AutocompleteSessionToken();
-    };
-
-    const component = (
-        components,
-        type,
-        short = false
-    ) => {
-        const match =
-            components.find(
-                (item) =>
-                    Array.isArray(item.types)
-                    && item.types.includes(type)
-            );
-
-        if (!match) {
-            return '';
+        if (city && locality !== '') {
+            city.value = locality;
         }
 
-        return String(
-            short
-                ? (
-                    match.shortText
-                    ?? match.longText
-                    ?? ''
-                )
-                : (
-                    match.longText
-                    ?? match.shortText
-                    ?? ''
-                )
-        ).trim();
-    };
+        if (state && region !== '') {
+            state.value = region;
+        }
 
-    const fillAddress = async (prediction) => {
+        if (postal && postcode !== '') {
+            postal.value = postcode;
+        }
+
+        if (country && countryName !== '') {
+            country.value = countryName;
+        }
+
         closeSuggestions();
-        setStatus('Loading address...');
 
-        try {
-            const place =
-                prediction.toPlace();
-
-            await place.fetchFields({
-                fields: [
-                    'addressComponents',
-                    'formattedAddress',
-                ],
-            });
-
-            const parts =
-                Array.isArray(place.addressComponents)
-                    ? place.addressComponents
-                    : [];
-
-            const streetNumber =
-                component(
-                    parts,
-                    'street_number'
-                );
-
-            const route =
-                component(
-                    parts,
-                    'route'
-                );
-
-            const premise =
-                component(
-                    parts,
-                    'premise'
-                );
-
-            const subpremise =
-                component(
-                    parts,
-                    'subpremise'
-                );
-
-            let line1 =
-                [streetNumber, route]
-                    .filter(Boolean)
-                    .join(' ')
-                    .trim();
-
-            if (line1 === '' && premise !== '') {
-                line1 = premise;
-            }
-
-            if (
-                line1 === ''
-                && place.formattedAddress
-            ) {
-                line1 =
-                    String(
-                        place.formattedAddress
-                    )
-                    .split(',')[0]
-                    .trim();
-            }
-
-            let locality =
-                component(
-                    parts,
-                    'locality'
-                );
-
-            if (locality === '') {
-                locality =
-                    component(
-                        parts,
-                        'postal_town'
-                    );
-            }
-
-            if (locality === '') {
-                locality =
-                    component(
-                        parts,
-                        'sublocality_level_1'
-                    );
-            }
-
-            if (locality === '') {
-                locality =
-                    component(
-                        parts,
-                        'administrative_area_level_2'
-                    );
-            }
-
-            const region =
-                component(
-                    parts,
-                    'administrative_area_level_1',
-                    true
-                );
-
-            let postalCode =
-                component(
-                    parts,
-                    'postal_code'
-                );
-
-            const postalSuffix =
-                component(
-                    parts,
-                    'postal_code_suffix'
-                );
-
-            if (
-                postalCode !== ''
-                && postalSuffix !== ''
-            ) {
-                postalCode +=
-                    '-' + postalSuffix;
-            }
-
-            const countryName =
-                component(
-                    parts,
-                    'country'
-                );
-
-            if (line1 !== '') {
-                addressInput.value = line1;
-            }
-
-            if (
-                subpremise !== ''
-                && addressLine2
-                && addressLine2.value.trim() === ''
-            ) {
-                addressLine2.value =
-                    subpremise;
-            }
-
-            if (city && locality !== '') {
-                city.value = locality;
-            }
-
-            if (state && region !== '') {
-                state.value = region;
-            }
-
-            if (
-                postal
-                && postalCode !== ''
-            ) {
-                postal.value = postalCode;
-            }
-
-            if (
-                country
-                && countryName !== ''
-            ) {
-                country.value = countryName;
-            }
-
-            setStatus(
-                'Address selected. Check the filled fields before submitting.',
-                'good'
-            );
-
-            newSession();
-        } catch (error) {
-            setStatus(
-                'Google could not load that address. You can still enter it manually.',
-                'error'
-            );
-            newSession();
-        }
+        setStatus(
+            'Address selected. Check the filled fields before submitting.',
+            'good'
+        );
     };
 
-    const renderSuggestions = (
-        suggestions
-    ) => {
+    const renderSuggestions = (results) => {
         if (!suggestionsBox) {
             return;
         }
 
         suggestionsBox.replaceChildren();
 
-        for (const suggestion of suggestions) {
-            const prediction =
-                suggestion.placePrediction;
+        for (const result of results) {
+            const label =
+                String(
+                    result.label
+                    ?? ''
+                ).trim();
 
-            if (!prediction) {
+            if (label === '') {
                 continue;
             }
 
@@ -852,15 +689,12 @@ function scout_app_value(
                 'role',
                 'option'
             );
-            button.textContent =
-                prediction.text.toString();
+            button.textContent = label;
 
             button.addEventListener(
                 'click',
                 () => {
-                    void fillAddress(
-                        prediction
-                    );
+                    fillAddress(result);
                 }
             );
 
@@ -891,16 +725,13 @@ function scout_app_value(
     };
 
     const findSuggestions = async () => {
-        const input =
+        const query =
             addressInput.value.trim();
 
-        if (
-            input.length < 3
-            || !AutocompleteSuggestion
-        ) {
+        if (query.length < 3) {
             closeSuggestions();
 
-            if (input.length > 0) {
+            if (query.length > 0) {
                 setStatus(
                     'Type at least 3 characters to search.'
                 );
@@ -911,40 +742,57 @@ function scout_app_value(
             return;
         }
 
-        if (!sessionToken) {
-            newSession();
+        if (requestController) {
+            requestController.abort();
         }
 
-        const requestId =
-            ++newestRequestId;
+        requestController =
+            new AbortController();
 
         try {
-            const { suggestions } =
-                await AutocompleteSuggestion
-                    .fetchAutocompleteSuggestions({
-                        input,
-                        sessionToken,
-                    });
+            const response =
+                await fetch(
+                    '/api/scout-address-autocomplete.php?q='
+                    + encodeURIComponent(query),
+                    {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        signal:
+                            requestController.signal,
+                    }
+                );
+
+            const payload =
+                await response.json();
 
             if (
-                requestId
-                !== newestRequestId
+                !response.ok
+                || !payload.success
             ) {
-                return;
+                throw new Error(
+                    payload.message
+                    || 'Address lookup failed.'
+                );
             }
 
             renderSuggestions(
-                suggestions
+                Array.isArray(payload.results)
+                    ? payload.results
+                    : []
             );
         } catch (error) {
             if (
-                requestId
-                !== newestRequestId
+                error
+                && error.name === 'AbortError'
             ) {
                 return;
             }
 
             closeSuggestions();
+
             setStatus(
                 'Address lookup is temporarily unavailable. You can enter the address manually.',
                 'error'
@@ -952,99 +800,65 @@ function scout_app_value(
         }
     };
 
-    const init = async () => {
-        try {
-            const library =
-                await google.maps
-                    .importLibrary(
-                        'places'
-                    );
+    addressInput.addEventListener(
+        'input',
+        () => {
+            setStatus('');
 
-            AutocompleteSessionToken =
-                library.AutocompleteSessionToken;
-
-            AutocompleteSuggestion =
-                library.AutocompleteSuggestion;
-
-            newSession();
-
-            addressInput.addEventListener(
-                'input',
-                () => {
-                    setStatus('');
-
-                    window.clearTimeout(
-                        debounceTimer
-                    );
-
-                    debounceTimer =
-                        window.setTimeout(
-                            () => {
-                                void findSuggestions();
-                            },
-                            350
-                        );
-                }
+            window.clearTimeout(
+                debounceTimer
             );
 
-            addressInput.addEventListener(
-                'keydown',
-                (event) => {
-                    if (
-                        event.key === 'Escape'
-                    ) {
-                        closeSuggestions();
-                    }
-
-                    if (
-                        event.key === 'ArrowDown'
-                        && suggestionsBox
-                        && !suggestionsBox.hidden
-                    ) {
-                        const first =
-                            suggestionsBox
-                                .querySelector(
-                                    'button'
-                                );
-
-                        if (first) {
-                            event.preventDefault();
-                            first.focus();
-                        }
-                    }
-                }
-            );
-
-            document.addEventListener(
-                'click',
-                (event) => {
-                    if (
-                        !event.target
-                            .closest(
-                                '.account-scout-address-field'
-                            )
-                    ) {
-                        closeSuggestions();
-                    }
-                }
-            );
-        } catch (error) {
-            setStatus(
-                'Address lookup could not start. You can enter the address manually.',
-                'error'
-            );
+            debounceTimer =
+                window.setTimeout(
+                    () => {
+                        void findSuggestions();
+                    },
+                    350
+                );
         }
-    };
+    );
 
-    window.llamaScoutInitAddressAutocomplete =
-        init;
+    addressInput.addEventListener(
+        'keydown',
+        (event) => {
+            if (event.key === 'Escape') {
+                closeSuggestions();
+            }
+
+            if (
+                event.key === 'ArrowDown'
+                && suggestionsBox
+                && !suggestionsBox.hidden
+            ) {
+                const first =
+                    suggestionsBox
+                        .querySelector(
+                            'button'
+                        );
+
+                if (first) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
+        }
+    );
+
+    document.addEventListener(
+        'click',
+        (event) => {
+            if (
+                !event.target.closest(
+                    '.account-scout-address-field'
+                )
+            ) {
+                closeSuggestions();
+            }
+        }
+    );
 })();
 </script>
-
-<script
-    async
-    src="https://maps.googleapis.com/maps/api/js?key=<?= rawurlencode($googleMapsBrowserKey) ?>&v=weekly&loading=async&callback=llamaScoutInitAddressAutocomplete"
-></script>
 
 <?php endif; ?>
 
