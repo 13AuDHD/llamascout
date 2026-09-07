@@ -248,7 +248,11 @@ require __DIR__ . '/_header.php';
                             <small>
                                 <?= moderation_e((string) ($row['exception_class'] ?: 'PHP error')) ?> &middot;
                                 <?= $isResolved ? 'Resolved' : 'Open' ?> &middot;
-                                Last seen <?= moderation_e((string) ($row['last_seen_at'] ?: $row['created_at'])) ?> UTC
+                                Last seen <?= moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) ($row['last_seen_at'] ?: $row['created_at'])
+                                    )
+                                ) ?>
                             </small>
                         </span>
                         <span class="admin-error-ticket-badges">
@@ -264,13 +268,20 @@ require __DIR__ . '/_header.php';
                             <span>
                                 <?= moderation_e((string) ($row['request_method'] ?: '')) ?>
                                 <?= moderation_e((string) ($row['request_path'] ?: 'unknown path')) ?>
-                                <?php if (!empty($row['action'])): ?> Â· <?= moderation_e((string) $row['action']) ?><?php endif; ?>
+                                <?php if (!empty($row['action'])): ?> &middot; <?= moderation_e((string) $row['action']) ?><?php endif; ?>
                             </span>
                             <?php if ((int) ($row['user_id'] ?? 0) > 0): ?>
                                 <span>User #<?= (int) $row['user_id'] ?><?= $userName !== '' ? ' (' . moderation_e($userName) . ')' : '' ?></span>
                             <?php endif; ?>
                             <?php if ((int) ($row['occurrence_count'] ?? 1) > 1): ?>
-                                <span>First seen <?= moderation_e((string) ($row['first_seen_at'] ?: $row['created_at'])) ?> UTC</span>
+                                <span>
+                                    First seen
+                                    <?= moderation_e(
+                                        llama_format_viewer_datetime(
+                                            (string) ($row['first_seen_at'] ?: $row['created_at'])
+                                        )
+                                    ) ?>
+                                </span>
                             <?php endif; ?>
                         </div>
 
@@ -279,7 +290,17 @@ require __DIR__ . '/_header.php';
                         <div class="admin-error-resolution">
                             <strong><?= $isResolved ? 'Resolved' : 'Open' ?></strong>
                             <?php if ($isResolved && !empty($row['resolved_at'])): ?>
-                                <span>Resolved <?= moderation_e((string) $row['resolved_at']) ?> UTC<?php if ((int) ($row['resolved_by'] ?? 0) > 0): ?> by Admin #<?= (int) $row['resolved_by'] ?><?php endif; ?></span>
+                                <span>
+                                    Resolved
+                                    <?= moderation_e(
+                                        llama_format_viewer_datetime(
+                                            (string) $row['resolved_at']
+                                        )
+                                    ) ?>
+                                    <?php if ((int) ($row['resolved_by'] ?? 0) > 0): ?>
+                                        by Admin #<?= (int) $row['resolved_by'] ?>
+                                    <?php endif; ?>
+                                </span>
                             <?php endif; ?>
                             <form method="post">
                                 <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">

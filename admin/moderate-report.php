@@ -183,22 +183,16 @@ require __DIR__ . '/_header.php';
 ?>
 
 <?php if ($error !== ''): ?>
-
 <div class="admin-user-notice is-error">
     <?= moderation_e($error) ?>
 </div>
-
 <?php endif; ?>
 
-
 <?php if ($notice !== ''): ?>
-
 <div class="admin-user-notice is-success">
     <?= moderation_e($notice) ?>
 </div>
-
 <?php endif; ?>
-
 
 <section class="admin-report-review-summary">
 
@@ -215,7 +209,7 @@ require __DIR__ . '/_header.php';
 
 <p>
     Report #<?= (int) $item['id'] ?>
-    ·
+    &middot;
     <?= moderation_e(
         $meta['priority_label']
     ) ?>
@@ -232,19 +226,20 @@ require __DIR__ . '/_header.php';
     <?= moderation_e(
         $meta['label']
     ) ?>
-    · reported by
+    &middot; reported by
     <?= moderation_e(
         $item['display_name']
         ?: $item['username']
     ) ?>
-    ·
+    &middot;
     <?= moderation_e(
-        (string) $item['created_at']
+        llama_format_viewer_datetime(
+            (string) $item['created_at']
+        )
     ) ?>
 </span>
 
 </div>
-
 
 <div class="admin-report-review-summary-actions">
 
@@ -282,9 +277,7 @@ require __DIR__ . '/_header.php';
 
 </section>
 
-
 <?php if ($placeContext): ?>
-
 <section class="admin-panel admin-report-place-context">
 
 <header class="admin-panel-header">
@@ -304,7 +297,6 @@ require __DIR__ . '/_header.php';
     <?php endif; ?>
 </header>
 
-
 <div class="admin-report-context-grid">
 
 <div>
@@ -321,10 +313,8 @@ require __DIR__ . '/_header.php';
     </strong>
 </div>
 
-
 <div>
     <span>Verification</span>
-
     <strong
         class="is-<?= moderation_e(
             (string) (
@@ -354,10 +344,8 @@ require __DIR__ . '/_header.php';
     </strong>
 </div>
 
-
 <div>
     <span>Llama Scout history</span>
-
     <strong class="<?= !empty($placeContext['ever_llama_scouted'])
         ? 'is-scouted'
         : '' ?>">
@@ -374,7 +362,6 @@ require __DIR__ . '/_header.php';
     </strong>
 </div>
 
-
 <div class="<?= (int) ($placeContext['unresolved_report_count'] ?? 0) > 1
     ? 'has-attention'
     : '' ?>">
@@ -388,7 +375,6 @@ require __DIR__ . '/_header.php';
         ) ?>
     </strong>
 </div>
-
 
 <div class="<?= (int) ($placeContext['pending_update_count'] ?? 0) > 0
     ? 'has-attention'
@@ -404,7 +390,6 @@ require __DIR__ . '/_header.php';
     </strong>
 </div>
 
-
 <div>
     <span>Total verifications</span>
     <strong>
@@ -419,9 +404,7 @@ require __DIR__ . '/_header.php';
 
 </div>
 
-
 <?php if (!empty($placeContext['is_published'])): ?>
-
 <div class="admin-report-public-impact-note">
     <i
         class="fa-solid fa-triangle-exclamation"
@@ -440,18 +423,14 @@ require __DIR__ . '/_header.php';
         </span>
     </div>
 </div>
-
 <?php endif; ?>
 
 </section>
-
 <?php endif; ?>
-
 
 <div class="admin-report-review-grid">
 
 <div class="admin-report-review-main">
-
 
 <section class="admin-panel">
 
@@ -475,9 +454,7 @@ require __DIR__ . '/_header.php';
 
 </section>
 
-
 <?php if ($snapshot): ?>
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -495,7 +472,6 @@ require __DIR__ . '/_header.php';
         Edit this section
     </a>
 </header>
-
 
 <div class="admin-report-snapshot-grid">
 
@@ -522,12 +498,9 @@ require __DIR__ . '/_header.php';
 </div>
 
 </section>
-
 <?php endif; ?>
 
-
 <?php if (!empty($item['images'])): ?>
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -542,7 +515,6 @@ require __DIR__ . '/_header.php';
         ) ?>
     </span>
 </header>
-
 
 <div class="admin-report-photo-grid">
 
@@ -580,12 +552,9 @@ $src =
 </div>
 
 </section>
-
 <?php endif; ?>
 
-
 <?php if ($recentUpdates): ?>
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -600,7 +569,6 @@ $src =
         ) ?>
     </span>
 </header>
-
 
 <div class="admin-report-update-list">
 
@@ -639,7 +607,7 @@ $updateOpen =
 <div>
     <strong>
         Update #<?= (int) $update['id'] ?>
-        ·
+        &middot;
         <?= moderation_e(
             ucwords(
                 str_replace(
@@ -655,9 +623,11 @@ $updateOpen =
         <?= moderation_e(
             (string) $update['contributor_name']
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
-            (string) $update['submitted_at']
+            llama_format_viewer_datetime(
+                (string) $update['submitted_at']
+            )
         ) ?>
     </span>
 
@@ -671,7 +641,7 @@ $updateOpen =
                 )
             )
         ) ?>
-        ·
+        &middot;
         <?= number_format($changeCount) ?>
         change group<?= $changeCount === 1 ? '' : 's' ?>
     </p>
@@ -683,13 +653,12 @@ $updateOpen =
                     (string) $update['contributor_notes'],
                     0,
                     220,
-                    '…'
+                    '...'
                 )
             ) ?>
         </p>
     <?php endif; ?>
 </div>
-
 
 <?php if ($updateOpen): ?>
     <a
@@ -707,12 +676,9 @@ $updateOpen =
 </div>
 
 </section>
-
 <?php endif; ?>
 
-
 <?php if ($placeUnresolvedReports): ?>
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -727,7 +693,6 @@ $updateOpen =
         ) ?>
     </span>
 </header>
-
 
 <div class="admin-report-other-open-list">
 
@@ -745,7 +710,7 @@ $openMeta =
 <div>
     <strong>
         Report #<?= (int) $openReport['id'] ?>
-        ·
+        &middot;
         <?= moderation_e(
             $openMeta['label']
         ) ?>
@@ -755,11 +720,13 @@ $openMeta =
         <?= moderation_e(
             (string) $openReport['reporter_name']
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
-            (string) $openReport['created_at']
+            llama_format_viewer_datetime(
+                (string) $openReport['created_at']
+            )
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
             moderation_status_label(
                 (string) $openReport['status']
@@ -774,7 +741,7 @@ $openMeta =
                     (string) $openReport['details'],
                     0,
                     220,
-                    '…'
+                    '...'
                 )
             ) ?>
         </p>
@@ -795,12 +762,9 @@ $openMeta =
 </div>
 
 </section>
-
 <?php endif; ?>
 
-
 <?php if ($related): ?>
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -818,7 +782,6 @@ $openMeta =
     </span>
 </header>
 
-
 <div class="admin-report-related-list">
 
 <?php foreach ($related as $entry): ?>
@@ -834,9 +797,11 @@ $openMeta =
         <?= moderation_e(
             (string) $entry['reporter_name']
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
-            (string) $entry['created_at']
+            llama_format_viewer_datetime(
+                (string) $entry['created_at']
+            )
         ) ?>
     </span>
 
@@ -849,7 +814,7 @@ $openMeta =
                 ),
                 0,
                 220,
-                '…'
+                '...'
             )
         ) ?>
     </p>
@@ -879,11 +844,9 @@ $openMeta =
 </div>
 
 </section>
-
 <?php endif; ?>
 
 </div>
-
 
 <aside class="admin-report-review-side">
 
@@ -947,7 +910,6 @@ $openMeta =
 
 </section>
 
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -956,7 +918,6 @@ $openMeta =
         <h2>Report Status</h2>
     </div>
 </header>
-
 
 <form
     method="post"
@@ -976,7 +937,6 @@ $openMeta =
         $csrfToken
     ) ?>"
 >
-
 
 <label>
     <span>Status</span>
@@ -1010,7 +970,6 @@ $openMeta =
     </select>
 </label>
 
-
 <label>
     <span>
         Resolution / moderator notes
@@ -1033,7 +992,6 @@ $openMeta =
     </small>
 </label>
 
-
 <button
     class="admin-button"
     type="submit"
@@ -1045,7 +1003,6 @@ $openMeta =
 
 </section>
 
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -1055,13 +1012,10 @@ $openMeta =
     </div>
 </header>
 
-
 <?php if (!$history): ?>
-
 <div class="admin-empty-state">
     <p>No report history yet.</p>
 </div>
-
 <?php else: ?>
 
 <div class="admin-report-history">
@@ -1082,12 +1036,13 @@ $openMeta =
     <?= moderation_e(
         (string) $entry['actor_name']
     ) ?>
-    ·
+    &middot;
     <?= moderation_e(
-        (string) $entry['created_at']
+        llama_format_viewer_datetime(
+            (string) $entry['created_at']
+        )
     ) ?>
 </span>
-
 
 <?php if (!empty($entry['notes'])): ?>
 
