@@ -222,6 +222,37 @@ $applicationComplete =
     $application
     && !empty($application['submitted_at']);
 
+function admin_scout_display_datetime(
+    mixed $value,
+    string $fallback
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return $fallback;
+    }
+
+    return llama_format_viewer_datetime(
+        $value
+    );
+}
+
+function admin_scout_display_date(
+    mixed $value,
+    string $fallback
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return $fallback;
+    }
+
+    return llama_format_viewer_date(
+        $value,
+        'M j, Y'
+    );
+}
+
 $timelineEntries = [];
 
 foreach ($statusHistory as $entry) {
@@ -554,7 +585,12 @@ require __DIR__ . '/_header.php';
     </div>
     <div>
         <span>Active through</span>
-        <strong><?= moderation_e((string) ($currentPeriod['end'] ?: 'Not active')) ?></strong>
+        <strong><?= moderation_e(
+            admin_scout_display_date(
+                $currentPeriod['end'] ?? '',
+                'Not active'
+            )
+        ) ?></strong>
     </div>
     <div class="<?= !empty($masterQualification['eligible']) ? 'is-good' : '' ?>">
         <span>Master qualification</span>
@@ -614,18 +650,18 @@ require __DIR__ . '/_header.php';
                     <span>Invitation</span>
                     <strong>
                         <?= moderation_e(
-                            (string) (
-                                $scout['invited_at']
-                                ?: 'Not recorded'
+                            admin_scout_display_datetime(
+                                $scout['invited_at'] ?? '',
+                                'Not recorded'
                             )
                         ) ?>
                     </strong>
                     <small>
                         Expires:
                         <?= moderation_e(
-                            (string) (
-                                $scout['invitation_expires_at']
-                                ?: 'No expiration'
+                            admin_scout_display_datetime(
+                                $scout['invitation_expires_at'] ?? '',
+                                'No expiration'
                             )
                         ) ?>
                         <?= $invitationExpired ? ' | expired' : '' ?>
@@ -641,9 +677,9 @@ require __DIR__ . '/_header.php';
                     </strong>
                     <small>
                         <?= moderation_e(
-                            (string) (
-                                $scout['application_submitted_at']
-                                ?: 'Waiting on candidate'
+                            admin_scout_display_datetime(
+                                $scout['application_submitted_at'] ?? '',
+                                'Waiting on candidate'
                             )
                         ) ?>
                     </small>
@@ -658,9 +694,9 @@ require __DIR__ . '/_header.php';
                     </strong>
                     <small>
                         <?= moderation_e(
-                            (string) (
-                                $scout['training_completed_at']
-                                ?: 'Waiting on candidate'
+                            admin_scout_display_datetime(
+                                $scout['training_completed_at'] ?? '',
+                                'Waiting on candidate'
                             )
                         ) ?>
                     </small>
@@ -836,9 +872,9 @@ require __DIR__ . '/_header.php';
                         <input
                             type="text"
                             value="<?= moderation_e(
-                                (string) (
-                                    $scout['active_through']
-                                    ?: 'Not active'
+                                admin_scout_display_datetime(
+                                    $scout['active_through'] ?? '',
+                                    'Not active'
                                 )
                             ) ?>"
                             disabled
@@ -873,7 +909,10 @@ require __DIR__ . '/_header.php';
                     </div>
                     <span>
                         Submitted <?= moderation_e(
-                            (string) ($application['submitted_at'] ?: 'Not yet')
+                            admin_scout_display_datetime(
+                                $application['submitted_at'] ?? '',
+                                'Not yet'
+                            )
                         ) ?>
                     </span>
                 </header>
@@ -955,7 +994,12 @@ require __DIR__ . '/_header.php';
                 <?php if ($activeExtension): ?>
                     <span>
                         Active through
-                        <?= moderation_e((string) $activeExtension['ends_at']) ?>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $activeExtension['ends_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
                     </span>
                 <?php endif; ?>
             </header>
@@ -966,9 +1010,19 @@ require __DIR__ . '/_header.php';
                     <div>
                         <span>Window</span>
                         <strong>
-                            <?= moderation_e((string) $activeExtension['started_at']) ?>
+                            <?= moderation_e(
+                                admin_scout_display_datetime(
+                                    $activeExtension['started_at'] ?? '',
+                                    'Not set'
+                                )
+                            ) ?>
                             to
-                            <?= moderation_e((string) $activeExtension['ends_at']) ?>
+                            <?= moderation_e(
+                                admin_scout_display_datetime(
+                                    $activeExtension['ends_at'] ?? '',
+                                    'Not set'
+                                )
+                            ) ?>
                         </strong>
                     </div>
 
@@ -1100,9 +1154,19 @@ require __DIR__ . '/_header.php';
                         ) ?>
                     </strong>
                     <small>
-                        <?= moderation_e((string) $latestExtension['started_at']) ?>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $latestExtension['started_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
                         to
-                        <?= moderation_e((string) $latestExtension['ends_at']) ?>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $latestExtension['ends_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
                         | granted by
                         <?= moderation_e((string) ($latestExtension['granted_by_name'] ?: 'System')) ?>
                     </small>
@@ -1121,7 +1185,12 @@ require __DIR__ . '/_header.php';
                     <h2>Current Scout Period</h2>
                 </div>
                 <?php if (!empty($currentPeriod['end'])): ?>
-                    <span><?= moderation_e((string) $currentPeriod['end']) ?></span>
+                    <span><?= moderation_e(
+                        admin_scout_display_date(
+                            $currentPeriod['end'],
+                            'Not set'
+                        )
+                    ) ?></span>
                 <?php endif; ?>
             </header>
 
@@ -1197,12 +1266,18 @@ require __DIR__ . '/_header.php';
                                     ) ?>
                                 </strong>
                                 <small>
-                                    <?= moderation_e(
-                                        (string) (
-                                            $item['place_name']
-                                            ?: $item['occurred_at']
-                                        )
-                                    ) ?>
+                                    <?php if (!empty($item['place_name'])): ?>
+                                        <?= moderation_e(
+                                            (string) $item['place_name']
+                                        ) ?>
+                                    <?php else: ?>
+                                        <?= moderation_e(
+                                            admin_scout_display_datetime(
+                                                $item['occurred_at'] ?? '',
+                                                'Date not recorded'
+                                            )
+                                        ) ?>
+                                    <?php endif; ?>
                                 </small>
                             </span>
                             <span>
@@ -1289,11 +1364,21 @@ require __DIR__ . '/_header.php';
             <dl class="admin-user-definition-list">
                 <div>
                     <dt>Training started</dt>
-                    <dd><?= moderation_e((string) ($scout['training_started_at'] ?: 'No')) ?></dd>
+                    <dd><?= moderation_e(
+                        admin_scout_display_datetime(
+                            $scout['training_started_at'] ?? '',
+                            'No'
+                        )
+                    ) ?></dd>
                 </div>
                 <div>
                     <dt>Training completed</dt>
-                    <dd><?= moderation_e((string) ($scout['training_completed_at'] ?: 'No')) ?></dd>
+                    <dd><?= moderation_e(
+                        admin_scout_display_datetime(
+                            $scout['training_completed_at'] ?? '',
+                            'No'
+                        )
+                    ) ?></dd>
                 </div>
                 <?php if ($training): ?>
                     <div>
@@ -1341,7 +1426,10 @@ require __DIR__ . '/_header.php';
                                 ) ?>
                                 |
                                 <?= moderation_e(
-                                    (string) $entry['occurred_at']
+                                    admin_scout_display_datetime(
+                                        $entry['occurred_at'] ?? '',
+                                        'Date not recorded'
+                                    )
                                 ) ?>
                             </span>
 
