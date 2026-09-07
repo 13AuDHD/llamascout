@@ -273,10 +273,13 @@ require __DIR__ . '/_header.php';
 
                                     <span class="admin-user-mobile-login">
                                         Last login:
-                                        <?= moderation_e(
-                                            $user['last_login_at']
-                                            ?: 'Never'
-                                        ) ?>
+                                        <?= !empty($user['last_login_at'])
+                                            ? moderation_e(
+                                                llama_format_viewer_datetime(
+                                                    (string) $user['last_login_at']
+                                                )
+                                            )
+                                            : 'Never' ?>
                                     </span>
 
                                     <span class="admin-user-mobile-contributions">
@@ -389,10 +392,13 @@ require __DIR__ . '/_header.php';
 
                     <td>
                         <span class="admin-table-muted">
-                            <?= moderation_e(
-                                $user['last_login_at']
-                                ?: 'Never'
-                            ) ?>
+                            <?= !empty($user['last_login_at'])
+                                ? moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) $user['last_login_at']
+                                    )
+                                )
+                                : 'Never' ?>
                         </span>
                     </td>
                 </tr>

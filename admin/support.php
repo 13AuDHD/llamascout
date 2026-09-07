@@ -279,7 +279,9 @@ $replySubject =
 <p>
     <strong>Received:</strong>
     <?= moderation_e(
-        (string) $selected['created_at']
+        llama_format_viewer_datetime(
+            (string) $selected['created_at']
+        )
     ) ?>
 </p>
 
@@ -475,7 +477,9 @@ $requestTicket = trim(
 
 <time>
     <?= moderation_e(
-        (string) $request['created_at']
+        llama_format_viewer_datetime(
+            (string) $request['created_at']
+        )
     ) ?>
 </time>
 

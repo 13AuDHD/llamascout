@@ -338,7 +338,15 @@ require __DIR__ . '/_header.php';
                     <div class="admin-scout-period-mini <?= !empty($period['met']) ? 'is-good' : '' ?>">
                         <?php if ($status === 'active' && !empty($period['end'])): ?>
                             <strong><?= number_format((int) $period['completed']) ?> / <?= number_format((int) $period['required']) ?> new Places</strong>
-                            <span>Active through <?= moderation_e((string) $period['end']) ?></span>
+                            <span>
+                                Active through
+                                <?= moderation_e(
+                                    llama_format_viewer_date(
+                                        (string) $period['end'],
+                                        'M j, Y'
+                                    )
+                                ) ?>
+                            </span>
                         <?php else: ?>
                             <strong><?= moderation_e(ucwords(str_replace('_', ' ', $status))) ?></strong>
                             <span>Current Scout period not active</span>
