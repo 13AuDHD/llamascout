@@ -262,7 +262,7 @@ foreach ($statusHistory as $entry) {
             llama_scout_onboarding_status_label(
                 $fromStatus
             )
-            . ' â '
+            . ' -> '
             . llama_scout_onboarding_status_label(
                 $toStatus
             );
@@ -301,7 +301,7 @@ foreach ($statusHistory as $entry) {
 
         'detail' =>
             implode(
-                ' Â· ',
+                ' | ',
                 $details
             ),
 
@@ -399,7 +399,7 @@ foreach ($rankHistory as $entry) {
 
         'detail' =>
             implode(
-                ' Â· ',
+                ' | ',
                 $details
             ),
 
@@ -526,7 +526,7 @@ require __DIR__ . '/_header.php';
 
             <p>
                 @<?= moderation_e((string) $scout['username']) ?>
-                Â· Scout profile #<?= (int) $scout['id'] ?>
+                | Scout profile #<?= (int) $scout['id'] ?>
             </p>
         </div>
     </div>
@@ -628,7 +628,7 @@ require __DIR__ . '/_header.php';
                                 ?: 'No expiration'
                             )
                         ) ?>
-                        <?= $invitationExpired ? ' Â· expired' : '' ?>
+                        <?= $invitationExpired ? ' | expired' : '' ?>
                     </small>
                 </div>
 
@@ -1103,7 +1103,7 @@ require __DIR__ . '/_header.php';
                         <?= moderation_e((string) $latestExtension['started_at']) ?>
                         to
                         <?= moderation_e((string) $latestExtension['ends_at']) ?>
-                        Â· granted by
+                        | granted by
                         <?= moderation_e((string) ($latestExtension['granted_by_name'] ?: 'System')) ?>
                     </small>
                 </div>
@@ -1339,7 +1339,7 @@ require __DIR__ . '/_header.php';
                                 <?= moderation_e(
                                     (string) $entry['actor']
                                 ) ?>
-                                Â·
+                                |
                                 <?= moderation_e(
                                     (string) $entry['occurred_at']
                                 ) ?>
