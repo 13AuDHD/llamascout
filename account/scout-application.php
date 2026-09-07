@@ -719,7 +719,7 @@ function scout_app_value(
 
         if (!hasResults) {
             setStatus(
-                'The llama can\'t find your address. Keep typing or enter the address manually.'
+                'The llama cant find your address. Keep typing or enter the address manually.'
             );
         }
     };
