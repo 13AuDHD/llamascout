@@ -10,6 +10,7 @@ require_login();
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $db = db();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_saved_place'])) {
     $csrfToken = (string) ($_POST['csrf_token'] ?? '');
     $savedId = (int) ($_POST['saved_id'] ?? 0);
@@ -247,47 +248,6 @@ require dirname(__DIR__) . '/partials/header.php';
         </a>
     </header>
 
-    <?php if ($showActiveScout): ?>
-
-        <section class="account-active-scout-card">
-
-            <div class="account-active-scout-icon">
-                <i
-                    class="fa-solid fa-binoculars"
-                    aria-hidden="true"
-                ></i>
-            </div>
-
-            <div class="account-active-scout-copy">
-                <p class="account-eyebrow">
-                    Llama Scout Team
-                </p>
-
-                <h2>
-                    Active Llama Scout
-                </h2>
-
-                <p>
-                    Open Scout Basecamp to see your current Scout period,
-                    field-work progress, contributions, and Master Scout progress.
-                </p>
-            </div>
-
-            <a
-                class="account-active-scout-action"
-                href="/scout.php"
-            >
-                Scout Basecamp
-                <i
-                    class="fa-solid fa-arrow-right"
-                    aria-hidden="true"
-                ></i>
-            </a>
-
-        </section>
-
-    <?php endif; ?>
-
 
     <?php if ($showScoutOnboarding): ?>
 
@@ -437,6 +397,30 @@ require dirname(__DIR__) . '/partials/header.php';
         </a>
 
         <?php require __DIR__ . '/_orders-dashboard-card.php'; ?>
+
+        <?php if ($showActiveScout): ?>
+            <a
+                class="account-glance-card account-glance-link account-glance-scout"
+                href="/scout.php"
+            >
+                <span class="account-glance-icon">
+                    <i
+                        class="fa-solid fa-binoculars"
+                        aria-hidden="true"
+                    ></i>
+                </span>
+
+                <div>
+                    <strong>Scout Basecamp</strong>
+                    <span>Llama Scout team</span>
+                </div>
+
+                <i
+                    class="fa-solid fa-chevron-right"
+                    aria-hidden="true"
+                ></i>
+            </a>
+        <?php endif; ?>
 
     </section>
 
