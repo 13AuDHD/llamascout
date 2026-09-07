@@ -183,8 +183,8 @@ require dirname(__DIR__) . '/partials/header.php';
     <h2>Awaiting Basecamp approval</h2>
 
     <p>
-        Youâve finished everything required for onboarding. Your application
-        and training are now at Basecamp for final review. Weâll update your
+        You've finished everything required for onboarding. Your application
+        and training are now at Basecamp for final review. We'll update your
         Scout status once the review is complete.
     </p>
 
@@ -430,22 +430,6 @@ require dirname(__DIR__) . '/partials/header.php';
                 </span>
             </label>
 
-            <label class="account-scout-video-confirm is-locked" data-scout-video-confirm>
-                <input
-                    type="checkbox"
-                    name="video_confirmed"
-                    value="1"
-                    required
-                    disabled
-                    data-scout-video-confirm-checkbox
-                >
-                <span>
-                    <strong>I watched the entire training video</strong>
-                    I confirm that I watched the Scout orientation video through to
-                    the end before accepting these commitments.
-                </span>
-            </label>
-
             <label>
                 <input type="checkbox" name="ack_privilege" value="1" required>
                 <span>
@@ -466,6 +450,22 @@ require dirname(__DIR__) . '/partials/header.php';
                     monetary compensation for my time, travel, efforts, or ordinary
                     Scout contributions unless Llama Scout separately agrees in writing
                     to a specific paid arrangement.
+                </span>
+            </label>
+
+            <label class="account-scout-video-confirm is-locked" data-scout-video-confirm>
+                <input
+                    type="checkbox"
+                    name="video_confirmed"
+                    value="1"
+                    required
+                    disabled
+                    data-scout-video-confirm-checkbox
+                >
+                <span>
+                    <strong>I watched the entire training video</strong>
+                    I confirm that I watched the Scout orientation video through to
+                    the end before accepting these commitments.
                 </span>
             </label>
 
