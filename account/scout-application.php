@@ -94,7 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('The Scout application could not be submitted.', $reference);
+                : llama_error_message_with_reference(
+                    'The Scout application could not be submitted.',
+                    $reference
+                );
         }
     }
 }
@@ -134,9 +137,21 @@ function scout_app_value(
     <p class="account-eyebrow">Step 2 of 5</p>
     <h1>About You</h1>
     <p>
-        This information helps Basecamp understand who is joining
+        This information helps Scout Basecamp understand who is joining
         the Scout team and how your experience may contribute.
     </p>
+
+    <div class="account-scout-private-note">
+        <i class="fa-solid fa-lock" aria-hidden="true"></i>
+        <div>
+            <strong>Private Scout information</strong>
+            <span>
+                Your answers are used for Scout onboarding and administration only.
+                They are not shown on your public profile and are not visible to
+                other Llama Scout members.
+            </span>
+        </div>
+    </div>
 </header>
 
 <?php if ($error !== ''): ?>
@@ -181,6 +196,12 @@ function scout_app_value(
         <p class="account-eyebrow">Contact</p>
         <h2>Basic information</h2>
 
+        <p class="account-scout-panel-intro">
+            We use this information to contact you about Scout matters and,
+            from time to time, to mail Scout recognition, stickers, gear, or
+            other thank-you items for your field work.
+        </p>
+
         <div class="account-scout-form-grid">
 
             <label class="is-wide">
@@ -189,6 +210,7 @@ function scout_app_value(
                     type="text"
                     name="legal_name"
                     maxlength="150"
+                    autocomplete="name"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'legal_name'),
                         ENT_QUOTES,
@@ -199,26 +221,34 @@ function scout_app_value(
             </label>
 
             <label class="is-wide">
-                <span>Address</span>
+                <span>Mailing address</span>
                 <input
                     type="text"
                     name="address_line_1"
                     maxlength="150"
+                    autocomplete="address-line1"
+                    data-scout-mailing-address
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'address_line_1'),
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
+                    placeholder="Start typing your street address"
                     required
                 >
+                <small class="account-scout-field-help">
+                    Use an address where you can reliably receive mail.
+                    Address lookup and validation will be added here next.
+                </small>
             </label>
 
             <label class="is-wide">
-                <span>Address line 2</span>
+                <span>Apartment, suite, unit, etc. (optional)</span>
                 <input
                     type="text"
                     name="address_line_2"
                     maxlength="150"
+                    autocomplete="address-line2"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'address_line_2'),
                         ENT_QUOTES,
@@ -233,6 +263,7 @@ function scout_app_value(
                     type="text"
                     name="city"
                     maxlength="100"
+                    autocomplete="address-level2"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'city'),
                         ENT_QUOTES,
@@ -248,6 +279,7 @@ function scout_app_value(
                     type="text"
                     name="state_region"
                     maxlength="100"
+                    autocomplete="address-level1"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'state_region'),
                         ENT_QUOTES,
@@ -263,6 +295,7 @@ function scout_app_value(
                     type="text"
                     name="postal_code"
                     maxlength="30"
+                    autocomplete="postal-code"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'postal_code'),
                         ENT_QUOTES,
@@ -278,6 +311,7 @@ function scout_app_value(
                     type="text"
                     name="country"
                     maxlength="100"
+                    autocomplete="country-name"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'country')
                             ?: 'United States',
@@ -294,6 +328,7 @@ function scout_app_value(
                     type="tel"
                     name="phone"
                     maxlength="40"
+                    autocomplete="tel"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'phone'),
                         ENT_QUOTES,
