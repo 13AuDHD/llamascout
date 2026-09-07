@@ -210,7 +210,11 @@ require __DIR__ . '/_header.php';
 
     <td data-label="Date">
         <span class="admin-table-muted">
-            <?= moderation_e((string) $order['created_at']) ?>
+            <?= moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $order['created_at']
+                )
+            ) ?>
         </span>
     </td>
 

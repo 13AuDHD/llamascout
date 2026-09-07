@@ -50,7 +50,11 @@ $items = moderation_update_queue($db);
                         <p>
                             <?= moderation_e($item['display_name'] ?: $item['username']) ?>
                             · <?= count($changes) ?> changed field<?= count($changes) === 1 ? '' : 's' ?>
-                            · submitted <?= moderation_e($item['submitted_at']) ?>
+                            · submitted <?= moderation_e(
+                                llama_format_viewer_datetime(
+                                    (string) $item['submitted_at']
+                                )
+                            ) ?>
                         </p>
                     </div>
 

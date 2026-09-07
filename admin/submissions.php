@@ -47,7 +47,11 @@ $items = moderation_new_place_queue($db);
                         <h2><?= moderation_e($item['place_name']) ?></h2>
                         <p>
                             <?= moderation_e($item['display_name'] ?: $item['username']) ?>
-                            · submitted <?= moderation_e($item['submitted_at']) ?>
+                            · submitted <?= moderation_e(
+                                llama_format_viewer_datetime(
+                                    (string) $item['submitted_at']
+                                )
+                            ) ?>
                             · <?= moderation_e($item['role_at_submission'] ?: 'user') ?>
                         </p>
                     </div>

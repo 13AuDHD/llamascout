@@ -269,12 +269,13 @@ require __DIR__ . '/_header.php';
 
     <span>
         Last checked:
-        <?= moderation_e(
-            (string) (
-                $place['last_verified_at']
-                ?: 'Never'
+        <?= !empty($place['last_verified_at'])
+            ? moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $place['last_verified_at']
+                )
             )
-        ) ?>
+            : 'Never' ?>
     </span>
 </div>
 

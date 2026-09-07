@@ -290,7 +290,9 @@ require __DIR__ . '/_header.php';
                             ) ?>
                             ·
                             <?= moderation_e(
-                                (string) $entry['created_at']
+                                llama_format_viewer_datetime(
+                                    (string) $entry['created_at']
+                                )
                             ) ?>
                             · by
                             <?= moderation_e(
