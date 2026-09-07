@@ -252,6 +252,19 @@ require dirname(__DIR__)
 
 <div class="email-preferences-container">
 
+<?php if ($isSignedInPreferenceOwner): ?>
+    <a
+        href="/"
+        class="email-preferences-top-back"
+    >
+        <i
+            class="fa-solid fa-arrow-left"
+            aria-hidden="true"
+        ></i>
+        <span>Back to account</span>
+    </a>
+<?php endif; ?>
+
 <header class="email-preferences-header">
     <p class="account-eyebrow">
         Your inbox
@@ -356,6 +369,98 @@ require dirname(__DIR__)
         <label
             class="email-preference-switch is-locked"
             aria-label="Account and service messages are always enabled"
+        >
+            <input
+                type="checkbox"
+                checked
+                disabled
+            >
+
+            <span aria-hidden="true"></span>
+        </label>
+
+    </article>
+
+
+    <article class="email-preference-card is-required">
+
+        <div class="email-preference-copy">
+            <div class="email-preference-heading">
+                <span class="email-preference-icon">
+                    <i
+                        class="fa-solid fa-file-signature"
+                        aria-hidden="true"
+                    ></i>
+                </span>
+
+                <div>
+                    <h2>
+                        Policy updates
+                    </h2>
+
+                    <span class="email-preference-required">
+                        Required
+                    </span>
+                </div>
+            </div>
+
+            <p>
+                Notices about meaningful changes to
+                Llama Scout policies, terms, privacy
+                practices, membership rules, or other
+                policies that affect your account.
+            </p>
+        </div>
+
+        <label
+            class="email-preference-switch is-locked"
+            aria-label="Policy updates are always enabled"
+        >
+            <input
+                type="checkbox"
+                checked
+                disabled
+            >
+
+            <span aria-hidden="true"></span>
+        </label>
+
+    </article>
+
+
+    <article class="email-preference-card is-required">
+
+        <div class="email-preference-copy">
+            <div class="email-preference-heading">
+                <span class="email-preference-icon">
+                    <i
+                        class="fa-solid fa-bullhorn"
+                        aria-hidden="true"
+                    ></i>
+                </span>
+
+                <div>
+                    <h2>
+                        Important news
+                    </h2>
+
+                    <span class="email-preference-required">
+                        Required
+                    </span>
+                </div>
+            </div>
+
+            <p>
+                Important Llama Scout announcements
+                that materially affect the service,
+                your account, access, safety, or other
+                significant platform changes.
+            </p>
+        </div>
+
+        <label
+            class="email-preference-switch is-locked"
+            aria-label="Important news is always enabled"
         >
             <input
                 type="checkbox"
@@ -545,20 +650,11 @@ require dirname(__DIR__)
     <div class="email-preferences-actions">
 
         <button
-            class="public-home-button"
+            class="email-preferences-save"
             type="submit"
         >
             Save email preferences
         </button>
-
-        <?php if ($isSignedInPreferenceOwner): ?>
-            <a
-                href="/"
-                class="email-preferences-back"
-            >
-                Back to account
-            </a>
-        <?php endif; ?>
 
     </div>
 
