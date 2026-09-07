@@ -14,7 +14,14 @@ $actorUserId = (int) ($adminUser['id'] ?? 0);
 
 $notice = '';
 $error = '';
-$mountainTz = 'America/Denver';
+
+$viewerTimezone = llama_viewer_timezone();
+$timezoneLabels = llama_timezones();
+$viewerTimezoneLabel =
+    (string) (
+        $timezoneLabels[$viewerTimezone]
+        ?? $viewerTimezone
+    );
 
 function membership_admin_local_to_utc(string $value, bool $allowBlank = false): ?string
 {
@@ -31,11 +38,11 @@ function membership_admin_local_to_utc(string $value, bool $allowBlank = false):
     $local = DateTimeImmutable::createFromFormat(
         'Y-m-d\TH:i',
         $value,
-        new DateTimeZone('America/Denver')
+        new DateTimeZone(llama_viewer_timezone())
     );
 
     if (!$local) {
-        throw new InvalidArgumentException('A valid Mountain Time date and time is required.');
+        throw new InvalidArgumentException('A valid date and time is required.');
     }
 
     return $local
@@ -51,7 +58,7 @@ function membership_admin_utc_to_input(?string $value): string
 
     try {
         return (new DateTimeImmutable($value, new DateTimeZone('UTC')))
-            ->setTimezone(new DateTimeZone('America/Denver'))
+            ->setTimezone(new DateTimeZone(llama_viewer_timezone()))
             ->format('Y-m-d\TH:i');
     } catch (Throwable) {
         return '';
@@ -149,9 +156,27 @@ function membership_admin_status_label(array $promotion): string
         return 'disabled';
     }
 
+    try {
+        $utc = new DateTimeZone('UTC');
+
+        $start = (
+            new DateTimeImmutable(
+                (string) ($promotion['starts_at'] ?? ''),
+                $utc
+            )
+        )->getTimestamp();
+
+        $end = (
+            new DateTimeImmutable(
+                (string) ($promotion['ends_at'] ?? ''),
+                $utc
+            )
+        )->getTimestamp();
+    } catch (Throwable) {
+        return 'disabled';
+    }
+
     $now = time();
-    $start = strtotime((string) ($promotion['starts_at'] ?? '')) ?: 0;
-    $end = strtotime((string) ($promotion['ends_at'] ?? '')) ?: 0;
 
     if ($now < $start) {
         return 'scheduled';
@@ -171,7 +196,7 @@ function membership_admin_campaign_month(array $promotion): string
             (string) $promotion['starts_at'],
             new DateTimeZone('UTC')
         ))
-            ->setTimezone(new DateTimeZone('America/Denver'))
+            ->setTimezone(new DateTimeZone(llama_viewer_timezone()))
             ->format('F Y');
     } catch (Throwable) {
         return 'Other';
@@ -551,7 +576,8 @@ if (
 
                 $db->commit();
 
-                $notice = 'Promotion created and connected to Stripe. Campaign times are shown in Mountain Time.';
+                $notice =
+                    'Promotion created and connected to Stripe. Campaign times are shown in your profile timezone.';
             }
 
             if ($action === 'update-campaign') {
@@ -984,7 +1010,7 @@ foreach ($promotions as $promotion) {
                 <p><?= $editingPromotion ? 'Campaign editor' : 'Calendar event' ?></p>
                 <h2><?= $editingPromotion ? 'Edit Promotion' : 'Schedule Promotion' ?></h2>
             </div>
-            <span>Mountain Time</span>
+            <span><?= moderation_e($viewerTimezoneLabel) ?></span>
         </header>
 
         <?php if ($editingPromotion): ?>
@@ -1033,7 +1059,7 @@ foreach ($promotions as $promotion) {
                 </label>
 
                 <label>
-                    Starts, Mountain Time
+                    Starts, <?= moderation_e($viewerTimezoneLabel) ?>
                     <input
                         type="datetime-local"
                         name="starts_at"
@@ -1045,7 +1071,7 @@ foreach ($promotions as $promotion) {
                 </label>
 
                 <label>
-                    Ends, Mountain Time
+                    Ends, <?= moderation_e($viewerTimezoneLabel) ?>
                     <input
                         type="datetime-local"
                         name="ends_at"
@@ -1180,7 +1206,7 @@ foreach ($promotions as $promotion) {
 
                 <div class="admin-membership-form-grid">
                     <label>
-                        Send at, Mountain Time
+                        Send at, <?= moderation_e($viewerTimezoneLabel) ?>
                         <input
                             type="datetime-local"
                             name="email_send_at"
@@ -1240,7 +1266,7 @@ foreach ($promotions as $promotion) {
 
                 <div class="admin-membership-form-grid">
                     <label>
-                        Reminder at, Mountain Time
+                        Reminder at, <?= moderation_e($viewerTimezoneLabel) ?>
                         <input
                             type="datetime-local"
                             name="reminder_send_at"
@@ -1366,9 +1392,8 @@ foreach ($promotions as $promotion) {
                                 <div>
                                     <dt>Starts</dt>
                                     <dd><?= moderation_e(
-                                        llama_format_datetime(
+                                        llama_format_viewer_datetime(
                                             (string) $promotion['starts_at'],
-                                            $mountainTz,
                                             'M j, Y g:i A T'
                                         )
                                     ) ?></dd>
@@ -1376,9 +1401,8 @@ foreach ($promotions as $promotion) {
                                 <div>
                                     <dt>Ends</dt>
                                     <dd><?= moderation_e(
-                                        llama_format_datetime(
+                                        llama_format_viewer_datetime(
                                             (string) $promotion['ends_at'],
-                                            $mountainTz,
                                             'M j, Y g:i A T'
                                         )
                                     ) ?></dd>
@@ -1398,7 +1422,7 @@ foreach ($promotions as $promotion) {
                                     <span>
                                         <strong><?= moderation_e($planName) ?></strong>
                                         <?= moderation_e($displayValue) ?>
-                                        Â· first year
+                                        &middot; first year
                                     </span>
                                 <?php endforeach; ?>
                             </div>

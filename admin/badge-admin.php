@@ -701,7 +701,9 @@ require __DIR__ .
         ) ?>
         ·
         <?= moderation_e(
-            (string) $recipient['awarded_at']
+            llama_format_viewer_datetime(
+                (string) $recipient['awarded_at']
+            )
         ) ?>
         ·
         <?= moderation_e(
