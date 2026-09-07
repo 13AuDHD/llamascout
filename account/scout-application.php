@@ -272,6 +272,22 @@ function scout_app_value(
                     Address search is powered by Geoapify.
                 </small>
 
+                <div class="account-scout-address-tools">
+                    <button
+                        type="button"
+                        class="account-scout-address-location"
+                        data-scout-address-location
+                    >
+                        <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+                        <span>Use my location</span>
+                    </button>
+
+                    <small>
+                        Optional. This only biases search results toward your
+                        current area. It does not change the mailing address.
+                    </small>
+                </div>
+
                 <small
                     class="account-scout-address-status"
                     data-scout-address-status
@@ -567,8 +583,13 @@ function scout_app_value(
     const country =
         document.querySelector('[data-scout-address-country]');
 
+    const locationButton =
+        document.querySelector('[data-scout-address-location]');
+
     let debounceTimer = null;
     let requestController = null;
+    let biasLatitude = null;
+    let biasLongitude = null;
 
     const setStatus = (message, kind = '') => {
         if (!status) {
@@ -750,10 +771,29 @@ function scout_app_value(
             new AbortController();
 
         try {
+            const params =
+                new URLSearchParams({
+                    q: query,
+                });
+
+            if (
+                Number.isFinite(biasLatitude)
+                && Number.isFinite(biasLongitude)
+            ) {
+                params.set(
+                    'lat',
+                    String(biasLatitude)
+                );
+                params.set(
+                    'lon',
+                    String(biasLongitude)
+                );
+            }
+
             const response =
                 await fetch(
-                    '/api/address-autocomplete.php?q='
-                    + encodeURIComponent(query),
+                    '/api/address-autocomplete.php?'
+                    + params.toString(),
                     {
                         method: 'GET',
                         credentials: 'same-origin',
@@ -799,6 +839,98 @@ function scout_app_value(
             );
         }
     };
+
+    locationButton?.addEventListener(
+        'click',
+        () => {
+            if (!navigator.geolocation) {
+                setStatus(
+                    'This browser does not provide location access. Address search will still work normally.',
+                    'error'
+                );
+                return;
+            }
+
+            locationButton.disabled = true;
+            locationButton.classList.add('is-loading');
+
+            const buttonLabel =
+                locationButton.querySelector('span');
+
+            if (buttonLabel) {
+                buttonLabel.textContent =
+                    'Finding location...';
+            }
+
+            setStatus(
+                'Finding your approximate location to improve nearby address results.'
+            );
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    biasLatitude =
+                        Number(
+                            position.coords.latitude
+                        );
+
+                    biasLongitude =
+                        Number(
+                            position.coords.longitude
+                        );
+
+                    locationButton.disabled = false;
+                    locationButton.classList.remove('is-loading');
+                    locationButton.classList.add('is-ready');
+
+                    if (buttonLabel) {
+                        buttonLabel.textContent =
+                            'Nearby results enabled';
+                    }
+
+                    setStatus(
+                        'Nearby address results are now prioritized. You can still search for an address anywhere.',
+                        'good'
+                    );
+
+                    if (
+                        addressInput.value.trim().length >= 3
+                    ) {
+                        void findSuggestions();
+                    }
+                },
+                (error) => {
+                    locationButton.disabled = false;
+                    locationButton.classList.remove('is-loading');
+
+                    if (buttonLabel) {
+                        buttonLabel.textContent =
+                            'Use my location';
+                    }
+
+                    let message =
+                        'Location was not available. Address search will still work normally.';
+
+                    if (
+                        error
+                        && error.code === 1
+                    ) {
+                        message =
+                            'Location permission was not allowed. Address search will still work normally.';
+                    }
+
+                    setStatus(
+                        message,
+                        'error'
+                    );
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 300000,
+                }
+            );
+        }
+    );
 
     addressInput.addEventListener(
         'input',
