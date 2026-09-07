@@ -36,11 +36,50 @@
     font-size: clamp(1.65rem, 4vw, 2.45rem);
 }
 
-.account-scout-hero > p:last-child {
+.account-scout-hero > p:last-of-type {
     max-width: 760px;
     margin: 0;
     line-height: 1.6;
     opacity: .76;
+}
+
+.account-scout-private-note {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 11px;
+    align-items: start;
+    max-width: 760px;
+    margin-top: 16px;
+    padding: 13px 14px;
+    border: 1px solid rgba(88,166,106,.34);
+    border-radius: 11px;
+    background: rgba(88,166,106,.07);
+}
+
+.account-scout-private-note > i {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(88,166,106,.12);
+    color: #58a66a;
+}
+
+.account-scout-private-note strong,
+.account-scout-private-note span {
+    display: block;
+}
+
+.account-scout-private-note strong {
+    margin-bottom: 3px;
+    font-size: .8rem;
+}
+
+.account-scout-private-note span {
+    font-size: .74rem;
+    line-height: 1.5;
+    opacity: .78;
 }
 
 .account-scout-grid {
@@ -62,6 +101,12 @@
 
 .account-scout-panel p {
     line-height: 1.6;
+}
+
+.account-scout-panel-intro {
+    max-width: 760px;
+    margin: 0 0 16px;
+    opacity: .76;
 }
 
 .account-scout-feature-list,
@@ -182,6 +227,15 @@
 .account-scout-form textarea {
     resize: vertical;
     line-height: 1.5;
+}
+
+.account-scout-field-help {
+    display: block;
+    color: inherit;
+    font-size: .66rem;
+    font-weight: 500;
+    line-height: 1.45;
+    opacity: .64;
 }
 
 .account-scout-form-stack {
