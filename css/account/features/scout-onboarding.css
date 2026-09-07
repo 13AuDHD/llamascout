@@ -863,3 +863,94 @@
         width: min(100%, 280px);
     }
 }
+
+
+/* =========================================================
+   SCOUT STEP 4: BASECAMP REVIEW
+   ========================================================= */
+
+.account-scout-pending-shell {
+    width: min(100%, 760px);
+    margin: 0 auto;
+}
+
+.account-scout-pending-shell .account-scout-back {
+    margin-bottom: 2px;
+}
+
+.account-scout-pending-hero {
+    padding: 18px 20px;
+}
+
+.account-scout-pending-hero h1 {
+    margin-top: 3px;
+    font-size: clamp(1.55rem, 3.5vw, 2.05rem);
+}
+
+.account-scout-pending-hero > p:last-of-type {
+    max-width: none;
+    line-height: 1.5;
+}
+
+.account-scout-pending-shell .account-scout-awaiting {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    padding: 18px 20px;
+}
+
+.account-scout-pending-shell .account-scout-awaiting h2 {
+    margin: 8px 0 7px;
+    font-size: 1.18rem;
+}
+
+.account-scout-pending-shell .account-scout-awaiting > p {
+    max-width: 650px;
+    margin: 0;
+    font-size: .82rem;
+    line-height: 1.55;
+    opacity: .78;
+}
+
+.account-scout-pending-shell .account-scout-status-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1rem;
+}
+
+.account-scout-pending-shell .account-scout-progress-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+    margin-top: 15px;
+}
+
+.account-scout-pending-shell .account-scout-progress-list > div {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.account-scout-pending-shell .account-scout-progress-list > div > i {
+    width: 28px;
+    height: 28px;
+    font-size: .72rem;
+}
+
+.account-scout-pending-shell .account-scout-progress-list strong {
+    font-size: .76rem;
+}
+
+.account-scout-pending-shell .account-scout-awaiting > .account-scout-button {
+    margin-top: 16px;
+}
+
+@media (max-width: 620px) {
+    .account-scout-pending-shell .account-scout-progress-list {
+        grid-template-columns: 1fr;
+    }
+
+    .account-scout-pending-hero,
+    .account-scout-pending-shell .account-scout-awaiting {
+        padding: 16px;
+    }
+}
