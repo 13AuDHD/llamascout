@@ -247,42 +247,24 @@ require dirname(__DIR__) . '/partials/header.php';
             <button
                 type="button"
                 class="account-scout-media-check"
-                data-scout-test-video
+                data-scout-test-media-button
             >
                 <span class="account-scout-media-check-icon">
-                    <i class="fa-solid fa-display" aria-hidden="true"></i>
+                    <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
                 </span>
 
                 <span>
-                    <strong>Test video</strong>
-                    <small>Make sure the training video plays on this device.</small>
+                    <strong>Test audio / video</strong>
+                    <small>
+                        Play a short llama clip to check picture, sound,
+                        volume, headphones, Bluetooth, and browser playback.
+                    </small>
                 </span>
 
                 <i
                     class="fa-solid fa-play account-scout-media-check-state"
                     aria-hidden="true"
-                    data-scout-test-video-state
-                ></i>
-            </button>
-
-            <button
-                type="button"
-                class="account-scout-media-check"
-                data-scout-test-audio
-            >
-                <span class="account-scout-media-check-icon">
-                    <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
-                </span>
-
-                <span>
-                    <strong>Test audio</strong>
-                    <small>Check volume, mute, headphones, or Bluetooth output.</small>
-                </span>
-
-                <i
-                    class="fa-solid fa-play account-scout-media-check-state"
-                    aria-hidden="true"
-                    data-scout-test-audio-state
+                    data-scout-test-media-state
                 ></i>
             </button>
         </div>
@@ -307,9 +289,9 @@ require dirname(__DIR__) . '/partials/header.php';
             </video>
 
             <div class="account-scout-test-preview-copy">
-                <strong data-scout-test-heading>Media test</strong>
+                <strong data-scout-test-heading>Audio / video test</strong>
                 <span data-scout-test-copy>
-                    This short llama clip uses the same browser playback path as Scout training.
+                    This short llama clip checks both picture and sound using the same browser playback path as Scout training.
                 </span>
             </div>
         </div>
@@ -508,10 +490,8 @@ require dirname(__DIR__) . '/partials/header.php';
     const progressTrack = form.querySelector('[data-scout-video-progress-track]');
     const timeLabel = form.querySelector('[data-scout-video-time]');
 
-    const testVideoButton = form.querySelector('[data-scout-test-video]');
-    const testAudioButton = form.querySelector('[data-scout-test-audio]');
-    const testVideoState = form.querySelector('[data-scout-test-video-state]');
-    const testAudioState = form.querySelector('[data-scout-test-audio-state]');
+    const testButton = form.querySelector('[data-scout-test-media-button]');
+    const testState = form.querySelector('[data-scout-test-media-state]');
     const testPreview = form.querySelector('[data-scout-test-preview]');
     const testMedia = form.querySelector('[data-scout-test-media]');
     const testHeading = form.querySelector('[data-scout-test-heading]');
@@ -520,7 +500,6 @@ require dirname(__DIR__) . '/partials/header.php';
     let maxWatched = 0;
     let guardingSeek = false;
     let unlocked = false;
-    let activeTest = '';
     let testTimer = null;
 
     const formatTime = (seconds) => {
@@ -530,22 +509,21 @@ require dirname(__DIR__) . '/partials/header.php';
         return `${minutes}:${remainder}`;
     };
 
-    const markTestReady = (kind) => {
-        const button =
-            kind === 'video'
-                ? testVideoButton
-                : testAudioButton;
+    const markTestReady = () => {
+        testButton?.classList.add('is-ready');
 
-        const icon =
-            kind === 'video'
-                ? testVideoState
-                : testAudioState;
-
-        button?.classList.add('is-ready');
-
-        if (icon) {
-            icon.className =
+        if (testState) {
+            testState.className =
                 'fa-solid fa-circle-check account-scout-media-check-state';
+        }
+
+        if (testHeading) {
+            testHeading.textContent = 'Audio / video ready';
+        }
+
+        if (testCopy) {
+            testCopy.textContent =
+                'If you can see the llama clip and hear its audio, this device is ready for Scout training.';
         }
     };
 
@@ -557,77 +535,52 @@ require dirname(__DIR__) . '/partials/header.php';
 
         if (testMedia) {
             testMedia.pause();
+
             try {
                 testMedia.currentTime = 0;
             } catch (error) {
-                // Metadata may not be loaded yet. Nothing else is required.
+                // Metadata may not be loaded yet.
             }
+
             testMedia.muted = false;
         }
-
-        activeTest = '';
     };
 
-    const runMediaTest = async (kind) => {
+    const runMediaTest = async () => {
         if (!testMedia || !testPreview) return;
 
         stopTest();
-
-        activeTest = kind;
         testPreview.hidden = false;
+        testMedia.muted = false;
+        testMedia.volume = 1;
 
-        if (kind === 'video') {
-            testMedia.muted = true;
+        if (testHeading) {
+            testHeading.textContent = 'Testing audio / video';
+        }
 
-            if (testHeading) {
-                testHeading.textContent = 'Video test';
-            }
-
-            if (testCopy) {
-                testCopy.textContent =
-                    'If you can see this clip playing smoothly, your device is ready for Scout training video.';
-            }
-        } else {
-            testMedia.muted = false;
-            testMedia.volume = 1;
-
-            if (testHeading) {
-                testHeading.textContent = 'Audio test';
-            }
-
-            if (testCopy) {
-                testCopy.textContent =
-                    'Listen for the training audio. Adjust volume, headphones, Bluetooth, or mute settings as needed.';
-            }
+        if (testCopy) {
+            testCopy.textContent =
+                'Watch the llama clip and make sure you can both see the picture and hear the sound.';
         }
 
         try {
             testMedia.currentTime = 0;
             await testMedia.play();
-
-            markTestReady(kind);
-
-            testTimer = window.setTimeout(() => {
-                if (activeTest === kind) {
-                    stopTest();
-                }
-            }, 5000);
+            markTestReady();
         } catch (error) {
             if (testCopy) {
                 testCopy.textContent =
-                    'Playback did not start. Check this browserâs media permissions and try again.';
+                    'Playback did not start. Check your browser media permissions, volume, mute, or audio output and try again.';
+            }
+
+            if (testState) {
+                testState.className =
+                    'fa-solid fa-triangle-exclamation account-scout-media-check-state';
             }
         }
     };
 
-    testVideoButton?.addEventListener('click', () => {
-        runMediaTest('video');
-    });
-
-    testAudioButton?.addEventListener('click', () => {
-        runMediaTest('audio');
-    });
-
+    testButton?.addEventListener('click', runMediaTest);
     testMedia?.addEventListener('ended', stopTest);
 
     const updateVideoUi = () => {
@@ -793,7 +746,7 @@ require dirname(__DIR__) . '/partials/header.php';
             video.currentTime = maxWatched;
             status.innerHTML =
                 '<i class="fa-solid fa-circle-play" aria-hidden="true"></i>'
-                + '<span>Continue watching the training video through to the end.</span>';
+                + '<span>Nice try! Continue watching the training video through to the end.</span>';
         }
 
         updateToggle();
