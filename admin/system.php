@@ -22,6 +22,67 @@ $actorIsOwner = admin_users_current_is_owner(
 $notice = '';
 $error = '';
 
+function admin_system_local_input_to_utc(
+    string $value
+): string {
+    $value = trim($value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    $local = DateTimeImmutable::createFromFormat(
+        'Y-m-d\TH:i',
+        $value,
+        new DateTimeZone(
+            llama_viewer_timezone()
+        )
+    );
+
+    if (!$local) {
+        throw new InvalidArgumentException(
+            'Choose a valid expected return date and time.'
+        );
+    }
+
+    return $local
+        ->setTimezone(
+            new DateTimeZone('UTC')
+        )
+        ->format(
+            'Y-m-d H:i:s'
+        );
+}
+
+function admin_system_utc_to_local_input(
+    ?string $value
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )
+            ->setTimezone(
+                new DateTimeZone(
+                    llama_viewer_timezone()
+                )
+            )
+            ->format(
+                'Y-m-d\TH:i'
+            );
+    } catch (Throwable) {
+        return '';
+    }
+}
+
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '')
         === 'POST'
@@ -91,10 +152,21 @@ if (
                 $notice =
                     'Test account reset completed immediately.';
             } else {
+                $maintenanceData =
+                    $_POST;
+
+                $maintenanceData['return_at'] =
+                    admin_system_local_input_to_utc(
+                        (string) (
+                            $_POST['return_at']
+                            ?? ''
+                        )
+                    );
+
                 admin_system_set_maintenance(
                     $db,
                     $actorUserId,
-                    $_POST
+                    $maintenanceData
                 );
 
                 $notice =
@@ -209,27 +281,10 @@ function admin_system_run_time_label(
         return 'No run recorded yet';
     }
 
-    try {
-        $utc =
-            new DateTimeZone('UTC');
-
-        $mountain =
-            new DateTimeZone(
-                'America/Denver'
-            );
-
-        $date =
-            new DateTimeImmutable(
-                $value,
-                $utc
-            );
-
-        return $date
-            ->setTimezone($mountain)
-            ->format('M j, Y, g:i a');
-    } catch (Throwable) {
-        return $value;
-    }
+    return llama_format_viewer_datetime(
+        $value,
+        'M j, Y, g:i a T'
+    );
 }
 
 
@@ -652,9 +707,7 @@ require __DIR__ . '/_header.php';
         type="datetime-local"
         name="return_at"
         value="<?= moderation_e(
-            preg_replace(
-                '/:\d{2}(?:[+-]\d{2}:\d{2})?$/',
-                '',
+            admin_system_utc_to_local_input(
                 (string) (
                     $state['return_at']
                     ?? ''
@@ -667,8 +720,9 @@ require __DIR__ . '/_header.php';
     >
 
     <small>
-        Optional. Leave blank if there is no
-        reliable return time.
+        Optional. Uses your profile timezone,
+        <?= moderation_e(llama_viewer_timezone()) ?>.
+        Leave blank if there is no reliable return time.
     </small>
 </label>
 
@@ -755,12 +809,13 @@ require __DIR__ . '/_header.php';
     <span>
         <strong>Started</strong>
 
-        <?= moderation_e(
-            (string) (
-                $state['started_at']
-                ?: 'Unknown'
+        <?= !empty($state['started_at'])
+            ? moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $state['started_at']
+                )
             )
-        ) ?>
+            : 'Unknown' ?>
     </span>
 
     <span>
@@ -1286,9 +1341,11 @@ require __DIR__ . '/_header.php';
             ) ?>
             |
             <?= moderation_e(
-                (string) $historyRow[
-                    'created_at'
-                ]
+                llama_format_viewer_datetime(
+                    (string) $historyRow[
+                        'created_at'
+                    ]
+                )
             ) ?>
         </span>
     </div>
