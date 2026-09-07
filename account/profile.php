@@ -414,7 +414,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     >
                 </label>
 
-                <label class="community-profile-field community-profile-field-wide">
+                <label class="community-profile-field">
                     <span>Camping soundtrack</span>
                     <input
                         type="text"
