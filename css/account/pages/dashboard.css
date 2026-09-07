@@ -170,7 +170,7 @@
     display: grid;
     grid-template-columns:
         repeat(
-            3,
+            4,
             minmax(0, 1fr)
         );
     gap: 10px;
@@ -247,6 +247,50 @@
 
 .account-glance-points strong {
     font-size: 1.3rem;
+}
+
+.account-glance-orders strong {
+    font-size: .94rem;
+}
+
+.account-glance-orders .account-glance-icon {
+    color: var(--text);
+}
+
+/*
+ * Active Scouts unlock this card after onboarding.
+ * It intentionally looks like an earned/privileged dashboard option,
+ * not a persistent onboarding banner.
+ */
+.account-glance-scout {
+    border-color: rgba(88, 166, 106, .58);
+    background: rgba(88, 166, 106, .06);
+}
+
+.account-glance-scout .account-glance-icon {
+    border-color: rgba(88, 166, 106, .42);
+    background: rgba(88, 166, 106, .12);
+    color: #58a66a;
+}
+
+.account-glance-scout strong {
+    color: inherit;
+}
+
+@media (max-width: 980px) {
+    .account-glance-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 560px) {
+    .account-glance-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 
@@ -351,10 +395,6 @@
     .account-glance-grid {
         grid-template-columns: 1fr 1fr;
     }
-
-    .account-glance-link {
-        grid-column: 1 / -1;
-    }
 }
 
 
@@ -386,44 +426,6 @@
 
     .account-badge-copy span {
         display: none;
-    }
-}
-
-/* =========================================================
-   SHOP ORDERS DASHBOARD CARD
-   ========================================================= */
-
-.account-glance-grid {
-    grid-template-columns:
-        repeat(
-            4,
-            minmax(0, 1fr)
-        );
-}
-
-.account-glance-orders strong {
-    font-size: .94rem;
-}
-
-.account-glance-orders .account-glance-icon {
-    color: var(--text);
-}
-
-@media (max-width: 980px) {
-
-    .account-glance-grid {
-        grid-template-columns:
-            repeat(
-                2,
-                minmax(0, 1fr)
-            );
-    }
-}
-
-@media (max-width: 560px) {
-
-    .account-glance-grid {
-        grid-template-columns: 1fr;
     }
 }
 
