@@ -61,32 +61,34 @@ function llama_ensure_maintenance_table(
     PDO $db
 ): void {
 
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS app_maintenance
-        (
-            maintenance_key
-                VARCHAR(100)
-                NOT NULL,
+    $stmt =
+        $db->prepare(
+            '
+            SELECT 1
 
-            last_run_at
-                DATETIME
-                NULL,
+            FROM information_schema.tables
 
-            updated_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
 
-            PRIMARY KEY
-                (maintenance_key)
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
+            LIMIT 1
+            '
+        );
+
+
+    $stmt->execute([
+        'app_maintenance'
+    ]);
+
+
+    if (
+        !$stmt->fetchColumn()
+    ) {
+
+        throw new RuntimeException(
+            'Scout maintenance storage is not initialized. Missing table: app_maintenance'
+        );
+    }
 
 }
 
@@ -99,91 +101,34 @@ function llama_ensure_scout_extensions_table(
     PDO $db
 ): void {
 
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS scout_extensions
-        (
-            id
-                BIGINT UNSIGNED
-                NOT NULL
-                AUTO_INCREMENT,
+    $stmt =
+        $db->prepare(
+            '
+            SELECT 1
 
-            scout_profile_id
-                BIGINT UNSIGNED
-                NOT NULL,
+            FROM information_schema.tables
 
-            user_id
-                BIGINT UNSIGNED
-                NOT NULL,
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
 
-            granted_by
-                BIGINT UNSIGNED
-                NULL,
+            LIMIT 1
+            '
+        );
 
-            started_at
-                DATETIME
-                NOT NULL,
 
-            ends_at
-                DATETIME
-                NOT NULL,
+    $stmt->execute([
+        'scout_extensions'
+    ]);
 
-            status
-                ENUM(
-                    \'active\',
-                    \'completed\',
-                    \'failed\',
-                    \'canceled\'
-                )
-                NOT NULL
-                DEFAULT \'active\',
 
-            accepted_reports
-                INT UNSIGNED
-                NOT NULL
-                DEFAULT 0,
+    if (
+        !$stmt->fetchColumn()
+    ) {
 
-            resolved_at
-                DATETIME
-                NULL,
-
-            created_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at
-                DATETIME
-                NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY
-                (id),
-
-            KEY idx_scout_extension_profile
-                (
-                    scout_profile_id,
-                    status
-                ),
-
-            KEY idx_scout_extension_user
-                (
-                    user_id,
-                    status
-                ),
-
-            KEY idx_scout_extension_end
-                (
-                    status,
-                    ends_at
-                )
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
+        throw new RuntimeException(
+            'Scout maintenance storage is not initialized. Missing table: scout_extensions'
+        );
+    }
 
 }
 
