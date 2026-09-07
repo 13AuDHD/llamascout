@@ -143,13 +143,13 @@ $displayName = trim((string) ($profile['display_name'] ?? '')) ?: (string) $prof
 $pageTitle = $displayName . ' | Llama Scout';
 $canonicalUrl = llama_profile_url((string) $profile['username'], $siteUrl);
 
-$joinedAt = null;
+$joinedAt = '';
+
 if (!empty($profile['joined_at'])) {
-    try {
-        $joinedAt = new DateTimeImmutable((string) $profile['joined_at']);
-    } catch (Throwable) {
-        $joinedAt = null;
-    }
+    $joinedAt = llama_format_viewer_date(
+        (string) $profile['joined_at'],
+        'F Y'
+    );
 }
 
 $stats = is_array($profile['stats'] ?? null) ? $profile['stats'] : [];
@@ -248,10 +248,10 @@ require __DIR__ . '/partials/header.php';
 
             <p class="public-community-profile-handle">@<?= public_profile_e($profile['username']) ?></p>
 
-            <?php if ($joinedAt): ?>
+            <?php if ($joinedAt !== ''): ?>
                 <p class="public-community-profile-location">
                     <i class="fa-solid fa-calendar" aria-hidden="true"></i>
-                    Joined <?= public_profile_e($joinedAt->format('F Y')) ?>
+                    Joined <?= public_profile_e($joinedAt) ?>
                 </p>
             <?php endif; ?>
 
