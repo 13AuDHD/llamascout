@@ -435,7 +435,11 @@ require __DIR__ .
 
         <small>
             Awarded
-            <?= moderation_e((string) $userBadge['awarded_at']) ?>
+            <?= moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $userBadge['awarded_at']
+                )
+            ) ?>
             ·
             <?= moderation_e((string) $userBadge['awarded_by_name']) ?>
         </small>

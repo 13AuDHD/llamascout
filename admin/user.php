@@ -98,7 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('The user action could not be completed.', $reference);
+                : llama_error_message_with_reference(
+                    'The user action could not be completed.',
+                    $reference
+                );
         }
     }
 }
@@ -249,7 +252,11 @@ require __DIR__ . '/_header.php';
             <?php else: ?>
                 <p>
                     Personal account data removed
-                    <?= moderation_e((string) $user['anonymized_at']) ?>
+                    <?= moderation_e(
+                        llama_format_viewer_datetime(
+                            (string) $user['anonymized_at']
+                        )
+                    ) ?>
                 </p>
             <?php endif; ?>
         </div>
@@ -476,11 +483,27 @@ require __DIR__ . '/_header.php';
                     </div>
                     <div>
                         <dt>Started</dt>
-                        <dd><?= moderation_e((string) ($user['membership_started_at'] ?: 'Not applicable')) ?></dd>
+                        <dd>
+                            <?= !empty($user['membership_started_at'])
+                                ? moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) $user['membership_started_at']
+                                    )
+                                )
+                                : 'Not applicable' ?>
+                        </dd>
                     </div>
                     <div>
                         <dt>Ends / renews</dt>
-                        <dd><?= moderation_e((string) ($user['membership_ends_at'] ?: 'Not applicable')) ?></dd>
+                        <dd>
+                            <?= !empty($user['membership_ends_at'])
+                                ? moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) $user['membership_ends_at']
+                                    )
+                                )
+                                : 'Not applicable' ?>
+                        </dd>
                     </div>
                     <div>
                         <dt>Stripe customer</dt>
@@ -562,15 +585,37 @@ require __DIR__ . '/_header.php';
             <dl class="admin-user-definition-list">
                 <div>
                     <dt>Created</dt>
-                    <dd><?= moderation_e((string) $user['created_at']) ?></dd>
+                    <dd>
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) $user['created_at']
+                            )
+                        ) ?>
+                    </dd>
                 </div>
                 <div>
                     <dt>Email verified</dt>
-                    <dd><?= moderation_e((string) ($user['email_verified_at'] ?: 'No')) ?></dd>
+                    <dd>
+                        <?= !empty($user['email_verified_at'])
+                            ? moderation_e(
+                                llama_format_viewer_datetime(
+                                    (string) $user['email_verified_at']
+                                )
+                            )
+                            : 'No' ?>
+                    </dd>
                 </div>
                 <div>
                     <dt>Last login</dt>
-                    <dd><?= moderation_e((string) ($user['last_login_at'] ?: 'Never')) ?></dd>
+                    <dd>
+                        <?= !empty($user['last_login_at'])
+                            ? moderation_e(
+                                llama_format_viewer_datetime(
+                                    (string) $user['last_login_at']
+                                )
+                            )
+                            : 'Never' ?>
+                    </dd>
                 </div>
                 <div>
                     <dt>Active sessions</dt>
@@ -698,7 +743,12 @@ require __DIR__ . '/_header.php';
                             <strong><?= moderation_e((string) $entry['summary']) ?></strong>
                             <span>
                                 <?= moderation_e((string) $entry['actor_name']) ?>
-                                · <?= moderation_e((string) $entry['created_at']) ?>
+                                ·
+                                <?= moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) $entry['created_at']
+                                    )
+                                ) ?>
                             </span>
                         </div>
                     <?php endforeach; ?>
