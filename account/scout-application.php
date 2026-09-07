@@ -719,7 +719,7 @@ function scout_app_value(
 
         if (!hasResults) {
             setStatus(
-                'The llama cant find your address. Keep typing or enter the address manually.'
+                'The llama can\'t find your address. Keep typing or enter the address manually.'
             );
         }
     };
@@ -752,11 +752,11 @@ function scout_app_value(
         try {
             const response =
                 await fetch(
-                    'https://llamascout.com/api/address-autocomplete.php?q='
+                    '/api/address-autocomplete.php?q='
                     + encodeURIComponent(query),
                     {
                         method: 'GET',
-                        credentials: 'omit',
+                        credentials: 'same-origin',
                         headers: {
                             'Accept': 'application/json',
                         },
