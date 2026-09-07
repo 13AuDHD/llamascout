@@ -230,9 +230,13 @@ function scout_app_value(
             </label>
 
             <label class="is-wide account-scout-address-field">
-                <span>Mailing address</span>
+                <span class="account-scout-address-label">
+                    Mailing address
+                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                </span>
 
-                <div class="account-scout-address-input-wrap">
+                <div class="account-scout-address-row">
+                    <div class="account-scout-address-input-wrap">
                     <input
                         type="text"
                         name="address_line_1"
@@ -251,11 +255,6 @@ function scout_app_value(
                         required
                     >
 
-                    <i
-                        class="fa-solid fa-location-dot"
-                        aria-hidden="true"
-                    ></i>
-
                     <div
                         id="scout-address-suggestions"
                         class="account-scout-address-suggestions"
@@ -263,9 +262,9 @@ function scout_app_value(
                         role="listbox"
                         hidden
                     ></div>
-                </div>
+                    </div>
 
-                <div class="account-scout-address-tools">
+                    <div class="account-scout-address-tools">
                     <button
                         type="button"
                         class="account-scout-address-location"
@@ -280,9 +279,8 @@ function scout_app_value(
                         data-scout-address-status
                         role="status"
                         aria-live="polite"
-                    >
-                        Start typing to search addresses.
-                    </small>
+                    ></small>
+                    </div>
                 </div>
             </label>
 
@@ -832,7 +830,7 @@ function scout_app_value(
             closeSuggestions();
 
             setStatus(
-                'Address search unavailable. Enter it manually.',
+                'Search unavailable.',
                 'error'
             );
         }
@@ -843,7 +841,7 @@ function scout_app_value(
         () => {
             if (!navigator.geolocation) {
                 setStatus(
-                    'This browser does not provide location access. Address search will still work normally.',
+                    'Location unavailable.',
                     'error'
                 );
                 return;
@@ -906,14 +904,14 @@ function scout_app_value(
                     }
 
                     let message =
-                        'Location unavailable. Search still works.';
+                        'Location unavailable.';
 
                     if (
                         error
                         && error.code === 1
                     ) {
                         message =
-                            'Location not allowed. Search still works.';
+                            'Location not allowed.';
                     }
 
                     setStatus(
