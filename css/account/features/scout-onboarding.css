@@ -779,26 +779,15 @@
 }
 
 .account-scout-address-status {
-    display: none;
-    max-width: 120px;
-    margin: 0;
-    font-size: .6rem;
-    line-height: 1.25;
-    opacity: .66;
-}
-
-.account-scout-address-status:not(:empty) {
-    display: block;
-}
-
-.account-scout-address-status.is-good {
-    color: #58a66a;
-    opacity: 1;
-}
-
-.account-scout-address-status.is-error {
-    color: #c65c52;
-    opacity: 1;
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
 
 @media (max-width: 620px) {
@@ -813,10 +802,6 @@
     .account-scout-address-location {
         width: 42px;
         padding: 0;
-    }
-
-    .account-scout-address-status {
-        max-width: 90px;
     }
 }
 
