@@ -734,3 +734,42 @@
         align-items: center;
     }
 }
+
+
+/* =========================================================
+   SCOUT COMPACT CONTACT DETAILS
+   ========================================================= */
+
+.account-scout-address-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.account-scout-address-meta label {
+    min-width: 0;
+}
+
+.account-scout-address-meta input {
+    min-width: 0;
+}
+
+.account-scout-phone-field {
+    width: min(100%, 360px);
+    justify-self: start;
+}
+
+.account-scout-phone-field
+    .account-scout-field-help {
+    margin-top: 1px;
+}
+
+@media (max-width: 720px) {
+    .account-scout-address-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .account-scout-phone-field {
+        width: min(100%, 320px);
+    }
+}
