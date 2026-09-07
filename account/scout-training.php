@@ -301,7 +301,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 data-scout-test-media
             >
                 <source
-                    src="https://llamascout.com/videos/scout-training.mp4"
+                    src="https://llamascout.com/videos/grumpy-llama-spits.mp4"
                     type="video/mp4"
                 >
             </video>
@@ -309,8 +309,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="account-scout-test-preview-copy">
                 <strong data-scout-test-heading>Media test</strong>
                 <span data-scout-test-copy>
-                    This short test uses the same video file and playback method
-                    as Scout training.
+                    This short llama clip uses the same browser playback path as Scout training.
                 </span>
             </div>
         </div>
