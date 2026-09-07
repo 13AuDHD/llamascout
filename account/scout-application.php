@@ -302,88 +302,96 @@ function scout_app_value(
                 >
             </label>
 
-            <label>
-                <span>City</span>
-                <input
-                    type="text"
-                    name="city"
-                    maxlength="100"
-                    data-scout-address-city
-                    autocomplete="address-level2"
-                    value="<?= htmlspecialchars(
-                        scout_app_value($application ?: [], 'city'),
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    required
-                >
-            </label>
+            <div class="account-scout-address-meta is-wide">
+                <label>
+                    <span>City</span>
+                    <input
+                        type="text"
+                        name="city"
+                        maxlength="100"
+                        data-scout-address-city
+                        autocomplete="address-level2"
+                        value="<?= htmlspecialchars(
+                            scout_app_value($application ?: [], 'city'),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </label>
 
-            <label>
-                <span>State / region</span>
-                <input
-                    type="text"
-                    name="state_region"
-                    maxlength="100"
-                    data-scout-address-state
-                    autocomplete="address-level1"
-                    value="<?= htmlspecialchars(
-                        scout_app_value($application ?: [], 'state_region'),
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    required
-                >
-            </label>
+                <label>
+                    <span>State / region</span>
+                    <input
+                        type="text"
+                        name="state_region"
+                        maxlength="100"
+                        data-scout-address-state
+                        autocomplete="address-level1"
+                        value="<?= htmlspecialchars(
+                            scout_app_value($application ?: [], 'state_region'),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </label>
 
-            <label>
-                <span>Postal code</span>
-                <input
-                    type="text"
-                    name="postal_code"
-                    maxlength="30"
-                    data-scout-address-postal
-                    autocomplete="postal-code"
-                    value="<?= htmlspecialchars(
-                        scout_app_value($application ?: [], 'postal_code'),
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    required
-                >
-            </label>
+                <label>
+                    <span>Postal code</span>
+                    <input
+                        type="text"
+                        name="postal_code"
+                        maxlength="30"
+                        data-scout-address-postal
+                        autocomplete="postal-code"
+                        value="<?= htmlspecialchars(
+                            scout_app_value($application ?: [], 'postal_code'),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </label>
 
-            <label>
-                <span>Country</span>
-                <input
-                    type="text"
-                    name="country"
-                    maxlength="100"
-                    data-scout-address-country
-                    autocomplete="country-name"
-                    value="<?= htmlspecialchars(
-                        scout_app_value($application ?: [], 'country')
-                            ?: 'United States',
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    required
-                >
-            </label>
+                <label>
+                    <span>Country</span>
+                    <input
+                        type="text"
+                        name="country"
+                        maxlength="100"
+                        data-scout-address-country
+                        autocomplete="country-name"
+                        value="<?= htmlspecialchars(
+                            scout_app_value($application ?: [], 'country')
+                                ?: 'United States',
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </label>
+            </div>
 
-            <label class="is-wide">
+            <label class="is-wide account-scout-phone-field">
                 <span>Phone (optional)</span>
                 <input
                     type="tel"
                     name="phone"
-                    maxlength="40"
+                    maxlength="25"
                     autocomplete="tel"
+                    inputmode="tel"
+                    data-scout-phone
+                    placeholder="(970) 555-0123"
                     value="<?= htmlspecialchars(
                         scout_app_value($application ?: [], 'phone'),
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
                 >
+                <small class="account-scout-field-help">
+                    We format U.S. phone numbers automatically.
+                </small>
             </label>
 
         </div>
@@ -983,5 +991,106 @@ function scout_app_value(
 </script>
 
 <?php endif; ?>
+
+
+<script>
+(() => {
+    const phone =
+        document.querySelector('[data-scout-phone]');
+
+    const country =
+        document.querySelector('[data-scout-address-country]');
+
+    if (!phone) {
+        return;
+    }
+
+    const isUnitedStates = () => {
+        const value =
+            String(
+                country?.value
+                ?? ''
+            )
+            .trim()
+            .toLowerCase();
+
+        return [
+            'united states',
+            'united states of america',
+            'usa',
+            'us',
+            'u.s.',
+            'u.s.a.',
+        ].includes(value);
+    };
+
+    const formatUsPhone = (value) => {
+        let digits =
+            String(value)
+                .replace(/\D/g, '');
+
+        if (
+            digits.length === 11
+            && digits.startsWith('1')
+        ) {
+            digits =
+                digits.slice(1);
+        }
+
+        digits =
+            digits.slice(0, 10);
+
+        if (digits.length === 0) {
+            return '';
+        }
+
+        if (digits.length < 4) {
+            return '(' + digits;
+        }
+
+        if (digits.length < 7) {
+            return '('
+                + digits.slice(0, 3)
+                + ') '
+                + digits.slice(3);
+        }
+
+        return '('
+            + digits.slice(0, 3)
+            + ') '
+            + digits.slice(3, 6)
+            + '-'
+            + digits.slice(6);
+    };
+
+    const applyFormat = () => {
+        if (!isUnitedStates()) {
+            return;
+        }
+
+        phone.value =
+            formatUsPhone(
+                phone.value
+            );
+    };
+
+    phone.addEventListener(
+        'input',
+        applyFormat
+    );
+
+    phone.addEventListener(
+        'blur',
+        applyFormat
+    );
+
+    country?.addEventListener(
+        'change',
+        applyFormat
+    );
+
+    applyFormat();
+})();
+</script>
 
 <?php require dirname(__DIR__) . '/partials/footer.php'; ?>
