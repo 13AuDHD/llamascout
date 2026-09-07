@@ -597,6 +597,7 @@
 }
 
 .membership-public-plan.is-paid {
+    min-width: 0;
     border-width: 2px;
 }
 
@@ -657,37 +658,47 @@
 
 .membership-public-paid-prices {
     display: grid;
-    grid-template-columns: auto auto auto;
-    align-items: center;
-    justify-content: start;
-    gap: 16px;
-
+    grid-template-columns: 1fr;
+    gap: 10px;
+    min-width: 0;
+    width: 100%;
     margin-top: 14px;
 }
 
 .membership-price-option {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: 5px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .membership-price-option strong {
+    max-width: 100%;
     font-size: 2rem;
     line-height: 1;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
 
 .membership-price-option span {
     color: var(--text-muted);
-    white-space: nowrap;
+    white-space: normal;
+}
+
+.membership-price-option small {
+    flex-basis: 100%;
 }
 
 .membership-price-separator {
     display: flex;
+    width: 100%;
     align-items: center;
-    gap: 8px;
-
+    justify-content: center;
+    gap: 10px;
+    margin: 1px 0;
     color: var(--text-muted);
-
     font-size: .75rem;
     font-weight: 800;
     text-transform: uppercase;
@@ -696,14 +707,15 @@
 .membership-price-separator::before,
 .membership-price-separator::after {
     content: "";
-
-    width: 24px;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
     height: 1px;
-
     background: var(--border);
 }
 
 .membership-price-separator span {
+    flex: 0 0 auto;
     white-space: nowrap;
 }
 
@@ -715,6 +727,21 @@
 
 .membership-public-paid-prices span {
     color: var(--text-muted);
+}
+
+.membership-public-paid-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.membership-public-paid-actions .public-home-button {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin: 0;
+    text-align: center;
 }
 
 .membership-public-table-wrap {
@@ -828,6 +855,13 @@
 }
 
 
+@media (max-width: 820px) {
+    .membership-public-paid-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+
 @media (max-width: 680px) {
     .public-home-hero {
         padding-top: 34px;
@@ -875,9 +909,7 @@
     }
 
     .membership-public-paid-prices {
-        grid-template-columns: 1fr;
         gap: 10px;
-
         margin-top: 16px;
     }
 
@@ -886,13 +918,6 @@
     }
 
     .membership-price-separator {
-        width: 100%;
         justify-content: center;
-    }
-
-    .membership-price-separator::before,
-    .membership-price-separator::after {
-        flex: 1 1 auto;
-        width: auto;
     }
 }
