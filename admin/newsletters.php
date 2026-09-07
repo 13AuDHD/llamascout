@@ -12,7 +12,10 @@ $adminUser =
 $db = db();
 
 $actorUserId =
-    (int) ($adminUser['id'] ?? 0);
+    (int) (
+        $adminUser['id']
+        ?? 0
+    );
 
 $notice = '';
 $error = '';
@@ -26,7 +29,7 @@ $issueId =
 
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '')
-        === 'POST'
+    === 'POST'
 ) {
     if (
         !moderation_verify_csrf(
@@ -40,14 +43,13 @@ if (
             'Your session token expired. Reload and try again.';
     } else {
         try {
-            $action = trim(
-                (string) (
-                    $_POST[
-                        'newsletter_action'
-                    ]
-                    ?? ''
-                )
-            );
+            $action =
+                trim(
+                    (string) (
+                        $_POST['newsletter_action']
+                        ?? ''
+                    )
+                );
 
             if (
                 in_array(
@@ -72,15 +74,14 @@ if (
             if ($action === 'save') {
                 $notice =
                     'Newsletter draft saved.';
-            } elseif (
-                $action === 'schedule'
-            ) {
-                $localSendAt = trim(
-                    (string) (
-                        $_POST['send_at']
-                        ?? ''
-                    )
-                );
+            } elseif ($action === 'schedule') {
+                $localSendAt =
+                    trim(
+                        (string) (
+                            $_POST['send_at']
+                            ?? ''
+                        )
+                    );
 
                 if ($localSendAt === '') {
                     throw new InvalidArgumentException(
@@ -94,7 +95,9 @@ if (
                     );
 
                 $utc =
-                    new DateTimeZone('UTC');
+                    new DateTimeZone(
+                        'UTC'
+                    );
 
                 $localDate =
                     new DateTimeImmutable(
@@ -104,7 +107,9 @@ if (
 
                 $sendAtUtc =
                     $localDate
-                        ->setTimezone($utc)
+                        ->setTimezone(
+                            $utc
+                        )
                         ->format(
                             'Y-m-d H:i:s'
                         );
@@ -117,13 +122,13 @@ if (
 
                 $notice =
                     'Newsletter scheduled.';
-            } elseif (
-                $action === 'send-now'
-            ) {
+            } elseif ($action === 'send-now') {
                 llama_newsletter_schedule(
                     $db,
                     $issueId,
-                    gmdate('Y-m-d H:i:s')
+                    gmdate(
+                        'Y-m-d H:i:s'
+                    )
                 );
 
                 $issue =
@@ -133,7 +138,7 @@ if (
                     );
 
                 if ($issue) {
-                    $stats =
+                    $sendStats =
                         llama_newsletter_send_batch(
                             $db,
                             $issue,
@@ -143,13 +148,11 @@ if (
                     $notice =
                         'Newsletter sending started. '
                         . number_format(
-                            (int) $stats['sent']
+                            (int) $sendStats['sent']
                         )
                         . ' sent in this pass. Remaining recipients will continue through automated maintenance.';
                 }
-            } elseif (
-                $action === 'unschedule'
-            ) {
+            } elseif ($action === 'unschedule') {
                 llama_newsletter_unschedule(
                     $db,
                     $issueId
@@ -197,20 +200,25 @@ $issues =
         100
     );
 
-$monthlyAudience =
-    llama_newsletter_audience_count(
-        $db,
-        'monthly'
-    );
+$audienceCounts = [];
 
-$memberAudience =
-    llama_newsletter_audience_count(
-        $db,
-        'member_dispatch'
-    );
+foreach (
+    array_keys(
+        llama_newsletter_types()
+    )
+    as $type
+) {
+    $audienceCounts[$type] =
+        llama_newsletter_audience_count(
+            $db,
+            $type
+        );
+}
 
 $stats =
-    admin_dashboard_stats($db);
+    admin_dashboard_stats(
+        $db
+    );
 
 $adminNavCounts = [
     'new_places' =>
@@ -249,7 +257,10 @@ $editStatus =
 $editLocked =
     in_array(
         $editStatus,
-        ['sending', 'sent'],
+        [
+            'sending',
+            'sent',
+        ],
         true
     );
 
@@ -257,11 +268,15 @@ $sendAtLocal = '';
 
 if (
     $editIssue
-    && !empty($editIssue['send_at'])
+    && !empty(
+        $editIssue['send_at']
+    )
 ) {
     try {
         $utc =
-            new DateTimeZone('UTC');
+            new DateTimeZone(
+                'UTC'
+            );
 
         $mountain =
             new DateTimeZone(
@@ -271,18 +286,26 @@ if (
         $sendAtLocal =
             (
                 new DateTimeImmutable(
-                    (string) $editIssue[
-                        'send_at'
-                    ],
+                    (string) $editIssue['send_at'],
                     $utc
                 )
             )
-                ->setTimezone($mountain)
-                ->format('Y-m-d\TH:i');
+                ->setTimezone(
+                    $mountain
+                )
+                ->format(
+                    'Y-m-d\TH:i'
+                );
     } catch (Throwable) {
         $sendAtLocal = '';
     }
 }
+
+$selectedType =
+    (string) (
+        $editIssue['newsletter_type']
+        ?? 'monthly'
+    );
 ?>
 
 <?php if ($notice !== ''): ?>
@@ -309,39 +332,63 @@ if (
 
 <div class="admin-newsletter-audience-grid">
 
-    <article>
-        <i
-            class="fa-solid fa-newspaper"
-            aria-hidden="true"
-        ></i>
+    <?php
+    $audienceCards = [
+        'monthly' => [
+            'fa-newspaper',
+            'Llama Scout Monthly',
+            'Optional newsletter subscribers',
+        ],
+        'member_dispatch' => [
+            'fa-compass',
+            'Member Dispatch',
+            'Members with Dispatch enabled',
+        ],
+        'policy_updates' => [
+            'fa-file-signature',
+            'Policy Updates',
+            'All active verified accounts',
+        ],
+        'important_news' => [
+            'fa-bullhorn',
+            'Important News',
+            'All active verified accounts',
+        ],
+    ];
+    ?>
 
-        <strong>
-            <?= number_format(
-                $monthlyAudience
-            ) ?>
-        </strong>
+    <?php foreach (
+        $audienceCards
+        as $type => [$icon, $label, $description]
+    ): ?>
 
-        <span>
-            Llama Scout Monthly
-        </span>
-    </article>
+        <article>
+            <i
+                class="fa-solid <?= moderation_e($icon) ?>"
+                aria-hidden="true"
+            ></i>
 
-    <article>
-        <i
-            class="fa-solid fa-compass"
-            aria-hidden="true"
-        ></i>
+            <div>
+                <strong>
+                    <?= number_format(
+                        (int) (
+                            $audienceCounts[$type]
+                            ?? 0
+                        )
+                    ) ?>
+                </strong>
 
-        <strong>
-            <?= number_format(
-                $memberAudience
-            ) ?>
-        </strong>
+                <span>
+                    <?= moderation_e($label) ?>
+                </span>
 
-        <span>
-            Member Dispatch
-        </span>
-    </article>
+                <small>
+                    <?= moderation_e($description) ?>
+                </small>
+            </div>
+        </article>
+
+    <?php endforeach; ?>
 
 </div>
 
@@ -361,9 +408,7 @@ if (
         <h2>
             <?= $editIssue
                 ? moderation_e(
-                    (string) $editIssue[
-                        'title'
-                    ]
+                    (string) $editIssue['title']
                 )
                 : 'Compose newsletter' ?>
         </h2>
@@ -420,15 +465,7 @@ if (
                 value="<?= moderation_e(
                     $typeKey
                 ) ?>"
-                <?= (
-                    (string) (
-                        $editIssue[
-                            'newsletter_type'
-                        ]
-                        ?? 'monthly'
-                    )
-                    === $typeKey
-                )
+                <?= $selectedType === $typeKey
                     ? 'selected'
                     : '' ?>
             >
@@ -484,14 +521,37 @@ if (
     >
 </label>
 
-<label>
-    <span>Newsletter content</span>
+<div class="admin-newsletter-editor-note">
+    <i
+        class="fa-solid fa-code"
+        aria-hidden="true"
+    ></i>
+
+    <div>
+        <strong>Rich HTML email is supported</strong>
+        <p>
+            Paste normal text or HTML. Inline
+            <code>style=""</code> CSS, colors, tables, buttons,
+            and HTTPS images are supported. Scripts, forms,
+            iframes, event handlers, and unsafe URLs are removed.
+        </p>
+    </div>
+</div>
+
+<label class="admin-newsletter-content-field">
+    <span>
+        Newsletter content
+        <small>
+            Plain text or HTML
+        </small>
+    </span>
 
     <textarea
         name="body_text"
-        rows="18"
-        maxlength="30000"
-        placeholder="Write the newsletter here. Separate paragraphs with a blank line."
+        rows="22"
+        maxlength="60000"
+        spellcheck="false"
+        placeholder="Write plain text here, or paste your HTML email markup with inline CSS."
         <?= $editLocked
             ? 'readonly'
             : '' ?>
@@ -503,6 +563,38 @@ if (
         )
     ) ?></textarea>
 </label>
+
+<div class="admin-newsletter-delivery-note">
+    <?php if (
+        in_array(
+            $selectedType,
+            [
+                'policy_updates',
+                'important_news',
+            ],
+            true
+        )
+    ): ?>
+        <i
+            class="fa-solid fa-circle-exclamation"
+            aria-hidden="true"
+        ></i>
+
+        <span>
+            This category is an account-wide notice and sends to
+            all active verified Llama Scout accounts.
+        </span>
+    <?php else: ?>
+        <i
+            class="fa-solid fa-envelope"
+            aria-hidden="true"
+        ></i>
+
+        <span>
+            This category follows the member's optional email preferences.
+        </span>
+    <?php endif; ?>
+</div>
 
 <?php if (!$editLocked): ?>
 
@@ -647,9 +739,7 @@ if (
 <td data-label="Newsletter">
     <?= moderation_e(
         llama_newsletter_type_label(
-            (string) $issue[
-                'newsletter_type'
-            ]
+            (string) $issue['newsletter_type']
         )
     ) ?>
 </td>
