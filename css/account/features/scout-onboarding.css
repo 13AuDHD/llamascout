@@ -665,16 +665,9 @@
 .account-scout-address-tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 10px;
+    gap: 7px 10px;
     align-items: center;
-    margin-top: 3px;
-}
-
-.account-scout-address-tools > small {
-    flex: 1 1 260px;
-    font-size: .62rem;
-    line-height: 1.4;
-    opacity: .62;
+    margin-top: 5px;
 }
 
 .account-scout-address-location {
@@ -682,14 +675,14 @@
     gap: 6px;
     align-items: center;
     justify-content: center;
-    min-height: 32px;
-    padding: 6px 9px;
+    min-height: 30px;
+    padding: 5px 9px;
     border: 1px solid rgba(88,166,106,.38);
     border-radius: 8px;
     background: rgba(88,166,106,.07);
     color: inherit;
     font: inherit;
-    font-size: .65rem;
+    font-size: .64rem;
     font-weight: 800;
     cursor: pointer;
 }
@@ -714,12 +707,30 @@
     cursor: wait;
 }
 
+.account-scout-address-tools
+    .account-scout-address-status {
+    flex: 1 1 180px;
+    min-height: 0;
+    margin: 0;
+    font-size: .62rem;
+    line-height: 1.35;
+    opacity: .66;
+}
+
+.account-scout-address-tools
+    .account-scout-address-status.is-good {
+    color: #58a66a;
+    opacity: 1;
+}
+
+.account-scout-address-tools
+    .account-scout-address-status.is-error {
+    color: #c65c52;
+    opacity: 1;
+}
+
 @media (max-width: 560px) {
     .account-scout-address-tools {
-        align-items: stretch;
-    }
-
-    .account-scout-address-location {
-        width: 100%;
+        align-items: center;
     }
 }
