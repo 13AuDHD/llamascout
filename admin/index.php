@@ -341,7 +341,7 @@ require __DIR__ . '/_header.php';
 
             <p class="admin-dashboard-activity-note">
                 Online Now = activity within 5 minutes.
-                Active Today begins at midnight Mountain Time.
+                Active Today begins at midnight in your profile timezone.
             </p>
 
         </section>

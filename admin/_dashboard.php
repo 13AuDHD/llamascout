@@ -59,9 +59,9 @@ function admin_dashboard_stats(PDO $db): array
             'UTC'
         );
 
-    $mountain =
+    $viewerTimezone =
         new DateTimeZone(
-            'America/Denver'
+            llama_viewer_timezone()
         );
 
     $nowUtc =
@@ -71,18 +71,19 @@ function admin_dashboard_stats(PDO $db): array
         );
 
     /*
-     * "Today" follows Llama Scout's default Mountain Time,
-     * including daylight-saving changes, then converts that
-     * midnight boundary back to UTC for the database query.
+     * "Today" follows the logged-in administrator's selected
+     * profile timezone, including daylight-saving changes.
+     * That local midnight boundary is converted back to UTC
+     * for the database query.
      */
-    $todayMountain =
+    $todayViewer =
         new DateTimeImmutable(
             'now',
-            $mountain
+            $viewerTimezone
         );
 
     $todayCutoffUtc =
-        $todayMountain
+        $todayViewer
             ->setTime(
                 0,
                 0,
@@ -321,7 +322,7 @@ function admin_dashboard_queue(PDO $db): array
                 'type' => 'Problem Report',
                 'icon' => 'fa-triangle-exclamation',
                 'title' => (string) $row['title'],
-                'meta' => $problem . ' Â· ' . (string) $row['actor'],
+                'meta' => $problem . ' | ' . (string) $row['actor'],
                 'time' => (string) $row['occurred_at'],
                 'href' => '/moderate-report.php?id=' . (int) $row['id'],
                 'action' => 'Review',
@@ -368,12 +369,12 @@ function admin_dashboard_queue(PDO $db): array
 
             $meta =
                 (string) ($row['name'] ?: $row['email'])
-                . ' Â· '
+                . ' | '
                 . $category;
 
             if (!empty($row['error_reference'])) {
                 $meta .=
-                    ' Â· '
+                    ' | '
                     . (string) $row['error_reference'];
             }
 
@@ -382,7 +383,7 @@ function admin_dashboard_queue(PDO $db): array
                 'icon' => 'fa-headset',
                 'title' =>
                     'Ticket #' . $ticket
-                    . ' Â· '
+                    . ' | '
                     . (string) $row['subject'],
                 'meta' => $meta,
                 'time' => (string) $row['occurred_at'],
@@ -444,7 +445,7 @@ function admin_dashboard_queue(PDO $db): array
                 'type' => 'Paid Order',
                 'icon' => 'fa-box',
                 'title' => (string) $row['order_number'],
-                'meta' => $customer . ' Â· $' .
+                'meta' => $customer . ' | $' .
                     number_format(
                         ((int) $row['total_cents']) / 100,
                         2
@@ -528,10 +529,8 @@ function admin_format_datetime(
         return 'Unknown time';
     }
 
-    try {
-        $date = new DateTimeImmutable($value);
-        return $date->format('M j, Y Â· g:i a');
-    } catch (Throwable) {
-        return $value;
-    }
+    return llama_format_viewer_datetime(
+        $value,
+        'M j, Y g:i a T'
+    );
 }

@@ -17,6 +17,18 @@ $actorUserId =
         ?? 0
     );
 
+$viewerTimezone =
+    llama_viewer_timezone();
+
+$timezoneLabels =
+    llama_timezones();
+
+$viewerTimezoneLabel =
+    (string) (
+        $timezoneLabels[$viewerTimezone]
+        ?? $viewerTimezone
+    );
+
 $notice = '';
 $error = '';
 
@@ -89,9 +101,9 @@ if (
                     );
                 }
 
-                $mountain =
+                $viewerZone =
                     new DateTimeZone(
-                        'America/Denver'
+                        $viewerTimezone
                     );
 
                 $utc =
@@ -102,7 +114,7 @@ if (
                 $localDate =
                     new DateTimeImmutable(
                         $localSendAt,
-                        $mountain
+                        $viewerZone
                     );
 
                 $sendAtUtc =
@@ -278,9 +290,9 @@ if (
                 'UTC'
             );
 
-        $mountain =
+        $viewerZone =
             new DateTimeZone(
-                'America/Denver'
+                $viewerTimezone
             );
 
         $sendAtLocal =
@@ -291,7 +303,7 @@ if (
                 )
             )
                 ->setTimezone(
-                    $mountain
+                    $viewerZone
                 )
                 ->format(
                     'Y-m-d\TH:i'
@@ -602,7 +614,8 @@ $selectedType =
     <span>
         Schedule
         <small>
-            Mountain Time
+            <?= moderation_e($viewerTimezoneLabel) ?>
+            (<?= moderation_e($viewerTimezone) ?>)
         </small>
     </span>
 
@@ -774,13 +787,21 @@ $selectedType =
 
 <td data-label="Schedule">
     <span class="admin-table-muted">
-        <?= moderation_e(
+        <?php
+        $issueDisplayTime =
             (string) (
                 $issue['send_at']
                 ?: $issue['sent_at']
-                ?: 'Draft'
+                ?: ''
+            );
+        ?>
+        <?= $issueDisplayTime !== ''
+            ? moderation_e(
+                llama_format_viewer_datetime(
+                    $issueDisplayTime
+                )
             )
-        ) ?>
+            : 'Draft' ?>
     </span>
 </td>
 
