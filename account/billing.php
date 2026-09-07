@@ -130,11 +130,10 @@ function billing_date(?string $value): string
         return '';
     }
 
-    try {
-        return (new DateTimeImmutable($value))->format('M j, Y');
-    } catch (Throwable) {
-        return '';
-    }
+    return llama_format_viewer_date(
+        $value,
+        'M j, Y'
+    );
 }
 
 function billing_timestamp_date(?int $value): string
@@ -142,7 +141,14 @@ function billing_timestamp_date(?int $value): string
     if (!$value) {
         return '';
     }
-    return gmdate('M j, Y', $value);
+
+    return llama_format_viewer_date(
+        gmdate(
+            'Y-m-d H:i:s',
+            $value
+        ),
+        'M j, Y'
+    );
 }
 
 function billing_brand(string $brand): string
@@ -295,7 +301,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <h2>
                 <?php if (!empty($billingSnapshot['payment_method'])): ?>
                     <?= billing_e(billing_brand((string) $billingSnapshot['payment_method']['brand'])) ?>
-                    •••• <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
+                    â¢â¢â¢â¢ <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
                 <?php elseif ($hasStripeCustomer): ?>
                     Securely stored with Stripe
                 <?php else: ?>
