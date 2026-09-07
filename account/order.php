@@ -328,42 +328,45 @@ require dirname(__DIR__) . '/partials/header.php';
         <div>
             <dt>Processing</dt>
             <dd>
-                <?= htmlspecialchars(
-                    (string) (
-                        $fulfillment['submitted_at']
-                        ?: 'Not yet'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
+                <?= !empty($fulfillment['submitted_at'])
+                    ? htmlspecialchars(
+                        llama_format_viewer_datetime(
+                            (string) $fulfillment['submitted_at']
+                        ),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    )
+                    : 'Not yet' ?>
             </dd>
         </div>
 
         <div>
             <dt>Shipped</dt>
             <dd>
-                <?= htmlspecialchars(
-                    (string) (
-                        $fulfillment['shipped_at']
-                        ?: 'Not yet'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
+                <?= !empty($fulfillment['shipped_at'])
+                    ? htmlspecialchars(
+                        llama_format_viewer_datetime(
+                            (string) $fulfillment['shipped_at']
+                        ),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    )
+                    : 'Not yet' ?>
             </dd>
         </div>
 
         <div>
             <dt>Delivered</dt>
             <dd>
-                <?= htmlspecialchars(
-                    (string) (
-                        $fulfillment['delivered_at']
-                        ?: 'Not yet'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
+                <?= !empty($fulfillment['delivered_at'])
+                    ? htmlspecialchars(
+                        llama_format_viewer_datetime(
+                            (string) $fulfillment['delivered_at']
+                        ),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    )
+                    : 'Not yet' ?>
             </dd>
         </div>
     </dl>
