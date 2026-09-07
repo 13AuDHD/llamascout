@@ -127,11 +127,9 @@ require dirname(__DIR__) . '/partials/header.php';
                         <p class="contribution-history-date">
                             Submitted
                             <?= htmlspecialchars(
-                                date(
-                                    'M j, Y',
-                                    strtotime(
-                                        (string) $item['submitted_at']
-                                    )
+                                llama_format_viewer_date(
+                                    (string) $item['submitted_at'],
+                                    'M j, Y'
                                 ),
                                 ENT_QUOTES,
                                 'UTF-8'
