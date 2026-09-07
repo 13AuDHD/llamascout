@@ -300,10 +300,10 @@
    ========================================================= */
 
 .scout-basecamp-main-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    align-items: start;
+    display: block;
+    column-count: 4;
+    column-gap: 12px;
+    column-fill: balance;
 }
 
 .scout-basecamp-main-column,
@@ -312,13 +312,19 @@
 }
 
 /*
- * Every post-period Basecamp panel is now a compact dashboard card.
- * Lists scroll inside the card instead of forcing the whole card tall.
+ * Multi-column layout gives the Basecamp cards a masonry effect.
+ * Each card stays intact and the next card rises into the shortest
+ * available column instead of waiting for a shared grid row.
  */
 .scout-basecamp-main-grid > .scout-basecamp-panel,
 .scout-basecamp-main-column > .scout-basecamp-panel,
 .scout-basecamp-side-column > .scout-basecamp-panel {
-    align-self: start;
+    display: inline-block;
+    width: 100%;
+    margin: 0 0 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    vertical-align: top;
 }
 
 .scout-basecamp-list {
@@ -544,7 +550,7 @@
 
 @media (max-width: 1050px) {
     .scout-basecamp-main-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-count: 3;
     }
 }
 
@@ -556,7 +562,7 @@
 
 @media (max-width: 760px) {
     .scout-basecamp-main-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-count: 2;
     }
 }
 
@@ -590,7 +596,7 @@
     }
 
     .scout-basecamp-main-grid {
-        grid-template-columns: 1fr;
+        column-count: 1;
     }
 
     .scout-basecamp-panel > header {
