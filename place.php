@@ -420,10 +420,7 @@ require __DIR__ . '/partials/header.php';
                         data-share-text="<?= place_h('Check out ' . $place['name'] . ' on Llama Scout.') ?>"
                         data-share-url="<?= place_h($canonicalUrl) ?>"
                     >
-                        <i
-                            class="fa-solid fa-arrow-up-from-bracket"
-                            aria-hidden="true"
-                        ></i>
+                        <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
                         <span data-share-label>Share</span>
                     </button>
                 </div>
@@ -552,11 +549,7 @@ require __DIR__ . '/partials/header.php';
             <i class="fa-solid fa-cloud-sun place-weather-heading-icon" aria-hidden="true"></i>
         </div>
 
-        <div
-            class="place-weather-content"
-            data-place-weather-content
-            aria-live="polite"
-        >
+        <div class="place-weather-content" data-place-weather-content aria-live="polite">
             <p class="place-weather-loading">Loading weather…</p>
         </div>
     </section>
@@ -564,14 +557,11 @@ require __DIR__ . '/partials/header.php';
     <?php if (!empty($place['amenities'])): ?>
         <section class="place-section">
             <h2>Amenities</h2>
-
             <div class="amenity-grid">
                 <?php foreach ($amenityLabels as $key => [$icon, $label]): ?>
                     <?php
                     $value = $place['amenities'][$key] ?? null;
-                    if ($value === null) {
-                        continue;
-                    }
+                    if ($value === null) continue;
                     ?>
                     <div class="amenity-item <?= $value ? 'is-available' : 'is-unavailable' ?>">
                         <i class="fa-solid <?= place_h($icon) ?>" aria-hidden="true"></i>
@@ -600,20 +590,10 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!empty($details)): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-campground" aria-hidden="true"></i>
-                        Site &amp; vehicle
-                    </h3>
-
+                    <h3><i class="fa-solid fa-campground" aria-hidden="true"></i> Site &amp; vehicle</h3>
                     <div class="scout-report-grid">
                         <?php place_report_item('Vehicle capacity', $details['vehicle_capacity'] ?? null, 'fa-car-side'); ?>
-                        <?php place_report_item(
-                            'Maximum vehicle length',
-                            isset($details['max_vehicle_length_feet']) && $details['max_vehicle_length_feet'] !== null
-                                ? $details['max_vehicle_length_feet'] . ' ft'
-                                : null,
-                            'fa-ruler-horizontal'
-                        ); ?>
+                        <?php place_report_item('Maximum vehicle length', isset($details['max_vehicle_length_feet']) && $details['max_vehicle_length_feet'] !== null ? $details['max_vehicle_length_feet'] . ' ft' : null, 'fa-ruler-horizontal'); ?>
                         <?php place_report_item('Tent camping', place_yes_no($details['tent_camping_suitable'] ?? null), 'fa-tent'); ?>
                         <?php place_report_item('RV suitable', place_yes_no($details['rv_suitable'] ?? null), 'fa-caravan'); ?>
                         <?php place_report_item('Trailer suitable', place_yes_no($details['trailer_suitable'] ?? null), 'fa-trailer'); ?>
@@ -631,17 +611,10 @@ require __DIR__ . '/partials/header.php';
                 </section>
 
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-road" aria-hidden="true"></i>
-                        Road &amp; access
-                    </h3>
-
+                    <h3><i class="fa-solid fa-road" aria-hidden="true"></i> Road &amp; access</h3>
                     <?php if (!empty($place['access_summary'])): ?>
-                        <p class="scout-report-summary">
-                            <?= nl2br(place_h($place['access_summary'])) ?>
-                        </p>
+                        <p class="scout-report-summary"><?= nl2br(place_h($place['access_summary'])) ?></p>
                     <?php endif; ?>
-
                     <div class="scout-report-grid">
                         <?php place_report_rating_item('Site access difficulty', $details['site_access_difficulty'] ?? null); ?>
                         <?php place_report_rating_item('Road difficulty', $details['road_overall_difficulty'] ?? null); ?>
@@ -666,11 +639,7 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!empty($connectivity)): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-signal" aria-hidden="true"></i>
-                        Connectivity
-                    </h3>
-
+                    <h3><i class="fa-solid fa-signal" aria-hidden="true"></i> Connectivity</h3>
                     <div class="scout-report-grid">
                         <?php place_report_rating_item('Overall', $connectivity['overall'] ?? null); ?>
                         <?php place_report_rating_item('T-Mobile', $connectivity['t_mobile'] ?? null); ?>
@@ -680,29 +649,18 @@ require __DIR__ . '/partials/header.php';
                         <?php place_report_rating_item('Starlink', $connectivity['starlink'] ?? null); ?>
                         <?php place_report_item('Starlink tested', place_yes_no($connectivity['starlink_tested'] ?? null), 'fa-satellite'); ?>
                     </div>
-
                     <?php if (!empty($connectivity['starlink_note'])): ?>
-                        <p class="scout-report-note">
-                            <strong>Starlink note:</strong>
-                            <?= place_h($connectivity['starlink_note']) ?>
-                        </p>
+                        <p class="scout-report-note"><strong>Starlink note:</strong> <?= place_h($connectivity['starlink_note']) ?></p>
                     <?php endif; ?>
                 </section>
             <?php endif; ?>
 
             <?php if (!empty($sensory) || !empty($sensoryDetails) || !empty($place['sensory_summary'])): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-ear-listen" aria-hidden="true"></i>
-                        Sensory
-                    </h3>
-
+                    <h3><i class="fa-solid fa-ear-listen" aria-hidden="true"></i> Sensory</h3>
                     <?php if (!empty($place['sensory_summary'])): ?>
-                        <p class="scout-report-summary">
-                            <?= nl2br(place_h($place['sensory_summary'])) ?>
-                        </p>
+                        <p class="scout-report-summary"><?= nl2br(place_h($place['sensory_summary'])) ?></p>
                     <?php endif; ?>
-
                     <?php foreach (['daytime' => 'Daytime', 'nighttime' => 'Nighttime'] as $periodKey => $periodLabel): ?>
                         <?php if (!empty($sensory[$periodKey])): ?>
                             <div class="scout-report-subsection">
@@ -719,7 +677,6 @@ require __DIR__ . '/partials/header.php';
                             </div>
                         <?php endif; ?>
                     <?php endforeach; ?>
-
                     <?php if (!empty($sensoryDetails)): ?>
                         <div class="scout-report-subsection">
                             <h4>Other sensory conditions</h4>
@@ -743,17 +700,10 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!empty($rules)): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
-                        Season &amp; rules
-                    </h3>
-
+                    <h3><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Season &amp; rules</h3>
                     <?php if (!empty($rules['seasonal_access_note'])): ?>
-                        <p class="scout-report-summary">
-                            <?= nl2br(place_h($rules['seasonal_access_note'])) ?>
-                        </p>
+                        <p class="scout-report-summary"><?= nl2br(place_h($rules['seasonal_access_note'])) ?></p>
                     <?php endif; ?>
-
                     <div class="scout-report-grid">
                         <?php place_report_item('Best months', $rules['best_months'] ?? null, 'fa-calendar-check'); ?>
                         <?php place_report_item('Recommended season', $rules['recommended_travel_season'] ?? null, 'fa-leaf'); ?>
@@ -763,21 +713,9 @@ require __DIR__ . '/partials/header.php';
                         <?php place_report_rating_item('Monsoon risk', $rules['monsoon_risk'] ?? null); ?>
                         <?php place_report_item('Overnight camping', place_yes_no($rules['overnight_camping_allowed'] ?? null), 'fa-moon'); ?>
                         <?php place_report_item('Dispersed camping', place_yes_no($rules['dispersed_camping_allowed'] ?? null), 'fa-campground'); ?>
-                        <?php place_report_item(
-                            'Stay limit',
-                            isset($rules['stay_limit_days']) && $rules['stay_limit_days'] !== null
-                                ? $rules['stay_limit_days'] . ' days'
-                                : null,
-                            'fa-calendar-day'
-                        ); ?>
+                        <?php place_report_item('Stay limit', isset($rules['stay_limit_days']) && $rules['stay_limit_days'] !== null ? $rules['stay_limit_days'] . ' days' : null, 'fa-calendar-day'); ?>
                         <?php place_report_item('Permit required', place_yes_no($rules['permit_required'] ?? null), 'fa-file-signature'); ?>
-                        <?php place_report_item(
-                            'Fee',
-                            isset($rules['fee']) && $rules['fee'] !== null
-                                ? '$' . number_format((float) $rules['fee'], 2)
-                                : null,
-                            'fa-dollar-sign'
-                        ); ?>
+                        <?php place_report_item('Fee', isset($rules['fee']) && $rules['fee'] !== null ? '$' . number_format((float) $rules['fee'], 2) : null, 'fa-dollar-sign'); ?>
                         <?php place_report_item('Campfire allowed', place_yes_no($rules['campfire_allowed'] ?? null), 'fa-fire'); ?>
                         <?php place_report_item('Pack it in, pack it out', place_yes_no($rules['pack_it_in_pack_it_out'] ?? null), 'fa-trash-arrow-up'); ?>
                         <?php place_report_item('Existing sites encouraged', place_yes_no($rules['existing_sites_encouraged'] ?? null), 'fa-signs-post'); ?>
@@ -788,14 +726,9 @@ require __DIR__ . '/partials/header.php';
                         <?php place_report_item('Nearest toilet', $rules['nearest_toilet'] ?? null, 'fa-restroom'); ?>
                         <?php place_report_item('Nearest hospital', $rules['nearest_hospital'] ?? null, 'fa-hospital'); ?>
                     </div>
-
                     <?php if (!empty($rules['current_fire_restrictions_url'])): ?>
                         <p class="scout-report-note">
-                            <a
-                                href="<?= place_h($rules['current_fire_restrictions_url']) ?>"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
+                            <a href="<?= place_h($rules['current_fire_restrictions_url']) ?>" target="_blank" rel="noopener noreferrer">
                                 Check current fire restrictions
                                 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
                             </a>
@@ -806,16 +739,10 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!empty($place['notes'])): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
-                        Scout notes
-                    </h3>
-
+                    <h3><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Scout notes</h3>
                     <ul class="scout-report-notes-list">
                         <?php foreach ($place['notes'] as $note): ?>
-                            <?php if (!empty($note['note'])): ?>
-                                <li><?= place_h($note['note']) ?></li>
-                            <?php endif; ?>
+                            <?php if (!empty($note['note'])): ?><li><?= place_h($note['note']) ?></li><?php endif; ?>
                         <?php endforeach; ?>
                     </ul>
                 </section>
@@ -823,14 +750,9 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!empty($experience)): ?>
                 <section class="scout-report-section">
-                    <h3>
-                        <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-                        Experience &amp; recommendations
-                    </h3>
-
+                    <h3><i class="fa-solid fa-binoculars" aria-hidden="true"></i> Experience &amp; recommendations</h3>
                     <div class="scout-report-subsection">
                         <h4>Experience</h4>
-
                         <div class="scout-report-grid">
                             <?php place_report_rating_item('Sunrise view', $experience['sunrise_view'] ?? null); ?>
                             <?php place_report_rating_item('Sunset view', $experience['sunset_view'] ?? null); ?>
@@ -846,10 +768,8 @@ require __DIR__ . '/partials/header.php';
                             <?php place_report_rating_item('Overall scenery', $experience['overall_scenery'] ?? null); ?>
                         </div>
                     </div>
-
                     <div class="scout-report-subsection">
                         <h4>Recommended for</h4>
-
                         <div class="scout-report-grid">
                             <?php place_report_rating_item('Overnight stop', $experience['recommended_overnight_stop'] ?? null); ?>
                             <?php place_report_rating_item('Quiet evening', $experience['recommended_quiet_evening'] ?? null); ?>
@@ -963,7 +883,12 @@ require __DIR__ . '/partials/header.php';
                                 <span>
                                     <?= place_h($activityType) ?>
                                     <?php if (!empty($activity['approved_at'])): ?>
-                                        / <?= place_h(date('M j, Y', strtotime((string) $activity['approved_at']))) ?>
+                                        / <?= place_h(
+                                            llama_format_viewer_date(
+                                                (string) $activity['approved_at'],
+                                                'M j, Y'
+                                            )
+                                        ) ?>
                                     <?php endif; ?>
                                 </span>
                             </div>
@@ -1010,46 +935,23 @@ require __DIR__ . '/partials/header.php';
                     </p>
 
                     <form method="post" class="place-report-form">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="<?= place_h(place_report_csrf_token()) ?>"
-                        >
+                        <input type="hidden" name="csrf_token" value="<?= place_h(place_report_csrf_token()) ?>">
                         <input type="hidden" name="place_report_action" value="submit">
-
-                        <input
-                            type="hidden"
-                            name="photo_stage_token"
-                            value="<?= place_h((string) ($_POST['photo_stage_token'] ?? '')) ?>"
-                        >
-
-                        <input
-                            type="hidden"
-                            name="photos_json"
-                            value="<?= place_h((string) ($_POST['photos_json'] ?? '[]')) ?>"
-                        >
+                        <input type="hidden" name="photo_stage_token" value="<?= place_h((string) ($_POST['photo_stage_token'] ?? '')) ?>">
+                        <input type="hidden" name="photos_json" value="<?= place_h((string) ($_POST['photos_json'] ?? '[]')) ?>">
 
                         <label for="problem-type">What is the problem?</label>
                         <select id="problem-type" name="problem_type" required>
                             <option value="">Choose one</option>
                             <?php foreach (place_report_problem_types() as $value => $label): ?>
-                                <option
-                                    value="<?= place_h($value) ?>"
-                                    <?= isset($problemType) && $problemType === $value ? 'selected' : '' ?>
-                                >
+                                <option value="<?= place_h($value) ?>" <?= isset($problemType) && $problemType === $value ? 'selected' : '' ?>>
                                     <?= place_h($label) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
 
                         <label for="report-details">What should we know?</label>
-                        <textarea
-                            id="report-details"
-                            name="report_details"
-                            rows="5"
-                            maxlength="4000"
-                            required
-                        ><?= place_h($reportDetails ?? '') ?></textarea>
+                        <textarea id="report-details" name="report_details" rows="5" maxlength="4000" required><?= place_h($reportDetails ?? '') ?></textarea>
 
                         <div class="place-report-photo-section">
                             <div
@@ -1070,9 +972,7 @@ require __DIR__ . '/partials/header.php';
                     </form>
                 <?php else: ?>
                     <p>You need to be signed in to submit a place report.</p>
-                    <a class="place-report-signin" href="https://account.llamascout.com/login.php">
-                        Sign in
-                    </a>
+                    <a class="place-report-signin" href="https://account.llamascout.com/login.php">Sign in</a>
                 <?php endif; ?>
             </div>
         </details>
