@@ -125,316 +125,61 @@ function llama_shop_variant_attribute_values(
 
 
 /* =========================================================
-   STORAGE
+   STORAGE VALIDATION
+
+   Schema creation and legacy migrations must be run
+   explicitly. Normal requests only validate that the
+   catalog storage already exists.
    ========================================================= */
 
 function llama_ensure_shop_catalog_storage(
     PDO $db
 ): void {
 
-    if (
-        $db->inTransaction()
+    $requiredTables = [
+        'shop_product_options',
+        'shop_product_option_values',
+        'shop_product_variant_values',
+        'shop_product_images',
+    ];
+
+    $stmt =
+        $db->prepare(
+            '
+            SELECT 1
+
+            FROM information_schema.tables
+
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
+
+            LIMIT 1
+            '
+        );
+
+
+    foreach (
+        $requiredTables
+        as
+        $table
     ) {
 
-        throw new RuntimeException(
-            'Shop catalog storage cannot be initialized inside an active transaction.'
-        );
+        $stmt->execute([
+            $table
+        ]);
+
+
+        if (
+            !$stmt->fetchColumn()
+        ) {
+
+            throw new RuntimeException(
+                'Shop catalog storage is not initialized. Missing table: '
+                .
+                $table
+            );
+        }
     }
-
-
-    /* =====================================================
-       PRODUCT OPTION DEFINITIONS
-
-       These records describe the attributes used by a
-       product.
-
-       Example:
-
-       Sex
-       Size
-       Color
-       Pattern
-       Length
-
-       There is intentionally no three-option limit here.
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS shop_product_options
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            product_id BIGINT UNSIGNED
-                NOT NULL,
-
-            option_position SMALLINT UNSIGNED
-                NOT NULL,
-
-            option_name VARCHAR(100)
-                NOT NULL,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            UNIQUE KEY uq_shop_product_option_position
-                (
-                    product_id,
-                    option_position
-                ),
-
-            UNIQUE KEY uq_shop_product_option_name
-                (
-                    product_id,
-                    option_name
-                ),
-
-            CONSTRAINT fk_shop_product_option_product
-
-                FOREIGN KEY (product_id)
-
-                REFERENCES shop_products(id)
-
-                ON DELETE CASCADE
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       PRODUCT OPTION VALUES
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS shop_product_option_values
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            option_id BIGINT UNSIGNED
-                NOT NULL,
-
-            option_value VARCHAR(150)
-                NOT NULL,
-
-            sort_order INT
-                NOT NULL DEFAULT 0,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            UNIQUE KEY uq_shop_option_value
-                (
-                    option_id,
-                    option_value
-                ),
-
-            KEY idx_shop_option_value_sort
-                (
-                    option_id,
-                    sort_order
-                ),
-
-            CONSTRAINT fk_shop_option_value_option
-
-                FOREIGN KEY (option_id)
-
-                REFERENCES shop_product_options(id)
-
-                ON DELETE CASCADE
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       VARIANT ATTRIBUTE VALUES
-
-       This is the important replacement for depending on:
-
-           option_one
-           option_two
-           option_three
-
-       A variant can now have any number of values.
-
-       Example:
-
-       Variant #12
-           Sex     = Male
-           Size    = AD-SM
-           Color   = Black
-           Pattern = Solid
-           Length  = Normal
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS shop_product_variant_values
-        (
-            variant_id BIGINT UNSIGNED
-                NOT NULL,
-
-            option_id BIGINT UNSIGNED
-                NOT NULL,
-
-            option_value_id BIGINT UNSIGNED
-                NOT NULL,
-
-            sort_order INT
-                NOT NULL DEFAULT 0,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            PRIMARY KEY
-                (
-                    variant_id,
-                    option_id
-                ),
-
-            KEY idx_shop_variant_value_option
-                (
-                    option_id,
-                    option_value_id
-                ),
-
-            KEY idx_shop_variant_value_value
-                (option_value_id),
-
-            CONSTRAINT fk_shop_variant_value_variant
-
-                FOREIGN KEY (variant_id)
-
-                REFERENCES shop_product_variants(id)
-
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_shop_variant_value_option
-
-                FOREIGN KEY (option_id)
-
-                REFERENCES shop_product_options(id)
-
-                ON DELETE CASCADE,
-
-            CONSTRAINT fk_shop_variant_value_option_value
-
-                FOREIGN KEY (option_value_id)
-
-                REFERENCES shop_product_option_values(id)
-
-                ON DELETE CASCADE
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       PRODUCT IMAGE GALLERY
-       ===================================================== */
-
-    $db->exec(
-        '
-        CREATE TABLE IF NOT EXISTS shop_product_images
-        (
-            id BIGINT UNSIGNED
-                NOT NULL AUTO_INCREMENT,
-
-            product_id BIGINT UNSIGNED
-                NOT NULL,
-
-            image_url VARCHAR(500)
-                NOT NULL,
-
-            alt_text VARCHAR(300)
-                NULL,
-
-            option_name VARCHAR(100)
-                NULL,
-
-            option_value VARCHAR(150)
-                NULL,
-
-            is_primary TINYINT(1)
-                NOT NULL DEFAULT 0,
-
-            sort_order INT
-                NOT NULL DEFAULT 0,
-
-            created_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-            updated_at DATETIME
-                NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-
-            PRIMARY KEY (id),
-
-            KEY idx_shop_product_image_product
-                (
-                    product_id,
-                    sort_order
-                ),
-
-            KEY idx_shop_product_image_option
-                (
-                    product_id,
-                    option_name,
-                    option_value
-                ),
-
-            CONSTRAINT fk_shop_product_image_product
-
-                FOREIGN KEY (product_id)
-
-                REFERENCES shop_products(id)
-
-                ON DELETE CASCADE
-        )
-        ENGINE=InnoDB
-        DEFAULT CHARSET=utf8mb4
-        COLLATE=utf8mb4_unicode_ci
-        '
-    );
-
-
-    /* =====================================================
-       MIGRATE LEGACY THREE-OPTION VARIANT DATA
-
-       Existing variants are preserved.
-
-       If they still use option_one / option_two /
-       option_three, connect those values to the new mapping
-       table whenever matching product options exist.
-       ===================================================== */
-
-    llama_shop_migrate_legacy_variant_values(
-        $db
-    );
 }
 
 
@@ -1465,6 +1210,9 @@ function llama_shop_set_variant_values(
 
 /* =========================================================
    MIGRATE LEGACY VARIANT VALUE DATA
+
+   Explicit maintenance utility only. This function is no
+   longer called by llama_ensure_shop_catalog_storage().
    ========================================================= */
 
 function llama_shop_migrate_legacy_variant_values(
@@ -1612,8 +1360,8 @@ function llama_shop_migrate_legacy_variant_values(
             /*
              * Legacy data may reference an option that has
              * already been removed. Leave that historical
-             * variant alone rather than breaking storage
-             * initialization.
+             * variant alone rather than breaking an explicit
+             * maintenance run.
              */
         }
     }
