@@ -355,6 +355,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <label class="community-profile-field">
                     <span>General location</span>
+                    <small>Keep it general. Do not enter a street address.</small>
                     <input
                         type="text"
                         name="location"
@@ -362,11 +363,11 @@ require dirname(__DIR__) . '/partials/header.php';
                         value="<?= profile_e(profile_value($profile, 'location')) ?>"
                         placeholder="Durango, Colorado"
                     >
-                    <small>Keep it general. Do not enter a street address.</small>
                 </label>
 
                 <label class="community-profile-field">
                     <span>Timezone</span>
+                    <small>All times across Llama Scout use this timezone while signed in.</small>
                     <select name="timezone" required>
                         <?php foreach (llama_timezones() as $timezone => $timezoneLabel): ?>
                             <option
@@ -378,10 +379,6 @@ require dirname(__DIR__) . '/partials/header.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <small>
-                        All times across Llama Scout, including Admin,
-                        use this timezone while you are signed in.
-                    </small>
                 </label>
 
                 <label class="community-profile-field">
