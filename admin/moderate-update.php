@@ -228,11 +228,19 @@ function moderate_update_value(
         </strong>
 
         on
-        <?= moderation_e($item['submitted_at']) ?>.
+        <?= moderation_e(
+            llama_format_viewer_datetime(
+                (string) $item['submitted_at']
+            )
+        ) ?>.
 
         <?php if (!empty($item['visited_at'])): ?>
             Visited
-            <?= moderation_e($item['visited_at']) ?>.
+            <?= moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $item['visited_at']
+                )
+            ) ?>.
         <?php endif; ?>
 
         <a
