@@ -752,11 +752,11 @@ function scout_app_value(
         try {
             const response =
                 await fetch(
-                    '/api/address-autocomplete.php?q='
+                    'https://llamascout.com/api/address-autocomplete.php?q='
                     + encodeURIComponent(query),
                     {
                         method: 'GET',
-                        credentials: 'same-origin',
+                        credentials: 'omit',
                         headers: {
                             'Accept': 'application/json',
                         },
