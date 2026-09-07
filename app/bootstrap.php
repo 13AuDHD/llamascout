@@ -15,6 +15,7 @@ require_once __DIR__ . '/error-logging.php';
 llama_error_register_handlers();
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/timezone.php';
 require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
@@ -34,55 +35,22 @@ require_once __DIR__ . '/promotion-code-maintenance.php';
 
 start_llama_session();
 
-/*
- * Opportunistic background maintenance.
- *
- * Porkbun does not provide cron on this hosting plan. Small
- * maintenance jobs advance during ordinary authenticated site
- * activity. Every worker has its own database throttle and lock,
- * and failure must never interfere with the user's request.
- */
 if (!empty($_SESSION['user_id'])) {
     try {
         require_once __DIR__ . '/promotion-campaigns.php';
-
-        llama_run_promotion_email_maintenance(
-            db(),
-            2
-        );
+        llama_run_promotion_email_maintenance(db(), 2);
 
         require_once __DIR__ . '/newsletters.php';
-
-        llama_run_newsletter_maintenance(
-            db(),
-            2
-        );
+        llama_run_newsletter_maintenance(db(), 2);
 
         require_once __DIR__ . '/support.php';
+        llama_run_support_email_maintenance(db(), 10);
 
-        llama_run_support_email_maintenance(
-            db(),
-            10
-        );
-
-        llama_run_promotion_code_maintenance(
-            db(),
-            300
-        );
-
-        shop_run_shipment_email_maintenance(
-            db(),
-            5
-        );
+        llama_run_promotion_code_maintenance(db(), 300);
+        shop_run_shipment_email_maintenance(db(), 5);
 
         require_once __DIR__ . '/shop-maintenance.php';
-
-        shop_run_checkout_cleanup_maintenance(
-            db(),
-            50,
-            300
-        );
-
+        shop_run_checkout_cleanup_maintenance(db(), 50, 300);
     } catch (Throwable $exception) {
         error_log(
             'Llama Scout opportunistic maintenance error: '
@@ -91,6 +59,4 @@ if (!empty($_SESSION['user_id'])) {
     }
 }
 
-llama_enforce_maintenance(
-    db()
-);
+llama_enforce_maintenance(db());
