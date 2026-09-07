@@ -5,15 +5,17 @@ declare(strict_types=1);
 /*
  * Shared Llama Scout address autocomplete service.
  *
- * This file contains the Geoapify integration only. It does not decide
- * whether a particular caller is allowed to use it. Public, account,
- * admin, checkout, or other endpoints can wrap this shared helper with
- * the access policy appropriate for that surface.
+ * Geoapify stays server-side. Callers may optionally provide a
+ * latitude/longitude pair to bias results toward the user's current area.
+ * Bias never restricts results, so a traveler can still search for a home
+ * mailing address somewhere else.
  */
 
 function llama_address_autocomplete_query(
     string $query,
-    int $limit = 6
+    int $limit = 6,
+    ?float $latitude = null,
+    ?float $longitude = null
 ): array {
     $query = trim($query);
 
@@ -40,6 +42,14 @@ function llama_address_autocomplete_query(
             )
         );
 
+    $hasBias =
+        $latitude !== null
+        && $longitude !== null
+        && $latitude >= -90
+        && $latitude <= 90
+        && $longitude >= -180
+        && $longitude <= 180;
+
     $config = llama_config();
 
     $apiKey =
@@ -56,16 +66,26 @@ function llama_address_autocomplete_query(
         );
     }
 
+    $params = [
+        'text' => $query,
+        'format' => 'json',
+        'limit' => $limit,
+        'lang' => 'en',
+        'apiKey' => $apiKey,
+    ];
+
+    if ($hasBias) {
+        $params['bias'] =
+            'proximity:'
+            . $longitude
+            . ','
+            . $latitude;
+    }
+
     $url =
         'https://api.geoapify.com/v1/geocode/autocomplete?'
         . http_build_query(
-            [
-                'text' => $query,
-                'format' => 'json',
-                'limit' => $limit,
-                'lang' => 'en',
-                'apiKey' => $apiKey,
-            ],
+            $params,
             '',
             '&',
             PHP_QUERY_RFC3986
@@ -304,6 +324,11 @@ function llama_address_autocomplete_query(
                 isset($row['lon'])
                 && is_numeric($row['lon'])
                     ? (float) $row['lon']
+                    : null,
+            'distance_meters' =>
+                isset($row['distance'])
+                && is_numeric($row['distance'])
+                    ? (float) $row['distance']
                     : null,
         ];
     }
