@@ -704,6 +704,26 @@ function admin_fulfillment_quote_rates(
         );
     }
 
+    $lockName =
+    'llamascout_shipping_rates_'
+    . $fulfillmentId;
+
+$lockStmt = $db->prepare(
+    'SELECT GET_LOCK(?, 10)'
+);
+
+$lockStmt->execute([
+    $lockName,
+]);
+
+if ((int) $lockStmt->fetchColumn() !== 1) {
+    throw new RuntimeException(
+        'Could not acquire the shipping-rate refresh lock.'
+    );
+}
+
+try {
+    
     $fulfillmentStmt =
         $db->prepare(
             'SELECT
@@ -1744,14 +1764,24 @@ function admin_fulfillment_buy_label(
 
             $db->commit();
 
-        } catch (Throwable $exception) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-
-            throw $exception;
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
         }
 
+        throw $exception;
+    }
+
+} finally {
+    $releaseStmt = $db->prepare(
+        'SELECT RELEASE_LOCK(?)'
+    );
+
+    $releaseStmt->execute([
+        $lockName,
+    ]);
+}
+}
         admin_fulfillment_sync_order_status(
             $db,
             $orderId
