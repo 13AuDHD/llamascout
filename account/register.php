@@ -494,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ?,
                     ?,
                     DATE_ADD(
-                        CURRENT_TIMESTAMP,
+                        UTC_TIMESTAMP(),
                         INTERVAL 24 HOUR
                     )
                 )
