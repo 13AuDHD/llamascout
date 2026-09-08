@@ -175,7 +175,7 @@ function create_remember_token(
 
 
     $expiresSql =
-        date(
+        gmdate(
             'Y-m-d H:i:s',
             $expires
         );
@@ -187,7 +187,7 @@ function create_remember_token(
             DELETE FROM user_remember_tokens
 
             WHERE user_id = ?
-              AND expires_at < CURRENT_TIMESTAMP
+              AND expires_at < UTC_TIMESTAMP()
             '
         );
 
@@ -471,13 +471,21 @@ function attempt_remembered_login(): bool {
         ];
 
 
+    try {
+        $expiresAt =
+            new DateTimeImmutable(
+                (string) $remember['expires_at'],
+                new DateTimeZone('UTC')
+            );
+    } catch (Throwable) {
+        clear_remember_cookie();
+
+        return false;
+    }
+
+
     if (
-        strtotime(
-            (string)
-            $remember[
-                'expires_at'
-            ]
-        )
+        $expiresAt->getTimestamp()
         <=
         time()
     ) {
@@ -574,7 +582,7 @@ function attempt_remembered_login(): bool {
             UPDATE user_remember_tokens
 
             SET last_used_at =
-                CURRENT_TIMESTAMP
+                UTC_TIMESTAMP()
 
             WHERE id = ?
             '
@@ -982,7 +990,7 @@ function attempt_login_result(
 
             SET
                 last_login_at =
-                    CURRENT_TIMESTAMP,
+                    UTC_TIMESTAMP(),
 
                 dormancy_notice_sent_at =
                     NULL

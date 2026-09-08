@@ -385,17 +385,31 @@ function llama_complimentary_invitation_status(
             LLAMA_COMPLIMENTARY_INVITE_STATUS_ACCEPTED;
     }
 
-    $expiresAt =
-        strtotime(
+    $expiresValue =
+        trim(
             (string) (
                 $invitation['expires_at']
                 ?? ''
             )
         );
 
+    if ($expiresValue === '') {
+        return 'expired';
+    }
+
+    try {
+        $expiresAt =
+            new DateTimeImmutable(
+                $expiresValue,
+                new DateTimeZone('UTC')
+            );
+    } catch (Throwable) {
+        return 'expired';
+    }
+
     if (
-        $expiresAt === false
-        || $expiresAt <= time()
+        $expiresAt->getTimestamp()
+        <= time()
     ) {
         return 'expired';
     }
