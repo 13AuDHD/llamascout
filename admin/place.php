@@ -2281,8 +2281,12 @@ function admin_place_select_options(
         <p><?= nl2br(moderation_e((string) $note['note'])) ?></p>
         <span>
             <?= moderation_e((string) $note['author_name']) ?>
-            ·
-            <?= moderation_e((string) $note['created_at']) ?>
+            &middot;
+            <?= moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $note['created_at']
+                )
+            ) ?>
         </span>
     </div>
 
@@ -2347,12 +2351,13 @@ function admin_place_select_options(
 
     <span>
         Last verified:
-        <?= moderation_e(
-            (string) (
-                $place['last_verified_at']
-                ?: 'Never'
+        <?= !empty($place['last_verified_at'])
+            ? moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $place['last_verified_at']
+                )
             )
-        ) ?>
+            : 'Never' ?>
     </span>
 </header>
 
@@ -2446,13 +2451,15 @@ function admin_place_select_options(
         <?= moderation_e(
             (string) $entry['verifier_name']
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
-            (string) $entry['verified_at']
+            llama_format_viewer_datetime(
+                (string) $entry['verified_at']
+            )
         ) ?>
 
         <?php if (!empty($entry['visited_at'])): ?>
-            · visited
+            &middot; visited
             <?= moderation_e(
                 (string) $entry['visited_at']
             ) ?>
@@ -2595,7 +2602,16 @@ function admin_place_select_options(
 
                 <div>
                     <dt>Established</dt>
-                    <dd><?= moderation_e((string) ($provenance['established_at'] ?: $place['created_at'])) ?></dd>
+                    <dd>
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) (
+                                    $provenance['established_at']
+                                    ?: $place['created_at']
+                                )
+                            )
+                        ) ?>
+                    </dd>
                 </div>
 
                 <?php if (!empty($provenance['original_submission_id'])): ?>
@@ -2652,12 +2668,20 @@ function admin_place_select_options(
                         <a href="/user.php?id=<?= (int) $contribution['user_id'] ?>">
                             <?= moderation_e((string) $contribution['contributor_name']) ?>
                         </a>
-                        · <?= moderation_e((string) ($contribution['approved_at'] ?: $contribution['created_at'])) ?>
+                        &middot;
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) (
+                                    $contribution['approved_at']
+                                    ?: $contribution['created_at']
+                                )
+                            )
+                        ) ?>
                     </span>
                     <p>
                         <?= number_format((int) $contribution['points_awarded']) ?> points
                         <?php if ($fieldCount > 0): ?>
-                            · <?= number_format($fieldCount) ?> changed field<?= $fieldCount === 1 ? '' : 's' ?>
+                            &middot; <?= number_format($fieldCount) ?> changed field<?= $fieldCount === 1 ? '' : 's' ?>
                         <?php endif; ?>
                     </p>
                     <?php if (!empty($contribution['notes'])): ?>
@@ -2688,18 +2712,23 @@ function admin_place_select_options(
                 <div>
                     <strong>
                         Update #<?= (int) $update['id'] ?>
-                        · <?= moderation_e(ucwords(str_replace('-', ' ', (string) $update['status']))) ?>
+                        &middot; <?= moderation_e(ucwords(str_replace('-', ' ', (string) $update['status']))) ?>
                     </strong>
                     <span>
                         <a href="/user.php?id=<?= (int) $update['user_id'] ?>">
                             <?= moderation_e((string) $update['contributor_name']) ?>
                         </a>
-                        · <?= moderation_e((string) $update['submitted_at']) ?>
+                        &middot;
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) $update['submitted_at']
+                            )
+                        ) ?>
                     </span>
                     <p>
                         <?= moderation_e(ucwords(str_replace('-', ' ', (string) $update['update_type']))) ?>
-                        · <?= number_format($changeCount) ?> top-level change group<?= $changeCount === 1 ? '' : 's' ?>
-                        · <?= number_format((int) $update['points_awarded']) ?> points
+                        &middot; <?= number_format($changeCount) ?> top-level change group<?= $changeCount === 1 ? '' : 's' ?>
+                        &middot; <?= number_format((int) $update['points_awarded']) ?> points
                     </p>
                     <?php if (in_array((string) $update['status'], ['pending','needs-changes'], true)): ?>
                         <a class="admin-inline-link" href="/moderate-update.php?id=<?= (int) $update['id'] ?>">
@@ -2727,12 +2756,17 @@ function admin_place_select_options(
                 <div class="<?= in_array((string) $report['status'], ['open','investigating'], true) ? 'has-attention' : '' ?>">
                     <strong>
                         Report #<?= (int) $report['id'] ?>
-                        · <?= moderation_e(ucwords(str_replace('-', ' ', (string) $report['problem_type']))) ?>
+                        &middot; <?= moderation_e(ucwords(str_replace('-', ' ', (string) $report['problem_type']))) ?>
                     </strong>
                     <span>
                         <?= moderation_e((string) $report['reporter_name']) ?>
-                        · <?= moderation_e((string) $report['created_at']) ?>
-                        · <?= moderation_e(ucfirst((string) $report['status'])) ?>
+                        &middot;
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) $report['created_at']
+                            )
+                        ) ?>
+                        &middot; <?= moderation_e(ucfirst((string) $report['status'])) ?>
                     </span>
                     <?php if (!empty($report['details'])): ?>
                         <p><?= moderation_e((string) $report['details']) ?></p>
@@ -2762,7 +2796,12 @@ function admin_place_select_options(
                     <strong><?= moderation_e((string) $auditRow['summary']) ?></strong>
                     <span>
                         <?= moderation_e((string) $auditRow['actor_name']) ?>
-                        · <?= moderation_e((string) $auditRow['created_at']) ?>
+                        &middot;
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) $auditRow['created_at']
+                            )
+                        ) ?>
                     </span>
                     <p><?= moderation_e((string) $auditRow['action']) ?></p>
                 </div>
@@ -2841,7 +2880,9 @@ function admin_place_select_options(
     <dt>Created</dt>
     <dd>
         <?= moderation_e(
-            (string) $place['created_at']
+            llama_format_viewer_datetime(
+                (string) $place['created_at']
+            )
         ) ?>
     </dd>
 </div>
@@ -2849,12 +2890,13 @@ function admin_place_select_options(
 <div>
     <dt>Published</dt>
     <dd>
-        <?= moderation_e(
-            (string) (
-                $place['published_at']
-                ?: 'Not published'
+        <?= !empty($place['published_at'])
+            ? moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $place['published_at']
+                )
             )
-        ) ?>
+            : 'Not published' ?>
     </dd>
 </div>
 
@@ -2862,7 +2904,9 @@ function admin_place_select_options(
     <dt>Updated</dt>
     <dd>
         <?= moderation_e(
-            (string) $place['updated_at']
+            llama_format_viewer_datetime(
+                (string) $place['updated_at']
+            )
         ) ?>
     </dd>
 </div>
@@ -2901,7 +2945,7 @@ function admin_place_select_options(
                 ?: 'Created'
             )
         ) ?>
-        →
+        &rarr;
         <?= moderation_e(
             (string) $entry['new_status']
         ) ?>
@@ -2911,9 +2955,11 @@ function admin_place_select_options(
         <?= moderation_e(
             (string) $entry['changed_by_name']
         ) ?>
-        ·
+        &middot;
         <?= moderation_e(
-            (string) $entry['changed_at']
+            llama_format_viewer_datetime(
+                (string) $entry['changed_at']
+            )
         ) ?>
     </span>
 
