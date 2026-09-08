@@ -328,6 +328,8 @@ try {
         exit;
     }
 
+    $processedNote = null;
+
     try {
         if ($refundEvent) {
             shop_sync_refund_from_stripe(
@@ -372,10 +374,9 @@ try {
              * CRITICAL:
              *
              * checkout.session.completed does not always mean money
-             * has settled. commit_paid_session deliberately leaves an
-             * unpaid order pending. Only route fulfillment and send a
-             * paid-order confirmation after local financial state is
-             * confirmed as paid.
+             * has settled. A settled payment also does not guarantee that
+             * an expired inventory reservation could be safely reclaimed.
+             * Only a locally paid + fulfillable order may leave this block.
              */
             $paidOrder =
                 shop_checkout_order(
@@ -395,8 +396,22 @@ try {
                     )
                 );
 
+            $localOrderStatus =
+                strtolower(
+                    trim(
+                        (string) (
+                            $paidOrder[
+                                'order_status'
+                            ]
+                            ?? ''
+                        )
+                    )
+                );
+
             if (
                 $localPaymentStatus
+                === 'paid'
+                && $localOrderStatus
                 === 'paid'
             ) {
                 shop_fulfillment_route_paid_order(
@@ -407,6 +422,30 @@ try {
                 shop_send_order_confirmation(
                     $db,
                     $orderId
+                );
+            } elseif (
+                $localPaymentStatus
+                === 'paid'
+                && $localOrderStatus
+                === 'problem'
+                && empty(
+                    $paidOrder[
+                        'inventory_committed_at'
+                    ]
+                )
+            ) {
+                /*
+                 * This is a terminal business-state conflict, not a webhook
+                 * transport failure. Stripe must receive 200 so it does not
+                 * hammer the same paid event forever. Keep a visible event
+                 * note and leave the order in the problem queue for review.
+                 */
+                $processedNote =
+                    'Payment succeeded after the inventory reservation was released, but the order could not safely reclaim stock. Manual review or refund is required.';
+
+                error_log(
+                    'Llama Scout Shop paid order requires inventory review: order_id=' .
+                    (string) $orderId
                 );
             }
         } elseif (
@@ -431,7 +470,8 @@ try {
         llama_shop_stripe_event_finish(
             $db,
             $eventId,
-            'processed'
+            'processed',
+            $processedNote
         );
     } catch (Throwable $exception) {
         llama_shop_stripe_event_finish(
