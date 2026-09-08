@@ -219,6 +219,31 @@ function shop_issue_return_aware_full_refund(
         );
     }
 
+    /*
+     * Refund creation is an external-money action. Serialize it per order
+     * before checking for an existing refund so two concurrent admin
+     * requests cannot both ask Stripe to refund the same payment.
+     */
+    $lockName =
+        'llamascout_shop_refund_'
+        . $orderId;
+
+    $lockStmt = $db->prepare(
+        'SELECT GET_LOCK(?, 10)'
+    );
+
+    $lockStmt->execute([
+        $lockName,
+    ]);
+
+    if ((int) $lockStmt->fetchColumn() !== 1) {
+        throw new RuntimeException(
+            'Could not acquire the Shop refund lock.'
+        );
+    }
+
+    try {
+
     $allowedReasons = [
         'requested_by_customer',
         'duplicate',
@@ -504,4 +529,18 @@ function shop_issue_return_aware_full_refund(
                 )
             ),
     ];
+
+    } finally {
+        try {
+            $releaseStmt = $db->prepare(
+                'SELECT RELEASE_LOCK(?)'
+            );
+
+            $releaseStmt->execute([
+                $lockName,
+            ]);
+        } catch (Throwable) {
+            // Connection cleanup releases the advisory lock.
+        }
+    }
 }
