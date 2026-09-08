@@ -30,8 +30,13 @@ function initMaintenanceCountdown() {
         return;
     }
 
+    const normalizedReturnAt =
+        normalizeMaintenanceUtcTimestamp(
+            returnAt
+        );
+
     const targetTime =
-        new Date(returnAt).getTime();
+        Date.parse(normalizedReturnAt);
 
     if (!Number.isFinite(targetTime)) {
         return;
@@ -62,6 +67,29 @@ function initMaintenanceCountdown() {
             },
             1000
         );
+}
+
+function normalizeMaintenanceUtcTimestamp(value) {
+    const trimmed =
+        String(value || "").trim();
+
+    if (!trimmed) {
+        return "";
+    }
+
+    if (
+        /(?:Z|[+-]\d{2}:?\d{2})$/i.test(
+            trimmed
+        )
+    ) {
+        return trimmed;
+    }
+
+    return (
+        trimmed
+            .replace(" ", "T")
+        + "Z"
+    );
 }
 
 function updateMaintenanceCountdown(
