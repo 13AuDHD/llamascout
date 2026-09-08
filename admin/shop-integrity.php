@@ -680,6 +680,287 @@ if ($returnsTableExists && $returnItemsTableExists) {
     );
 }
 
+/*
+ * 9. Refund records must agree with order financial state and the
+ * inventory-restock ledger.
+ */
+$refundsTableExists =
+    shop_integrity_table_exists(
+        $db,
+        'shop_refunds'
+    );
+
+if ($refundsTableExists) {
+
+    /*
+     * A succeeded Llama Scout refund must represent the entire order
+     * because the current refund engine supports full refunds only.
+     */
+    $stmt = $db->query(
+        'SELECT
+            r.order_id,
+            o.order_number,
+            r.id AS refund_row_id,
+            r.stripe_refund_id,
+            r.amount_cents AS refund_amount_cents,
+            o.total_cents AS order_total_cents,
+            r.status AS refund_status,
+            o.payment_status,
+            o.order_status
+         FROM shop_refunds r
+         INNER JOIN shop_orders o
+            ON o.id = r.order_id
+         WHERE LOWER(COALESCE(r.status, "")) = "succeeded"
+           AND (
+                r.amount_cents <> o.total_cents
+                OR r.amount_cents <= 0
+           )
+         ORDER BY r.order_id DESC
+         LIMIT 500'
+    );
+
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+        as $row
+    ) {
+        shop_integrity_issue(
+            $issues,
+            'critical',
+            'succeeded_refund_amount_mismatch',
+            (int) $row['order_id'],
+            (string) $row['order_number'],
+            'A succeeded Shop refund does not equal the full order total.',
+            [
+                'refund_row_id' =>
+                    (int) (
+                        $row['refund_row_id']
+                        ?? 0
+                    ),
+                'stripe_refund_id' =>
+                    (string) (
+                        $row['stripe_refund_id']
+                        ?? ''
+                    ),
+                'refund_amount_cents' =>
+                    (int) (
+                        $row['refund_amount_cents']
+                        ?? 0
+                    ),
+                'order_total_cents' =>
+                    (int) (
+                        $row['order_total_cents']
+                        ?? 0
+                    ),
+            ]
+        );
+    }
+
+
+    /*
+     * A succeeded full refund should have completed the local financial
+     * state transition to Refunded.
+     */
+    $stmt = $db->query(
+        'SELECT
+            r.order_id,
+            o.order_number,
+            r.id AS refund_row_id,
+            r.stripe_refund_id,
+            r.amount_cents,
+            o.total_cents,
+            o.payment_status,
+            o.order_status
+         FROM shop_refunds r
+         INNER JOIN shop_orders o
+            ON o.id = r.order_id
+         WHERE LOWER(COALESCE(r.status, "")) = "succeeded"
+           AND r.amount_cents = o.total_cents
+           AND (
+                LOWER(COALESCE(o.payment_status, ""))
+                    <> "refunded"
+                OR
+                LOWER(COALESCE(o.order_status, ""))
+                    <> "refunded"
+           )
+         ORDER BY r.order_id DESC
+         LIMIT 500'
+    );
+
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+        as $row
+    ) {
+        shop_integrity_issue(
+            $issues,
+            'critical',
+            'succeeded_refund_not_finalized',
+            (int) $row['order_id'],
+            (string) $row['order_number'],
+            'Stripe refund succeeded but the local order was not fully finalized as Refunded.',
+            [
+                'refund_row_id' =>
+                    (int) (
+                        $row['refund_row_id']
+                        ?? 0
+                    ),
+                'stripe_refund_id' =>
+                    (string) (
+                        $row['stripe_refund_id']
+                        ?? ''
+                    ),
+                'payment_status' =>
+                    (string) (
+                        $row['payment_status']
+                        ?? ''
+                    ),
+                'order_status' =>
+                    (string) (
+                        $row['order_status']
+                        ?? ''
+                    ),
+            ]
+        );
+    }
+
+
+    /*
+     * A locally refunded order should have a succeeded refund record
+     * belonging to Llama Scout.
+     *
+     * If Stripe was refunded manually from the Dashboard instead,
+     * this warning tells us reconciliation is required.
+     */
+    $stmt = $db->query(
+        'SELECT
+            o.id,
+            o.order_number,
+            o.payment_status,
+            o.order_status
+         FROM shop_orders o
+         WHERE (
+                LOWER(COALESCE(o.payment_status, ""))
+                    = "refunded"
+                OR
+                LOWER(COALESCE(o.order_status, ""))
+                    = "refunded"
+           )
+           AND NOT EXISTS (
+                SELECT 1
+                FROM shop_refunds r
+                WHERE r.order_id = o.id
+                  AND LOWER(COALESCE(r.status, ""))
+                        = "succeeded"
+                  AND r.amount_cents = o.total_cents
+                  AND TRIM(
+                        COALESCE(
+                            r.stripe_refund_id,
+                            ""
+                        )
+                      ) <> ""
+           )
+         ORDER BY o.id DESC
+         LIMIT 500'
+    );
+
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+        as $row
+    ) {
+        shop_integrity_issue(
+            $issues,
+            'warning',
+            'refunded_order_missing_local_refund',
+            (int) $row['id'],
+            (string) $row['order_number'],
+            'This order is marked Refunded but there is no matching succeeded full Llama Scout refund record. Verify Stripe before changing anything.',
+            [
+                'payment_status' =>
+                    (string) (
+                        $row['payment_status']
+                        ?? ''
+                    ),
+                'order_status' =>
+                    (string) (
+                        $row['order_status']
+                        ?? ''
+                    ),
+            ]
+        );
+    }
+
+
+    /*
+     * Every refund-generated inventory restock should point to a real,
+     * succeeded refund for the same order.
+     */
+    if ($hasRestocks) {
+        $stmt = $db->query(
+            'SELECT
+                sir.order_id,
+                o.order_number,
+                sir.order_item_id,
+                sir.variant_id,
+                sir.quantity,
+                sir.source_id
+             FROM shop_inventory_restocks sir
+             INNER JOIN shop_orders o
+                ON o.id = sir.order_id
+             WHERE sir.source_type = "refund"
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM shop_refunds r
+                    WHERE r.order_id = sir.order_id
+                      AND r.stripe_refund_id
+                            = sir.source_id
+                      AND LOWER(
+                            COALESCE(
+                                r.status,
+                                ""
+                            )
+                          ) = "succeeded"
+               )
+             ORDER BY sir.order_id DESC
+             LIMIT 500'
+        );
+
+        foreach (
+            $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+            as $row
+        ) {
+            shop_integrity_issue(
+                $issues,
+                'critical',
+                'orphan_refund_restock',
+                (int) $row['order_id'],
+                (string) $row['order_number'],
+                'Inventory was restocked by a refund ledger entry that does not match a succeeded Stripe refund record.',
+                [
+                    'order_item_id' =>
+                        (int) (
+                            $row['order_item_id']
+                            ?? 0
+                        ),
+                    'variant_id' =>
+                        (int) (
+                            $row['variant_id']
+                            ?? 0
+                        ),
+                    'quantity' =>
+                        (int) (
+                            $row['quantity']
+                            ?? 0
+                        ),
+                    'stripe_refund_id' =>
+                        (string) (
+                            $row['source_id']
+                            ?? ''
+                        ),
+                ]
+            );
+        }
+    }
+}
+
 usort(
     $issues,
     static function (array $a, array $b): int {
