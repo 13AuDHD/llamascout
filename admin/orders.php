@@ -174,6 +174,23 @@ $refundBlocker = $canReviewRefund
         (int) $order['id']
     )
     : null;
+
+$fulfillmentStatus = strtolower(
+    trim(
+        (string) (
+            $order['fulfillment_status']
+            ?: ''
+        )
+    )
+);
+
+$canReceiveReturn =
+    (string) $order['payment_status'] === 'paid'
+    && in_array(
+        $fulfillmentStatus,
+        ['shipped', 'delivered', 'fulfilled'],
+        true
+    );
 ?>
 <tr>
     <td data-label="Order">
@@ -272,6 +289,15 @@ $refundBlocker = $canReviewRefund
         >
             Manage
         </a>
+
+        <?php if ($canReceiveReturn): ?>
+        <a
+            class="admin-button"
+            href="/return-order.php?id=<?= (int) $order['id'] ?>"
+        >
+            Receive return
+        </a>
+        <?php endif; ?>
 
         <?php if ($canReviewRefund): ?>
         <a
