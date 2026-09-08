@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
-require_once dirname(__DIR__) . '/app/shop-refunds.php';
+require_once dirname(__DIR__) . '/app/shop-return-refunds.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -169,7 +169,7 @@ $canReviewRefund =
     && !empty($order['stripe_payment_intent_id']);
 
 $refundBlocker = $canReviewRefund
-    ? shop_refund_fulfillment_blocker(
+    ? shop_return_aware_refund_blocker(
         $db,
         (int) $order['id']
     )
