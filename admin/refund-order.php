@@ -71,12 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $notice =
                 $result['status'] === 'succeeded'
-                    ? 'Stripe refund completed.'
+                    ? 'Stripe refund completed and committed tracked inventory was returned to stock.'
                     : 'Stripe accepted the refund. Current status: '
                         . ucfirst(
                             (string) $result['status']
                         )
-                        . '.';
+                        . '. Inventory will return to stock when Stripe confirms the refund succeeded.';
 
             $order = admin_shop_order(
                 $db,
@@ -230,8 +230,10 @@ require __DIR__ . '/_header.php';
     </p>
 
     <p>
-        Inventory is not automatically restocked. A refund does
-        not prove that physical merchandise has been returned.
+        When Stripe confirms the refund succeeded, any committed
+        tracked inventory from this order is automatically returned
+        to sellable stock. The inventory restock ledger prevents the
+        same quantity from being restored more than once.
     </p>
 </div>
 
@@ -305,7 +307,8 @@ require __DIR__ . '/_header.php';
     ></i>
     <h3>Refunded</h3>
     <p>
-        Stripe has completed the refund for this order.
+        Stripe has completed the refund for this order and any
+        committed tracked inventory has been returned to stock.
     </p>
 </div>
 
