@@ -162,6 +162,7 @@ function shop_send_order_confirmation(
                 discount_cents,
                 total_cents,
                 payment_status,
+                order_status,
                 customer_email,
                 shipping_name,
                 paid_at
@@ -179,10 +180,43 @@ function shop_send_order_confirmation(
             );
         }
 
+        $paymentStatus = strtolower(
+            trim(
+                (string) (
+                    $order['payment_status']
+                    ?? ''
+                )
+            )
+        );
+        
+        $orderStatus = strtolower(
+            trim(
+                (string) (
+                    $order['order_status']
+                    ?? ''
+                )
+            )
+        );
+        
+        if ($paymentStatus !== 'paid') {
+            return false;
+        }
+        
+        /*
+         * Do not send a normal order confirmation while the order
+         * is stopped for an exception, cancellation, or refund.
+         */
         if (
-            strtolower(
-                trim((string) ($order['payment_status'] ?? ''))
-            ) !== 'paid'
+            in_array(
+                $orderStatus,
+                [
+                    'problem',
+                    'cancelled',
+                    'canceled',
+                    'refunded',
+                ],
+                true
+            )
         ) {
             return false;
         }
