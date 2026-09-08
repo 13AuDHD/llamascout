@@ -740,6 +740,82 @@ function admin_fulfillment_quote_rates(
         );
     }
 
+    $paymentStatus = strtolower(
+    trim(
+        (string) (
+            $fulfillment['payment_status']
+            ?? ''
+        )
+    )
+);
+
+$orderStatus = strtolower(
+    trim(
+        (string) (
+            $fulfillment['order_status']
+            ?? ''
+        )
+    )
+);
+
+$fulfillmentStatus = strtolower(
+    trim(
+        (string) (
+            $fulfillment['status']
+            ?? ''
+        )
+    )
+);
+
+/*
+ * Do not create external EasyPost shipment/rate objects unless the
+ * customer payment is actually paid.
+ */
+if ($paymentStatus !== 'paid') {
+    throw new InvalidArgumentException(
+        'Shipping rates can be requested only for a paid Shop order.'
+    );
+}
+
+/*
+ * Problem, cancelled, and refunded orders are intentionally stopped.
+ */
+if (
+    in_array(
+        $orderStatus,
+        [
+            'problem',
+            'cancelled',
+            'canceled',
+            'refunded',
+        ],
+        true
+    )
+) {
+    throw new InvalidArgumentException(
+        'Shipping rates are unavailable while this order is Problem, cancelled, or refunded.'
+    );
+}
+
+/*
+ * Rates are useful only before the physical shipping boundary.
+ */
+if (
+    !in_array(
+        $fulfillmentStatus,
+        [
+            'pending',
+            'processing',
+            'submitted',
+        ],
+        true
+    )
+) {
+    throw new InvalidArgumentException(
+        'Shipping rates cannot be requested for this fulfillment in its current status.'
+    );
+}
+
     $provider =
         admin_shop_normalize_provider(
             (string) (
