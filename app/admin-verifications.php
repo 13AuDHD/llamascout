@@ -46,13 +46,13 @@ function admin_verifications_list(
     }
 
     if ($age === '30') {
-        $where[] = 'pv.verified_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
+        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
     } elseif ($age === '90') {
-        $where[] = 'pv.verified_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)';
+        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 90 DAY)';
     } elseif ($age === '365') {
-        $where[] = 'pv.verified_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)';
+        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)';
     } elseif ($age === 'older-365') {
-        $where[] = 'pv.verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY)';
+        $where[] = 'pv.verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)';
     }
 
     $sql =
@@ -125,7 +125,7 @@ function admin_verification_stats(
             COUNT(*) AS total,
             SUM(
                 CASE
-                    WHEN verified_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                    WHEN verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)
                         THEN 1
                     ELSE 0
                 END
@@ -190,14 +190,14 @@ function admin_verification_attention_queue(
             CASE
                 WHEN p.last_verified_at IS NULL
                     THEN "never"
-                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 730 DAY)
+                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 730 DAY)
                     THEN "overdue"
-                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY)
+                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
                     THEN "attention"
                 ELSE "current"
             END AS freshness_state,
             DATEDIFF(
-                NOW(),
+                UTC_TIMESTAMP(),
                 p.last_verified_at
             ) AS days_since_verified
          FROM places p
@@ -210,8 +210,8 @@ function admin_verification_attention_queue(
          ORDER BY
             CASE
                 WHEN p.last_verified_at IS NULL THEN 1
-                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 730 DAY) THEN 2
-                WHEN p.last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 3
+                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 730 DAY) THEN 2
+                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY) THEN 3
                 ELSE 4
             END,
             CASE
@@ -246,7 +246,7 @@ function admin_verification_attention_stats(
             SUM(
                 CASE
                     WHEN status IN ("active","featured")
-                     AND last_verified_at < DATE_SUB(NOW(), INTERVAL 365 DAY)
+                     AND last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
                         THEN 1
                     ELSE 0
                 END
@@ -254,7 +254,7 @@ function admin_verification_attention_stats(
             SUM(
                 CASE
                     WHEN status IN ("active","featured")
-                     AND last_verified_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
+                     AND last_verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
                         THEN 1
                     ELSE 0
                 END
