@@ -64,6 +64,65 @@ function shop_refund_normalize_status(string $status): string
 }
 
 
+function shop_refund_fulfillment_blocker(
+    PDO $db,
+    int $orderId
+): ?string {
+    if ($orderId < 1) {
+        return 'A valid Shop order is required.';
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            status,
+            fulfillment_provider,
+            provider_order_id,
+            tracking_number
+         FROM shop_order_fulfillments
+         WHERE order_id = ?
+         ORDER BY id ASC'
+    );
+    $stmt->execute([$orderId]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $fulfillment) {
+        $status = strtolower(
+            trim((string) ($fulfillment['status'] ?? ''))
+        );
+
+        if (in_array($status, ['cancelled', 'canceled'], true)) {
+            continue;
+        }
+
+        $providerOrderId = trim(
+            (string) ($fulfillment['provider_order_id'] ?? '')
+        );
+        $trackingNumber = trim(
+            (string) ($fulfillment['tracking_number'] ?? '')
+        );
+
+        if (
+            in_array(
+                $status,
+                [
+                    'processing',
+                    'submitted',
+                    'shipped',
+                    'delivered',
+                    'fulfilled',
+                ],
+                true
+            )
+            || $providerOrderId !== ''
+            || $trackingNumber !== ''
+        ) {
+            return 'This order already has active fulfillment activity. Cancel or resolve fulfillment before issuing the Stripe refund.';
+        }
+    }
+
+    return null;
+}
+
+
 function shop_refund_apply_order_status(
     PDO $db,
     int $orderId,
@@ -170,6 +229,17 @@ function shop_issue_full_refund(
     if ($paymentIntentId === '') {
         throw new RuntimeException(
             'This order does not have a Stripe PaymentIntent to refund.'
+        );
+    }
+
+    $fulfillmentBlocker = shop_refund_fulfillment_blocker(
+        $db,
+        $orderId
+    );
+
+    if ($fulfillmentBlocker !== null) {
+        throw new InvalidArgumentException(
+            $fulfillmentBlocker
         );
     }
 

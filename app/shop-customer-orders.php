@@ -31,7 +31,7 @@ function shop_customer_orders(
             COUNT(DISTINCT f.id) AS fulfillment_count,
             MAX(
                 CASE
-                    WHEN f.status = "problem" THEN 1
+                    WHEN f.status IN ("problem", "error") THEN 1
                     ELSE 0
                 END
             ) AS has_fulfillment_problem,
@@ -52,6 +52,7 @@ function shop_customer_orders(
             )
            AND o.payment_status IN (
                 "paid",
+                "partially_refunded",
                 "refunded"
            )
          GROUP BY o.id
@@ -172,12 +173,16 @@ function shop_customer_status_label(
         'paid' => 'Order received',
         'processing' => 'Preparing your order',
         'submitted' => 'Sent to fulfillment',
+        'partially_fulfilled' => 'Partially fulfilled',
+        'fulfilled' => 'Fulfilled',
         'shipped' => 'Shipped',
         'delivered' => 'Delivered',
+        'partially_refunded' => 'Partially refunded',
         'cancelled',
         'canceled' => 'Cancelled',
         'refunded' => 'Refunded',
-        'problem' => 'Needs attention',
+        'problem',
+        'error' => 'Needs attention',
         default => ucwords(
             str_replace(
                 ['_', '-'],
