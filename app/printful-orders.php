@@ -110,12 +110,25 @@ function llama_printful_fulfillment_context(
         );
     }
 
+    $paymentStatus = strtolower(
+        trim((string) ($row['payment_status'] ?? ''))
+    );
+
+    $orderStatus = strtolower(
+        trim((string) ($row['order_status'] ?? ''))
+    );
+
+    /*
+     * A settled payment is not by itself enough to authorize provider
+     * fulfillment. Paid orders in the local "problem" state require
+     * manual review and must never be submitted to Printful.
+     */
     if (
-        strtolower(trim((string) ($row['payment_status'] ?? '')))
-        !== 'paid'
+        $paymentStatus !== 'paid'
+        || $orderStatus !== 'paid'
     ) {
         throw new InvalidArgumentException(
-            'Only paid orders can be sent to Printful.'
+            'Only paid and fulfillable orders can be sent to Printful.'
         );
     }
 
@@ -250,116 +263,167 @@ function llama_printful_create_fulfillment_order(
     int $actorUserId,
     int $fulfillmentId
 ): array {
-    $fulfillment = llama_printful_fulfillment_context(
-        $db,
-        $fulfillmentId
-    );
-
-    $existingId = trim(
-        (string) ($fulfillment['provider_order_id'] ?? '')
-    );
-
-    if ($existingId !== '') {
-        return llama_printful_get_order($existingId);
-    }
-
-    $payload = llama_printful_order_payload(
-        $db,
-        $fulfillmentId
-    );
-
-    $autoConfirm = llama_printful_auto_confirm();
-
-    $response = llama_printful_request(
-        'POST',
-        'orders',
-        $payload,
-        [
-            'confirm' => $autoConfirm ? '1' : '0',
-            'update_existing' => '1',
-        ]
-    );
-
-    $order = $response['result'] ?? [];
-
-    if (!is_array($order)) {
-        $order = [];
-    }
-
-    $providerOrderId = trim(
-        (string) ($order['id'] ?? '')
-    );
-
-    if ($providerOrderId === '') {
-        throw new RuntimeException(
-            'Printful created the order but did not return an order ID.'
+    if ($fulfillmentId < 1) {
+        throw new InvalidArgumentException(
+            'A valid fulfillment is required.'
         );
     }
-
-    $providerStatus = strtolower(
-        trim((string) ($order['status'] ?? 'draft'))
-    );
-
-    $localStatus = $autoConfirm
-        ? 'submitted'
-        : 'processing';
 
     /*
-     * Creating a Printful draft is still the moment the local
-     * fulfillment enters the submitted/processing phase. Record
-     * that timestamp for the Admin fulfillment timeline even while
-     * auto-confirm remains disabled.
+     * The provider API call cannot be made transactionally with MySQL.
+     * Use a per-fulfillment advisory lock to close the window where two
+     * requests both observe provider_order_id as empty and both POST.
      */
-    $submittedAt = gmdate('Y-m-d H:i:s');
+    $lockName =
+        'llamascout_printful_fulfillment_' .
+        $fulfillmentId;
 
-    $update = $db->prepare(
-        'UPDATE shop_order_fulfillments
-         SET
-            provider_order_id = ?,
-            status = ?,
-            submitted_at = COALESCE(
-                submitted_at,
-                ?
-            )
-         WHERE id = ?'
+    $lockStmt = $db->prepare(
+        'SELECT GET_LOCK(?, 10)'
     );
+    $lockStmt->execute([$lockName]);
 
-    $update->execute([
-        $providerOrderId,
-        $localStatus,
-        $submittedAt,
-        $fulfillmentId,
-    ]);
+    if ((int) $lockStmt->fetchColumn() !== 1) {
+        throw new RuntimeException(
+            'Could not acquire the Printful fulfillment lock.'
+        );
+    }
 
-    if (function_exists('admin_users_audit')) {
-        admin_users_audit(
+    try {
+        /*
+         * Re-read only after acquiring the lock. Another request may
+         * have created the provider order while this request waited.
+         */
+        $fulfillment = llama_printful_fulfillment_context(
             $db,
-            $actorUserId,
-            $fulfillment['user_id']
-                ? (int) $fulfillment['user_id']
-                : null,
-            'shop.printful_order_created',
-            'Created Printful ' .
-                ($autoConfirm ? 'confirmed' : 'draft') .
-                ' order for ' .
-                (string) $fulfillment['order_number'] .
-                '.',
+            $fulfillmentId
+        );
+
+        $existingId = trim(
+            (string) ($fulfillment['provider_order_id'] ?? '')
+        );
+
+        if ($existingId !== '') {
+            return llama_printful_get_order($existingId);
+        }
+
+        $payload = llama_printful_order_payload(
+            $db,
+            $fulfillmentId
+        );
+
+        $autoConfirm = llama_printful_auto_confirm();
+
+        $response = llama_printful_request(
+            'POST',
+            'orders',
+            $payload,
             [
-                'order_id' => (int) $fulfillment['order_id'],
-                'fulfillment_id' => $fulfillmentId,
-                'printful_order_id' => $providerOrderId,
-                'printful_status' => $providerStatus,
-                'auto_confirm' => $autoConfirm,
+                'confirm' => $autoConfirm ? '1' : '0',
+                'update_existing' => '1',
             ]
         );
-    }
 
-    if (function_exists('admin_fulfillment_sync_order_status')) {
-        admin_fulfillment_sync_order_status(
-            $db,
-            (int) $fulfillment['order_id']
+        $order = $response['result'] ?? [];
+
+        if (!is_array($order)) {
+            $order = [];
+        }
+
+        $providerOrderId = trim(
+            (string) ($order['id'] ?? '')
         );
-    }
 
-    return $order;
+        if ($providerOrderId === '') {
+            throw new RuntimeException(
+                'Printful created the order but did not return an order ID.'
+            );
+        }
+
+        $providerStatus = strtolower(
+            trim((string) ($order['status'] ?? 'draft'))
+        );
+
+        $localStatus = $autoConfirm
+            ? 'submitted'
+            : 'processing';
+
+        /*
+         * Creating a Printful draft is still the moment the local
+         * fulfillment enters the submitted/processing phase. Record
+         * that timestamp for the Admin fulfillment timeline even while
+         * auto-confirm remains disabled.
+         */
+        $submittedAt = gmdate('Y-m-d H:i:s');
+
+        $update = $db->prepare(
+            'UPDATE shop_order_fulfillments
+             SET
+                provider_order_id = ?,
+                status = ?,
+                submitted_at = COALESCE(
+                    submitted_at,
+                    ?
+                )
+             WHERE id = ?
+               AND (
+                   provider_order_id IS NULL
+                   OR provider_order_id = ""
+               )'
+        );
+
+        $update->execute([
+            $providerOrderId,
+            $localStatus,
+            $submittedAt,
+            $fulfillmentId,
+        ]);
+
+        /*
+         * Under the advisory lock this should always update exactly one
+         * row. Keep the row-count guard as a final local invariant.
+         */
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Printful order was created but the local fulfillment could not be claimed safely.'
+            );
+        }
+
+        if (function_exists('admin_users_audit')) {
+            admin_users_audit(
+                $db,
+                $actorUserId,
+                $fulfillment['user_id']
+                    ? (int) $fulfillment['user_id']
+                    : null,
+                'shop.printful_order_created',
+                'Created Printful ' .
+                    ($autoConfirm ? 'confirmed' : 'draft') .
+                    ' order for ' .
+                    (string) $fulfillment['order_number'] .
+                    '.',
+                [
+                    'order_id' => (int) $fulfillment['order_id'],
+                    'fulfillment_id' => $fulfillmentId,
+                    'printful_order_id' => $providerOrderId,
+                    'printful_status' => $providerStatus,
+                    'auto_confirm' => $autoConfirm,
+                ]
+            );
+        }
+
+        if (function_exists('admin_fulfillment_sync_order_status')) {
+            admin_fulfillment_sync_order_status(
+                $db,
+                (int) $fulfillment['order_id']
+            );
+        }
+
+        return $order;
+    } finally {
+        $releaseStmt = $db->prepare(
+            'SELECT RELEASE_LOCK(?)'
+        );
+        $releaseStmt->execute([$lockName]);
+    }
 }
