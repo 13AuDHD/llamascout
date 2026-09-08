@@ -73,16 +73,7 @@ function llama_support_normalize_error_reference(
 
 function llama_support_ticket_base(): string
 {
-    $mountain = new DateTimeZone(
-        'America/Denver'
-    );
-
-    $now = new DateTimeImmutable(
-        'now',
-        $mountain
-    );
-
-    return $now->format('ymd-His');
+    return gmdate('ymd-His');
 }
 
 
@@ -895,6 +886,25 @@ function llama_support_update(
    authenticated site activity.
    ========================================================= */
 
+function llama_support_email_maintenance_storage_available(
+    PDO $db
+): bool {
+    $stmt = $db->prepare(
+        'SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'app_maintenance',
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+
 function llama_support_email_maintenance_is_due(
     PDO $db,
     int $intervalSeconds = 600
@@ -904,20 +914,15 @@ function llama_support_email_maintenance_is_due(
         $intervalSeconds
     );
 
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS app_maintenance
-         (
-            maintenance_key VARCHAR(100) NOT NULL,
-            last_run_at DATETIME NULL,
-            updated_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (maintenance_key)
-         )
-         ENGINE=InnoDB
-         DEFAULT CHARSET=utf8mb4
-         COLLATE=utf8mb4_unicode_ci'
-    );
+    if (
+        !llama_support_email_maintenance_storage_available(
+            $db
+        )
+    ) {
+        throw new RuntimeException(
+            'Support email maintenance storage is not initialized. Missing table: app_maintenance'
+        );
+    }
 
     $stmt = $db->prepare(
         'SELECT last_run_at
@@ -936,11 +941,15 @@ function llama_support_email_maintenance_is_due(
         return true;
     }
 
-    $timestamp = strtotime(
-        (string) $lastRun
-    );
-
-    if ($timestamp === false) {
+    try {
+        $timestamp =
+            (
+                new DateTimeImmutable(
+                    (string) $lastRun,
+                    new DateTimeZone('UTC')
+                )
+            )->getTimestamp();
+    } catch (Throwable) {
         return true;
     }
 
@@ -1063,4 +1072,3 @@ function llama_run_support_email_maintenance(
         }
     }
 }
-

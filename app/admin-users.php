@@ -4,36 +4,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/points.php';
 
-function admin_users_current_is_owner(
-    PDO $db,
-    int $userId
-): bool {
-    return user_has_role(
-        'owner',
-        $userId
-    );
+function admin_users_current_is_owner(PDO $db, int $userId): bool {
+    return user_has_role('owner', $userId);
 }
 
-function admin_user_avatar_src(
-    ?string $profileImageSrc,
-    string $siteUrl
-): string {
+function admin_user_avatar_src(?string $profileImageSrc, string $siteUrl): string {
     $profileImageSrc = trim((string) $profileImageSrc);
-
     if ($profileImageSrc !== '') {
-        return llama_profile_image_url(
-            $profileImageSrc,
-            $siteUrl
-        );
+        return llama_profile_image_url($profileImageSrc, $siteUrl);
     }
-
-    return rtrim($siteUrl, '/') .
-        '/images/default-profile.png';
+    return rtrim($siteUrl, '/') . '/images/default-profile.png';
 }
 
-function admin_user_profile_image_sql(
-    string $userAlias = 'u'
-): string {
+function admin_user_profile_image_sql(string $userAlias = 'u'): string {
     return '(SELECT cpi.image_src
              FROM community_profile_images cpi
              WHERE cpi.user_id = ' . $userAlias . '.id
@@ -65,14 +48,11 @@ function admin_users_audit(
     $metadataJson = $metadata
         ? json_encode(
             $metadata,
-            JSON_UNESCAPED_SLASHES |
-            JSON_UNESCAPED_UNICODE
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
         )
         : null;
 
-    $ipAddress = trim(
-        (string) ($_SERVER['REMOTE_ADDR'] ?? '')
-    );
+    $ipAddress = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
 
     $stmt->execute([
         $actorUserId,
@@ -106,25 +86,11 @@ function admin_users_list(
             OR u.display_name LIKE ?
             OR CAST(u.id AS CHAR) = ?
         )';
-
         $needle = '%' . $search . '%';
-
-        array_push(
-            $params,
-            $needle,
-            $needle,
-            $needle,
-            $search
-        );
+        array_push($params, $needle, $needle, $needle, $search);
     }
 
-    if (
-        in_array(
-            $status,
-            ['active', 'pending', 'suspended', 'disabled'],
-            true
-        )
-    ) {
+    if (in_array($status, ['active', 'pending', 'suspended', 'disabled'], true)) {
         $where[] = 'u.status = ?';
         $params[] = $status;
     }
@@ -137,13 +103,7 @@ function admin_users_list(
         }
     }
 
-    if (
-        in_array(
-            $role,
-            ['owner', 'admin', 'scout', 'member'],
-            true
-        )
-    ) {
+    if (in_array($role, ['owner', 'admin', 'scout', 'member'], true)) {
         $where[] = 'EXISTS (
             SELECT 1
             FROM user_roles ur_filter
@@ -152,7 +112,6 @@ function admin_users_list(
             WHERE ur_filter.user_id = u.id
               AND r_filter.slug = ?
         )';
-
         $params[] = $role;
     }
 
@@ -196,14 +155,10 @@ function admin_users_list(
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
-
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
-function admin_users_get(
-    PDO $db,
-    int $userId
-): ?array {
+function admin_users_get(PDO $db, int $userId): ?array {
     $stmt = $db->prepare(
         'SELECT
             u.*,
@@ -222,73 +177,55 @@ function admin_users_get(
          GROUP BY u.id
          LIMIT 1'
     );
-
     $stmt->execute([$userId]);
-
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
     return $row ?: null;
 }
 
-function admin_users_roles(
-    PDO $db,
-    int $userId
-): array {
-    return user_roles(
-        $userId
-    );
+function admin_users_roles(PDO $db, int $userId): array {
+    return user_roles($userId);
 }
 
-function admin_users_stats(
-    PDO $db,
-    int $userId
-): array {
+function admin_users_stats(PDO $db, int $userId): array {
     $queries = [
         'contributions' =>
             'SELECT COUNT(*)
              FROM place_contributions
              WHERE user_id = ?
                AND status = "approved"',
-
         'places_added' =>
             'SELECT COUNT(*)
              FROM place_contributions
              WHERE user_id = ?
                AND status = "approved"
                AND contribution_type = "new_place"',
-
         'updates' =>
             'SELECT COUNT(*)
              FROM place_contributions
              WHERE user_id = ?
                AND status = "approved"
                AND contribution_type <> "new_place"',
-
         'reports' =>
             'SELECT COUNT(*)
              FROM place_reports
              WHERE user_id = ?',
-
         'badges' =>
             'SELECT COUNT(*)
              FROM user_badges
              WHERE user_id = ?
                AND review_status = "earned"',
-
         'saved_places' =>
             'SELECT COUNT(*)
              FROM user_saved_places
              WHERE user_id = ?',
-
         'sessions' =>
             'SELECT COUNT(*)
              FROM sessions
              WHERE user_id = ?
-               AND expires_at > NOW()',
+               AND expires_at > UTC_TIMESTAMP()',
     ];
 
     $stats = [];
-
     foreach ($queries as $key => $sql) {
         try {
             $stmt = $db->prepare($sql);
@@ -296,29 +233,17 @@ function admin_users_stats(
             $stats[$key] = (int) $stmt->fetchColumn();
         } catch (Throwable $exception) {
             error_log(
-                'Admin user stat error [' .
-                $key .
-                ']: ' .
-                $exception->getMessage()
+                'Admin user stat error [' . $key . ']: ' . $exception->getMessage()
             );
-
             $stats[$key] = 0;
         }
     }
 
-    $stats['points'] =
-        llama_points_total(
-            $db,
-            $userId
-        );
-
+    $stats['points'] = llama_points_total($db, $userId);
     return $stats;
 }
 
-function admin_users_recent_contributions(
-    PDO $db,
-    int $userId
-): array {
+function admin_users_recent_contributions(PDO $db, int $userId): array {
     try {
         $stmt = $db->prepare(
             'SELECT
@@ -335,30 +260,20 @@ function admin_users_recent_contributions(
                 ON p.id = pc.place_id
              WHERE pc.user_id = ?
              ORDER BY
-                COALESCE(
-                    pc.approved_at,
-                    pc.created_at
-                ) DESC
+                COALESCE(pc.approved_at, pc.created_at) DESC
              LIMIT 20'
         );
-
         $stmt->execute([$userId]);
-
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $exception) {
         error_log(
-            'Admin user contribution history error: ' .
-            $exception->getMessage()
+            'Admin user contribution history error: ' . $exception->getMessage()
         );
-
         return [];
     }
 }
 
-function admin_users_audit_history(
-    PDO $db,
-    int $userId
-): array {
+function admin_users_audit_history(PDO $db, int $userId): array {
     try {
         $stmt = $db->prepare(
             'SELECT
@@ -375,16 +290,12 @@ function admin_users_audit_history(
              ORDER BY aal.created_at DESC
              LIMIT 30'
         );
-
         $stmt->execute([$userId]);
-
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $exception) {
         error_log(
-            'Admin user audit history error: ' .
-            $exception->getMessage()
+            'Admin user audit history error: ' . $exception->getMessage()
         );
-
         return [];
     }
 }
@@ -395,102 +306,49 @@ function admin_users_save_account(
     int $targetUserId,
     array $data
 ): void {
-    $target = admin_users_get(
-        $db,
-        $targetUserId
-    );
-
+    $target = admin_users_get($db, $targetUserId);
     if (!$target) {
-        throw new RuntimeException(
-            'The account no longer exists.'
-        );
+        throw new RuntimeException('The account no longer exists.');
     }
-
     if (!empty($target['anonymized_at'])) {
-        throw new RuntimeException(
-            'An anonymized account cannot be edited.'
-        );
+        throw new RuntimeException('An anonymized account cannot be edited.');
     }
 
-    $actorIsOwner = admin_users_current_is_owner(
-        $db,
-        $actorUserId
-    );
-
-    $targetIsOwner = user_has_role(
-        'owner',
-        $targetUserId
-    );
-
-    if (
-        $targetIsOwner &&
-        !$actorIsOwner
-    ) {
-        throw new RuntimeException(
-            'Only an Owner can edit an Owner account.'
-        );
+    $actorIsOwner = admin_users_current_is_owner($db, $actorUserId);
+    $targetIsOwner = user_has_role('owner', $targetUserId);
+    if ($targetIsOwner && !$actorIsOwner) {
+        throw new RuntimeException('Only an Owner can edit an Owner account.');
     }
 
-    $email = strtolower(
-        trim((string) ($data['email'] ?? ''))
-    );
-
-    $username = trim(
-        (string) ($data['username'] ?? '')
-    );
-
-    $displayName = trim(
-        (string) ($data['display_name'] ?? '')
-    );
-
-    $timezone = trim(
-        (string) ($data['timezone'] ?? 'America/Denver')
-    );
-
-    $status = trim(
-        (string) ($data['status'] ?? 'active')
-    );
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $username = trim((string) ($data['username'] ?? ''));
+    $displayName = trim((string) ($data['display_name'] ?? ''));
+    $timezone = trim((string) ($data['timezone'] ?? llama_default_timezone()));
+    $status = trim((string) ($data['status'] ?? 'active'));
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new RuntimeException(
-            'Enter a valid email address.'
-        );
+        throw new RuntimeException('Enter a valid email address.');
     }
 
-    if (
-        $username !== '' &&
-        !preg_match(
-            '/^[A-Za-z0-9_]{4,16}$/',
-            $username
-        )
-    ) {
+    if ($username !== '' && !preg_match('/^[A-Za-z0-9_]{4,16}$/', $username)) {
         throw new RuntimeException(
             'Username must be 4 to 16 letters, numbers, or underscores.'
         );
     }
 
     if (mb_strlen($displayName) > 100) {
-        throw new RuntimeException(
-            'Display name is too long.'
-        );
+        throw new RuntimeException('Display name is too long.');
     }
 
-    if (
-        !in_array(
-            $status,
-            ['active', 'pending', 'suspended', 'disabled'],
-            true
-        )
-    ) {
-        throw new RuntimeException(
-            'Invalid account status.'
-        );
+    if (!llama_timezone_is_valid($timezone)) {
+        throw new RuntimeException('Choose a valid timezone.');
     }
 
-    if (
-        $targetUserId === $actorUserId &&
-        $status !== 'active'
-    ) {
+    if (!in_array($status, ['active', 'pending', 'suspended', 'disabled'], true)) {
+        throw new RuntimeException('Invalid account status.');
+    }
+
+    if ($targetUserId === $actorUserId && $status !== 'active') {
         throw new RuntimeException(
             'You cannot suspend or disable your own account.'
         );
@@ -503,16 +361,9 @@ function admin_users_save_account(
            AND id <> ?
          LIMIT 1'
     );
-
-    $duplicate->execute([
-        $email,
-        $targetUserId,
-    ]);
-
+    $duplicate->execute([$email, $targetUserId]);
     if ($duplicate->fetchColumn()) {
-        throw new RuntimeException(
-            'That email address is already in use.'
-        );
+        throw new RuntimeException('That email address is already in use.');
     }
 
     if ($username !== '') {
@@ -523,16 +374,9 @@ function admin_users_save_account(
                AND id <> ?
              LIMIT 1'
         );
-
-        $duplicate->execute([
-            $username,
-            $targetUserId,
-        ]);
-
+        $duplicate->execute([$username, $targetUserId]);
         if ($duplicate->fetchColumn()) {
-            throw new RuntimeException(
-                'That username is already in use.'
-            );
+            throw new RuntimeException('That username is already in use.');
         }
     }
 
@@ -546,12 +390,11 @@ function admin_users_save_account(
             status = ?
          WHERE id = ?'
     );
-
     $stmt->execute([
         $email,
         $username !== '' ? $username : null,
         $displayName !== '' ? $displayName : null,
-        $timezone !== '' ? $timezone : 'America/Denver',
+        $timezone,
         $status,
         $targetUserId,
     ]);
@@ -587,67 +430,33 @@ function admin_users_set_roles(
     int $targetUserId,
     array $requestedRoles
 ): void {
-    if (
-        !admin_users_current_is_owner(
-            $db,
-            $actorUserId
-        )
-    ) {
-        throw new RuntimeException(
-            'Only an Owner can change account roles.'
-        );
+    if (!admin_users_current_is_owner($db, $actorUserId)) {
+        throw new RuntimeException('Only an Owner can change account roles.');
     }
 
-    $target = admin_users_get(
-        $db,
-        $targetUserId
-    );
-
+    $target = admin_users_get($db, $targetUserId);
     if (!$target) {
-        throw new RuntimeException(
-            'The account no longer exists.'
-        );
+        throw new RuntimeException('The account no longer exists.');
     }
-
     if (!empty($target['anonymized_at'])) {
-        throw new RuntimeException(
-            'An anonymized account cannot receive roles.'
-        );
+        throw new RuntimeException('An anonymized account cannot receive roles.');
     }
 
-    $allowed = [
-        'member',
-        'scout',
-        'admin',
-        'owner',
-    ];
-
+    $allowed = ['member', 'scout', 'admin', 'owner'];
     $requestedRoles = array_values(
         array_unique(
-            array_intersect(
-                $allowed,
-                array_map(
-                    'strval',
-                    $requestedRoles
-                )
-            )
+            array_intersect($allowed, array_map('strval', $requestedRoles))
         )
     );
 
-    if (
-        !in_array(
-            'member',
-            $requestedRoles,
-            true
-        )
-    ) {
+    if (!in_array('member', $requestedRoles, true)) {
         $requestedRoles[] = 'member';
     }
 
     if ($targetUserId === $actorUserId) {
         if (
-            !in_array('owner', $requestedRoles, true) ||
-            !in_array('admin', $requestedRoles, true)
+            !in_array('owner', $requestedRoles, true)
+            || !in_array('admin', $requestedRoles, true)
         ) {
             throw new RuntimeException(
                 'You cannot remove your own Owner or Admin access.'
@@ -656,50 +465,31 @@ function admin_users_set_roles(
     }
 
     if (
-        in_array('owner', $requestedRoles, true) &&
-        !in_array('admin', $requestedRoles, true)
+        in_array('owner', $requestedRoles, true)
+        && !in_array('admin', $requestedRoles, true)
     ) {
         $requestedRoles[] = 'admin';
     }
 
-    $before = admin_users_roles(
-        $db,
-        $targetUserId
-    );
-
+    $before = admin_users_roles($db, $targetUserId);
     $db->beginTransaction();
 
     try {
-        $delete = $db->prepare(
-            'DELETE FROM user_roles
-             WHERE user_id = ?'
-        );
-
+        $delete = $db->prepare('DELETE FROM user_roles WHERE user_id = ?');
         $delete->execute([$targetUserId]);
 
         $roleStmt = $db->prepare(
-            'SELECT id
-             FROM roles
-             WHERE slug = ?
-             LIMIT 1'
+            'SELECT id FROM roles WHERE slug = ? LIMIT 1'
         );
-
         $insert = $db->prepare(
-            'INSERT INTO user_roles (
-                user_id,
-                role_id
-             ) VALUES (?, ?)'
+            'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)'
         );
 
         foreach ($requestedRoles as $roleSlug) {
             $roleStmt->execute([$roleSlug]);
             $roleId = (int) $roleStmt->fetchColumn();
-
             if ($roleId > 0) {
-                $insert->execute([
-                    $targetUserId,
-                    $roleId,
-                ]);
+                $insert->execute([$targetUserId, $roleId]);
             }
         }
 
@@ -709,10 +499,7 @@ function admin_users_set_roles(
             $targetUserId,
             'user.roles_updated',
             'Updated account roles.',
-            [
-                'before' => $before,
-                'after' => $requestedRoles,
-            ]
+            ['before' => $before, 'after' => $requestedRoles]
         );
 
         $db->commit();
@@ -720,7 +507,6 @@ function admin_users_set_roles(
         if ($db->inTransaction()) {
             $db->rollBack();
         }
-
         throw $exception;
     }
 }
@@ -737,23 +523,14 @@ function admin_users_force_logout(
     }
 
     $count = 0;
-
     $db->beginTransaction();
 
     try {
-        $stmt = $db->prepare(
-            'DELETE FROM sessions
-             WHERE user_id = ?'
-        );
-
+        $stmt = $db->prepare('DELETE FROM sessions WHERE user_id = ?');
         $stmt->execute([$targetUserId]);
         $count += $stmt->rowCount();
 
-        $stmt = $db->prepare(
-            'DELETE FROM user_remember_tokens
-             WHERE user_id = ?'
-        );
-
+        $stmt = $db->prepare('DELETE FROM user_remember_tokens WHERE user_id = ?');
         $stmt->execute([$targetUserId]);
         $count += $stmt->rowCount();
 
@@ -763,34 +540,26 @@ function admin_users_force_logout(
             $targetUserId,
             'user.sessions_revoked',
             'Revoked all active sessions and remember-me tokens.',
-            [
-                'rows_removed' => $count,
-            ]
+            ['rows_removed' => $count]
         );
 
         $db->commit();
-
         return $count;
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();
         }
-
         throw $exception;
     }
 }
 
-function admin_users_profile_image_paths(
-    PDO $db,
-    int $userId
-): array {
+function admin_users_profile_image_paths(PDO $db, int $userId): array {
     try {
         $stmt = $db->prepare(
             'SELECT image_src
              FROM community_profile_images
              WHERE user_id = ?'
         );
-
         $stmt->execute([$userId]);
 
         return array_values(
@@ -815,51 +584,24 @@ function admin_users_delete_profile_files(
 
     foreach ($imageSources as $src) {
         $src = trim((string) $src);
-
-        if (
-            $src === '' ||
-            !str_starts_with(
-                $src,
-                '/uploads/profile-images/'
-            )
-        ) {
+        if ($src === '' || !str_starts_with($src, '/uploads/profile-images/')) {
             continue;
         }
 
-        $path = realpath(
-            dirname(
-                $root .
-                $src
-            )
-        );
-
-        $file = realpath(
-            $root .
-            $src
-        );
-
-        $allowedRoot = realpath(
-            $root .
-            '/uploads/profile-images'
-        );
+        $file = realpath($root . $src);
+        $allowedRoot = realpath($root . '/uploads/profile-images');
 
         if (
-            $file &&
-            $allowedRoot &&
-            str_starts_with(
-                $file,
-                $allowedRoot . DIRECTORY_SEPARATOR
-            ) &&
-            is_file($file)
+            $file
+            && $allowedRoot
+            && str_starts_with($file, $allowedRoot . DIRECTORY_SEPARATOR)
+            && is_file($file)
         ) {
             @unlink($file);
         }
     }
 
-    $userRoot =
-        $root .
-        '/uploads/profile-images';
-
+    $userRoot = $root . '/uploads/profile-images';
     if (!is_dir($userRoot)) {
         return;
     }
@@ -876,15 +618,11 @@ function admin_users_delete_profile_files(
         if (!$item->isDir()) {
             continue;
         }
-
-        $name = $item->getFilename();
-
-        if ($name !== 'user-' . $userId) {
+        if ($item->getFilename() !== 'user-' . $userId) {
             continue;
         }
 
         $directory = $item->getPathname();
-
         $children = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator(
                 $directory,
@@ -900,7 +638,6 @@ function admin_users_delete_profile_files(
                 @unlink($child->getPathname());
             }
         }
-
         @rmdir($directory);
     }
 }
@@ -911,83 +648,41 @@ function admin_users_anonymize(
     int $targetUserId,
     string $reason
 ): void {
-    if (
-        !admin_users_current_is_owner(
-            $db,
-            $actorUserId
-        )
-    ) {
-        throw new RuntimeException(
-            'Only an Owner can anonymize an account.'
-        );
+    if (!admin_users_current_is_owner($db, $actorUserId)) {
+        throw new RuntimeException('Only an Owner can anonymize an account.');
     }
-
     if ($targetUserId === $actorUserId) {
-        throw new RuntimeException(
-            'You cannot anonymize your own account.'
-        );
+        throw new RuntimeException('You cannot anonymize your own account.');
     }
 
-    $target = admin_users_get(
-        $db,
-        $targetUserId
-    );
-
+    $target = admin_users_get($db, $targetUserId);
     if (!$target) {
-        throw new RuntimeException(
-            'The account no longer exists.'
-        );
+        throw new RuntimeException('The account no longer exists.');
     }
-
     if (!empty($target['anonymized_at'])) {
-        throw new RuntimeException(
-            'This account has already been anonymized.'
-        );
+        throw new RuntimeException('This account has already been anonymized.');
     }
-
-    if (
-        user_has_role(
-            'owner',
-            $targetUserId
-        )
-    ) {
+    if (user_has_role('owner', $targetUserId)) {
         throw new RuntimeException(
             'Remove Owner status before anonymizing this account.'
         );
     }
 
     $reason = trim($reason);
-
     if (mb_strlen($reason) < 8) {
-        throw new RuntimeException(
-            'Enter a brief reason for the anonymization.'
-        );
+        throw new RuntimeException('Enter a brief reason for the anonymization.');
     }
 
-    $images = admin_users_profile_image_paths(
-        $db,
-        $targetUserId
-    );
-
+    $images = admin_users_profile_image_paths($db, $targetUserId);
     $oldIdentity = [
         'email' => $target['email'],
         'username' => $target['username'],
         'display_name' => $target['display_name'],
     ];
 
-    $deletedUsername =
-        'deleted_user_' .
-        $targetUserId;
-
-    $deletedEmail =
-        'deleted+' .
-        $targetUserId .
-        '@invalid.llamascout.local';
-
-    $passwordHash = password_hash(
-        bin2hex(random_bytes(32)),
-        PASSWORD_DEFAULT
-    );
+    $deletedUsername = 'deleted_user_' . $targetUserId;
+    $deletedEmail = 'deleted+' . $targetUserId . '@invalid.llamascout.local';
+    $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
 
     $db->beginTransaction();
 
@@ -1012,44 +707,30 @@ function admin_users_anonymize(
         foreach ($deleteByUser as $table) {
             try {
                 $stmt = $db->prepare(
-                    'DELETE FROM `' .
-                    $table .
-                    '`
-                     WHERE user_id = ?'
+                    'DELETE FROM `' . $table . '` WHERE user_id = ?'
                 );
-
                 $stmt->execute([$targetUserId]);
             } catch (Throwable $exception) {
                 error_log(
                     'Anonymization cleanup skipped for ' .
-                    $table .
-                    ': ' .
-                    $exception->getMessage()
+                    $table . ': ' . $exception->getMessage()
                 );
             }
         }
 
-        $stmt = $db->prepare(
-            'DELETE FROM user_roles
-             WHERE user_id = ?'
-        );
-
+        $stmt = $db->prepare('DELETE FROM user_roles WHERE user_id = ?');
         $stmt->execute([$targetUserId]);
 
         $stmt = $db->prepare(
             'UPDATE scout_profiles
              SET
                 status = "removed",
-                removed_at = COALESCE(removed_at, NOW()),
+                removed_at = COALESCE(removed_at, UTC_TIMESTAMP()),
                 removed_by = ?,
                 removal_reason = "Account anonymized."
              WHERE user_id = ?'
         );
-
-        $stmt->execute([
-            $actorUserId,
-            $targetUserId,
-        ]);
+        $stmt->execute([$actorUserId, $targetUserId]);
 
         $stmt = $db->prepare(
             'UPDATE users
@@ -1063,7 +744,7 @@ function admin_users_anonymize(
                 email_verified_at = NULL,
                 last_login_at = NULL,
                 dormancy_notice_sent_at = NULL,
-                anonymized_at = NOW(),
+                anonymized_at = UTC_TIMESTAMP(),
                 anonymized_by = ?,
                 stripe_customer_id = NULL,
                 stripe_subscription_id = NULL,
@@ -1074,7 +755,6 @@ function admin_users_anonymize(
                 membership_ends_at = NULL
              WHERE id = ?'
         );
-
         $stmt->execute([
             $deletedEmail,
             $deletedUsername,
@@ -1110,12 +790,8 @@ function admin_users_anonymize(
         if ($db->inTransaction()) {
             $db->rollBack();
         }
-
         throw $exception;
     }
 
-    admin_users_delete_profile_files(
-        $targetUserId,
-        $images
-    );
+    admin_users_delete_profile_files($targetUserId, $images);
 }
