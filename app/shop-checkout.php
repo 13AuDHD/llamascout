@@ -217,8 +217,21 @@ function shop_checkout_currency(array $items): string
 
 function shop_checkout_release_expired_reservations(PDO $db): void
 {
+    /*
+     * A reservation may expire before Stripe tells us that an async or
+     * delayed payment actually succeeded. Released rows are retained as
+     * an audit trail so a paid order can safely try to reclaim them.
+     * Never release inventory that local state already finalized as paid.
+     */
     $db->exec(
-        'UPDATE shop_inventory_reservations SET status = "released", released_at = COALESCE(released_at, UTC_TIMESTAMP()) WHERE status = "active" AND expires_at <= UTC_TIMESTAMP()'
+        'UPDATE shop_inventory_reservations r
+         INNER JOIN shop_orders o ON o.id = r.order_id
+         SET r.status = "released",
+             r.released_at = COALESCE(r.released_at, UTC_TIMESTAMP())
+         WHERE r.status = "active"
+           AND r.expires_at <= UTC_TIMESTAMP()
+           AND o.payment_status <> "paid"
+           AND o.inventory_committed_at IS NULL'
     );
 }
 
@@ -368,7 +381,7 @@ function shop_checkout_create_stripe_session(PDO $db, array $order, array $items
     $settings = shop_checkout_settings();
     $sessionData = [
         'mode' => 'payment',
-    
+
         /*
          * Shop Checkout must manage its own shipping address and
          * shipping-rate collection. Stripe Managed Payments cannot
@@ -380,7 +393,7 @@ function shop_checkout_create_stripe_session(PDO $db, array $order, array $items
         'managed_payments' => [
             'enabled' => false,
         ],
-    
+
         'ui_mode' => 'embedded_page',
         'line_items' => shop_checkout_stripe_line_items($items),
         'client_reference_id' => (string) $order['order_number'],
@@ -538,34 +551,16 @@ function shop_checkout_commit_paid_session(PDO $db, object $session): void
 
         $paymentStatus = strtolower(trim((string) ($session->payment_status ?? '')));
         if ($paymentStatus !== 'paid') {
-            $stmt = $db->prepare('UPDATE shop_orders SET payment_status = ? WHERE id = ?');
-            $stmt->execute([$paymentStatus !== '' ? $paymentStatus : 'pending', $orderId]);
+            /*
+             * Webhook delivery order is not guaranteed. Never let an
+             * older unpaid event regress an order already finalized as paid.
+             */
+            if (strtolower(trim((string) ($order['payment_status'] ?? ''))) !== 'paid') {
+                $stmt = $db->prepare('UPDATE shop_orders SET payment_status = ? WHERE id = ?');
+                $stmt->execute([$paymentStatus !== '' ? $paymentStatus : 'pending', $orderId]);
+            }
             $db->commit();
             return;
-        }
-
-        if (empty($order['inventory_committed_at'])) {
-            $reservations = $db->prepare('SELECT * FROM shop_inventory_reservations WHERE order_id = ? AND status = "active" FOR UPDATE');
-            $reservations->execute([$orderId]);
-            foreach ($reservations->fetchAll(PDO::FETCH_ASSOC) ?: [] as $reservation) {
-                $variantId = (int) $reservation['variant_id'];
-                $quantity = (int) $reservation['quantity'];
-                $variantStmt = $db->prepare('SELECT inventory_quantity, track_inventory, allow_backorder FROM shop_product_variants WHERE id = ? FOR UPDATE');
-                $variantStmt->execute([$variantId]);
-                $variant = $variantStmt->fetch(PDO::FETCH_ASSOC);
-                if (!$variant || (int) $variant['track_inventory'] !== 1 || (int) $variant['allow_backorder'] === 1) {
-                    continue;
-                }
-                $onHand = max(0, (int) $variant['inventory_quantity']);
-                if ($quantity > $onHand) {
-                    throw new RuntimeException('Reserved inventory is no longer available for paid Shop order ' . (string) $order['order_number'] . '.');
-                }
-                $updateInventory = $db->prepare('UPDATE shop_product_variants SET inventory_quantity = inventory_quantity - ? WHERE id = ?');
-                $updateInventory->execute([$quantity, $variantId]);
-            }
-
-            $consume = $db->prepare('UPDATE shop_inventory_reservations SET status = "consumed", consumed_at = UTC_TIMESTAMP() WHERE order_id = ? AND status = "active"');
-            $consume->execute([$orderId]);
         }
 
         $customerDetails = $session->customer_details ?? null;
@@ -582,6 +577,203 @@ function shop_checkout_commit_paid_session(PDO $db, object $session): void
         $taxTotal = max(0, (int) ($session->total_details->amount_tax ?? 0));
         $discountTotal = max(0, (int) ($session->total_details->amount_discount ?? 0));
         $shippingTotal = max(0, $amountTotal - $amountSubtotal - $taxTotal + $discountTotal);
+
+        $inventoryProblem = null;
+
+        if (empty($order['inventory_committed_at'])) {
+            /*
+             * Build the inventory obligation from immutable order-item
+             * snapshots. This lets a delayed successful payment recover a
+             * reservation that was already released without silently losing
+             * the original inventory contract.
+             */
+            $itemStmt = $db->prepare(
+                'SELECT id, variant_id, quantity, variant_snapshot_json
+                 FROM shop_order_items
+                 WHERE order_id = ?
+                 ORDER BY variant_id ASC, id ASC'
+            );
+            $itemStmt->execute([$orderId]);
+
+            $expectedByVariant = [];
+            foreach ($itemStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $item) {
+                $snapshot = json_decode((string) ($item['variant_snapshot_json'] ?? ''), true);
+                $snapshot = is_array($snapshot) ? $snapshot : [];
+                $availability = strtolower(trim((string) ($snapshot['availability'] ?? '')));
+                $needsReservation =
+                    $availability !== 'preorder'
+                    && (int) ($snapshot['track_inventory'] ?? 0) === 1
+                    && (int) ($snapshot['allow_backorder'] ?? 0) !== 1;
+
+                if (!$needsReservation) {
+                    continue;
+                }
+
+                $variantId = (int) ($item['variant_id'] ?? 0);
+                $quantity = max(0, (int) ($item['quantity'] ?? 0));
+                if ($variantId < 1 || $quantity < 1) {
+                    $inventoryProblem = 'A tracked order item is missing valid inventory data.';
+                    break;
+                }
+
+                $expectedByVariant[$variantId] =
+                    ($expectedByVariant[$variantId] ?? 0) + $quantity;
+            }
+
+            ksort($expectedByVariant, SORT_NUMERIC);
+
+            $reservationStmt = $db->prepare(
+                'SELECT *
+                 FROM shop_inventory_reservations
+                 WHERE order_id = ?
+                 ORDER BY variant_id ASC, id ASC
+                 FOR UPDATE'
+            );
+            $reservationStmt->execute([$orderId]);
+            $reservationRows = $reservationStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $reservedByVariant = [];
+            if ($inventoryProblem === null) {
+                foreach ($reservationRows as $reservation) {
+                    $status = strtolower(trim((string) ($reservation['status'] ?? '')));
+                    $variantId = (int) ($reservation['variant_id'] ?? 0);
+                    $quantity = max(0, (int) ($reservation['quantity'] ?? 0));
+
+                    if ($status === 'consumed') {
+                        $inventoryProblem = 'Inventory reservation state is inconsistent with the order commit state.';
+                        break;
+                    }
+                    if (!in_array($status, ['active', 'released'], true)) {
+                        $inventoryProblem = 'Inventory reservation has an unexpected state.';
+                        break;
+                    }
+                    if ($variantId < 1 || $quantity < 1) {
+                        $inventoryProblem = 'Inventory reservation is missing valid quantity data.';
+                        break;
+                    }
+
+                    $reservedByVariant[$variantId] =
+                        ($reservedByVariant[$variantId] ?? 0) + $quantity;
+                }
+            }
+
+            ksort($reservedByVariant, SORT_NUMERIC);
+
+            if ($inventoryProblem === null && $reservedByVariant !== $expectedByVariant) {
+                $inventoryProblem = 'Inventory reservations no longer match the tracked items on this order.';
+            }
+
+            $deductions = [];
+            if ($inventoryProblem === null) {
+                foreach ($expectedByVariant as $variantId => $quantity) {
+                    /*
+                     * Every inventory writer locks the variant row first.
+                     * That serializes this late-payment recovery against a
+                     * newer checkout trying to reserve the same stock.
+                     */
+                    $variantStmt = $db->prepare(
+                        'SELECT inventory_quantity
+                         FROM shop_product_variants
+                         WHERE id = ?
+                         FOR UPDATE'
+                    );
+                    $variantStmt->execute([(int) $variantId]);
+                    $inventoryQuantity = $variantStmt->fetchColumn();
+                    if ($inventoryQuantity === false) {
+                        $inventoryProblem = 'A tracked variant no longer exists.';
+                        break;
+                    }
+
+                    $onHand = max(0, (int) $inventoryQuantity);
+                    $reservedElsewhere = shop_checkout_active_reserved_quantity(
+                        $db,
+                        (int) $variantId,
+                        $orderId
+                    );
+                    $availableForThisOrder = max(0, $onHand - $reservedElsewhere);
+
+                    if ((int) $quantity > $availableForThisOrder) {
+                        $inventoryProblem =
+                            'Paid order ' . (string) $order['order_number'] .
+                            ' could not reclaim expired inventory for variant ' .
+                            (string) $variantId . '.';
+                        break;
+                    }
+
+                    $deductions[(int) $variantId] = (int) $quantity;
+                }
+            }
+
+            if ($inventoryProblem === null) {
+                foreach ($deductions as $variantId => $quantity) {
+                    $updateInventory = $db->prepare(
+                        'UPDATE shop_product_variants
+                         SET inventory_quantity = inventory_quantity - ?
+                         WHERE id = ?'
+                    );
+                    $updateInventory->execute([$quantity, $variantId]);
+                }
+
+                /*
+                 * Released reservations are intentionally consumable here.
+                 * The variant preflight above proves the stock was safely
+                 * reacquired without stealing newer active reservations.
+                 */
+                $consume = $db->prepare(
+                    'UPDATE shop_inventory_reservations
+                     SET status = "consumed",
+                         consumed_at = COALESCE(consumed_at, UTC_TIMESTAMP())
+                     WHERE order_id = ?
+                       AND status IN ("active", "released")'
+                );
+                $consume->execute([$orderId]);
+            }
+        }
+
+        if ($inventoryProblem !== null) {
+            /*
+             * Stripe has already settled the money, so financial truth must
+             * remain "paid". Do not invent inventory and do not fulfill the
+             * order. Put it into the existing problem queue for manual review
+             * or refund, and release anything that is still blocking stock.
+             */
+            $release = $db->prepare(
+                'UPDATE shop_inventory_reservations
+                 SET status = "released",
+                     released_at = COALESCE(released_at, UTC_TIMESTAMP())
+                 WHERE order_id = ?
+                   AND status = "active"'
+            );
+            $release->execute([$orderId]);
+
+            $update = $db->prepare(
+                'UPDATE shop_orders SET order_status = "problem", payment_status = "paid", subtotal_cents = ?, shipping_cents = ?, tax_cents = ?, discount_cents = ?, total_cents = ?, customer_email = ?, shipping_name = ?, shipping_phone = ?, shipping_address_json = ?, billing_address_json = ?, stripe_payment_intent_id = ?, stripe_customer_id = COALESCE(NULLIF(?, ""), stripe_customer_id), paid_at = COALESCE(paid_at, UTC_TIMESTAMP()), canceled_at = NULL WHERE id = ?'
+            );
+            $update->execute([
+                $amountSubtotal,
+                $shippingTotal,
+                $taxTotal,
+                $discountTotal,
+                $amountTotal,
+                $customerEmail !== '' ? $customerEmail : null,
+                $shippingName !== '' ? $shippingName : null,
+                $shippingPhone !== '' ? $shippingPhone : null,
+                shop_checkout_stripe_address($shippingAddress),
+                shop_checkout_stripe_address($billingAddress),
+                $paymentIntent !== '' ? $paymentIntent : null,
+                $customerId,
+                $orderId,
+            ]);
+
+            $db->commit();
+
+            error_log(
+                'Llama Scout Shop paid inventory conflict for order ' .
+                (string) $order['order_number'] . ': ' .
+                $inventoryProblem
+            );
+            return;
+        }
 
         $update = $db->prepare(
             'UPDATE shop_orders SET order_status = "paid", payment_status = "paid", subtotal_cents = ?, shipping_cents = ?, tax_cents = ?, discount_cents = ?, total_cents = ?, customer_email = ?, shipping_name = ?, shipping_phone = ?, shipping_address_json = ?, billing_address_json = ?, stripe_payment_intent_id = ?, stripe_customer_id = COALESCE(NULLIF(?, ""), stripe_customer_id), inventory_committed_at = COALESCE(inventory_committed_at, UTC_TIMESTAMP()), paid_at = COALESCE(paid_at, UTC_TIMESTAMP()), canceled_at = NULL WHERE id = ?'
@@ -615,7 +807,7 @@ function shop_checkout_mark_failed(PDO $db, int $orderId, string $status = 'fail
 {
     $db->beginTransaction();
     try {
-        $stmt = $db->prepare('UPDATE shop_orders SET payment_status = ?, order_status = CASE WHEN order_status = "paid" THEN order_status ELSE "problem" END WHERE id = ?');
+        $stmt = $db->prepare('UPDATE shop_orders SET payment_status = ?, order_status = CASE WHEN order_status = "paid" THEN order_status ELSE "problem" END WHERE id = ? AND payment_status <> "paid"');
         $stmt->execute([$status, $orderId]);
         $stmt = $db->prepare('UPDATE shop_inventory_reservations SET status = "released", released_at = COALESCE(released_at, UTC_TIMESTAMP()) WHERE order_id = ? AND status = "active"');
         $stmt->execute([$orderId]);
