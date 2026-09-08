@@ -45,15 +45,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['shop_admin_action'] ?? ''
             );
 
-            if ($action === 'order-status') {
-                admin_shop_save_order_status(
-                    $db,
-                    $actorUserId,
-                    $orderId,
-                    (string) ($_POST['order_status'] ?? '')
+        if ($action === 'order-status') {
+            $requestedOrderStatus = strtolower(
+                trim(
+                    (string) (
+                        $_POST['order_status']
+                        ?? ''
+                    )
+                )
+            );
+        
+            if ($requestedOrderStatus !== 'problem') {
+                throw new InvalidArgumentException(
+                    'Normal order status is controlled by Stripe and fulfillment. Only Problem may be set manually here.'
                 );
-
-                $notice = 'Order status updated.';
+            }
+        
+            admin_shop_save_order_status(
+                $db,
+                $actorUserId,
+                $orderId,
+                'problem'
+            );
+        
+            $notice = 'Order moved to Problem for manual review.';
             } elseif ($action === 'create-fulfillment') {
                 admin_safe_create_fulfillment(
                     $db,
@@ -411,26 +426,25 @@ require __DIR__ . '/_header.php';
     </select>
 </label>
 
-<label>
-    <span>Status</span>
-    <select name="status">
-        <?php foreach (
-            [
-                'pending',
-                'processing',
-                'submitted',
-                'shipped',
-                'delivered',
-                'problem',
-                'cancelled',
-            ] as $status
-        ): ?>
-            <option value="<?= moderation_e($status) ?>">
-                <?= moderation_e(ucfirst($status)) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</label>
+<input
+    type="hidden"
+    name="status"
+    value="pending"
+>
+
+<div class="admin-commerce-order-status-note">
+    <i
+        class="fa-solid fa-hourglass-start"
+        aria-hidden="true"
+    ></i>
+
+    <p>
+        New fulfillments always begin as
+        <strong>Pending</strong>.
+        Shipping and provider progress will update the
+        fulfillment after it is created.
+    </p>
+</div>
 
 <label>
     <span>Provider order ID</span>
@@ -845,40 +859,165 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 <aside class="admin-user-detail-side">
 
 <section class="admin-panel">
+
 <header class="admin-panel-header">
-    <div><p>Status</p><h2>Order State</h2></div>
+    <div>
+        <p>Status</p>
+        <h2>Order State</h2>
+    </div>
 </header>
 
-<div class="admin-commerce-order-status-note">
-    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+<div class="admin-user-action-box">
+
     <p>
-        Normal order status follows fulfillment automatically.
-        Use this control only for an exception such as cancellation,
-        refund, or a problem that needs manual intervention.
+        <strong>Current order status:</strong>
+        <span class="admin-status-pill">
+            <?= moderation_e(
+                ucwords(
+                    str_replace(
+                        '_',
+                        ' ',
+                        (string) $order['order_status']
+                    )
+                )
+            ) ?>
+        </span>
     </p>
+
+    <p>
+        Normal order status is controlled automatically by
+        Stripe and fulfillment activity. It should not be
+        manually changed to Paid, Processing, Submitted,
+        Shipped, Delivered, Cancelled, or Refunded.
+    </p>
+
 </div>
 
-<form class="admin-user-action-box" method="post">
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
-<input type="hidden" name="shop_admin_action" value="order-status">
 
-<label>
-    <span>Order status</span>
-    <select name="order_status">
-        <?php foreach (
-            ['pending','paid','processing','submitted','shipped','delivered','cancelled','refunded','problem']
-            as $status
-        ): ?>
-            <option value="<?= moderation_e($status) ?>" <?= $order['order_status'] === $status ? 'selected' : '' ?>>
-                <?= moderation_e(ucfirst($status)) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</label>
+<?php if (
+    (string) $order['payment_status'] === 'paid'
+): ?>
 
-<button class="admin-button" type="submit">Save order status</button>
+<div class="admin-user-action-box">
+
+    <strong>Customer payment</strong>
+
+    <p>
+        This customer has paid for the order.
+        Use the refund workflow if money must be returned.
+    </p>
+
+    <div class="admin-user-form-actions">
+
+        <a
+            class="admin-button"
+            href="/refund-order.php?id=<?= (int) $orderId ?>"
+        >
+            <i
+                class="fa-solid fa-money-bill-transfer"
+                aria-hidden="true"
+            ></i>
+            Refund customer
+        </a>
+
+        <a
+            class="admin-button"
+            href="/return-order.php?id=<?= (int) $orderId ?>"
+        >
+            <i
+                class="fa-solid fa-rotate-left"
+                aria-hidden="true"
+            ></i>
+            Receive return
+        </a>
+
+    </div>
+
+</div>
+
+<?php elseif (
+    (string) $order['payment_status'] === 'refunded'
+): ?>
+
+<div class="admin-user-action-box">
+
+    <strong>Refund complete</strong>
+
+    <p>
+        Stripe has refunded this customer.
+        The order state is financially final.
+    </p>
+
+</div>
+
+<?php endif; ?>
+
+
+<?php if (
+    !in_array(
+        (string) $order['order_status'],
+        [
+            'refunded',
+            'cancelled',
+            'canceled',
+        ],
+        true
+    )
+): ?>
+
+<form
+    class="admin-user-action-box"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(
+        moderation_csrf_token()
+    ) ?>"
+>
+
+<input
+    type="hidden"
+    name="order_id"
+    value="<?= (int) $orderId ?>"
+>
+
+<input
+    type="hidden"
+    name="shop_admin_action"
+    value="order-status"
+>
+
+<input
+    type="hidden"
+    name="order_status"
+    value="problem"
+>
+
+<strong>Manual exception</strong>
+
+<p>
+    Use Problem only when this order needs manual review
+    and normal fulfillment should stop.
+</p>
+
+<button
+    class="admin-button"
+    type="submit"
+>
+    <i
+        class="fa-solid fa-triangle-exclamation"
+        aria-hidden="true"
+    ></i>
+    Move order to Problem
+</button>
+
 </form>
+
+<?php endif; ?>
+
 </section>
 
 
