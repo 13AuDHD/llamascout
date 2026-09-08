@@ -51,6 +51,28 @@ function llama_promotion_email_escape(string $value): string
 }
 
 
+function llama_promotion_campaign_utc_timestamp(
+    ?string $value
+): ?int {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )->getTimestamp();
+    } catch (Throwable) {
+        return null;
+    }
+}
+
+
 function llama_promotion_email_html(
     string $name,
     string $body,
@@ -250,7 +272,7 @@ function llama_promotion_record_delivery(
             sent_at = VALUES(sent_at),
             failed_at = VALUES(failed_at),
             failure_message = VALUES(failure_message),
-            updated_at = CURRENT_TIMESTAMP'
+            updated_at = UTC_TIMESTAMP()'
     );
 
     $stmt->execute([
@@ -537,26 +559,40 @@ function llama_promotion_finish_delivery_if_complete(
    so a member page load is not turned into a large mail job.
    ========================================================= */
 
+function llama_promotion_email_maintenance_storage_available(
+    PDO $db
+): bool {
+    $stmt = $db->prepare(
+        'SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'app_maintenance',
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+
 function llama_promotion_email_maintenance_is_due(
     PDO $db,
     int $intervalSeconds = 60
 ): bool {
     $intervalSeconds = max(30, $intervalSeconds);
 
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS app_maintenance
-         (
-            maintenance_key VARCHAR(100) NOT NULL,
-            last_run_at DATETIME NULL,
-            updated_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (maintenance_key)
-         )
-         ENGINE=InnoDB
-         DEFAULT CHARSET=utf8mb4
-         COLLATE=utf8mb4_unicode_ci'
-    );
+    if (
+        !llama_promotion_email_maintenance_storage_available(
+            $db
+        )
+    ) {
+        throw new RuntimeException(
+            'Promotion email maintenance storage is not initialized. Missing table: app_maintenance'
+        );
+    }
 
     $stmt = $db->prepare(
         'SELECT last_run_at
@@ -572,9 +608,12 @@ function llama_promotion_email_maintenance_is_due(
         return true;
     }
 
-    $timestamp = strtotime((string) $lastRun);
+    $timestamp =
+        llama_promotion_campaign_utc_timestamp(
+            (string) $lastRun
+        );
 
-    if ($timestamp === false) {
+    if ($timestamp === null) {
         return true;
     }
 
@@ -653,11 +692,19 @@ function llama_run_promotion_email_maintenance(
                 continue;
             }
 
+            $emailSendAt =
+                llama_promotion_campaign_utc_timestamp(
+                    (string) (
+                        $promotion['email_send_at']
+                        ?? ''
+                    )
+                );
+
             if (
                 !empty($promotion['email_enabled'])
-                && !empty($promotion['email_send_at'])
+                && $emailSendAt !== null
                 && empty($promotion['email_sent_at'])
-                && strtotime((string) $promotion['email_send_at']) <= time()
+                && $emailSendAt <= time()
             ) {
                 $stats = llama_promotion_send_batch(
                     $db,
@@ -678,11 +725,19 @@ function llama_run_promotion_email_maintenance(
                 $summary['failed'] += (int) $stats['failed'];
             }
 
+            $reminderSendAt =
+                llama_promotion_campaign_utc_timestamp(
+                    (string) (
+                        $promotion['reminder_send_at']
+                        ?? ''
+                    )
+                );
+
             if (
                 !empty($promotion['reminder_enabled'])
-                && !empty($promotion['reminder_send_at'])
+                && $reminderSendAt !== null
                 && empty($promotion['reminder_sent_at'])
-                && strtotime((string) $promotion['reminder_send_at']) <= time()
+                && $reminderSendAt <= time()
             ) {
                 $stats = llama_promotion_send_batch(
                     $db,

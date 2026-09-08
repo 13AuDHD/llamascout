@@ -79,5 +79,14 @@ function db(): PDO
         "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
     );
 
+    /*
+     * Database timestamps are stored and compared in UTC.
+     * Keep only this PDO connection session in UTC without changing
+     * PHP's timezone or the database server's global timezone.
+     */
+    $pdo->exec(
+        "SET time_zone = '+00:00'"
+    );
+
     return $pdo;
 }

@@ -93,7 +93,7 @@ function shop_order_record_notification(
                 ELSE NULL
             END,
             failure_message = VALUES(failure_message),
-            updated_at = CURRENT_TIMESTAMP'
+            updated_at = UTC_TIMESTAMP()'
     );
 
     $stmt->execute([

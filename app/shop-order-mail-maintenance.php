@@ -29,6 +29,28 @@ function shop_notification_row(
 }
 
 
+function shop_notification_utc_timestamp(
+    ?string $value
+): ?int {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )->getTimestamp();
+    } catch (Throwable) {
+        return null;
+    }
+}
+
+
 function shop_notification_can_attempt(
     PDO $db,
     int $orderId,
@@ -70,9 +92,11 @@ function shop_notification_can_attempt(
     }
 
     $failedTimestamp =
-        strtotime($failedAt);
+        shop_notification_utc_timestamp(
+            $failedAt
+        );
 
-    if ($failedTimestamp === false) {
+    if ($failedTimestamp === null) {
         return true;
     }
 
@@ -697,6 +721,25 @@ HTML;
 }
 
 
+function shop_notification_maintenance_storage_available(
+    PDO $db
+): bool {
+    $stmt = $db->prepare(
+        'SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'app_maintenance',
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+
 function shop_notification_maintenance_is_due(
     PDO $db,
     int $intervalSeconds = 300
@@ -704,20 +747,15 @@ function shop_notification_maintenance_is_due(
     $intervalSeconds =
         max(60, $intervalSeconds);
 
-    $db->exec(
-        'CREATE TABLE IF NOT EXISTS app_maintenance
-         (
-            maintenance_key VARCHAR(100) NOT NULL,
-            last_run_at DATETIME NULL,
-            updated_at DATETIME NOT NULL
-                DEFAULT CURRENT_TIMESTAMP
-                ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (maintenance_key)
-         )
-         ENGINE=InnoDB
-         DEFAULT CHARSET=utf8mb4
-         COLLATE=utf8mb4_unicode_ci'
-    );
+    if (
+        !shop_notification_maintenance_storage_available(
+            $db
+        )
+    ) {
+        throw new RuntimeException(
+            'Shop notification maintenance storage is not initialized. Missing table: app_maintenance'
+        );
+    }
 
     $stmt = $db->prepare(
         'SELECT last_run_at
@@ -737,10 +775,12 @@ function shop_notification_maintenance_is_due(
     }
 
     $timestamp =
-        strtotime((string) $lastRun);
+        shop_notification_utc_timestamp(
+            (string) $lastRun
+        );
 
     return
-        $timestamp === false
+        $timestamp === null
         || (time() - $timestamp)
             >= $intervalSeconds;
 }
