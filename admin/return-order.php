@@ -34,6 +34,29 @@ if (!$order) {
 $items = admin_shop_order_items($db, $orderId);
 $returns = shop_returns_for_order($db, $orderId);
 
+$shippingBoundaryStmt = $db->prepare(
+    'SELECT
+        COUNT(*)
+     FROM shop_order_fulfillments
+     WHERE order_id = ?
+       AND (
+            shipped_at IS NOT NULL
+            OR delivered_at IS NOT NULL
+            OR LOWER(COALESCE(status, "")) IN (
+                "shipped",
+                "delivered",
+                "fulfilled"
+            )
+       )'
+);
+
+$shippingBoundaryStmt->execute([
+    $orderId,
+]);
+
+$hasCrossedShippingBoundary =
+    (int) $shippingBoundaryStmt->fetchColumn() > 0;
+
 $notice = '';
 $error = '';
 
@@ -47,6 +70,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Your session token expired. Reload and try again.';
     } else {
         try {
+            /*
+             * A physical return can exist only after merchandise has
+             * actually crossed the shipping boundary.
+             *
+             * Pre-shipment cancellations belong in the cancellation /
+             * refund workflow and must not create a fake return record or
+             * increase inventory that was never physically sent out.
+             */
+            if (!$hasCrossedShippingBoundary) {
+                throw new InvalidArgumentException(
+                    'This order has not shipped yet, so there is no physical merchandise return to receive. Cancel or refund the unshipped order instead.'
+                );
+            }
+
             $quantities = [];
 
             foreach (
@@ -144,6 +181,39 @@ require __DIR__ . '/_header.php';
     </div>
 </header>
 
+<?php if (!$hasCrossedShippingBoundary): ?>
+
+<div class="admin-empty-state">
+    <i
+        class="fa-solid fa-box"
+        aria-hidden="true"
+    ></i>
+
+    <h3>Nothing has shipped yet</h3>
+
+    <p>
+        This order has not crossed the shipping boundary, so there is
+        no physical merchandise return to receive.
+    </p>
+
+    <p>
+        If the order needs to be stopped before shipment, use the
+        cancellation or refund workflow instead. Inventory must not be
+        increased through a return when merchandise was never sent out.
+    </p>
+
+    <p>
+        <a
+            class="admin-button"
+            href="/order.php?id=<?= (int) $orderId ?>"
+        >
+            Back to order
+        </a>
+    </p>
+</div>
+
+<?php else: ?>
+
 <div class="admin-user-action-box">
     <p>
         Record only merchandise that has physically returned to
@@ -179,14 +249,14 @@ $returnable = max(0, $ordered - $alreadyReturned);
     <strong>
         <?= moderation_e((string) $item['product_name']) ?>
         <?php if (!empty($item['variant_name'])): ?>
-            Â· <?= moderation_e((string) $item['variant_name']) ?>
+            &middot; <?= moderation_e((string) $item['variant_name']) ?>
         <?php endif; ?>
     </strong>
 
     <span>
         Ordered <?= number_format($ordered) ?>
-        Â· Already returned <?= number_format($alreadyReturned) ?>
-        Â· Remaining <?= number_format($returnable) ?>
+        &middot; Already returned <?= number_format($alreadyReturned) ?>
+        &middot; Remaining <?= number_format($returnable) ?>
     </span>
 
     <label>
@@ -232,6 +302,8 @@ $returnable = max(0, $ordered - $alreadyReturned);
 </div>
 
 </form>
+
+<?php endif; ?>
 
 </section>
 
