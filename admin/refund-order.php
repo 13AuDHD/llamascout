@@ -130,7 +130,10 @@ $adminActiveNav = 'orders';
 $adminPageActions =
     '<a class="admin-button" href="/order.php?id='
     . (int) $orderId
-    . '">Back to order</a>';
+    . '">Back to order</a>'
+    . '<a class="admin-button" href="/return-order.php?id='
+    . (int) $orderId
+    . '">Receive return</a>';
 
 require __DIR__ . '/_header.php';
 ?>
@@ -291,8 +294,17 @@ require __DIR__ . '/_header.php';
         <?= moderation_e($refundBlocker) ?>
     </p>
     <p>
-        Return to the order, cancel or resolve its fulfillment,
-        then come back here to issue the refund.
+        If the merchandise has already shipped or was delivered,
+        record it as physically returned before issuing the refund.
+        If it has not shipped, cancel or resolve fulfillment first.
+    </p>
+    <p>
+        <a
+            class="admin-button"
+            href="/return-order.php?id=<?= (int) $orderId ?>"
+        >
+            Receive returned merchandise
+        </a>
     </p>
 </div>
 
