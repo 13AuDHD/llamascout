@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
-require_once dirname(__DIR__) . '/app/shop-refunds.php';
+require_once dirname(__DIR__) . '/app/shop-return-refunds.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -38,7 +38,7 @@ $refund = shop_refund_for_order(
     $db,
     $orderId
 );
-$refundBlocker = shop_refund_fulfillment_blocker(
+$refundBlocker = shop_return_aware_refund_blocker(
     $db,
     $orderId
 );
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
 
-            $result = shop_issue_full_refund(
+            $result = shop_issue_return_aware_full_refund(
                 $db,
                 $orderId,
                 (int) ($adminUser['id'] ?? 0),
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $orderId
             );
 
-            $refundBlocker = shop_refund_fulfillment_blocker(
+            $refundBlocker = shop_return_aware_refund_blocker(
                 $db,
                 $orderId
             );
