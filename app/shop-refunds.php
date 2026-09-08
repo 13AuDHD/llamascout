@@ -20,6 +20,20 @@ function shop_refund_table_exists(PDO $db): bool
 }
 
 
+function shop_refund_restock_table_exists(PDO $db): bool
+{
+    $stmt = $db->query(
+        "SELECT COUNT(*)
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = 'shop_inventory_restocks'"
+    );
+
+    return $stmt
+        && (int) $stmt->fetchColumn() > 0;
+}
+
+
 function shop_refund_for_order(
     PDO $db,
     int $orderId
@@ -123,10 +137,240 @@ function shop_refund_fulfillment_blocker(
 }
 
 
+function shop_refund_item_tracks_inventory(array $item): bool
+{
+    $snapshot = [];
+
+    if (!empty($item['variant_snapshot_json'])) {
+        $decoded = json_decode(
+            (string) $item['variant_snapshot_json'],
+            true
+        );
+
+        if (is_array($decoded)) {
+            $snapshot = $decoded;
+        }
+    }
+
+    $availability = strtolower(
+        trim((string) ($snapshot['availability'] ?? ''))
+    );
+
+    $trackInventory =
+        (int) ($snapshot['track_inventory'] ?? 0);
+
+    $allowBackorder =
+        (int) ($snapshot['allow_backorder'] ?? 0);
+
+    return
+        (int) ($item['variant_id'] ?? 0) > 0
+        && $availability !== 'preorder'
+        && $trackInventory === 1
+        && $allowBackorder !== 1;
+}
+
+
+function shop_refund_restore_inventory(
+    PDO $db,
+    int $orderId,
+    string $stripeRefundId
+): int {
+    if ($orderId < 1) {
+        throw new InvalidArgumentException(
+            'A valid Shop order is required.'
+        );
+    }
+
+    $stripeRefundId = trim($stripeRefundId);
+
+    if ($stripeRefundId === '') {
+        throw new InvalidArgumentException(
+            'A Stripe refund ID is required to restore inventory.'
+        );
+    }
+
+    if (!shop_refund_restock_table_exists($db)) {
+        throw new RuntimeException(
+            'Shop inventory restock database migration is missing.'
+        );
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $orderStmt = $db->prepare(
+            'SELECT
+                id,
+                payment_status,
+                order_status,
+                inventory_committed_at
+             FROM shop_orders
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $orderStmt->execute([$orderId]);
+
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            throw new RuntimeException(
+                'Shop order not found while restoring inventory.'
+            );
+        }
+
+        /*
+         * No inventory was deducted from a checkout that never reached
+         * inventory_committed_at. Pending checkout cancellation therefore
+         * releases reservations only and must not increase on-hand stock.
+         */
+        if (empty($order['inventory_committed_at'])) {
+            $db->commit();
+            return 0;
+        }
+
+        $itemStmt = $db->prepare(
+            'SELECT
+                id,
+                variant_id,
+                quantity,
+                variant_snapshot_json
+             FROM shop_order_items
+             WHERE order_id = ?
+             ORDER BY id ASC
+             FOR UPDATE'
+        );
+        $itemStmt->execute([$orderId]);
+
+        $items =
+            $itemStmt->fetchAll(PDO::FETCH_ASSOC)
+            ?: [];
+
+        $restockedTotal = 0;
+
+        $alreadyStmt = $db->prepare(
+            'SELECT COALESCE(SUM(quantity), 0)
+             FROM shop_inventory_restocks
+             WHERE order_item_id = ?'
+        );
+
+        $variantLock = $db->prepare(
+            'SELECT inventory_quantity
+             FROM shop_product_variants
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $insertRestock = $db->prepare(
+            'INSERT INTO shop_inventory_restocks (
+                order_id,
+                order_item_id,
+                variant_id,
+                quantity,
+                source_type,
+                source_id,
+                created_at
+             ) VALUES (?, ?, ?, ?, "refund", ?, UTC_TIMESTAMP())'
+        );
+
+        $increaseInventory = $db->prepare(
+            'UPDATE shop_product_variants
+             SET inventory_quantity = inventory_quantity + ?
+             WHERE id = ?'
+        );
+
+        foreach ($items as $item) {
+            if (!shop_refund_item_tracks_inventory($item)) {
+                continue;
+            }
+
+            $orderItemId =
+                (int) ($item['id'] ?? 0);
+
+            $variantId =
+                (int) ($item['variant_id'] ?? 0);
+
+            $orderedQuantity =
+                max(0, (int) ($item['quantity'] ?? 0));
+
+            if (
+                $orderItemId < 1
+                || $variantId < 1
+                || $orderedQuantity < 1
+            ) {
+                continue;
+            }
+
+            /*
+             * Sum every previous restock for this order item, regardless
+             * of source. This makes the upper bound the immutable ordered
+             * quantity, so later support for partial returns cannot ever
+             * over-restock the item.
+             */
+            $alreadyStmt->execute([$orderItemId]);
+
+            $alreadyRestocked =
+                max(0, (int) $alreadyStmt->fetchColumn());
+
+            $remaining =
+                max(
+                    0,
+                    $orderedQuantity - $alreadyRestocked
+                );
+
+            if ($remaining < 1) {
+                continue;
+            }
+
+            $variantLock->execute([$variantId]);
+
+            if ($variantLock->fetchColumn() === false) {
+                throw new RuntimeException(
+                    'A refunded Shop item references an inventory variant that no longer exists.'
+                );
+            }
+
+            $insertRestock->execute([
+                $orderId,
+                $orderItemId,
+                $variantId,
+                $remaining,
+                $stripeRefundId,
+            ]);
+
+            $increaseInventory->execute([
+                $remaining,
+                $variantId,
+            ]);
+
+            if ($increaseInventory->rowCount() !== 1) {
+                throw new RuntimeException(
+                    'Refund inventory could not be restored safely.'
+                );
+            }
+
+            $restockedTotal += $remaining;
+        }
+
+        $db->commit();
+
+        return $restockedTotal;
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+}
+
+
 function shop_refund_apply_order_status(
     PDO $db,
     int $orderId,
-    string $refundStatus
+    string $refundStatus,
+    ?string $stripeRefundId = null
 ): void {
     $refundStatus = shop_refund_normalize_status(
         $refundStatus
@@ -135,6 +379,27 @@ function shop_refund_apply_order_status(
     if ($refundStatus !== 'succeeded') {
         return;
     }
+
+    $stripeRefundId =
+        trim((string) $stripeRefundId);
+
+    if ($stripeRefundId === '') {
+        throw new RuntimeException(
+            'A successful Shop refund is missing its Stripe refund ID.'
+        );
+    }
+
+    /*
+     * Restore committed inventory before marking the order refunded.
+     * Both operations are independently retry-safe: the restock helper
+     * caps each order item at its original ordered quantity, and the
+     * order status update is idempotent.
+     */
+    shop_refund_restore_inventory(
+        $db,
+        $orderId,
+        $stripeRefundId
+    );
 
     $stmt = $db->prepare(
         'UPDATE shop_orders
@@ -183,6 +448,12 @@ function shop_issue_full_refund(
     if (!shop_refund_table_exists($db)) {
         throw new RuntimeException(
             'Shop refund database migration is missing.'
+        );
+    }
+
+    if (!shop_refund_restock_table_exists($db)) {
+        throw new RuntimeException(
+            'Shop inventory restock database migration is missing.'
         );
     }
 
@@ -372,7 +643,8 @@ function shop_issue_full_refund(
     shop_refund_apply_order_status(
         $db,
         $orderId,
-        $refundStatus
+        $refundStatus,
+        $refundId
     );
 
     if (function_exists('admin_users_audit')) {
@@ -418,6 +690,12 @@ function shop_sync_refund_from_stripe(
     if (!shop_refund_table_exists($db)) {
         throw new RuntimeException(
             'Shop refund database migration is missing.'
+        );
+    }
+
+    if (!shop_refund_restock_table_exists($db)) {
+        throw new RuntimeException(
+            'Shop inventory restock database migration is missing.'
         );
     }
 
@@ -478,7 +756,8 @@ function shop_sync_refund_from_stripe(
     shop_refund_apply_order_status(
         $db,
         $orderId,
-        $status
+        $status,
+        $refundId
     );
 
     return true;
