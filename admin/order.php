@@ -416,18 +416,44 @@ require __DIR__ . '/_header.php';
         <?= moderation_e((string) $item['variant_name']) ?>
     </span>
 
-    <small>
-        <?= moderation_e((string) $item['sku']) ?>
-        | Qty <?= (int) $item['quantity'] ?>
-        | <?= moderation_e(
-            admin_shop_fulfillment_provider_label(
-                (int) ($item['requires_shipping'] ?? 0) === 1
-                    && trim((string) ($item['fulfillment_provider'] ?? '')) === ''
-                        ? 'llama_scout'
-                        : (string) ($item['fulfillment_provider'] ?? '')
-            )
-        ) ?>
-    </small>
+<?php
+$itemId = (int) (
+    $item['id']
+    ?? 0
+);
+
+$itemReturn =
+    $returnSummary[$itemId]
+    ?? [
+        'ordered' =>
+            (int) ($item['quantity'] ?? 0),
+        'returned' =>
+            0,
+    ];
+?>
+
+<small>
+    <?= moderation_e((string) $item['sku']) ?>
+    | Qty <?= (int) $item['quantity'] ?>
+
+    <?php if (
+        (int) $itemReturn['returned'] > 0
+    ): ?>
+        | Returned
+        <?= (int) $itemReturn['returned'] ?>
+        of
+        <?= (int) $itemReturn['ordered'] ?>
+    <?php endif; ?>
+
+    | <?= moderation_e(
+        admin_shop_fulfillment_provider_label(
+            (int) ($item['requires_shipping'] ?? 0) === 1
+                && trim((string) ($item['fulfillment_provider'] ?? '')) === ''
+                    ? 'llama_scout'
+                    : (string) ($item['fulfillment_provider'] ?? '')
+        )
+    ) ?>
+</small>
 </div>
 
 <strong>
@@ -446,6 +472,110 @@ require __DIR__ . '/_header.php';
 </div>
 
 </section>
+
+
+    <?php if ($hasReturns): ?>
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Returns</p>
+        <h2>Return Status</h2>
+    </div>
+
+    <span>
+        <?= (int) $totalReturnedQuantity ?>
+        of
+        <?= (int) $totalOrderedQuantity ?>
+        returned
+    </span>
+</header>
+
+<div class="admin-user-action-box">
+
+<?php if ($fullOrderReturned): ?>
+
+    <strong>
+        Full order received back
+    </strong>
+
+    <p>
+        All
+        <?= (int) $totalOrderedQuantity ?>
+        item<?= $totalOrderedQuantity === 1 ? '' : 's' ?>
+        from this order have been physically received.
+        The full refund workflow may now proceed.
+    </p>
+
+    <?php if (
+        (string) $order['payment_status']
+        === 'paid'
+    ): ?>
+
+    <div class="admin-user-form-actions">
+
+        <a
+            class="admin-button"
+            href="/refund-order.php?id=<?= (int) $orderId ?>"
+        >
+            <i
+                class="fa-solid fa-money-bill-transfer"
+                aria-hidden="true"
+            ></i>
+            Refund customer
+        </a>
+
+    </div>
+
+    <?php endif; ?>
+
+<?php else: ?>
+
+    <strong>
+        Partial return received
+    </strong>
+
+    <p>
+        <?= (int) $totalReturnedQuantity ?>
+        of
+        <?= (int) $totalOrderedQuantity ?>
+        ordered items have been physically received.
+
+        The current refund system supports full-order refunds,
+        so the remaining merchandise must be received before
+        the full refund can proceed.
+    </p>
+
+    <?php if (
+        (string) $order['payment_status']
+        === 'paid'
+    ): ?>
+
+    <div class="admin-user-form-actions">
+
+        <a
+            class="admin-button"
+            href="/return-order.php?id=<?= (int) $orderId ?>"
+        >
+            <i
+                class="fa-solid fa-rotate-left"
+                aria-hidden="true"
+            ></i>
+            Receive remaining return
+        </a>
+
+    </div>
+
+    <?php endif; ?>
+
+<?php endif; ?>
+
+</div>
+
+</section>
+
+<?php endif; ?>
 
 
 <section class="admin-panel">
