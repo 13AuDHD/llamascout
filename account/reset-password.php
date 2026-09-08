@@ -413,21 +413,25 @@ if (
 
 
             /*
-             * Existing login sessions are invalidated
-             * after a password change.
+             * Revoke every real persistent-login token.
+             *
+             * Llama Scout authentication uses user_remember_tokens.
+             * Deleting from the old "sessions" table did not revoke
+             * Remember Me cookies and could allow a stolen persistent
+             * login to survive a password change.
              */
 
-            $sessionStmt =
+            $rememberStmt =
                 $db->prepare(
                     '
-                    DELETE FROM sessions
+                    DELETE FROM user_remember_tokens
 
                     WHERE user_id = ?
                     '
                 );
 
 
-            $sessionStmt->execute([
+            $rememberStmt->execute([
                 $lockedReset[
                     'user_id'
                 ]
@@ -435,6 +439,14 @@ if (
 
 
             $db->commit();
+
+            /*
+             * If the person changing the password happens to have a
+             * Remember Me cookie in this browser, remove its client-side
+             * copy as well. Other browsers have already been invalidated
+             * server-side by deleting their token rows.
+             */
+            clear_remember_cookie();
 
             $success = true;
             $resetRecord = [];
