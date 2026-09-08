@@ -517,6 +517,169 @@ if (!$schemaWarnings || count($schemaWarnings) === 1 && !$hasRestocks) {
     }
 }
 
+
+/*
+ * 8. Return records must agree with immutable order quantities and
+ * the inventory-restock ledger.
+ */
+$returnsTableExists =
+    shop_integrity_table_exists($db, 'shop_returns');
+
+$returnItemsTableExists =
+    shop_integrity_table_exists($db, 'shop_return_items');
+
+if ($returnsTableExists && $returnItemsTableExists) {
+    $stmt = $db->query(
+        'SELECT
+            ri.order_id,
+            o.order_number,
+            ri.order_item_id,
+            oi.quantity AS ordered_quantity,
+            COALESCE(SUM(ri.quantity), 0) AS returned_quantity
+         FROM shop_return_items ri
+         INNER JOIN shop_returns r
+            ON r.id = ri.return_id
+         INNER JOIN shop_order_items oi
+            ON oi.id = ri.order_item_id
+         INNER JOIN shop_orders o
+            ON o.id = ri.order_id
+         WHERE r.status = "received"
+         GROUP BY
+            ri.order_id,
+            o.order_number,
+            ri.order_item_id,
+            oi.quantity
+         HAVING returned_quantity > ordered_quantity
+         ORDER BY ri.order_id DESC
+         LIMIT 500'
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        shop_integrity_issue(
+            $issues,
+            'critical',
+            'return_quantity_exceeds_order',
+            (int) $row['order_id'],
+            (string) $row['order_number'],
+            'Received return quantity exceeds the original ordered quantity.',
+            [
+                'order_item_id' =>
+                    (int) ($row['order_item_id'] ?? 0),
+                'ordered_quantity' =>
+                    (int) ($row['ordered_quantity'] ?? 0),
+                'returned_quantity' =>
+                    (int) ($row['returned_quantity'] ?? 0),
+            ]
+        );
+    }
+
+    $stmt = $db->query(
+        'SELECT
+            ri.order_id,
+            o.order_number,
+            ri.order_item_id,
+            ri.quantity,
+            ri.restocked_quantity
+         FROM shop_return_items ri
+         INNER JOIN shop_orders o
+            ON o.id = ri.order_id
+         WHERE ri.restocked_quantity > ri.quantity
+         ORDER BY ri.order_id DESC, ri.id DESC
+         LIMIT 500'
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        shop_integrity_issue(
+            $issues,
+            'critical',
+            'return_item_over_restocked',
+            (int) $row['order_id'],
+            (string) $row['order_number'],
+            'A return item says more inventory was restocked than was physically returned.',
+            [
+                'order_item_id' =>
+                    (int) ($row['order_item_id'] ?? 0),
+                'returned_quantity' =>
+                    (int) ($row['quantity'] ?? 0),
+                'restocked_quantity' =>
+                    (int) ($row['restocked_quantity'] ?? 0),
+            ]
+        );
+    }
+
+    if (
+        shop_integrity_table_exists(
+            $db,
+            'shop_inventory_restocks'
+        )
+    ) {
+        $stmt = $db->query(
+            'SELECT
+                ri.order_id,
+                o.order_number,
+                ri.order_item_id,
+                COALESCE(SUM(ri.restocked_quantity), 0)
+                    AS return_restocked_quantity,
+                COALESCE((
+                    SELECT SUM(sir.quantity)
+                    FROM shop_inventory_restocks sir
+                    WHERE sir.order_item_id = ri.order_item_id
+                      AND sir.source_type = "return"
+                ), 0) AS ledger_return_quantity
+             FROM shop_return_items ri
+             INNER JOIN shop_returns r
+                ON r.id = ri.return_id
+             INNER JOIN shop_orders o
+                ON o.id = ri.order_id
+             WHERE r.status = "received"
+             GROUP BY
+                ri.order_id,
+                o.order_number,
+                ri.order_item_id
+             HAVING
+                return_restocked_quantity
+                <> ledger_return_quantity
+             ORDER BY ri.order_id DESC
+             LIMIT 500'
+        );
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            shop_integrity_issue(
+                $issues,
+                'critical',
+                'return_restock_ledger_mismatch',
+                (int) $row['order_id'],
+                (string) $row['order_number'],
+                'Return records and the inventory-restock ledger disagree.',
+                [
+                    'order_item_id' =>
+                        (int) ($row['order_item_id'] ?? 0),
+                    'return_restocked_quantity' =>
+                        (int) (
+                            $row['return_restocked_quantity']
+                            ?? 0
+                        ),
+                    'ledger_return_quantity' =>
+                        (int) (
+                            $row['ledger_return_quantity']
+                            ?? 0
+                        ),
+                ]
+            );
+        }
+    }
+} elseif ($returnsTableExists xor $returnItemsTableExists) {
+    shop_integrity_issue(
+        $issues,
+        'critical',
+        'return_schema_incomplete',
+        0,
+        '',
+        'Return database migration is only partially installed.',
+        []
+    );
+}
+
 usort(
     $issues,
     static function (array $a, array $b): int {
