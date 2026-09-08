@@ -591,7 +591,7 @@ if (
 
                     SET
                         last_login_at =
-                            CURRENT_TIMESTAMP,
+                            UTC_TIMESTAMP(),
 
                         dormancy_notice_sent_at =
                             NULL
