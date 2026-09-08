@@ -129,8 +129,21 @@ function llama_error_maybe_cleanup(PDO $db): void
         $lastCleanup = $stmt->fetchColumn();
 
         if (is_string($lastCleanup) && $lastCleanup !== '') {
-            $lastTs = strtotime($lastCleanup . ' UTC');
-            if ($lastTs !== false && $lastTs >= time() - 86400) {
+            try {
+                $lastTs = (
+                    new DateTimeImmutable(
+                        $lastCleanup,
+                        new DateTimeZone('UTC')
+                    )
+                )->getTimestamp();
+            } catch (Throwable) {
+                $lastTs = null;
+            }
+
+            if (
+                $lastTs !== null
+                && $lastTs >= time() - 86400
+            ) {
                 return;
             }
         }

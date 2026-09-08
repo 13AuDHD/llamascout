@@ -6,6 +6,28 @@ require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/memberships.php';
 
 
+function llama_promotion_code_utc_timestamp(
+    ?string $value
+): ?int {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )->getTimestamp();
+    } catch (Throwable) {
+        return null;
+    }
+}
+
+
 function llama_promotion_code_should_be_active(array $row): bool
 {
     if (empty($row['is_enabled'])) {
@@ -13,11 +35,15 @@ function llama_promotion_code_should_be_active(array $row): bool
     }
 
     $now = time();
-    $start = strtotime((string) ($row['starts_at'] ?? '')) ?: 0;
-    $end = strtotime((string) ($row['ends_at'] ?? '')) ?: 0;
+    $start = llama_promotion_code_utc_timestamp(
+        (string) ($row['starts_at'] ?? '')
+    );
+    $end = llama_promotion_code_utc_timestamp(
+        (string) ($row['ends_at'] ?? '')
+    );
 
-    return $start > 0
-        && $end > 0
+    return $start !== null
+        && $end !== null
         && $now >= $start
         && $now < $end;
 }
@@ -142,10 +168,20 @@ function llama_create_membership_promotion_code(
         throw new InvalidArgumentException('Choose a valid membership plan.');
     }
 
+    $startsTimestamp =
+        llama_promotion_code_utc_timestamp(
+            $startsAt
+        );
+
+    $endsTimestamp =
+        llama_promotion_code_utc_timestamp(
+            $endsAt
+        );
+
     if (
-        strtotime($startsAt) === false
-        || strtotime($endsAt) === false
-        || strtotime($endsAt) <= strtotime($startsAt)
+        $startsTimestamp === null
+        || $endsTimestamp === null
+        || $endsTimestamp <= $startsTimestamp
     ) {
         throw new InvalidArgumentException('Promotion code dates are invalid.');
     }
@@ -226,8 +262,11 @@ function llama_create_membership_promotion_code(
         throw new RuntimeException('Stripe did not return a Coupon ID.');
     }
 
-    $shouldBeActive = time() >= strtotime($startsAt)
-        && time() < strtotime($endsAt);
+    $now = time();
+
+    $shouldBeActive =
+        $now >= $startsTimestamp
+        && $now < $endsTimestamp;
 
     $promotionData = [
         'promotion' => [
@@ -236,7 +275,7 @@ function llama_create_membership_promotion_code(
         ],
         'active' => $shouldBeActive,
         'code' => $code,
-        'expires_at' => strtotime($endsAt),
+        'expires_at' => $endsTimestamp,
         'metadata' => [
             'llama_internal_name' => $name,
             'llama_plan_scope' => $planScope,
@@ -316,9 +355,24 @@ function llama_set_membership_promotion_code_enabled(
         throw new InvalidArgumentException('Promotion code not found.');
     }
 
-    $desiredStripeActive = $enabled
-        && time() >= (strtotime((string) $row['starts_at']) ?: PHP_INT_MAX)
-        && time() < (strtotime((string) $row['ends_at']) ?: 0);
+    $startsTimestamp =
+        llama_promotion_code_utc_timestamp(
+            (string) ($row['starts_at'] ?? '')
+        );
+
+    $endsTimestamp =
+        llama_promotion_code_utc_timestamp(
+            (string) ($row['ends_at'] ?? '')
+        );
+
+    $now = time();
+
+    $desiredStripeActive =
+        $enabled
+        && $startsTimestamp !== null
+        && $endsTimestamp !== null
+        && $now >= $startsTimestamp
+        && $now < $endsTimestamp;
 
     $stripeId = trim((string) ($row['stripe_promotion_code_id'] ?? ''));
 

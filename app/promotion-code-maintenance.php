@@ -58,12 +58,20 @@ function llama_promotion_code_maintenance_is_due(
         return true;
     }
 
-    $timestamp =
-        strtotime((string) $lastRun);
+    try {
+        $timestamp =
+            (
+                new DateTimeImmutable(
+                    (string) $lastRun,
+                    new DateTimeZone('UTC')
+                )
+            )->getTimestamp();
+    } catch (Throwable) {
+        return true;
+    }
 
     return
-        $timestamp === false
-        || (time() - $timestamp)
+        (time() - $timestamp)
             >= $intervalSeconds;
 }
 
