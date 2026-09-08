@@ -194,7 +194,9 @@ function shop_send_fulfillment_status_email(
             o.order_number,
             o.user_id,
             o.customer_email,
-            o.shipping_name
+            o.shipping_name,
+            o.payment_status,
+            o.order_status
          FROM shop_order_fulfillments f
          INNER JOIN shop_orders o
             ON o.id = f.order_id
@@ -209,6 +211,50 @@ function shop_send_fulfillment_status_email(
     if (!$row) {
         return false;
     }
+
+    $paymentStatus = strtolower(
+    trim(
+        (string) (
+            $row['payment_status']
+            ?? ''
+        )
+    )
+);
+
+$orderStatus = strtolower(
+    trim(
+        (string) (
+            $row['order_status']
+            ?? ''
+        )
+    )
+);
+
+/*
+ * Shipping and delivery notices belong only to a valid,
+ * currently-paid fulfillment lifecycle.
+ *
+ * A stale provider event must not send "your order shipped"
+ * after the parent order has entered Problem or refund handling.
+ */
+if ($paymentStatus !== 'paid') {
+    return false;
+}
+
+if (
+    in_array(
+        $orderStatus,
+        [
+            'problem',
+            'cancelled',
+            'canceled',
+            'refunded',
+        ],
+        true
+    )
+) {
+    return false;
+}
 
     $status = strtolower(
         trim(
@@ -545,18 +591,34 @@ function shop_send_refund_confirmation(
         return false;
     }
 
-    if (
-        strtolower(
-            trim(
-                (string) (
-                    $order['payment_status']
-                    ?? ''
-                )
-            )
-        ) !== 'refunded'
-    ) {
-        return false;
-    }
+$paymentStatus = strtolower(
+    trim(
+        (string) (
+            $order['payment_status']
+            ?? ''
+        )
+    )
+);
+
+$orderStatus = strtolower(
+    trim(
+        (string) (
+            $order['order_status']
+            ?? ''
+        )
+    )
+);
+
+/*
+ * Refund confirmation is sent only after financial and
+ * order lifecycle state both agree that the refund finished.
+ */
+if (
+    $paymentStatus !== 'refunded'
+    || $orderStatus !== 'refunded'
+) {
+    return false;
+}
 
     $email = trim(
         (string) (
