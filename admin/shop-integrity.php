@@ -264,7 +264,64 @@ if (!$schemaWarnings || count($schemaWarnings) === 1 && !$hasRestocks) {
     }
 
     /*
-     * 5. Impossible payment/order state combinations. The database
+     * 5. A cancelled fulfillment must never have crossed the shipping
+     * boundary. Once shipped, merchandise must use return/refund.
+     */
+    $stmt = $db->query(
+        'SELECT
+            o.id,
+            o.order_number,
+            o.order_status,
+            o.payment_status,
+            f.id AS fulfillment_id,
+            f.status AS fulfillment_status,
+            f.fulfillment_provider,
+            f.provider_order_id,
+            f.shipped_at,
+            f.delivered_at
+         FROM shop_orders o
+         INNER JOIN shop_order_fulfillments f
+            ON f.order_id = o.id
+         WHERE LOWER(COALESCE(f.status, "")) IN (
+                "cancelled",
+                "canceled"
+           )
+           AND (
+                f.shipped_at IS NOT NULL
+                OR f.delivered_at IS NOT NULL
+           )
+         ORDER BY o.id DESC, f.id ASC
+         LIMIT 500'
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        shop_integrity_issue(
+            $issues,
+            'critical',
+            'shipped_fulfillment_marked_cancelled',
+            (int) $row['id'],
+            (string) $row['order_number'],
+            'A fulfillment is marked cancelled even though it has already crossed the shipping boundary.',
+            [
+                'fulfillment_id' =>
+                    (int) ($row['fulfillment_id'] ?? 0),
+                'fulfillment_status' =>
+                    (string) ($row['fulfillment_status'] ?? ''),
+                'provider' =>
+                    (string) ($row['fulfillment_provider'] ?? ''),
+                'provider_order_id' =>
+                    (string) ($row['provider_order_id'] ?? ''),
+                'shipped_at' =>
+                    (string) ($row['shipped_at'] ?? ''),
+                'delivered_at' =>
+                    (string) ($row['delivered_at'] ?? ''),
+            ]
+        );
+    }
+
+
+    /*
+     * 6. Impossible payment/order state combinations. The database
      * trigger blocks new contradictions, but this catches historical rows.
      */
     $stmt = $db->query(
