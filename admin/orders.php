@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
+require_once dirname(__DIR__) . '/app/shop-refunds.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -55,18 +56,24 @@ require __DIR__ . '/_header.php';
                 'paid',
                 'processing',
                 'submitted',
+                'partially_fulfilled',
+                'fulfilled',
                 'shipped',
                 'delivered',
                 'cancelled',
+                'canceled',
                 'refunded',
                 'problem',
+                'error',
             ] as $option
         ): ?>
             <option
                 value="<?= moderation_e($option) ?>"
                 <?= $status === $option ? 'selected' : '' ?>
             >
-                <?= moderation_e(ucfirst($option)) ?>
+                <?= moderation_e(
+                    ucwords(str_replace('_', ' ', $option))
+                ) ?>
             </option>
         <?php endforeach; ?>
     </select>
@@ -77,13 +84,23 @@ require __DIR__ . '/_header.php';
     <select name="payment">
         <option value="">All payments</option>
         <?php foreach (
-            ['pending','paid','failed','refunded'] as $option
+            [
+                'pending',
+                'paid',
+                'failed',
+                'canceled',
+                'cancelled',
+                'partially_refunded',
+                'refunded',
+            ] as $option
         ): ?>
             <option
                 value="<?= moderation_e($option) ?>"
                 <?= $payment === $option ? 'selected' : '' ?>
             >
-                <?= moderation_e(ucfirst($option)) ?>
+                <?= moderation_e(
+                    ucwords(str_replace('_', ' ', $option))
+                ) ?>
             </option>
         <?php endforeach; ?>
     </select>
@@ -140,6 +157,18 @@ require __DIR__ . '/_header.php';
 <tbody>
 
 <?php foreach ($orders as $order): ?>
+<?php
+$canReviewRefund =
+    (string) $order['payment_status'] === 'paid'
+    && !empty($order['stripe_payment_intent_id']);
+
+$refundBlocker = $canReviewRefund
+    ? shop_refund_fulfillment_blocker(
+        $db,
+        (int) $order['id']
+    )
+    : null;
+?>
 <tr>
     <td data-label="Order">
         <a
@@ -178,8 +207,12 @@ require __DIR__ . '/_header.php';
     <td data-label="Payment">
         <span class="admin-status-pill">
             <?= moderation_e(
-                ucfirst(
-                    (string) $order['payment_status']
+                ucwords(
+                    str_replace(
+                        '_',
+                        ' ',
+                        (string) $order['payment_status']
+                    )
                 )
             ) ?>
         </span>
@@ -188,8 +221,12 @@ require __DIR__ . '/_header.php';
     <td data-label="Status">
         <span class="admin-status-pill">
             <?= moderation_e(
-                ucfirst(
-                    (string) $order['order_status']
+                ucwords(
+                    str_replace(
+                        '_',
+                        ' ',
+                        (string) $order['order_status']
+                    )
                 )
             ) ?>
         </span>
@@ -198,10 +235,14 @@ require __DIR__ . '/_header.php';
     <td data-label="Fulfillment">
         <span class="admin-table-muted">
             <?= moderation_e(
-                ucfirst(
-                    (string) (
-                        $order['fulfillment_status']
-                        ?: 'Not started'
+                ucwords(
+                    str_replace(
+                        '_',
+                        ' ',
+                        (string) (
+                            $order['fulfillment_status']
+                            ?: 'Not started'
+                        )
                     )
                 )
             ) ?>
@@ -226,15 +267,15 @@ require __DIR__ . '/_header.php';
             Manage
         </a>
 
-        <?php if (
-            (string) $order['payment_status'] === 'paid'
-            && !empty($order['stripe_payment_intent_id'])
-        ): ?>
+        <?php if ($canReviewRefund): ?>
         <a
             class="admin-button"
             href="/refund-order.php?id=<?= (int) $order['id'] ?>"
+            <?php if ($refundBlocker !== null): ?>
+            title="<?= moderation_e($refundBlocker) ?>"
+            <?php endif; ?>
         >
-            Refund
+            <?= $refundBlocker === null ? 'Refund' : 'Review refund' ?>
         </a>
         <?php endif; ?>
     </td>

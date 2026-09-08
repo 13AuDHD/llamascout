@@ -38,6 +38,10 @@ $refund = shop_refund_for_order(
     $db,
     $orderId
 );
+$refundBlocker = shop_refund_fulfillment_blocker(
+    $db,
+    $orderId
+);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
@@ -49,6 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Your session token expired. Reload and try again.';
     } else {
         try {
+            if ($refundBlocker !== null) {
+                throw new InvalidArgumentException(
+                    $refundBlocker
+                );
+            }
+
             $result = shop_issue_full_refund(
                 $db,
                 $orderId,
@@ -74,6 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             $refund = shop_refund_for_order(
+                $db,
+                $orderId
+            );
+
+            $refundBlocker = shop_refund_fulfillment_blocker(
                 $db,
                 $orderId
             );
@@ -197,6 +212,7 @@ require __DIR__ . '/_header.php';
 
 <?php if (
     (string) $order['payment_status'] === 'paid'
+    && $refundBlocker === null
     && (
         !$refund
         || in_array(
@@ -257,6 +273,26 @@ require __DIR__ . '/_header.php';
         Issue full Stripe refund
     </button>
 </form>
+
+<?php elseif (
+    (string) $order['payment_status'] === 'paid'
+    && $refundBlocker !== null
+): ?>
+
+<div class="admin-empty-state">
+    <i
+        class="fa-solid fa-triangle-exclamation"
+        aria-hidden="true"
+    ></i>
+    <h3>Refund paused</h3>
+    <p>
+        <?= moderation_e($refundBlocker) ?>
+    </p>
+    <p>
+        Return to the order, cancel or resolve its fulfillment,
+        then come back here to issue the refund.
+    </p>
+</div>
 
 <?php elseif (
     (string) $order['payment_status'] === 'refunded'
