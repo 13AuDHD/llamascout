@@ -178,7 +178,7 @@ function valid_reset(
             WHERE pr.token_hash = ?
               AND pr.used_at IS NULL
               AND pr.expires_at >
-                  CURRENT_TIMESTAMP
+                  UTC_TIMESTAMP()
 
             LIMIT 1
             '
@@ -323,7 +323,7 @@ if (
                     WHERE token_hash = ?
                       AND used_at IS NULL
                       AND expires_at >
-                          CURRENT_TIMESTAMP
+                          UTC_TIMESTAMP()
 
                     LIMIT 1
 
@@ -397,7 +397,7 @@ if (
                     UPDATE password_resets
 
                     SET used_at =
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
 
                     WHERE user_id = ?
                       AND used_at IS NULL

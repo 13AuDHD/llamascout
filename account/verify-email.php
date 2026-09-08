@@ -54,7 +54,7 @@ if ($token !== '') {
                 WHERE token_hash = ?
                   AND used_at IS NULL
                   AND expires_at >
-                      CURRENT_TIMESTAMP
+                      UTC_TIMESTAMP()
 
                 LIMIT 1
 
@@ -97,7 +97,7 @@ if ($token !== '') {
 
                     SET
                         email_verified_at =
-                            CURRENT_TIMESTAMP,
+                            UTC_TIMESTAMP(),
 
                         status =
                             CASE
@@ -124,7 +124,7 @@ if ($token !== '') {
                     UPDATE email_verifications
 
                     SET used_at =
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
 
                     WHERE id = ?
                     '
@@ -142,7 +142,7 @@ if ($token !== '') {
                     UPDATE email_verifications
 
                     SET used_at =
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
 
                     WHERE user_id = ?
                       AND used_at IS NULL
@@ -162,15 +162,6 @@ if ($token !== '') {
 
             $success =
                 'Your email has been verified.';
-
-
-            /* =================================================
-               RETURN INVITED USER TO COMPLIMENTARY INVITATION
-
-               The registration flow stores the raw invitation
-               token only in this user's session. It is removed
-               here before redirecting so it does not linger.
-               ================================================= */
 
 
             $complimentaryInviteToken =
@@ -354,11 +345,6 @@ if ($token !== '') {
 }
 
 
-/* =========================================================
-   CURRENT STATE
-   ========================================================= */
-
-
 $user =
     current_user();
 
@@ -370,14 +356,6 @@ $alreadyVerified =
             'email_verified_at'
         ]
     );
-
-
-/* =========================================================
-   PENDING COMPLIMENTARY INVITATION
-
-   If the user lands back here after already being verified,
-   keep the invitation path available rather than losing it.
-   ========================================================= */
 
 
 $pendingInviteToken =

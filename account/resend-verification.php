@@ -34,7 +34,7 @@ $stmt =
         '
         UPDATE email_verifications
         SET used_at =
-            CURRENT_TIMESTAMP
+            UTC_TIMESTAMP()
         WHERE user_id = ?
           AND used_at IS NULL
         '
@@ -73,7 +73,7 @@ $stmt =
             ?,
             ?,
             DATE_ADD(
-                CURRENT_TIMESTAMP,
+                UTC_TIMESTAMP(),
                 INTERVAL 24 HOUR
             )
         )

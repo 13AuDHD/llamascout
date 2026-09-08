@@ -304,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         UPDATE password_resets
 
                         SET used_at =
-                            CURRENT_TIMESTAMP
+                            UTC_TIMESTAMP()
 
                         WHERE user_id = ?
                           AND used_at IS NULL
@@ -341,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ?,
                             ?,
                             DATE_ADD(
-                                CURRENT_TIMESTAMP,
+                                UTC_TIMESTAMP(),
                                 INTERVAL 60 MINUTE
                             )
                         )
