@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment-safe.php';
+require_once dirname(__DIR__) . '/app/shop-returns.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
 require_once dirname(__DIR__) . '/app/printful-orders.php';
 require_once dirname(__DIR__) . '/app/printful-sync.php';
@@ -202,6 +203,62 @@ $items = admin_shop_order_items(
     $db,
     $orderId
 );
+
+$returnSummary = [];
+$totalOrderedQuantity = 0;
+$totalReturnedQuantity = 0;
+
+foreach ($items as $item) {
+    $itemId = (int) (
+        $item['id']
+        ?? 0
+    );
+
+    $orderedQuantity = max(
+        0,
+        (int) (
+            $item['quantity']
+            ?? 0
+        )
+    );
+
+    $returnedQuantity =
+        $itemId > 0
+            ? shop_return_received_quantity(
+                $db,
+                $itemId
+            )
+            : 0;
+
+    $returnedQuantity = min(
+        $orderedQuantity,
+        max(
+            0,
+            $returnedQuantity
+        )
+    );
+
+    $returnSummary[$itemId] = [
+        'ordered' =>
+            $orderedQuantity,
+        'returned' =>
+            $returnedQuantity,
+    ];
+
+    $totalOrderedQuantity +=
+        $orderedQuantity;
+
+    $totalReturnedQuantity +=
+        $returnedQuantity;
+}
+
+$hasReturns =
+    $totalReturnedQuantity > 0;
+
+$fullOrderReturned =
+    $totalOrderedQuantity > 0
+    && $totalReturnedQuantity
+        >= $totalOrderedQuantity;
 
 $fulfillments = admin_shop_fulfillments(
     $db,
