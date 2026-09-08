@@ -207,6 +207,67 @@ $csrfToken =
 
 
 /* =========================================================
+   ATTEMPT LIMIT
+   ========================================================= */
+
+
+const LLAMA_MFA_CHALLENGE_MAX_FAILURES =
+    8;
+
+
+if (
+    !isset(
+        $_SESSION[
+            'mfa_challenge_failures'
+        ]
+    )
+) {
+
+    $_SESSION[
+        'mfa_challenge_failures'
+    ] =
+        0;
+}
+
+
+$mfaChallengeFailures =
+    max(
+        0,
+        (int) (
+            $_SESSION[
+                'mfa_challenge_failures'
+            ]
+            ?? 0
+        )
+    );
+
+
+if (
+    $mfaChallengeFailures
+    >=
+    LLAMA_MFA_CHALLENGE_MAX_FAILURES
+) {
+
+    llama_mfa_clear_session_state();
+
+    unset(
+        $_SESSION[
+            'mfa_challenge_csrf'
+        ],
+        $_SESSION[
+            'mfa_challenge_failures'
+        ]
+    );
+
+    header(
+        'Location: /login.php?mfa=retry'
+    );
+
+    exit;
+}
+
+
+/* =========================================================
    STATE
    ========================================================= */
 
@@ -360,7 +421,57 @@ if (
         }
 
 
+        if (!$success) {
+
+            $mfaChallengeFailures++;
+
+            $_SESSION[
+                'mfa_challenge_failures'
+            ] =
+                $mfaChallengeFailures;
+
+
+            if (
+                $mfaChallengeFailures
+                >=
+                LLAMA_MFA_CHALLENGE_MAX_FAILURES
+            ) {
+
+                llama_mfa_clear_session_state();
+
+                unset(
+                    $_SESSION[
+                        'mfa_challenge_csrf'
+                    ],
+                    $_SESSION[
+                        'mfa_challenge_failures'
+                    ]
+                );
+
+                session_regenerate_id(
+                    true
+                );
+
+                header(
+                    'Location: /login.php?mfa=retry'
+                );
+
+                exit;
+            }
+        }
+
+
         if ($success) {
+
+            unset(
+                $_SESSION[
+                    'mfa_challenge_failures'
+                ],
+                $_SESSION[
+                    'mfa_challenge_csrf'
+                ]
+            );
+
 
             session_regenerate_id(
                 true
@@ -452,6 +563,15 @@ $remainingRecoveryCodes =
     llama_mfa_recovery_code_count(
         $userId,
         $db
+    );
+
+
+$remainingAttempts =
+    max(
+        0,
+        LLAMA_MFA_CHALLENGE_MAX_FAILURES
+        -
+        $mfaChallengeFailures
     );
 
 
@@ -551,6 +671,14 @@ $remainingRecoveryCodes =
         <?= mfa_challenge_e(
             $error
         ) ?>
+
+        <br>
+
+        <small>
+          <?= (int) $remainingAttempts ?>
+          MFA attempt<?= $remainingAttempts === 1 ? '' : 's' ?>
+          remain before this sign-in must restart.
+        </small>
       </div>
 
     <?php endif; ?>
