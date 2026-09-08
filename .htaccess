@@ -1,9 +1,72 @@
+Options -Indexes
+
 RewriteEngine On
 
 # =========================================================
 # LLAMA SCOUT
 # ROOT .HTACCESS
 # =========================================================
+
+
+# ---------------------------------------------------------
+# BLOCK UNSAFE / UNUSED HTTP METHODS
+# ---------------------------------------------------------
+
+RewriteCond %{REQUEST_METHOD} ^(?:TRACE|TRACK)$ [NC]
+RewriteRule ^ - [R=405,L]
+
+
+# ---------------------------------------------------------
+# REJECT UNEXPECTED HOST HEADERS
+#
+# Prevents the HTTPS redirect and application from trusting
+# attacker-controlled Host values.
+# ---------------------------------------------------------
+
+RewriteCond %{HTTP_HOST} !^(?:www\.)?llamascout\.com(?::[0-9]+)?$ [NC]
+RewriteRule ^ - [R=400,L]
+
+
+# ---------------------------------------------------------
+# BLOCK INTERNAL APPLICATION / REPOSITORY PATHS
+#
+# These files may exist on the server for PHP includes,
+# deployments, or migrations, but must never be reachable
+# directly over HTTP.
+# ---------------------------------------------------------
+
+RewriteRule ^(?:app|sql|\.git|\.github)(?:/|$) - [F,L,NC]
+
+
+# ---------------------------------------------------------
+# BLOCK HIDDEN FILES
+#
+# Keep ACME / certificate validation under .well-known
+# available while denying other dotfiles and dot-directories.
+# ---------------------------------------------------------
+
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L,NC]
+
+
+# ---------------------------------------------------------
+# BLOCK SENSITIVE DEVELOPMENT / BACKUP FILES
+# ---------------------------------------------------------
+
+RewriteRule ^(?:README(?:\.md)?|CNAME|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml(?:\.dist)?|\.env(?:\..*)?)$ - [F,L,NC]
+
+RewriteRule \.(?:sql|sqlite|sqlite3|log|ini|conf|config|bak|backup|old|orig|save|swp|dist)$ - [F,L,NC]
+
+
+# ---------------------------------------------------------
+# UPLOAD EXECUTION BARRIER
+#
+# Uploaded photos are already rewritten to random .jpg files,
+# but this adds a web-server boundary so executable extensions
+# cannot run from /uploads even if an upload bug is introduced
+# later.
+# ---------------------------------------------------------
+
+RewriteRule ^uploads/.*\.(?:php[0-9]?|phtml|phar|cgi|pl|py|sh|shtml)$ - [F,L,NC]
 
 
 # ---------------------------------------------------------
@@ -14,6 +77,7 @@ ErrorDocument 400 /safety.php?reason=400
 ErrorDocument 401 /safety.php?reason=401
 ErrorDocument 403 /safety.php?reason=403
 ErrorDocument 404 /safety.php?reason=404
+ErrorDocument 405 /safety.php?reason=405
 ErrorDocument 410 /safety.php?reason=410
 ErrorDocument 429 /safety.php?reason=429
 ErrorDocument 500 /safety.php?reason=500
@@ -89,8 +153,17 @@ DirectoryIndex index.php index.html
     # Disable legacy Adobe cross-domain policy files.
     Header always set X-Permitted-Cross-Domain-Policies "none"
 
-    # HTTPS-only browser protection for the root site.
-    Header always set Strict-Transport-Security "max-age=31536000"
+    # Force HTTPS for this host and all Llama Scout subdomains after
+    # the browser has seen this header once.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Safe CSP directives that do not depend on eliminating the site's
+    # existing inline scripts/styles. A stricter script-src/style-src CSP
+    # can be added after the front end is nonce-ready.
+    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+
+    # Do not advertise PHP through the common response header.
+    Header always unset X-Powered-By
 
 
     # Dynamic application files should not be cached.
