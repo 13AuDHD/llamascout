@@ -54,18 +54,36 @@ function shop_fulfillment_route_paid_order(
             );
         }
 
-        if (
-            strtolower(
-                trim(
-                    (string) (
-                        $order['payment_status']
-                        ?? ''
-                    )
+        $paymentStatus = strtolower(
+            trim(
+                (string) (
+                    $order['payment_status']
+                    ?? ''
                 )
-            ) !== 'paid'
+            )
+        );
+
+        $orderStatus = strtolower(
+            trim(
+                (string) (
+                    $order['order_status']
+                    ?? ''
+                )
+            )
+        );
+
+        /*
+         * Payment truth and fulfillment eligibility are intentionally
+         * separate. A Stripe payment may have settled while the order
+         * itself is in "problem" because inventory could not be safely
+         * committed. Never create fulfillment work for that state.
+         */
+        if (
+            $paymentStatus !== 'paid'
+            || $orderStatus !== 'paid'
         ) {
             throw new RuntimeException(
-                'Fulfillment routing requires a paid Shop order.'
+                'Fulfillment routing requires a paid and fulfillable Shop order.'
             );
         }
 
