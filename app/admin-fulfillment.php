@@ -271,16 +271,19 @@ function admin_fulfillment_sync_order_status(
         );
     }
 
-    $current =
-        strtolower(
-            trim(
-                (string) (
-                    $order['order_status']
-                    ?? ''
-                )
+    $current = strtolower(
+        trim(
+            (string) (
+                $order['order_status']
+                ?? ''
             )
-        );
+        )
+    );
 
+    /*
+     * Financially terminal order states are not rewritten by
+     * fulfillment synchronization.
+     */
     if (
         in_array(
             $current,
@@ -295,16 +298,18 @@ function admin_fulfillment_sync_order_status(
         return $current;
     }
 
-    $payment =
-        strtolower(
-            trim(
-                (string) (
-                    $order['payment_status']
-                    ?? ''
-                )
+    $payment = strtolower(
+        trim(
+            (string) (
+                $order['payment_status']
+                ?? ''
             )
-        );
+        )
+    );
 
+    /*
+     * Fulfillment is not authoritative until payment is actually paid.
+     */
     if ($payment !== 'paid') {
         return $current;
     }
@@ -318,51 +323,33 @@ function admin_fulfillment_sync_order_status(
 
     $stmt->execute([$orderId]);
 
-    $statuses =
-        array_values(
-            array_filter(
-                array_map(
-                    static fn(mixed $value): string =>
-                        strtolower(
-                            trim(
-                                (string) $value
-                            )
-                        ),
-                    $stmt->fetchAll(
-                        PDO::FETCH_COLUMN
-                    ) ?: []
-                ),
-                static fn(string $value): bool =>
-                    $value !== ''
-            )
-        );
+    $statuses = array_values(
+        array_filter(
+            array_map(
+                static fn(mixed $value): string =>
+                    strtolower(
+                        trim(
+                            (string) $value
+                        )
+                    ),
+                $stmt->fetchAll(
+                    PDO::FETCH_COLUMN
+                ) ?: []
+            ),
+            static fn(string $value): bool =>
+                $value !== ''
+        )
+    );
 
+    /*
+     * No fulfillment yet.
+     */
     if (!$statuses) {
         $target = 'paid';
-    } elseif (
-        count(
-            array_filter(
-                $statuses,
-                static fn(string $status): bool =>
-                    $status === 'delivered'
-            )
-        ) === count($statuses)
-    ) {
-        $target = 'delivered';
-    } elseif (
-        count(
-            array_filter(
-                $statuses,
-                static fn(string $status): bool =>
-                    in_array(
-                        $status,
-                        ['shipped', 'delivered'],
-                        true
-                    )
-            )
-        ) === count($statuses)
-    ) {
-        $target = 'shipped';
+
+    /*
+     * Any fulfillment problem stops normal progression.
+     */
     } elseif (
         in_array(
             'problem',
@@ -371,34 +358,105 @@ function admin_fulfillment_sync_order_status(
         )
     ) {
         $target = 'problem';
+
+    /*
+     * A paid customer order whose entire physical fulfillment was
+     * cancelled is NOT financially cancelled.
+     *
+     * The customer still paid us, so the order must remain Problem
+     * until the Stripe refund workflow completes.
+     */
     } elseif (
         count(
             array_filter(
                 $statuses,
                 static fn(string $status): bool =>
-                    $status === 'cancelled'
+                    in_array(
+                        $status,
+                        [
+                            'cancelled',
+                            'canceled',
+                        ],
+                        true
+                    )
             )
         ) === count($statuses)
     ) {
-        $target = 'cancelled';
-    } elseif (
-        in_array(
-            'submitted',
-            $statuses,
-            true
-        )
-    ) {
-        $target = 'submitted';
-    } elseif (
-        in_array(
-            'processing',
-            $statuses,
-            true
-        )
-    ) {
-        $target = 'processing';
+        $target = 'problem';
+
+    /*
+     * Ignore cancelled fulfillment branches when determining whether
+     * the remaining physical merchandise has been delivered/shipped.
+     */
     } else {
-        $target = 'paid';
+        $activeStatuses = array_values(
+            array_filter(
+                $statuses,
+                static fn(string $status): bool =>
+                    !in_array(
+                        $status,
+                        [
+                            'cancelled',
+                            'canceled',
+                        ],
+                        true
+                    )
+            )
+        );
+
+        if (!$activeStatuses) {
+            $target = 'problem';
+
+        } elseif (
+            count(
+                array_filter(
+                    $activeStatuses,
+                    static fn(string $status): bool =>
+                        $status === 'delivered'
+                )
+            ) === count($activeStatuses)
+        ) {
+            $target = 'delivered';
+
+        } elseif (
+            count(
+                array_filter(
+                    $activeStatuses,
+                    static fn(string $status): bool =>
+                        in_array(
+                            $status,
+                            [
+                                'shipped',
+                                'delivered',
+                            ],
+                            true
+                        )
+                )
+            ) === count($activeStatuses)
+        ) {
+            $target = 'shipped';
+
+        } elseif (
+            in_array(
+                'submitted',
+                $activeStatuses,
+                true
+            )
+        ) {
+            $target = 'submitted';
+
+        } elseif (
+            in_array(
+                'processing',
+                $activeStatuses,
+                true
+            )
+        ) {
+            $target = 'processing';
+
+        } else {
+            $target = 'paid';
+        }
     }
 
     if ($target === $current) {
