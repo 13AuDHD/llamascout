@@ -22,6 +22,37 @@ function admin_safe_create_fulfillment(
         throw new InvalidArgumentException('Order not found.');
     }
 
+    $paymentStatus = strtolower(
+        trim((string) ($order['payment_status'] ?? ''))
+    );
+
+    $orderStatus = strtolower(
+        trim((string) ($order['order_status'] ?? ''))
+    );
+
+    if ($paymentStatus !== 'paid') {
+        throw new InvalidArgumentException(
+            'Fulfillment cannot be created until the customer payment is paid.'
+        );
+    }
+
+    if (
+        in_array(
+            $orderStatus,
+            [
+                'problem',
+                'cancelled',
+                'canceled',
+                'refunded',
+            ],
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Fulfillment cannot be created while this order is Problem, cancelled, or refunded.'
+        );
+    }
+
     $provider = admin_shop_normalize_provider(
         (string) ($data['fulfillment_provider'] ?? '')
     );
@@ -44,27 +75,25 @@ function admin_safe_create_fulfillment(
         ? 'provider'
         : 'manual';
 
-    $status = trim((string) ($data['status'] ?? 'pending'));
+    /*
+     * New fulfillments always begin Pending.
+     *
+     * Shipping, delivery, submission, cancellation, and problem states
+     * are lifecycle transitions on an existing fulfillment. Creating a
+     * fulfillment already marked shipped/delivered would manufacture
+     * history and bypass the normal validation path.
+     */
+    $requestedStatus = strtolower(
+        trim((string) ($data['status'] ?? 'pending'))
+    );
 
-    if (
-        !in_array(
-            $status,
-            [
-                'pending',
-                'processing',
-                'submitted',
-                'shipped',
-                'delivered',
-                'problem',
-                'cancelled',
-            ],
-            true
-        )
-    ) {
+    if ($requestedStatus !== 'pending') {
         throw new InvalidArgumentException(
-            'Invalid fulfillment status.'
+            'A new fulfillment must begin in Pending status.'
         );
     }
+
+    $status = 'pending';
 
     $trackingNumber = trim(
         (string) ($data['tracking_number'] ?? '')
@@ -92,6 +121,71 @@ function admin_safe_create_fulfillment(
     $db->beginTransaction();
 
     try {
+        /*
+         * Lock the parent order again inside the same transaction so
+         * payment/order truth cannot change between preflight and insert.
+         */
+        $orderLock = $db->prepare(
+            'SELECT
+                payment_status,
+                order_status
+             FROM shop_orders
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $orderLock->execute([$orderId]);
+
+        $lockedOrder = $orderLock->fetch(PDO::FETCH_ASSOC);
+
+        if (!$lockedOrder) {
+            throw new InvalidArgumentException(
+                'Order not found.'
+            );
+        }
+
+        $lockedPayment = strtolower(
+            trim(
+                (string) (
+                    $lockedOrder['payment_status']
+                    ?? ''
+                )
+            )
+        );
+
+        $lockedStatus = strtolower(
+            trim(
+                (string) (
+                    $lockedOrder['order_status']
+                    ?? ''
+                )
+            )
+        );
+
+        if ($lockedPayment !== 'paid') {
+            throw new InvalidArgumentException(
+                'Fulfillment cannot be created until the customer payment is paid.'
+            );
+        }
+
+        if (
+            in_array(
+                $lockedStatus,
+                [
+                    'problem',
+                    'cancelled',
+                    'canceled',
+                    'refunded',
+                ],
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Fulfillment cannot be created while this order is Problem, cancelled, or refunded.'
+            );
+        }
+
         $itemStmt = $db->prepare(
             'SELECT oi.*
              FROM shop_order_items oi
@@ -145,21 +239,9 @@ function admin_safe_create_fulfillment(
                 delivered_at
              ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?,
-                CASE
-                    WHEN ? IN ("submitted","processing","shipped","delivered")
-                        THEN UTC_TIMESTAMP()
-                    ELSE NULL
-                END,
-                CASE
-                    WHEN ? IN ("shipped","delivered")
-                        THEN UTC_TIMESTAMP()
-                    ELSE NULL
-                END,
-                CASE
-                    WHEN ? = "delivered"
-                        THEN UTC_TIMESTAMP()
-                    ELSE NULL
-                END
+                NULL,
+                NULL,
+                NULL
              )'
         );
 
@@ -172,9 +254,6 @@ function admin_safe_create_fulfillment(
             $trackingNumber !== '' ? $trackingNumber : null,
             $trackingCarrier !== '' ? $trackingCarrier : null,
             $trackingUrl !== '' ? $trackingUrl : null,
-            $status,
-            $status,
-            $status,
         ]);
 
         $fulfillmentId = (int) $db->lastInsertId();
@@ -213,6 +292,7 @@ function admin_safe_create_fulfillment(
                     'fulfillment_id' => $fulfillmentId,
                     'provider' => $provider,
                     'item_count' => count($eligibleItems),
+                    'initial_status' => 'pending',
                 ]
             );
         }
