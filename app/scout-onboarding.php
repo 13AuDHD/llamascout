@@ -140,8 +140,9 @@ function llama_scout_status_history_add(
             actor_user_id,
             actor_type,
             summary,
-            metadata_json
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            metadata_json,
+            occurred_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
     );
 
     $stmt->execute([
@@ -231,11 +232,16 @@ function llama_scout_invitation_expired(
         return false;
     }
 
-    $timestamp = strtotime($expires);
+    try {
+        $expiresAt = new DateTimeImmutable(
+            $expires,
+            new DateTimeZone('UTC')
+        );
+    } catch (Throwable) {
+        return false;
+    }
 
-    return
-        $timestamp !== false
-        && $timestamp < time();
+    return $expiresAt->getTimestamp() < time();
 }
 
 
@@ -508,11 +514,11 @@ function llama_scout_admin_invite(
                 'UPDATE scout_profiles
                  SET
                     status = "invited",
-                    invited_at = CURRENT_TIMESTAMP,
+                    invited_at = UTC_TIMESTAMP(),
                     invited_by = ?,
                     invitation_expires_at =
                         DATE_ADD(
-                            CURRENT_TIMESTAMP,
+                            UTC_TIMESTAMP(),
                             INTERVAL 30 DAY
                         ),
                     application_started_at = NULL,
@@ -527,7 +533,7 @@ function llama_scout_admin_invite(
                     removed_at = NULL,
                     removed_by = NULL,
                     removal_reason = NULL,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = UTC_TIMESTAMP()
                  WHERE id = ?
                    AND user_id = ?'
             );
@@ -551,10 +557,10 @@ function llama_scout_admin_invite(
                  ) VALUES (
                     ?,
                     "invited",
-                    CURRENT_TIMESTAMP,
+                    UTC_TIMESTAMP(),
                     ?,
                     DATE_ADD(
-                        CURRENT_TIMESTAMP,
+                        UTC_TIMESTAMP(),
                         INTERVAL 30 DAY
                     )
                  )'
@@ -692,15 +698,15 @@ function llama_scout_accept_invitation(
                 application_started_at =
                     COALESCE(
                         application_started_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
              WHERE id = ?
                AND user_id = ?
                AND status = "invited"
                AND (
                     invitation_expires_at IS NULL
-                    OR invitation_expires_at >= CURRENT_TIMESTAMP
+                    OR invitation_expires_at >= UTC_TIMESTAMP()
                )'
         );
 
@@ -764,7 +770,7 @@ function llama_scout_decline_invitation(
             'UPDATE scout_profiles
              SET
                 status = "declined",
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
              WHERE id = ?
                AND user_id = ?
                AND status = "invited"'
@@ -1018,12 +1024,12 @@ function llama_scout_save_application(
                     submitted_at =
                         COALESCE(
                             submitted_at,
-                            CURRENT_TIMESTAMP
+                            UTC_TIMESTAMP()
                         ),
                     reviewed_at = NULL,
                     reviewed_by = NULL,
                     review_notes = NULL,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = UTC_TIMESTAMP()
                  WHERE id = ?
                    AND scout_profile_id = ?
                    AND user_id = ?'
@@ -1059,7 +1065,7 @@ function llama_scout_save_application(
                     submitted_at
                  ) VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    CURRENT_TIMESTAMP
+                    UTC_TIMESTAMP()
                  )'
             );
 
@@ -1077,9 +1083,9 @@ function llama_scout_save_application(
                 application_submitted_at =
                     COALESCE(
                         application_submitted_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
              WHERE id = ?
                AND user_id = ?
                AND status = "application_started"'
@@ -1161,7 +1167,7 @@ function llama_scout_begin_training(
                     user_id,
                     training_version,
                     video_started_at
-                 ) VALUES (?, ?, ?, CURRENT_TIMESTAMP)'
+                 ) VALUES (?, ?, ?, UTC_TIMESTAMP())'
             );
 
             $stmt->execute([
@@ -1186,9 +1192,9 @@ function llama_scout_begin_training(
                     training_started_at =
                         COALESCE(
                             training_started_at,
-                            CURRENT_TIMESTAMP
+                            UTC_TIMESTAMP()
                         ),
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = UTC_TIMESTAMP()
                  WHERE id = ?
                    AND user_id = ?
                    AND status = "application_submitted"'
@@ -1308,12 +1314,12 @@ function llama_scout_complete_training(
                 video_started_at =
                     COALESCE(
                         video_started_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
                 video_completed_at =
                     COALESCE(
                         video_completed_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
                 acknowledged_tools = 1,
                 acknowledged_accuracy = 1,
@@ -1322,9 +1328,9 @@ function llama_scout_complete_training(
                 completed_at =
                     COALESCE(
                         completed_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
              WHERE id = ?
                AND scout_profile_id = ?
                AND user_id = ?'
@@ -1342,14 +1348,14 @@ function llama_scout_complete_training(
                 training_started_at =
                     COALESCE(
                         training_started_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
                 training_completed_at =
                     COALESCE(
                         training_completed_at,
-                        CURRENT_TIMESTAMP
+                        UTC_TIMESTAMP()
                     ),
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
              WHERE id = ?
                AND user_id = ?
                AND status = "training"'
@@ -1574,7 +1580,10 @@ function llama_scout_admin_review(
                 );
 
             $activeThrough =
-                (new DateTimeImmutable('now'))
+                (new DateTimeImmutable(
+                    'now',
+                    new DateTimeZone('UTC')
+                ))
                 ->modify(
                     '+' .
                     $periodMonths .
@@ -1589,16 +1598,16 @@ function llama_scout_admin_review(
                     'UPDATE scout_profiles
                      SET
                         status = "active",
-                        approved_at = CURRENT_TIMESTAMP,
+                        approved_at = UTC_TIMESTAMP(),
                         approved_by = ?,
                         scout_started_at =
                             COALESCE(
                                 scout_started_at,
-                                CURRENT_TIMESTAMP
+                                UTC_TIMESTAMP()
                             ),
                         active_through = ?,
                         inactive_at = NULL,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at = UTC_TIMESTAMP()
                      WHERE id = ?
                        AND user_id = ?
                        AND status = "pending_approval"'
@@ -1638,7 +1647,7 @@ function llama_scout_admin_review(
                         membership_started_at =
                             COALESCE(
                                 membership_started_at,
-                                CURRENT_TIMESTAMP
+                                UTC_TIMESTAMP()
                             ),
                         membership_ends_at = ?
                      WHERE id = ?'
@@ -1655,7 +1664,7 @@ function llama_scout_admin_review(
                 $db->prepare(
                     'UPDATE scout_applications
                      SET
-                        reviewed_at = CURRENT_TIMESTAMP,
+                        reviewed_at = UTC_TIMESTAMP(),
                         reviewed_by = ?,
                         review_notes = ?
                      WHERE id = ?'
@@ -1707,7 +1716,7 @@ function llama_scout_admin_review(
                     approved_by = NULL,
                     scout_started_at = NULL,
                     active_through = NULL,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = UTC_TIMESTAMP()
                  WHERE id = ?
                    AND user_id = ?'
             )->execute([
@@ -1720,7 +1729,7 @@ function llama_scout_admin_review(
                     'UPDATE scout_applications
                      SET
                         submitted_at = NULL,
-                        reviewed_at = CURRENT_TIMESTAMP,
+                        reviewed_at = UTC_TIMESTAMP(),
                         reviewed_by = ?,
                         review_notes = ?
                      WHERE id = ?'
@@ -1741,7 +1750,7 @@ function llama_scout_admin_review(
                         acknowledged_safety = 0,
                         acknowledged_privacy = 0,
                         completed_at = NULL,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at = UTC_TIMESTAMP()
                      WHERE id = ?'
                 )->execute([
                     (int) $training['id'],
@@ -1783,7 +1792,7 @@ function llama_scout_admin_review(
                 'UPDATE scout_profiles
                  SET
                     status = "declined",
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = UTC_TIMESTAMP()
                  WHERE id = ?
                    AND user_id = ?'
             )->execute([
@@ -1795,7 +1804,7 @@ function llama_scout_admin_review(
                 $db->prepare(
                     'UPDATE scout_applications
                      SET
-                        reviewed_at = CURRENT_TIMESTAMP,
+                        reviewed_at = UTC_TIMESTAMP(),
                         reviewed_by = ?,
                         review_notes = ?
                      WHERE id = ?'
