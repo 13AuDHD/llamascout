@@ -31,6 +31,47 @@ require_once
 
 
 /* =========================================================
+   UTC TIMESTAMP
+   ========================================================= */
+
+function llama_scout_stats_utc_timestamp(
+    string $value
+): ?int {
+
+    $value =
+        trim(
+            $value
+        );
+
+
+    if (
+        $value === ''
+    ) {
+
+        return null;
+    }
+
+
+    try {
+
+        return
+            (
+                new DateTimeImmutable(
+                    $value,
+                    new DateTimeZone('UTC')
+                )
+            )->getTimestamp();
+
+    } catch (
+        Throwable
+    ) {
+
+        return null;
+    }
+}
+
+
+/* =========================================================
    PRIMARY SCOUT RANK
    ========================================================= */
 
@@ -389,16 +430,26 @@ function llama_scout_current_period(
         );
 
 
-    if (
-        $scoutStartedAt !== ''
-        &&
-        strtotime(
+    $scoutStartedTimestamp =
+        llama_scout_stats_utc_timestamp(
             $scoutStartedAt
-        )
-        >
-        strtotime(
+        );
+
+
+    $startTimestamp =
+        llama_scout_stats_utc_timestamp(
             $start
-        )
+        );
+
+
+    if (
+        $scoutStartedTimestamp !== null
+        &&
+        $startTimestamp !== null
+        &&
+        $scoutStartedTimestamp
+        >
+        $startTimestamp
     ) {
 
         $start =

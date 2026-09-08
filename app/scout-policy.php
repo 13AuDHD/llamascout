@@ -106,12 +106,29 @@ function llama_scout_policy_bool(
     );
 }
 
+function llama_policy_utc_datetime(
+    string $dateTime
+): DateTimeImmutable {
+    $dateTime = trim($dateTime);
+
+    if ($dateTime === '') {
+        throw new InvalidArgumentException(
+            'A UTC date and time is required.'
+        );
+    }
+
+    return new DateTimeImmutable(
+        $dateTime,
+        new DateTimeZone('UTC')
+    );
+}
+
 function llama_policy_add_months(
     string $dateTime,
     int $months
 ): string {
     $date =
-        new DateTimeImmutable(
+        llama_policy_utc_datetime(
             $dateTime
         );
 
@@ -124,6 +141,9 @@ function llama_policy_add_months(
             ) .
             ' months'
         )
+        ->setTimezone(
+            new DateTimeZone('UTC')
+        )
         ->format(
             'Y-m-d H:i:s'
         );
@@ -134,7 +154,7 @@ function llama_policy_subtract_months(
     int $months
 ): string {
     $date =
-        new DateTimeImmutable(
+        llama_policy_utc_datetime(
             $dateTime
         );
 
@@ -146,6 +166,9 @@ function llama_policy_subtract_months(
                 $months
             ) .
             ' months'
+        )
+        ->setTimezone(
+            new DateTimeZone('UTC')
         )
         ->format(
             'Y-m-d H:i:s'

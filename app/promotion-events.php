@@ -80,9 +80,10 @@ function llama_membership_promotion_event(
             stripe_checkout_session_id,
             stripe_subscription_id,
             amount_cents,
-            metadata_json
+            metadata_json,
+            created_at
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
     );
 
     $stmt->execute([

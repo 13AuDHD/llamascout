@@ -71,9 +71,9 @@ function submit_place_report(
 
         $stmt = $db->prepare(
             "INSERT INTO place_reports
-                (place_id, user_id, problem_type, details, status)
+                (place_id, user_id, problem_type, details, status, created_at)
              VALUES
-                (?, ?, ?, ?, 'open')"
+                (?, ?, ?, ?, 'open', UTC_TIMESTAMP())"
         );
 
         $stmt->execute([
