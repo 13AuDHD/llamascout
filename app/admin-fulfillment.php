@@ -713,7 +713,9 @@ function admin_fulfillment_quote_rates(
                 o.shipping_name,
                 o.shipping_phone,
                 o.customer_email,
-                o.shipping_address_json
+                o.shipping_address_json,
+                o.payment_status,
+                o.order_status
              FROM shop_order_fulfillments f
              INNER JOIN shop_orders o
                 ON o.id = f.order_id
