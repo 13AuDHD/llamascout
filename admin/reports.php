@@ -363,7 +363,7 @@ require __DIR__ . '/_header.php';
 <?php
 $location =
     implode(
-        ' · ',
+        ' &middot; ',
         array_filter([
             $group['city'] ?? null,
             $group['county'] ?? null,
@@ -396,7 +396,8 @@ if ($verifiedAt !== '') {
     try {
         $verifiedDate =
             new DateTimeImmutable(
-                $verifiedAt
+                $verifiedAt,
+                new DateTimeZone('UTC')
             );
 
         $verificationDays =
@@ -450,7 +451,7 @@ if ($verifiedAt !== '') {
     <div>
         <span class="admin-report-place-group-eyebrow">
             Place #<?= (int) $group['place_id'] ?>
-            ·
+            &middot;
             <?= moderation_e(
                 ucfirst(
                     (string) $group['place_status']
@@ -466,7 +467,13 @@ if ($verifiedAt !== '') {
 
         <?php if ($location !== ''): ?>
             <span>
-                <?= moderation_e($location) ?>
+                <?= moderation_e(
+                    html_entity_decode(
+                        $location,
+                        ENT_QUOTES | ENT_HTML5,
+                        'UTF-8'
+                    )
+                ) ?>
             </span>
         <?php endif; ?>
     </div>
@@ -600,7 +607,7 @@ $meta =
 <div>
     <span>
         Report #<?= (int) $item['id'] ?>
-        ·
+        &middot;
         <?= moderation_e(
             $meta['priority_label']
         ) ?>
@@ -630,14 +637,14 @@ $meta =
         ?: $item['username']
     ) ?>
 
-    · waiting
+    &middot; waiting
     <?= moderation_e(
         admin_report_age_label(
             (string) $item['created_at']
         )
     ) ?>
 
-    ·
+    &middot;
     <?= number_format(
         (int) $item['image_count']
     ) ?>
@@ -659,7 +666,7 @@ $meta =
     reports of this type
 
     <?php if ((int) $item['matching_open_count'] > 1): ?>
-        ·
+        &middot;
         <?= number_format(
             (int) $item['matching_open_count']
         ) ?>
