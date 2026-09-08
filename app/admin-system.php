@@ -92,7 +92,7 @@ function admin_system_set_maintenance(
             llama_set_site_setting(
                 $db,
                 'maintenance_started_at',
-                date('Y-m-d H:i:s')
+                gmdate('Y-m-d H:i:s')
             );
 
             llama_set_site_setting(
@@ -331,6 +331,57 @@ function admin_system_audit_filters(
 }
 
 
+function admin_system_viewer_date_boundary_utc(
+    string $date,
+    bool $nextDay = false
+): ?string {
+    $date = trim($date);
+
+    if (
+        !preg_match(
+            '/^\d{4}-\d{2}-\d{2}$/',
+            $date
+        )
+    ) {
+        return null;
+    }
+
+    try {
+        $viewerTimezone =
+            new DateTimeZone(
+                llama_viewer_timezone()
+            );
+
+        $local =
+            DateTimeImmutable::createFromFormat(
+                '!Y-m-d',
+                $date,
+                $viewerTimezone
+            );
+
+        if (!$local) {
+            return null;
+        }
+
+        if ($nextDay) {
+            $local =
+                $local->modify('+1 day');
+        }
+
+        return
+            $local
+                ->setTimezone(
+                    new DateTimeZone('UTC')
+                )
+                ->format(
+                    'Y-m-d H:i:s'
+                );
+    } catch (Throwable) {
+        return null;
+    }
+}
+
+
 function admin_system_audit_search(
     PDO $db,
     array $filters,
@@ -404,21 +455,34 @@ function admin_system_audit_search(
     }
 
     if ($filters['date_from'] !== '') {
-        $where[] =
-            'aal.created_at >= ?';
+        $boundary =
+            admin_system_viewer_date_boundary_utc(
+                $filters['date_from']
+            );
 
-        $params[] =
-            $filters['date_from'] .
-            ' 00:00:00';
+        if ($boundary !== null) {
+            $where[] =
+                'aal.created_at >= ?';
+
+            $params[] =
+                $boundary;
+        }
     }
 
     if ($filters['date_to'] !== '') {
-        $where[] =
-            'aal.created_at < DATE_ADD(?, INTERVAL 1 DAY)';
+        $boundary =
+            admin_system_viewer_date_boundary_utc(
+                $filters['date_to'],
+                true
+            );
 
-        $params[] =
-            $filters['date_to'] .
-            ' 00:00:00';
+        if ($boundary !== null) {
+            $where[] =
+                'aal.created_at < ?';
+
+            $params[] =
+                $boundary;
+        }
     }
 
     $categorySql =
@@ -970,7 +1034,8 @@ function admin_system_health(
 
     if ($stripeFilesReady) {
         try {
-            $loadedStripeConfig = require $stripeConfig;
+            $loadedStripeConfig =
+                require $stripeConfig;
 
             if (!is_array($loadedStripeConfig)) {
                 throw new RuntimeException(
@@ -978,39 +1043,63 @@ function admin_system_health(
                 );
             }
 
-            $stripeConfigData = $loadedStripeConfig;
+            $stripeConfigData =
+                $loadedStripeConfig;
         } catch (Throwable $exception) {
-            $stripeConfigError = $exception->getMessage();
+            $stripeConfigError =
+                $exception->getMessage();
         }
     }
 
     $stripeSecretReady =
-        trim((string) ($stripeConfigData['secret_key'] ?? '')) !== '';
+        trim(
+            (string) (
+                $stripeConfigData['secret_key']
+                ?? ''
+            )
+        ) !== '';
 
     $stripePublishableReady =
-        trim((string) (
-            $stripeConfigData['publishable_key']
-            ?? $stripeConfigData['public_key']
-            ?? ''
-        )) !== '';
+        trim(
+            (string) (
+                $stripeConfigData['publishable_key']
+                ?? $stripeConfigData['public_key']
+                ?? ''
+            )
+        ) !== '';
 
     $stripeWebhookReady =
-        trim((string) ($stripeConfigData['webhook_secret'] ?? '')) !== '';
+        trim(
+            (string) (
+                $stripeConfigData['webhook_secret']
+                ?? ''
+            )
+        ) !== '';
 
-    $stripePlanPricesReady = true;
-    $stripePlanProblemCount = 0;
+    $stripePlanPricesReady =
+        true;
+
+    $stripePlanProblemCount =
+        0;
 
     try {
-        $stripePlanProblemCount = (int) $db->query(
-            "SELECT COUNT(*)
-             FROM membership_plans
-             WHERE is_active = 1
-               AND (stripe_price_id IS NULL OR TRIM(stripe_price_id) = '')"
-        )->fetchColumn();
+        $stripePlanProblemCount =
+            (int)
+            $db->query(
+                "SELECT COUNT(*)
+                 FROM membership_plans
+                 WHERE is_active = 1
+                   AND (
+                        stripe_price_id IS NULL
+                        OR TRIM(stripe_price_id) = ''
+                   )"
+            )->fetchColumn();
 
-        $stripePlanPricesReady = $stripePlanProblemCount === 0;
+        $stripePlanPricesReady =
+            $stripePlanProblemCount === 0;
     } catch (Throwable) {
-        $stripePlanPricesReady = false;
+        $stripePlanPricesReady =
+            false;
     }
 
     $stripeReady =
@@ -1024,33 +1113,50 @@ function admin_system_health(
     $stripeDetailParts = [];
 
     if (!$stripeFilesReady) {
-        $stripeDetailParts[] = 'Private Stripe configuration or PHP library is missing.';
+        $stripeDetailParts[] =
+            'Private Stripe configuration or PHP library is missing.';
     }
 
     if ($stripeConfigError !== '') {
-        $stripeDetailParts[] = 'Private Stripe configuration could not be loaded.';
+        $stripeDetailParts[] =
+            'Private Stripe configuration could not be loaded.';
     }
 
-    if ($stripeFilesReady && !$stripeSecretReady) {
-        $stripeDetailParts[] = 'Secret key is missing.';
+    if (
+        $stripeFilesReady
+        && !$stripeSecretReady
+    ) {
+        $stripeDetailParts[] =
+            'Secret key is missing.';
     }
 
-    if ($stripeFilesReady && !$stripePublishableReady) {
-        $stripeDetailParts[] = 'Publishable key is missing; embedded checkout cannot load.';
+    if (
+        $stripeFilesReady
+        && !$stripePublishableReady
+    ) {
+        $stripeDetailParts[] =
+            'Publishable key is missing; embedded checkout cannot load.';
     }
 
-    if ($stripeFilesReady && !$stripeWebhookReady) {
-        $stripeDetailParts[] = 'Webhook secret is missing.';
+    if (
+        $stripeFilesReady
+        && !$stripeWebhookReady
+    ) {
+        $stripeDetailParts[] =
+            'Webhook secret is missing.';
     }
 
     if (!$stripePlanPricesReady) {
-        $stripeDetailParts[] = $stripePlanProblemCount > 0
-            ? $stripePlanProblemCount . ' active membership plan(s) are missing a Stripe Price ID.'
-            : 'Membership Stripe Price configuration could not be verified.';
+        $stripeDetailParts[] =
+            $stripePlanProblemCount > 0
+                ? $stripePlanProblemCount .
+                    ' active membership plan(s) are missing a Stripe Price ID.'
+                : 'Membership Stripe Price configuration could not be verified.';
     }
 
     if (!$stripeDetailParts) {
-        $stripeDetailParts[] = 'Embedded checkout, webhook verification, and active membership Price IDs are configured.';
+        $stripeDetailParts[] =
+            'Embedded checkout, webhook verification, and active membership Price IDs are configured.';
     }
 
     $cards[] =
@@ -1063,7 +1169,10 @@ function admin_system_health(
             $stripeReady
                 ? 'Ready'
                 : 'Needs attention',
-            implode(' ', $stripeDetailParts),
+            implode(
+                ' ',
+                $stripeDetailParts
+            ),
             'fa-credit-card'
         );
 
@@ -1206,33 +1315,69 @@ function admin_system_health(
             $db->query(
                 'SELECT
                     COUNT(*) AS open_total,
-                    SUM(CASE WHEN severity = "fatal" THEN 1 ELSE 0 END) AS open_fatal
+                    SUM(
+                        CASE
+                            WHEN severity = "fatal"
+                                THEN 1
+                            ELSE 0
+                        END
+                    ) AS open_fatal
                  FROM application_errors
                  WHERE resolution_status = "open"'
-            )->fetch(PDO::FETCH_ASSOC) ?: [];
+            )->fetch(PDO::FETCH_ASSOC)
+            ?: [];
 
         $openErrors =
-            (int) ($openErrorStats['open_total'] ?? 0);
+            (int) (
+                $openErrorStats['open_total']
+                ?? 0
+            );
 
         $openFatals =
-            (int) ($openErrorStats['open_fatal'] ?? 0);
+            (int) (
+                $openErrorStats['open_fatal']
+                ?? 0
+            );
 
         $lastOpenError =
             $db->query(
-                'SELECT reference_code, severity, created_at, last_seen_at, occurrence_count
+                'SELECT
+                    reference_code,
+                    severity,
+                    created_at,
+                    last_seen_at,
+                    occurrence_count
                  FROM application_errors
                  WHERE resolution_status = "open"
-                 ORDER BY COALESCE(last_seen_at, created_at) DESC, id DESC
+                 ORDER BY
+                    COALESCE(
+                        last_seen_at,
+                        created_at
+                    ) DESC,
+                    id DESC
                  LIMIT 1'
-            )->fetch(PDO::FETCH_ASSOC) ?: [];
+            )->fetch(PDO::FETCH_ASSOC)
+            ?: [];
 
         $lastError =
             $db->query(
-                'SELECT reference_code, severity, created_at, last_seen_at, occurrence_count, resolution_status
+                'SELECT
+                    reference_code,
+                    severity,
+                    created_at,
+                    last_seen_at,
+                    occurrence_count,
+                    resolution_status
                  FROM application_errors
-                 ORDER BY COALESCE(last_seen_at, created_at) DESC, id DESC
+                 ORDER BY
+                    COALESCE(
+                        last_seen_at,
+                        created_at
+                    ) DESC,
+                    id DESC
                  LIMIT 1'
-            )->fetch(PDO::FETCH_ASSOC) ?: [];
+            )->fetch(PDO::FETCH_ASSOC)
+            ?: [];
 
         $errorHealthStatus =
             $openFatals > 0
@@ -1244,32 +1389,91 @@ function admin_system_health(
                 );
 
         if ($openErrors === 0) {
-            $errorHealthValue = 'No open errors';
+            $errorHealthValue =
+                'No open errors';
+
+            $lastErrorAt =
+                (string) (
+                    (
+                        $lastError['last_seen_at']
+                        ?? ''
+                    )
+                    ?: (
+                        $lastError['created_at']
+                        ?? ''
+                    )
+                );
 
             $errorHealthDetail =
                 $lastError
                     ? 'All recorded application errors are resolved. Most recent record: ' .
-                        (string) ($lastError['reference_code'] ?? 'unknown') .
+                        (string) (
+                            $lastError['reference_code']
+                            ?? 'unknown'
+                        ) .
                         ' at ' .
-                        (string) (($lastError['last_seen_at'] ?? '') ?: ($lastError['created_at'] ?? 'unknown time')) .
+                        (
+                            $lastErrorAt !== ''
+                                ? llama_format_viewer_datetime(
+                                    $lastErrorAt
+                                )
+                                : 'unknown time'
+                        ) .
                         '.'
                     : 'No application errors have been recorded.';
         } else {
             $errorHealthValue =
-                number_format($openErrors) .
+                number_format(
+                    $openErrors
+                ) .
                 ' open';
 
+            $lastOpenErrorAt =
+                (string) (
+                    (
+                        $lastOpenError['last_seen_at']
+                        ?? ''
+                    )
+                    ?: (
+                        $lastOpenError['created_at']
+                        ?? ''
+                    )
+                );
+
             $errorHealthDetail =
-                ($openFatals > 0
-                    ? number_format($openFatals) . ' fatal; '
-                    : '') .
+                (
+                    $openFatals > 0
+                        ? number_format(
+                            $openFatals
+                        ) .
+                        ' fatal; '
+                        : ''
+                ) .
                 'most recent open error: ' .
-                (string) ($lastOpenError['reference_code'] ?? 'unknown') .
+                (string) (
+                    $lastOpenError['reference_code']
+                    ?? 'unknown'
+                ) .
                 ' at ' .
-                (string) (($lastOpenError['last_seen_at'] ?? '') ?: ($lastOpenError['created_at'] ?? 'unknown time')) .
-                ((int) ($lastOpenError['occurrence_count'] ?? 1) > 1
-                    ? ' (' . number_format((int) $lastOpenError['occurrence_count']) . ' occurrences).'
-                    : '.') .
+                (
+                    $lastOpenErrorAt !== ''
+                        ? llama_format_viewer_datetime(
+                            $lastOpenErrorAt
+                        )
+                        : 'unknown time'
+                ) .
+                (
+                    (int) (
+                        $lastOpenError['occurrence_count']
+                        ?? 1
+                    ) > 1
+                        ? ' (' .
+                            number_format(
+                                (int) $lastOpenError['occurrence_count']
+                            ) .
+                            ' occurrences).'
+                        : '.'
+                ) .
                 ' Review Configuration > Error Log.';
         }
 
@@ -1324,7 +1528,9 @@ function admin_system_health(
                 ' records',
                 $lastAudit !== ''
                     ? 'Last record: ' .
-                        $lastAudit
+                        llama_format_viewer_datetime(
+                            $lastAudit
+                        )
                     : 'Audit table is available and ready.',
                 'fa-clipboard-list'
             );
@@ -1367,13 +1573,21 @@ function admin_system_health(
                     'fa-binoculars'
                 );
         } else {
-            $lastTimestamp =
-                strtotime(
-                    (string) $lastRun
-                );
+            try {
+                $lastTimestamp =
+                    (
+                        new DateTimeImmutable(
+                            (string) $lastRun,
+                            new DateTimeZone('UTC')
+                        )
+                    )->getTimestamp();
+            } catch (Throwable) {
+                $lastTimestamp =
+                    null;
+            }
 
             $age =
-                $lastTimestamp
+                $lastTimestamp !== null
                     ? time() -
                         $lastTimestamp
                     : PHP_INT_MAX;
@@ -1392,7 +1606,9 @@ function admin_system_health(
                         ? 'Current'
                         : 'Stale',
                     'Last recorded run: ' .
-                    (string) $lastRun,
+                    llama_format_viewer_datetime(
+                        (string) $lastRun
+                    ),
                     'fa-binoculars'
                 );
         }
@@ -1407,14 +1623,6 @@ function admin_system_health(
                 'fa-binoculars'
             );
     }
-
-    /* =========================================================
-       SCOUT INTEGRITY
-
-       These checks are observational only. They do not change Scout
-       state or invent policy values. Admin-controlled policy remains
-       authoritative.
-       ========================================================= */
 
     try {
         $requiredPolicyKeys = [
@@ -1435,199 +1643,300 @@ function admin_system_health(
             'maintenance_interval_seconds',
         ];
 
-        $placeholders = implode(
-            ',',
-            array_fill(0, count($requiredPolicyKeys), '?')
+        $placeholders =
+            implode(
+                ',',
+                array_fill(
+                    0,
+                    count(
+                        $requiredPolicyKeys
+                    ),
+                    '?'
+                )
+            );
+
+        $policyStmt =
+            $db->prepare(
+                'SELECT policy_key
+                 FROM scout_policy
+                 WHERE policy_key IN (' .
+                    $placeholders .
+                    ')'
+            );
+
+        $policyStmt->execute(
+            $requiredPolicyKeys
         );
 
-        $policyStmt = $db->prepare(
-            'SELECT policy_key
-             FROM scout_policy
-             WHERE policy_key IN (' . $placeholders . ')'
-        );
-        $policyStmt->execute($requiredPolicyKeys);
-
-        $configuredKeys = $policyStmt->fetchAll(
-            PDO::FETCH_COLUMN
-        ) ?: [];
-
-        $missingPolicyKeys = array_values(
-            array_diff($requiredPolicyKeys, $configuredKeys)
-        );
-
-        $cards[] = admin_system_health_card(
-            'scout_policy_integrity',
-            'Scout policy',
-            $missingPolicyKeys ? 'down' : 'good',
-            $missingPolicyKeys
-                ? number_format(count($missingPolicyKeys)) . ' missing'
-                : 'Complete',
-            $missingPolicyKeys
-                ? 'Missing Admin policy settings: ' . implode(', ', $missingPolicyKeys) . '.'
-                : 'All Scout, reactivation, Master Scout, point-cap, and maintenance policy settings are configured.',
-            'fa-sliders'
-        );
-    } catch (Throwable) {
-        $cards[] = admin_system_health_card(
-            'scout_policy_integrity',
-            'Scout policy',
-            'down',
-            'Unavailable',
-            'Scout policy configuration could not be checked.',
-            'fa-sliders'
-        );
-    }
-
-    try {
-        $roleRows = $db->query(
-            'SELECT slug
-             FROM roles
-             WHERE slug IN ("scout", "master-scout")'
-        )->fetchAll(PDO::FETCH_COLUMN) ?: [];
-
-        $missingRoles = array_values(
-            array_diff(
-                ['scout', 'master-scout'],
-                $roleRows
+        $configuredKeys =
+            $policyStmt->fetchAll(
+                PDO::FETCH_COLUMN
             )
-        );
+            ?: [];
 
-        $cards[] = admin_system_health_card(
-            'scout_role_definitions',
-            'Scout roles',
-            $missingRoles ? 'down' : 'good',
-            $missingRoles
-                ? number_format(count($missingRoles)) . ' missing'
-                : 'Defined',
-            $missingRoles
-                ? 'Missing canonical role definitions: ' . implode(', ', $missingRoles) . '.'
-                : 'Canonical Scout and Master Scout roles are available.',
-            'fa-user-shield'
-        );
+        $missingPolicyKeys =
+            array_values(
+                array_diff(
+                    $requiredPolicyKeys,
+                    $configuredKeys
+                )
+            );
+
+        $cards[] =
+            admin_system_health_card(
+                'scout_policy_integrity',
+                'Scout policy',
+                $missingPolicyKeys
+                    ? 'down'
+                    : 'good',
+                $missingPolicyKeys
+                    ? number_format(
+                        count(
+                            $missingPolicyKeys
+                        )
+                    ) .
+                        ' missing'
+                    : 'Complete',
+                $missingPolicyKeys
+                    ? 'Missing Admin policy settings: ' .
+                        implode(
+                            ', ',
+                            $missingPolicyKeys
+                        ) .
+                        '.'
+                    : 'All Scout, reactivation, Master Scout, point-cap, and maintenance policy settings are configured.',
+                'fa-sliders'
+            );
     } catch (Throwable) {
-        $cards[] = admin_system_health_card(
-            'scout_role_definitions',
-            'Scout roles',
-            'down',
-            'Unavailable',
-            'Scout role definitions could not be checked.',
-            'fa-user-shield'
-        );
+        $cards[] =
+            admin_system_health_card(
+                'scout_policy_integrity',
+                'Scout policy',
+                'down',
+                'Unavailable',
+                'Scout policy configuration could not be checked.',
+                'fa-sliders'
+            );
     }
 
     try {
-        $activeWithoutRole = (int) $db->query(
-            'SELECT COUNT(*)
-             FROM scout_profiles sp
-             WHERE sp.status = "active"
-               AND NOT EXISTS (
-                    SELECT 1
-                    FROM user_roles ur
-                    INNER JOIN roles r
-                        ON r.id = ur.role_id
-                    WHERE ur.user_id = sp.user_id
-                      AND r.slug IN (
-                          "scout",
-                          "master-scout",
-                          "master_scout"
-                      )
-               )'
-        )->fetchColumn();
+        $roleRows =
+            $db->query(
+                'SELECT slug
+                 FROM roles
+                 WHERE slug IN (
+                    "scout",
+                    "master-scout"
+                 )'
+            )->fetchAll(
+                PDO::FETCH_COLUMN
+            )
+            ?: [];
 
-        $nonActiveWithRole = (int) $db->query(
-            'SELECT COUNT(DISTINCT sp.id)
-             FROM scout_profiles sp
-             INNER JOIN user_roles ur
-                ON ur.user_id = sp.user_id
-             INNER JOIN roles r
-                ON r.id = ur.role_id
-             WHERE sp.status <> "active"
-               AND r.slug IN (
-                   "scout",
-                   "master-scout",
-                   "master_scout"
-               )'
-        )->fetchColumn();
+        $missingRoles =
+            array_values(
+                array_diff(
+                    [
+                        'scout',
+                        'master-scout',
+                    ],
+                    $roleRows
+                )
+            );
 
-        $profileProblems = $activeWithoutRole + $nonActiveWithRole;
+        $cards[] =
+            admin_system_health_card(
+                'scout_role_definitions',
+                'Scout roles',
+                $missingRoles
+                    ? 'down'
+                    : 'good',
+                $missingRoles
+                    ? number_format(
+                        count(
+                            $missingRoles
+                        )
+                    ) .
+                        ' missing'
+                    : 'Defined',
+                $missingRoles
+                    ? 'Missing canonical role definitions: ' .
+                        implode(
+                            ', ',
+                            $missingRoles
+                        ) .
+                        '.'
+                    : 'Canonical Scout and Master Scout roles are available.',
+                'fa-user-shield'
+            );
+    } catch (Throwable) {
+        $cards[] =
+            admin_system_health_card(
+                'scout_role_definitions',
+                'Scout roles',
+                'down',
+                'Unavailable',
+                'Scout role definitions could not be checked.',
+                'fa-user-shield'
+            );
+    }
+
+    try {
+        $activeWithoutRole =
+            (int)
+            $db->query(
+                'SELECT COUNT(*)
+                 FROM scout_profiles sp
+                 WHERE sp.status = "active"
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM user_roles ur
+                        INNER JOIN roles r
+                            ON r.id = ur.role_id
+                        WHERE ur.user_id = sp.user_id
+                          AND r.slug IN (
+                              "scout",
+                              "master-scout",
+                              "master_scout"
+                          )
+                   )'
+            )->fetchColumn();
+
+        $nonActiveWithRole =
+            (int)
+            $db->query(
+                'SELECT COUNT(DISTINCT sp.id)
+                 FROM scout_profiles sp
+                 INNER JOIN user_roles ur
+                    ON ur.user_id = sp.user_id
+                 INNER JOIN roles r
+                    ON r.id = ur.role_id
+                 WHERE sp.status <> "active"
+                   AND r.slug IN (
+                       "scout",
+                       "master-scout",
+                       "master_scout"
+                   )'
+            )->fetchColumn();
+
+        $profileProblems =
+            $activeWithoutRole +
+            $nonActiveWithRole;
+
         $profileDetails = [];
 
         if ($activeWithoutRole > 0) {
-            $profileDetails[] = number_format($activeWithoutRole) . ' active profile(s) have no Scout authority role';
+            $profileDetails[] =
+                number_format(
+                    $activeWithoutRole
+                ) .
+                ' active profile(s) have no Scout authority role';
         }
 
         if ($nonActiveWithRole > 0) {
-            $profileDetails[] = number_format($nonActiveWithRole) . ' non-active profile(s) still retain Scout authority';
+            $profileDetails[] =
+                number_format(
+                    $nonActiveWithRole
+                ) .
+                ' non-active profile(s) still retain Scout authority';
         }
 
-        $cards[] = admin_system_health_card(
-            'scout_profile_integrity',
-            'Scout profile integrity',
-            $profileProblems > 0 ? 'down' : 'good',
-            $profileProblems > 0
-                ? number_format($profileProblems) . ' problem' . ($profileProblems === 1 ? '' : 's')
-                : 'Consistent',
-            $profileProblems > 0
-                ? implode('; ', $profileDetails) . '.'
-                : 'Scout profile status and current Scout authority agree.',
-            'fa-binoculars'
-        );
+        $cards[] =
+            admin_system_health_card(
+                'scout_profile_integrity',
+                'Scout profile integrity',
+                $profileProblems > 0
+                    ? 'down'
+                    : 'good',
+                $profileProblems > 0
+                    ? number_format(
+                        $profileProblems
+                    ) .
+                        ' problem' .
+                        (
+                            $profileProblems === 1
+                                ? ''
+                                : 's'
+                        )
+                    : 'Consistent',
+                $profileProblems > 0
+                    ? implode(
+                        '; ',
+                        $profileDetails
+                    ) .
+                        '.'
+                    : 'Scout profile status and current Scout authority agree.',
+                'fa-binoculars'
+            );
     } catch (Throwable) {
-        $cards[] = admin_system_health_card(
-            'scout_profile_integrity',
-            'Scout profile integrity',
-            'down',
-            'Unavailable',
-            'Scout profile and role consistency could not be checked.',
-            'fa-binoculars'
-        );
+        $cards[] =
+            admin_system_health_card(
+                'scout_profile_integrity',
+                'Scout profile integrity',
+                'down',
+                'Unavailable',
+                'Scout profile and role consistency could not be checked.',
+                'fa-binoculars'
+            );
     }
 
     try {
-        $duplicateExtensions = (int) $db->query(
-            'SELECT COUNT(*)
-             FROM (
-                 SELECT scout_profile_id, user_id
+        $duplicateExtensions =
+            (int)
+            $db->query(
+                'SELECT COUNT(*)
+                 FROM (
+                     SELECT
+                        scout_profile_id,
+                        user_id
+                     FROM scout_extensions
+                     WHERE status = "active"
+                     GROUP BY
+                        scout_profile_id,
+                        user_id
+                     HAVING COUNT(*) > 1
+                 ) duplicate_active_extensions'
+            )->fetchColumn();
+
+        $orphanedExtensions =
+            (int)
+            $db->query(
+                'SELECT COUNT(*)
+                 FROM scout_extensions se
+                 LEFT JOIN scout_profiles sp
+                    ON sp.id = se.scout_profile_id
+                   AND sp.user_id = se.user_id
+                 WHERE se.status = "active"
+                   AND (
+                       sp.id IS NULL
+                       OR sp.status <> "active"
+                   )'
+            )->fetchColumn();
+
+        $masterDuringReactivation =
+            (int)
+            $db->query(
+                'SELECT COUNT(DISTINCT se.id)
+                 FROM scout_extensions se
+                 INNER JOIN user_roles ur
+                    ON ur.user_id = se.user_id
+                 INNER JOIN roles r
+                    ON r.id = ur.role_id
+                 WHERE se.status = "active"
+                   AND r.slug IN (
+                       "master-scout",
+                       "master_scout"
+                   )'
+            )->fetchColumn();
+
+        $expiredActiveExtensions =
+            (int)
+            $db->query(
+                'SELECT COUNT(*)
                  FROM scout_extensions
                  WHERE status = "active"
-                 GROUP BY scout_profile_id, user_id
-                 HAVING COUNT(*) > 1
-             ) duplicate_active_extensions'
-        )->fetchColumn();
-
-        $orphanedExtensions = (int) $db->query(
-            'SELECT COUNT(*)
-             FROM scout_extensions se
-             LEFT JOIN scout_profiles sp
-                ON sp.id = se.scout_profile_id
-               AND sp.user_id = se.user_id
-             WHERE se.status = "active"
-               AND (
-                   sp.id IS NULL
-                   OR sp.status <> "active"
-               )'
-        )->fetchColumn();
-
-        $masterDuringReactivation = (int) $db->query(
-            'SELECT COUNT(DISTINCT se.id)
-             FROM scout_extensions se
-             INNER JOIN user_roles ur
-                ON ur.user_id = se.user_id
-             INNER JOIN roles r
-                ON r.id = ur.role_id
-             WHERE se.status = "active"
-               AND r.slug IN (
-                   "master-scout",
-                   "master_scout"
-               )'
-        )->fetchColumn();
-
-        $expiredActiveExtensions = (int) $db->query(
-            'SELECT COUNT(*)
-             FROM scout_extensions
-             WHERE status = "active"
-               AND ends_at < CURRENT_TIMESTAMP'
-        )->fetchColumn();
+                   AND ends_at < UTC_TIMESTAMP()'
+            )->fetchColumn();
 
         $reactivationProblems =
             $duplicateExtensions
@@ -1637,19 +1946,35 @@ function admin_system_health(
         $reactivationDetails = [];
 
         if ($duplicateExtensions > 0) {
-            $reactivationDetails[] = number_format($duplicateExtensions) . ' duplicate active reactivation record(s)';
+            $reactivationDetails[] =
+                number_format(
+                    $duplicateExtensions
+                ) .
+                ' duplicate active reactivation record(s)';
         }
 
         if ($orphanedExtensions > 0) {
-            $reactivationDetails[] = number_format($orphanedExtensions) . ' active reactivation record(s) do not match an active Scout profile';
+            $reactivationDetails[] =
+                number_format(
+                    $orphanedExtensions
+                ) .
+                ' active reactivation record(s) do not match an active Scout profile';
         }
 
         if ($masterDuringReactivation > 0) {
-            $reactivationDetails[] = number_format($masterDuringReactivation) . ' active reactivation record(s) still have Master Scout authority';
+            $reactivationDetails[] =
+                number_format(
+                    $masterDuringReactivation
+                ) .
+                ' active reactivation record(s) still have Master Scout authority';
         }
 
         if ($expiredActiveExtensions > 0) {
-            $reactivationDetails[] = number_format($expiredActiveExtensions) . ' active reactivation record(s) are past their end time and awaiting maintenance';
+            $reactivationDetails[] =
+                number_format(
+                    $expiredActiveExtensions
+                ) .
+                ' active reactivation record(s) are past their end time and awaiting maintenance';
         }
 
         $reactivationStatus =
@@ -1665,27 +1990,41 @@ function admin_system_health(
             $reactivationProblems
             + $expiredActiveExtensions;
 
-        $cards[] = admin_system_health_card(
-            'scout_reactivation_integrity',
-            'Scout reactivation integrity',
-            $reactivationStatus,
-            $reactivationIssueCount > 0
-                ? number_format($reactivationIssueCount) . ' issue' . ($reactivationIssueCount === 1 ? '' : 's')
-                : 'Consistent',
-            $reactivationIssueCount > 0
-                ? implode('; ', $reactivationDetails) . '.'
-                : 'Active reactivation records are unique and consistent with Scout state.',
-            'fa-rotate'
-        );
+        $cards[] =
+            admin_system_health_card(
+                'scout_reactivation_integrity',
+                'Scout reactivation integrity',
+                $reactivationStatus,
+                $reactivationIssueCount > 0
+                    ? number_format(
+                        $reactivationIssueCount
+                    ) .
+                        ' issue' .
+                        (
+                            $reactivationIssueCount === 1
+                                ? ''
+                                : 's'
+                        )
+                    : 'Consistent',
+                $reactivationIssueCount > 0
+                    ? implode(
+                        '; ',
+                        $reactivationDetails
+                    ) .
+                        '.'
+                    : 'Active reactivation records are unique and consistent with Scout state.',
+                'fa-rotate'
+            );
     } catch (Throwable) {
-        $cards[] = admin_system_health_card(
-            'scout_reactivation_integrity',
-            'Scout reactivation integrity',
-            'down',
-            'Unavailable',
-            'Scout reactivation consistency could not be checked.',
-            'fa-rotate'
-        );
+        $cards[] =
+            admin_system_health_card(
+                'scout_reactivation_integrity',
+                'Scout reactivation integrity',
+                'down',
+                'Unavailable',
+                'Scout reactivation consistency could not be checked.',
+                'fa-rotate'
+            );
     }
 
     $summary = [
@@ -1701,9 +2040,14 @@ function admin_system_health(
     }
 
     return [
-        'cards' => $cards,
-        'summary' => $summary,
-        'staging' => $stagingStats,
+        'cards' =>
+            $cards,
+
+        'summary' =>
+            $summary,
+
+        'staging' =>
+            $stagingStats,
     ];
 }
 
@@ -1853,12 +2197,16 @@ function admin_system_cleanup_staging(
         [
             'deleted_files' =>
                 $deletedFiles,
+
             'deleted_bytes' =>
                 $deletedBytes,
+
             'stale_files_before' =>
                 $before['stale_files'],
+
             'stale_bytes_before' =>
                 $before['stale_bytes'],
+
             'older_than_seconds' =>
                 $olderThanSeconds,
         ]
@@ -1878,19 +2226,25 @@ function admin_system_last_scout_maintenance(
     PDO $db
 ): ?string {
     try {
-        $stmt = $db->prepare(
-            'SELECT last_run_at
-             FROM app_maintenance
-             WHERE maintenance_key = ?
-             LIMIT 1'
-        );
+        $stmt =
+            $db->prepare(
+                'SELECT last_run_at
+                 FROM app_maintenance
+                 WHERE maintenance_key = ?
+                 LIMIT 1'
+            );
 
-        $stmt->execute(['scout_renewals']);
-        $value = $stmt->fetchColumn();
+        $stmt->execute([
+            'scout_renewals',
+        ]);
 
-        return $value === false
-            ? null
-            : (string) $value;
+        $value =
+            $stmt->fetchColumn();
+
+        return
+            $value === false
+                ? null
+                : (string) $value;
     } catch (Throwable) {
         return null;
     }
