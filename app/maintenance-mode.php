@@ -185,6 +185,29 @@ function llama_maintenance_should_block(
     };
 }
 
+function llama_maintenance_return_at_client_value(
+    ?string $value
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )->setTimezone(
+            new DateTimeZone('UTC')
+        )->format('Y-m-d\TH:i:s\Z');
+    } catch (Throwable) {
+        return '';
+    }
+}
+
 function llama_render_maintenance(
     PDO $db,
     bool $preview = false
@@ -220,6 +243,11 @@ function llama_render_maintenance(
     $returnAt =
         trim((string) $state['return_at']);
 
+    $returnAtClient =
+        llama_maintenance_return_at_client_value(
+            $returnAt
+        );
+
     $messageEscaped =
         htmlspecialchars(
             $message,
@@ -229,7 +257,7 @@ function llama_render_maintenance(
 
     $returnAtEscaped =
         htmlspecialchars(
-            $returnAt,
+            $returnAtClient,
             ENT_QUOTES,
             'UTF-8'
         );
@@ -295,7 +323,7 @@ function llama_render_maintenance(
     where that extra screw came from.
 </p>';
 
-    if ($returnAt !== '') {
+    if ($returnAtClient !== '') {
         echo '
 <div
     class="maintenance-countdown"

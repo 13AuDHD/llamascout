@@ -97,8 +97,18 @@ function admin_report_age_label(
     }
 
     try {
-        $created = new DateTimeImmutable($createdAt);
-        $now = new DateTimeImmutable('now');
+        $utc = new DateTimeZone('UTC');
+
+        $created = new DateTimeImmutable(
+            $createdAt,
+            $utc
+        );
+
+        $now = new DateTimeImmutable(
+            'now',
+            $utc
+        );
+
         $seconds = max(
             0,
             $now->getTimestamp()
@@ -941,7 +951,8 @@ function admin_report_place_context(
         try {
             $verified =
                 new DateTimeImmutable(
-                    $latest
+                    $latest,
+                    new DateTimeZone('UTC')
                 );
 
             $days =
@@ -1235,7 +1246,7 @@ function admin_report_set_status(
                 ],
                 true
             )
-                ? date('Y-m-d H:i:s')
+                ? gmdate('Y-m-d H:i:s')
                 : null;
 
         $update = $db->prepare(
