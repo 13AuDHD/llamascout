@@ -93,8 +93,9 @@ function llama_points_record(
             source_id,
             contribution_id,
             reason,
-            awarded_by
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            awarded_by,
+            created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
     );
 
     $stmt->execute([

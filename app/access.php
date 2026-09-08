@@ -2,6 +2,27 @@
 
 declare(strict_types=1);
 
+function llama_access_utc_timestamp(
+    ?string $value
+): ?int {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )->getTimestamp();
+    } catch (Throwable) {
+        return null;
+    }
+}
+
 function user_has_member_access(?int $userId = null): bool
 {
     if ($userId === null) {
@@ -61,9 +82,18 @@ function user_has_member_access(?int $userId = null): bool
         ) {
             $endsAt = $membership['membership_ends_at'] ?? null;
 
+            if ($endsAt === null) {
+                return true;
+            }
+
+            $endsTimestamp =
+                llama_access_utc_timestamp(
+                    (string) $endsAt
+                );
+
             if (
-                $endsAt === null
-                || strtotime((string) $endsAt) >= time()
+                $endsTimestamp !== null
+                && $endsTimestamp >= time()
             ) {
                 return true;
             }
@@ -94,7 +124,7 @@ function user_has_member_access(?int $userId = null): bool
           AND sp.status = 'active'
           AND (
                 sp.active_through IS NULL
-                OR sp.active_through >= NOW()
+                OR sp.active_through >= UTC_TIMESTAMP()
           )
           AND r.slug IN (
                 'scout',
@@ -125,8 +155,8 @@ function user_has_member_access(?int $userId = null): bool
         WHERE user_id = ?
           AND grant_type = 'complimentary'
           AND revoked_at IS NULL
-          AND starts_at <= NOW()
-          AND ends_at >= NOW()
+          AND starts_at <= UTC_TIMESTAMP()
+          AND ends_at >= UTC_TIMESTAMP()
 
         LIMIT 1
         "

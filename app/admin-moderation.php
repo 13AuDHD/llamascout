@@ -222,8 +222,20 @@ function admin_moderation_age_label(
     }
 
     try {
-        $then = new DateTimeImmutable($dateTime);
-        $now = new DateTimeImmutable('now');
+        $utc =
+            new DateTimeZone('UTC');
+
+        $then =
+            new DateTimeImmutable(
+                $dateTime,
+                $utc
+            );
+
+        $now =
+            new DateTimeImmutable(
+                'now',
+                $utc
+            );
 
         $seconds = max(
             0,

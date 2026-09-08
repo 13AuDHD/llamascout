@@ -159,10 +159,21 @@ function shop_cleanup_maintenance_is_due(
         return true;
     }
 
-    $timestamp = strtotime((string) $lastRun);
+    try {
+        $timestamp =
+            (
+                new DateTimeImmutable(
+                    (string) $lastRun,
+                    new DateTimeZone('UTC')
+                )
+            )->getTimestamp();
+    } catch (Throwable) {
+        return true;
+    }
 
-    return $timestamp === false
-        || (time() - $timestamp) >= $intervalSeconds;
+    return
+        (time() - $timestamp)
+        >= $intervalSeconds;
 }
 
 
