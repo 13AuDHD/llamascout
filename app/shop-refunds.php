@@ -78,6 +78,370 @@ function shop_refund_normalize_status(string $status): string
 }
 
 
+function shop_reconcile_full_refund_from_stripe(
+    PDO $db,
+    int $orderId,
+    int $actorUserId
+): array {
+    if ($orderId < 1) {
+        throw new InvalidArgumentException(
+            'A valid Shop order is required.'
+        );
+    }
+
+    if (!shop_refund_table_exists($db)) {
+        throw new RuntimeException(
+            'Shop refund database migration is missing.'
+        );
+    }
+
+    if (!shop_refund_restock_table_exists($db)) {
+        throw new RuntimeException(
+            'Shop inventory restock database migration is missing.'
+        );
+    }
+
+    $orderStmt = $db->prepare(
+        'SELECT *
+         FROM shop_orders
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $orderStmt->execute([
+        $orderId,
+    ]);
+
+    $order =
+        $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$order) {
+        throw new InvalidArgumentException(
+            'Shop order not found.'
+        );
+    }
+
+    $paymentIntentId = trim(
+        (string) (
+            $order['stripe_payment_intent_id']
+            ?? ''
+        )
+    );
+
+    if ($paymentIntentId === '') {
+        throw new RuntimeException(
+            'This order does not have a Stripe PaymentIntent.'
+        );
+    }
+
+    $orderTotal = max(
+        0,
+        (int) (
+            $order['total_cents']
+            ?? 0
+        )
+    );
+
+    if ($orderTotal < 1) {
+        throw new RuntimeException(
+            'This order does not have a valid total.'
+        );
+    }
+
+    /*
+     * Ask Stripe for refunds belonging to this exact PaymentIntent.
+     *
+     * We do not trust an admin-entered refund ID for reconciliation.
+     */
+    $refundList = llama_stripe_client()
+        ->refunds
+        ->all([
+            'payment_intent' =>
+                $paymentIntentId,
+            'limit' =>
+                100,
+        ]);
+
+    $stripeRefunds = [];
+
+    foreach (
+        $refundList->data ?? []
+        as $stripeRefund
+    ) {
+        $refundId = trim(
+            (string) (
+                $stripeRefund->id
+                ?? ''
+            )
+        );
+
+        if ($refundId === '') {
+            continue;
+        }
+
+        $stripeRefunds[] =
+            $stripeRefund;
+    }
+
+    if (!$stripeRefunds) {
+        throw new InvalidArgumentException(
+            'Stripe does not show any refund for this order PaymentIntent.'
+        );
+    }
+
+    $successfulRefunds =
+        array_values(
+            array_filter(
+                $stripeRefunds,
+                static function ($refund): bool {
+                    return strtolower(
+                        trim(
+                            (string) (
+                                $refund->status
+                                ?? ''
+                            )
+                        )
+                    ) === 'succeeded';
+                }
+            )
+        );
+
+    if (!$successfulRefunds) {
+        throw new InvalidArgumentException(
+            'Stripe does not show a succeeded refund for this order.'
+        );
+    }
+
+    /*
+     * Current Llama Scout refund accounting supports one full refund.
+     *
+     * Multiple succeeded Stripe refunds indicate partial/multi-refund
+     * history and must not be collapsed into a fake single full refund.
+     */
+    if (count($successfulRefunds) !== 1) {
+        throw new InvalidArgumentException(
+            'Stripe shows multiple succeeded refunds for this order. Automatic reconciliation is not safe.'
+        );
+    }
+
+    $stripeRefund =
+        $successfulRefunds[0];
+
+    $refundId = trim(
+        (string) (
+            $stripeRefund->id
+            ?? ''
+        )
+    );
+
+    $refundAmount = max(
+        0,
+        (int) (
+            $stripeRefund->amount
+            ?? 0
+        )
+    );
+
+    if ($refundAmount !== $orderTotal) {
+        throw new InvalidArgumentException(
+            'Stripe shows a succeeded refund, but it is not a full-order refund. Automatic reconciliation is not safe.'
+        );
+    }
+
+    $refundPaymentIntent = trim(
+        (string) (
+            $stripeRefund->payment_intent
+            ?? ''
+        )
+    );
+
+    if (
+        $refundPaymentIntent !== ''
+        && $refundPaymentIntent
+            !== $paymentIntentId
+    ) {
+        throw new RuntimeException(
+            'Stripe refund does not belong to this order PaymentIntent.'
+        );
+    }
+
+    $existing = shop_refund_for_order(
+        $db,
+        $orderId
+    );
+
+    if ($existing) {
+        $existingRefundId = trim(
+            (string) (
+                $existing['stripe_refund_id']
+                ?? ''
+            )
+        );
+
+        if (
+            $existingRefundId !== ''
+            && $existingRefundId
+                !== $refundId
+        ) {
+            throw new InvalidArgumentException(
+                'This order already contains a different local refund record. Automatic reconciliation is not safe.'
+            );
+        }
+    }
+
+    $currency = strtolower(
+        trim(
+            (string) (
+                $stripeRefund->currency
+                ?? $order['currency']
+                ?? 'usd'
+            )
+        )
+    );
+
+    $reason = trim(
+        (string) (
+            $stripeRefund->reason
+            ?? ''
+        )
+    );
+
+    if (
+        !in_array(
+            $reason,
+            [
+                'requested_by_customer',
+                'duplicate',
+                'fraudulent',
+            ],
+            true
+        )
+    ) {
+        $reason =
+            'requested_by_customer';
+    }
+
+    /*
+     * Persist Stripe truth locally.
+     *
+     * requested_by identifies the admin who performed the Llama Scout
+     * reconciliation, not necessarily whoever initiated it in Stripe.
+     */
+    $stmt = $db->prepare(
+        'INSERT INTO shop_refunds
+         (
+            order_id,
+            stripe_refund_id,
+            stripe_payment_intent_id,
+            amount_cents,
+            currency,
+            reason,
+            status,
+            failure_reason,
+            requested_by,
+            requested_at,
+            updated_at
+         )
+         VALUES
+         (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            "succeeded",
+            NULL,
+            ?,
+            UTC_TIMESTAMP(),
+            UTC_TIMESTAMP()
+         )
+         ON DUPLICATE KEY UPDATE
+            stripe_refund_id =
+                VALUES(stripe_refund_id),
+            stripe_payment_intent_id =
+                VALUES(stripe_payment_intent_id),
+            amount_cents =
+                VALUES(amount_cents),
+            currency =
+                VALUES(currency),
+            reason =
+                VALUES(reason),
+            status =
+                "succeeded",
+            failure_reason =
+                NULL,
+            requested_by =
+                VALUES(requested_by),
+            updated_at =
+                UTC_TIMESTAMP()'
+    );
+
+    $stmt->execute([
+        $orderId,
+        $refundId,
+        $paymentIntentId,
+        $refundAmount,
+        $currency,
+        $reason,
+        $actorUserId > 0
+            ? $actorUserId
+            : null,
+    ]);
+
+    /*
+     * Reuse the same full-refund finalization path as normal refunds.
+     *
+     * This restores only inventory not already restored by a recorded
+     * physical return, then finalizes payment/order state.
+     */
+    shop_refund_apply_order_status(
+        $db,
+        $orderId,
+        'succeeded',
+        $refundId
+    );
+
+    if (function_exists('admin_users_audit')) {
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            !empty($order['user_id'])
+                ? (int) $order['user_id']
+                : null,
+            'shop.order_refund_reconciled',
+            'Reconciled existing Stripe full refund for order '
+                . (string) (
+                    $order['order_number']
+                    ?? $orderId
+                )
+                . '.',
+            [
+                'order_id' =>
+                    $orderId,
+                'stripe_refund_id' =>
+                    $refundId,
+                'stripe_payment_intent_id' =>
+                    $paymentIntentId,
+                'amount_cents' =>
+                    $refundAmount,
+            ]
+        );
+    }
+
+    return [
+        'refund_id' =>
+            $refundId,
+        'status' =>
+            'succeeded',
+        'amount_cents' =>
+            $refundAmount,
+        'currency' =>
+            $currency,
+    ];
+}
+
+
 function shop_refund_fulfillment_blocker(
     PDO $db,
     int $orderId
