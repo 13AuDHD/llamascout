@@ -1084,23 +1084,72 @@ function admin_fulfillment_buy_label(
     }
 
     if (
-        admin_fulfillment_label(
-            $db,
-            $fulfillmentId
-        )
+        $orderId < 1
+        || $fulfillmentId < 1
+        || $rateRowId < 1
     ) {
         throw new InvalidArgumentException(
-            'A shipping label has already been purchased for this fulfillment.'
+            'A valid order, fulfillment, and shipping rate are required.'
         );
     }
 
-    $stmt =
-        $db->prepare(
+    /*
+     * Purchasing postage is an external-money action.
+     *
+     * Serialize purchases per fulfillment BEFORE checking whether a
+     * label already exists. Otherwise two simultaneous requests could
+     * both pass the local check and both purchase postage from EasyPost.
+     */
+    $lockName =
+        'llamascout_shipping_label_'
+        . $fulfillmentId;
+
+    $lockStmt = $db->prepare(
+        'SELECT GET_LOCK(?, 10)'
+    );
+
+    $lockStmt->execute([
+        $lockName,
+    ]);
+
+    if ((int) $lockStmt->fetchColumn() !== 1) {
+        throw new RuntimeException(
+            'Could not acquire the shipping-label purchase lock.'
+        );
+    }
+
+    try {
+        /*
+         * Recheck after acquiring the lock.
+         *
+         * Another request may have purchased the label while this
+         * request was waiting.
+         */
+        $existingLabel =
+            admin_fulfillment_label(
+                $db,
+                $fulfillmentId
+            );
+
+        if ($existingLabel) {
+            throw new InvalidArgumentException(
+                'A shipping label has already been purchased for this fulfillment.'
+            );
+        }
+
+        $stmt = $db->prepare(
             'SELECT
                 r.*,
                 f.fulfillment_provider,
+                f.status AS fulfillment_status,
+                f.provider_order_id,
+                f.tracking_number,
+                f.shipped_at,
+                f.delivered_at,
                 o.order_number,
-                o.user_id
+                o.user_id,
+                o.payment_status,
+                o.order_status
              FROM shop_fulfillment_rates r
              INNER JOIN shop_order_fulfillments f
                 ON f.id = r.fulfillment_id
@@ -1112,75 +1161,209 @@ function admin_fulfillment_buy_label(
              LIMIT 1'
         );
 
-    $stmt->execute([
-        $rateRowId,
-        $fulfillmentId,
-        $orderId,
-    ]);
+        $stmt->execute([
+            $rateRowId,
+            $fulfillmentId,
+            $orderId,
+        ]);
 
-    $rate =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
+        $rate =
+            $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$rate) {
+            throw new InvalidArgumentException(
+                'The selected shipping rate is no longer available.'
+            );
+        }
+
+        $paymentStatus = strtolower(
+            trim(
+                (string) (
+                    $rate['payment_status']
+                    ?? ''
+                )
+            )
         );
 
-    if (!$rate) {
-        throw new InvalidArgumentException(
-            'The selected shipping rate is no longer available.'
+        $orderStatus = strtolower(
+            trim(
+                (string) (
+                    $rate['order_status']
+                    ?? ''
+                )
+            )
         );
-    }
 
-    if (
-        (string) $rate['provider']
-        !== 'easypost'
-    ) {
-        throw new InvalidArgumentException(
-            'The selected rate is not an EasyPost rate.'
+        $fulfillmentStatus = strtolower(
+            trim(
+                (string) (
+                    $rate['fulfillment_status']
+                    ?? ''
+                )
+            )
         );
-    }
 
-    $shipmentId =
-        trim(
+        /*
+         * Never spend money on postage for an order whose customer
+         * payment is not actually paid.
+         */
+        if ($paymentStatus !== 'paid') {
+            throw new InvalidArgumentException(
+                'A shipping label can be purchased only for a paid Shop order.'
+            );
+        }
+
+        /*
+         * Problem/cancelled/refunded orders are intentionally stopped.
+         */
+        if (
+            in_array(
+                $orderStatus,
+                [
+                    'problem',
+                    'cancelled',
+                    'canceled',
+                    'refunded',
+                ],
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Shipping-label purchase is blocked while this order is Problem, cancelled, or refunded.'
+            );
+        }
+
+        /*
+         * A label belongs to a pre-shipment fulfillment.
+         *
+         * Once shipment or delivery has already happened, purchasing
+         * another label here would create contradictory history.
+         */
+        if (
+            in_array(
+                $fulfillmentStatus,
+                [
+                    'shipped',
+                    'delivered',
+                    'cancelled',
+                    'canceled',
+                    'problem',
+                ],
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'A shipping label cannot be purchased for this fulfillment in its current status.'
+            );
+        }
+
+        if (
+            !in_array(
+                $fulfillmentStatus,
+                [
+                    'pending',
+                    'processing',
+                    'submitted',
+                ],
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'The fulfillment is not in a label-purchasable state.'
+            );
+        }
+
+        $provider =
+            admin_shop_normalize_provider(
+                (string) (
+                    $rate['fulfillment_provider']
+                    ?? ''
+                )
+            );
+
+        if ($provider === '') {
+            $provider = 'llama_scout';
+        }
+
+        if ($provider !== 'llama_scout') {
+            throw new InvalidArgumentException(
+                'EasyPost labels apply only to Llama Scout Fulfillment orders.'
+            );
+        }
+
+        if (
+            (string) ($rate['provider'] ?? '')
+            !== 'easypost'
+        ) {
+            throw new InvalidArgumentException(
+                'The selected rate is not an EasyPost rate.'
+            );
+        }
+
+        $shipmentId = trim(
             (string) (
                 $rate['external_shipment_id']
                 ?? ''
             )
         );
 
-    $externalRateId =
-        trim(
+        $externalRateId = trim(
             (string) (
                 $rate['external_rate_id']
                 ?? ''
             )
         );
 
-    if (
-        $shipmentId === ''
-        || $externalRateId === ''
-    ) {
-        throw new RuntimeException(
-            'The shipping rate is missing its EasyPost identifiers.'
-        );
-    }
+        if (
+            $shipmentId === ''
+            || $externalRateId === ''
+        ) {
+            throw new RuntimeException(
+                'The shipping rate is missing its EasyPost identifiers.'
+            );
+        }
 
-    $shipment =
-        llama_shipping_easypost_request(
-            'POST',
-            'shipments/' .
-                rawurlencode(
-                    $shipmentId
-                ) .
-                '/buy',
-            [
-                'rate' => [
-                    'id' =>
-                        $externalRateId,
-                ],
-            ]
-        );
+        /*
+         * Recheck immediately before the external purchase.
+         *
+         * This is redundant while GET_LOCK is held, intentionally.
+         * It makes the external-money boundary explicit.
+         */
+        if (
+            admin_fulfillment_label(
+                $db,
+                $fulfillmentId
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'A shipping label has already been purchased for this fulfillment.'
+            );
+        }
 
-    $trackingCode =
-        trim(
+        /*
+         * External money boundary.
+         *
+         * GET_LOCK remains held while EasyPost processes the purchase,
+         * so another Llama Scout request cannot concurrently purchase
+         * another label for this fulfillment.
+         */
+        $shipment =
+            llama_shipping_easypost_request(
+                'POST',
+                'shipments/'
+                    . rawurlencode(
+                        $shipmentId
+                    )
+                    . '/buy',
+                [
+                    'rate' => [
+                        'id' =>
+                            $externalRateId,
+                    ],
+                ]
+            );
+
+        $trackingCode = trim(
             (string) (
                 $shipment['tracking_code']
                 ?? $shipment['tracker']['tracking_code']
@@ -1188,8 +1371,7 @@ function admin_fulfillment_buy_label(
             )
         );
 
-    $carrier =
-        trim(
+        $carrier = trim(
             (string) (
                 $shipment['selected_rate']['carrier']
                 ?? $rate['carrier']
@@ -1197,8 +1379,7 @@ function admin_fulfillment_buy_label(
             )
         );
 
-    $service =
-        trim(
+        $service = trim(
             (string) (
                 $shipment['selected_rate']['service']
                 ?? $rate['service']
@@ -1206,8 +1387,7 @@ function admin_fulfillment_buy_label(
             )
         );
 
-    $labelUrl =
-        trim(
+        $labelUrl = trim(
             (string) (
                 $shipment['postage_label']['label_pdf_url']
                 ?? $shipment['postage_label']['label_url']
@@ -1216,40 +1396,134 @@ function admin_fulfillment_buy_label(
             )
         );
 
-    $trackerId =
-        trim(
+        $trackerId = trim(
             (string) (
                 $shipment['tracker']['id']
                 ?? ''
             )
         );
 
-    if (
-        $trackingCode === ''
-        || $labelUrl === ''
-    ) {
-        throw new RuntimeException(
-            'EasyPost purchased the shipment but did not return complete label data.'
-        );
-    }
+        /*
+         * At this point EasyPost may already have charged us.
+         *
+         * Missing response data is therefore treated as a serious
+         * reconciliation problem rather than retrying automatically.
+         */
+        if (
+            $trackingCode === ''
+            || $labelUrl === ''
+        ) {
+            throw new RuntimeException(
+                'EasyPost purchased the shipment but did not return complete label data. Do not retry automatically. Reconcile the EasyPost shipment before purchasing another label.'
+            );
+        }
 
-    $postageCents =
-        (int) (
+        $postageCents = (int) (
             $rate['rate_cents']
             ?? 0
         );
 
-    $trackingUrl =
-        llama_shipping_tracking_url(
-            $carrier,
-            $trackingCode
-        );
+        if ($postageCents <= 0) {
+            throw new RuntimeException(
+                'The selected shipping rate has an invalid postage amount.'
+            );
+        }
 
-    $db->beginTransaction();
+        $trackingUrl =
+            llama_shipping_tracking_url(
+                $carrier,
+                $trackingCode
+            );
 
-    try {
-        $insert =
-            $db->prepare(
+        $db->beginTransaction();
+
+        try {
+            /*
+             * Final local duplicate check inside the database
+             * transaction while the process-level lock is still held.
+             */
+            $labelCheck = $db->prepare(
+                'SELECT id
+                 FROM shop_fulfillment_labels
+                 WHERE fulfillment_id = ?
+                   AND voided_at IS NULL
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+
+            $labelCheck->execute([
+                $fulfillmentId,
+            ]);
+
+            if ($labelCheck->fetchColumn()) {
+                throw new RuntimeException(
+                    'A shipping label was recorded while this purchase was in progress. Manual reconciliation is required.'
+                );
+            }
+
+            /*
+             * Lock and revalidate the parent order at commit time.
+             */
+            $orderLock = $db->prepare(
+                'SELECT
+                    payment_status,
+                    order_status
+                 FROM shop_orders
+                 WHERE id = ?
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+
+            $orderLock->execute([
+                $orderId,
+            ]);
+
+            $lockedOrder =
+                $orderLock->fetch(PDO::FETCH_ASSOC);
+
+            if (!$lockedOrder) {
+                throw new RuntimeException(
+                    'Shop order disappeared while recording the shipping label.'
+                );
+            }
+
+            $lockedPayment = strtolower(
+                trim(
+                    (string) (
+                        $lockedOrder['payment_status']
+                        ?? ''
+                    )
+                )
+            );
+
+            $lockedStatus = strtolower(
+                trim(
+                    (string) (
+                        $lockedOrder['order_status']
+                        ?? ''
+                    )
+                )
+            );
+
+            if (
+                $lockedPayment !== 'paid'
+                || in_array(
+                    $lockedStatus,
+                    [
+                        'problem',
+                        'cancelled',
+                        'canceled',
+                        'refunded',
+                    ],
+                    true
+                )
+            ) {
+                throw new RuntimeException(
+                    'The order changed state after EasyPost purchased the label. The label must be reconciled manually before continuing.'
+                );
+            }
+
+            $insert = $db->prepare(
                 'INSERT INTO shop_fulfillment_labels (
                     fulfillment_id,
                     provider,
@@ -1265,44 +1539,62 @@ function admin_fulfillment_buy_label(
                     currency,
                     purchased_at
                  ) VALUES (
-                    ?, "easypost", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP()
+                    ?,
+                    "easypost",
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    UTC_TIMESTAMP()
                  )'
             );
 
-        $insert->execute([
-            $fulfillmentId,
-            $shipmentId,
-            $externalRateId,
-            $trackerId !== ''
-                ? $trackerId
-                : null,
-            $carrier,
-            $service,
-            $trackingCode,
-            $trackingUrl !== ''
-                ? $trackingUrl
-                : null,
-            $labelUrl,
-            $postageCents,
-            strtoupper(
-                (string) (
-                    $rate['currency']
-                    ?? 'USD'
-                )
-            ),
-        ]);
+            $insert->execute([
+                $fulfillmentId,
+                $shipmentId,
+                $externalRateId,
+                $trackerId !== ''
+                    ? $trackerId
+                    : null,
+                $carrier,
+                $service,
+                $trackingCode,
+                $trackingUrl !== ''
+                    ? $trackingUrl
+                    : null,
+                $labelUrl,
+                $postageCents,
+                strtoupper(
+                    (string) (
+                        $rate['currency']
+                        ?? 'USD'
+                    )
+                ),
+            ]);
 
-        $carrierKey =
-            admin_shop_normalize_tracking_carrier(
-                $carrier
-            );
+            $carrierKey =
+                admin_shop_normalize_tracking_carrier(
+                    $carrier
+                );
 
-        $update =
-            $db->prepare(
+            /*
+             * Purchasing postage means the package has been submitted
+             * for fulfillment preparation. It does NOT mean the carrier
+             * physically has the package yet, so shipped_at remains NULL.
+             */
+            $update = $db->prepare(
                 'UPDATE shop_order_fulfillments
                  SET
                     status = CASE
                         WHEN status = "pending"
+                            THEN "submitted"
+                        WHEN status = "processing"
                             THEN "submitted"
                         ELSE status
                     END,
@@ -1314,64 +1606,101 @@ function admin_fulfillment_buy_label(
                         UTC_TIMESTAMP()
                     )
                  WHERE id = ?
-                   AND order_id = ?'
+                   AND order_id = ?
+                   AND status IN (
+                        "pending",
+                        "processing",
+                        "submitted"
+                   )'
             );
 
-        $update->execute([
-            $carrierKey !== ''
-                ? $carrierKey
-                : 'other',
-            $trackingCode,
-            $trackingUrl !== ''
-                ? $trackingUrl
-                : null,
-            $fulfillmentId,
-            $orderId,
-        ]);
+            $update->execute([
+                $carrierKey !== ''
+                    ? $carrierKey
+                    : 'other',
+                $trackingCode,
+                $trackingUrl !== ''
+                    ? $trackingUrl
+                    : null,
+                $fulfillmentId,
+                $orderId,
+            ]);
 
-        admin_users_audit(
-            $db,
-            $actorUserId,
-            $rate['user_id']
-                ? (int) $rate['user_id']
-                : null,
-            'shop.fulfillment_label_purchased',
-            'Purchased a shipping label for fulfillment #' .
-                $fulfillmentId .
-                ' on order ' .
-                (string) $rate['order_number'] .
-                '.',
-            [
-                'order_id' => $orderId,
-                'fulfillment_id' => $fulfillmentId,
-                'carrier' => $carrier,
-                'service' => $service,
-                'tracking_code' => $trackingCode,
-                'postage_cents' => $postageCents,
-            ]
-        );
+            if ($update->rowCount() !== 1) {
+                throw new RuntimeException(
+                    'The fulfillment changed state after EasyPost purchased the label. Manual reconciliation is required.'
+                );
+            }
 
-        $db->commit();
+            admin_users_audit(
+                $db,
+                $actorUserId,
+                $rate['user_id']
+                    ? (int) $rate['user_id']
+                    : null,
+                'shop.fulfillment_label_purchased',
+                'Purchased a shipping label for fulfillment #'
+                    . $fulfillmentId
+                    . ' on order '
+                    . (string) $rate['order_number']
+                    . '.',
+                [
+                    'order_id' =>
+                        $orderId,
+                    'fulfillment_id' =>
+                        $fulfillmentId,
+                    'carrier' =>
+                        $carrier,
+                    'service' =>
+                        $service,
+                    'tracking_code' =>
+                        $trackingCode,
+                    'postage_cents' =>
+                        $postageCents,
+                    'external_shipment_id' =>
+                        $shipmentId,
+                    'external_rate_id' =>
+                        $externalRateId,
+                ]
+            );
+
+            $db->commit();
+
+        } catch (Throwable $exception) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            throw $exception;
+        }
 
         admin_fulfillment_sync_order_status(
             $db,
             $orderId
         );
 
-    } catch (Throwable $exception) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
+        return [
+            'carrier' =>
+                $carrier,
+            'service' =>
+                $service,
+            'tracking_code' =>
+                $trackingCode,
+            'tracking_url' =>
+                $trackingUrl,
+            'label_url' =>
+                $labelUrl,
+            'postage_cents' =>
+                $postageCents,
+        ];
 
-        throw $exception;
+    } finally {
+        $releaseStmt = $db->prepare(
+            'SELECT RELEASE_LOCK(?)'
+        );
+
+        $releaseStmt->execute([
+            $lockName,
+        ]);
     }
-
-    return [
-        'carrier' => $carrier,
-        'service' => $service,
-        'tracking_code' => $trackingCode,
-        'tracking_url' => $trackingUrl,
-        'label_url' => $labelUrl,
-        'postage_cents' => $postageCents,
-    ];
 }
