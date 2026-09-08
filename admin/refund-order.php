@@ -32,12 +32,279 @@ if (!$order) {
     exit;
 }
 
+if (!function_exists('shop_reconcile_full_refund_from_stripe')) {
+    function shop_reconcile_full_refund_from_stripe(
+        PDO $db,
+        int $orderId,
+        int $actorUserId
+    ): array {
+        if ($orderId < 1) {
+            throw new InvalidArgumentException(
+                'A valid Shop order is required.'
+            );
+        }
+
+        if (!shop_refund_table_exists($db)) {
+            throw new RuntimeException(
+                'Shop refund database migration is missing.'
+            );
+        }
+
+        if (!shop_refund_restock_table_exists($db)) {
+            throw new RuntimeException(
+                'Shop inventory restock database migration is missing.'
+            );
+        }
+
+        $orderStmt = $db->prepare(
+            'SELECT *
+             FROM shop_orders
+             WHERE id = ?
+             LIMIT 1'
+        );
+        $orderStmt->execute([$orderId]);
+
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            throw new InvalidArgumentException(
+                'Shop order not found.'
+            );
+        }
+
+        $paymentIntentId = trim(
+            (string) ($order['stripe_payment_intent_id'] ?? '')
+        );
+
+        if ($paymentIntentId === '') {
+            throw new RuntimeException(
+                'This order does not have a Stripe PaymentIntent.'
+            );
+        }
+
+        $orderTotal = max(
+            0,
+            (int) ($order['total_cents'] ?? 0)
+        );
+
+        if ($orderTotal < 1) {
+            throw new RuntimeException(
+                'This order does not have a valid total.'
+            );
+        }
+
+        $refundList = llama_stripe_client()
+            ->refunds
+            ->all([
+                'payment_intent' => $paymentIntentId,
+                'limit' => 100,
+            ]);
+
+        $stripeRefunds = [];
+
+        foreach ($refundList->data ?? [] as $stripeRefund) {
+            $refundId = trim(
+                (string) ($stripeRefund->id ?? '')
+            );
+
+            if ($refundId !== '') {
+                $stripeRefunds[] = $stripeRefund;
+            }
+        }
+
+        if (!$stripeRefunds) {
+            throw new InvalidArgumentException(
+                'Stripe does not show any refund for this order PaymentIntent.'
+            );
+        }
+
+        $successfulRefunds = array_values(
+            array_filter(
+                $stripeRefunds,
+                static function ($refund): bool {
+                    return strtolower(
+                        trim((string) ($refund->status ?? ''))
+                    ) === 'succeeded';
+                }
+            )
+        );
+
+        if (!$successfulRefunds) {
+            throw new InvalidArgumentException(
+                'Stripe does not show a succeeded refund for this order.'
+            );
+        }
+
+        if (count($successfulRefunds) !== 1) {
+            throw new InvalidArgumentException(
+                'Stripe shows multiple succeeded refunds for this order. Automatic reconciliation is not safe.'
+            );
+        }
+
+        $stripeRefund = $successfulRefunds[0];
+
+        $refundId = trim(
+            (string) ($stripeRefund->id ?? '')
+        );
+
+        $refundAmount = max(
+            0,
+            (int) ($stripeRefund->amount ?? 0)
+        );
+
+        if ($refundAmount !== $orderTotal) {
+            throw new InvalidArgumentException(
+                'Stripe shows a succeeded refund, but it is not a full-order refund. Automatic reconciliation is not safe.'
+            );
+        }
+
+        $refundPaymentIntent = trim(
+            (string) ($stripeRefund->payment_intent ?? '')
+        );
+
+        if (
+            $refundPaymentIntent !== ''
+            && $refundPaymentIntent !== $paymentIntentId
+        ) {
+            throw new RuntimeException(
+                'Stripe refund does not belong to this order PaymentIntent.'
+            );
+        }
+
+        $existing = shop_refund_for_order(
+            $db,
+            $orderId
+        );
+
+        if ($existing) {
+            $existingRefundId = trim(
+                (string) ($existing['stripe_refund_id'] ?? '')
+            );
+
+            if (
+                $existingRefundId !== ''
+                && $existingRefundId !== $refundId
+            ) {
+                throw new InvalidArgumentException(
+                    'This order already contains a different local refund record. Automatic reconciliation is not safe.'
+                );
+            }
+        }
+
+        $currency = strtolower(
+            trim(
+                (string) (
+                    $stripeRefund->currency
+                    ?? $order['currency']
+                    ?? 'usd'
+                )
+            )
+        );
+
+        $reason = trim(
+            (string) ($stripeRefund->reason ?? '')
+        );
+
+        if (
+            !in_array(
+                $reason,
+                [
+                    'requested_by_customer',
+                    'duplicate',
+                    'fraudulent',
+                ],
+                true
+            )
+        ) {
+            $reason = 'requested_by_customer';
+        }
+
+        $stmt = $db->prepare(
+            'INSERT INTO shop_refunds
+             (
+                order_id,
+                stripe_refund_id,
+                stripe_payment_intent_id,
+                amount_cents,
+                currency,
+                reason,
+                status,
+                failure_reason,
+                requested_by,
+                requested_at,
+                updated_at
+             )
+             VALUES
+             (
+                ?, ?, ?, ?, ?, ?, "succeeded", NULL, ?,
+                UTC_TIMESTAMP(), UTC_TIMESTAMP()
+             )
+             ON DUPLICATE KEY UPDATE
+                stripe_refund_id = VALUES(stripe_refund_id),
+                stripe_payment_intent_id = VALUES(stripe_payment_intent_id),
+                amount_cents = VALUES(amount_cents),
+                currency = VALUES(currency),
+                reason = VALUES(reason),
+                status = "succeeded",
+                failure_reason = NULL,
+                requested_by = VALUES(requested_by),
+                updated_at = UTC_TIMESTAMP()'
+        );
+
+        $stmt->execute([
+            $orderId,
+            $refundId,
+            $paymentIntentId,
+            $refundAmount,
+            $currency,
+            $reason,
+            $actorUserId > 0 ? $actorUserId : null,
+        ]);
+
+        shop_refund_apply_order_status(
+            $db,
+            $orderId,
+            'succeeded',
+            $refundId
+        );
+
+        if (function_exists('admin_users_audit')) {
+            admin_users_audit(
+                $db,
+                $actorUserId,
+                !empty($order['user_id'])
+                    ? (int) $order['user_id']
+                    : null,
+                'shop.order_refund_reconciled',
+                'Reconciled existing Stripe full refund for order '
+                    . (string) ($order['order_number'] ?? $orderId)
+                    . '.',
+                [
+                    'order_id' => $orderId,
+                    'stripe_refund_id' => $refundId,
+                    'stripe_payment_intent_id' => $paymentIntentId,
+                    'amount_cents' => $refundAmount,
+                ]
+            );
+        }
+
+        return [
+            'refund_id' => $refundId,
+            'status' => 'succeeded',
+            'amount_cents' => $refundAmount,
+            'currency' => $currency,
+        ];
+    }
+}
+
 $error = '';
 $notice = '';
+
 $refund = shop_refund_for_order(
     $db,
     $orderId
 );
+
 $refundBlocker = shop_return_aware_refund_blocker(
     $db,
     $orderId
@@ -53,30 +320,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Your session token expired. Reload and try again.';
     } else {
         try {
+            $refundAction = strtolower(
+                trim(
+                    (string) ($_POST['refund_action'] ?? 'issue')
+                )
+            );
+
             if ($refundBlocker !== null) {
                 throw new InvalidArgumentException(
                     $refundBlocker
                 );
             }
 
-            $result = shop_issue_return_aware_full_refund(
-                $db,
-                $orderId,
-                (int) ($adminUser['id'] ?? 0),
-                (string) (
-                    $_POST['refund_reason']
-                    ?? 'requested_by_customer'
-                )
-            );
+            if ($refundAction === 'reconcile') {
+                $result = shop_reconcile_full_refund_from_stripe(
+                    $db,
+                    $orderId,
+                    (int) ($adminUser['id'] ?? 0)
+                );
 
-            $notice =
-                $result['status'] === 'succeeded'
-                    ? 'Stripe refund completed and committed tracked inventory was returned to stock.'
-                    : 'Stripe accepted the refund. Current status: '
-                        . ucfirst(
-                            (string) $result['status']
-                        )
-                        . '. Inventory will return to stock when Stripe confirms the refund succeeded.';
+                $notice =
+                    'Existing succeeded full Stripe refund was verified and reconciled with Llama Scout.';
+            } elseif ($refundAction === 'issue') {
+                $result = shop_issue_return_aware_full_refund(
+                    $db,
+                    $orderId,
+                    (int) ($adminUser['id'] ?? 0),
+                    (string) (
+                        $_POST['refund_reason']
+                        ?? 'requested_by_customer'
+                    )
+                );
+
+                $notice =
+                    $result['status'] === 'succeeded'
+                        ? 'Stripe refund completed and committed tracked inventory was returned to stock.'
+                        : 'Stripe accepted the refund. Current status: '
+                            . ucfirst((string) $result['status'])
+                            . '. Inventory will return to stock when Stripe confirms the refund succeeded.';
+            } else {
+                throw new InvalidArgumentException(
+                    'Choose a valid refund action.'
+                );
+            }
 
             $order = admin_shop_order(
                 $db,
@@ -92,7 +378,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db,
                 $orderId
             );
-
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
                 $exception,
@@ -150,7 +435,6 @@ require __DIR__ . '/_header.php';
 </div>
 <?php endif; ?>
 
-
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -177,9 +461,7 @@ require __DIR__ . '/_header.php';
     <p>
         <strong>Refund status:</strong>
         <?= moderation_e(
-            ucfirst(
-                (string) $refund['status']
-            )
+            ucfirst((string) $refund['status'])
         ) ?>
     </p>
 
@@ -212,19 +494,37 @@ require __DIR__ . '/_header.php';
 
 <?php endif; ?>
 
+<?php
+$refundStatus = $refund
+    ? strtolower(trim((string) ($refund['status'] ?? '')))
+    : '';
 
-<?php if (
+$localRefundComplete =
+    $refundStatus === 'succeeded'
+    && (string) $order['payment_status'] === 'refunded'
+    && (string) $order['order_status'] === 'refunded';
+
+$canIssueRefund =
     (string) $order['payment_status'] === 'paid'
     && $refundBlocker === null
     && (
         !$refund
         || in_array(
-            (string) $refund['status'],
-            ['failed','canceled','cancelled'],
+            $refundStatus,
+            ['failed', 'canceled', 'cancelled'],
             true
         )
-    )
-): ?>
+    );
+
+$canAttemptReconciliation =
+    !$localRefundComplete
+    && $refundBlocker === null
+    && trim(
+        (string) ($order['stripe_payment_intent_id'] ?? '')
+    ) !== '';
+?>
+
+<?php if ($canIssueRefund): ?>
 
 <div class="admin-user-action-box">
     <p>
@@ -255,6 +555,12 @@ require __DIR__ . '/_header.php';
         value="<?= (int) $orderId ?>"
     >
 
+    <input
+        type="hidden"
+        name="refund_action"
+        value="issue"
+    >
+
     <label>
         <span>Refund reason</span>
 
@@ -279,7 +585,69 @@ require __DIR__ . '/_header.php';
     </button>
 </form>
 
-<?php elseif (
+<?php endif; ?>
+
+<?php if ($canAttemptReconciliation): ?>
+
+<div class="admin-user-action-box">
+    <strong>
+        Already refunded directly in Stripe?
+    </strong>
+
+    <p>
+        Use this only when the refund was performed from the
+        Stripe Dashboard instead of Llama Scout.
+    </p>
+
+    <p>
+        Llama Scout checks the order's PaymentIntent directly with
+        Stripe. Reconciliation succeeds only when Stripe shows exactly
+        one succeeded refund equal to the full order total.
+    </p>
+
+    <p>
+        Partial refunds, multiple succeeded refunds, mismatched
+        PaymentIntents, and ambiguous refund history are rejected and
+        left for manual review.
+    </p>
+
+    <form method="post">
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= moderation_e(
+                moderation_csrf_token()
+            ) ?>"
+        >
+
+        <input
+            type="hidden"
+            name="order_id"
+            value="<?= (int) $orderId ?>"
+        >
+
+        <input
+            type="hidden"
+            name="refund_action"
+            value="reconcile"
+        >
+
+        <button
+            class="admin-button"
+            type="submit"
+        >
+            <i
+                class="fa-solid fa-arrows-rotate"
+                aria-hidden="true"
+            ></i>
+            Check Stripe and reconcile refund
+        </button>
+    </form>
+</div>
+
+<?php endif; ?>
+
+<?php if (
     (string) $order['payment_status'] === 'paid'
     && $refundBlocker !== null
 ): ?>
@@ -295,8 +663,9 @@ require __DIR__ . '/_header.php';
     </p>
     <p>
         If the merchandise has already shipped or was delivered,
-        record it as physically returned before issuing the refund.
-        If it has not shipped, cancel or resolve fulfillment first.
+        record it as physically returned before issuing or reconciling
+        the refund. If it has not shipped, cancel or resolve
+        fulfillment first.
     </p>
     <p>
         <a
@@ -308,9 +677,7 @@ require __DIR__ . '/_header.php';
     </p>
 </div>
 
-<?php elseif (
-    (string) $order['payment_status'] === 'refunded'
-): ?>
+<?php elseif ($localRefundComplete): ?>
 
 <div class="admin-empty-state">
     <i
@@ -319,12 +686,16 @@ require __DIR__ . '/_header.php';
     ></i>
     <h3>Refunded</h3>
     <p>
-        Stripe has completed the refund for this order and any
+        Stripe has completed the full refund for this order and any
         committed tracked inventory has been returned to stock.
     </p>
 </div>
 
-<?php else: ?>
+<?php elseif (
+    !$canIssueRefund
+    && !$canAttemptReconciliation
+    && $refundBlocker === null
+): ?>
 
 <div class="admin-empty-state">
     <i
@@ -333,7 +704,8 @@ require __DIR__ . '/_header.php';
     ></i>
     <h3>Refund unavailable</h3>
     <p>
-        This order is not currently in a refundable paid state.
+        This order is not currently in a state where a new full refund
+        or safe Stripe reconciliation can be performed.
     </p>
 </div>
 
