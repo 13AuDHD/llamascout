@@ -39,6 +39,12 @@ $adminPageTitle = 'Orders';
 $adminPageEyebrow = 'Commerce';
 $adminActiveNav = 'orders';
 
+$adminPageActions =
+    '<a class="admin-button" href="/shop-integrity.php">'
+    . '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i> '
+    . 'Shop Integrity'
+    . '</a>';
+
 require __DIR__ . '/_header.php';
 ?>
 
