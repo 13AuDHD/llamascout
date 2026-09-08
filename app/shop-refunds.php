@@ -390,6 +390,63 @@ function shop_refund_apply_order_status(
     }
 
     /*
+     * This Shop endpoint supports FULL refunds only. Never turn a partial
+     * Stripe refund into a fully refunded order or a full inventory
+     * restock. The persisted refund row is also our ownership check: a
+     * webhook must refer to the exact refund Llama Scout created.
+     */
+    $integrityStmt = $db->prepare(
+        'SELECT
+            r.amount_cents AS refund_amount_cents,
+            r.status AS stored_refund_status,
+            o.total_cents AS order_total_cents
+         FROM shop_refunds r
+         INNER JOIN shop_orders o
+            ON o.id = r.order_id
+         WHERE r.order_id = ?
+           AND r.stripe_refund_id = ?
+         LIMIT 1'
+    );
+
+    $integrityStmt->execute([
+        $orderId,
+        $stripeRefundId,
+    ]);
+
+    $integrity = $integrityStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$integrity) {
+        throw new RuntimeException(
+            'The successful Stripe refund does not match a Llama Scout refund record.'
+        );
+    }
+
+    if (
+        shop_refund_normalize_status(
+            (string) ($integrity['stored_refund_status'] ?? '')
+        ) !== 'succeeded'
+    ) {
+        throw new RuntimeException(
+            'The local refund record is not in a succeeded state.'
+        );
+    }
+
+    $refundAmount =
+        max(0, (int) ($integrity['refund_amount_cents'] ?? 0));
+
+    $orderTotal =
+        max(0, (int) ($integrity['order_total_cents'] ?? 0));
+
+    if (
+        $orderTotal < 1
+        || $refundAmount !== $orderTotal
+    ) {
+        throw new RuntimeException(
+            'A partial or mismatched Stripe refund cannot fully restock this Shop order.'
+        );
+    }
+
+    /*
      * Restore committed inventory before marking the order refunded.
      * Both operations are independently retry-safe: the restock helper
      * caps each order item at its original ordered quantity, and the
@@ -752,6 +809,26 @@ function shop_sync_refund_from_stripe(
         $orderId,
         $refundId,
     ]);
+
+    if ($stmt->rowCount() < 1) {
+        $knownStmt = $db->prepare(
+            'SELECT 1
+             FROM shop_refunds
+             WHERE order_id = ?
+               AND stripe_refund_id = ?
+             LIMIT 1'
+        );
+        $knownStmt->execute([
+            $orderId,
+            $refundId,
+        ]);
+
+        if (!$knownStmt->fetchColumn()) {
+            throw new RuntimeException(
+                'Stripe refund webhook does not match a known Llama Scout refund.'
+            );
+        }
+    }
 
     shop_refund_apply_order_status(
         $db,
