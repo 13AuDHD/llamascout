@@ -203,8 +203,8 @@ if (!$schemaWarnings || count($schemaWarnings) === 1 && !$hasRestocks) {
     }
 
     /*
-     * 4. Active fulfillment must not exist for financially non-paid or
-     * refunded orders.
+     * 4. Active fulfillment must not exist for financially non-paid,
+     * refunded/cancelled, or paid-but-Problem orders.
      */
     $stmt = $db->query(
         'SELECT
@@ -219,8 +219,17 @@ if (!$schemaWarnings || count($schemaWarnings) === 1 && !$hasRestocks) {
          FROM shop_orders o
          INNER JOIN shop_order_fulfillments f
             ON f.order_id = o.id
-         WHERE o.payment_status <> "paid"
+         WHERE (
+                o.payment_status <> "paid"
+                OR LOWER(COALESCE(o.order_status, "")) IN (
+                    "problem",
+                    "cancelled",
+                    "canceled",
+                    "refunded"
+                )
+           )
            AND LOWER(COALESCE(f.status, "")) NOT IN (
+                "problem",
                 "cancelled",
                 "canceled",
                 "delivered"
@@ -236,7 +245,7 @@ if (!$schemaWarnings || count($schemaWarnings) === 1 && !$hasRestocks) {
             'active_fulfillment_without_paid_payment',
             (int) $row['id'],
             (string) $row['order_number'],
-            'An active fulfillment exists for an order whose payment is not currently paid.',
+            'An active fulfillment exists for an order that should not currently be advancing fulfillment.',
             [
                 'payment_status' =>
                     (string) ($row['payment_status'] ?? ''),
