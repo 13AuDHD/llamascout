@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 
+$hasMapMemberAccess = user_has_member_access();
+
 $pageTitle = 'Explore the Map | Llama Scout';
 $pageDescription = 'Browse Llama Scout Places by location, type, land manager, elevation, and public amenities.';
 $canonicalUrl = 'https://llamascout.com/map.php';
@@ -19,7 +21,7 @@ require __DIR__ . '/partials/header.php';
 <section class="map-page">
 
     <header class="map-hero">
-        <div class="map-shell map-hero-grid">
+        <div class="map-shell map-hero-grid<?= $hasMapMemberAccess ? ' map-hero-grid-single' : '' ?>">
 
             <div>
                 <p class="map-eyebrow">Explore Llama Scout</p>
@@ -28,21 +30,23 @@ require __DIR__ . '/partials/header.php';
 
                 <p class="map-hero-lede">
                     Search published Places by general area, land management,
-                    type, elevation, and public amenities. Map pins use
-                    approximate public coordinates unless your account has
-                    access to the complete Place report.
+                    type, elevation, and public amenities.<?= $hasMapMemberAccess
+                        ? ' Your membership unlocks exact Place locations and detailed map layers.'
+                        : ' Map pins use approximate public coordinates unless your account has access to the complete Place report.' ?>
                 </p>
             </div>
 
-            <div class="map-privacy-note">
-                <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
-                <div>
-                    <strong>Public pins are approximate.</strong>
-                    <span>
-                        Exact coordinates remain part of the complete Place report.
-                    </span>
+            <?php if (!$hasMapMemberAccess): ?>
+                <div class="map-privacy-note">
+                    <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+                    <div>
+                        <strong>Public pins are approximate.</strong>
+                        <span>
+                            Exact coordinates remain part of the complete Place report.
+                        </span>
+                    </div>
                 </div>
-            </div>
+            <?php endif; ?>
 
         </div>
     </header>
@@ -174,7 +178,32 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="map-map-column">
 
-                    <div class="map-card">
+                    <div
+                        class="map-card"
+                        data-map-member="<?= $hasMapMemberAccess ? '1' : '0' ?>"
+                    >
+                        <?php if ($hasMapMemberAccess): ?>
+                            <div
+                                id="map-layer-control"
+                                class="map-layer-control"
+                                aria-label="Map style"
+                            >
+                                <span class="map-layer-label">
+                                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                                    Map
+                                </span>
+
+                                <div class="map-layer-buttons" role="group" aria-label="Choose map style">
+                                    <button type="button" data-map-layer="auto" class="is-active" aria-pressed="true">Auto</button>
+                                    <button type="button" data-map-layer="street" aria-pressed="false">Street</button>
+                                    <button type="button" data-map-layer="terrain" aria-pressed="false">Terrain</button>
+                                    <button type="button" data-map-layer="topo" aria-pressed="false">Topo</button>
+                                    <button type="button" data-map-layer="dark" aria-pressed="false">Dark</button>
+                                    <button type="button" data-map-layer="satellite" aria-pressed="false">Satellite</button>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <div
                             id="llama-map"
                             class="llama-map"
@@ -183,7 +212,11 @@ require __DIR__ . '/partials/header.php';
 
                         <div class="map-count-badge">
                             <strong id="map-status">Loading Places...</strong>
-                            <span>Approximate public locations</span>
+                            <span id="map-location-precision">
+                                <?= $hasMapMemberAccess
+                                    ? 'Exact Place locations'
+                                    : 'Approximate public locations' ?>
+                            </span>
                         </div>
                     </div>
 
