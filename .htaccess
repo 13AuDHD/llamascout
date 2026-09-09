@@ -7,71 +7,18 @@ RewriteEngine On
 # ROOT .HTACCESS
 # =========================================================
 
-
-# ---------------------------------------------------------
-# BLOCK UNSAFE / UNUSED HTTP METHODS
-# ---------------------------------------------------------
-
 RewriteCond %{REQUEST_METHOD} ^(?:TRACE|TRACK)$ [NC]
 RewriteRule ^ - [R=405,L]
 
-
-# ---------------------------------------------------------
-# REJECT UNEXPECTED HOST HEADERS
-#
-# Prevents the HTTPS redirect and application from trusting
-# attacker-controlled Host values.
-# ---------------------------------------------------------
-
-RewriteCond %{HTTP_HOST} !^(?:www\.)?llamascout\.com(?::[0-9]+)?$ [NC]
-RewriteRule ^ - [R=400,L]
-
-
-# ---------------------------------------------------------
-# BLOCK INTERNAL APPLICATION / REPOSITORY PATHS
-#
-# These files may exist on the server for PHP includes,
-# deployments, or migrations, but must never be reachable
-# directly over HTTP.
-# ---------------------------------------------------------
-
 RewriteRule ^(?:app|sql|\.git|\.github)(?:/|$) - [F,L,NC]
 
-
-# ---------------------------------------------------------
-# BLOCK HIDDEN FILES
-#
-# Keep ACME / certificate validation under .well-known
-# available while denying other dotfiles and dot-directories.
-# ---------------------------------------------------------
-
 RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L,NC]
-
-
-# ---------------------------------------------------------
-# BLOCK SENSITIVE DEVELOPMENT / BACKUP FILES
-# ---------------------------------------------------------
 
 RewriteRule ^(?:README(?:\.md)?|CNAME|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml(?:\.dist)?|\.env(?:\..*)?)$ - [F,L,NC]
 
 RewriteRule \.(?:sql|sqlite|sqlite3|log|ini|conf|config|bak|backup|old|orig|save|swp|dist)$ - [F,L,NC]
 
-
-# ---------------------------------------------------------
-# UPLOAD EXECUTION BARRIER
-#
-# Uploaded photos are already rewritten to random .jpg files,
-# but this adds a web-server boundary so executable extensions
-# cannot run from /uploads even if an upload bug is introduced
-# later.
-# ---------------------------------------------------------
-
 RewriteRule ^uploads/.*\.(?:php[0-9]?|phtml|phar|cgi|pl|py|sh|shtml)$ - [F,L,NC]
-
-
-# ---------------------------------------------------------
-# CUSTOM SAFETY / ERROR ROUTING
-# ---------------------------------------------------------
 
 ErrorDocument 400 /safety.php?reason=400
 ErrorDocument 401 /safety.php?reason=401
@@ -83,106 +30,53 @@ ErrorDocument 429 /safety.php?reason=429
 ErrorDocument 500 /safety.php?reason=500
 ErrorDocument 503 /safety.php?reason=503
 
-
-# ---------------------------------------------------------
-# FORCE HTTPS
-# ---------------------------------------------------------
-
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
-
-# ---------------------------------------------------------
-# ROOT HOMEPAGE
-# ---------------------------------------------------------
-
 RewriteRule ^$ index.php [L]
 
-
-# ---------------------------------------------------------
-# PUBLIC CLEAN ROUTES
-# ---------------------------------------------------------
-
 RewriteRule ^field-guides/?$ field-guides.php [L]
-
 RewriteRule ^field-guides/([a-z0-9-]+)/?$ field-guide.php?slug=$1 [QSA,L]
-
 RewriteRule ^membership/?$ membership.php [L]
-
 RewriteRule ^badges/([a-z0-9-]+)/?$ badge.php?slug=$1 [QSA,L]
-
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
-
-
-# ---------------------------------------------------------
-# PUBLIC MEMBER PROFILES
-# Existing files and directories always win.
-# ---------------------------------------------------------
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([A-Za-z0-9_]{4,16})/?$ profile.php?user=$1 [QSA,L]
 
-
-# ---------------------------------------------------------
-# DEFAULT INDEX
-# ---------------------------------------------------------
-
 DirectoryIndex index.php index.html
-
-
-# ---------------------------------------------------------
-# SECURITY + CACHE HEADERS
-# ---------------------------------------------------------
 
 <IfModule mod_headers.c>
 
-    # Prevent MIME-type guessing.
     Header always set X-Content-Type-Options "nosniff"
 
-    # Prevent Llama Scout pages from being embedded by outside sites.
     Header always set X-Frame-Options "SAMEORIGIN"
 
-    # Limit how much referring URL information leaves Llama Scout.
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # Disable browser features the public site does not need.
-    # Geolocation remains available because Add a Place uses Locate Me.
     Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=()"
 
-    # Disable legacy Adobe cross-domain policy files.
     Header always set X-Permitted-Cross-Domain-Policies "none"
 
-    # Force HTTPS for this host and all Llama Scout subdomains after
-    # the browser has seen this header once.
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
-    # Safe CSP directives that do not depend on eliminating the site's
-    # existing inline scripts/styles. A stricter script-src/style-src CSP
-    # can be added after the front end is nonce-ready.
     Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
 
-    # Do not advertise PHP through the common response header.
     Header always unset X-Powered-By
 
-
-    # Dynamic application files should not be cached.
     <FilesMatch "\.(html?|php|json|js|css)$">
         Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header always set Pragma "no-cache"
         Header always set Expires "0"
     </FilesMatch>
 
-
-    # Static assets may be cached for one day.
     <FilesMatch "\.(png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf)$">
         Header always set Cache-Control "public, max-age=86400"
     </FilesMatch>
 
-
     Header unset ETag
 
 </IfModule>
-
 
 FileETag None
