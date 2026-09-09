@@ -73,13 +73,12 @@
         },
 
         light: {
-            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            url: '',
             options: {
-                subdomains: 'abcd',
                 maxNativeZoom: 20,
                 maxZoom: MEMBER_MAX_ZOOM,
                 attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
         },
 
@@ -114,13 +113,12 @@
         },
 
         dark: {
-            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            url: '',
             options: {
-                subdomains: 'abcd',
                 maxNativeZoom: 20,
                 maxZoom: MEMBER_MAX_ZOOM,
                 attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
         },
 
@@ -176,7 +174,19 @@
         }
 
         if (selection === 'auto') {
-            return resolvedTheme() === 'dark' ? 'dark' : 'light';
+            const automatic =
+                resolvedTheme() === 'dark' ? 'dark' : 'light';
+
+            return tileSources[automatic]?.url
+                ? automatic
+                : 'street';
+        }
+
+        if (
+            (selection === 'light' || selection === 'dark') &&
+            !tileSources[selection]?.url
+        ) {
+            return 'street';
         }
 
         return tileSources[selection] ? selection : 'street';
@@ -782,6 +792,25 @@
             }
 
             syncMapAccess(data.member_map_access === true);
+
+            if (
+                memberMapAccess &&
+                data.member_tiles?.geoapify_available === true
+            ) {
+                tileSources.light.url =
+                    String(data.member_tiles.light || '');
+
+                tileSources.dark.url =
+                    String(data.member_tiles.dark || '');
+
+                /*
+                 * Re-run Auto now that the member-only Geoapify URLs
+                 * have arrived from the authenticated API response.
+                 */
+                if (selectedLayer === 'auto') {
+                    applyTileLayer();
+                }
+            }
 
             places = data.places;
 
