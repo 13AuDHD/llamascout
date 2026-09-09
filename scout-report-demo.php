@@ -421,7 +421,7 @@ require __DIR__ . '/partials/header.php';
             <i class="fa-solid fa-building" aria-hidden="true"></i>
             <span>Road</span>
             <strong>
-                <?= place_h($place['road']) ?>,
+                <?= place_h($place['road']) ?>
             </strong>
         </div>
 
@@ -558,7 +558,7 @@ require __DIR__ . '/partials/header.php';
                     </div>
                 </div>
             <?php endif; ?>
-p>
+            
         <?php endif; ?>
     </section>
 
