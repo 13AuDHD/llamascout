@@ -621,17 +621,22 @@
                             </span>
                         `
                 }
+
+                ${
+                    place.status === 'featured'
+                        ? `
+                            <span class="map-featured-badge">
+                                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                                Featured
+                            </span>
+                        `
+                        : ''
+                }
             </a>
 
             <div class="map-place-body">
                 <div class="map-place-topline">
                     <span>${escapeHtml(formatLabel(place.type))}</span>
-
-                    ${
-                        place.status === 'featured'
-                            ? '<strong>Featured</strong>'
-                            : ''
-                    }
                 </div>
 
                 <h3>
@@ -665,7 +670,6 @@
                     }
                 </div>
 
-                ${renderAmenities(place)}
             </div>
         `;
 
