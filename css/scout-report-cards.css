@@ -280,9 +280,19 @@
     font-weight: 850;
 }
 
+
+/*
+ * Locked cards intentionally use ONE column.
+ *
+ * .scout-report-item has a legacy two-column grid in the shared
+ * Place stylesheet. Resetting the columns here keeps the title on
+ * its own line and the lock/value directly underneath it.
+ */
+
 .locked-scout-card {
     min-height: 96px;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     gap: 8px;
     align-items: end;
@@ -290,22 +300,31 @@
 }
 
 .locked-scout-card-title {
+    grid-column: 1;
+    grid-row: 1;
     align-self: start;
+    min-width: 0;
     color: var(--text-muted);
     font-size: .9rem;
     line-height: 1.28;
 }
 
 .locked-scout-card-value {
+    grid-column: 1;
+    grid-row: 3;
     align-self: end;
+    justify-self: start;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
     gap: 7px;
     font-size: .84rem;
     line-height: 1.2;
+    white-space: normal;
 }
 
 .locked-scout-card-value i {
+    flex: 0 0 auto;
     font-size: .75rem;
 }
 
