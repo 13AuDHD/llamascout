@@ -1166,6 +1166,16 @@ if (
 
         throw $exception;
     }
+
+} finally {
+    $releaseStmt = $db->prepare(
+        'SELECT RELEASE_LOCK(?)'
+    );
+
+    $releaseStmt->execute([
+        $lockName,
+    ]);
+}
 }
 
 function admin_fulfillment_buy_label(
