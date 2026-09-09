@@ -573,7 +573,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-weather-current-main">
                     <div class="place-weather-temperature">
-                        <?= $currentTemp === null ? 'â' : $currentTemp . 'Â°F' ?>
+                        <?= $currentTemp === null ? '&mdash;' : $currentTemp . '&#176;F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
                     <span>Headquarters, Durango</span>
@@ -581,7 +581,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-weather-facts">
                     <?php if ($feels !== null): ?>
-                        <div><span>Feels like</span><strong><?= $feels ?>Â°F</strong></div>
+                        <div><span>Feels like</span><strong><?= $feels ?>&#176;F</strong></div>
                     <?php endif; ?>
 
                     <?php if ($humidity !== null): ?>
@@ -628,8 +628,8 @@ require __DIR__ . '/partials/header.php';
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
-                                    <strong><?= $high === null ? 'â' : $high . 'Â°' ?></strong>
-                                    <span><?= $low === null ? 'â' : $low . 'Â°' ?></span>
+                                    <strong><?= $high === null ? '&mdash;' : $high . '&#176;' ?></strong>
+                                    <span><?= $low === null ? '&mdash;' : $low . '&#176;' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
