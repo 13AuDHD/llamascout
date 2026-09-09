@@ -84,6 +84,7 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'site/features/place-shared.css';
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
+        $styles[] = 'photo-uploader.css';
     }
 
     if (
