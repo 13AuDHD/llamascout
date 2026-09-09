@@ -76,6 +76,26 @@ try {
     $adminNewsletterQueueCount = 0;
 }
 
+/*
+ * Open application errors are a global Admin queue.
+ * Show the count beside Error Log on every Admin page.
+ */
+$adminOpenErrorCount = 0;
+
+try {
+    $adminOpenErrorCount = (int) db()
+        ->query(
+            "SELECT COUNT(*)
+             FROM application_errors
+             WHERE resolution_status = 'open'"
+        )
+        ->fetchColumn();
+} catch (Throwable $exception) {
+    $adminOpenErrorCount = 0;
+}
+
+
+
 function admin_shell_nav_class(string $key, string $active): string
 {
     return $key === $active
@@ -582,10 +602,14 @@ function admin_shell_nav_class(string $key, string $active): string
 
         <a
             class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
-            href="<?= moderation_e($adminUrl . '/errors.php') ?>"
+            href="<?= moderation_e($adminUrl . '/errors.php?status=open') ?>"
         >
             <i class="fa-solid fa-bug" aria-hidden="true"></i>
             <span>Error Log</span>
+
+            <?php if ($adminOpenErrorCount > 0): ?>
+                <b><?= $adminOpenErrorCount ?></b>
+            <?php endif; ?>
         </a>
 
         <a
