@@ -282,6 +282,11 @@
     transform: translateY(1px);
 }
 
+
+/* =========================================================
+   LEAFLET CONTROLS
+   ========================================================= */
+
 .map-card .leaflet-bar {
     border: 1px solid var(--border);
     border-radius: 11px;
@@ -306,6 +311,11 @@
     color: inherit;
 }
 
+
+/* =========================================================
+   MAP STATUS
+   ========================================================= */
+
 .map-count-badge {
     position: absolute;
     z-index: 500;
@@ -326,6 +336,11 @@
     color: var(--text-muted);
     font-size: .74rem;
 }
+
+
+/* =========================================================
+   RESULTS
+   ========================================================= */
 
 .map-results-column {
     min-width: 0;
@@ -461,20 +476,42 @@
     margin: 0;
 }
 
+
+/* =========================================================
+   MAP POPUPS
+   ========================================================= */
+
+/*
+ * Leaflet normally applies its own inner padding around popup content.
+ * The Llama Scout popup is treated as one complete card instead so the
+ * featured image and white content area share the same rounded shape.
+ */
+.map-card .leaflet-popup-content-wrapper {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 16px;
+}
+
+.map-card .leaflet-popup-content {
+    margin: 0;
+}
+
 .map-popup {
     width: 220px;
 }
 
 .map-popup > img {
-    width: calc(100% + 40px);
+    display: block;
+    width: 100%;
     height: 110px;
-    margin: -14px -20px 10px;
+    margin: 0;
     object-fit: cover;
 }
 
 .map-popup > div {
     display: grid;
     gap: 5px;
+    padding: 14px 20px 16px;
 }
 
 .map-popup-type {
@@ -505,6 +542,39 @@
     font-weight: 800;
 }
 
+
+/* =========================================================
+   POPUP CLOSE BUTTON
+   ========================================================= */
+
+.map-card .leaflet-popup-close-button {
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .62);
+    color: #fff !important;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    text-shadow: none;
+}
+
+.map-card .leaflet-popup-close-button:hover,
+.map-card .leaflet-popup-close-button:focus {
+    background: rgba(0, 0, 0, .82);
+    color: #fff !important;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
 @media (max-width: 1000px) {
     .map-hero-grid {
@@ -614,6 +684,10 @@
     }
 }
 
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
     .map-layer-buttons button {
