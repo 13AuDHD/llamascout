@@ -7,6 +7,9 @@
         return;
     }
 
+    const mapCard = mapElement.closest('.map-card');
+    const initialMemberAccess = mapCard?.dataset.mapMember === '1';
+
     const controls = {
         search: document.getElementById('map-search'),
         toggle: document.getElementById('map-filter-toggle'),
@@ -15,8 +18,10 @@
         clear: document.getElementById('map-clear'),
         fit: document.getElementById('map-fit-results'),
         status: document.getElementById('map-status'),
+        precision: document.getElementById('map-location-precision'),
         results: document.getElementById('place-results'),
         empty: document.getElementById('map-empty'),
+        layerControl: document.getElementById('map-layer-control'),
 
         state: document.getElementById('filter-state'),
         county: document.getElementById('filter-county'),
@@ -43,20 +48,246 @@
     let places = [];
     let visiblePlaces = [];
     let markers = [];
+    let memberMapAccess = initialMemberAccess;
+    let selectedLayer = 'auto';
+    let activeTileLayer = null;
+
+    const PUBLIC_MAX_ZOOM = 11;
+    const MEMBER_MAX_ZOOM = 20;
 
     const map = L.map(mapElement, {
-        maxZoom: 11,
+        maxZoom: initialMemberAccess ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM,
         zoomControl: true
     }).setView([37.3, -107.4], 7);
 
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-            maxZoom: 11,
-            attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+
+    const tileSources = {
+        public: {
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            options: {
+                maxNativeZoom: 19,
+                maxZoom: PUBLIC_MAX_ZOOM,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }
+        },
+
+        light: {
+            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            options: {
+                subdomains: 'abcd',
+                maxNativeZoom: 20,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            }
+        },
+
+        street: {
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            options: {
+                maxNativeZoom: 19,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }
+        },
+
+        terrain: {
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+            options: {
+                maxNativeZoom: 19,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    'Tiles &copy; Esri and contributors'
+            }
+        },
+
+        topo: {
+            url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+            options: {
+                maxNativeZoom: 17,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Map style &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+            }
+        },
+
+        dark: {
+            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            options: {
+                subdomains: 'abcd',
+                maxNativeZoom: 20,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            }
+        },
+
+        satellite: {
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            options: {
+                maxNativeZoom: 19,
+                maxZoom: MEMBER_MAX_ZOOM,
+                attribution:
+                    'Tiles &copy; Esri and imagery contributors'
+            }
         }
-    ).addTo(map);
+    };
+
+
+    const getStoredTheme = () => {
+        try {
+            return localStorage.getItem('llama-theme') || 'system';
+        } catch (error) {
+            return 'system';
+        }
+    };
+
+
+    const systemPrefersDark = () =>
+        window.matchMedia?.('(prefers-color-scheme: dark)').matches === true;
+
+
+    const resolvedTheme = () => {
+        const stored = getStoredTheme();
+
+        if (stored === 'dark') {
+            return 'dark';
+        }
+
+        if (stored === 'light') {
+            return 'light';
+        }
+
+        const documentTheme = document.documentElement.dataset.theme;
+
+        if (documentTheme === 'dark' || documentTheme === 'light') {
+            return documentTheme;
+        }
+
+        return systemPrefersDark() ? 'dark' : 'light';
+    };
+
+
+    const layerKeyForSelection = (selection) => {
+        if (!memberMapAccess) {
+            return 'public';
+        }
+
+        if (selection === 'auto') {
+            return resolvedTheme() === 'dark' ? 'dark' : 'light';
+        }
+
+        return tileSources[selection] ? selection : 'street';
+    };
+
+
+    const setActiveLayerButton = () => {
+        controls.layerControl
+            ?.querySelectorAll('[data-map-layer]')
+            .forEach((button) => {
+                const active = button.dataset.mapLayer === selectedLayer;
+
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+    };
+
+
+    const applyTileLayer = () => {
+        const key = layerKeyForSelection(selectedLayer);
+        const source = tileSources[key];
+
+        if (!source) {
+            return;
+        }
+
+        if (activeTileLayer) {
+            map.removeLayer(activeTileLayer);
+        }
+
+        activeTileLayer = L.tileLayer(source.url, source.options);
+        activeTileLayer.addTo(map);
+        setActiveLayerButton();
+    };
+
+
+    const syncMapAccess = (hasAccess) => {
+        memberMapAccess = hasAccess === true;
+
+        map.setMaxZoom(
+            memberMapAccess ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM
+        );
+
+        if (!memberMapAccess && map.getZoom() > PUBLIC_MAX_ZOOM) {
+            map.setZoom(PUBLIC_MAX_ZOOM);
+        }
+
+        if (controls.precision) {
+            controls.precision.textContent = memberMapAccess
+                ? 'Exact Place locations'
+                : 'Approximate public locations';
+        }
+
+        if (controls.layerControl) {
+            controls.layerControl.hidden = !memberMapAccess;
+        }
+
+        if (!memberMapAccess) {
+            selectedLayer = 'auto';
+        }
+
+        applyTileLayer();
+    };
+
+
+    applyTileLayer();
+
+
+    controls.layerControl
+        ?.querySelectorAll('[data-map-layer]')
+        .forEach((button) => {
+            button.addEventListener('click', () => {
+                if (!memberMapAccess) {
+                    return;
+                }
+
+                selectedLayer = button.dataset.mapLayer || 'auto';
+                applyTileLayer();
+            });
+        });
+
+
+    const themeObserver = new MutationObserver(() => {
+        if (memberMapAccess && selectedLayer === 'auto') {
+            applyTileLayer();
+        }
+    });
+
+    themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+    });
+
+    const colorSchemeQuery =
+        window.matchMedia?.('(prefers-color-scheme: dark)');
+
+    const handleSystemThemeChange = () => {
+        if (
+            memberMapAccess &&
+            selectedLayer === 'auto' &&
+            getStoredTheme() === 'system'
+        ) {
+            applyTileLayer();
+        }
+    };
+
+    if (colorSchemeQuery?.addEventListener) {
+        colorSchemeQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (colorSchemeQuery?.addListener) {
+        colorSchemeQuery.addListener(handleSystemThemeChange);
+    }
 
 
     const escapeHtml = (value) => {
@@ -100,6 +331,32 @@
     const locationLabel = (place) =>
         String(place.public_location_label || '').trim() ||
         [place.city, place.state].filter(Boolean).join(', ');
+
+
+    const placeCoordinates = (place) => {
+        const exactLat = Number(place.latitude);
+        const exactLng = Number(place.longitude);
+
+        if (
+            memberMapAccess &&
+            Number.isFinite(exactLat) &&
+            Number.isFinite(exactLng)
+        ) {
+            return [exactLat, exactLng];
+        }
+
+        const publicLat = Number(place.public_latitude);
+        const publicLng = Number(place.public_longitude);
+
+        if (
+            Number.isFinite(publicLat) &&
+            Number.isFinite(publicLng)
+        ) {
+            return [publicLat, publicLng];
+        }
+
+        return null;
+    };
 
 
     const activeFilterCount = () => {
@@ -252,22 +509,21 @@
 
     const fitVisiblePlaces = () => {
         const bounds = visiblePlaces
-            .map((place) => [
-                Number(place.public_latitude),
-                Number(place.public_longitude)
-            ])
-            .filter(([lat, lng]) =>
-                Number.isFinite(lat) &&
-                Number.isFinite(lng)
-            );
+            .map(placeCoordinates)
+            .filter(Boolean);
+
+        const fitMaxZoom = memberMapAccess ? 16 : 9;
 
         if (bounds.length > 1) {
             map.fitBounds(bounds, {
                 padding: [42, 42],
-                maxZoom: 9
+                maxZoom: fitMaxZoom
             });
         } else if (bounds.length === 1) {
-            map.setView(bounds[0], 9);
+            map.setView(
+                bounds[0],
+                memberMapAccess ? 16 : 9
+            );
         }
     };
 
@@ -295,6 +551,12 @@
                     ${
                         location
                             ? `<span>${escapeHtml(location)}</span>`
+                            : ''
+                    }
+
+                    ${
+                        memberMapAccess
+                            ? '<span class="map-popup-exact"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Exact location</span>'
                             : ''
                     }
 
@@ -416,21 +678,22 @@
 
         clearMarkers();
 
-        controls.results.innerHTML = '';
+        if (controls.results) {
+            controls.results.innerHTML = '';
+        }
 
         visiblePlaces.forEach((place) => {
-            const lat = Number(place.public_latitude);
-            const lng = Number(place.public_longitude);
+            const coordinates = placeCoordinates(place);
             let marker = null;
 
-            if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                marker = L.marker([lat, lng]);
+            if (coordinates) {
+                marker = L.marker(coordinates);
                 marker.bindPopup(popupHtml(place));
                 marker.addTo(map);
                 markers.push(marker);
             }
 
-            controls.results.appendChild(
+            controls.results?.appendChild(
                 renderCard(place, marker)
             );
         });
@@ -453,7 +716,9 @@
 
 
     const clearFilters = () => {
-        controls.search.value = '';
+        if (controls.search) {
+            controls.search.value = '';
+        }
 
         [
             controls.state,
@@ -475,6 +740,10 @@
 
 
     const toggleFilters = () => {
+        if (!controls.panel || !controls.toggle) {
+            return;
+        }
+
         const opening = controls.panel.hidden;
 
         controls.panel.hidden = !opening;
@@ -486,14 +755,19 @@
 
 
     async function loadPlaces() {
-        controls.status.textContent = 'Loading Places...';
+        if (controls.status) {
+            controls.status.textContent = 'Loading Places...';
+        }
 
         try {
             const response = await fetch(
                 '/api/places.php',
                 {
                     cache: 'no-store',
-                    credentials: 'same-origin'
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 }
             );
 
@@ -507,6 +781,8 @@
                 throw new Error('Unexpected Places response.');
             }
 
+            syncMapAccess(data.member_map_access === true);
+
             places = data.places;
 
             populateFilters();
@@ -515,14 +791,27 @@
         } catch (error) {
             console.error('Llama Scout map:', error);
 
-            controls.status.textContent =
-                'Places could not be loaded.';
+            if (controls.status) {
+                controls.status.textContent =
+                    'Places could not be loaded.';
+            }
 
-            controls.empty.hidden = false;
-            controls.empty.querySelector('h3').textContent =
-                'The map could not load Places.';
-            controls.empty.querySelector('p').textContent =
-                'Try reloading the page.';
+            if (controls.empty) {
+                controls.empty.hidden = false;
+
+                const heading = controls.empty.querySelector('h3');
+                const paragraph = controls.empty.querySelector('p');
+
+                if (heading) {
+                    heading.textContent =
+                        'The map could not load Places.';
+                }
+
+                if (paragraph) {
+                    paragraph.textContent =
+                        'Try reloading the page.';
+                }
+            }
         }
     }
 
