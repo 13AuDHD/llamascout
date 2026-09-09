@@ -347,95 +347,12 @@ require __DIR__ . '/_header.php';
         </section>
 
 
-        <section class="admin-panel">
-
-            <header class="admin-panel-header">
-                <div>
-                    <p>Operations</p>
-                    <h2>Admin Systems</h2>
-                </div>
-            </header>
-
-            <div class="admin-module-list">
-
-                <a class="is-ready" href="/support.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Support</strong>
-                        Customer tickets and linked error reports
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/newsletters.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Newsletters</strong>
-                        Monthly and member-only email publications
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/submissions.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Place Moderation</strong>
-                        New Places and suggested updates
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/reports.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Place Operations</strong>
-                        Reports, verification, canonical records
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/users.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Users + Scouts</strong>
-                        Accounts, Scout periods, Master Scout
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/badges.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Badges + Achievements</strong>
-                        Definitions, images, awards
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/points.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Policies + Points</strong>
-                        Scout policy and contribution scoring
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/orders.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>Shop + Orders</strong>
-                        Products, orders, fulfillment
-                    </span>
-                </a>
-
-                <a class="is-ready" href="/system.php">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>
-                        <strong>System + Audit</strong>
-                        Health, maintenance, staging, audit log
-                    </span>
-                </a>
-
-            </div>
-
-        </section>
+        <?php require __DIR__ . '/_todo.php'; ?>
 
     </div>
 
 </div>
+
+<script src="https://llamascout.com/js/admin-todo.js"></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
