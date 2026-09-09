@@ -152,6 +152,14 @@
         background: var(--surface);
     }
 
+         /* Keep the entire open mobile navigation above maps,
+         Leaflet controls, popups, attribution, and other page overlays. */
+      .site-header.menu-is-open {
+          position: relative;
+          z-index: 2000;
+          isolation: isolate;
+    }
+
     .site-header.menu-is-open
     .accessibility-button-mobile {
         display: inline-flex;
