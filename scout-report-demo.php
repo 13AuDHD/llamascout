@@ -416,6 +416,14 @@ require __DIR__ . '/partials/header.php';
             <span>Elevation</span>
             <strong><?= number_format((int) $headquarters['elevation_feet']) ?> ft</strong>
         </div>
+        
+        <div class="place-fact">
+            <i class="fa-solid fa-building" aria-hidden="true"></i>
+            <span>Road</span>
+            <strong>
+                <?= place_h($place['road']) ?>,
+            </strong>
+        </div>
 
         <div class="place-fact">
             <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
@@ -426,14 +434,6 @@ require __DIR__ . '/partials/header.php';
             </strong>
         </div>
 
-        <div class="place-fact">
-            <i class="fa-solid fa-building" aria-hidden="true"></i>
-            <span>Real-world anchor</span>
-            <strong>
-                <?= place_h($headquarters['address']) ?>,
-                <?= place_h($headquarters['city']) ?>
-            </strong>
-        </div>
     </section>
 
     <section class="place-section place-weather" aria-labelledby="weather-heading">
