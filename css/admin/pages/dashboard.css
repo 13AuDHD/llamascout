@@ -222,53 +222,303 @@
 }
 
 
-/* Admin Systems list */
+/* =========================================================
+   SITE TO-DO
+   ========================================================= */
 
-.admin-module-list {
-    display: grid;
-
-    padding: 8px 18px 14px;
+.admin-todo-panel {
+    overflow: hidden;
 }
 
-.admin-module-list > a,
-.admin-module-list > div {
+.admin-todo-open-count {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-todo-add {
     display: grid;
-    grid-template-columns:
-        20px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+
+    padding: 14px 16px 10px;
+}
+
+.admin-todo-add input {
+    min-width: 0;
+    min-height: 42px;
+
+    padding: 9px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .78rem;
+}
+
+.admin-todo-add button {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    padding: 9px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-size: .75rem;
+    font-weight: 850;
+
+    cursor: pointer;
+}
+
+.admin-todo-add button:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.admin-todo-feedback {
+    min-height: 1.1em;
+    margin: 0;
+    padding: 0 16px 8px;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+}
+
+.admin-todo-feedback.is-error {
+    color: #d95c5c;
+}
+
+.admin-todo-list {
+    display: grid;
+
+    padding: 0 16px 14px;
+}
+
+.admin-todo-list[hidden] {
+    display: none;
+}
+
+.admin-todo-item {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 30px;
+    gap: 8px;
+    align-items: center;
+
+    min-width: 0;
 
     padding: 10px 0;
 
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+
+    transition:
+        opacity .13s ease,
+        transform .13s ease;
+}
+
+.admin-todo-item:first-child {
+    border-top: 0;
+}
+
+.admin-todo-item.is-completed {
+    opacity: .6;
+}
+
+.admin-todo-item.is-removing {
+    opacity: 0;
+    transform: translateX(8px);
+}
+
+.admin-todo-toggle,
+.admin-todo-delete,
+.admin-todo-task {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.admin-todo-toggle {
+    width: 26px;
+    height: 26px;
+
+    display: grid;
+    place-items: center;
+
+    padding: 0;
 
     color: var(--text-muted);
-    text-decoration: none;
+    font-size: 1rem;
 }
 
-.admin-module-list > a:last-child,
-.admin-module-list > div:last-child {
-    border-bottom: 0;
-}
-
-.admin-module-list > a.is-ready,
-.admin-module-list > div.is-ready {
+.admin-todo-item.is-completed .admin-todo-toggle {
     color: var(--text);
 }
 
-.admin-module-list > a:hover,
-.admin-module-list > a:focus-visible {
-    color: var(--text);
-}
+.admin-todo-copy {
+    min-width: 0;
 
-.admin-module-list span {
     display: grid;
-    gap: 1px;
-
-    font-size: .72rem;
+    gap: 3px;
 }
 
-.admin-module-list strong {
-    font-size: .8rem;
+.admin-todo-task {
+    min-width: 0;
+
+    padding: 0;
+
+    overflow-wrap: anywhere;
+
+    text-align: left;
+    line-height: 1.35;
+    font-size: .77rem;
+    font-weight: 760;
+}
+
+.admin-todo-task:hover,
+.admin-todo-task:focus-visible {
+    text-decoration: underline;
+}
+
+.admin-todo-item.is-completed .admin-todo-task {
+    text-decoration: line-through;
+}
+
+.admin-todo-copy small {
+    color: var(--text-muted);
+    font-size: .61rem;
+}
+
+.admin-todo-edit-input {
+    width: 100%;
+    min-width: 0;
+
+    padding: 6px 7px;
+
+    border: 1px solid var(--focus);
+    border-radius: 7px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    font-size: .77rem;
+}
+
+.admin-todo-delete {
+    width: 30px;
+    height: 30px;
+
+    display: grid;
+    place-items: center;
+
+    padding: 0;
+
+    border-radius: 8px;
+
+    color: var(--text-muted);
+
+    transition:
+        background-color .12s ease,
+        color .12s ease,
+        transform .12s ease;
+}
+
+.admin-todo-delete:hover,
+.admin-todo-delete:focus-visible {
+    color: var(--text);
+    background: var(--background);
+}
+
+.admin-todo-delete.is-armed {
+    background: #b83d3d;
+    color: #fff;
+    transform: scale(1.04);
+}
+
+.admin-todo-delete:disabled {
+    opacity: .65;
+    cursor: wait;
+}
+
+.admin-todo-empty {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+
+    padding: 32px 18px 36px;
+
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.admin-todo-empty[hidden] {
+    display: none;
+}
+
+.admin-todo-empty i {
+    margin-bottom: 4px;
+    font-size: 1.35rem;
+}
+
+.admin-todo-empty strong {
+    color: var(--text);
+    font-size: .82rem;
+}
+
+.admin-todo-empty span {
+    max-width: 260px;
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+.admin-todo-schema-warning {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+
+    margin: 14px 16px 16px;
+    padding: 12px;
+
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+
+    color: var(--text-muted);
+}
+
+.admin-todo-schema-warning > i {
+    margin-top: 2px;
+}
+
+.admin-todo-schema-warning strong,
+.admin-todo-schema-warning span {
+    display: block;
+}
+
+.admin-todo-schema-warning strong {
+    color: var(--text);
+    font-size: .75rem;
+}
+
+.admin-todo-schema-warning span {
+    margin-top: 3px;
+    font-size: .66rem;
+    line-height: 1.4;
 }
 
 
@@ -458,4 +708,24 @@
     .admin-acquisition-summary {
         grid-template-columns: 1fr;
     }
+
+    .admin-todo-add {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-todo-add button {
+        justify-self: stretch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-todo-item,
+    .admin-todo-delete {
+        transition: none;
+    }
+}
+
+html[data-reduced-motion="true"] .admin-todo-item,
+html[data-reduced-motion="true"] .admin-todo-delete {
+    transition: none;
 }
