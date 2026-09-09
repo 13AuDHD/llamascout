@@ -651,9 +651,12 @@
     margin-top: 4px;
 }
 
-.membership-public-plan > .public-home-button,
-.membership-public-paid-actions {
+.membership-public-plan > .public-home-button {
     margin-top: auto;
+}
+
+.membership-public-paid-actions {
+    margin-top: 10px;
 }
 
 .membership-public-paid-prices {
@@ -914,7 +917,7 @@
     }
 
     .membership-price-option {
-        justify-content: center;
+        justify-content: flex-start;
     }
 
     .membership-price-separator {
