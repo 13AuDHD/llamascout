@@ -266,10 +266,10 @@ $demoAmenities = [
 
 /* Demo images are optional. The page works before they exist. */
 $demoImageCandidates = [
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-2.jpg', 'url' => '/images/demo/llama-scout-headquarters-2.jpg', 'alt' => 'Fictional campsite view used for the Llama Scout demo'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-3.jpg', 'url' => '/images/demo/llama-scout-headquarters-3.jpg', 'alt' => 'Fictional forest campsite used for the Llama Scout demo'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpg', 'url' => '/images/demo/llama-scout-headquarters-4.jpg', 'alt' => 'Fictional campsite scenery used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpeg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpeg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-2.jpeg', 'url' => '/images/demo/llama-scout-headquarters-2.jpeg', 'alt' => 'Fictional campsite view used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-3.jpeg', 'url' => '/images/demo/llama-scout-headquarters-3.jpeg', 'alt' => 'Fictional forest campsite used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpeg', 'url' => '/images/demo/llama-scout-headquarters-4.jpeg', 'alt' => 'Fictional campsite scenery used for the Llama Scout demo'],
 ];
 
 $demoImages = array_values(array_filter(
