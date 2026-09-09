@@ -282,11 +282,6 @@
     transform: translateY(1px);
 }
 
-
-/* =========================================================
-   LEAFLET CONTROLS
-   ========================================================= */
-
 .map-card .leaflet-bar {
     border: 1px solid var(--border);
     border-radius: 11px;
@@ -311,11 +306,6 @@
     color: inherit;
 }
 
-
-/* =========================================================
-   MAP STATUS
-   ========================================================= */
-
 .map-count-badge {
     position: absolute;
     z-index: 500;
@@ -336,11 +326,6 @@
     color: var(--text-muted);
     font-size: .74rem;
 }
-
-
-/* =========================================================
-   RESULTS
-   ========================================================= */
 
 .map-results-column {
     min-width: 0;
@@ -380,9 +365,38 @@
 }
 
 .map-place-image {
+    position: relative;
     display: block;
     min-height: 148px;
     background: var(--background);
+}
+
+
+.map-featured-badge {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border: 1px solid rgba(255, 255, 255, .38);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .72);
+    color: #fff;
+    font-size: .66rem;
+    font-weight: 900;
+    letter-spacing: .055em;
+    line-height: 1;
+    text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.map-featured-badge i {
+    font-size: .7rem;
 }
 
 .map-place-image img {
@@ -476,16 +490,6 @@
     margin: 0;
 }
 
-
-/* =========================================================
-   MAP POPUPS
-   ========================================================= */
-
-/*
- * Leaflet normally applies its own inner padding around popup content.
- * The Llama Scout popup is treated as one complete card instead so the
- * featured image and white content area share the same rounded shape.
- */
 .map-card .leaflet-popup-content-wrapper {
     padding: 0;
     overflow: hidden;
@@ -571,10 +575,6 @@
     color: #fff !important;
 }
 
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
 
 @media (max-width: 1000px) {
     .map-hero-grid {
@@ -684,10 +684,6 @@
     }
 }
 
-
-/* =========================================================
-   REDUCED MOTION
-   ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
     .map-layer-buttons button {
