@@ -117,9 +117,8 @@ input[type="datetime-local"],
 input[type="time"],
 input[type="month"],
 input[type="week"] {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
+    width: calc(100% - 14px);
+    max-width: calc(100% - 14px);
 }
 
 label,
