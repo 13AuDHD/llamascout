@@ -85,6 +85,7 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
         $styles[] = 'photo-uploader.css';
+        $styles[] = 'scout-report-cards.css';
     }
 
     if (
