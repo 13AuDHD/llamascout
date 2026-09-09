@@ -202,6 +202,33 @@ require __DIR__ . '/_header.php';
         </div>
     </a>
 
+    <a
+        class="admin-stat-card is-action"
+        href="/errors.php?status=open"
+    >
+        <span class="admin-stat-icon">
+            <i class="fa-solid fa-bug" aria-hidden="true"></i>
+        </span>
+
+        <div>
+            <span>Error Log</span>
+
+            <strong>
+                <?= (int) $stats['errors'] ?>
+            </strong>
+
+            <small>
+                <?php if ((int) $stats['errors'] === 1): ?>
+                    Open issue needing attention
+                <?php elseif ((int) $stats['errors'] > 1): ?>
+                    Open issues needing attention
+                <?php else: ?>
+                    No open issues
+                <?php endif; ?>
+            </small>
+        </div>
+    </a>
+
 </section>
 
 
