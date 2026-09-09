@@ -29,7 +29,7 @@
         type: document.getElementById('filter-type'),
         landManager: document.getElementById('filter-land-manager'),
         landType: document.getElementById('filter-land-type'),
-        elevationMin: document.getElementById('filter-elevation-min'),
+        elevationMax: document.getElementById('filter-elevation-max'),
         amenity: document.getElementById('filter-amenity')
     };
 
@@ -73,12 +73,13 @@
         },
 
         light: {
-            url: '',
+            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             options: {
+                subdomains: 'abcd',
                 maxNativeZoom: 20,
                 maxZoom: MEMBER_MAX_ZOOM,
                 attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             }
         },
 
@@ -113,12 +114,13 @@
         },
 
         dark: {
-            url: '',
+            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             options: {
+                subdomains: 'abcd',
                 maxNativeZoom: 20,
                 maxZoom: MEMBER_MAX_ZOOM,
                 attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             }
         },
 
@@ -174,19 +176,7 @@
         }
 
         if (selection === 'auto') {
-            const automatic =
-                resolvedTheme() === 'dark' ? 'dark' : 'light';
-
-            return tileSources[automatic]?.url
-                ? automatic
-                : 'street';
-        }
-
-        if (
-            (selection === 'light' || selection === 'dark') &&
-            !tileSources[selection]?.url
-        ) {
-            return 'street';
+            return resolvedTheme() === 'dark' ? 'dark' : 'light';
         }
 
         return tileSources[selection] ? selection : 'street';
@@ -379,7 +369,7 @@
             controls.type,
             controls.landManager,
             controls.landType,
-            controls.elevationMin,
+            controls.elevationMax,
             controls.amenity
         ].forEach((element) => {
             if (element?.value) {
@@ -454,7 +444,7 @@
     const matches = (place) => {
         const search = normalize(controls.search?.value);
         const selectedAmenity = controls.amenity?.value || '';
-        const minElevation = Number(controls.elevationMin?.value || 0);
+        const maxElevation = Number(controls.elevationMax?.value || 0);
 
         const exactFilters = [
             ['state', controls.state?.value],
@@ -472,8 +462,8 @@
         }
 
         if (
-            minElevation > 0 &&
-            Number(place.elevation_feet || 0) < minElevation
+            maxElevation > 0 &&
+            Number(place.elevation_feet || 0) > maxElevation
         ) {
             return false;
         }
@@ -737,7 +727,7 @@
             controls.type,
             controls.landManager,
             controls.landType,
-            controls.elevationMin,
+            controls.elevationMax,
             controls.amenity
         ].forEach((element) => {
             if (element) {
@@ -793,25 +783,6 @@
 
             syncMapAccess(data.member_map_access === true);
 
-            if (
-                memberMapAccess &&
-                data.member_tiles?.geoapify_available === true
-            ) {
-                tileSources.light.url =
-                    String(data.member_tiles.light || '');
-
-                tileSources.dark.url =
-                    String(data.member_tiles.dark || '');
-
-                /*
-                 * Re-run Auto now that the member-only Geoapify URLs
-                 * have arrived from the authenticated API response.
-                 */
-                if (selectedLayer === 'auto') {
-                    applyTileLayer();
-                }
-            }
-
             places = data.places;
 
             populateFilters();
@@ -858,7 +829,7 @@
         controls.type,
         controls.landManager,
         controls.landType,
-        controls.elevationMin,
+        controls.elevationMax,
         controls.amenity
     ].forEach((element) => {
         element?.addEventListener('change', () => render(true));
