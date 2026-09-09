@@ -1,36 +1,100 @@
 /* =========================================================
    LLAMA SCOUT
-   SCOUT REPORT CARD LAYOUT
+   SCOUT REPORT
 
-   This file is the final authority for Scout Report cards.
-   It intentionally overrides older card alignment rules in
-   place-shared.css and place-detail.css.
+   Single source of truth for every Scout Report style:
+   structure, sections, grids, cards, ratings, notes,
+   locked preview, and responsive behavior.
    ========================================================= */
 
 
 /* =========================================================
-   SHARED GRID
+   REPORT STRUCTURE
    ========================================================= */
 
-.scout-report .scout-report-grid {
+.scout-report {
+    display: grid;
+    gap: 28px;
+}
+
+.scout-report-header {
+    margin-bottom: 4px;
+}
+
+.scout-report-header .eyebrow {
+    margin-bottom: 6px;
+}
+
+.scout-report-header h2 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.scout-report-section {
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.scout-report-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    font-size: 1.35rem;
+}
+
+.scout-report-section h4 {
+    margin: 24px 0 12px;
+    font-size: 1.05rem;
+}
+
+.scout-report-summary {
+    max-width: 850px;
+    margin: 0 0 20px;
+    line-height: 1.7;
+}
+
+.scout-report-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
     align-items: stretch;
 }
 
-.scout-report .scout-report-item {
-    min-width: 0;
-    min-height: 108px;
-    padding: 15px 16px;
+.scout-report-grid + .scout-report-grid {
+    margin-top: 12px;
+}
+
+.scout-report-subsection + .scout-report-subsection {
+    margin-top: 24px;
 }
 
 
 /* =========================================================
-   RATING CARDS
+   BASE CARD
+   ========================================================= */
 
-   Title
+.scout-report-item {
+    min-width: 0;
+    min-height: 108px;
+    padding: 15px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+
+/* =========================================================
+   RATING CARD
+
+   Card title
+
    1/5                         ○ ○ ○ ○ ○
    ========================================================= */
 
-.scout-report .scout-report-rating-item {
+.scout-report-rating-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto minmax(8px, 1fr) auto;
@@ -43,22 +107,20 @@
     align-items: end;
 }
 
-.scout-report .scout-report-rating-item > .scout-rating-content {
+.scout-report-rating-item > .scout-rating-content {
     display: contents;
 }
 
-.scout-report .scout-report-rating-item > .scout-rating-content > span {
+.scout-report-rating-item > .scout-rating-content > span {
     grid-area: title;
     min-width: 0;
     margin: 0;
     color: var(--text-muted);
     font-size: .9rem;
     line-height: 1.28;
-    overflow-wrap: normal;
-    word-break: normal;
 }
 
-.scout-report .scout-report-rating-item > .scout-rating-content > strong {
+.scout-report-rating-item > .scout-rating-content > strong {
     grid-area: value;
     align-self: end;
     min-width: 0;
@@ -67,10 +129,8 @@
     line-height: 1.15;
 }
 
-.scout-report .scout-report-rating-item > .scout-rating-dots {
+.scout-report-rating-item > .scout-rating-dots {
     grid-area: dots;
-    grid-column: auto;
-    grid-row: auto;
     align-self: end;
     justify-self: end;
     display: flex;
@@ -78,24 +138,31 @@
     justify-content: flex-end;
     gap: 6px;
     margin: 0;
-    flex-shrink: 0;
 }
 
-.scout-report .scout-report-rating-item .scout-rating-dot {
+.scout-rating-dot {
     width: 12px;
     height: 12px;
     flex: 0 0 12px;
+    display: block;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.scout-rating-dot.is-filled {
+    background: currentColor;
 }
 
 
 /* =========================================================
-   VALUE / YES-NO CARDS
+   VALUE / YES-NO CARD
 
-   Title
+   Card title
+
    Yes                              [icon]
    ========================================================= */
 
-.scout-report .scout-report-value-item {
+.scout-report-value-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto minmax(8px, 1fr) auto;
@@ -108,25 +175,20 @@
     align-items: end;
 }
 
-.scout-report .scout-report-value-item > .scout-report-value-content {
+.scout-report-value-item > .scout-report-value-content {
     display: contents;
-    grid-column: auto;
-    grid-row: auto;
-    align-self: auto;
 }
 
-.scout-report .scout-report-value-item > .scout-report-value-content > span {
+.scout-report-value-item > .scout-report-value-content > span {
     grid-area: title;
     min-width: 0;
     margin: 0;
     color: var(--text-muted);
     font-size: .9rem;
     line-height: 1.28;
-    overflow-wrap: normal;
-    word-break: normal;
 }
 
-.scout-report .scout-report-value-item > .scout-report-value-content > strong {
+.scout-report-value-item > .scout-report-value-content > strong {
     grid-area: value;
     align-self: end;
     min-width: 0;
@@ -136,10 +198,8 @@
     overflow-wrap: anywhere;
 }
 
-.scout-report .scout-report-value-item > i.scout-report-value-icon {
+.scout-report-value-item > i.scout-report-value-icon {
     grid-area: icon;
-    grid-column: auto;
-    grid-row: auto;
     align-self: end;
     justify-self: end;
     width: 30px;
@@ -151,11 +211,30 @@
 
 
 /* =========================================================
-   GROUPED CARD GRIDS
+   NOTES
    ========================================================= */
 
-.scout-report .scout-report-grid + .scout-report-grid {
-    margin-top: 12px;
+.scout-report-note {
+    margin: 18px 0 0;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.scout-report-note a {
+    font-weight: 700;
+}
+
+.scout-report-notes-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding-left: 22px;
+}
+
+.scout-report-notes-list li {
+    padding-left: 4px;
+    line-height: 1.6;
 }
 
 
@@ -295,10 +374,7 @@
     font-weight: 850;
 }
 
-
-/* Locked cards use a deliberate one-column layout. */
-
-.scout-report .locked-scout-card {
+.locked-scout-card {
     min-height: 96px;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -308,7 +384,7 @@
     opacity: .82;
 }
 
-.scout-report .locked-scout-card-title {
+.locked-scout-card-title {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
@@ -318,7 +394,7 @@
     line-height: 1.28;
 }
 
-.scout-report .locked-scout-card-value {
+.locked-scout-card-value {
     grid-column: 1;
     grid-row: 3;
     align-self: end;
@@ -329,10 +405,9 @@
     gap: 7px;
     font-size: .84rem;
     line-height: 1.2;
-    white-space: normal;
 }
 
-.scout-report .locked-scout-card-value i {
+.locked-scout-card-value i {
     flex: 0 0 auto;
     font-size: .75rem;
 }
@@ -382,13 +457,12 @@
    ========================================================= */
 
 @media (max-width: 800px) {
-
-    .scout-report .scout-report-item {
+    .scout-report-item {
         min-height: 96px;
     }
 
-    .scout-report .scout-report-rating-item,
-    .scout-report .scout-report-value-item {
+    .scout-report-rating-item,
+    .scout-report-value-item {
         grid-template-rows: auto minmax(6px, 1fr) auto;
     }
 }
@@ -422,19 +496,26 @@
 }
 
 @media (max-width: 600px) {
+    .scout-report-section {
+        padding: 18px;
+    }
 
-    .scout-report .scout-report-item {
+    .scout-report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .scout-report-item {
         min-height: 82px;
         padding: 14px 15px;
     }
 
-    .scout-report .scout-report-rating-item,
-    .scout-report .scout-report-value-item {
+    .scout-report-rating-item,
+    .scout-report-value-item {
         grid-template-rows: auto 6px auto;
         row-gap: 5px;
     }
 
-    .scout-report .locked-scout-card {
+    .locked-scout-card {
         min-height: 82px;
         grid-template-rows: auto 6px auto;
     }
