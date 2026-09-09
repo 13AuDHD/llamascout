@@ -217,6 +217,12 @@
                     Unlock exact locations, Scout Reports, full photo galleries,
                     sensory details, connectivity, road access, and more.
                 </p>
+                <p>
+                    Not sure what a complete report looks like?
+                    <a href="/scout-report-demo.php">
+                        See a complete example Scout Report.
+                    </a>
+                </p>
             </div>
 
             <a href="/membership.php">View Membership</a>
