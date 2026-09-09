@@ -113,7 +113,7 @@ $place = [
     'county' => 'La Plata',
     'state' => 'Colorado',
     'land_manager' => 'Llama Scout Demo Department',
-    'land_type' => 'Fictional Campsite',
+    'land_type' => 'Private Owner',
     'road' => 'Demo Trail 13',
     'latitude' => $headquarters['latitude'],
     'longitude' => $headquarters['longitude'],
@@ -321,8 +321,8 @@ require __DIR__ . '/partials/header.php';
             This Place is intentionally fictional.
         </h1>
         <p style="margin:10px 0 0;line-height:1.65;">
-            Llama Scout Headquarters uses the real Durango Post Office as its
-            geographic anchor so this demo can show real location and weather
+            Llama Scout Headquarters is set as the location
+            so this demo can show real location and weather
             behavior. The campsite, photos, descriptions, ratings, access
             conditions, amenities, and recommendations are fictional examples.
         </p>
@@ -356,7 +356,7 @@ require __DIR__ . '/partials/header.php';
                     </p>
 
                     <p class="place-detail-land">
-                        Real location anchor / fictional campsite
+                        Private Owner
                     </p>
                 </div>
 
@@ -485,7 +485,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-weather-current-main">
                     <div class="place-weather-temperature">
-                        <?= $currentTemp === null ? 'â' : $currentTemp . 'Â°F' ?>
+                        <?= $currentTemp === null ? '° ' : $currentTemp . '°F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
                     <span>Headquarters anchor, Durango</span>
@@ -536,8 +536,8 @@ require __DIR__ . '/partials/header.php';
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
-                                    <strong><?= $high === null ? 'â' : $high . 'Â°' ?></strong>
-                                    <span><?= $low === null ? 'â' : $low . 'Â°' ?></span>
+                                    <strong><?= $high === null ? '—' : $high . '°' ?></strong>
+                                    <span><?= $low === null ? '—' : $low . '°' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
