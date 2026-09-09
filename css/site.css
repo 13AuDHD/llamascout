@@ -107,6 +107,27 @@ textarea {
     outline: 3px solid var(--focus);
 }
 
+/*
+ * Native date/time controls on Safari and iPadOS can retain
+ * an intrinsic minimum width and overflow responsive form layouts.
+ * Make every date/time control obey its container site-wide.
+ */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+label,
+fieldset,
+form {
+    min-width: 0;
+}
+
 .skip-link {
     position: fixed;
     top: 8px;
