@@ -508,18 +508,7 @@ function admin_shell_nav_class(string $key, string $active): string
             <span>Badges</span>
         </a>
 
-        <p class="admin-nav-label">Communications</p>
-
-        <a
-            class="<?= admin_shell_nav_class('newsletters', $adminActiveNav) ?>"
-            href="<?= moderation_e($adminUrl . '/newsletters.php') ?>"
-        >
-            <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
-            <span>Newsletters</span>
-            <?php if ($adminNewsletterQueueCount > 0): ?>
-                <b><?= $adminNewsletterQueueCount ?></b>
-            <?php endif; ?>
-        </a>
+<?php require __DIR__ . '/_communications-nav.php'; ?>
 
         <p class="admin-nav-label">Commerce</p>
 
