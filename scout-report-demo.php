@@ -264,12 +264,12 @@ $demoAmenities = [
     'electricity' => false,
 ];
 
-/* Demo images are optional. The page works before they exist. */
+/* Demo images are optional. */
 $demoImageCandidates = [
     ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpeg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpeg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
     ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-2.jpeg', 'url' => '/images/demo/llama-scout-headquarters-2.jpeg', 'alt' => 'Fictional campsite view used for the Llama Scout demo'],
     ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-3.jpeg', 'url' => '/images/demo/llama-scout-headquarters-3.jpeg', 'alt' => 'Fictional forest campsite used for the Llama Scout demo'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpeg', 'url' => '/images/demo/llama-scout-headquarters-4.jpeg', 'alt' => 'Fictional campsite scenery used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpeg', 'url' => '/images/demo/llama-scout-headquarters-4.jpeg', 'alt' => 'Fictional campsite hazard photo used for the Llama Scout demo'],
 ];
 
 $demoImages = array_values(array_filter(
@@ -298,6 +298,7 @@ $pageDescription =
     'Explore a complete fictional Llama Scout Scout Report using Llama Scout '
     . 'Headquarters in Durango as a real weather and location anchor.';
 $pageRobots = 'noindex,follow';
+$canonicalUrl = 'https://llamascout.com/scout-report-demo.php';
 
 $pageStyles = [
     'place-detail.css',
@@ -312,23 +313,8 @@ require __DIR__ . '/partials/header.php';
 
 <article class="place-page">
 
-    <section
-        class="place-section"
-        style="margin-top:28px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface);"
-    >
-        <p class="place-detail-eyebrow">Example Scout Report</p>
-        <h1 style="margin:0;font-size:clamp(1.6rem,4vw,2.3rem);">
-            This Place is intentionally fictional.
-        </h1>
-        <p style="margin:10px 0 0;line-height:1.65;">
-            Llama Scout Headquarters is set as the location
-            so this demo can show real location and weather
-            behavior. The campsite, photos, descriptions, ratings, access
-            conditions, amenities, and recommendations are fictional examples.
-        </p>
-    </section>
-
     <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
+
         <?php if ($heroImage): ?>
             <img
                 class="place-detail-hero-image"
@@ -340,12 +326,14 @@ require __DIR__ . '/partials/header.php';
         <div class="place-detail-hero-shade" aria-hidden="true"></div>
 
         <div class="place-detail-hero-inner">
+
             <a class="place-detail-back" href="/membership.php">
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 Membership
             </a>
 
             <div class="place-detail-hero-content">
+
                 <div class="place-detail-title-block">
                     <p class="place-detail-eyebrow">Demo Scout Report</p>
                     <h1>Llama Scout Headquarters</h1>
@@ -356,58 +344,155 @@ require __DIR__ . '/partials/header.php';
                     </p>
 
                     <p class="place-detail-land">
-                        Private Owner
+                        Llama Scout Demo Department / Private Owner
                     </p>
                 </div>
 
                 <div class="place-detail-actions">
-                    <button class="place-detail-action-button" type="button" disabled>
+                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
                         <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
                         Save Place
                     </button>
 
-                    <button class="place-detail-action-button" type="button" disabled>
+                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
                         <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
                         Suggest Update
                     </button>
 
-                    <button class="place-detail-action-button" type="button" disabled>
+                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
                         <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
                         Share
                     </button>
                 </div>
+
             </div>
         </div>
     </header>
 
+    <section class="place-section" aria-labelledby="demo-notice-heading">
+        <p class="place-detail-eyebrow">Example only</p>
+
+        <h2 id="demo-notice-heading">
+            This Place is intentionally fictional.
+        </h2>
+
+        <p>
+            Llama Scout Headquarters uses a real Durango location anchor so this
+            demo can show real coordinates and live weather. The campsite, photos,
+            descriptions, ratings, access conditions, amenities, sensory details,
+            and recommendations are fictional examples created to show what a
+            complete Scout Report can look like.
+        </p>
+    </section>
+
     <?php if ($demoImages): ?>
-        <section class="place-photo-gallery-section">
+        <section
+            class="place-photo-gallery-section"
+            aria-labelledby="place-photo-gallery-heading"
+        >
             <div class="place-detail-container">
                 <div class="place-photo-gallery-heading">
                     <div>
-                        <p class="place-detail-eyebrow">Demo photos</p>
-                        <h2>Fictional campsite gallery</h2>
+                        <p class="place-detail-eyebrow">Photos</p>
+                        <h2 id="place-photo-gallery-heading">Fictional campsite gallery</h2>
                     </div>
-                    <span><?= count($demoImages) ?> photos</span>
+
+                    <span>
+                        <?= count($demoImages) ?>
+                        <?= count($demoImages) === 1 ? 'photo' : 'photos' ?>
+                    </span>
                 </div>
 
-                <div class="place-photo-gallery">
-                    <?php foreach ($demoImages as $image): ?>
-                        <div class="place-photo-thumb">
+                <div class="place-photo-gallery" data-place-gallery>
+                    <?php foreach ($demoImages as $index => $image): ?>
+                        <button
+                            class="place-photo-thumb<?= $index === 0 ? ' is-featured' : '' ?>"
+                            type="button"
+                            data-place-gallery-open="<?= (int) $index ?>"
+                            aria-label="Open demo photo <?= (int) $index + 1 ?> of <?= count($demoImages) ?>"
+                        >
                             <img
                                 src="<?= place_h($image['url']) ?>"
                                 alt="<?= place_h($image['alt']) ?>"
-                                loading="lazy"
+                                loading="<?= $index < 4 ? 'eager' : 'lazy' ?>"
                             >
-                        </div>
+                            <?php if ($index === 0): ?>
+                                <span class="place-photo-featured-label">Hero</span>
+                            <?php endif; ?>
+                        </button>
                     <?php endforeach; ?>
                 </div>
 
                 <p class="place-photo-gallery-help">
-                    These images depict a fictional campsite created for this demonstration.
+                    Tap any photo to view it larger. All campsite imagery on this
+                    page is fictional and created for this demonstration.
                 </p>
             </div>
         </section>
+
+        <dialog
+            class="place-gallery-lightbox"
+            id="place-gallery-lightbox"
+            aria-label="Demo Place photo viewer"
+        >
+            <div class="place-gallery-lightbox-inner">
+                <div class="place-gallery-lightbox-top">
+                    <span id="place-gallery-counter"></span>
+
+                    <button
+                        type="button"
+                        class="place-gallery-close"
+                        id="place-gallery-close"
+                        aria-label="Close photo viewer"
+                    >
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="place-gallery-stage">
+                    <button
+                        type="button"
+                        class="place-gallery-arrow is-previous"
+                        id="place-gallery-previous"
+                        aria-label="Previous photo"
+                    >
+                        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                    </button>
+
+                    <img id="place-gallery-large-image" src="" alt="">
+
+                    <button
+                        type="button"
+                        class="place-gallery-arrow is-next"
+                        id="place-gallery-next"
+                        aria-label="Next photo"
+                    >
+                        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <p class="place-gallery-caption" id="place-gallery-caption"></p>
+
+                <div
+                    class="place-gallery-lightbox-thumbs"
+                    id="place-gallery-lightbox-thumbs"
+                >
+                    <?php foreach ($demoImages as $index => $image): ?>
+                        <button
+                            type="button"
+                            data-place-gallery-jump="<?= (int) $index ?>"
+                            aria-label="View demo photo <?= (int) $index + 1 ?>"
+                        >
+                            <img
+                                src="<?= place_h($image['url']) ?>"
+                                alt=""
+                                loading="lazy"
+                            >
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </dialog>
     <?php endif; ?>
 
     <section class="place-facts" aria-label="Demo Place details">
@@ -416,13 +501,11 @@ require __DIR__ . '/partials/header.php';
             <span>Elevation</span>
             <strong><?= number_format((int) $headquarters['elevation_feet']) ?> ft</strong>
         </div>
-        
+
         <div class="place-fact">
-            <i class="fa-solid fa-building" aria-hidden="true"></i>
+            <i class="fa-solid fa-road" aria-hidden="true"></i>
             <span>Road</span>
-            <strong>
-                <?= place_h($place['road']) ?>
-            </strong>
+            <strong><?= place_h($place['road']) ?></strong>
         </div>
 
         <div class="place-fact">
@@ -433,7 +516,6 @@ require __DIR__ . '/partials/header.php';
                 <?= place_h($headquarters['longitude']) ?>
             </strong>
         </div>
-
     </section>
 
     <section class="place-section place-weather" aria-labelledby="weather-heading">
@@ -443,7 +525,10 @@ require __DIR__ . '/partials/header.php';
                 <h2 id="weather-heading">Llama Scout Headquarters weather</h2>
             </div>
 
-            <i class="fa-solid fa-cloud-sun place-weather-heading-icon" aria-hidden="true"></i>
+            <i
+                class="fa-solid fa-cloud-sun place-weather-heading-icon"
+                aria-hidden="true"
+            ></i>
         </div>
 
         <?php
@@ -480,12 +565,15 @@ require __DIR__ . '/partials/header.php';
 
             <div class="place-weather-current">
                 <div class="place-weather-condition-icon">
-                    <i class="fa-solid <?= place_h($currentIcon) ?>" aria-hidden="true"></i>
+                    <i
+                        class="fa-solid <?= place_h($currentIcon) ?>"
+                        aria-hidden="true"
+                    ></i>
                 </div>
 
                 <div class="place-weather-current-main">
                     <div class="place-weather-temperature">
-                        <?= $currentTemp === null ? '° ' : $currentTemp . '°F' ?>
+                        <?= $currentTemp === null ? 'â' : $currentTemp . 'Â°F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
                     <span>Headquarters, Durango</span>
@@ -493,7 +581,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-weather-facts">
                     <?php if ($feels !== null): ?>
-                        <div><span>Feels like</span><strong><?= $feels ?>°F</strong></div>
+                        <div><span>Feels like</span><strong><?= $feels ?>Â°F</strong></div>
                     <?php endif; ?>
 
                     <?php if ($humidity !== null): ?>
@@ -506,7 +594,11 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
 
-            <?php $dates = is_array($daily['time'] ?? null) ? array_slice($daily['time'], 0, 5) : []; ?>
+            <?php
+            $dates = is_array($daily['time'] ?? null)
+                ? array_slice($daily['time'], 0, 5)
+                : [];
+            ?>
 
             <?php if ($dates): ?>
                 <div class="place-weather-forecast">
@@ -536,8 +628,8 @@ require __DIR__ . '/partials/header.php';
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
-                                    <strong><?= $high === null ? '—' : $high . '°' ?></strong>
-                                    <span><?= $low === null ? '—' : $low . '°' ?></span>
+                                    <strong><?= $high === null ? 'â' : $high . 'Â°' ?></strong>
+                                    <span><?= $low === null ? 'â' : $low . 'Â°' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
@@ -558,7 +650,11 @@ require __DIR__ . '/partials/header.php';
                     </div>
                 </div>
             <?php endif; ?>
-            
+
+            <p class="place-weather-note">
+                This is real weather calculated for the Headquarters coordinate
+                anchor. The campsite shown elsewhere on this page is fictional.
+            </p>
         <?php endif; ?>
     </section>
 
@@ -613,14 +709,11 @@ require __DIR__ . '/partials/header.php';
         </details>
     </section>
 
-    <section
-        class="place-section"
-        style="margin-top:24px;margin-bottom:60px;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface);"
-    >
+    <section class="place-section">
         <p class="place-detail-eyebrow">See this for real Places</p>
-        <h2 style="margin-top:0;">Know the place before you go.</h2>
+        <h2>Know the place before you go.</h2>
 
-        <p style="line-height:1.65;">
+        <p>
             This demo shows the kind of planning detail available inside a
             complete Scout Report. Membership unlocks the actual information
             collected for real Places, including exact locations, full photo
@@ -631,7 +724,12 @@ require __DIR__ . '/partials/header.php';
         <a
             class="place-detail-action-button"
             href="/membership.php"
-            style="margin-top:8px;border-color:var(--border);background:var(--background);color:var(--text);"
+            style="
+                margin-top:8px;
+                border-color:var(--border);
+                background:var(--surface);
+                color:var(--text);
+            "
         >
             <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
             View Membership
@@ -639,5 +737,7 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 </article>
+
+<script src="/js/place-gallery.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
