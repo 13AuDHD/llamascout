@@ -129,13 +129,13 @@ $place = [
         . 'site. These notes are fictional and demonstrate how a real Scout Report '
         . 'describes access instead of asking you to guess.',
     'sensory_summary' =>
-        'Demo information: the fictional site is calm after sunset, has moderate '
+        'Demo information: the site is calm after sunset, has moderate '
         . 'daytime activity, low artificial light, and enough natural sound to feel '
         . 'remote without being completely isolated.',
     'notes' => [
-        ['note' => 'Demo Scout note: the fictional view opens dramatically just before sunset.'],
-        ['note' => 'Demo Scout note: arriving before dark would make the imaginary final approach easier to inspect.'],
-        ['note' => 'This sample does not describe camping conditions at the Durango Post Office.'],
+        ['note' => 'Demo Scout note: the view opens dramatically just before sunset.'],
+        ['note' => 'Demo Scout note: arriving before dark would make the final approach easier to inspect.'],
+        ['note' => 'There is no camping at the real Llama Scout Headquarters... sorry.'],
     ],
 ];
 
@@ -182,7 +182,7 @@ $connectivity = [
     'other_cell' => 2,
     'starlink' => 5,
     'starlink_tested' => 1,
-    'starlink_note' => 'Demo information: the fictional parking area has a broad southern sky with minimal obstruction.',
+    'starlink_note' => 'Demo information: the area has a broad southern sky with minimal obstruction.',
 ];
 
 $sensory = [
@@ -205,7 +205,7 @@ $sensoryDetails = [
 
 $rules = [
     'seasonal_access_note' =>
-        'Demo information: this fictional site is shown as most comfortable from '
+        'Demo information: this site is shown as most comfortable from '
         . 'late spring through early fall. These values demonstrate how seasonal '
         . 'conditions, rules, and nearby services can be summarized.',
     'best_months' => 'May through October',
@@ -377,7 +377,7 @@ require __DIR__ . '/partials/header.php';
         </h2>
 
         <p>
-            Llama Scout Headquarters uses a real Durango location anchor so this
+            Llama Scout Headquarters uses a real Durango, CO location anchor so this
             demo can show real coordinates and live weather. The campsite, photos,
             descriptions, ratings, access conditions, amenities, sensory details,
             and recommendations are fictional examples created to show what a
@@ -656,10 +656,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             <?php endif; ?>
 
-            <p class="place-weather-note">
-                This is real weather calculated for the Headquarters coordinate
-                anchor. The campsite shown elsewhere on this page is fictional.
-            </p>
         <?php endif; ?>
     </section>
 
