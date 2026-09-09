@@ -561,6 +561,7 @@ require __DIR__ . '/partials/header.php';
             $feels = demo_round($current['apparent_temperature'] ?? null);
             $humidity = demo_round($current['relative_humidity_2m'] ?? null);
             $wind = demo_round($current['wind_speed_10m'] ?? null);
+            $windGusts = demo_round($current['wind_gusts_10m'] ?? null);
             ?>
 
             <div class="place-weather-current">
@@ -590,6 +591,10 @@ require __DIR__ . '/partials/header.php';
 
                     <?php if ($wind !== null): ?>
                         <div><span>Wind</span><strong><?= $wind ?> mph</strong></div>
+                    <?php endif; ?>
+
+                    <?php if ($windGusts !== null): ?>
+                        <div><span>Wind gusts</span><strong><?= $windGusts ?> mph</strong></div>
                     <?php endif; ?>
                 </div>
             </div>
