@@ -4,8 +4,15 @@
    ========================================================= */
 
 .place-page {
+    min-width: 0;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 36px;
+}
+
+.place-page > * {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .place-header {
@@ -175,7 +182,19 @@
    ========================================================= */
 
 .place-weather {
+    min-width: 0;
     max-width: none;
+    overflow: hidden;
+}
+
+.place-weather-current,
+.place-weather-forecast,
+.place-weather-forecast-grid,
+.place-facts,
+.place-section,
+.amenity-grid {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .place-weather-heading {
