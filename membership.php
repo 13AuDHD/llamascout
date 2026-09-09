@@ -192,6 +192,14 @@ require __DIR__ . '/partials/header.php';
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i> Exact-location weather plus 5-day forecast</li>
                     </ul>
 
+                    <a
+                        class="public-home-button"
+                        href="/scout-report-demo.php"
+                    >
+                        <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+                        See a Complete Example
+                    </a>
+
                     <div class="membership-public-paid-actions">
                         <?php if ($monthly): ?>
                             <a
