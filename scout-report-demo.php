@@ -488,12 +488,12 @@ require __DIR__ . '/partials/header.php';
                         <?= $currentTemp === null ? '° ' : $currentTemp . '°F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
-                    <span>Headquarters anchor, Durango</span>
+                    <span>Headquarters, Durango</span>
                 </div>
 
                 <div class="place-weather-facts">
                     <?php if ($feels !== null): ?>
-                        <div><span>Feels like</span><strong><?= $feels ?>Â°F</strong></div>
+                        <div><span>Feels like</span><strong><?= $feels ?>°F</strong></div>
                     <?php endif; ?>
 
                     <?php if ($humidity !== null): ?>
@@ -558,11 +558,7 @@ require __DIR__ . '/partials/header.php';
                     </div>
                 </div>
             <?php endif; ?>
-
-            <p class="place-weather-note">
-                This weather is real and calculated for the Headquarters coordinate anchor.
-                The campsite shown elsewhere on this page is fictional.
-            </p>
+p>
         <?php endif; ?>
     </section>
 
@@ -570,8 +566,7 @@ require __DIR__ . '/partials/header.php';
         <h2>Amenities</h2>
 
         <p class="scout-report-summary">
-            Demo information only. These amenities describe the fictional campsite,
-            not the real Durango Post Office.
+            Demo information only. These amenities describe the fictional campsite.
         </p>
 
         <div class="amenity-grid">
