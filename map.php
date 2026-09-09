@@ -145,13 +145,13 @@ require __DIR__ . '/partials/header.php';
                 </label>
 
                 <label>
-                    <span>Minimum elevation</span>
-                    <select id="filter-elevation-min">
+                    <span>Max elevation</span>
+                    <select id="filter-elevation-max">
                         <option value="">Any elevation</option>
-                        <option value="5000">5,000+ ft</option>
-                        <option value="7000">7,000+ ft</option>
-                        <option value="9000">9,000+ ft</option>
-                        <option value="11000">11,000+ ft</option>
+                        <option value="5000">Less than 5,000 ft</option>
+                        <option value="7000">Less than 7,000 ft</option>
+                        <option value="9000">Less than 9,000 ft</option>
+                        <option value="11000">Less than 11,000 ft</option>
                     </select>
                 </label>
 
