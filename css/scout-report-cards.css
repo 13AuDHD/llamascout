@@ -1,0 +1,155 @@
+/* =========================================================
+   LLAMA SCOUT
+   SCOUT REPORT CARD LAYOUT
+   ========================================================= */
+
+/*
+ * Give every Scout Report card the same visual rhythm:
+ *
+ *   Card title
+ *   value                  dots / icon
+ *
+ * Long labels get the full card width instead of competing
+ * horizontally with the rating dots or value icon.
+ */
+
+.scout-report-grid {
+    align-items: stretch;
+}
+
+.scout-report-item {
+    min-height: 108px;
+    padding: 15px 16px;
+}
+
+
+/* =========================================================
+   RATING CARDS
+   ========================================================= */
+
+.scout-report-rating-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "title title"
+        ". ."
+        "value dots";
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: end;
+}
+
+.scout-report-rating-item .scout-rating-content {
+    display: contents;
+}
+
+.scout-report-rating-item .scout-rating-content > span {
+    grid-area: title;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .9rem;
+    line-height: 1.28;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.scout-report-rating-item .scout-rating-content > strong {
+    grid-area: value;
+    align-self: end;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.15;
+}
+
+.scout-report-rating-item .scout-rating-dots {
+    grid-area: dots;
+    align-self: end;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.scout-report-rating-item .scout-rating-dot {
+    width: 12px;
+    height: 12px;
+}
+
+
+/* =========================================================
+   VALUE / YES-NO CARDS
+   ========================================================= */
+
+.scout-report-value-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "title title"
+        ". ."
+        "value icon";
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: end;
+}
+
+.scout-report-value-item .scout-report-value-content {
+    display: contents;
+}
+
+.scout-report-value-item .scout-report-value-content > span {
+    grid-area: title;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .9rem;
+    line-height: 1.28;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.scout-report-value-item .scout-report-value-content > strong {
+    grid-area: value;
+    align-self: end;
+    min-width: 0;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.scout-report-value-item > i.scout-report-value-icon {
+    grid-area: icon;
+    align-self: end;
+    justify-self: end;
+    width: 30px;
+    margin: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    text-align: center;
+}
+
+
+/* =========================================================
+   GROUPED CARD GRIDS
+   ========================================================= */
+
+.scout-report-grid + .scout-report-grid {
+    margin-top: 12px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 600px) {
+    .scout-report-item {
+        min-height: 96px;
+    }
+}
