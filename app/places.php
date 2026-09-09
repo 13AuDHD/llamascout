@@ -95,6 +95,74 @@ function places_public(): array
     return $rows;
 }
 
+
+/*
+ * Map-safe Places response.
+ *
+ * Free/logged-out visitors receive only the same approximate public
+ * coordinates returned by places_public().
+ *
+ * Member coordinates are merged only after server-side access has already
+ * been confirmed by api/places.php. This keeps exact coordinates completely
+ * out of free-user responses instead of merely hiding them in JavaScript.
+ */
+function places_map(bool $includeExactCoordinates = false): array
+{
+    $places = places_public();
+
+    if (!$includeExactCoordinates || !$places) {
+        return $places;
+    }
+
+    $stmt = db()->query(
+        "
+        SELECT
+            id,
+            latitude,
+            longitude
+
+        FROM places
+
+        WHERE status IN ('active', 'featured')
+        "
+    );
+
+    $exactById = [];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $exactById[(int) $row['id']] = [
+            'latitude' => $row['latitude'],
+            'longitude' => $row['longitude'],
+        ];
+    }
+
+    foreach ($places as &$place) {
+        $placeId = (int) ($place['id'] ?? 0);
+        $exact = $exactById[$placeId] ?? null;
+
+        if (!$exact) {
+            continue;
+        }
+
+        $latitude = $exact['latitude'];
+        $longitude = $exact['longitude'];
+
+        if (
+            $latitude !== null &&
+            $longitude !== null &&
+            is_numeric($latitude) &&
+            is_numeric($longitude)
+        ) {
+            $place['latitude'] = (float) $latitude;
+            $place['longitude'] = (float) $longitude;
+        }
+    }
+    unset($place);
+
+    return $places;
+}
+
+
 function place_public_by_slug(string $slug): ?array
 {
     $stmt = db()->prepare(
@@ -367,7 +435,3 @@ function place_member_sensory(int $placeId): array
 
     return $sensory;
 }
-
-
-
-
