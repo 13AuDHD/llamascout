@@ -1762,31 +1762,21 @@ function admin_fulfillment_buy_label(
                 ]
             );
 
-            $db->commit();
+        $db->commit();
 
-    } catch (Throwable $exception) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
+        } catch (Throwable $exception) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            throw $exception;
         }
 
-        throw $exception;
-    }
-
-} finally {
-    $releaseStmt = $db->prepare(
-        'SELECT RELEASE_LOCK(?)'
-    );
-
-    $releaseStmt->execute([
-        $lockName,
-    ]);
-}
-}
         admin_fulfillment_sync_order_status(
             $db,
             $orderId
         );
-
+        
         return [
             'carrier' =>
                 $carrier,
