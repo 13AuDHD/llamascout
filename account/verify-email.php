@@ -160,6 +160,17 @@ if ($token !== '') {
             db()->commit();
 
 
+            /*
+             * Welcome is a lifecycle email and is deduplicated by
+             * email_event_deliveries, so a later email-address
+             * verification cannot send Welcome a second time.
+             */
+            send_welcome_email_for_user(
+                db(),
+                (int) $verification['user_id']
+            );
+
+
             $success =
                 'Your email has been verified.';
 
