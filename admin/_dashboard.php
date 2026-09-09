@@ -144,6 +144,13 @@ function admin_dashboard_stats(PDO $db): array
              WHERE status IN ('open','waiting')"
         ),
 
+        'errors' => admin_safe_count(
+            $db,
+            "SELECT COUNT(*)
+             FROM application_errors
+             WHERE resolution_status = 'open'"
+        ),
+
         'scout_reviews' => admin_safe_count(
             $db,
             "SELECT COUNT(*)
