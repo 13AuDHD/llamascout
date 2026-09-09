@@ -1,0 +1,359 @@
+/* =========================================================
+   ADMIN PAGE: EMAIL CENTER
+   ========================================================= */
+
+.email-center-layout {
+    display: grid;
+    grid-template-columns:
+        minmax(280px, .72fr)
+        minmax(0, 1.5fr);
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.email-center-editor-column {
+    min-width: 0;
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+.email-template-library,
+.email-editor-panel,
+.email-preview-panel {
+    min-width: 0;
+}
+
+.email-template-group {
+    padding: 14px 16px 0;
+}
+
+.email-template-group:last-child {
+    padding-bottom: 16px;
+}
+
+.email-template-group h3 {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 900;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.email-template-list {
+    display: grid;
+    gap: 6px;
+}
+
+.email-template-row {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        38px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+
+    padding: 10px;
+
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    color: var(--text);
+    text-decoration: none;
+}
+
+.email-template-row:hover,
+.email-template-row:focus-visible,
+.email-template-row.is-active {
+    border-color: var(--border);
+    background: var(--background);
+}
+
+.email-template-icon {
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    color: var(--text-muted);
+}
+
+.email-template-copy {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.email-template-copy strong {
+    font-size: .76rem;
+}
+
+.email-template-copy small {
+    color: var(--text-muted);
+    font-size: .63rem;
+    line-height: 1.4;
+}
+
+.email-template-status {
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .58rem;
+    font-weight: 850;
+}
+
+.email-template-status.is-enabled {
+    color: var(--text);
+}
+
+.email-editor-form {
+    display: grid;
+    gap: 15px;
+
+    padding: 16px;
+}
+
+.email-editor-form > label {
+    min-width: 0;
+
+    display: grid;
+    gap: 6px;
+}
+
+.email-editor-form > label > span {
+    color: var(--text-muted);
+
+    font-size: .67rem;
+    font-weight: 850;
+}
+
+.email-editor-form input[type="text"],
+.email-editor-form textarea {
+    width: 100%;
+    min-width: 0;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.email-editor-form textarea {
+    resize: vertical;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+    font-size: .69rem;
+    line-height: 1.55;
+}
+
+.email-editor-status-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.email-editor-toggle,
+.email-test-address,
+.email-variable-box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.email-editor-toggle {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+
+    padding: 11px;
+}
+
+.email-editor-toggle input {
+    margin-top: 2px;
+}
+
+.email-editor-toggle span {
+    display: grid;
+    gap: 2px;
+}
+
+.email-editor-toggle strong {
+    font-size: .72rem;
+}
+
+.email-editor-toggle small {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.4;
+}
+
+.email-test-address {
+    display: grid;
+    align-content: center;
+    gap: 3px;
+
+    padding: 10px 12px;
+
+    color: var(--text-muted);
+    font-size: .61rem;
+}
+
+.email-test-address strong {
+    color: var(--text);
+    font-size: .68rem;
+}
+
+.email-variable-box {
+    padding: 11px;
+}
+
+.email-variable-box > strong {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: .68rem;
+}
+
+.email-variable-box > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.email-variable-box code {
+    padding: 4px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 6px;
+
+    color: var(--text-muted);
+    background: var(--surface);
+
+    font-size: .61rem;
+}
+
+.email-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.email-preview-meta {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 10px;
+
+    padding: 11px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.email-preview-meta span {
+    color: var(--text-muted);
+    font-size: .63rem;
+}
+
+.email-preview-meta strong {
+    min-width: 0;
+
+    overflow-wrap: anywhere;
+
+    font-size: .68rem;
+}
+
+.email-preview-frame {
+    display: block;
+
+    width: 100%;
+    min-height: 700px;
+
+    border: 0;
+    background: #f2eee6;
+}
+
+.email-editor-empty {
+    display: grid;
+    justify-items: center;
+    gap: 7px;
+
+    padding: 54px 24px;
+
+    text-align: center;
+}
+
+.email-editor-empty i {
+    color: var(--text-muted);
+    font-size: 1.7rem;
+}
+
+.email-editor-empty h2 {
+    margin: 4px 0 0;
+    font-size: 1rem;
+}
+
+.email-editor-empty p {
+    max-width: 420px;
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+    .email-center-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .email-editor-status-row {
+        grid-template-columns: 1fr;
+    }
+
+    .email-template-row {
+        grid-template-columns:
+            34px minmax(0, 1fr) auto;
+    }
+
+    .email-template-icon {
+        width: 34px;
+        height: 34px;
+    }
+
+    .email-editor-actions {
+        display: grid;
+    }
+
+    .email-preview-frame {
+        min-height: 560px;
+    }
+}
