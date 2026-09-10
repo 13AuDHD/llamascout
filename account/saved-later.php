@@ -11,7 +11,42 @@ $db = db();
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $error = '';
-$notice = isset($_GET['saved']) ? 'Place saved for later.' : '';
+$savedDraftId =
+    max(
+        0,
+        (int) (
+            $_GET['saved']
+            ?? 0
+        )
+    );
+
+$notice = '';
+
+if ($savedDraftId > 0) {
+    $savedDraft =
+        llama_place_draft_for_user(
+            $db,
+            $userId,
+            $savedDraftId
+        );
+
+    if ($savedDraft) {
+        $savedName =
+            trim(
+                (string) (
+                    $savedDraft['draft_name']
+                    ?? ''
+                )
+            );
+
+        $notice =
+            ($savedName !== ''
+                ? $savedName
+                : 'Your Place'
+            )
+            . ' was saved for later.';
+    }
+}
 
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
@@ -125,12 +160,27 @@ require dirname(__DIR__) . '/partials/header.php';
                 }
                 ?>
 
-                <article class="saved-later-card">
+                <article
+                    class="saved-later-card<?= $draftId === $savedDraftId
+                        ? ' is-just-saved'
+                        : ''
+                    ?>"
+                >
                     <div class="saved-later-card-main">
                         <div class="saved-later-title-row">
                             <div>
                                 <p class="account-eyebrow">Saved Place</p>
                                 <h2><?= htmlspecialchars($draftName, ENT_QUOTES, 'UTF-8') ?></h2>
+
+                                <?php if ($draftId === $savedDraftId): ?>
+                                    <span class="saved-later-just-saved">
+                                        <i
+                                            class="fa-solid fa-circle-check"
+                                            aria-hidden="true"
+                                        ></i>
+                                        Saved just now
+                                    </span>
+                                <?php endif; ?>
                             </div>
 
                             <span class="saved-later-percent">
