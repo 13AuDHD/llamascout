@@ -649,28 +649,20 @@ function admin_shell_nav_class(string $key, string $active): string
     >
         <i class="fa-solid fa-bars" aria-hidden="true"></i>
     </button>
-
+    
     <div class="admin-topbar-title">
         <span><?= moderation_e($adminPageEyebrow) ?></span>
         <strong><?= moderation_e($adminPageTitle) ?></strong>
     </div>
-
-    <div class="admin-topbar-user">
-        <span class="admin-user-avatar" aria-hidden="true">
-            <?= moderation_e(strtoupper(substr($adminDisplayName, 0, 1))) ?>
-        </span>
-
-        <div>
-            <strong><?= moderation_e($adminDisplayName) ?></strong>
-            <?php if ($adminUsername !== ''): ?>
-                <span>@<?= moderation_e($adminUsername) ?></span>
-            <?php endif; ?>
-        </div>
-    </div>
-
-</header>
-
-<main class="admin-main" id="admin-main">
+    
+    <?php
+    require __DIR__
+        . '/_topbar-user.php';
+    ?>
+    
+    </header>
+    
+    <main class="admin-main" id="admin-main">
 
 <header class="admin-page-header">
     <div>
