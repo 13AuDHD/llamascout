@@ -33,8 +33,11 @@ require_once __DIR__ . '/moderation.php';
 require_once __DIR__ . '/shop-order-mail-maintenance.php';
 require_once __DIR__ . '/promotion-code-maintenance.php';
 require_once __DIR__ . '/membership-email-maintenance.php';
+require_once __DIR__ . '/email-verification-guard.php';
 
 start_llama_session();
+
+llama_enforce_verified_email_session(db());
 
 if (!empty($_SESSION['user_id'])) {
     try {
