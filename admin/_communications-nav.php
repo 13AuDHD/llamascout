@@ -16,6 +16,14 @@
 </a>
 
 <a
+    class="<?= admin_shell_nav_class('email-activity', $adminActiveNav) ?>"
+    href="<?= moderation_e($adminUrl . '/email-activity.php') ?>"
+>
+    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+    <span>Email Activity</span>
+</a>
+
+<a
     class="<?= admin_shell_nav_class('newsletters', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/newsletters.php') ?>"
 >
