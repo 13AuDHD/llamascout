@@ -44,7 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $action = (string) ($_POST['action'] ?? '');
         $notes = trim((string) ($_POST['review_notes'] ?? ''));
-        $points = max(0, (int) ($_POST['points'] ?? 0));
+$points =
+    llama_points_policy_required(
+        $db,
+        'approved_place_update'
+    );
 
         $db->beginTransaction();
 
@@ -156,6 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $proposed = $item['proposed'];
 $original = $item['original'];
 $photos = $item['photo_list'];
+
+$updatePointValue =
+    llama_points_policy_required(
+        $db,
+        'approved_place_update'
+    );
 
 $definitions =
     community_place_update_field_definitions();
@@ -351,16 +361,16 @@ $type =
     </div>
 <?php endif; ?>
 
+<?php
+require __DIR__
+    . '/_moderation-update-points.php';
+?>
+
 <div class="admin-moderation-detail">
     <h2>Decision</h2>
     <form method="post" class="admin-moderation-form">
         <input type="hidden" name="id" value="<?= $updateId ?>">
         <input type="hidden" name="csrf_token" value="<?= moderation_e($csrfToken) ?>">
-
-        <label>
-            Contribution points
-            <input type="number" name="points" min="0" step="1" value="0">
-        </label>
 
         <label>
             Review notes
