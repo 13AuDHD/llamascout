@@ -3,11 +3,40 @@ $templatesByCategory = [];
 
 foreach ($emailTemplates as $emailTemplate) {
     $category =
-        (string) ($emailTemplate['category'] ?? 'Other');
+        (string) (
+            $emailTemplate['category']
+            ?? 'Other'
+        );
 
     $templatesByCategory[$category][] =
         $emailTemplate;
 }
+
+$emailTemplateIcons = [
+    'verify_email' =>
+        'fa-solid fa-envelope-circle-check',
+
+    'welcome' =>
+        'fa-solid fa-hand-sparkles',
+
+    'password_reset' =>
+        'fa-solid fa-key',
+
+    'goodbye' =>
+        'fa-solid fa-door-open',
+
+    'order_confirmation' =>
+        'fa-solid fa-receipt',
+
+    'order_shipped' =>
+        'fa-solid fa-truck-fast',
+
+    'order_delivered' =>
+        'fa-solid fa-box-circle-check',
+
+    'refund_confirmation' =>
+        'fa-solid fa-money-bill-transfer',
+];
 ?>
 
 <section class="admin-panel email-template-library">
@@ -23,18 +52,37 @@ foreach ($emailTemplates as $emailTemplate) {
         </span>
     </header>
 
-    <?php foreach ($templatesByCategory as $category => $categoryTemplates): ?>
+    <?php foreach (
+        $templatesByCategory
+        as
+        $category => $categoryTemplates
+    ): ?>
 
         <section class="email-template-group">
 
-            <h3><?= moderation_e($category) ?></h3>
+            <h3>
+                <?= moderation_e($category) ?>
+            </h3>
 
             <div class="email-template-list">
 
-                <?php foreach ($categoryTemplates as $template): ?>
+                <?php foreach (
+                    $categoryTemplates
+                    as
+                    $template
+                ): ?>
                     <?php
-                    $key = (string) $template['template_key'];
-                    $isSelected = $key === $selectedTemplateKey;
+                    $key =
+                        (string)
+                        $template['template_key'];
+
+                    $isSelected =
+                        $key
+                        === $selectedTemplateKey;
+
+                    $icon =
+                        $emailTemplateIcons[$key]
+                        ?? 'fa-solid fa-envelope';
                     ?>
 
                     <a
@@ -43,24 +91,24 @@ foreach ($emailTemplates as $emailTemplate) {
                     >
                         <span class="email-template-icon">
                             <i
-                                class="<?= match ($key) {
-                                    'verify_email' => 'fa-solid fa-envelope-circle-check',
-                                    'welcome' => 'fa-solid fa-hand-sparkles',
-                                    'password_reset' => 'fa-solid fa-key',
-                                    'goodbye' => 'fa-solid fa-door-open',
-                                    default => 'fa-solid fa-envelope',
-                                } ?>"
+                                class="<?= moderation_e($icon) ?>"
                                 aria-hidden="true"
                             ></i>
                         </span>
 
                         <span class="email-template-copy">
                             <strong>
-                                <?= moderation_e((string) $template['name']) ?>
+                                <?= moderation_e(
+                                    (string)
+                                    $template['name']
+                                ) ?>
                             </strong>
 
                             <small>
-                                <?= moderation_e((string) $template['description']) ?>
+                                <?= moderation_e(
+                                    (string)
+                                    $template['description']
+                                ) ?>
                             </small>
                         </span>
 
