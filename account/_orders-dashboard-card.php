@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/app/shop-customer-orders.php';
+require_once dirname(__DIR__)
+    . '/app/shop-customer-orders.php';
 
 $accountOrderEmail =
     trim(
@@ -26,7 +27,9 @@ $accountOpenOrderCount =
     count(
         array_filter(
             $accountOrders,
-            static function (array $order): bool {
+            static function (
+                array $order
+            ): bool {
                 $status =
                     strtolower(
                         trim(
@@ -51,85 +54,59 @@ $accountOpenOrderCount =
         )
     );
 
-$accountLatestOrder =
-    $accountOrders[0]
-    ?? null;
-
-$accountOrderSummary =
-    'No orders yet';
-
-if ($accountOrderCount > 0) {
-    if ($accountOpenOrderCount > 0) {
-        $accountOrderSummary =
-            number_format(
-                $accountOpenOrderCount
-            ) .
-            ' active order' .
-            (
-                $accountOpenOrderCount === 1
-                    ? ''
-                    : 's'
-            );
-    } else {
-        $accountOrderSummary =
-            number_format(
-                $accountOrderCount
-            ) .
-            ' order' .
-            (
-                $accountOrderCount === 1
-                    ? ''
-                    : 's'
-            );
-    }
-}
+$accountOrderDetail =
+    $accountOrderCount === 0
+        ? 'No orders yet. View shop orders and tracking here.'
+        : (
+            $accountOpenOrderCount > 0
+                ? number_format(
+                    $accountOpenOrderCount
+                )
+                . ' active order'
+                . (
+                    $accountOpenOrderCount === 1
+                        ? ''
+                        : 's'
+                )
+                . '. View order status and tracking.'
+                : number_format(
+                    $accountOrderCount
+                )
+                . ' order'
+                . (
+                    $accountOrderCount === 1
+                        ? ''
+                        : 's'
+                )
+                . ' in your order history.'
+        );
 ?>
 
 <a
-    class="account-glance-card account-glance-link account-glance-orders"
+    class="account-action-card account-settings-orders"
     href="/orders.php"
 >
-    <span class="account-glance-icon">
-        <i
-            class="fa-solid fa-bag-shopping"
-            aria-hidden="true"
-        ></i>
-    </span>
+    <i
+        class="fa-solid fa-bag-shopping"
+        aria-hidden="true"
+    ></i>
 
-    <div>
+    <span>
         <strong>
+            Orders & tracking
+        </strong>
+
+        <small>
             <?= htmlspecialchars(
-                $accountOrderSummary,
+                $accountOrderDetail,
                 ENT_QUOTES,
                 'UTF-8'
             ) ?>
-        </strong>
-
-        <span>
-            <?php if ($accountLatestOrder): ?>
-                Latest:
-                <?= htmlspecialchars(
-                    (string) $accountLatestOrder['order_number'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            <?php else: ?>
-                Shop orders &amp; tracking
-            <?php endif; ?>
-        </span>
-    </div>
-
-    <i
-        class="fa-solid fa-chevron-right"
-        aria-hidden="true"
-    ></i>
+        </small>
+    </span>
 </a>
 
 <?php
-$accountSupportCard =
-    __DIR__ . '/_support-dashboard-card.php';
-
-if (is_file($accountSupportCard)) {
-    require $accountSupportCard;
-}
+require __DIR__
+    . '/_support-dashboard-card.php';
 ?>

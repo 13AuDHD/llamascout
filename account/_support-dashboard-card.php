@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-$accountSupportEmail = strtolower(
-    trim(
-        (string) (
-            $user['email']
-            ?? ''
+$accountSupportEmail =
+    strtolower(
+        trim(
+            (string) (
+                $user['email']
+                ?? ''
+            )
         )
-    )
-);
+    );
 
 $accountSupportParams = [
     $userId,
@@ -29,20 +30,21 @@ if ($accountSupportEmail !== '') {
         $accountSupportEmail;
 }
 
-$accountSupportStmt = $db->prepare(
-    'SELECT
-        id,
-        ticket_number,
-        status,
-        subject,
-        created_at
-     FROM support_requests
-     WHERE (
-        ' . $accountSupportWhere . '
-     )
-       AND status IN ("open", "waiting")
-     ORDER BY created_at DESC, id DESC'
-);
+$accountSupportStmt =
+    $db->prepare(
+        'SELECT
+            id,
+            ticket_number,
+            status,
+            subject,
+            created_at
+         FROM support_requests
+         WHERE (
+            ' . $accountSupportWhere . '
+         )
+           AND status IN ("open", "waiting")
+         ORDER BY created_at DESC, id DESC'
+    );
 
 $accountSupportStmt->execute(
     $accountSupportParams
@@ -55,105 +57,54 @@ $accountSupportTickets =
     ?: [];
 
 $accountSupportCount =
-    count($accountSupportTickets);
-
-$accountLatestSupport =
-    $accountSupportTickets[0]
-    ?? null;
-
-$accountSupportHeadline =
-    'No open tickets';
+    count(
+        $accountSupportTickets
+    );
 
 $accountSupportDetail =
-    'Contact & Support';
-
-if ($accountLatestSupport) {
-    $ticketNumber = trim(
-        (string) (
-            $accountLatestSupport['ticket_number']
-            ?? ''
+    $accountSupportCount === 0
+        ? 'No open tickets. Contact Llama Scout or review support.'
+        : number_format(
+            $accountSupportCount
         )
-    );
-
-    $ticketStatus = strtolower(
-        trim(
-            (string) (
-                $accountLatestSupport['status']
-                ?? 'open'
-            )
+        . ' active support ticket'
+        . (
+            $accountSupportCount === 1
+                ? ''
+                : 's'
         )
-    );
-
-    $ticketStatusLabel = match (
-        $ticketStatus
-    ) {
-        'waiting' => 'Waiting',
-        default => 'Open',
-    };
-
-    $accountSupportHeadline =
-        $ticketNumber !== ''
-            ? 'Ticket #' . $ticketNumber
-            : 'Support ticket';
-
-    $accountSupportDetail =
-        $ticketStatusLabel;
-
-    if ($accountSupportCount > 1) {
-        $accountSupportDetail .=
-            ' | '
-            . number_format(
-                $accountSupportCount
-            )
-            . ' active tickets';
-    }
-}
+        . '.';
 ?>
 
 <a
-    class="account-glance-card account-glance-link account-glance-support"
+    class="account-action-card account-settings-support"
     href="<?= htmlspecialchars(
         $siteUrl . '/contact.php',
         ENT_QUOTES,
         'UTF-8'
     ) ?>"
 >
-    <span class="account-glance-icon">
-        <i
-            class="fa-solid fa-headset"
-            aria-hidden="true"
-        ></i>
-    </span>
+    <i
+        class="fa-solid fa-headset"
+        aria-hidden="true"
+    ></i>
 
-    <div>
+    <span>
         <strong>
-            <?= htmlspecialchars(
-                $accountSupportHeadline,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
+            Contact & support
         </strong>
 
-        <span>
+        <small>
             <?= htmlspecialchars(
                 $accountSupportDetail,
                 ENT_QUOTES,
                 'UTF-8'
             ) ?>
-        </span>
-    </div>
-
-    <i
-        class="fa-solid fa-chevron-right"
-        aria-hidden="true"
-    ></i>
+        </small>
+    </span>
 </a>
 
 <?php
-$accountEmailPreferencesCard =
-    __DIR__ . '/_email-preferences-dashboard-card.php';
-
-if (is_file($accountEmailPreferencesCard)) {
-    require $accountEmailPreferencesCard;
-}
+require __DIR__
+    . '/_email-preferences-dashboard-card.php';
 ?>
