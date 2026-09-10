@@ -47,7 +47,7 @@
 }
 
 .account-dashboard-stat-card strong,
-.account-dashboard-stat-card span {
+.account-dashboard-stat-card > div > span {
     display: block;
 }
 
