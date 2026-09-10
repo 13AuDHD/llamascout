@@ -32,6 +32,7 @@ require_once __DIR__ . '/community-contributions.php';
 require_once __DIR__ . '/moderation.php';
 require_once __DIR__ . '/shop-order-mail-maintenance.php';
 require_once __DIR__ . '/promotion-code-maintenance.php';
+require_once __DIR__ . '/membership-email-maintenance.php';
 
 start_llama_session();
 
@@ -46,6 +47,7 @@ if (!empty($_SESSION['user_id'])) {
         require_once __DIR__ . '/support.php';
         llama_run_support_email_maintenance(db(), 10);
 
+        llama_run_membership_email_maintenance(db(), 10);
         llama_run_promotion_code_maintenance(db(), 300);
         shop_run_shipment_email_maintenance(db(), 5);
 
