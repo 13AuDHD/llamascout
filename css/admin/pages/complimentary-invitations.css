@@ -1,0 +1,293 @@
+/* =========================================================
+   ADMIN: COMPLIMENTARY INVITATIONS
+   ========================================================= */
+
+.complimentary-invite-stats {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: var(--admin-panel-gap);
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.complimentary-invite-stats > div {
+    display: grid;
+    gap: 5px;
+
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-panel-radius);
+
+    background: var(--surface);
+}
+
+.complimentary-invite-stats span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.complimentary-invite-stats strong {
+    font-size: 1.45rem;
+}
+
+.complimentary-invite-admin-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(280px, .72fr)
+        minmax(0, 1.35fr);
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.complimentary-invite-form {
+    display: grid;
+    gap: 14px;
+
+    padding: 16px;
+}
+
+.complimentary-invite-form label {
+    min-width: 0;
+
+    display: grid;
+    gap: 6px;
+}
+
+.complimentary-invite-form label > span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.complimentary-invite-form input,
+.complimentary-invite-form textarea,
+.complimentary-revoke-form input,
+.complimentary-invite-link-body input {
+    width: 100%;
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.complimentary-invite-form textarea {
+    resize: vertical;
+}
+
+.complimentary-invite-form-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.complimentary-number-field {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: center;
+}
+
+.complimentary-number-field small {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+}
+
+.complimentary-invite-list {
+    display: grid;
+}
+
+.complimentary-invite-row {
+    display: grid;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.complimentary-invite-row:last-child {
+    border-bottom: 0;
+}
+
+.complimentary-invite-row-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: start;
+}
+
+.complimentary-invite-row-heading > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.complimentary-invite-row-heading strong {
+    overflow-wrap: anywhere;
+
+    font-size: .74rem;
+}
+
+.complimentary-invite-row-heading small {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+}
+
+.complimentary-invite-status {
+    flex: none;
+
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .55rem;
+    font-weight: 900;
+}
+
+.complimentary-invite-status.is-pending {
+    color: var(--text);
+}
+
+.complimentary-invite-status.is-revoked,
+.complimentary-invite-status.is-expired {
+    border-style: dashed;
+}
+
+.complimentary-invite-row dl {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 8px;
+
+    margin: 0;
+}
+
+.complimentary-invite-row dl > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+
+    padding: 8px 9px;
+
+    border-radius: 8px;
+
+    background: var(--background);
+}
+
+.complimentary-invite-row dl > div.is-wide {
+    grid-column: 1 / -1;
+}
+
+.complimentary-invite-row dt {
+    color: var(--text-muted);
+
+    font-size: .53rem;
+    font-weight: 850;
+}
+
+.complimentary-invite-row dd {
+    margin: 0;
+
+    overflow-wrap: anywhere;
+
+    font-size: .61rem;
+}
+
+.complimentary-invite-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: end;
+}
+
+.complimentary-revoke-form {
+    display: flex;
+    flex: 1 1 300px;
+    gap: 7px;
+}
+
+.complimentary-revoke-form input {
+    flex: 1 1 auto;
+}
+
+.complimentary-invite-link-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.complimentary-invite-link-body {
+    display: grid;
+    gap: 10px;
+
+    padding: 16px;
+}
+
+.complimentary-invite-link-body p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.5;
+}
+
+.complimentary-invite-link-body input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .62rem;
+}
+
+
+@media (max-width: 1050px) {
+    .complimentary-invite-admin-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 700px) {
+    .complimentary-invite-stats {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .complimentary-invite-form-grid,
+    .complimentary-invite-row dl {
+        grid-template-columns: 1fr;
+    }
+
+    .complimentary-invite-row dl > div.is-wide {
+        grid-column: auto;
+    }
+
+    .complimentary-invite-row-actions,
+    .complimentary-revoke-form {
+        display: grid;
+        width: 100%;
+    }
+
+    .complimentary-invite-row-actions .admin-button {
+        width: 100%;
+    }
+}
