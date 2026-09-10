@@ -1,0 +1,229 @@
+/* =========================================================
+   PASSWORD & SECURITY
+   ========================================================= */
+
+.account-security-page {
+    width: min(1040px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 42px 0 64px;
+}
+
+.account-security-header {
+    max-width: 700px;
+    margin-bottom: 24px;
+}
+
+.account-security-header h1 {
+    margin: 6px 0 10px;
+}
+
+.account-security-header p {
+    margin: 0;
+}
+
+.account-security-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.account-security-card {
+    padding: 22px;
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 16px;
+    background: var(--surface, #fff);
+}
+
+.account-security-card.is-important {
+    margin-bottom: 18px;
+}
+
+.account-security-card-heading {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.account-security-card-heading > i {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(23, 40, 34, .08);
+}
+
+.account-security-card-heading h2 {
+    margin: 0 0 5px;
+    font-size: 1.08rem;
+}
+
+.account-security-card-heading p {
+    margin: 0;
+    color: var(--text-muted, #667069);
+}
+
+.account-security-button,
+.account-security-form button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    margin-top: 18px;
+    padding: 10px 15px;
+    border: 0;
+    border-radius: 9px;
+    background: #172822;
+    color: #fff;
+    font: inherit;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.account-security-status {
+    width: fit-content;
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    margin-top: 18px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 750;
+}
+
+.account-security-status span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.account-security-status.is-on {
+    background: rgba(40, 120, 75, .1);
+}
+
+.account-security-status.is-on span {
+    background: #28784b;
+}
+
+.account-security-status.is-off {
+    background: rgba(120, 120, 120, .1);
+}
+
+.account-security-status.is-off span {
+    background: #777;
+}
+
+.account-security-setup,
+.account-security-manage {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border, #d7ddd8);
+}
+
+.account-security-setup h3 {
+    margin: 0 0 7px;
+}
+
+.account-security-setup > p,
+.account-security-manage > p,
+.account-security-meta {
+    color: var(--text-muted, #667069);
+}
+
+.account-security-qr {
+    width: 244px;
+    min-height: 244px;
+    display: grid;
+    place-items: center;
+    margin: 18px 0;
+    padding: 12px;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.account-security-manual {
+    margin: 12px 0 18px;
+}
+
+.account-security-manual code {
+    display: block;
+    overflow-wrap: anywhere;
+    margin-top: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, .06);
+}
+
+.account-security-form {
+    display: grid;
+    gap: 13px;
+    margin-top: 14px;
+}
+
+.account-security-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.account-security-form input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.account-security-manage summary {
+    cursor: pointer;
+    font-weight: 750;
+}
+
+.account-security-manage.is-danger {
+    border-top-color: rgba(140, 35, 35, .25);
+}
+
+.account-security-form button.is-danger {
+    background: #8c2323;
+}
+
+.account-security-recovery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.account-security-recovery-grid code {
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, .06);
+    text-align: center;
+}
+
+.account-security-message {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+}
+
+.account-security-message.is-success {
+    background: rgba(40, 120, 75, .1);
+}
+
+.account-security-message.is-error {
+    background: rgba(140, 35, 35, .1);
+}
+
+.account-security-back {
+    margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+    .account-security-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-security-recovery-grid {
+        grid-template-columns: 1fr;
+    }
+}
