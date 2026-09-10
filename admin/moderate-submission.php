@@ -238,6 +238,18 @@ $photos =
         ? $data['photos']
         : [];
 
+$pointInput =
+    community_new_place_form_input(
+        $data
+    );
+
+$newPlacePointEstimate =
+    llama_points_estimate_new_place(
+        $db,
+        $pointInput,
+        count($photos)
+    );
+
 function submission_review_label(
     string $key
 ): string {
@@ -826,6 +838,10 @@ $coreChecksComplete = count(
     </div>
 <?php endif; ?>
 
+<?php
+require __DIR__
+    . '/_moderation-new-place-points.php';
+?>
 
 <div class="admin-moderation-detail">
     <h2>Decision</h2>
@@ -858,18 +874,6 @@ $coreChecksComplete = count(
                     Featured
                 </option>
             </select>
-        </label>
-
-        <label>
-            Contribution points
-
-            <input
-                type="number"
-                name="points"
-                min="0"
-                step="1"
-                value="0"
-            >
         </label>
 
         <label>
