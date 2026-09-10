@@ -421,6 +421,145 @@ function llama_email_log_send(
 }
 
 
+function llama_email_recipient_account(
+    PDO $db,
+    string $recipient,
+    ?int $userId = null
+): ?array {
+    if ($userId !== null && $userId > 0) {
+        $stmt =
+            $db->prepare(
+                'SELECT
+                    id,
+                    email,
+                    email_verified_at,
+                    status,
+                    anonymized_at
+                 FROM users
+                 WHERE id = ?
+                 LIMIT 1'
+            );
+
+        $stmt->execute([
+            $userId,
+        ]);
+    } else {
+        $recipient =
+            strtolower(
+                trim($recipient)
+            );
+
+        if (
+            $recipient === ''
+            || !filter_var(
+                $recipient,
+                FILTER_VALIDATE_EMAIL
+            )
+        ) {
+            return null;
+        }
+
+        $stmt =
+            $db->prepare(
+                'SELECT
+                    id,
+                    email,
+                    email_verified_at,
+                    status,
+                    anonymized_at
+                 FROM users
+                 WHERE LOWER(email) = ?
+                 LIMIT 1'
+            );
+
+        $stmt->execute([
+            $recipient,
+        ]);
+    }
+
+    $row =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    return $row ?: null;
+}
+
+
+function llama_email_account_can_receive(
+    PDO $db,
+    string $templateKey,
+    string $recipient,
+    bool $isTest,
+    ?int $userId = null
+): bool {
+    /*
+     * Admin tests must remain testable even if the dev mailbox is attached
+     * to an account whose verification state is being changed.
+     */
+    if ($isTest) {
+        return true;
+    }
+
+    /*
+     * Verification itself is the one account email that must be able to
+     * reach an unverified address.
+     *
+     * This also intentionally covers the safe pending-email-change workflow,
+     * which uses the Verify Email template to prove control of the new
+     * address before swapping the account login email.
+     */
+    if ($templateKey === 'verify_email') {
+        return true;
+    }
+
+    /*
+     * Invitation messages may go to someone who does not have an account
+     * yet. If no account exists for the recipient, verification state does
+     * not apply.
+     */
+    $account =
+        llama_email_recipient_account(
+            $db,
+            $recipient,
+            $userId
+        );
+
+    if (!$account) {
+        return true;
+    }
+
+    if (!empty($account['anonymized_at'])) {
+        return false;
+    }
+
+    if (
+        in_array(
+            strtolower(
+                trim(
+                    (string) (
+                        $account['status']
+                        ?? ''
+                    )
+                )
+            ),
+            [
+                'suspended',
+                'disabled',
+            ],
+            true
+        )
+    ) {
+        return false;
+    }
+
+    return
+        !empty(
+            $account['email_verified_at']
+        );
+}
+
+
 function llama_email_send_template(
     PDO $db,
     string $templateKey,
@@ -441,6 +580,22 @@ function llama_email_send_template(
     }
 
     if (!$isTest && empty($template['enabled'])) {
+        return false;
+    }
+
+    if (
+        !llama_email_account_can_receive(
+            $db,
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId
+        )
+    ) {
+        /*
+         * This is an intentional suppression, not a failed SMTP delivery.
+         * Do not add a failed email_send_log row, because nothing was sent.
+         */
         return false;
     }
 
