@@ -1,0 +1,80 @@
+/* =========================================================
+   ADMIN USER: EMAIL VERIFICATION
+   ========================================================= */
+
+.admin-user-email-verification-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-user-email-verification-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    font-weight: 900;
+}
+
+.admin-user-email-verification-status.is-unverified {
+    border-style: dashed;
+}
+
+.admin-user-email-verification-body {
+    display: grid;
+    gap: 12px;
+
+    padding: 15px;
+}
+
+.admin-user-email-verification-body > div {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-user-email-verification-body > div > span {
+    color: var(--text-muted);
+
+    font-size: .58rem;
+    font-weight: 850;
+}
+
+.admin-user-email-verification-body > div > strong {
+    overflow-wrap: anywhere;
+
+    font-size: .7rem;
+}
+
+.admin-user-email-verification-body > p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.5;
+}
+
+.admin-user-email-verification-form {
+    display: flex;
+}
+
+.admin-user-email-verification-message {
+    margin: 12px 15px 0;
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    font-size: .61rem;
+    line-height: 1.45;
+}
+
+.admin-user-email-verification-message.is-error {
+    border-style: dashed;
+}
