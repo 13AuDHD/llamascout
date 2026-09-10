@@ -24,6 +24,14 @@
 </a>
 
 <a
+    class="<?= admin_shell_nav_class('complimentary-invitations', $adminActiveNav) ?>"
+    href="<?= moderation_e($adminUrl . '/complimentary-invitations.php') ?>"
+>
+    <i class="fa-solid fa-gift" aria-hidden="true"></i>
+    <span>Invitations</span>
+</a>
+
+<a
     class="<?= admin_shell_nav_class('email-activity', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/email-activity.php') ?>"
 >

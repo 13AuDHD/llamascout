@@ -54,6 +54,9 @@ $emailTemplateIcons = [
 
     'complimentary_ending' =>
         'fa-solid fa-hourglass-end',
+
+    'complimentary_invitation' =>
+        'fa-solid fa-envelope-circle-check',
 ];
 ?>
 
