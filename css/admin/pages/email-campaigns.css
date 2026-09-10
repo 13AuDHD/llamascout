@@ -1,0 +1,415 @@
+/* =========================================================
+   ADMIN PAGE: EMAIL CAMPAIGNS
+   ========================================================= */
+
+.email-campaign-layout {
+    display: grid;
+    grid-template-columns:
+        minmax(280px, .68fr)
+        minmax(0, 1.55fr);
+    gap: var(--admin-panel-gap);
+    align-items: start;
+}
+
+.email-campaign-editor-column {
+    min-width: 0;
+
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+.email-campaign-library {
+    min-width: 0;
+}
+
+.email-campaign-list {
+    display: grid;
+    gap: 6px;
+
+    padding: 12px;
+}
+
+.email-campaign-row {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        38px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+
+    padding: 10px;
+
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    color: var(--text);
+    text-decoration: none;
+}
+
+.email-campaign-row:hover,
+.email-campaign-row:focus-visible,
+.email-campaign-row.is-active {
+    border-color: var(--border);
+    background: var(--background);
+}
+
+.email-campaign-row-icon {
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    color: var(--text-muted);
+}
+
+.email-campaign-row-copy {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.email-campaign-row-copy strong {
+    overflow-wrap: anywhere;
+
+    font-size: .75rem;
+}
+
+.email-campaign-row-copy small {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    line-height: 1.4;
+}
+
+.email-campaign-row-status {
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    font-weight: 900;
+}
+
+.email-campaign-row-status.is-scheduled {
+    color: var(--text);
+}
+
+.email-campaign-row-status.is-sent {
+    background: var(--background);
+    color: var(--text);
+}
+
+.email-campaign-overview-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 0;
+
+    border-top: 1px solid var(--border);
+}
+
+.email-campaign-overview-grid > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 5px;
+
+    padding: 13px 15px;
+
+    border-right: 1px solid var(--border);
+}
+
+.email-campaign-overview-grid > div:last-child {
+    border-right: 0;
+}
+
+.email-campaign-overview-grid span {
+    color: var(--text-muted);
+
+    font-size: .58rem;
+    font-weight: 850;
+}
+
+.email-campaign-overview-grid strong {
+    overflow-wrap: anywhere;
+
+    font-size: .68rem;
+}
+
+.email-campaign-form {
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+.email-campaign-form-body {
+    display: grid;
+    gap: 14px;
+
+    padding: 16px;
+}
+
+.email-campaign-form-body > label {
+    min-width: 0;
+
+    display: grid;
+    gap: 6px;
+}
+
+.email-campaign-form-body > label > span,
+.email-campaign-field-grid label > span {
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 850;
+}
+
+.email-campaign-form input[type="text"],
+.email-campaign-form input[type="datetime-local"],
+.email-campaign-form textarea {
+    width: 100%;
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+/*
+ * Match the site-wide correction for browser-native date/time
+ * controls, which render materially wider than normal inputs.
+ */
+.email-campaign-form input[type="datetime-local"] {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+}
+
+.email-campaign-form textarea {
+    resize: vertical;
+
+    min-height: 180px;
+
+    line-height: 1.55;
+}
+
+.email-campaign-field-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+    gap: 12px;
+}
+
+.email-campaign-field-grid label {
+    min-width: 0;
+
+    display: grid;
+    gap: 6px;
+}
+
+.email-campaign-date-field {
+    max-width: 520px;
+}
+
+.email-campaign-toggle {
+    display: grid !important;
+    grid-template-columns:
+        20px minmax(0, 1fr);
+    gap: 9px !important;
+    align-items: start;
+
+    padding: 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.email-campaign-toggle input {
+    margin-top: 2px;
+}
+
+.email-campaign-toggle > span {
+    display: grid;
+    gap: 3px;
+
+    color: var(--text) !important;
+}
+
+.email-campaign-toggle strong {
+    font-size: .72rem;
+}
+
+.email-campaign-toggle small {
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    line-height: 1.45;
+}
+
+.email-campaign-message-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    align-items: center;
+}
+
+.email-campaign-message-actions > span {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+}
+
+.email-campaign-sent-note {
+    margin: 0;
+
+    padding: 9px 11px;
+
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.45;
+}
+
+.email-campaign-save-bar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 10;
+
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+
+    padding: 13px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-panel-radius);
+
+    background: var(--surface);
+
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+}
+
+.email-campaign-save-bar > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.email-campaign-save-bar strong {
+    font-size: .7rem;
+}
+
+.email-campaign-save-bar span {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+}
+
+.email-campaign-empty {
+    display: grid;
+    justify-items: center;
+    gap: 7px;
+
+    padding: 56px 24px;
+
+    text-align: center;
+}
+
+.email-campaign-empty > i {
+    color: var(--text-muted);
+
+    font-size: 1.6rem;
+}
+
+.email-campaign-empty h2 {
+    margin: 3px 0 0;
+
+    font-size: 1rem;
+}
+
+.email-campaign-empty p {
+    max-width: 430px;
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+
+@media (max-width: 1150px) {
+    .email-campaign-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .email-campaign-overview-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .email-campaign-overview-grid > div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .email-campaign-overview-grid > div:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--border);
+    }
+}
+
+
+@media (max-width: 700px) {
+    .email-campaign-field-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .email-campaign-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .email-campaign-overview-grid > div {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .email-campaign-overview-grid > div:last-child {
+        border-bottom: 0;
+    }
+
+    .email-campaign-save-bar {
+        position: static;
+
+        display: grid;
+    }
+
+    .email-campaign-save-bar .admin-button {
+        width: 100%;
+    }
+
+    .email-campaign-message-actions {
+        display: grid;
+    }
+}
