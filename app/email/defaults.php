@@ -608,5 +608,425 @@ TEXT,
 HTML,
         ],
 
+
+        'membership_started' => [
+            'template_key' => 'membership_started',
+            'category' => 'Membership',
+            'name' => 'Membership Started',
+            'description' =>
+                'Sent once when a paid Stripe membership becomes active.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_plan',
+                'membership_renews_at',
+                'account_url',
+                'map_url',
+                'demo_report_url',
+            ],
+            'subject' => 'Your Llama Scout membership is active',
+            'preheader' =>
+                'Complete Access is unlocked. Your member features are ready.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your Llama Scout {{membership_plan}} membership is active.
+
+Complete Access is now unlocked, including exact Place locations, complete photo galleries, sensory and access details, exact-location weather, the 5-day forecast, and the full member map.
+
+Your current membership period runs through {{membership_renews_at}}.
+
+Manage your membership:
+{{account_url}}
+
+Explore the member map:
+{{map_url}}
+
+See a complete Scout Report:
+{{demo_report_url}}
+
+Thanks for supporting Llama Scout.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Complete Access is unlocked.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your Llama Scout <strong>{{membership_plan}}</strong> membership is active.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  Exact Place locations, complete photo galleries, sensory and access details,
+  exact-location weather, the 5-day forecast, and the full member map are now available.
+</div>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  Your current membership period runs through
+  <strong>{{membership_renews_at}}</strong>.
+</p>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{map_url}}"
+    style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;"
+  >Explore the Member Map</a>
+</p>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{demo_report_url}}"
+    style="display:block;padding:13px 18px;border:1px solid #172822;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
+  >See a Complete Scout Report</a>
+</p>
+
+<p style="margin:10px 0 0;">
+  <a
+    href="{{account_url}}"
+    style="display:block;padding:13px 18px;border:1px solid #d7d9d5;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
+  >Manage Membership</a>
+</p>
+HTML,
+        ],
+
+
+        'membership_cancel_scheduled' => [
+            'template_key' => 'membership_cancel_scheduled',
+            'category' => 'Membership',
+            'name' => 'Cancellation Scheduled',
+            'description' =>
+                'Sent once when paid membership renewal is turned off but access remains active.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_plan',
+                'membership_ends_at',
+                'account_url',
+            ],
+            'subject' => 'Your Llama Scout membership will end {{membership_ends_at}}',
+            'preheader' =>
+                'Renewal is off, but your Complete Access remains active through the paid period.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your Llama Scout {{membership_plan}} membership is scheduled to end on {{membership_ends_at}}.
+
+You still have Complete Access until then. Nothing has been removed early.
+
+If you change your mind, you can manage your membership here:
+
+{{account_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Renewal is turned off.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your Llama Scout <strong>{{membership_plan}}</strong> membership is scheduled
+  to end on <strong>{{membership_ends_at}}</strong>.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  You still have Complete Access until then. Nothing has been removed early.
+</div>
+
+<p style="margin:0;">
+  <a
+    href="{{account_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Manage Membership</a>
+</p>
+HTML,
+        ],
+
+
+        'membership_payment_failed' => [
+            'template_key' => 'membership_payment_failed',
+            'category' => 'Membership',
+            'name' => 'Payment Failed',
+            'description' =>
+                'Sent when Stripe places a paid membership into past-due status.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_plan',
+                'membership_ends_at',
+                'account_url',
+            ],
+            'subject' => 'There’s a problem with your Llama Scout membership payment',
+            'preheader' =>
+                'Your membership is past due. Update billing details to avoid losing Complete Access.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Stripe was unable to complete a payment for your Llama Scout {{membership_plan}} membership.
+
+Your membership is currently past due. Please review your billing information so Complete Access can continue without interruption.
+
+Current access period:
+{{membership_ends_at}}
+
+Manage your membership:
+{{account_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  There’s a problem with your payment.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Stripe was unable to complete a payment for your Llama Scout
+  <strong>{{membership_plan}}</strong> membership.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border:1px solid #dcded8;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  Your membership is currently past due. Review your billing information
+  to avoid losing Complete Access.
+</div>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  Current access period: <strong>{{membership_ends_at}}</strong>
+</p>
+
+<p style="margin:0;">
+  <a
+    href="{{account_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Review Membership</a>
+</p>
+HTML,
+        ],
+
+
+        'membership_ended' => [
+            'template_key' => 'membership_ended',
+            'category' => 'Membership',
+            'name' => 'Membership Ended',
+            'description' =>
+                'Sent once after a paid membership actually reaches canceled status.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_plan',
+                'membership_url',
+            ],
+            'subject' => 'Your Llama Scout membership has ended',
+            'preheader' =>
+                'Your paid Complete Access has ended. Your free account remains available.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your paid Llama Scout {{membership_plan}} membership has ended.
+
+Your Llama Scout account is still here. You can continue using the free account features, and your profile, saved information, contribution history, points, and badges remain intact.
+
+If you want Complete Access again:
+
+{{membership_url}}
+
+Thanks for having been a member.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your paid membership has ended.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your Llama Scout <strong>{{membership_plan}}</strong> membership has ended.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  Your free account remains available. Your profile, saved information,
+  contribution history, points, and badges stay intact.
+</div>
+
+<p style="margin:0;">
+  <a
+    href="{{membership_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Restore Complete Access</a>
+</p>
+HTML,
+        ],
+
+
+        'complimentary_started' => [
+            'template_key' => 'complimentary_started',
+            'category' => 'Membership',
+            'name' => 'Complimentary Access Granted',
+            'description' =>
+                'Sent once when a complimentary membership grant becomes active.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_ends_at',
+                'account_url',
+                'map_url',
+                'demo_report_url',
+            ],
+            'subject' => 'Complimentary Llama Scout access is active',
+            'preheader' =>
+                'Complete Access has been added to your account.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Complimentary Llama Scout Complete Access has been added to your account.
+
+Your complimentary access runs through {{membership_ends_at}}.
+
+Explore the member map:
+{{map_url}}
+
+See a complete Scout Report:
+{{demo_report_url}}
+
+View your account:
+{{account_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Complete Access is on us.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Complimentary Llama Scout Complete Access has been added to your account.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  Your complimentary access runs through
+  <strong>{{membership_ends_at}}</strong>.
+</div>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{map_url}}"
+    style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;"
+  >Explore the Member Map</a>
+</p>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{demo_report_url}}"
+    style="display:block;padding:13px 18px;border:1px solid #172822;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
+  >See a Complete Scout Report</a>
+</p>
+HTML,
+        ],
+
+
+        'complimentary_ending' => [
+            'template_key' => 'complimentary_ending',
+            'category' => 'Membership',
+            'name' => 'Complimentary Access Ending',
+            'description' =>
+                'Sent once when complimentary Complete Access has seven days or less remaining.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'membership_ends_at',
+                'membership_url',
+            ],
+            'subject' => 'Your complimentary Llama Scout access ends {{membership_ends_at}}',
+            'preheader' =>
+                'Your complimentary Complete Access is nearing its end.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your complimentary Llama Scout Complete Access ends on {{membership_ends_at}}.
+
+Your free account will remain available afterward. If you would like to keep Complete Access, you can choose a monthly or annual membership here:
+
+{{membership_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your complimentary access is nearing its end.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your complimentary Llama Scout Complete Access ends on
+  <strong>{{membership_ends_at}}</strong>.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  Your free account will remain available afterward.
+</div>
+
+<p style="margin:0;">
+  <a
+    href="{{membership_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Keep Complete Access</a>
+</p>
+HTML,
+        ],
+
     ];
 }
