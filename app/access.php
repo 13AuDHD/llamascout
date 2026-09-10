@@ -39,6 +39,42 @@ function user_has_member_access(?int $userId = null): bool
         return false;
     }
 
+
+    /*
+     * Owner / Admin access.
+     *
+     * Privileged site operators automatically receive Complete
+     * Access without changing membership_status, touching Stripe,
+     * or creating a complimentary membership grant.
+     *
+     * Administrative role and billing state remain separate.
+     */
+    $stmt = db()->prepare(
+        "
+        SELECT 1
+
+        FROM user_roles ur
+
+        INNER JOIN roles r
+          ON r.id = ur.role_id
+
+        WHERE ur.user_id = ?
+          AND r.slug IN (
+                'owner',
+                'admin'
+          )
+
+        LIMIT 1
+        "
+    );
+
+    $stmt->execute([$userId]);
+
+    if ($stmt->fetchColumn()) {
+        return true;
+    }
+
+
     /*
      * Paid / subscription access.
      *
