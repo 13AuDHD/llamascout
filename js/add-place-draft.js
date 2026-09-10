@@ -60,9 +60,13 @@
      * =====================================================
      * SAVE FOR LATER
      *
-     * Preserve the server action before disabling the visible
-     * submit button. Disabled submit buttons are not guaranteed
-     * to be included in submitted form data.
+     * Important:
+     * Do NOT disable the submit button during Safari's native
+     * submit event. iOS/iPadOS Safari can interfere with the
+     * form POST when the active submitter becomes disabled.
+     *
+     * The first click proceeds normally. Later clicks are
+     * blocked in JavaScript while the page is navigating.
      * =====================================================
      */
 
@@ -85,57 +89,25 @@
 
     let saving = false;
 
-    form.addEventListener(
-        'submit',
+    saveButton.addEventListener(
+        'click',
         (event) => {
-            const submitter =
-                event.submitter;
-
-            if (
-                submitter !== saveButton
-            ) {
-                return;
-            }
-
             if (saving) {
                 event.preventDefault();
+                event.stopPropagation();
                 return;
             }
 
             saving = true;
 
-            /*
-             * Preserve the action explicitly before disabling
-             * the button so PHP always receives:
-             * save_for_later=1
-             */
-            let actionInput =
-                form.querySelector(
-                    'input[data-save-for-later-action]'
-                );
+            saveButton.setAttribute(
+                'aria-disabled',
+                'true'
+            );
 
-            if (!actionInput) {
-                actionInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                actionInput.type = 'hidden';
-                actionInput.name =
-                    'save_for_later';
-                actionInput.value = '1';
-
-                actionInput.setAttribute(
-                    'data-save-for-later-action',
-                    '1'
-                );
-
-                form.appendChild(
-                    actionInput
-                );
-            }
-
-            saveButton.disabled = true;
+            saveButton.classList.add(
+                'is-saving'
+            );
 
             saveButton.innerHTML = `
                 <i
@@ -143,6 +115,49 @@
                     aria-hidden="true"
                 ></i>
                 Saving...
+            `;
+
+            /*
+             * Do not call preventDefault().
+             * Do not set disabled=true.
+             *
+             * The original button remains the native submitter,
+             * so its name/value:
+             *
+             * save_for_later=1
+             *
+             * is included naturally in the POST.
+             */
+        }
+    );
+
+    /*
+     * If Safari restores this page from its back-forward cache,
+     * restore the button so it is usable again.
+     */
+    window.addEventListener(
+        'pageshow',
+        (event) => {
+            if (!event.persisted) {
+                return;
+            }
+
+            saving = false;
+
+            saveButton.removeAttribute(
+                'aria-disabled'
+            );
+
+            saveButton.classList.remove(
+                'is-saving'
+            );
+
+            saveButton.innerHTML = `
+                <i
+                    class="fa-solid fa-floppy-disk"
+                    aria-hidden="true"
+                ></i>
+                Save for Later
             `;
         }
     );
