@@ -5,6 +5,8 @@ declare(strict_types=1);
 $accountEmailPreferenceStmt =
     $db->prepare(
         'SELECT
+            email,
+            email_verified_at,
             newsletter_email_enabled,
             member_dispatch_email_enabled,
             marketing_email_enabled
@@ -57,7 +59,58 @@ $accountEmailPreferenceDetail =
                 ? 'subscription'
                 : 'subscriptions'
         );
+
+$accountInformationEmail =
+    trim(
+        (string) (
+            $accountEmailPreferenceState['email']
+            ?? ''
+        )
+    );
+
+$accountInformationVerified =
+    !empty(
+        $accountEmailPreferenceState[
+            'email_verified_at'
+        ]
+    );
 ?>
+
+<a
+    class="account-glance-card account-glance-link account-glance-account-info"
+    href="/account-information.php"
+>
+    <span class="account-glance-icon">
+        <i
+            class="fa-solid fa-address-card"
+            aria-hidden="true"
+        ></i>
+    </span>
+
+    <div>
+        <strong>
+            Account information
+        </strong>
+
+        <span>
+            <?= htmlspecialchars(
+                $accountInformationEmail,
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>
+            ·
+            <?= $accountInformationVerified
+                ? 'Verified'
+                : 'Verification required' ?>
+        </span>
+    </div>
+
+    <i
+        class="fa-solid fa-chevron-right"
+        aria-hidden="true"
+    ></i>
+</a>
+
 
 <a
     class="account-glance-card account-glance-link account-glance-email"
