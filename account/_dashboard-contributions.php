@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+
+require_once dirname(__DIR__) . '/app/place-drafts.php';
+
+$savedDraftCount = llama_place_draft_count(
+    db(),
+    (int) ($userId ?? 0)
+);
 ?>
 
 <section
@@ -25,14 +32,10 @@ declare(strict_types=1);
                 class="account-action-card account-scout-basecamp-card"
                 href="/scout.php"
             >
-                <i
-                    class="fa-solid fa-binoculars"
-                    aria-hidden="true"
-                ></i>
+                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
 
                 <span>
                     <strong>Scout Basecamp</strong>
-
                     <small>
                         Your Scout status, field-work requirements,
                         contributions, and Master Scout progress.
@@ -46,7 +49,6 @@ declare(strict_types=1);
             </a>
         <?php endif; ?>
 
-
         <a
             class="account-action-card"
             href="<?= htmlspecialchars(
@@ -55,36 +57,32 @@ declare(strict_types=1);
                 'UTF-8'
             ) ?>"
         >
-            <i
-                class="fa-solid fa-location-dot"
-                aria-hidden="true"
-            ></i>
-
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
             <span>
                 <strong>Add a place</strong>
+                <small>Submit a new campsite or outdoor place.</small>
+            </span>
+        </a>
 
+        <a class="account-action-card" href="/contributions.php">
+            <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+            <span>
+                <strong>My contributions</strong>
                 <small>
-                    Submit a new campsite or outdoor place.
+                    <?= (int) ($contributionCounts['open'] ?? 0) ?>
+                    currently awaiting review.
                 </small>
             </span>
         </a>
 
-
-        <a
-            class="account-action-card"
-            href="/contributions.php"
-        >
-            <i
-                class="fa-solid fa-clock-rotate-left"
-                aria-hidden="true"
-            ></i>
-
+        <a class="account-action-card" href="/saved-later.php">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
             <span>
-                <strong>My contributions</strong>
-
+                <strong>Saved for Later</strong>
                 <small>
-                    <?= (int) ($contributionCounts['open'] ?? 0) ?>
-                    currently awaiting review.
+                    You have <?= $savedDraftCount ?>
+                    place<?= $savedDraftCount === 1 ? '' : 's' ?>
+                    to continue editing.
                 </small>
             </span>
         </a>
