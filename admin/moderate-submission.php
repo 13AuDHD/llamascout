@@ -74,15 +74,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
             );
 
-        $points =
-            max(
-                0,
-                (int) (
-                    $_POST['points']
-                    ?? 0
+        $pointInput =
+            community_new_place_form_input(
+                (array) (
+                    $item['data']
+                    ?? []
                 )
             );
-
+        
+        $postPointEstimate =
+            llama_points_estimate_new_place(
+                $db,
+                $pointInput,
+                count(
+                    is_array(
+                        $item['data']['photos']
+                        ?? null
+                    )
+                        ? $item['data']['photos']
+                        : []
+                )
+            );
+        
+        $points =
+            (int) (
+                $postPointEstimate[
+                    'estimated_points'
+                ]
+                ?? 0
+            );
+        
         $db->beginTransaction();
 
         if ($action === 'approve') {
