@@ -2,80 +2,163 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/admin-users.php';
-require_once dirname(__DIR__) . '/app/admin-points.php';
-require_once __DIR__ . '/_dashboard.php';
+require_once
+    dirname(__DIR__)
+    . '/app/bootstrap.php';
 
-$adminUser = moderation_require_admin();
+require_once
+    dirname(__DIR__)
+    . '/app/admin-users.php';
+
+require_once
+    dirname(__DIR__)
+    . '/app/admin-points.php';
+
+require_once
+    __DIR__
+    . '/_dashboard.php';
+
+$adminUser =
+    moderation_require_admin();
+
 $db = db();
 
-$actorUserId = (int) ($adminUser['id'] ?? 0);
-$actorIsOwner = admin_users_current_is_owner(
-    $db,
-    $actorUserId
-);
+$actorUserId =
+    (int) ($adminUser['id'] ?? 0);
+
+$actorIsOwner =
+    admin_users_current_is_owner(
+        $db,
+        $actorUserId
+    );
 
 $notice = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (
+    $_SERVER['REQUEST_METHOD']
+    === 'POST'
+) {
     if (
         !moderation_verify_csrf(
-            (string) ($_POST['csrf_token'] ?? '')
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            )
         )
     ) {
         $error =
             'Your session token expired. Reload and try again.';
     } else {
         try {
-            $action = (string) (
-                $_POST['points_admin_action'] ?? ''
-            );
+            $action =
+                (string) (
+                    $_POST['points_admin_action']
+                    ?? ''
+                );
 
-            if ($action === 'save-policy') {
+            if (
+                $action
+                === 'save-policy'
+            ) {
                 admin_points_save_policy(
                     $db,
                     $actorUserId,
-                    (array) ($_POST['policy'] ?? [])
+                    (array) (
+                        $_POST['policy']
+                        ?? []
+                    )
                 );
 
-                $notice = 'Points policy updated.';
-            } elseif ($action === 'manual-adjustment') {
+                $notice =
+                    'Sitewide points policy updated.';
+            } elseif (
+                $action
+                === 'manual-adjustment'
+            ) {
                 admin_points_manual_adjustment(
                     $db,
                     $actorUserId,
-                    (int) ($_POST['user_id'] ?? 0),
-                    (int) ($_POST['points'] ?? 0),
-                    (string) ($_POST['reason'] ?? '')
+                    (int) (
+                        $_POST['user_id']
+                        ?? 0
+                    ),
+                    (int) (
+                        $_POST['points']
+                        ?? 0
+                    ),
+                    (string) (
+                        $_POST['reason']
+                        ?? ''
+                    )
                 );
 
-                $notice = 'Point adjustment recorded.';
+                $notice =
+                    'Point adjustment recorded.';
             }
         } catch (Throwable $exception) {
-            $error = $exception->getMessage();
+            $error =
+                $exception->getMessage();
         }
     }
 }
 
-$policy = admin_points_policy_rows($db);
-$ledger = admin_points_recent($db, 150);
+try {
+    $policyGroups =
+        admin_points_policy_groups(
+            $db
+        );
 
-$stats = admin_dashboard_stats($db);
+    $newPlaceMax =
+        llama_points_new_place_max_points(
+            $db
+        );
+} catch (Throwable $exception) {
+    $policyGroups = [];
+    $newPlaceMax = 0;
+
+    if ($error === '') {
+        $error =
+            $exception->getMessage();
+    }
+}
+
+$ledger =
+    admin_points_recent(
+        $db,
+        150
+    );
+
+$stats =
+    admin_dashboard_stats(
+        $db
+    );
 
 $adminNavCounts = [
-    'new_places' => $stats['new_places'],
-    'updates' => $stats['updates'],
-    'reports' => $stats['reports'],
-    'orders' => $stats['orders'],
-    'scout_reviews' => $stats['scout_reviews'],
+    'new_places' =>
+        $stats['new_places'],
+    'updates' =>
+        $stats['updates'],
+    'reports' =>
+        $stats['reports'],
+    'orders' =>
+        $stats['orders'],
+    'scout_reviews' =>
+        $stats['scout_reviews'],
 ];
 
-$adminPageTitle = 'Points';
-$adminPageEyebrow = 'Configuration';
-$adminActiveNav = 'points';
+$adminPageTitle =
+    'Points';
 
-require __DIR__ . '/_header.php';
+$adminPageEyebrow =
+    'Configuration';
+
+$adminActiveNav =
+    'points';
+
+require
+    __DIR__
+    . '/_header.php';
 ?>
 
 <?php if ($notice !== ''): ?>
@@ -95,71 +178,137 @@ require __DIR__ . '/_header.php';
 
     <header class="admin-panel-header">
         <div>
-            <p>Scoring</p>
-            <h2>Contribution Point Policy</h2>
+            <p>Sitewide Source of Truth</p>
+            <h2>Points Policy</h2>
         </div>
-        <span>Future awards only</span>
+
+        <span>
+            Future awards only
+        </span>
     </header>
 
-    <form method="post">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= moderation_e(moderation_csrf_token()) ?>"
-        >
-        <input
-            type="hidden"
-            name="points_admin_action"
-            value="save-policy"
-        >
+    <div class="admin-points-source-note">
+        <strong>
+            All point values belong here.
+        </strong>
 
-        <div class="admin-policy-grid">
+        <span>
+            Draft estimates, contribution awards, moderation,
+            and other point-aware features must read from this
+            policy. Historical ledger entries never change when
+            these values are edited.
+        </span>
+    </div>
 
-            <?php foreach ($policy as $row): ?>
-                <label class="admin-policy-row">
-                    <span>
-                        <strong>
+
+    <?php if ($policyGroups): ?>
+
+        <form method="post">
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="points_admin_action"
+                value="save-policy"
+            >
+
+
+            <?php foreach (
+                $policyGroups
+                as $group => $rows
+            ): ?>
+
+                <section class="admin-points-policy-group">
+
+                    <header>
+                        <h3>
                             <?= moderation_e(
-                                ucwords(
-                                    str_replace(
-                                        '_',
-                                        ' ',
+                                $group
+                            ) ?>
+                        </h3>
+
+                        <?php if (
+                            $group
+                            === 'New Place Categories'
+                        ): ?>
+                            <span>
+                                Current maximum:
+                                <?= number_format(
+                                    $newPlaceMax
+                                ) ?>
+                                points
+                            </span>
+                        <?php endif; ?>
+                    </header>
+
+
+                    <div class="admin-policy-grid">
+
+                        <?php foreach (
+                            $rows
+                            as $row
+                        ): ?>
+
+                            <label class="admin-policy-row">
+                                <span>
+                                    <strong>
+                                        <?= moderation_e(
+                                            (string) $row['label']
+                                        ) ?>
+                                    </strong>
+
+                                    <small>
+                                        <?= moderation_e(
+                                            (string) $row['description']
+                                        ) ?>
+                                    </small>
+                                </span>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    name="policy[<?= moderation_e(
                                         (string) $row['policy_key']
-                                    )
-                                )
-                            ) ?>
-                        </strong>
-                        <small>
-                            <?= moderation_e(
-                                (string) ($row['description'] ?? '')
-                            ) ?>
-                        </small>
-                    </span>
+                                    ) ?>]"
+                                    value="<?= (int) $row['points_value'] ?>"
+                                    <?= !$actorIsOwner
+                                        ? 'disabled'
+                                        : ''
+                                    ?>
+                                >
+                            </label>
 
-                    <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        name="policy[<?= moderation_e(
-                            (string) $row['policy_key']
-                        ) ?>]"
-                        value="<?= (int) $row['points_value'] ?>"
-                        <?= !$actorIsOwner ? 'disabled' : '' ?>
-                    >
-                </label>
+                        <?php endforeach; ?>
+
+                    </div>
+
+                </section>
+
             <?php endforeach; ?>
 
-        </div>
 
-        <?php if ($actorIsOwner): ?>
-            <div class="admin-points-save">
-                <button class="admin-button" type="submit">
-                    Save points policy
-                </button>
-            </div>
-        <?php endif; ?>
+            <?php if ($actorIsOwner): ?>
+                <div class="admin-points-save">
+                    <button
+                        class="admin-button"
+                        type="submit"
+                    >
+                        Save points policy
+                    </button>
+                </div>
+            <?php endif; ?>
 
-    </form>
+        </form>
+
+    <?php endif; ?>
 
 </section>
 
@@ -175,12 +324,18 @@ require __DIR__ . '/_header.php';
         </div>
     </header>
 
-    <form class="admin-points-adjustment" method="post">
+    <form
+        class="admin-points-adjustment"
+        method="post"
+    >
         <input
             type="hidden"
             name="csrf_token"
-            value="<?= moderation_e(moderation_csrf_token()) ?>"
+            value="<?= moderation_e(
+                moderation_csrf_token()
+            ) ?>"
         >
+
         <input
             type="hidden"
             name="points_admin_action"
@@ -189,6 +344,7 @@ require __DIR__ . '/_header.php';
 
         <label>
             <span>User ID</span>
+
             <input
                 type="number"
                 name="user_id"
@@ -200,6 +356,7 @@ require __DIR__ . '/_header.php';
 
         <label>
             <span>Points</span>
+
             <input
                 type="number"
                 name="points"
@@ -211,6 +368,7 @@ require __DIR__ . '/_header.php';
 
         <label class="is-wide">
             <span>Reason</span>
+
             <input
                 type="text"
                 name="reason"
@@ -221,7 +379,10 @@ require __DIR__ . '/_header.php';
         </label>
 
         <div>
-            <button class="admin-button" type="submit">
+            <button
+                class="admin-button"
+                type="submit"
+            >
                 Record adjustment
             </button>
         </div>
@@ -239,20 +400,27 @@ require __DIR__ . '/_header.php';
             <p>Permanent History</p>
             <h2>Points Ledger</h2>
         </div>
+
         <span>Latest 150 entries</span>
     </header>
 
     <?php if (!$ledger): ?>
 
         <div class="admin-empty-state">
-            <p>No points have been recorded yet.</p>
+            <p>
+                No points have been recorded yet.
+            </p>
         </div>
 
     <?php else: ?>
 
         <div class="admin-points-ledger">
 
-            <?php foreach ($ledger as $entry): ?>
+            <?php foreach (
+                $ledger
+                as $entry
+            ): ?>
+
                 <article class="admin-points-ledger-row">
 
                     <span class="admin-user-table-avatar">
@@ -303,12 +471,19 @@ require __DIR__ . '/_header.php';
 
                     <strong class="<?= (int) $entry['points'] < 0
                         ? 'is-negative'
-                        : 'is-positive' ?>">
-                        <?= (int) $entry['points'] > 0 ? '+' : '' ?>
-                        <?= number_format((int) $entry['points']) ?>
+                        : 'is-positive'
+                    ?>">
+                        <?= (int) $entry['points'] > 0
+                            ? '+'
+                            : ''
+                        ?>
+                        <?= number_format(
+                            (int) $entry['points']
+                        ) ?>
                     </strong>
 
                 </article>
+
             <?php endforeach; ?>
 
         </div>
@@ -317,4 +492,7 @@ require __DIR__ . '/_header.php';
 
 </section>
 
-<?php require __DIR__ . '/_footer.php'; ?>
+<?php
+require
+    __DIR__
+    . '/_footer.php';
