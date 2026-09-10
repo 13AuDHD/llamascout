@@ -478,7 +478,7 @@ function llama_email_send_template(
 function llama_email_sample_context(
     string $templateKey
 ): array {
-    $base = [
+    return [
         'display_name' => 'Trail Tester',
         'username' => 'trailtester',
         'verification_url' =>
@@ -499,7 +499,25 @@ function llama_email_sample_context(
             'https://llamascout.com/map.php',
         'site_url' =>
             'https://llamascout.com',
-    ];
 
-    return $base;
+        'customer_name' => 'Trail Tester',
+        'order_number' => 'LS-12345',
+        'order_items' =>
+            "1 x Llama Scout Vintage Tee - Faded Black  $29.00\n"
+            . "2 x Sticker Pack  $12.00",
+        'subtotal' => '$41.00',
+        'shipping' => '$5.00',
+        'tax' => '$3.68',
+        'discount_line' => 'Discount: -$5.00',
+        'total' => '$44.68',
+        'order_action_url' =>
+            'https://account.llamascout.com/order.php?id=12345',
+        'order_action_label' =>
+            'View your order',
+        'tracking_carrier' => 'USPS',
+        'tracking_number' => '9400111899560000000000',
+        'tracking_url' =>
+            'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899560000000000',
+        'refund_amount' => '$44.68',
+    ];
 }

@@ -213,7 +213,7 @@ HTML,
             'category' => 'Account',
             'name' => 'Password Reset',
             'description' =>
-                'Template ready for the password-reset flow.',
+                'Sent when a member requests a password-reset link.',
             'enabled' => 1,
             'variables' => [
                 'display_name',
@@ -271,7 +271,7 @@ HTML,
             'category' => 'Account',
             'name' => 'Goodbye',
             'description' =>
-                'Template ready for successful self-service account deletion.',
+                'Sent after successful self-service account deletion.',
             'enabled' => 1,
             'variables' => [
                 'display_name',
@@ -325,6 +325,285 @@ TEXT,
 
 <p style="margin:0;color:#667069;font-size:14px;line-height:1.6;">
   Take care out there.
+</p>
+HTML,
+        ],
+
+
+        'order_confirmation' => [
+            'template_key' => 'order_confirmation',
+            'category' => 'Commerce',
+            'name' => 'Order Confirmation',
+            'description' =>
+                'Sent once after a Shop order reaches a valid paid state.',
+            'enabled' => 1,
+            'variables' => [
+                'customer_name',
+                'order_number',
+                'order_items',
+                'subtotal',
+                'shipping',
+                'tax',
+                'discount_line',
+                'total',
+                'order_action_url',
+                'order_action_label',
+            ],
+            'subject' => 'Order confirmed: {{order_number}}',
+            'preheader' =>
+                'Your Llama Scout Shop payment has been confirmed.',
+            'text_body' => <<<'TEXT'
+Hi {{customer_name}},
+
+Thanks for your order. Your payment has been confirmed.
+
+Order: {{order_number}}
+
+{{order_items}}
+
+Subtotal: {{subtotal}}
+Shipping: {{shipping}}
+Tax: {{tax}}
+{{discount_line}}
+Total: {{total}}
+
+We’ll send another update when shipping information is available.
+
+{{order_action_label}}:
+{{order_action_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llama Scout Shop
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Order confirmed
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{customer_name}},
+</p>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  Thanks for your order. Your payment has been confirmed.
+</p>
+
+<div style="margin:0 0 18px;padding:14px 16px;background:#f7f7f3;border-radius:10px;">
+  <strong>Order {{order_number}}</strong>
+</div>
+
+<div style="margin:0 0 22px;padding:14px 16px;border:1px solid #e4e4e0;border-radius:10px;white-space:pre-line;line-height:1.7;">
+{{order_items}}
+</div>
+
+<div style="margin:0 0 24px;padding:14px 16px;background:#f7f7f3;border-radius:10px;white-space:pre-line;line-height:1.7;">
+Subtotal: {{subtotal}}
+Shipping: {{shipping}}
+Tax: {{tax}}
+{{discount_line}}
+<strong>Total: {{total}}</strong>
+</div>
+
+<p style="margin:0 0 22px;color:#52605a;line-height:1.65;">
+  We’ll send another update when shipping information is available.
+</p>
+
+<p style="margin:0;">
+  <a
+    href="{{order_action_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >{{order_action_label}}</a>
+</p>
+HTML,
+        ],
+
+
+        'order_shipped' => [
+            'template_key' => 'order_shipped',
+            'category' => 'Commerce',
+            'name' => 'Order Shipped',
+            'description' =>
+                'Sent for each fulfillment when it first reaches shipped.',
+            'enabled' => 1,
+            'variables' => [
+                'customer_name',
+                'order_number',
+                'tracking_carrier',
+                'tracking_number',
+                'tracking_url',
+            ],
+            'subject' => 'Your order shipped: {{order_number}}',
+            'preheader' =>
+                'Your Llama Scout order is on the way.',
+            'text_body' => <<<'TEXT'
+Hi {{customer_name}},
+
+Your Llama Scout order is on the way.
+
+Order: {{order_number}}
+Carrier: {{tracking_carrier}}
+Tracking: {{tracking_number}}
+
+Track shipment:
+{{tracking_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llama Scout Shop
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your order is on the way.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{customer_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your shipment has been marked shipped.
+</p>
+
+<div style="margin:0 0 22px;padding:14px 16px;background:#f7f7f3;border-radius:10px;line-height:1.7;">
+  <strong>Order:</strong> {{order_number}}<br>
+  <strong>Carrier:</strong> {{tracking_carrier}}<br>
+  <strong>Tracking:</strong> {{tracking_number}}
+</div>
+
+<p style="margin:0;">
+  <a
+    href="{{tracking_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Track shipment</a>
+</p>
+HTML,
+        ],
+
+
+        'order_delivered' => [
+            'template_key' => 'order_delivered',
+            'category' => 'Commerce',
+            'name' => 'Order Delivered',
+            'description' =>
+                'Sent for each fulfillment when the provider marks it delivered.',
+            'enabled' => 1,
+            'variables' => [
+                'customer_name',
+                'order_number',
+                'tracking_carrier',
+                'tracking_number',
+                'tracking_url',
+            ],
+            'subject' => 'Delivered: {{order_number}}',
+            'preheader' =>
+                'Your Llama Scout order was marked delivered.',
+            'text_body' => <<<'TEXT'
+Hi {{customer_name}},
+
+Your Llama Scout order was delivered.
+
+Order: {{order_number}}
+Carrier: {{tracking_carrier}}
+Tracking: {{tracking_number}}
+
+Shipment details:
+{{tracking_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llama Scout Shop
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your order was delivered.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{customer_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  The fulfillment provider has marked this shipment as delivered.
+</p>
+
+<div style="margin:0 0 22px;padding:14px 16px;background:#f7f7f3;border-radius:10px;line-height:1.7;">
+  <strong>Order:</strong> {{order_number}}<br>
+  <strong>Carrier:</strong> {{tracking_carrier}}<br>
+  <strong>Tracking:</strong> {{tracking_number}}
+</div>
+
+<p style="margin:0;">
+  <a
+    href="{{tracking_url}}"
+    style="display:inline-block;border:1px solid #172822;color:#172822;padding:12px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Shipment details</a>
+</p>
+HTML,
+        ],
+
+
+        'refund_confirmation' => [
+            'template_key' => 'refund_confirmation',
+            'category' => 'Commerce',
+            'name' => 'Refund Confirmation',
+            'description' =>
+                'Sent after both payment and order state confirm a completed refund.',
+            'enabled' => 1,
+            'variables' => [
+                'customer_name',
+                'order_number',
+                'refund_amount',
+            ],
+            'subject' => 'Refund confirmed: {{order_number}}',
+            'preheader' =>
+                'Your Llama Scout Shop refund has been confirmed.',
+            'text_body' => <<<'TEXT'
+Hi {{customer_name}},
+
+Your Llama Scout Shop refund has been confirmed.
+
+Order: {{order_number}}
+Refund: {{refund_amount}}
+
+Your bank or card provider may take additional time to post the credit.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llama Scout Shop
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Refund confirmed
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{customer_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your Llama Scout Shop refund has been confirmed.
+</p>
+
+<div style="margin:0 0 20px;padding:14px 16px;background:#f7f7f3;border-radius:10px;line-height:1.7;">
+  <strong>Order:</strong> {{order_number}}<br>
+  <strong>Refund:</strong> {{refund_amount}}
+</div>
+
+<p style="margin:0;color:#52605a;line-height:1.65;">
+  Your bank or card provider may take additional time to post the credit.
 </p>
 HTML,
         ],
