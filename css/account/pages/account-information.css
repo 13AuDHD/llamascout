@@ -1,0 +1,371 @@
+/* =========================================================
+   ACCOUNT INFORMATION
+   ========================================================= */
+
+.account-information-page {
+    padding: 34px 0 64px;
+}
+
+.account-information-shell {
+    width:
+        min(
+            860px,
+            calc(100% - 28px)
+        );
+
+    margin: 0 auto;
+}
+
+.account-information-back {
+    width: fit-content;
+
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+
+    margin-bottom: 20px;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.account-information-header {
+    margin-bottom: 22px;
+}
+
+.account-information-header h1 {
+    margin: 0;
+
+    font-size:
+        clamp(
+            2rem,
+            6vw,
+            3.3rem
+        );
+}
+
+.account-information-header > p:last-child {
+    max-width: 680px;
+
+    margin: 10px 0 0;
+
+    color: var(--text-muted);
+
+    line-height: 1.65;
+}
+
+.account-information-card {
+    overflow: hidden;
+
+    margin-bottom: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 15px;
+
+    background: var(--surface);
+}
+
+.account-information-card > header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+
+    padding: 15px 17px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.account-information-card > header h2 {
+    margin: 0;
+
+    font-size: 1rem;
+}
+
+.account-information-card > header > span {
+    color: var(--text-muted);
+
+    font-size: .6rem;
+    font-weight: 850;
+}
+
+.account-information-verified {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.account-information-form {
+    display: grid;
+    gap: 16px;
+
+    padding: 17px;
+}
+
+.account-information-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 13px;
+}
+
+.account-information-grid label,
+.account-information-resend label {
+    min-width: 0;
+
+    display: grid;
+    gap: 6px;
+}
+
+.account-information-grid label.is-wide {
+    grid-column: 1 / -1;
+}
+
+.account-information-grid label > span,
+.account-information-resend label > span {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+}
+
+.account-information-grid small,
+.account-information-pending-email small {
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    line-height: 1.45;
+}
+
+.account-information-form input,
+.account-information-resend input {
+    width: 100%;
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    padding: 10px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.account-information-button {
+    min-height: 43px;
+
+    width: fit-content;
+
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 10px 15px;
+
+    border: 1px solid var(--text);
+    border-radius: 9px;
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-size: .71rem;
+    font-weight: 850;
+
+    cursor: pointer;
+}
+
+.account-information-button.is-secondary {
+    border-color: var(--border);
+
+    background: var(--surface);
+    color: var(--text);
+}
+
+.account-information-current-email,
+.account-information-pending-email {
+    padding: 16px 17px;
+}
+
+.account-information-current-email {
+    display: grid;
+    gap: 4px;
+}
+
+.account-information-current-email span,
+.account-information-pending-email span {
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    font-weight: 850;
+}
+
+.account-information-current-email strong,
+.account-information-pending-email strong {
+    overflow-wrap: anywhere;
+
+    font-size: .78rem;
+}
+
+.account-information-pending-email {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+
+    border-top: 1px solid var(--border);
+
+    background: var(--background);
+}
+
+.account-information-pending-email > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.account-information-resend {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 10px;
+    align-items: end;
+
+    padding: 16px 17px;
+
+    border-top: 1px solid var(--border);
+}
+
+.account-information-email-note {
+    display: grid;
+    grid-template-columns:
+        24px minmax(0, 1fr);
+    gap: 8px;
+
+    padding: 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text-muted);
+}
+
+.account-information-email-note p {
+    margin: 0;
+
+    font-size: .64rem;
+    line-height: 1.5;
+}
+
+.account-information-notice {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+
+    font-size: .7rem;
+}
+
+.account-information-notice.is-error {
+    border-style: dashed;
+}
+
+.account-information-links {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: 10px;
+}
+
+.account-information-links > a {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+
+    padding: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    text-decoration: none;
+}
+
+.account-information-links > a > i:first-child {
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 8px;
+
+    background: var(--background);
+}
+
+.account-information-links span {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.account-information-links strong {
+    font-size: .68rem;
+}
+
+.account-information-links small {
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    line-height: 1.4;
+}
+
+
+@media (max-width: 650px) {
+    .account-information-grid,
+    .account-information-links {
+        grid-template-columns: 1fr;
+    }
+
+    .account-information-grid label.is-wide {
+        grid-column: auto;
+    }
+
+    .account-information-pending-email {
+        display: grid;
+    }
+
+    .account-information-resend {
+        grid-template-columns: 1fr;
+    }
+
+    .account-information-button {
+        width: 100%;
+    }
+}
