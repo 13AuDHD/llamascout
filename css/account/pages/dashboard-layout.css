@@ -79,6 +79,10 @@
     color: var(--text);
 }
 
+.account-dashboard-stat-card 
+.account-glance-icon i {
+    font-size: 1.15rem;
+}
 
 /* =========================================================
    EMAIL VERIFICATION ALERT
