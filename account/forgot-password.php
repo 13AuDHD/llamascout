@@ -363,35 +363,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
 
 
-                $name =
-                    trim(
-                        (string) (
-                            $user['display_name']
-                            ?: $user['username']
-                            ?: 'Scout'
-                        )
-                    );
-
-
-                $subject =
-                    'Reset your Llama Scout password';
-
-
-                $body =
-                    "Hi {$name},\n\n" .
-                    "A password reset was requested for your Llama Scout account.\n\n" .
-                    "Use this secure link to choose a new password:\n\n" .
-                    $resetUrl .
-                    "\n\n" .
-                    "This link expires in 60 minutes and can only be used once.\n\n" .
-                    "If you did not request this, you can ignore this email.\n\n" .
-                    "Llama Scout";
-
-
-                send_llama_mail(
-                    $user['email'],
-                    $subject,
-                    $body
+                send_password_reset_email(
+                    $user,
+                    $resetUrl
                 );
 
 
