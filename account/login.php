@@ -72,14 +72,20 @@ if ($existingUser) {
      */
 
     if (
+    (
         llama_mfa_role_requires_mfa(
             $existingUserId
         )
-        &&
-        !llama_mfa_session_is_verified(
+        ||
+        llama_mfa_is_enabled(
             $existingUserId
         )
-    ) {
+    )
+    &&
+    !llama_mfa_session_is_verified(
+        $existingUserId
+    )
+) {
 
         llama_mfa_begin_login_challenge(
             $existingUserId,
@@ -533,11 +539,15 @@ if (
                     $candidate['id'];
 
 
-                if (
-                    llama_mfa_role_requires_mfa(
-                        $candidateUserId
-                    )
-                ) {
+            if (
+                llama_mfa_role_requires_mfa(
+                    $candidateUserId
+                )
+                ||
+                llama_mfa_is_enabled(
+                    $candidateUserId
+                )
+            ) {
 
                     /*
                      * Do NOT call attempt_login_result() here.
