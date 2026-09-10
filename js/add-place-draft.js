@@ -60,13 +60,8 @@
      * =====================================================
      * SAVE FOR LATER
      *
-     * Important:
-     * Do NOT disable the submit button during Safari's native
-     * submit event. iOS/iPadOS Safari can interfere with the
-     * form POST when the active submitter becomes disabled.
-     *
-     * The first click proceeds normally. Later clicks are
-     * blocked in JavaScript while the page is navigating.
+     * Draft saving deliberately uses its own endpoint rather
+     * than the Add a Place form's normal submission path.
      * =====================================================
      */
 
@@ -89,12 +84,94 @@
 
     let saving = false;
 
+    const originalButtonHtml =
+        saveButton.innerHTML;
+
+    let status =
+        document.querySelector(
+            '[data-draft-save-status]'
+        );
+
+    if (!status) {
+        status =
+            document.createElement(
+                'div'
+            );
+
+        status.setAttribute(
+            'data-draft-save-status',
+            '1'
+        );
+
+        status.setAttribute(
+            'role',
+            'status'
+        );
+
+        status.setAttribute(
+            'aria-live',
+            'polite'
+        );
+
+        status.style.marginTop =
+            '0.5rem';
+
+        status.style.fontSize =
+            '0.8rem';
+
+        status.style.width =
+            '100%';
+
+        const actionBar =
+            saveButton.closest(
+                '.add-place-submit-bar'
+            );
+
+        if (actionBar) {
+            actionBar.appendChild(
+                status
+            );
+        }
+    }
+
+    const setStatus = (
+        message,
+        isError = false
+    ) => {
+        if (!status) {
+            return;
+        }
+
+        status.textContent =
+            message;
+
+        status.style.color =
+            isError
+                ? '#ef8b8b'
+                : '';
+    };
+
+    const resetButton = () => {
+        saving = false;
+
+        saveButton.removeAttribute(
+            'aria-disabled'
+        );
+
+        saveButton.classList.remove(
+            'is-saving'
+        );
+
+        saveButton.innerHTML =
+            originalButtonHtml;
+    };
+
     saveButton.addEventListener(
         'click',
-        (event) => {
+        async (event) => {
+            event.preventDefault();
+
             if (saving) {
-                event.preventDefault();
-                event.stopPropagation();
                 return;
             }
 
@@ -117,48 +194,145 @@
                 Saving...
             `;
 
+            setStatus(
+                'Saving this Place for later...'
+            );
+
+            const body =
+                new FormData(form);
+
             /*
-             * Do not call preventDefault().
-             * Do not set disabled=true.
-             *
-             * The original button remains the native submitter,
-             * so its name/value:
-             *
-             * save_for_later=1
-             *
-             * is included naturally in the POST.
+             * Make the draft action explicit. The normal
+             * Submit for Review button is not part of this
+             * request.
              */
+            body.delete(
+                'submit_for_review'
+            );
+
+            body.set(
+                'save_for_later',
+                '1'
+            );
+
+            const controller =
+                new AbortController();
+
+            const timeout =
+                window.setTimeout(
+                    () => {
+                        controller.abort();
+                    },
+                    30000
+                );
+
+            try {
+                const response =
+                    await fetch(
+                        '/api/save-place-draft.php',
+                        {
+                            method:
+                                'POST',
+
+                            body,
+
+                            credentials:
+                                'same-origin',
+
+                            cache:
+                                'no-store',
+
+                            headers: {
+                                Accept:
+                                    'application/json',
+                            },
+
+                            signal:
+                                controller.signal,
+                        }
+                    );
+
+                const raw =
+                    await response.text();
+
+                let payload;
+
+                try {
+                    payload =
+                        JSON.parse(raw);
+                } catch (_) {
+                    throw new Error(
+                        'The draft save service returned an unexpected response.'
+                    );
+                }
+
+                if (
+                    !response.ok
+                    || payload?.success
+                        !== true
+                ) {
+                    throw new Error(
+                        payload?.message
+                        || 'The Place could not be saved for later.'
+                    );
+                }
+
+                const redirect =
+                    String(
+                        payload.redirect
+                        || ''
+                    ).trim();
+
+                if (!redirect) {
+                    throw new Error(
+                        'The Place was saved, but the return address was missing.'
+                    );
+                }
+
+                setStatus(
+                    'Saved. Opening Saved for Later...'
+                );
+
+                window.location.assign(
+                    redirect
+                );
+
+            } catch (error) {
+                const message =
+                    error?.name
+                        === 'AbortError'
+                        ? 'The save request took too long and was stopped. Please try again.'
+                        : (
+                            error?.message
+                            || 'The Place could not be saved for later.'
+                        );
+
+                setStatus(
+                    message,
+                    true
+                );
+
+                resetButton();
+
+            } finally {
+                window.clearTimeout(
+                    timeout
+                );
+            }
         }
     );
 
+
     /*
-     * If Safari restores this page from its back-forward cache,
-     * restore the button so it is usable again.
+     * Safari and Chrome can restore pages from the
+     * back-forward cache.
      */
     window.addEventListener(
         'pageshow',
-        (event) => {
-            if (!event.persisted) {
-                return;
+        () => {
+            if (saving) {
+                resetButton();
             }
-
-            saving = false;
-
-            saveButton.removeAttribute(
-                'aria-disabled'
-            );
-
-            saveButton.classList.remove(
-                'is-saving'
-            );
-
-            saveButton.innerHTML = `
-                <i
-                    class="fa-solid fa-floppy-disk"
-                    aria-hidden="true"
-                ></i>
-                Save for Later
-            `;
         }
     );
 })();
