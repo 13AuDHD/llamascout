@@ -1,6 +1,7 @@
 <?php if (!empty($experience)): ?>
     <section class="scout-report-section">
         <h3><i class="fa-solid fa-binoculars" aria-hidden="true"></i> Experience &amp; recommendations</h3>
+
         <div class="scout-report-subsection">
             <h4>Experience</h4>
             <div class="scout-report-grid">
@@ -18,6 +19,7 @@
                 <?php place_report_rating_item('Overall scenery', $experience['overall_scenery'] ?? null); ?>
             </div>
         </div>
+
         <div class="scout-report-subsection">
             <h4>Recommended for</h4>
             <div class="scout-report-grid">
@@ -28,6 +30,9 @@
                 <?php place_report_rating_item('Stargazing', $experience['recommended_stargazing'] ?? null); ?>
                 <?php place_report_rating_item('Remote work', $experience['recommended_remote_work'] ?? null); ?>
                 <?php place_report_item('Solo travel', place_yes_no($experience['recommended_solo_travel'] ?? null), 'fa-person-hiking'); ?>
+                <?php place_report_item('Families', place_yes_no($experience['recommended_families'] ?? null), 'fa-people-roof'); ?>
+                <?php place_report_item('Large groups', place_yes_no($experience['recommended_large_groups'] ?? null), 'fa-people-group'); ?>
+                <?php place_report_item('Not recommended for', $experience['not_recommended_for'] ?? null, 'fa-circle-exclamation'); ?>
             </div>
         </div>
     </section>

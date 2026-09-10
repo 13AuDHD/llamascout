@@ -19,6 +19,7 @@
             <?php place_report_item('Campfire allowed', place_yes_no($rules['campfire_allowed'] ?? null), 'fa-fire'); ?>
             <?php place_report_item('Pack it in, pack it out', place_yes_no($rules['pack_it_in_pack_it_out'] ?? null), 'fa-trash-arrow-up'); ?>
             <?php place_report_item('Existing sites encouraged', place_yes_no($rules['existing_sites_encouraged'] ?? null), 'fa-signs-post'); ?>
+            <?php place_report_item('Residential use prohibited', place_yes_no($rules['residential_use_prohibited'] ?? null), 'fa-house-circle-xmark'); ?>
             <?php place_report_item('Nearest town', $rules['nearest_town'] ?? null, 'fa-city'); ?>
             <?php place_report_item('Nearest fuel', $rules['nearest_fuel'] ?? null, 'fa-gas-pump'); ?>
             <?php place_report_item('Nearest grocery', $rules['nearest_grocery'] ?? null, 'fa-cart-shopping'); ?>

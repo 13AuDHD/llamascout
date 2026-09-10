@@ -4,7 +4,15 @@
         <h2 id="scout-report-heading">Scout Report</h2>
     </header>
 
+    <?php require __DIR__ . '/quick-warnings.php'; ?>
+
     <?php require __DIR__ . '/site-access.php'; ?>
+
+    <?php require __DIR__ . '/environment.php'; ?>
+
+    <?php require __DIR__ . '/accessibility.php'; ?>
+
+    <?php require __DIR__ . '/safety-hazards.php'; ?>
 
     <?php require __DIR__ . '/connectivity.php'; ?>
 
