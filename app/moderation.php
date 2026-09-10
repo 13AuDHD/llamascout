@@ -782,9 +782,42 @@ function moderation_approve_new_place(
         throw new RuntimeException('This submission is already linked to a Place.');
     }
 
-    $data = $submission['data'];
-    $name = trim((string) ($data['name'] ?? $submission['place_name'] ?? ''));
+$data = $submission['data'];
 
+$pointInput =
+    community_new_place_form_input(
+        $data
+    );
+
+$newPlacePointEstimate =
+    llama_points_estimate_new_place(
+        $db,
+        $pointInput,
+        count(
+            is_array(
+                $data['photos']
+                ?? null
+            )
+                ? $data['photos']
+                : []
+        )
+    );
+
+$points =
+    (int) (
+        $newPlacePointEstimate[
+            'estimated_points'
+        ]
+        ?? 0
+    );
+
+$name = trim(
+    (string) (
+        $data['name']
+        ?? $submission['place_name']
+        ?? ''
+    )
+);
     if ($name === '') {
         throw new RuntimeException('The submitted Place has no name.');
     }
@@ -1242,6 +1275,12 @@ function moderation_approve_update(
             'Place update approval requires an active database transaction.'
         );
     }
+
+   $points =
+    llama_points_policy_required(
+        $db,
+        'approved_place_update'
+    );
 
     $update =
         moderation_update(
