@@ -308,3 +308,158 @@ function send_goodbye_email(
         $formerUserId
     );
 }
+/* =========================================================
+   COMPLIMENTARY MEMBERSHIP INVITATION
+   ========================================================= */
+
+function send_complimentary_invitation_email(
+    PDO $db,
+    array $invitation,
+    string $token,
+    string $recipientName = ''
+): bool {
+    $email =
+        strtolower(
+            trim(
+                (string) (
+                    $invitation['email']
+                    ?? ''
+                )
+            )
+        );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Complimentary invitation does not have a valid recipient email.'
+        );
+    }
+
+    $token = trim($token);
+
+    if (
+        !preg_match(
+            '/^[a-f0-9]{64}$/i',
+            $token
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Complimentary invitation token is invalid.'
+        );
+    }
+
+    $durationDays =
+        max(
+            1,
+            (int) (
+                $invitation['duration_days']
+                ?? $invitation['grant_duration_days']
+                ?? 0
+            )
+        );
+
+    $expiresAt =
+        trim(
+            (string) (
+                $invitation['expires_at']
+                ?? ''
+            )
+        );
+
+    if ($expiresAt === '') {
+        $expiresInDays =
+            max(
+                1,
+                (int) (
+                    $invitation['expires_in_days']
+                    ?? 14
+                )
+            );
+
+        $expiresAt =
+            (
+                new DateTimeImmutable(
+                    'now',
+                    new DateTimeZone('UTC')
+                )
+            )
+                ->modify(
+                    '+'
+                    . $expiresInDays
+                    . ' days'
+                )
+                ->format(
+                    'Y-m-d H:i:s'
+                );
+    }
+
+    try {
+        $expiresLabel =
+            (
+                new DateTimeImmutable(
+                    $expiresAt,
+                    new DateTimeZone('UTC')
+                )
+            )->format('F j, Y');
+    } catch (Throwable) {
+        $expiresLabel = $expiresAt;
+    }
+
+    $reason =
+        trim(
+            (string) (
+                $invitation['reason']
+                ?? ''
+            )
+        );
+
+    if ($reason === '') {
+        $reason =
+            'Llama Scout would like you to experience Complete Access.';
+    }
+
+    $recipientName =
+        trim($recipientName);
+
+    if ($recipientName === '') {
+        $recipientName = 'there';
+    }
+
+    $context = array_merge(
+        llama_email_membership_context($db),
+        [
+            'recipient_name' =>
+                $recipientName,
+
+            'invite_email' =>
+                $email,
+
+            'complimentary_days' =>
+                (string) $durationDays,
+
+            'invite_expires' =>
+                $expiresLabel,
+
+            'invite_reason' =>
+                $reason,
+
+            'invite_url' =>
+                'https://account.llamascout.com/complimentary-invite.php?token='
+                . rawurlencode($token),
+        ]
+    );
+
+    return llama_email_send_template(
+        $db,
+        'complimentary_invitation',
+        $email,
+        $context,
+        false,
+        null
+    );
+}

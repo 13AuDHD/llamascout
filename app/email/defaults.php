@@ -1028,5 +1028,86 @@ TEXT,
 HTML,
         ],
 
+
+        'complimentary_invitation' => [
+            'template_key' => 'complimentary_invitation',
+            'category' => 'Membership',
+            'name' => 'Complimentary Membership Invitation',
+            'description' =>
+                'Sent when Llama Scout invites someone to receive complimentary Complete Access.',
+            'enabled' => 1,
+            'variables' => [
+                'recipient_name',
+                'invite_email',
+                'complimentary_days',
+                'invite_expires',
+                'invite_reason',
+                'invite_url',
+            ],
+            'subject' => 'You’ve been invited to Llama Scout Complete Access',
+            'preheader' =>
+                'Complimentary Complete Access has been reserved for you.',
+            'text_body' => <<<'TEXT'
+Hi {{recipient_name}},
+
+You’ve been invited to receive {{complimentary_days}} days of complimentary Llama Scout Complete Access.
+
+{{invite_reason}}
+
+Your invitation is reserved for:
+{{invite_email}}
+
+Accept your invitation:
+{{invite_url}}
+
+The invitation expires {{invite_expires}}.
+
+If you do not already have a Llama Scout account, the invitation will guide you through creating one and verifying your email before Complete Access is activated.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Complimentary Membership
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  You’ve been invited.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{recipient_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Llama Scout has reserved
+  <strong>{{complimentary_days}} days</strong>
+  of complimentary Complete Access for you.
+</p>
+
+<div style="margin:0 0 20px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  {{invite_reason}}
+</div>
+
+<div style="margin:0 0 22px;padding:16px;border:1px solid #dcded8;border-radius:12px;line-height:1.7;">
+  <strong>Reserved for:</strong> {{invite_email}}<br>
+  <strong>Invitation expires:</strong> {{invite_expires}}
+</div>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  If you do not already have a Llama Scout account, the invitation will guide
+  you through creating one and verifying your email before Complete Access is activated.
+</p>
+
+<p style="margin:0;">
+  <a
+    href="{{invite_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Accept Complimentary Access</a>
+</p>
+HTML,
+        ],
+
     ];
 }

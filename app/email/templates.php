@@ -519,5 +519,14 @@ function llama_email_sample_context(
         'tracking_url' =>
             'https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899560000000000',
         'refund_amount' => '$44.68',
+
+        'recipient_name' => 'Trail Tester',
+        'invite_email' => 'trailtester@example.com',
+        'complimentary_days' => '90',
+        'invite_expires' => 'September 23, 2026',
+        'invite_reason' =>
+            'We’d like you to explore the complete Llama Scout experience.',
+        'invite_url' =>
+            'https://account.llamascout.com/complimentary-invite.php?token=TEST',
     ];
 }
