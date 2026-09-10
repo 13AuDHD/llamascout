@@ -59,6 +59,10 @@
     /*
      * =====================================================
      * SAVE FOR LATER
+     *
+     * Preserve the server action before disabling the visible
+     * submit button. Disabled submit buttons are not guaranteed
+     * to be included in submitted form data.
      * =====================================================
      */
 
@@ -99,6 +103,38 @@
             }
 
             saving = true;
+
+            /*
+             * Preserve the action explicitly before disabling
+             * the button so PHP always receives:
+             * save_for_later=1
+             */
+            let actionInput =
+                form.querySelector(
+                    'input[data-save-for-later-action]'
+                );
+
+            if (!actionInput) {
+                actionInput =
+                    document.createElement(
+                        'input'
+                    );
+
+                actionInput.type = 'hidden';
+                actionInput.name =
+                    'save_for_later';
+                actionInput.value = '1';
+
+                actionInput.setAttribute(
+                    'data-save-for-later-action',
+                    '1'
+                );
+
+                form.appendChild(
+                    actionInput
+                );
+            }
+
             saveButton.disabled = true;
 
             saveButton.innerHTML = `
