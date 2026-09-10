@@ -62,6 +62,11 @@ foreach (
 }
 ?>
 
+<link
+    rel="stylesheet"
+    href="/css/site/features/scout-warning-compact.css"
+>
+
 <?php if ($activeQuickWarnings): ?>
 
     <section class="scout-report-section scout-report-warning-section">
@@ -87,13 +92,22 @@ foreach (
                 as $warningDefinition
             ): ?>
 
-                <?php
-                place_report_item(
-                    (string) $warningDefinition[0],
-                    'Warning',
-                    (string) $warningDefinition[1]
-                );
-                ?>
+                <div
+                    class="scout-report-item scout-report-value-item scout-report-warning-item"
+                >
+                    <div class="scout-report-value-content">
+                        <span>
+                            <?= place_h((string) $warningDefinition[0]) ?>
+                        </span>
+
+                        <strong>Warning</strong>
+                    </div>
+
+                    <i
+                        class="fa-solid <?= place_h((string) $warningDefinition[1]) ?> scout-report-value-icon"
+                        aria-hidden="true"
+                    ></i>
+                </div>
 
             <?php endforeach; ?>
 
