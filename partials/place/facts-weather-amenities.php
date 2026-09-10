@@ -48,25 +48,97 @@
     </div>
 
     <div class="place-weather-content" data-place-weather-content aria-live="polite">
-        <p class="place-weather-loading">Loading weather…</p>
+        <p class="place-weather-loading">Loading weatherâ¦</p>
     </div>
 </section>
 
-<?php if (!empty($place['amenities'])): ?>
+<?php
+/*
+ * Amenities are public information on Llama Scout.
+ *
+ * "No amenities" is stored as the existing
+ * place_details.warning_no_amenities flag. Read only that
+ * single public-safe fact here. Other place_details data stays
+ * behind the normal member-access path.
+ */
+$placeReportsNoAmenities = false;
+
+try {
+    $noAmenitiesStmt =
+        db()->prepare(
+            'SELECT warning_no_amenities
+             FROM place_details
+             WHERE place_id = ?
+             LIMIT 1'
+        );
+
+    $noAmenitiesStmt->execute([
+        (int) ($place['id'] ?? 0),
+    ]);
+
+    $noAmenitiesValue =
+        $noAmenitiesStmt->fetchColumn();
+
+    $placeReportsNoAmenities =
+        $noAmenitiesValue !== false
+        && (int) $noAmenitiesValue === 1;
+
+} catch (Throwable) {
+    $placeReportsNoAmenities = false;
+}
+?>
+
+<?php if ($placeReportsNoAmenities): ?>
+
     <section class="place-section">
         <h2>Amenities</h2>
+
         <div class="amenity-grid">
-            <?php foreach ($amenityLabels as $key => [$icon, $label]): ?>
-                <?php
-                $value = $place['amenities'][$key] ?? null;
-                if ($value === null) continue;
-                ?>
-                <div class="amenity-item <?= $value ? 'is-available' : 'is-unavailable' ?>">
-                    <i class="fa-solid <?= place_h($icon) ?>" aria-hidden="true"></i>
-                    <span><?= place_h($label) ?></span>
-                    <strong><?= $value ? 'Yes' : 'No' ?></strong>
-                </div>
-            <?php endforeach; ?>
+            <div class="amenity-item is-unavailable">
+                <i
+                    class="fa-solid fa-circle-xmark"
+                    aria-hidden="true"
+                ></i>
+
+                <span>No amenities</span>
+                <strong>Reported</strong>
+            </div>
         </div>
     </section>
+
+<?php elseif (!empty($place['amenities'])): ?>
+
+    <?php
+    $availableAmenities = [];
+
+    foreach ($amenityLabels as $key => [$icon, $label]) {
+        if (!empty($place['amenities'][$key])) {
+            $availableAmenities[$key] = [
+                $icon,
+                $label,
+            ];
+        }
+    }
+    ?>
+
+    <?php if ($availableAmenities): ?>
+        <section class="place-section">
+            <h2>Amenities</h2>
+
+            <div class="amenity-grid">
+                <?php foreach ($availableAmenities as $key => [$icon, $label]): ?>
+                    <div class="amenity-item is-available">
+                        <i
+                            class="fa-solid <?= place_h($icon) ?>"
+                            aria-hidden="true"
+                        ></i>
+
+                        <span><?= place_h($label) ?></span>
+                        <strong>Yes</strong>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
 <?php endif; ?>
