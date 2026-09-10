@@ -401,6 +401,11 @@ $landTypes = [
 ];
 
 $pageTitle = 'Add a Place | Llama Scout';
+
+$pageStyles = [
+    'site/pages/add-place-radio-controls.css',
+];
+
 require __DIR__ . '/partials/header.php';
 ?>
 
@@ -455,7 +460,22 @@ require __DIR__ . '/partials/header.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="contribution-form add-place-form">
+    <form
+        method="post"
+        class="contribution-form add-place-form"
+        data-form-keys="<?= add_place_e(
+            json_encode(
+                array_values(
+                    array_map(
+                        'strval',
+                        array_keys($_POST)
+                    )
+                ),
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+            )
+        ) ?>"
+    >
         <input
             type="hidden"
             name="csrf_token"
@@ -1439,5 +1459,6 @@ require __DIR__ . '/partials/header.php';
 <script src="<?= add_place_e($siteUrl . '/js/add-place-location.js') ?>"></script>
 <script src="<?= add_place_e($siteUrl . '/js/add-place-name.js') ?>"></script>
 <script src="<?= add_place_e($siteUrl . '/js/add-place-draft.js') ?>"></script>
+<script src="<?= add_place_e($siteUrl . '/js/add-place-radio-controls.js') ?>"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
