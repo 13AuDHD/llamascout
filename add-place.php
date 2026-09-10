@@ -140,6 +140,42 @@ if (
         );
 }
 
+/*
+ * =========================================================
+ * AMENITIES SOURCE OF TRUTH
+ *
+ * "No amenities" is selected only in the Amenities section.
+ * The quick warning is derived from that answer.
+ *
+ * This also prevents contradictory submissions such as:
+ * Fire ring = selected + No amenities = selected.
+ * =========================================================
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $amenityFields = [
+        'amenity_toilets',
+        'amenity_potable_water',
+        'amenity_trash',
+        'amenity_fire_ring',
+        'amenity_picnic_table',
+        'amenity_bear_box',
+        'amenity_showers',
+        'amenity_electricity',
+        'amenity_dump_station',
+        'amenity_food_storage_required',
+    ];
+
+    if (isset($_POST['amenity_none'])) {
+        foreach ($amenityFields as $amenityField) {
+            unset($_POST[$amenityField]);
+        }
+
+        $_POST['warning_no_amenities'] = '1';
+    } else {
+        unset($_POST['warning_no_amenities']);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
         $error = 'Your session expired. Refresh the page and try again.';
@@ -1067,7 +1103,6 @@ require __DIR__ . '/partials/header.php';
                         'warning_no_tent_camping' => 'No tent camping?',
                         'warning_limited_vehicle_length' => 'Limited vehicle length?',
                         'warning_leveling_may_be_required' => 'Leveling may be required?',
-                        'warning_no_amenities' => 'No amenities?',
                         'warning_motorized_recreation_traffic' => 'Motorized recreation traffic?',
                         'warning_blind_turn_traffic_nearby' => 'Blind-turn traffic nearby?',
                     ] as $name => $label): ?>
