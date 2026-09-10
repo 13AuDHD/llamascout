@@ -23,3 +23,30 @@
 .saved-later-estimate-note { margin:0; color:var(--text-muted); font-size:.72rem; line-height:1.55; }
 @media (max-width:760px) { .saved-later-card { grid-template-columns:1fr; } .saved-later-card-actions { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .saved-later-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:480px) { .saved-later-card-actions,.saved-later-stats { grid-template-columns:1fr; } }
+
+
+.saved-later-card.is-just-saved {
+    border-color: rgba(46, 157, 88, .8);
+
+    box-shadow:
+        inset 3px 0 0 #2e9d58;
+}
+
+.saved-later-just-saved {
+    width: fit-content;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-top: 7px;
+    padding: 5px 8px;
+
+    border-radius: 999px;
+
+    background: rgba(46, 157, 88, .14);
+    color: #58b878;
+
+    font-size: .68rem;
+    font-weight: 800;
+}
