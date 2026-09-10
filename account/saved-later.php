@@ -118,7 +118,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 $draftPhotos = is_array($draft['photos'] ?? null)
                     ? $draft['photos']
                     : [];
-                $progress = llama_place_draft_progress($draftData, count($draftPhotos));
+                $progress = llama_place_draft_progress($db, $draftData, count($draftPhotos));
                 $draftName = trim((string) ($draft['draft_name'] ?? 'Untitled Place'));
                 if ($draftName === '') {
                     $draftName = 'Untitled Place';
@@ -153,12 +153,12 @@ require dirname(__DIR__) . '/partials/header.php';
 
                             <div>
                                 <span>Point estimate</span>
-                                <strong><?= (int) $progress['estimated_points'] ?>/100</strong>
+                                <strong><?= (int) $progress['estimated_points'] ?>/<?= (int) $progress['max_points'] ?></strong>
                             </div>
 
                             <div>
                                 <span>Point categories started</span>
-                                <strong><?= (int) $progress['categories_started'] ?>/10</strong>
+                                <strong><?= (int) $progress['categories_started'] ?>/<?= (int) $progress['category_count'] ?></strong>
                             </div>
 
                             <div>
@@ -238,10 +238,11 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="saved-later-estimate-note">
-            The point estimate uses the proposed 10-category model. Amenities and
-            Connectivity earn their category value once any information is supplied.
-            Other categories are weighted by how much has been answered. Final
-            contribution scoring can be adjusted later without changing saved drafts.
+            The point estimate uses the current sitewide policy from Admin Points.
+            Amenities and Connectivity earn their configured category value once any
+            information is supplied. Other categories are weighted by how much has
+            been answered. Changing the policy updates future estimates and awards
+            without changing historical ledger entries.
         </p>
     <?php endif; ?>
 </section>
