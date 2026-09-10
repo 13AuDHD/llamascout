@@ -423,7 +423,14 @@ require dirname(__DIR__)
 
             <section class="account-information-card">
 
-                <header>
+                <?php
+                $accountEmailVerified =
+                    !empty(
+                        $account['email_verified_at']
+                    );
+                ?>
+
+                <header id="email-address">
                     <div>
                         <p class="account-eyebrow">
                             Sign-in email
@@ -436,17 +443,23 @@ require dirname(__DIR__)
 
                     <span class="account-information-verified">
                         <i
-                            class="fa-solid fa-circle-check"
+                            class="fa-solid <?= $accountEmailVerified ? 'fa-circle-check' : 'fa-circle-exclamation' ?>"
                             aria-hidden="true"
                         ></i>
 
-                        Verified
+                        <?= $accountEmailVerified
+                            ? 'Verified'
+                            : 'Verification required' ?>
                     </span>
                 </header>
 
                 <div class="account-information-current-email">
 
-                    <span>Current verified email</span>
+                    <span>
+                        <?= $accountEmailVerified
+                            ? 'Current verified sign-in email'
+                            : 'Current sign-in email, verification required' ?>
+                    </span>
 
                     <strong>
                         <?= htmlspecialchars(
@@ -456,7 +469,44 @@ require dirname(__DIR__)
                         ) ?>
                     </strong>
 
+                    <?php if (!$accountEmailVerified): ?>
+                        <small>
+                            If this address is correct, resend verification.
+                            If it was entered incorrectly, replace it below.
+                        </small>
+                    <?php endif; ?>
+
                 </div>
+
+
+                <?php if (!$accountEmailVerified): ?>
+
+                    <div class="account-information-email-note">
+                        <i
+                            class="fa-solid fa-envelope-circle-check"
+                            aria-hidden="true"
+                        ></i>
+
+                        <p>
+                            If the address above is correct, you can resend the
+                            normal verification message instead of changing it.
+                        </p>
+                    </div>
+
+                    <div
+                        style="
+                            padding:0 17px 17px;
+                        "
+                    >
+                        <a
+                            class="account-information-button is-secondary"
+                            href="/resend-verification.php"
+                        >
+                            Resend verification to current email
+                        </a>
+                    </div>
+
+                <?php endif; ?>
 
 
                 <?php if (
@@ -613,9 +663,9 @@ require dirname(__DIR__)
                             ></i>
 
                             <p>
-                                We will send verification to the new address first.
-                                Your current sign-in email will not change until that
-                                link is successfully verified.
+                                <?= $accountEmailVerified
+                                    ? 'We will send verification to the new address first. Your current sign-in email will not change until that link is successfully verified.'
+                                    : 'We will send verification to the corrected address. Your account stays in verification-required status until that new address is successfully verified.' ?>
                             </p>
                         </div>
 
@@ -623,7 +673,9 @@ require dirname(__DIR__)
                             class="account-information-button"
                             type="submit"
                         >
-                            Send verification to new email
+                            <?= $accountEmailVerified
+                                ? 'Send verification to new email'
+                                : 'Correct email + send verification' ?>
                         </button>
 
                     </form>

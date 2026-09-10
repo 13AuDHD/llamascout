@@ -76,6 +76,105 @@ $accountInformationVerified =
     );
 ?>
 
+
+<?php if (!$accountInformationVerified): ?>
+
+    <div
+        class="account-email-verification-alert"
+        role="alert"
+        style="
+            grid-column:1 / -1;
+            padding:16px;
+            border:1px solid var(--border);
+            border-radius:12px;
+            background:var(--surface);
+        "
+    >
+        <div
+            style="
+                display:grid;
+                grid-template-columns:38px minmax(0,1fr);
+                gap:12px;
+                align-items:start;
+            "
+        >
+            <span
+                class="account-glance-icon"
+                style="margin:0;"
+            >
+                <i
+                    class="fa-solid fa-envelope-circle-check"
+                    aria-hidden="true"
+                ></i>
+            </span>
+
+            <div>
+                <strong
+                    style="
+                        display:block;
+                        margin-bottom:5px;
+                    "
+                >
+                    Verify your email address
+                </strong>
+
+                <span
+                    style="
+                        display:block;
+                        color:var(--text-muted);
+                        font-size:.72rem;
+                        line-height:1.5;
+                    "
+                >
+                    Email delivery and normal Llama Scout features are paused
+                    until <?= htmlspecialchars(
+                        $accountInformationEmail,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?> is verified again.
+                </span>
+
+                <div
+                    style="
+                        display:flex;
+                        flex-wrap:wrap;
+                        gap:8px;
+                        margin-top:11px;
+                    "
+                >
+                    <a
+                        class="place-save-button"
+                        href="/account-information.php#email-address"
+                        style="width:fit-content;"
+                    >
+                        <i
+                            class="fa-solid fa-pen"
+                            aria-hidden="true"
+                        ></i>
+
+                        Correct Email Address
+                    </a>
+
+                    <a
+                        class="place-save-button"
+                        href="/resend-verification.php"
+                        style="width:fit-content;"
+                    >
+                        <i
+                            class="fa-solid fa-paper-plane"
+                            aria-hidden="true"
+                        ></i>
+
+                        Resend Verification
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<?php endif; ?>
+
+
 <a
     class="account-glance-card account-glance-link account-glance-account-info"
     href="/account-information.php"
