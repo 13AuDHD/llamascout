@@ -347,6 +347,26 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
     }
 
     $formData = llama_place_draft_clean_form_data($input);
+
+    $saveToken =
+        trim(
+            (string) (
+                $formData['draft_save_token']
+                ?? ''
+            )
+        );
+
+    if (
+        !preg_match(
+            '/^[a-f0-9]{64}$/',
+            $saveToken
+        )
+    ) {
+        throw new RuntimeException(
+            'This Place form does not have a valid save token. Reload the form and try again.'
+        );
+    }
+
     $name = trim((string) ($formData['name'] ?? ''));
     $name = $name !== '' ? mb_substr($name, 0, 200) : 'Untitled Place';
     $formJson = json_encode(
@@ -354,49 +374,127 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
 
-    if ($draftId > 0) {
-        if (!llama_place_draft_for_user($db, $userId, $draftId)) {
-            throw new RuntimeException('That saved Place could not be found.');
+    $lockName =
+        'llama_place_draft_'
+        . $userId
+        . '_'
+        . substr(
+            hash(
+                'sha256',
+                $saveToken
+            ),
+            0,
+            32
+        );
+
+    $lockStmt =
+        $db->prepare(
+            'SELECT GET_LOCK(?, 5)'
+        );
+
+    $lockStmt->execute([
+        $lockName,
+    ]);
+
+    if (
+        (int) $lockStmt->fetchColumn()
+        !== 1
+    ) {
+        throw new RuntimeException(
+            'This Place is already being saved. Please wait a moment.'
+        );
+    }
+
+    try {
+        if ($draftId < 1) {
+            $existingStmt =
+                $db->prepare(
+                    "SELECT id
+                     FROM place_drafts
+                     WHERE user_id = ?
+                       AND JSON_UNQUOTE(
+                            JSON_EXTRACT(
+                                form_data,
+                                '$.draft_save_token'
+                            )
+                       ) = ?
+                     ORDER BY id DESC
+                     LIMIT 1"
+                );
+
+            $existingStmt->execute([
+                $userId,
+                $saveToken,
+            ]);
+
+            $existingDraftId =
+                (int) (
+                    $existingStmt->fetchColumn()
+                    ?: 0
+                );
+
+            if ($existingDraftId > 0) {
+                return $existingDraftId;
+            }
         }
 
-        $stmt = $db->prepare(
+        if ($draftId > 0) {
+            if (!llama_place_draft_for_user($db, $userId, $draftId)) {
+                throw new RuntimeException('That saved Place could not be found.');
+            }
+
+            $stmt = $db->prepare(
             'UPDATE place_drafts
              SET draft_name = ?, form_data = ?, updated_at = UTC_TIMESTAMP()
              WHERE id = ? AND user_id = ?'
         );
-        $stmt->execute([$name, $formJson, $draftId, $userId]);
-    } else {
-        $stmt = $db->prepare(
+            $stmt->execute([$name, $formJson, $draftId, $userId]);
+        } else {
+            $stmt = $db->prepare(
             'INSERT INTO place_drafts
                 (user_id, draft_name, form_data, photos_json, created_at, updated_at)
              VALUES (?, ?, ?, "[]", UTC_TIMESTAMP(), UTC_TIMESTAMP())'
         );
-        $stmt->execute([$userId, $name, $formJson]);
-        $draftId = (int) $db->lastInsertId();
-    }
+            $stmt->execute([$userId, $name, $formJson]);
+            $draftId = (int) $db->lastInsertId();
+        }
 
-    $stageToken = trim((string) ($input['photo_stage_token'] ?? ''));
-    $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
-    $savedPhotos = llama_place_draft_snapshot_photos(
+        $stageToken = trim((string) ($input['photo_stage_token'] ?? ''));
+        $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
+        $savedPhotos = llama_place_draft_snapshot_photos(
         $userId,
         $draftId,
         $stageToken,
         $submittedPhotos
     );
 
-    $photosJson = json_encode(
-        $savedPhotos,
+        $photosJson = json_encode(
+            $savedPhotos,
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
 
-    $stmt = $db->prepare(
-        'UPDATE place_drafts
+        $stmt = $db->prepare(
+            'UPDATE place_drafts
          SET photos_json = ?, updated_at = UTC_TIMESTAMP()
          WHERE id = ? AND user_id = ?'
     );
-    $stmt->execute([$photosJson, $draftId, $userId]);
+        $stmt->execute([$photosJson, $draftId, $userId]);
 
-    return $draftId;
+        return $draftId;
+
+    } finally {
+        try {
+            $releaseStmt =
+                $db->prepare(
+                    'SELECT RELEASE_LOCK(?)'
+                );
+
+            $releaseStmt->execute([
+                $lockName,
+            ]);
+        } catch (Throwable) {
+        }
+    }
 }
 
 function llama_place_draft_delete(PDO $db, int $userId, int $draftId): bool
