@@ -18,7 +18,7 @@
     display: grid;
     grid-template-columns:
         repeat(
-            5,
+            4,
             minmax(0, 1fr)
         );
     gap: 10px;
@@ -58,12 +58,6 @@
     line-height: 1.1;
 }
 
-.account-dashboard-stat-card
-.account-dashboard-membership-label {
-    font-size: .92rem;
-    line-height: 1.2;
-}
-
 .account-dashboard-stat-card > div > span {
     margin-top: 3px;
 
@@ -74,15 +68,62 @@
     line-height: 1.35;
 }
 
-.account-dashboard-scout-card
-.account-glance-icon {
-    color: var(--text);
-}
-
-.account-dashboard-stat-card 
+.account-dashboard-stat-card
 .account-glance-icon i {
     font-size: 1.15rem;
 }
+
+
+/* =========================================================
+   SCOUT BASECAMP CONTRIBUTION CARD
+   ========================================================= */
+
+.account-scout-basecamp-card {
+    position: relative;
+
+    border-color: rgba(45, 142, 78, .72);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(38, 116, 65, .18),
+            rgba(38, 116, 65, .08)
+        );
+
+    box-shadow:
+        inset 3px 0 0 rgba(55, 166, 91, .9);
+}
+
+.account-scout-basecamp-card:hover,
+.account-scout-basecamp-card:focus-visible {
+    border-color: rgba(55, 166, 91, .95);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(38, 116, 65, .26),
+            rgba(38, 116, 65, .12)
+        );
+}
+
+.account-scout-basecamp-card > i:first-child {
+    color: #43b56b;
+}
+
+.account-scout-basecamp-card strong {
+    color: var(--text);
+}
+
+.account-scout-basecamp-card
+.account-action-arrow {
+    margin-left: auto;
+    padding-left: 8px;
+
+    color: #43b56b;
+
+    font-size: .9rem;
+}
+
 
 /* =========================================================
    EMAIL VERIFICATION ALERT
@@ -186,7 +227,7 @@
     .account-dashboard-stat-grid {
         grid-template-columns:
             repeat(
-                3,
+                2,
                 minmax(0, 1fr)
             );
     }
