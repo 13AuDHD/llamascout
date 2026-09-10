@@ -1,0 +1,72 @@
+/* =========================================================
+   LLAMA SCOUT
+   QUICK WARNING CARD COMPACT OVERRIDES
+
+   Keeps the existing Scout Report card style while reducing
+   vertical height and making the Warning label stand out.
+   ========================================================= */
+
+.scout-report-warning-section
+.scout-report-grid {
+    gap: 9px;
+}
+
+.scout-report-warning-item {
+    min-height: 78px;
+
+    padding: 11px 13px;
+
+    grid-template-rows:
+        auto
+        3px
+        auto;
+
+    row-gap: 4px;
+}
+
+.scout-report-warning-item
+.scout-report-value-content
+> span {
+    font-size: .86rem;
+    line-height: 1.2;
+}
+
+.scout-report-warning-item
+.scout-report-value-content
+> strong {
+    color: #d94a4a;
+
+    font-size: .82rem;
+    font-weight: 900;
+
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+
+.scout-report-warning-item
+> i.scout-report-value-icon {
+    font-size: 1.05rem;
+}
+
+
+@media (max-width: 800px) {
+    .scout-report-warning-item {
+        min-height: 72px;
+    }
+}
+
+
+@media (max-width: 600px) {
+    .scout-report-warning-item {
+        min-height: 66px;
+
+        padding: 10px 12px;
+
+        grid-template-rows:
+            auto
+            2px
+            auto;
+
+        row-gap: 3px;
+    }
+}
