@@ -33,6 +33,27 @@ if ($draftId > 0 && !$draft) {
     $error = 'That saved Place could not be found.';
 }
 
+$draftSaveToken =
+    trim(
+        (string) (
+            $_POST['draft_save_token']
+            ?? $draft['form_data']['draft_save_token']
+            ?? ''
+        )
+    );
+
+if (
+    !preg_match(
+        '/^[a-f0-9]{64}$/',
+        $draftSaveToken
+    )
+) {
+    $draftSaveToken =
+        bin2hex(
+            random_bytes(32)
+        );
+}
+
 $editSubmissionId = max(
     0,
     (int) (
@@ -85,7 +106,6 @@ $existingSubmissionPhotos =
         ? $editSubmission['data']['photos']
         : [];
 
-
 if (
     $draft
     && !$isNeedsChanges
@@ -120,56 +140,57 @@ if (
         );
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
         $error = 'Your session expired. Refresh the page and try again.';
     } else {
         if (
-    isset($_POST['save_for_later'])
-    && !$isNeedsChanges
-) {
-    try {
-        $savedDraftId =
-            llama_place_draft_save(
-                db(),
-                $userId,
-                $draftId,
-                $_POST
-            );
+            isset($_POST['save_for_later'])
+            && !$isNeedsChanges
+        ) {
+            try {
+                $savedDraftId =
+                    llama_place_draft_save(
+                        db(),
+                        $userId,
+                        $draftId,
+                        $_POST
+                    );
 
-        header(
-            'Location: https://account.llamascout.com/saved-later.php?saved=1',
-            true,
-            303
-        );
-
-        exit;
-
-    } catch (Throwable $e) {
-        $reference =
-            llama_log_caught_exception(
-                $e,
-                'place.draft.save',
-                [
-                    'user_id' => $userId,
-                    'draft_id' => $draftId,
-                ],
-                [
-                    InvalidArgumentException::class,
-                    RuntimeException::class,
-                ]
-            );
-
-        $error =
-            $reference === null
-                ? $e->getMessage()
-                : llama_error_message_with_reference(
-                    'The Place could not be saved for later.',
-                    $reference
+                header(
+                    'Location: https://account.llamascout.com/saved-later.php?saved='
+                    . $savedDraftId,
+                    true,
+                    303
                 );
-    }
-}
+
+                exit;
+
+            } catch (Throwable $e) {
+                $reference =
+                    llama_log_caught_exception(
+                        $e,
+                        'place.draft.save',
+                        [
+                            'user_id' => $userId,
+                            'draft_id' => $draftId,
+                        ],
+                        [
+                            InvalidArgumentException::class,
+                            RuntimeException::class,
+                        ]
+                    );
+
+                $error =
+                    $reference === null
+                        ? $e->getMessage()
+                        : llama_error_message_with_reference(
+                            'The Place could not be saved for later.',
+                            $reference
+                        );
+            }
+        }
+
         try {
             if ($isNeedsChanges) {
                 community_resubmit_new_place(
@@ -185,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             } else {
                 submit_new_place($userId, $_POST);
-                
+
                 if ($draftId > 0) {
                     llama_place_draft_delete(
                         db(),
@@ -193,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $draftId
                     );
                 }
-                
+
                 header(
                     'Location: https://account.llamascout.com/contributions.php?submitted=new',
                     true,
@@ -392,7 +413,6 @@ require __DIR__ . '/partials/header.php';
         </div>
     <?php endif; ?>
 
-
     <?php if ($error): ?>
         <div class="contribution-message is-error" role="alert">
             <?= add_place_e($error) ?>
@@ -404,7 +424,8 @@ require __DIR__ . '/partials/header.php';
             type="hidden"
             name="csrf_token"
             value="<?= add_place_e(community_csrf_token()) ?>"
-        > 
+        >
+
         <?php if ($draftId > 0): ?>
             <input
                 type="hidden"
@@ -412,6 +433,13 @@ require __DIR__ . '/partials/header.php';
                 value="<?= (int) $draftId ?>"
             >
         <?php endif; ?>
+
+        <input
+            type="hidden"
+            name="draft_save_token"
+            value="<?= add_place_e($draftSaveToken) ?>"
+        >
+
         <?php if ($isNeedsChanges): ?>
             <input
                 type="hidden"
@@ -419,11 +447,13 @@ require __DIR__ . '/partials/header.php';
                 value="<?= (int) $editSubmissionId ?>"
             >
         <?php endif; ?>
+
         <input
             type="hidden"
             name="photo_stage_token"
             value="<?= add_place_e((string) ($_POST['photo_stage_token'] ?? '')) ?>"
         >
+
         <input
             type="hidden"
             name="photos_json"
@@ -511,7 +541,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
         </details>
-
 
         <details class="contribution-section" open>
             <summary>
@@ -658,7 +687,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -755,7 +783,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -827,7 +854,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -871,7 +897,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -902,7 +927,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
         </details>
-
 
         <details class="contribution-section">
             <summary>
@@ -956,7 +980,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
         </details>
-
 
         <details class="contribution-section">
             <summary>
@@ -1015,7 +1038,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -1054,7 +1076,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
         </details>
-
 
         <details class="contribution-section">
             <summary>
@@ -1169,7 +1190,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -1220,7 +1240,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
-
         <details class="contribution-section">
             <summary>
                 <span>
@@ -1261,7 +1280,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             </div>
         </details>
-
 
         <details class="contribution-section" open>
             <summary>
@@ -1328,7 +1346,6 @@ require __DIR__ . '/partials/header.php';
 
                 <?php endif; ?>
 
-
                 <div
                     data-photo-uploader
                     data-photo-context="add-place"
@@ -1340,50 +1357,47 @@ require __DIR__ . '/partials/header.php';
             </div>
         </details>
 
+        <div class="contribution-actions add-place-submit-bar">
 
-<div class="contribution-actions add-place-submit-bar">
+            <button
+                class="contribution-submit"
+                type="submit"
+                name="submit_for_review"
+                value="1"
+            >
+                <i
+                    class="fa-solid fa-paper-plane"
+                    aria-hidden="true"
+                ></i>
 
-    <button
-        class="contribution-submit"
-        type="submit"
-        name="submit_for_review"
-        value="1"
-    >
-        <i
-            class="fa-solid fa-paper-plane"
-            aria-hidden="true"
-        ></i>
+                <?= $isNeedsChanges
+                    ? 'Resubmit for Review'
+                    : 'Submit for Review'
+                ?>
+            </button>
 
-        <?= $isNeedsChanges
-            ? 'Resubmit for Review'
-            : 'Submit for Review'
-        ?>
-    </button>
+            <?php if (!$isNeedsChanges): ?>
+                <button
+                    class="contribution-submit"
+                    type="submit"
+                    name="save_for_later"
+                    value="1"
+                    formnovalidate
+                >
+                    <i
+                        class="fa-solid fa-floppy-disk"
+                        aria-hidden="true"
+                    ></i>
 
+                    Save for Later
+                </button>
+            <?php endif; ?>
 
-    <?php if (!$isNeedsChanges): ?>
-        <button
-            class="contribution-submit"
-            type="submit"
-            name="save_for_later"
-            value="1"
-            formnovalidate
-        >
-            <i
-                class="fa-solid fa-floppy-disk"
-                aria-hidden="true"
-            ></i>
+            <a href="/map.php">
+                Cancel
+            </a>
 
-            Save for Later
-        </button>
-    <?php endif; ?>
-
-
-    <a href="/map.php">
-        Cancel
-    </a>
-
-</div>
+        </div>
     </form>
 </section>
 
