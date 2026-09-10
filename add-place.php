@@ -11,6 +11,28 @@ $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $error = null;
 
+$draftId = max(
+    0,
+    (int) (
+        $_GET['draft']
+        ?? $_POST['draft_id']
+        ?? 0
+    )
+);
+
+$draft = $draftId > 0
+    ? llama_place_draft_for_user(
+        db(),
+        $userId,
+        $draftId
+    )
+    : null;
+
+if ($draftId > 0 && !$draft) {
+    http_response_code(404);
+    $error = 'That saved Place could not be found.';
+}
+
 $editSubmissionId = max(
     0,
     (int) (
@@ -63,10 +85,91 @@ $existingSubmissionPhotos =
         ? $editSubmission['data']['photos']
         : [];
 
+
+if (
+    $draft
+    && !$isNeedsChanges
+    && $_SERVER['REQUEST_METHOD'] !== 'POST'
+) {
+    $_POST = array_merge(
+        (array) ($draft['form_data'] ?? []),
+        $_POST
+    );
+
+    $restoredDraftPhotos =
+        llama_place_draft_restore_photos(
+            $userId,
+            $draftId,
+            (array) ($draft['photos'] ?? [])
+        );
+
+    $_POST['photo_stage_token'] =
+        (string) (
+            $restoredDraftPhotos['token']
+            ?? ''
+        );
+
+    $_POST['photos_json'] =
+        json_encode(
+            (array) (
+                $restoredDraftPhotos['photos']
+                ?? []
+            ),
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+        );
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
         $error = 'Your session expired. Refresh the page and try again.';
     } else {
+        if (
+    isset($_POST['save_for_later'])
+    && !$isNeedsChanges
+) {
+    try {
+        $savedDraftId =
+            llama_place_draft_save(
+                db(),
+                $userId,
+                $draftId,
+                $_POST
+            );
+
+        header(
+            'Location: https://account.llamascout.com/saved-later.php?saved=1',
+            true,
+            303
+        );
+
+        exit;
+
+    } catch (Throwable $e) {
+        $reference =
+            llama_log_caught_exception(
+                $e,
+                'place.draft.save',
+                [
+                    'user_id' => $userId,
+                    'draft_id' => $draftId,
+                ],
+                [
+                    InvalidArgumentException::class,
+                    RuntimeException::class,
+                ]
+            );
+
+        $error =
+            $reference === null
+                ? $e->getMessage()
+                : llama_error_message_with_reference(
+                    'The Place could not be saved for later.',
+                    $reference
+                );
+    }
+}
         try {
             if ($isNeedsChanges) {
                 community_resubmit_new_place(
@@ -82,7 +185,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             } else {
                 submit_new_place($userId, $_POST);
-
+                
+                if ($draftId > 0) {
+                    llama_place_draft_delete(
+                        db(),
+                        $userId,
+                        $draftId
+                    );
+                }
+                
                 header(
                     'Location: https://account.llamascout.com/contributions.php?submitted=new',
                     true,
@@ -727,6 +838,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="contribution-checkbox-grid">
                     <?php foreach ([
+                        'amenity_none' => 'No amenities',
                         'amenity_toilets' => 'Toilets',
                         'amenity_potable_water' => 'Potable water',
                         'amenity_trash' => 'Trash service',
@@ -1222,18 +1334,54 @@ require __DIR__ . '/partials/header.php';
         </details>
 
 
-        <div class="contribution-actions add-place-submit-bar">
-            <button class="contribution-submit" type="submit">
-                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
-                <?= $isNeedsChanges ? 'Resubmit Place for review' : 'Submit Place for review' ?>
-            </button>
+<div class="contribution-actions add-place-submit-bar">
 
-            <a href="/map.php">Cancel</a>
-        </div>
+    <button
+        class="contribution-submit"
+        type="submit"
+        name="submit_for_review"
+        value="1"
+    >
+        <i
+            class="fa-solid fa-paper-plane"
+            aria-hidden="true"
+        ></i>
+
+        <?= $isNeedsChanges
+            ? 'Resubmit for Review'
+            : 'Submit for Review'
+        ?>
+    </button>
+
+
+    <?php if (!$isNeedsChanges): ?>
+        <button
+            class="contribution-submit"
+            type="submit"
+            name="save_for_later"
+            value="1"
+            formnovalidate
+        >
+            <i
+                class="fa-solid fa-floppy-disk"
+                aria-hidden="true"
+            ></i>
+
+            Save for Later
+        </button>
+    <?php endif; ?>
+
+
+    <a href="/map.php">
+        Cancel
+    </a>
+
+</div>
     </form>
 </section>
 
 <script src="<?= add_place_e($siteUrl . '/js/add-place-location.js') ?>"></script>
 <script src="<?= add_place_e($siteUrl . '/js/add-place-name.js') ?>"></script>
+<script src="<?= add_place_e($siteUrl . '/js/add-place-draft.js') ?>"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
