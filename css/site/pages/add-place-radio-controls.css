@@ -1,0 +1,247 @@
+/* =========================================================
+   LLAMA SCOUT ADD PLACE
+   COMPACT RADIO CONTROLS
+   ========================================================= */
+
+.add-place-radio-control {
+    min-width: 0;
+
+    display: grid;
+    gap: 5px;
+}
+
+.add-place-radio-row {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+    gap: 6px;
+    align-items: stretch;
+}
+
+.add-place-radio-options {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.add-place-radio-control[data-radio-type="yes-no"]
+.add-place-radio-options {
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+}
+
+.add-place-radio-control[data-radio-type="rating"]
+.add-place-radio-options {
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+}
+
+.add-place-radio-options.is-text-choice {
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+}
+
+.add-place-radio-option {
+    min-width: 0;
+    min-height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: relative;
+
+    padding: 6px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    background: var(--background);
+    color: var(--text);
+
+    cursor: pointer;
+
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.add-place-radio-options.is-text-choice
+.add-place-radio-option {
+    min-height: 38px;
+
+    justify-content: flex-start;
+
+    padding: 7px 9px;
+
+    text-align: left;
+}
+
+.add-place-radio-option input {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+.add-place-radio-option span {
+    min-width: 0;
+
+    font-size: .72rem;
+    font-weight: 760;
+    line-height: 1.18;
+
+    white-space: nowrap;
+}
+
+.add-place-radio-options.is-text-choice
+.add-place-radio-option span {
+    white-space: normal;
+}
+
+.add-place-radio-option:has(input:checked) {
+    border-color:
+        color-mix(
+            in srgb,
+            var(--text) 62%,
+            var(--border)
+        );
+
+    background:
+        color-mix(
+            in srgb,
+            var(--text) 8%,
+            var(--background)
+        );
+
+    box-shadow:
+        inset 0 0 0 1px
+        color-mix(
+            in srgb,
+            var(--text) 30%,
+            transparent
+        );
+}
+
+.add-place-radio-option:has(input:focus-visible) {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.add-place-radio-option.is-unknown {
+    color: var(--text-muted);
+}
+
+.add-place-radio-clear {
+    align-self: stretch;
+
+    min-width: 42px;
+
+    padding: 0 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    background: transparent;
+    color: var(--text-muted);
+
+    font: inherit;
+    font-size: .64rem;
+    font-weight: 760;
+
+    cursor: pointer;
+}
+
+.add-place-radio-clear:hover,
+.add-place-radio-clear:focus-visible {
+    color: var(--text);
+}
+
+.add-place-radio-help {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.25;
+}
+
+.add-place-radio-help span {
+    white-space: nowrap;
+}
+
+.add-place-radio-help.is-simple {
+    display: block;
+}
+
+
+/*
+ * Keep the radio layouts compact on small screens.
+ * They deliberately do not wrap into multiple rows.
+ */
+@media (max-width: 700px) {
+    .add-place-radio-row {
+        gap: 4px;
+    }
+
+    .add-place-radio-option {
+        min-height: 32px;
+
+        padding: 5px 4px;
+    }
+
+    .add-place-radio-option span {
+        font-size: .68rem;
+    }
+
+    .add-place-radio-options.is-text-choice {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .add-place-radio-options.is-text-choice
+    .add-place-radio-option {
+        min-height: 36px;
+
+        padding: 6px 7px;
+    }
+
+    .add-place-radio-clear {
+        min-width: 38px;
+
+        padding-inline: 4px;
+
+        font-size: .6rem;
+    }
+
+    .add-place-radio-help {
+        gap: 5px;
+
+        font-size: .58rem;
+    }
+}
+
+@media (max-width: 390px) {
+    .add-place-radio-option span {
+        font-size: .64rem;
+    }
+
+    .add-place-radio-clear {
+        min-width: 34px;
+
+        font-size: .56rem;
+    }
+
+    .add-place-radio-help {
+        font-size: .54rem;
+    }
+}
