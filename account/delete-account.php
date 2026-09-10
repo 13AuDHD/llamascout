@@ -1299,6 +1299,12 @@ if (
 
         $db->commit();
 
+            send_goodbye_email(
+            $goodbyeEmail,
+            $goodbyeDisplayName,
+            $goodbyeUsername,
+            $userId
+        );
 
         /*
          * End this browser session immediately. The local
