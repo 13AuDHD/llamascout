@@ -117,14 +117,18 @@ function create_remember_token(
      * authentication for Owner/Admin accounts.
      */
 
-    if (
-        llama_mfa_role_requires_mfa(
-            $userId
-        )
-    ) {
+if (
+    llama_mfa_role_requires_mfa(
+        $userId
+    )
+    ||
+    llama_mfa_is_enabled(
+        $userId
+    )
+) {
 
-        return;
-    }
+    return;
+}
 
 
     $selector =
@@ -539,22 +543,23 @@ function attempt_remembered_login(): bool {
      */
 
     if (
-        llama_mfa_role_requires_mfa(
-            $userId
-        )
-    ) {
+    llama_mfa_role_requires_mfa(
+        $userId
+    )
+    ||
+    llama_mfa_is_enabled(
+        $userId
+    )
+) {
 
-        llama_mfa_invalidate_remember_tokens(
-            $userId
-        );
+    llama_mfa_invalidate_remember_tokens(
+        $userId
+    );
 
+    clear_remember_cookie();
 
-        clear_remember_cookie();
-
-
-        return false;
-    }
-
+    return false;
+}
 
     start_llama_session();
 
@@ -714,21 +719,27 @@ function current_user(): ?array {
      *   ordinary authenticated session for a privileged user
      */
 
-    if (
+if (
+    (
         llama_mfa_role_requires_mfa(
             $userId
         )
-        &&
-        (
-            !llama_mfa_is_enabled(
-                $userId
-            )
-            ||
-            !llama_mfa_session_is_verified(
-                $userId
-            )
+        ||
+        llama_mfa_is_enabled(
+            $userId
         )
-    ) {
+    )
+    &&
+    (
+        !llama_mfa_is_enabled(
+            $userId
+        )
+        ||
+        !llama_mfa_session_is_verified(
+            $userId
+        )
+    )
+) {
 
         unset(
             $_SESSION[
@@ -934,12 +945,15 @@ function attempt_login_result(
      * login for an Owner/Admin account.
      */
 
-    if (
-        llama_mfa_role_requires_mfa(
-            $userId
-        )
-    ) {
-
+if (
+    llama_mfa_role_requires_mfa(
+        $userId
+    )
+    ||
+    llama_mfa_is_enabled(
+        $userId
+    )
+) {
         start_llama_session();
 
 
