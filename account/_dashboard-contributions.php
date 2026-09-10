@@ -1,0 +1,93 @@
+<?php
+
+declare(strict_types=1);
+?>
+
+<section
+    class="account-section"
+    aria-labelledby="contributions-heading"
+>
+    <div class="account-section-heading">
+        <div>
+            <p class="account-eyebrow">Community</p>
+            <h2 id="contributions-heading">Contributions</h2>
+        </div>
+
+        <span class="account-section-count">
+            <?= (int) ($contributionCounts['total'] ?? 0) ?>
+        </span>
+    </div>
+
+    <div class="account-action-grid">
+
+        <?php if ($showActiveScout): ?>
+            <a
+                class="account-action-card account-scout-basecamp-card"
+                href="/scout.php"
+            >
+                <i
+                    class="fa-solid fa-binoculars"
+                    aria-hidden="true"
+                ></i>
+
+                <span>
+                    <strong>Scout Basecamp</strong>
+
+                    <small>
+                        Your Scout status, field-work requirements,
+                        contributions, and Master Scout progress.
+                    </small>
+                </span>
+
+                <i
+                    class="fa-solid fa-arrow-right account-action-arrow"
+                    aria-hidden="true"
+                ></i>
+            </a>
+        <?php endif; ?>
+
+
+        <a
+            class="account-action-card"
+            href="<?= htmlspecialchars(
+                $siteUrl . '/add-place.php',
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
+            <i
+                class="fa-solid fa-location-dot"
+                aria-hidden="true"
+            ></i>
+
+            <span>
+                <strong>Add a place</strong>
+
+                <small>
+                    Submit a new campsite or outdoor place.
+                </small>
+            </span>
+        </a>
+
+
+        <a
+            class="account-action-card"
+            href="/contributions.php"
+        >
+            <i
+                class="fa-solid fa-clock-rotate-left"
+                aria-hidden="true"
+            ></i>
+
+            <span>
+                <strong>My contributions</strong>
+
+                <small>
+                    <?= (int) ($contributionCounts['open'] ?? 0) ?>
+                    currently awaiting review.
+                </small>
+            </span>
+        </a>
+
+    </div>
+</section>

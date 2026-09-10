@@ -23,7 +23,7 @@ require_once __DIR__ . '/_verification-dashboard-alert.php';
 
     <div
         class="account-dashboard-stat-grid"
-        aria-label="Account status and achievements"
+        aria-label="Account activity and achievements"
     >
 
         <div class="account-dashboard-stat-card">
@@ -59,46 +59,6 @@ require_once __DIR__ . '/_verification-dashboard-alert.php';
 
                 <span>
                     Badge<?= count($earnedBadges) === 1 ? '' : 's' ?> earned
-                </span>
-            </div>
-        </div>
-
-
-        <div class="account-dashboard-stat-card">
-            <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-id-card"
-                    aria-hidden="true"
-                ></i>
-            </span>
-
-            <div>
-                <strong class="account-dashboard-membership-label">
-                    <?= htmlspecialchars(
-                        $membershipLabel,
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>
-                </strong>
-
-                <span>
-                    <?php if (
-                        in_array(
-                            $membershipStatus,
-                            [
-                                'active',
-                                'trialing',
-                                'complimentary',
-                            ],
-                            true
-                        )
-                    ): ?>
-                        Complete Access
-                    <?php elseif ($membershipStatus === 'past_due'): ?>
-                        Billing attention needed
-                    <?php else: ?>
-                        Llama Scout account
-                    <?php endif; ?>
                 </span>
             </div>
         </div>
@@ -147,30 +107,6 @@ require_once __DIR__ . '/_verification-dashboard-alert.php';
                 </span>
             </div>
         </div>
-
-
-        <?php if ($showActiveScout): ?>
-
-            <div class="account-dashboard-stat-card account-dashboard-scout-card">
-                <span class="account-glance-icon">
-                    <i
-                        class="fa-solid fa-binoculars"
-                        aria-hidden="true"
-                    ></i>
-                </span>
-
-                <div>
-                    <strong>
-                        Llama Scout
-                    </strong>
-
-                    <span>
-                        Active Scout
-                    </span>
-                </div>
-            </div>
-
-        <?php endif; ?>
 
     </div>
 
