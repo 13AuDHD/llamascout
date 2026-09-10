@@ -323,106 +323,10 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <?php endif; ?>
 
-    <section
-        class="account-glance-grid"
-        aria-label="Account at a glance"
-    >
-
-        <div class="account-glance-card account-glance-points">
-            <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-star"
-                    aria-hidden="true"
-                ></i>
-            </span>
-
-            <div>
-                <strong>
-                    <?= number_format($pointsBalance) ?>
-                </strong>
-                <span>Contribution points</span>
-            </div>
-        </div>
-
-
-        <div class="account-glance-card">
-            <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-award"
-                    aria-hidden="true"
-                ></i>
-            </span>
-
-            <div>
-                <strong>
-                    <?= number_format(count($earnedBadges)) ?>
-                </strong>
-                <span>
-                    Badge<?= count($earnedBadges) === 1 ? '' : 's' ?> earned
-                </span>
-            </div>
-        </div>
-
-
-        <a
-            class="account-glance-card account-glance-link"
-            href="<?= htmlspecialchars(
-                'https://account.llamascout.com/billing.php',
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>"
-        >
-            <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-credit-card"
-                    aria-hidden="true"
-                ></i>
-            </span>
-
-            <div>
-                <strong>
-                    <?= htmlspecialchars(
-                        $membershipLabel,
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>
-                </strong>
-                <span>Membership & billing</span>
-            </div>
-
-            <i
-                class="fa-solid fa-chevron-right"
-                aria-hidden="true"
-            ></i>
-        </a>
-
-        <?php require __DIR__ . '/_orders-dashboard-card.php'; ?>
-
-        <?php if ($showActiveScout): ?>
-            <a
-                class="account-glance-card account-glance-link account-glance-scout"
-                href="/scout.php"
-            >
-                <span class="account-glance-icon">
-                    <i
-                        class="fa-solid fa-binoculars"
-                        aria-hidden="true"
-                    ></i>
-                </span>
-
-                <div>
-                    <strong>Scout Basecamp</strong>
-                    <span>Llama Scout team</span>
-                </div>
-
-                <i
-                    class="fa-solid fa-chevron-right"
-                    aria-hidden="true"
-                ></i>
-            </a>
-        <?php endif; ?>
-
-    </section>
+    <?php
+    require __DIR__
+        . '/_dashboard-at-a-glance.php';
+    ?>
 
 
     <section class="account-section" aria-labelledby="badges-heading">
@@ -726,65 +630,10 @@ require dirname(__DIR__) . '/partials/header.php';
     </section>
 
 
-    <section class="account-section" aria-labelledby="security-heading">
-        <div class="account-section-heading">
-            <div>
-                <p class="account-eyebrow">Account settings</p>
-                <h2 id="security-heading">Security & account</h2>
-            </div>
-        </div>
-
-        <div class="account-action-grid account-security-grid">
-            <a
-                class="account-action-card"
-                href="<?= htmlspecialchars(
-                    'https://account.llamascout.com/billing.php',
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>"
-            >
-                <i
-                    class="fa-solid fa-credit-card"
-                    aria-hidden="true"
-                ></i>
-
-                <span>
-                    <strong>Billing & membership</strong>
-                    <small>
-                        View your current access, switch membership plans,
-                        or manage billing options.
-                    </small>
-                </span>
-            </a>
-
-            <a class="account-action-card" href="/email-preferences.php">
-                <i class="fa-solid fa-envelope" aria-hidden="true"></i>
-                <span>
-                    <strong>Email preferences</strong>
-                    <small>
-                        Choose which optional Llama Scout newsletters,
-                        member updates, and promotional emails you receive.
-                    </small>
-                </span>
-            </a>
-
-            <a class="account-action-card" href="/forgot-password.php">
-                <i class="fa-solid fa-key" aria-hidden="true"></i>
-                <span>
-                    <strong>Reset password</strong>
-                    <small>Send a secure password reset link to the email address on your account.</small>
-                </span>
-            </a>
-
-            <a class="account-action-card account-action-card-danger" href="/delete-account.php">
-                <i class="fa-solid fa-user-slash" aria-hidden="true"></i>
-                <span>
-                    <strong>Delete or anonymize account</strong>
-                    <small>Permanently close your account. Published contribution history may remain anonymously.</small>
-                </span>
-            </a>
-        </div>
-    </section>
+    <?php
+    require __DIR__
+        . '/_dashboard-account-settings.php';
+    ?>
 </section>
 
 <?php require dirname(__DIR__) . '/partials/footer.php'; ?>
