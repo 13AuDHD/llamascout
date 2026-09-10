@@ -143,6 +143,11 @@ if (
         $userId,
         $db
     )
+    &&
+    !llama_mfa_is_enabled(
+        $userId,
+        $db
+    )
 ) {
 
     llama_mfa_clear_session_state();
@@ -655,7 +660,7 @@ $remainingAttempts =
     <p class="account-auth-intro">
       <?= mfa_challenge_e(
           $displayName
-      ) ?> has a privileged Llama Scout account.
+      ) ?> has multi-factor authentication enabled.
       Complete MFA to continue.
     </p>
 
