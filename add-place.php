@@ -404,7 +404,14 @@ require __DIR__ . '/partials/header.php';
             type="hidden"
             name="csrf_token"
             value="<?= add_place_e(community_csrf_token()) ?>"
-        >
+        > 
+        <?php if ($draftId > 0): ?>
+            <input
+                type="hidden"
+                name="draft_id"
+                value="<?= (int) $draftId ?>"
+            >
+        <?php endif; ?>
         <?php if ($isNeedsChanges): ?>
             <input
                 type="hidden"
