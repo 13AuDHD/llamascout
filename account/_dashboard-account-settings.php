@@ -76,19 +76,19 @@ declare(strict_types=1);
 
         <a
             class="account-action-card"
-            href="/forgot-password.php"
+            href="/security.php"
         >
             <i
-                class="fa-solid fa-key"
+                class="fa-solid fa-shield-halved"
                 aria-hidden="true"
             ></i>
 
             <span>
-                <strong>Password & security</strong>
+                <strong>Password &amp; security</strong>
 
                 <small>
-                    Send a secure password reset link
-                    to your verified account email.
+                    Change your password, set up multi-factor
+                    authentication, and manage recovery codes.
                 </small>
             </span>
         </a>
