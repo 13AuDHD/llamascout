@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
+require_once dirname(__DIR__) . '/app/mail.php';
 
 
 require_login();
@@ -1169,6 +1170,17 @@ if (
             $account['stripe_subscription_id'] ?? null
         );
 
+       $goodbyeEmail =
+          (string) $account['email'];
+      
+      $goodbyeDisplayName =
+          (string) (
+              $account['display_name']
+              ?? ''
+          );
+      
+      $goodbyeUsername =
+          (string) $account['username'];
 
         $db->beginTransaction();
 
