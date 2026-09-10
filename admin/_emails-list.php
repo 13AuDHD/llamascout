@@ -36,6 +36,24 @@ $emailTemplateIcons = [
 
     'refund_confirmation' =>
         'fa-solid fa-money-bill-transfer',
+
+    'membership_started' =>
+        'fa-solid fa-circle-check',
+
+    'membership_cancel_scheduled' =>
+        'fa-solid fa-calendar-xmark',
+
+    'membership_payment_failed' =>
+        'fa-solid fa-credit-card',
+
+    'membership_ended' =>
+        'fa-solid fa-door-closed',
+
+    'complimentary_started' =>
+        'fa-solid fa-gift',
+
+    'complimentary_ending' =>
+        'fa-solid fa-hourglass-end',
 ];
 ?>
 
