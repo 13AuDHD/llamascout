@@ -458,6 +458,14 @@ function community_build_new_place_submission(
             isset($input['amenity_food_storage_required']),
     ];
 
+    if (isset($input['amenity_none'])) {
+    foreach ($amenities as $amenityKey => $amenityValue) {
+        $amenities[$amenityKey] = false;
+    }
+
+    $details['warning_no_amenities'] = true;
+}
+
     $connectivity = [
         'overall' =>
             $rating($input, 'connectivity_overall'),
