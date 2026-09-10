@@ -16,6 +16,14 @@
 </a>
 
 <a
+    class="<?= admin_shell_nav_class('email-campaigns', $adminActiveNav) ?>"
+    href="<?= moderation_e($adminUrl . '/email-campaigns.php') ?>"
+>
+    <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
+    <span>Email Campaigns</span>
+</a>
+
+<a
     class="<?= admin_shell_nav_class('email-activity', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/email-activity.php') ?>"
 >
