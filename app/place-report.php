@@ -298,6 +298,7 @@ function llama_place_report_field_icon(
 
         'connectivity_starlink_tested' => 'fa-satellite',
         'connectivity_starlink_note' => 'fa-satellite-dish',
+        'warning_no_cell_service' => 'fa-signal',
 
         'wheelchair_friendly' => 'fa-wheelchair',
         'mobility_device_friendly' => 'fa-person-walking',
@@ -639,6 +640,29 @@ function llama_place_report_fields(): array
         'points_categories' => ['connectivity'],
     ]);
 
+    /*
+     * Derived warning.
+     *
+     * This field is intentionally assigned to a non-rendered section and
+     * a computed storage path. It never creates a duplicate form question,
+     * never creates a database column, and is excluded automatically from
+     * the Place Update persistence map.
+     *
+     * Quick warnings still see it because they iterate the shared field
+     * definitions directly. The computed value is resolved below by
+     * llama_place_report_get_path().
+     */
+    $add(
+        'warning_no_cell_service',
+        'No cell service',
+        '__derived',
+        'derived',
+        'computed.warning_no_cell_service',
+        [
+            'warning' => true,
+        ]
+    );
+
     /* Sensory */
     foreach ([
         'daytime_noise' => ['Noise', 'Very quiet', 'Very loud', 'sensory.daytime.noise', 'Daytime'],
@@ -911,6 +935,29 @@ function llama_place_report_fields(): array
 
 function llama_place_report_get_path(array $data, string $path): mixed
 {
+    /*
+     * Derived warnings live in the shared Place Report schema without
+     * creating duplicate questions or database columns.
+     *
+     * Overall cell service uses the existing 1-5 rating where 1 means
+     * None. When that answer is present, expose a computed true value so
+     * the existing Quick Warnings renderer can treat it like every other
+     * warning field.
+     */
+    if ($path === 'computed.warning_no_cell_service') {
+        $overall =
+            $data['connectivity']['overall']
+            ?? null;
+
+        if ($overall === null || $overall === '') {
+            return null;
+        }
+
+        return
+            is_numeric($overall)
+            && (int) $overall === 1;
+    }
+
     $value = $data;
 
     foreach (explode('.', $path) as $part) {
