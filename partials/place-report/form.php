@@ -505,12 +505,16 @@ foreach ($placeReportSections as $sectionKey => $section):
                             llama_place_report_photo_path(
                                 $photo
                             );
+                        $photoUrl =
+                            llama_place_report_photo_url(
+                                $photo
+                            );
                         ?>
 
                         <?php if ($src !== ''): ?>
                             <label class="add-place-existing-photo">
                                 <img
-                                    src="<?= $e($src) ?>"
+                                    src="<?= $e($photoUrl) ?>"
                                     alt="<?= $e(
                                         is_array($photo)
                                             ? ($photo['alt'] ?? '')
