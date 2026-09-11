@@ -23,14 +23,13 @@ $adminPageTitle = 'Review Place Update';
 $adminPageEyebrow = 'Moderation';
 $adminActiveNav = 'updates';
 
-require __DIR__ . '/_header.php';
-
 $updateId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 $item = moderation_update($db, $updateId);
 $error = '';
 
 if (!$item) {
     http_response_code(404);
+    require __DIR__ . '/_header.php';
     echo '<div class="admin-moderation-notice">Update not found.</div>';
     require __DIR__ . '/_footer.php';
     exit;
@@ -156,6 +155,8 @@ $points =
 
     $item = moderation_update($db, $updateId);
 }
+
+require __DIR__ . '/_header.php';
 
 $proposed = $item['proposed'];
 $original = $item['original'];
