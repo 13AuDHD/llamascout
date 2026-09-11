@@ -1,7 +1,3 @@
-/* =========================================================
-   NEW PLACE REVISION HISTORY + DECISION LAYOUT
-   ========================================================= */
-
 .admin-submission-history-timeline {
     display: grid;
 }
@@ -31,16 +27,12 @@
 .admin-submission-history-icon {
     position: relative;
     z-index: 1;
-
     width: 36px;
     height: 36px;
-
     display: grid;
     place-items: center;
-
     border: 1px solid var(--border);
     border-radius: 50%;
-
     background: var(--background);
 }
 
@@ -50,7 +42,6 @@
 
 .admin-submission-history-body > header {
     min-height: 36px;
-
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -71,19 +62,15 @@
 .admin-submission-history-diff {
     margin-top: 8px;
     padding: 11px 12px;
-
     border: 1px solid var(--border);
     border-radius: 9px;
-
     background: var(--background);
 }
 
 .admin-submission-history-note > span,
 .admin-submission-history-diff > span {
     display: block;
-
     color: var(--text-muted);
-
     font-size: .63rem;
     font-weight: 900;
     letter-spacing: .07em;
@@ -98,16 +85,13 @@
 .admin-submission-history-change-list {
     display: grid;
     gap: 8px;
-
     margin-top: 9px;
 }
 
 .admin-submission-history-change {
     display: grid;
     gap: 5px;
-
     padding: 9px 10px;
-
     border: 1px solid var(--border);
     border-radius: 8px;
 }
@@ -118,12 +102,8 @@
 
 .admin-submission-history-change > div {
     min-width: 0;
-
     display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        auto
-        minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: 8px;
     align-items: center;
 }
@@ -131,7 +111,6 @@
 .admin-submission-history-change span {
     min-width: 0;
     overflow-wrap: anywhere;
-
     font-size: .7rem;
 }
 
@@ -142,20 +121,13 @@
 
 .admin-submission-history-meta {
     margin: 8px 0 0;
-
     color: var(--text-muted);
-
     font-size: .68rem;
 }
 
-
-/* Decision */
-
 .admin-submission-publish-row {
     display: grid;
-    grid-template-columns:
-        minmax(220px, 1fr)
-        auto;
+    grid-template-columns: minmax(220px, 1fr) auto;
     gap: 10px;
     align-items: end;
 }
@@ -175,27 +147,22 @@
 
 .admin-submission-delete {
     margin-left: auto;
-
     border-color: color-mix(
         in srgb,
         #c94a4a 44%,
         var(--border)
     );
-
     color: #d86a6a;
 }
 
 .admin-submission-delete.is-armed {
     border-color: #c94a4a;
     border-style: solid;
-
     background: #c94a4a;
     color: #fff;
 }
 
-
 @media (max-width: 760px) {
-
     .admin-submission-publish-row {
         grid-template-columns: 1fr;
     }
@@ -206,12 +173,10 @@
 
     .admin-submission-secondary-actions {
         display: grid;
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .admin-submission-secondary-actions
-    .admin-moderation-button {
+    .admin-submission-secondary-actions .admin-moderation-button {
         width: 100%;
     }
 
