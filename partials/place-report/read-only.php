@@ -65,6 +65,11 @@ $renderValue =
                     : 'scout-report-value-item'
             )
             . (
+                !empty($field['wide'])
+                    ? ' scout-report-item-wide'
+                    : ''
+            )
+            . (
                 $state === 'unknown'
                     ? ' is-explicit-unknown'
                     : ''
