@@ -8,7 +8,6 @@
         <strong>
             <?= number_format($emailActivityTotals['today']) ?>
         </strong>
-        <small>messages logged today</small>
     </div>
 
     <div class="email-activity-stat">
@@ -19,18 +18,6 @@
         <strong>
             <?= number_format($emailActivityTotals['live']) ?>
         </strong>
-        <small>real recipient sends</small>
-    </div>
-
-    <div class="email-activity-stat">
-        <span>
-            <i class="fa-solid fa-flask" aria-hidden="true"></i>
-            Tests
-        </span>
-        <strong>
-            <?= number_format($emailActivityTotals['test']) ?>
-        </strong>
-        <small>Admin test messages</small>
     </div>
 
     <div class="email-activity-stat">
@@ -41,7 +28,6 @@
         <strong>
             <?= number_format($emailActivityTotals['sent']) ?>
         </strong>
-        <small>successful deliveries to SMTP</small>
     </div>
 
     <div class="email-activity-stat<?= $emailActivityTotals['failed'] > 0 ? ' is-warning' : '' ?>">
@@ -52,7 +38,16 @@
         <strong>
             <?= number_format($emailActivityTotals['failed']) ?>
         </strong>
-        <small>failed send attempts</small>
+    </div>
+
+    <div class="email-activity-stat">
+        <span>
+            <i class="fa-solid fa-flask" aria-hidden="true"></i>
+            Tests
+        </span>
+        <strong>
+            <?= number_format($emailActivityTotals['test']) ?>
+        </strong>
     </div>
 
 </section>
