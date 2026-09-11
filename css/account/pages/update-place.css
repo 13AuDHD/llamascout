@@ -1,280 +1,335 @@
 @import url("../core.css");
+@import url("../../site/pages/add-place.css");
+
+
+/* =========================================================
+   SUGGEST AN UPDATE
+
+   This page now uses the same shared Place Report form as
+   Add Place and moderation.
+
+   Keep only update-specific presentation here.
+   ========================================================= */
+
 
 .place-update-page {
-    width: min(1080px, calc(100% - 32px));
+    width: min(100%, 1120px);
+
     display: grid;
-    gap: 18px;
-    margin: 0 auto;
-    padding: 34px 0 84px;
+    gap: 28px;
+
+    margin-inline: auto;
+    padding-bottom: 84px;
 }
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
 
 .place-update-header {
     display: grid;
     gap: 8px;
 }
 
+
 .place-update-header h1,
 .place-update-header p {
     margin: 0;
 }
 
+
 .place-update-place-name {
-    color: var(--text-muted);
+    color: var(--text);
+
     font-size: 1rem;
+    font-weight: 750;
 }
+
+
+.place-update-intro {
+    max-width: 760px;
+
+    color: var(--text-muted);
+
+    line-height: 1.65;
+}
+
+
+.place-update-header .add-place-form-note {
+    margin-top: 10px;
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
 
 .place-update-form {
     display: grid;
     gap: 14px;
 }
 
-.place-update-page .contribution-section {
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
-}
 
-.place-update-page .contribution-section > summary {
-    min-height: 68px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-    padding: 14px 16px;
-    cursor: pointer;
-    list-style: none;
-}
+/*
+ * The shared Place Report already owns the section,
+ * field, radio, select, checkbox, and location styles.
+ *
+ * Nothing on this page should visually redefine those
+ * controls.
+ */
 
-.place-update-page .contribution-section > summary::-webkit-details-marker {
-    display: none;
-}
 
-.place-update-page .contribution-section > summary > span {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: .98rem;
-    font-weight: 850;
-}
+/* =========================================================
+   MODERATION REQUEST
+   ========================================================= */
 
-.place-update-page .contribution-section > summary > small {
-    color: var(--text-muted);
-    text-align: right;
-    font-size: .7rem;
-}
-
-.place-update-page .contribution-section[open] > summary {
-    border-bottom: 1px solid var(--border);
-}
-
-.place-update-page .contribution-section-body {
-    padding: 16px;
-}
-
-.place-update-field-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.place-update-field-card {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: 72px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--background);
-    transition: border-color .15s ease, background .15s ease;
-}
-
-.place-update-field-card.is-selected {
-    border-color: color-mix(in srgb, var(--text) 36%, var(--border));
-    background: color-mix(in srgb, var(--surface) 80%, var(--background));
-}
-
-.place-update-change-toggle {
-    display: grid;
-    justify-items: center;
-    align-content: start;
-    gap: 6px;
-    cursor: pointer;
-}
-
-.place-update-change-toggle input {
-    width: 20px;
-    height: 20px;
-    margin: 0;
-}
-
-.place-update-change-toggle > span {
-    color: var(--text-muted);
-    font-size: .64rem;
-    font-weight: 850;
-}
-
-.place-update-field-main {
-    min-width: 0;
-    display: grid;
-    gap: 9px;
-}
-
-.place-update-field-heading {
-    min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 5px 10px;
-    align-items: baseline;
-}
-
-.place-update-field-heading > div {
-    min-width: 0;
-    display: flex;
-    gap: 7px;
-    align-items: center;
-}
-
-.place-update-field-heading strong {
-    font-size: .78rem;
-}
-
-.place-update-field-heading small {
-    max-width: 100%;
-    color: var(--text-muted);
-    font-size: .66rem;
-    overflow-wrap: anywhere;
-}
-
-.place-update-field-heading small b {
-    color: var(--text);
-}
-
-.place-update-field-control {
-    min-width: 0;
-    transition: opacity .15s ease;
-}
-
-.place-update-field-control.is-disabled {
-    opacity: .38;
-    pointer-events: none;
-}
-
-.place-update-field-control input,
-.place-update-field-control select,
-.place-update-field-control textarea {
-    width: 100%;
-    box-sizing: border-box;
-}
 
 .place-update-request-card {
     display: grid;
     gap: 12px;
+
     padding: 16px;
-    border: 1px solid color-mix(in srgb, #d39325 55%, var(--border));
+
+    border: 1px solid
+        color-mix(
+            in srgb,
+            #d39325 55%,
+            var(--border)
+        );
+
     border-radius: 12px;
-    background: color-mix(in srgb, #d39325 8%, var(--surface));
+
+    background:
+        color-mix(
+            in srgb,
+            #d39325 8%,
+            var(--surface)
+        );
 }
+
 
 .place-update-request-heading {
     display: flex;
-    gap: 11px;
     align-items: flex-start;
+    gap: 11px;
 }
+
 
 .place-update-request-heading > i {
     margin-top: 3px;
+
     color: #d39325;
 }
 
-.place-update-request-heading div {
+
+.place-update-request-heading > div {
+    min-width: 0;
+
     display: grid;
     gap: 3px;
 }
 
+
 .place-update-request-heading span {
     color: #d39325;
+
     font-size: .68rem;
     font-weight: 900;
-    text-transform: uppercase;
     letter-spacing: .08em;
+    text-transform: uppercase;
 }
+
+
+.place-update-request-heading strong {
+    line-height: 1.45;
+}
+
 
 .place-update-request-card p {
     margin: 0;
+
     line-height: 1.55;
 }
 
-.place-update-existing-photos {
-    margin-bottom: 16px;
+
+/* =========================================================
+   OBSERVATION SECTION
+   ========================================================= */
+
+
+.place-update-observation-section
+.contribution-section-body {
+    display: grid;
+    gap: 16px;
 }
 
-.place-update-existing-photos > p {
-    color: var(--text-muted);
-    font-size: .72rem;
+
+/* =========================================================
+   EXISTING UPDATE PHOTOS
+   ========================================================= */
+
+
+.place-update-existing-photos {
+    display: grid;
+    gap: 10px;
+
+    margin-bottom: 18px;
 }
+
+
+.place-update-existing-photos > strong {
+    font-size: .88rem;
+}
+
+
+.place-update-existing-photos > p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .76rem;
+    line-height: 1.55;
+}
+
 
 .place-update-photo-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
     gap: 10px;
 }
 
+
 .place-update-photo-grid img {
     width: 100%;
+    min-width: 0;
+
+    display: block;
+
     aspect-ratio: 4 / 3;
     object-fit: cover;
+
     border: 1px solid var(--border);
     border-radius: 10px;
+
+    background: var(--background);
 }
 
-.place-update-page .add-place-submit-bar {
+
+/* =========================================================
+   ACTION BAR
+   ========================================================= */
+
+
+.place-update-page
+.add-place-submit-bar {
     position: sticky;
-    bottom: 10px;
-    z-index: 40;
-    padding: 10px;
+    bottom: 12px;
+
+    z-index: 60;
+
+    padding: 11px;
+
     border: 1px solid var(--border);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border-radius: 11px;
+
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 94%,
+            transparent
+        );
+
+    box-shadow:
+        0 12px 30px
+        rgba(0, 0, 0, .18);
+
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
+
+
+/* =========================================================
+   PENDING UPDATE
+   ========================================================= */
+
+
+.place-update-page
+.contribution-message > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+
+.place-update-page
+.contribution-message strong {
+    display: block;
+}
+
+
+.place-update-page
+.contribution-message span {
+    color: var(--text-muted);
+
+    font-size: .8rem;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
 
 @media (max-width: 820px) {
-    .place-update-field-list {
-        grid-template-columns: 1fr;
-    }
 
     .place-update-page {
-        width: min(100% - 20px, 1080px);
+        width: 100%;
     }
+
+
+    .place-update-photo-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
 }
 
-@media (max-width: 520px) {
-    .place-update-page .contribution-section > summary {
-        grid-template-columns: 1fr;
-        gap: 4px;
+
+@media (max-width: 560px) {
+
+    .place-update-page {
+        gap: 22px;
     }
 
-    .place-update-page .contribution-section > summary > small {
-        text-align: left;
-    }
 
-    .place-update-field-card {
+    .place-update-photo-grid {
         grid-template-columns: 1fr;
     }
 
-    .place-update-change-toggle {
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
+
+    .place-update-request-card {
+        padding: 14px;
     }
+
 }
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
 
 @media (prefers-reduced-motion: reduce) {
-    .place-update-field-card,
-    .place-update-field-control {
-        transition: none;
+
+    .place-update-page *,
+    .place-update-page *::before,
+    .place-update-page *::after {
+        scroll-behavior: auto;
     }
+
 }
