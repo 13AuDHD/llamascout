@@ -40,11 +40,6 @@
         repeat(6, minmax(0, 1fr));
 }
 
-.add-place-radio-options.is-text-choice {
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-}
-
 .add-place-radio-option {
     min-width: 0;
     min-height: 34px;
@@ -69,17 +64,6 @@
     -webkit-user-select: none;
 }
 
-.add-place-radio-options.is-text-choice
-.add-place-radio-option {
-    min-height: 38px;
-
-    justify-content: flex-start;
-
-    padding: 7px 9px;
-
-    text-align: left;
-}
-
 .add-place-radio-option input {
     position: absolute;
 
@@ -99,11 +83,6 @@
     line-height: 1.18;
 
     white-space: nowrap;
-}
-
-.add-place-radio-options.is-text-choice
-.add-place-radio-option span {
-    white-space: normal;
 }
 
 .add-place-radio-option:has(input:checked) {
@@ -184,9 +163,63 @@
 }
 
 
+/* =========================================================
+   COMPACT STICKY ACTION BAR
+   ========================================================= */
+
+.add-place-submit-bar {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 3px;
+
+    align-items: center;
+}
+
+.add-place-submit-bar
+> .contribution-submit {
+    width: 100%;
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    padding-inline: 10px;
+
+    white-space: nowrap;
+}
+
+.add-place-submit-bar
+> a {
+    grid-column: 2;
+
+    justify-self: center;
+
+    margin: 0;
+    padding: 1px 6px 0;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.15;
+}
+
+.add-place-submit-bar
+> .contribution-submit:only-of-type {
+    grid-column: 1 / -1;
+}
+
+.add-place-submit-bar
+> .contribution-submit:only-of-type
+~ a {
+    grid-column: 1 / -1;
+}
+
+
 /*
- * Keep the radio layouts compact on small screens.
- * They deliberately do not wrap into multiple rows.
+ * Keep radio layouts compact on small screens.
+ * They deliberately stay on one row.
  */
 @media (max-width: 700px) {
     .add-place-radio-row {
@@ -201,18 +234,6 @@
 
     .add-place-radio-option span {
         font-size: .68rem;
-    }
-
-    .add-place-radio-options.is-text-choice {
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-    }
-
-    .add-place-radio-options.is-text-choice
-    .add-place-radio-option {
-        min-height: 36px;
-
-        padding: 6px 7px;
     }
 
     .add-place-radio-clear {
@@ -230,6 +251,35 @@
     }
 }
 
+
+@media (max-width: 520px) {
+    .add-place-submit-bar {
+        column-gap: 6px;
+    }
+
+    .add-place-submit-bar
+    > .contribution-submit {
+        min-height: 40px;
+
+        gap: 6px;
+
+        padding-inline: 7px;
+
+        font-size: .78rem;
+    }
+
+    .add-place-submit-bar
+    > .contribution-submit i {
+        font-size: .78rem;
+    }
+
+    .add-place-submit-bar
+    > a {
+        font-size: .64rem;
+    }
+}
+
+
 @media (max-width: 390px) {
     .add-place-radio-option span {
         font-size: .64rem;
@@ -243,5 +293,12 @@
 
     .add-place-radio-help {
         font-size: .54rem;
+    }
+
+    .add-place-submit-bar
+    > .contribution-submit {
+        padding-inline: 5px;
+
+        font-size: .72rem;
     }
 }
