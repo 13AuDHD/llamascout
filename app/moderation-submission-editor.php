@@ -326,6 +326,259 @@ function moderation_submission_editor_group(
 }
 
 
+
+function moderation_submission_editor_choice_options(
+    string $path
+): array {
+    $states = [
+        '' => 'Select...',
+        'Alabama' => 'Alabama',
+        'Alaska' => 'Alaska',
+        'Arizona' => 'Arizona',
+        'Arkansas' => 'Arkansas',
+        'California' => 'California',
+        'Colorado' => 'Colorado',
+        'Connecticut' => 'Connecticut',
+        'Delaware' => 'Delaware',
+        'Florida' => 'Florida',
+        'Georgia' => 'Georgia',
+        'Hawaii' => 'Hawaii',
+        'Idaho' => 'Idaho',
+        'Illinois' => 'Illinois',
+        'Indiana' => 'Indiana',
+        'Iowa' => 'Iowa',
+        'Kansas' => 'Kansas',
+        'Kentucky' => 'Kentucky',
+        'Louisiana' => 'Louisiana',
+        'Maine' => 'Maine',
+        'Maryland' => 'Maryland',
+        'Massachusetts' => 'Massachusetts',
+        'Michigan' => 'Michigan',
+        'Minnesota' => 'Minnesota',
+        'Mississippi' => 'Mississippi',
+        'Missouri' => 'Missouri',
+        'Montana' => 'Montana',
+        'Nebraska' => 'Nebraska',
+        'Nevada' => 'Nevada',
+        'New Hampshire' => 'New Hampshire',
+        'New Jersey' => 'New Jersey',
+        'New Mexico' => 'New Mexico',
+        'New York' => 'New York',
+        'North Carolina' => 'North Carolina',
+        'North Dakota' => 'North Dakota',
+        'Ohio' => 'Ohio',
+        'Oklahoma' => 'Oklahoma',
+        'Oregon' => 'Oregon',
+        'Pennsylvania' => 'Pennsylvania',
+        'Rhode Island' => 'Rhode Island',
+        'South Carolina' => 'South Carolina',
+        'South Dakota' => 'South Dakota',
+        'Tennessee' => 'Tennessee',
+        'Texas' => 'Texas',
+        'Utah' => 'Utah',
+        'Vermont' => 'Vermont',
+        'Virginia' => 'Virginia',
+        'Washington' => 'Washington',
+        'West Virginia' => 'West Virginia',
+        'Wisconsin' => 'Wisconsin',
+        'Wyoming' => 'Wyoming',
+        'District of Columbia' => 'District of Columbia',
+        'Puerto Rico' => 'Puerto Rico',
+    ];
+
+    $distance = [
+        '' => 'Select...',
+    ];
+
+    for ($i = 1; $i <= 20; $i++) {
+        $label =
+            $i
+            . ' mile'
+            . ($i === 1 ? '' : 's');
+
+        $distance[$label] = $label;
+    }
+
+    $distance['Over 20 miles'] =
+        'Over 20 miles';
+
+    $surface = [
+        '' => 'Select...',
+        'paved' => 'Paved / asphalt',
+        'concrete' => 'Concrete',
+        'graded-gravel' => 'Graded gravel',
+        'loose-gravel' => 'Loose gravel',
+        'hard-packed-dirt' => 'Hard-packed dirt',
+        'dirt' => 'Dirt',
+        'sand' => 'Sand',
+        'rock' => 'Rock / bedrock',
+        'grass' => 'Grass',
+        'mixed' => 'Mixed surface',
+    ];
+
+    return match ($path) {
+        'type' => [
+            'dispersed-camping' => 'Dispersed camping',
+            'developed-campground' => 'Developed campground',
+            'vehicle-pulloff' => 'Vehicle pull-off',
+            'trailhead' => 'Trailhead',
+            'day-use' => 'Day-use area',
+            'other' => 'Other',
+        ],
+
+        'state' => $states,
+
+        'details.vehicle_capacity' => array_combine(
+            array_merge([''], range(1, 11)),
+            array_merge(
+                ['Select...'],
+                array_map(
+                    static fn (int $i): string =>
+                        $i === 11
+                            ? '10+ vehicles'
+                            : $i . ' vehicle' . ($i === 1 ? '' : 's'),
+                    range(1, 11)
+                )
+            )
+        ) ?: [],
+
+        'details.max_vehicle_length_feet' => [
+            '' => 'Select...',
+            '15' => 'About 15 ft',
+            '20' => 'About 20 ft',
+            '25' => 'About 25 ft',
+            '30' => 'About 30 ft',
+            '35' => 'About 35 ft',
+            '40' => 'About 40 ft',
+            '45' => 'About 45 ft',
+            '50' => 'About 50 ft',
+            '60' => '50+ ft',
+        ],
+
+        'details.parking_surface',
+        'details.road_surface' => $surface,
+
+        'details.ground_condition' => [
+            '' => 'Select...',
+            'level-firm' => 'Mostly level and firm',
+            'uneven-firm' => 'Uneven but firm',
+            'rocky' => 'Rocky',
+            'soft' => 'Soft / sandy',
+            'mud-prone' => 'Mud-prone',
+            'grass' => 'Grassy',
+            'mixed' => 'Mixed',
+        ],
+
+        'details.road_width' => [
+            '' => 'Select...',
+            'one-lane' => 'One lane',
+            'one-and-half-lane' => 'About 1.5 lanes',
+            'two-lane' => 'Two lane',
+            'wide-two-lane' => 'Wide two lane',
+            'varies' => 'Varies significantly',
+        ],
+
+        'details.walking_distance_from_vehicle' => [
+            '' => 'Select...',
+            'at-vehicle' => 'At / beside vehicle',
+            'under-50-ft' => 'Under 50 ft',
+            '50-100-ft' => '50-100 ft',
+            '100-250-ft' => '100-250 ft',
+            '250-500-ft' => '250-500 ft',
+            '500-plus-ft' => '500+ ft / short hike',
+        ],
+
+        'rules.best_months',
+        'rules.recommended_travel_season' => [
+            '' => 'Select...',
+            'year-round' => 'Year-round',
+            'spring' => 'Spring',
+            'summer' => 'Summer',
+            'fall' => 'Fall',
+            'winter' => 'Winter',
+            'spring-summer' => 'Spring through summer',
+            'summer-fall' => 'Summer through fall',
+            'late-spring-fall' => 'Late spring through fall',
+            'snow-free-months' => 'Generally snow-free months',
+        ],
+
+        'rules.stay_limit_days' => [
+            '' => 'Select...',
+            '1' => '1 day',
+            '3' => '3 days',
+            '5' => '5 days',
+            '7' => '7 days',
+            '10' => '10 days',
+            '14' => '14 days',
+            '16' => '16 days',
+            '21' => '21 days',
+            '28' => '28 days',
+        ],
+
+        'rules.nearest_town',
+        'rules.nearest_fuel',
+        'rules.nearest_grocery',
+        'rules.nearest_water',
+        'rules.nearest_toilet',
+        'rules.nearest_hospital' => $distance,
+
+        default => [],
+    };
+}
+
+
+function moderation_submission_editor_allowed_paths(): array
+{
+    $paths = array_merge(
+        [
+            'name',
+            'type',
+            'description',
+            'latitude',
+            'longitude',
+            'elevation_feet',
+            'road',
+            'city',
+            'county',
+            'state',
+            'region',
+            'land_manager',
+            'land_type',
+            'access_summary',
+            'sensory_summary',
+            'contributor_notes',
+            'visited_at',
+            'details.parking_surface',
+            'details.ground_condition',
+            'details.road_surface',
+            'details.road_width',
+            'details.walking_distance_from_vehicle',
+            'rules.best_months',
+            'rules.recommended_travel_season',
+            'rules.seasonal_access_note',
+            'rules.current_fire_restrictions_url',
+            'rules.nearest_town',
+            'rules.nearest_fuel',
+            'rules.nearest_grocery',
+            'rules.nearest_water',
+            'rules.nearest_toilet',
+            'rules.nearest_hospital',
+            'connectivity.starlink_note',
+            'experience.not_recommended_for',
+        ],
+        moderation_submission_editor_bool_paths(),
+        moderation_submission_editor_rating_paths(),
+        moderation_submission_editor_integer_paths(),
+        moderation_submission_editor_float_paths(),
+        moderation_submission_editor_long_text_paths()
+    );
+
+    return array_values(
+        array_unique($paths)
+    );
+}
+
+
 function moderation_submission_editor_parse_value(
     string $path,
     mixed $raw
@@ -478,15 +731,22 @@ function moderation_save_submission_edits(
         $data
     );
 
-    foreach ($before as $path => $oldValue) {
-        if (!array_key_exists($path, $postedFields)) {
+    $allowedPaths =
+        array_flip(
+            moderation_submission_editor_allowed_paths()
+        );
+
+    foreach ($postedFields as $path => $rawValue) {
+        $path = (string) $path;
+
+        if (!isset($allowedPaths[$path])) {
             continue;
         }
 
         $newValue =
             moderation_submission_editor_parse_value(
                 $path,
-                $postedFields[$path]
+                $rawValue
             );
 
         moderation_submission_editor_set_path(
@@ -637,7 +897,19 @@ function moderation_save_submission_edits(
 
     $fieldChanges = [];
 
-    foreach ($before as $path => $oldValue) {
+    $changePaths =
+        array_unique(
+            array_merge(
+                array_keys($before),
+                array_keys($after)
+            )
+        );
+
+    foreach ($changePaths as $path) {
+        $oldValue =
+            $before[$path]
+            ?? null;
+
         $newValue =
             $after[$path]
             ?? null;
