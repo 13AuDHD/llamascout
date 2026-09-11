@@ -234,9 +234,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $editSubmissionId,
                     $_POST
                 );
-
+                
+                $_SESSION['contribution_success_message'] =
+                    'Your changes were resubmitted successfully and are back in review.';
+                
+                $_SESSION['contribution_success_submission_id'] =
+                    $editSubmissionId;
+                
                 header(
-                    'Location: https://account.llamascout.com/contributions.php?submitted=new-resubmitted',
+                    'Location: https://account.llamascout.com/contributions.php',
                     true,
                     303
                 );
