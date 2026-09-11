@@ -2,60 +2,31 @@
 
 declare(strict_types=1);
 
-/*
- * =========================================================
- * LLAMA SCOUT
- * NEW PLACE SUBMISSION HISTORY
- *
- * Tracks moderation requests and contributor resubmissions.
- * No schema changes happen at runtime.
- * =========================================================
- */
-
-function llama_place_submission_history_decode(
-    mixed $value
-): array {
+function llama_place_submission_history_decode(mixed $value): array
+{
     if (is_array($value)) {
         return $value;
     }
 
-    if (
-        !is_string($value)
-        || trim($value) === ''
-    ) {
+    if (!is_string($value) || trim($value) === '') {
         return [];
     }
 
-    $decoded =
-        json_decode(
-            $value,
-            true
-        );
+    $decoded = json_decode($value, true);
 
-    return is_array($decoded)
-        ? $decoded
-        : [];
+    return is_array($decoded) ? $decoded : [];
 }
 
-function llama_place_submission_history(
-    PDO $db,
-    int $submissionId
-): array {
-    if ($submissionId < 1) {
-        return [];
-    }
+function llama_place_submission_history(PDO $db, int $submissionId): array
+{
+    $stmt = $db->prepare(
+        'SELECT revision_history
+         FROM place_submissions
+         WHERE id = ?
+         LIMIT 1'
+    );
 
-    $stmt =
-        $db->prepare(
-            'SELECT revision_history
-             FROM place_submissions
-             WHERE id = ?
-             LIMIT 1'
-        );
-
-    $stmt->execute([
-        $submissionId,
-    ]);
+    $stmt->execute([$submissionId]);
 
     return llama_place_submission_history_decode(
         $stmt->fetchColumn()
@@ -67,27 +38,16 @@ function llama_place_submission_history_append(
     int $submissionId,
     array $event
 ): void {
-    if ($submissionId < 1) {
-        throw new InvalidArgumentException(
-            'Invalid Place submission.'
-        );
-    }
+    $stmt = $db->prepare(
+        'SELECT revision_history
+         FROM place_submissions
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE'
+    );
 
-    $stmt =
-        $db->prepare(
-            'SELECT revision_history
-             FROM place_submissions
-             WHERE id = ?
-             LIMIT 1
-             FOR UPDATE'
-        );
-
-    $stmt->execute([
-        $submissionId,
-    ]);
-
-    $raw =
-        $stmt->fetchColumn();
+    $stmt->execute([$submissionId]);
+    $raw = $stmt->fetchColumn();
 
     if ($raw === false) {
         throw new RuntimeException(
@@ -95,24 +55,18 @@ function llama_place_submission_history_append(
         );
     }
 
-    $history =
-        llama_place_submission_history_decode(
-            $raw
-        );
+    $history = llama_place_submission_history_decode($raw);
 
-    $event['at'] =
-        $event['at']
+    $event['at'] = $event['at']
         ?? gmdate('Y-m-d H:i:s');
 
-    $history[] =
-        $event;
+    $history[] = $event;
 
-    $update =
-        $db->prepare(
-            'UPDATE place_submissions
-             SET revision_history = ?
-             WHERE id = ?'
-        );
+    $update = $db->prepare(
+        'UPDATE place_submissions
+         SET revision_history = ?
+         WHERE id = ?'
+    );
 
     $update->execute([
         json_encode(
@@ -125,73 +79,44 @@ function llama_place_submission_history_append(
     ]);
 }
 
-function llama_place_submission_value_equal(
-    mixed $left,
-    mixed $right
-): bool {
-    if (
-        is_bool($left)
-        || is_bool($right)
-    ) {
-        return (bool) $left
-            === (bool) $right;
-    }
-
-    if (
-        $left === null
-        || $right === null
-    ) {
-        return $left === $right;
-    }
-
-    if (
-        is_float($left)
-        || is_float($right)
-        || is_int($left)
-        || is_int($right)
-    ) {
-        return (string) $left
-            === (string) $right;
-    }
-
-    return (string) $left
-        === (string) $right;
+function llama_place_submission_snapshot(array $data): array
+{
+    return [
+        'data' => $data,
+        'photos' => llama_place_submission_photo_paths($data),
+    ];
 }
 
-function llama_place_submission_field_snapshot(
-    array $data,
-    string $fieldKey
-): array {
-    $fields =
-        llama_place_report_fields();
+function llama_place_submission_photo_paths(array $data): array
+{
+    $photos = is_array($data['photos'] ?? null)
+        ? $data['photos']
+        : [];
 
-    $field =
-        $fields[$fieldKey]
-        ?? null;
+    $paths = [];
 
-    if (!$field) {
-        return [
-            'state' => 'unanswered',
-            'value' => null,
-        ];
+    foreach ($photos as $photo) {
+        $path = llama_place_report_photo_path($photo);
+
+        if ($path !== '') {
+            $paths[] = $path;
+        }
     }
 
-    $state =
-        llama_place_report_answer_state(
-            $data,
-            $fieldKey
-        );
+    return array_values(array_unique($paths));
+}
 
-    $value =
-        llama_place_report_get_path(
-            $data,
-            (string) $field['storage']
-        );
+function llama_place_submission_value_equal(mixed $a, mixed $b): bool
+{
+    if (is_bool($a) || is_bool($b)) {
+        return (bool) $a === (bool) $b;
+    }
 
-    return [
-        'state' => $state,
-        'value' => $value,
-    ];
+    if ($a === null || $b === null) {
+        return $a === $b;
+    }
+
+    return (string) $a === (string) $b;
 }
 
 function llama_place_submission_diff(
@@ -200,28 +125,32 @@ function llama_place_submission_diff(
 ): array {
     $changes = [];
 
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        $beforeSnapshot =
-            llama_place_submission_field_snapshot(
-                $before,
-                $fieldKey
-            );
+    foreach (llama_place_report_fields() as $fieldKey => $field) {
+        $beforeState = llama_place_report_answer_state(
+            $before,
+            $fieldKey
+        );
 
-        $afterSnapshot =
-            llama_place_submission_field_snapshot(
-                $after,
-                $fieldKey
-            );
+        $afterState = llama_place_report_answer_state(
+            $after,
+            $fieldKey
+        );
+
+        $beforeValue = llama_place_report_get_path(
+            $before,
+            (string) $field['storage']
+        );
+
+        $afterValue = llama_place_report_get_path(
+            $after,
+            (string) $field['storage']
+        );
 
         if (
-            $beforeSnapshot['state']
-                === $afterSnapshot['state']
+            $beforeState === $afterState
             && llama_place_submission_value_equal(
-                $beforeSnapshot['value'],
-                $afterSnapshot['value']
+                $beforeValue,
+                $afterValue
             )
         ) {
             continue;
@@ -229,196 +158,14 @@ function llama_place_submission_diff(
 
         $changes[] = [
             'field' => $fieldKey,
-            'storage' =>
-                (string) $field['storage'],
-            'before_state' =>
-                $beforeSnapshot['state'],
-            'before_value' =>
-                $beforeSnapshot['value'],
-            'after_state' =>
-                $afterSnapshot['state'],
-            'after_value' =>
-                $afterSnapshot['value'],
+            'before_state' => $beforeState,
+            'before_value' => $beforeValue,
+            'after_state' => $afterState,
+            'after_value' => $afterValue,
         ];
     }
 
     return $changes;
-}
-
-function llama_place_submission_photo_paths(
-    array $data
-): array {
-    $photos =
-        is_array(
-            $data['photos']
-            ?? null
-        )
-            ? $data['photos']
-            : [];
-
-    $paths = [];
-
-    foreach ($photos as $photo) {
-        $path =
-            llama_place_report_photo_path(
-                $photo
-            );
-
-        if ($path !== '') {
-            $paths[] = $path;
-        }
-    }
-
-    return array_values(
-        array_unique(
-            $paths
-        )
-    );
-}
-
-function llama_place_submission_photo_diff(
-    array $before,
-    array $after
-): array {
-    $beforePaths =
-        llama_place_submission_photo_paths(
-            $before
-        );
-
-    $afterPaths =
-        llama_place_submission_photo_paths(
-            $after
-        );
-
-    return [
-        'before_count' =>
-            count($beforePaths),
-        'after_count' =>
-            count($afterPaths),
-        'added' =>
-            array_values(
-                array_diff(
-                    $afterPaths,
-                    $beforePaths
-                )
-            ),
-        'removed' =>
-            array_values(
-                array_diff(
-                    $beforePaths,
-                    $afterPaths
-                )
-            ),
-    ];
-}
-
-function llama_place_submission_record_initial(
-    PDO $db,
-    int $submissionId,
-    array $data
-): void {
-    llama_place_submission_history_append(
-        $db,
-        $submissionId,
-        [
-            'type' => 'submitted',
-            'by' => 'contributor',
-            'answered' =>
-                count(
-                    array_filter(
-                        array_keys(
-                            llama_place_report_fields()
-                        ),
-                        static fn (
-                            string $fieldKey
-                        ): bool =>
-                            llama_place_report_answer_state(
-                                $data,
-                                $fieldKey
-                            )
-                            !== 'unanswered'
-                    )
-                ),
-            'photo_count' =>
-                count(
-                    llama_place_submission_photo_paths(
-                        $data
-                    )
-                ),
-        ]
-    );
-}
-
-function llama_place_submission_record_review(
-    PDO $db,
-    int $submissionId,
-    int $moderatorId,
-    string $type,
-    string $notes
-): void {
-    $allowed = [
-        'changes-requested',
-        'rejected',
-        'approved',
-    ];
-
-    if (
-        !in_array(
-            $type,
-            $allowed,
-            true
-        )
-    ) {
-        throw new InvalidArgumentException(
-            'Invalid Place submission history event.'
-        );
-    }
-
-    llama_place_submission_history_append(
-        $db,
-        $submissionId,
-        [
-            'type' => $type,
-            'by' => 'moderator',
-            'moderator_id' =>
-                $moderatorId,
-            'review_notes' =>
-                $notes !== ''
-                    ? $notes
-                    : null,
-        ]
-    );
-}
-
-function llama_place_submission_record_resubmission(
-    PDO $db,
-    int $submissionId,
-    array $before,
-    array $after,
-    string $requestedChanges = ''
-): void {
-    llama_place_submission_history_append(
-        $db,
-        $submissionId,
-        [
-            'type' => 'resubmitted',
-            'by' => 'contributor',
-            'requested_changes' =>
-                trim($requestedChanges) !== ''
-                    ? trim($requestedChanges)
-                    : null,
-            'changes' =>
-                llama_place_submission_diff(
-                    $before,
-                    $after
-                ),
-            'photos' =>
-                llama_place_submission_photo_diff(
-                    $before,
-                    $after
-                ),
-        ]
-    );
 }
 
 function llama_place_submission_display_value(
@@ -434,9 +181,7 @@ function llama_place_submission_display_value(
         return 'Unknown';
     }
 
-    $field =
-        llama_place_report_fields()[$fieldKey]
-        ?? null;
+    $field = llama_place_report_fields()[$fieldKey] ?? null;
 
     if (!$field) {
         return $value === null
@@ -444,70 +189,176 @@ function llama_place_submission_display_value(
             : (string) $value;
     }
 
-    $type =
-        (string) (
-            $field['type']
-            ?? ''
-        );
+    $type = (string) ($field['type'] ?? '');
 
     if ($type === 'tri') {
-        return $value
-            ? 'Yes'
-            : 'No';
+        return $value ? 'Yes' : 'No';
     }
 
     if ($type === 'rating') {
-        return (int) $value
-            . '/5';
+        return (int) $value . '/5';
     }
 
     if ($type === 'checkbox') {
-        return $value
-            ? 'Yes'
-            : 'No';
+        return $value ? 'Yes' : 'No';
     }
 
     if ($type === 'select') {
-        $options =
-            (array) (
-                $field['options']
-                ?? []
-            );
+        $options = (array) ($field['options'] ?? []);
 
-        if (
-            array_key_exists(
-                (string) $value,
-                $options
-            )
-        ) {
-            return (string) $options[
-                (string) $value
-            ];
+        if (array_key_exists((string) $value, $options)) {
+            return (string) $options[(string) $value];
         }
     }
 
-    if (
-        ($field['format'] ?? '')
-        === 'currency'
-    ) {
-        return '$'
-            . number_format(
-                (float) $value,
-                2
-            );
+    if (($field['format'] ?? '') === 'currency') {
+        return '$' . number_format((float) $value, 2);
     }
 
     if (is_bool($value)) {
-        return $value
-            ? 'Yes'
-            : 'No';
+        return $value ? 'Yes' : 'No';
     }
 
-    if ($value === null || $value === '') {
-        return 'Not provided';
+    return ($value === null || $value === '')
+        ? 'Not provided'
+        : (string) $value;
+}
+
+function llama_place_submission_record_change_request(
+    PDO $db,
+    int $submissionId,
+    int $moderatorId,
+    string $notes,
+    array $data
+): void {
+    llama_place_submission_history_append(
+        $db,
+        $submissionId,
+        [
+            'type' => 'changes-requested',
+            'by' => 'moderator',
+            'moderator_id' => $moderatorId,
+            'review_notes' => $notes,
+            'snapshot' => llama_place_submission_snapshot($data),
+        ]
+    );
+}
+
+function llama_place_submission_record_terminal_review(
+    PDO $db,
+    int $submissionId,
+    int $moderatorId,
+    string $type,
+    string $notes
+): void {
+    llama_place_submission_history_append(
+        $db,
+        $submissionId,
+        [
+            'type' => $type,
+            'by' => 'moderator',
+            'moderator_id' => $moderatorId,
+            'review_notes' => $notes !== ''
+                ? $notes
+                : null,
+        ]
+    );
+}
+
+function llama_place_submission_capture_resubmission_if_needed(
+    PDO $db,
+    int $submissionId,
+    array $item
+): void {
+    if ((string) ($item['status'] ?? '') !== 'pending') {
+        return;
     }
 
-    return (string) $value;
+    $db->beginTransaction();
+
+    try {
+        $stmt = $db->prepare(
+            'SELECT revision_history, submission_data
+             FROM place_submissions
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+        $stmt->execute([$submissionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            $db->rollBack();
+            return;
+        }
+
+        $history = llama_place_submission_history_decode(
+            $row['revision_history'] ?? null
+        );
+
+        $last = $history
+            ? $history[array_key_last($history)]
+            : null;
+
+        if (
+            !is_array($last)
+            || (string) ($last['type'] ?? '') !== 'changes-requested'
+            || !is_array($last['snapshot']['data'] ?? null)
+        ) {
+            $db->rollBack();
+            return;
+        }
+
+        $before = $last['snapshot']['data'];
+        $beforePhotos = is_array($last['snapshot']['photos'] ?? null)
+            ? $last['snapshot']['photos']
+            : llama_place_submission_photo_paths($before);
+
+        $after = json_decode(
+            (string) ($row['submission_data'] ?? '{}'),
+            true
+        );
+
+        if (!is_array($after)) {
+            $after = [];
+        }
+
+        $afterPhotos = llama_place_submission_photo_paths($after);
+
+        llama_place_submission_history_append(
+            $db,
+            $submissionId,
+            [
+                'type' => 'resubmitted',
+                'by' => 'contributor',
+                'requested_changes' => $last['review_notes'] ?? null,
+                'changes' => llama_place_submission_diff(
+                    $before,
+                    $after
+                ),
+                'photos' => [
+                    'before_count' => count($beforePhotos),
+                    'after_count' => count($afterPhotos),
+                    'added' => array_values(
+                        array_diff($afterPhotos, $beforePhotos)
+                    ),
+                    'removed' => array_values(
+                        array_diff($beforePhotos, $afterPhotos)
+                    ),
+                ],
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
 
 function llama_place_submission_delete_unpublished(
@@ -516,27 +367,20 @@ function llama_place_submission_delete_unpublished(
 ): array {
     if (!$db->inTransaction()) {
         throw new RuntimeException(
-            'Deleting a Place submission requires an active database transaction.'
+            'Deleting a Place submission requires an active transaction.'
         );
     }
 
-    $stmt =
-        $db->prepare(
-            'SELECT *
-             FROM place_submissions
-             WHERE id = ?
-             LIMIT 1
-             FOR UPDATE'
-        );
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM place_submissions
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE'
+    );
 
-    $stmt->execute([
-        $submissionId,
-    ]);
-
-    $row =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
+    $stmt->execute([$submissionId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
         throw new RuntimeException(
@@ -546,26 +390,21 @@ function llama_place_submission_delete_unpublished(
 
     if (
         !empty($row['place_id'])
-        || (string) ($row['status'] ?? '')
-            === 'approved'
+        || (string) ($row['status'] ?? '') === 'approved'
     ) {
         throw new RuntimeException(
             'An approved Place submission cannot be deleted here.'
         );
     }
 
-    $delete =
-        $db->prepare(
-            'DELETE FROM place_submissions
-             WHERE id = ?
-               AND place_id IS NULL
-               AND status <> ?'
-        );
+    $delete = $db->prepare(
+        'DELETE FROM place_submissions
+         WHERE id = ?
+           AND place_id IS NULL
+           AND status <> "approved"'
+    );
 
-    $delete->execute([
-        $submissionId,
-        'approved',
-    ]);
+    $delete->execute([$submissionId]);
 
     if ($delete->rowCount() !== 1) {
         throw new RuntimeException(
@@ -576,37 +415,40 @@ function llama_place_submission_delete_unpublished(
     return $row;
 }
 
-function llama_place_submission_remove_files(
-    int $submissionId
-): void {
-    if ($submissionId < 1) {
-        return;
-    }
-
-    $path =
-        dirname(__DIR__)
+function llama_place_submission_remove_files(int $submissionId): void
+{
+    $path = dirname(__DIR__)
         . '/uploads/place-submissions/'
         . $submissionId;
 
-    if (
-        function_exists(
-            'moderation_remove_tree'
-        )
-    ) {
-        moderation_remove_tree(
-            $path
-        );
-
+    if (function_exists('moderation_remove_tree')) {
+        moderation_remove_tree($path);
         return;
     }
 
-    if (
-        function_exists(
-            'llama_place_report_delete_tree'
-        )
-    ) {
-        llama_place_report_delete_tree(
-            $path
-        );
+    if (!is_dir($path)) {
+        return;
     }
+
+    $items = scandir($path);
+
+    if (!is_array($items)) {
+        return;
+    }
+
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+
+        $target = $path . '/' . $item;
+
+        if (is_dir($target)) {
+            continue;
+        }
+
+        @unlink($target);
+    }
+
+    @rmdir($path);
 }
