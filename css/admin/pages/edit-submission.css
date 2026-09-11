@@ -1,0 +1,178 @@
+/* =========================================================
+   ADMIN: EDIT NEW PLACE SUBMISSION
+   ========================================================= */
+
+.moderator-submission-editor-intro {
+    margin-bottom: var(--admin-panel-gap);
+    padding: var(--admin-panel-padding);
+}
+
+.moderator-submission-editor-intro h2 {
+    margin: 10px 0 4px;
+}
+
+.moderator-submission-editor-intro p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.55;
+}
+
+.moderator-submission-editor-form {
+    display: grid;
+    gap: var(--admin-panel-gap);
+}
+
+.moderator-submission-editor-section > header {
+    padding: 15px 17px;
+    border-bottom: 1px solid var(--border);
+}
+
+.moderator-submission-editor-section > header h2,
+.moderator-submission-editor-section > header p {
+    margin: 0;
+}
+
+.moderator-submission-editor-section > header p {
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.moderator-submission-editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: var(--admin-panel-padding);
+}
+
+.moderator-submission-editor-grid label {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.moderator-submission-editor-grid label.is-wide {
+    grid-column: 1 / -1;
+}
+
+.moderator-submission-editor-grid label > span {
+    font-size: .72rem;
+    font-weight: 850;
+}
+
+.moderator-submission-editor-grid label > small {
+    color: var(--text-muted);
+    font-size: .58rem;
+    overflow-wrap: anywhere;
+}
+
+.moderator-submission-editor-grid input,
+.moderator-submission-editor-grid select,
+.moderator-submission-editor-grid textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.moderator-submission-editor-grid input,
+.moderator-submission-editor-grid select {
+    min-height: 42px;
+}
+
+.moderator-submission-editor-grid textarea {
+    resize: vertical;
+}
+
+.moderator-submission-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: var(--admin-panel-padding);
+}
+
+.moderator-submission-photo {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.moderator-submission-photo img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.moderator-submission-photo span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .7rem;
+    font-weight: 750;
+}
+
+.moderator-submission-editor-section
+[data-photo-uploader] {
+    padding: var(--admin-panel-padding);
+    border-top: 1px solid var(--border);
+}
+
+.moderator-submission-editor-actions {
+    position: sticky;
+    bottom: 10px;
+    z-index: 20;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    padding: 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: color-mix(
+        in srgb,
+        var(--surface) 94%,
+        transparent
+    );
+
+    backdrop-filter: blur(10px);
+}
+
+@media (max-width: 760px) {
+    .moderator-submission-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .moderator-submission-editor-grid label.is-wide {
+        grid-column: auto;
+    }
+
+    .moderator-submission-photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .moderator-submission-editor-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .moderator-submission-editor-actions .admin-button {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 440px) {
+    .moderator-submission-photo-grid {
+        grid-template-columns: 1fr;
+    }
+}
