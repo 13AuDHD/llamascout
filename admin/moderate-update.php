@@ -6,21 +6,26 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
 
+
 $adminUser =
     moderation_require_admin();
 
-$db = db();
+$db =
+    db();
 
 $csrfToken =
     moderation_csrf_token();
 
+
 require_once __DIR__
     . '/_dashboard.php';
+
 
 $stats =
     admin_dashboard_stats(
         $db
     );
+
 
 $adminNavCounts = [
     'new_places' =>
@@ -38,6 +43,7 @@ $adminNavCounts = [
     'scout_reviews' =>
         $stats['scout_reviews'],
 ];
+
 
 $adminPageTitle =
     'Review Place Update';
@@ -62,6 +68,7 @@ $item =
         $db,
         $updateId
     );
+
 
 $error = '';
 
@@ -125,6 +132,7 @@ if (
                 ?? ''
             );
 
+
         $notes =
             trim(
                 (string) (
@@ -148,12 +156,6 @@ if (
          * =================================================
          * APPROVE
          * =================================================
-         *
-         * Approval now uses the shared Place Report schema
-         * through app/place-update.php.
-         *
-         * Do not route approval back through the older
-         * moderation_approve_update() field-definition list.
          */
 
         if ($action === 'approve') {
@@ -348,10 +350,6 @@ if (
     }
 
 
-    /*
-     * Reload after unsuccessful POST so the page represents
-     * the current database state.
-     */
     $item =
         moderation_update(
             $db,
@@ -404,12 +402,75 @@ $updatePointValue =
     );
 
 
-/*
- * Definitions now come from the shared Place Report schema.
- */
 $definitions =
     llama_place_update_definitions();
 
+
+/*
+ * =========================================================
+ * REVISION HISTORY AND ANSWER STATE
+ * =========================================================
+ */
+
+$historyRow =
+    llama_place_update_fetch_row(
+        $db,
+        $updateId
+    );
+
+
+$history =
+    $historyRow
+        ? llama_place_update_history(
+            $historyRow
+        )
+        : [];
+
+
+/*
+ * Explicit Unknown values from the contributor's latest
+ * submitted revision.
+ */
+$latestUnknownFields =
+    $historyRow
+        ? llama_place_update_latest_unknown_fields(
+            $historyRow
+        )
+        : [];
+
+
+$latestUnknownLookup =
+    array_fill_keys(
+        $latestUnknownFields,
+        true
+    );
+
+
+/*
+ * Explicit Unknown values currently published on the Place.
+ *
+ * These are used when displaying the "Current when submitted"
+ * side of a comparison.
+ */
+$publishedUnknownFields =
+    llama_place_report_published_answer_state(
+        $db,
+        (int) $item['place_id']
+    );
+
+
+$publishedUnknownLookup =
+    array_fill_keys(
+        $publishedUnknownFields,
+        true
+    );
+
+
+/*
+ * =========================================================
+ * GROUP CHANGES
+ * =========================================================
+ */
 
 $groupedChanges = [];
 
@@ -439,6 +500,9 @@ foreach (
 
             'group' =>
                 'Other',
+
+            'key' =>
+                '',
         ];
 
 
@@ -479,26 +543,6 @@ foreach (
 
 /*
  * =========================================================
- * REVISION HISTORY
- * =========================================================
- */
-
-$historyRow =
-    llama_place_update_fetch_row(
-        $db,
-        $updateId
-    );
-
-$history =
-    $historyRow
-        ? llama_place_update_history(
-            $historyRow
-        )
-        : [];
-
-
-/*
- * =========================================================
  * HELPERS
  * =========================================================
  */
@@ -522,6 +566,7 @@ $formatTime =
                 (string) $value
             );
 
+
         if ($value === '') {
             return '';
         }
@@ -535,6 +580,21 @@ $formatTime =
                     $value
                 )
                 : $value;
+    };
+
+
+$fieldKeyForPath =
+    static function (
+        string $path
+    ) use (
+        $definitions
+    ): string {
+
+        return
+            (string) (
+                $definitions[$path]['key']
+                ?? ''
+            );
     };
 ?>
 
@@ -735,6 +795,7 @@ $formatTime =
                     $definition =
                         $change['definition'];
 
+
                     $label =
                         (string) (
                             $definition['label']
@@ -742,10 +803,47 @@ $formatTime =
                         );
 
 
+                    $fieldKey =
+                        (string) (
+                            $definition['key']
+                            ?? ''
+                        );
+
+
+                    /*
+                     * A null original is Unknown only when the
+                     * published Place explicitly says it is Unknown.
+                     */
+                    $oldExplicitUnknown =
+                        $change['old'] === null
+                        && $fieldKey !== ''
+                        && isset(
+                            $publishedUnknownLookup[
+                                $fieldKey
+                            ]
+                        );
+
+
+                    /*
+                     * A null proposed value is Unknown only when
+                     * this contributor revision explicitly contains
+                     * that field in unknown_fields.
+                     */
+                    $newExplicitUnknown =
+                        $change['new'] === null
+                        && $fieldKey !== ''
+                        && isset(
+                            $latestUnknownLookup[
+                                $fieldKey
+                            ]
+                        );
+
+
                     $oldDisplay =
                         llama_place_update_display_value(
                             $path,
-                            $change['old']
+                            $change['old'],
+                            $oldExplicitUnknown
                         );
 
 
@@ -753,7 +851,7 @@ $formatTime =
                         llama_place_update_display_value(
                             $path,
                             $change['new'],
-                            $change['new'] === null
+                            $newExplicitUnknown
                         );
 
                     ?>
@@ -851,6 +949,17 @@ $formatTime =
         <div class="admin-update-timeline">
 
 
+            <?php
+
+            /*
+             * Tracks the explicit Unknown state of the previous
+             * contributor revision while walking the timeline.
+             */
+            $historyContributorUnknownLookup = [];
+
+            ?>
+
+
             <?php foreach (
                 $history
                 as $event
@@ -858,6 +967,11 @@ $formatTime =
 
 
                 <?php
+
+                if (!is_array($event)) {
+                    continue;
+                }
+
 
                 $type =
                     (string) (
@@ -916,6 +1030,51 @@ $formatTime =
                         default =>
                             'fa-circle',
                     };
+
+
+                /*
+                 * Explicit Unknown state belonging to this
+                 * contributor revision.
+                 */
+                $eventUnknownFields =
+                    is_array(
+                        $event['unknown_fields']
+                        ?? null
+                    )
+                        ? array_values(
+                            array_filter(
+                                array_map(
+                                    static fn (
+                                        mixed $value
+                                    ): string =>
+                                        trim(
+                                            (string) $value
+                                        ),
+                                    $event['unknown_fields']
+                                ),
+                                static fn (
+                                    string $value
+                                ): bool =>
+                                    $value !== ''
+                            )
+                        )
+                        : [];
+
+
+                $eventUnknownLookup =
+                    array_fill_keys(
+                        $eventUnknownFields,
+                        true
+                    );
+
+
+                /*
+                 * On a resubmission, this represents the answer
+                 * state of the proposal before the contributor
+                 * changed it.
+                 */
+                $beforeEventUnknownLookup =
+                    $historyContributorUnknownLookup;
 
                 ?>
 
@@ -1017,6 +1176,15 @@ $formatTime =
 
                                         <?php
 
+                                        if (
+                                            !is_array(
+                                                $difference
+                                            )
+                                        ) {
+                                            continue;
+                                        }
+
+
                                         $definition =
                                             $definitions[$path]
                                             ?? [];
@@ -1029,14 +1197,54 @@ $formatTime =
                                             );
 
 
+                                        $fieldKey =
+                                            (string) (
+                                                $definition['key']
+                                                ?? ''
+                                            );
+
+
+                                        $beforeWasUnknown =
+                                            !empty(
+                                                $difference['before_present']
+                                            )
+                                            && (
+                                                $difference['before']
+                                                ?? null
+                                            ) === null
+                                            && $fieldKey !== ''
+                                            && isset(
+                                                $beforeEventUnknownLookup[
+                                                    $fieldKey
+                                                ]
+                                            );
+
+
+                                        $afterWasUnknown =
+                                            !empty(
+                                                $difference['after_present']
+                                            )
+                                            && (
+                                                $difference['after']
+                                                ?? null
+                                            ) === null
+                                            && $fieldKey !== ''
+                                            && isset(
+                                                $eventUnknownLookup[
+                                                    $fieldKey
+                                                ]
+                                            );
+
+
                                         $beforeText =
                                             !empty(
                                                 $difference['before_present']
                                             )
                                                 ? llama_place_update_display_value(
                                                     $path,
-                                                    $difference['before'],
-                                                    $difference['before'] === null
+                                                    $difference['before']
+                                                        ?? null,
+                                                    $beforeWasUnknown
                                                 )
                                                 : 'Not previously proposed';
 
@@ -1047,8 +1255,9 @@ $formatTime =
                                             )
                                                 ? llama_place_update_display_value(
                                                     $path,
-                                                    $difference['after'],
-                                                    $difference['after'] === null
+                                                    $difference['after']
+                                                        ?? null,
+                                                    $afterWasUnknown
                                                 )
                                                 : 'Removed from proposal';
 
@@ -1144,6 +1353,29 @@ $formatTime =
                 </article>
 
 
+                <?php
+
+                /*
+                 * Only contributor submissions establish a new
+                 * proposed answer-state snapshot.
+                 */
+                if (
+                    in_array(
+                        $type,
+                        [
+                            'submitted',
+                            'resubmitted',
+                        ],
+                        true
+                    )
+                ) {
+                    $historyContributorUnknownLookup =
+                        $eventUnknownLookup;
+                }
+
+                ?>
+
+
             <?php endforeach; ?>
 
 
@@ -1211,9 +1443,14 @@ $formatTime =
                             $photoUrl
                         ) ?>"
                         alt="<?= moderation_e(
-                            $photo['alt']
-                            ?? ''
+                            is_array($photo)
+                                ? (
+                                    $photo['alt']
+                                    ?? ''
+                                )
+                                : ''
                         ) ?>"
+                        loading="lazy"
                     >
 
 
