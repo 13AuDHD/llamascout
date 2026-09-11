@@ -428,8 +428,9 @@ $history =
 
 
 /*
- * Explicit Unknown values from the contributor's latest
- * submitted revision.
+ * Answer state from the contributor's latest revision.
+ *
+ * These are FIELD KEYS, not database paths.
  */
 $latestUnknownFields =
     $historyRow
@@ -447,21 +448,23 @@ $latestUnknownLookup =
 
 
 /*
- * Explicit Unknown values currently published on the Place.
+ * Answer state from the exact published snapshot that the
+ * contributor compared against when making this update.
  *
- * These are used when displaying the "Current when submitted"
- * side of a comparison.
+ * This must NOT be read from the live Place here, because the
+ * live Place may have changed after submission.
  */
-$publishedUnknownFields =
-    llama_place_report_published_answer_state(
-        $db,
-        (int) $item['place_id']
-    );
+$originalUnknownFields =
+    $historyRow
+        ? llama_place_update_latest_original_unknown_fields(
+            $historyRow
+        )
+        : [];
 
 
-$publishedUnknownLookup =
+$originalUnknownLookup =
     array_fill_keys(
-        $publishedUnknownFields,
+        $originalUnknownFields,
         true
     );
 
@@ -582,20 +585,6 @@ $formatTime =
                 : $value;
     };
 
-
-$fieldKeyForPath =
-    static function (
-        string $path
-    ) use (
-        $definitions
-    ): string {
-
-        return
-            (string) (
-                $definitions[$path]['key']
-                ?? ''
-            );
-    };
 ?>
 
 
@@ -811,23 +800,22 @@ $fieldKeyForPath =
 
 
                     /*
-                     * A null original is Unknown only when the
-                     * published Place explicitly says it is Unknown.
+                     * Original display is based on the answer-state
+                     * snapshot captured when this revision was made.
                      */
                     $oldExplicitUnknown =
                         $change['old'] === null
                         && $fieldKey !== ''
                         && isset(
-                            $publishedUnknownLookup[
+                            $originalUnknownLookup[
                                 $fieldKey
                             ]
                         );
 
 
                     /*
-                     * A null proposed value is Unknown only when
-                     * this contributor revision explicitly contains
-                     * that field in unknown_fields.
+                     * Proposed display is based on the contributor's
+                     * proposed answer-state snapshot.
                      */
                     $newExplicitUnknown =
                         $change['new'] === null
@@ -872,7 +860,7 @@ $fieldKeyForPath =
                             <div class="is-before">
 
                                 <span>
-                                    Current when submitted
+                                    Original when submitted
                                 </span>
 
                                 <strong>
@@ -952,10 +940,11 @@ $fieldKeyForPath =
             <?php
 
             /*
-             * Tracks the explicit Unknown state of the previous
-             * contributor revision while walking the timeline.
+             * Track the previous contributor revision while walking
+             * forward through history.
              */
-            $historyContributorUnknownLookup = [];
+            $historyContributorUnknownLookup =
+                [];
 
             ?>
 
@@ -1032,10 +1021,6 @@ $fieldKeyForPath =
                     };
 
 
-                /*
-                 * Explicit Unknown state belonging to this
-                 * contributor revision.
-                 */
                 $eventUnknownFields =
                     is_array(
                         $event['unknown_fields']
@@ -1068,11 +1053,6 @@ $fieldKeyForPath =
                     );
 
 
-                /*
-                 * On a resubmission, this represents the answer
-                 * state of the proposal before the contributor
-                 * changed it.
-                 */
                 $beforeEventUnknownLookup =
                     $historyContributorUnknownLookup;
 
@@ -1356,8 +1336,8 @@ $fieldKeyForPath =
                 <?php
 
                 /*
-                 * Only contributor submissions establish a new
-                 * proposed answer-state snapshot.
+                 * Only contributor submissions establish the
+                 * next proposal-state snapshot.
                  */
                 if (
                     in_array(
