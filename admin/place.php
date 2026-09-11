@@ -889,7 +889,7 @@ $placeReportShowLocate =
     true;
 
 $placeReportShowNameSuggestion =
-    false;
+    true;
 
 $placeReportPhotoEndpoint =
     '/photo-upload.php';
@@ -1933,7 +1933,7 @@ $placeReportPhotoHelp =
                                 <strong>
                                     <?= $e(
                                         ($entry['old_status'] ?? 'New')
-                                        . ' → '
+                                        . ' â '
                                         . ($entry['new_status'] ?? '')
                                     ) ?>
                                 </strong>
@@ -2163,6 +2163,7 @@ $placeReportPhotoHelp =
 
 
 <script src="https://llamascout.com/js/add-place-location.js"></script>
+<script src="https://llamascout.com/js/add-place-name.js"></script>
 <script src="https://llamascout.com/js/place-report-form.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
 
