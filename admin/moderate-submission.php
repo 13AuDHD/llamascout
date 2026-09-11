@@ -12,6 +12,9 @@ require_once dirname(__DIR__)
     . '/app/place-report.php';
 
 require_once dirname(__DIR__)
+    . '/app/place-submission-history.php';
+
+require_once dirname(__DIR__)
     . '/app/points.php';
 
 $adminUser =
@@ -121,6 +124,52 @@ if (
                 )
             );
 
+        if ($action === 'delete') {
+            $db->beginTransaction();
+
+            $deletedSubmission =
+                llama_place_submission_delete_unpublished(
+                    $db,
+                    $submissionId
+                );
+
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) $deletedSubmission['user_id'],
+                'place.submission_deleted',
+                'Deleted new Place submission #'
+                . $submissionId
+                . '.',
+                [
+                    'submission_id' =>
+                        $submissionId,
+                    'place_name' =>
+                        (string) (
+                            $deletedSubmission['place_name']
+                            ?? ''
+                        ),
+                    'status' =>
+                        (string) (
+                            $deletedSubmission['status']
+                            ?? ''
+                        ),
+                ]
+            );
+
+            $db->commit();
+
+            llama_place_submission_remove_files(
+                $submissionId
+            );
+
+            header(
+                'Location: /submissions.php?deleted=1'
+            );
+
+            exit;
+        }
+
         $currentData =
             is_array(
                 $item['data']
@@ -164,6 +213,14 @@ if (
                     $_POST['publish_status']
                     ?? 'active'
                 );
+
+            llama_place_submission_record_terminal_review(
+                $db,
+                $submissionId,
+                (int) $adminUser['id'],
+                'approved',
+                $notes
+            );
 
             $placeId =
                 moderation_approve_new_place(
@@ -231,6 +288,24 @@ if (
                     $action === 'needs-changes'
                         ? 'Add clear review notes explaining what the contributor needs to change.'
                         : 'Add review notes explaining why the submission was not approved.'
+                );
+            }
+
+            if ($action === 'needs-changes') {
+                llama_place_submission_record_change_request(
+                    $db,
+                    $submissionId,
+                    (int) $adminUser['id'],
+                    $notes,
+                    $currentData
+                );
+            } else {
+                llama_place_submission_record_terminal_review(
+                    $db,
+                    $submissionId,
+                    (int) $adminUser['id'],
+                    'rejected',
+                    $notes
                 );
             }
 
@@ -319,6 +394,23 @@ if (
             $db,
             $submissionId
         );
+}
+
+try {
+    llama_place_submission_capture_resubmission_if_needed(
+        $db,
+        $submissionId,
+        $item
+    );
+} catch (Throwable $historyException) {
+    llama_log_caught_exception(
+        $historyException,
+        'admin.moderate_submission.history_capture',
+        [
+            'submission_id' =>
+                $submissionId,
+        ]
+    );
 }
 
 require __DIR__
@@ -432,6 +524,11 @@ $placeReportReadMode =
     </p>
 </div>
 
+<?php
+require __DIR__
+    . '/_moderation-submission-history.php';
+?>
+
 <section
     class="admin-moderation-detail admin-moderation-review-readiness"
 >
@@ -518,11 +615,26 @@ $placeReportReadMode =
                     llama_place_report_photo_path(
                         $photo
                     );
-                
+
                 $photoUrl =
-                    llama_place_report_photo_url(
-                        $photo
-                    );
+                    function_exists(
+                        'llama_place_report_photo_url'
+                    )
+                        ? llama_place_report_photo_url(
+                            $photo
+                        )
+                        : (
+                            preg_match(
+                                '#^https?://#i',
+                                $src
+                            )
+                                ? $src
+                                : 'https://llamascout.com/'
+                                    . ltrim(
+                                        $src,
+                                        '/'
+                                    )
+                        );
                 ?>
 
                 <?php if ($src !== ''): ?>
@@ -545,81 +657,17 @@ require __DIR__
     . '/_moderation-new-place-points.php';
 ?>
 
-<div class="admin-moderation-detail">
-    <h2>Decision</h2>
+<?php
+require __DIR__
+    . '/_moderation-submission-decision.php';
+?>
 
-    <form
-        method="post"
-        class="admin-moderation-form"
-    >
-        <input
-            type="hidden"
-            name="id"
-            value="<?= $submissionId ?>"
-        >
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/admin/pages/moderate-submission-history.css"
+>
 
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= moderation_e(
-                $csrfToken
-            ) ?>"
-        >
-
-        <label>
-            Publish status
-
-            <select name="publish_status">
-                <option value="active">
-                    Active
-                </option>
-
-                <option value="featured">
-                    Featured
-                </option>
-            </select>
-        </label>
-
-        <label>
-            Review notes
-
-            <textarea
-                name="review_notes"
-                rows="5"
-                placeholder="Required when not approving. Also useful for documenting anything you corrected or verified."
-            ></textarea>
-        </label>
-
-        <div class="admin-moderation-actions">
-            <button
-                class="admin-moderation-button is-primary"
-                type="submit"
-                name="action"
-                value="approve"
-            >
-                Approve and Publish
-            </button>
-
-            <button
-                class="admin-moderation-button is-warning"
-                type="submit"
-                name="action"
-                value="needs-changes"
-            >
-                Request Changes
-            </button>
-
-            <button
-                class="admin-moderation-button is-danger"
-                type="submit"
-                name="action"
-                value="rejected"
-            >
-                Not Approved
-            </button>
-        </div>
-    </form>
-</div>
+<script src="https://llamascout.com/js/admin/moderate-submission.js"></script>
 
 <?php
 require __DIR__

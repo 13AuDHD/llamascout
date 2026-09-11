@@ -19,9 +19,7 @@ declare(strict_types=1);
         <input
             type="hidden"
             name="csrf_token"
-            value="<?= moderation_e(
-                $csrfToken
-            ) ?>"
+            value="<?= moderation_e($csrfToken) ?>"
         >
 
         <div class="admin-submission-publish-row">
@@ -29,13 +27,8 @@ declare(strict_types=1);
                 Publish status
 
                 <select name="publish_status">
-                    <option value="active">
-                        Active
-                    </option>
-
-                    <option value="featured">
-                        Featured
-                    </option>
+                    <option value="active">Active</option>
+                    <option value="featured">Featured</option>
                 </select>
             </label>
 
