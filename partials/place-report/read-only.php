@@ -18,6 +18,13 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
+?>
+<link
+    rel="stylesheet"
+    href="/css/site/features/scout-warning-compact.css"
+>
+<?php
+
 $e = static fn (mixed $value): string =>
     htmlspecialchars(
         (string) $value,
@@ -52,6 +59,12 @@ $renderValue =
 
         $type =
             (string) $field['type'];
+
+        $icon =
+            llama_place_report_field_icon(
+                $key,
+                $field
+            );
 
         $isAnsweredRating =
             $type === 'rating'
@@ -118,6 +131,14 @@ $renderValue =
                 </div>
 
             <?php else: ?>
+                <?php
+                $icon =
+                    llama_place_report_field_icon(
+                        $key,
+                        $field
+                    );
+                ?>
+            
                 <div class="scout-report-value-content">
                     <span>
                         <?= $e(
@@ -127,11 +148,15 @@ $renderValue =
                             )
                         ) ?>
                     </span>
-
+            
                     <strong><?= $e($value) ?></strong>
                 </div>
+            
+                <i
+                    class="fa-solid <?= $e($icon) ?> scout-report-value-icon"
+                    aria-hidden="true"
+                ></i>
             <?php endif; ?>
-
         </div>
         <?php
     };
@@ -182,7 +207,15 @@ if ($warnings):
         </p>
 
         <div class="scout-report-grid">
-            <?php foreach ($warnings as $field): ?>
+            <?php foreach ($warnings as $key => $field): ?>
+                <?php
+                $warningIcon =
+                    llama_place_report_field_icon(
+                        $key,
+                        $field
+                    );
+                ?>
+            
                 <div
                     class="scout-report-item scout-report-value-item scout-report-warning-item"
                 >
@@ -195,9 +228,14 @@ if ($warnings):
                                 )
                             ) ?>
                         </span>
-
+            
                         <strong>Warning</strong>
                     </div>
+            
+                    <i
+                        class="fa-solid <?= $e($warningIcon) ?> scout-report-value-icon"
+                        aria-hidden="true"
+                    ></i>
                 </div>
             <?php endforeach; ?>
         </div>
