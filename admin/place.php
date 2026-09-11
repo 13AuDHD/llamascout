@@ -5,9 +5,12 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
+require_once dirname(__DIR__) . '/app/place-report.php';
 require_once __DIR__ . '/_dashboard.php';
 
-$adminUser = moderation_require_admin();
+$adminUser =
+    moderation_require_admin();
+
 $db = db();
 
 $actorUserId =
@@ -25,6 +28,421 @@ if ($placeId < 1) {
     exit;
 }
 
+function admin_place_shared_report_data(
+    PDO $db,
+    int $placeId
+): array {
+    $place =
+        admin_place_get(
+            $db,
+            $placeId
+        );
+
+    if (!$place) {
+        throw new RuntimeException(
+            'Place not found.'
+        );
+    }
+
+    $place['amenities'] =
+        admin_place_row(
+            $db,
+            'place_amenities',
+            $placeId
+        );
+
+    $place['connectivity'] =
+        admin_place_row(
+            $db,
+            'place_connectivity',
+            $placeId
+        );
+
+    $place['details'] =
+        admin_place_row(
+            $db,
+            'place_details',
+            $placeId
+        );
+
+    $place['rules'] =
+        admin_place_row(
+            $db,
+            'place_rules',
+            $placeId
+        );
+
+    $place['experience'] =
+        admin_place_row(
+            $db,
+            'place_experience',
+            $placeId
+        );
+
+    $place['sensory'] = [
+        'daytime' =>
+            admin_place_sensory_period(
+                $db,
+                $placeId,
+                'daytime'
+            ),
+        'nighttime' =>
+            admin_place_sensory_period(
+                $db,
+                $placeId,
+                'nighttime'
+            ),
+    ];
+
+    $place['sensory_details'] =
+        admin_place_row(
+            $db,
+            'place_sensory_details',
+            $placeId
+        );
+
+    return
+        llama_place_report_data_from_published_place(
+            $place,
+            llama_place_report_published_answer_state(
+                $db,
+                $placeId
+            )
+        );
+}
+
+
+function admin_place_save_shared_report(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $input
+): array {
+    $place =
+        admin_place_get(
+            $db,
+            $placeId
+        );
+
+    if (!$place) {
+        throw new RuntimeException(
+            'Place not found.'
+        );
+    }
+
+    $baseData =
+        admin_place_shared_report_data(
+            $db,
+            $placeId
+        );
+
+    $reportData =
+        llama_place_report_build_data(
+            $input,
+            $baseData
+        );
+
+    $coreData = [
+        'name' =>
+            $reportData['name']
+            ?? $place['name']
+            ?? '',
+        'type' =>
+            $reportData['type']
+            ?? $place['type']
+            ?? 'other',
+        'slug' =>
+            trim(
+                (string) (
+                    $input['admin_slug']
+                    ?? $place['slug']
+                    ?? ''
+                )
+            ),
+        'source_type' =>
+            trim(
+                (string) (
+                    $input['admin_source_type']
+                    ?? $place['source_type']
+                    ?? 'llama-scouted'
+                )
+            ),
+        'description' =>
+            $reportData['description']
+            ?? null,
+        'public_summary' =>
+            trim(
+                (string) (
+                    $input['admin_public_summary']
+                    ?? $place['public_summary']
+                    ?? ''
+                )
+            ),
+        'public_location_label' =>
+            trim(
+                (string) (
+                    $input['admin_public_location_label']
+                    ?? $place['public_location_label']
+                    ?? ''
+                )
+            ),
+        'latitude' =>
+            $reportData['latitude']
+            ?? null,
+        'longitude' =>
+            $reportData['longitude']
+            ?? null,
+        'public_latitude' =>
+            $place['public_latitude']
+            ?? null,
+        'public_longitude' =>
+            $place['public_longitude']
+            ?? null,
+        'elevation_feet' =>
+            $reportData['elevation_feet']
+            ?? null,
+        'road' =>
+            $reportData['road']
+            ?? null,
+        'city' =>
+            $reportData['city']
+            ?? null,
+        'county' =>
+            $reportData['county']
+            ?? null,
+        'state' =>
+            $reportData['state']
+            ?? null,
+        'region' =>
+            $reportData['region']
+            ?? null,
+        'land_manager' =>
+            $reportData['land_manager']
+            ?? null,
+        'land_type' =>
+            $reportData['land_type']
+            ?? null,
+        'sensory_summary' =>
+            $reportData['sensory_summary']
+            ?? null,
+        'access_summary' =>
+            $reportData['access_summary']
+            ?? null,
+    ];
+
+    $amenities =
+        is_array(
+            $reportData['amenities']
+            ?? null
+        )
+            ? $reportData['amenities']
+            : [];
+
+    $connectivity =
+        is_array(
+            $reportData['connectivity']
+            ?? null
+        )
+            ? $reportData['connectivity']
+            : [];
+
+    $details =
+        is_array(
+            $reportData['details']
+            ?? null
+        )
+            ? $reportData['details']
+            : [];
+
+    $rules =
+        is_array(
+            $reportData['rules']
+            ?? null
+        )
+            ? $reportData['rules']
+            : [];
+
+    $experience =
+        is_array(
+            $reportData['experience']
+            ?? null
+        )
+            ? $reportData['experience']
+            : [];
+
+    $sensory =
+        is_array(
+            $reportData['sensory']
+            ?? null
+        )
+            ? $reportData['sensory']
+            : [];
+
+    $sensoryPayload =
+        is_array(
+            $sensory['details']
+            ?? null
+        )
+            ? $sensory['details']
+            : [];
+
+    foreach (
+        ['daytime', 'nighttime']
+        as $period
+    ) {
+        $periodData =
+            is_array(
+                $sensory[$period]
+                ?? null
+            )
+                ? $sensory[$period]
+                : [];
+
+        foreach (
+            [
+                'noise',
+                'traffic',
+                'crowds',
+                'privacy',
+                'light_pollution',
+                'sensory_comfort',
+                'social_interaction_likelihood',
+            ]
+            as $field
+        ) {
+            $sensoryPayload[
+                $period . '_' . $field
+            ] =
+                $periodData[$field]
+                ?? null;
+        }
+    }
+
+    $db->beginTransaction();
+
+    try {
+        admin_place_save_core(
+            $db,
+            $actorUserId,
+            $placeId,
+            $coreData
+        );
+
+        admin_place_save_amenities(
+            $db,
+            $actorUserId,
+            $placeId,
+            $amenities
+        );
+
+        admin_place_save_connectivity(
+            $db,
+            $actorUserId,
+            $placeId,
+            $connectivity
+        );
+
+        admin_place_save_details(
+            $db,
+            $actorUserId,
+            $placeId,
+            $details
+        );
+
+        admin_place_save_sensory_details(
+            $db,
+            $actorUserId,
+            $placeId,
+            $sensoryPayload
+        );
+
+        admin_place_save_rules(
+            $db,
+            $actorUserId,
+            $placeId,
+            $rules
+        );
+
+        admin_place_save_experience(
+            $db,
+            $actorUserId,
+            $placeId,
+            $experience
+        );
+
+        llama_place_report_publish_answer_state(
+            $db,
+            $placeId,
+            $reportData
+        );
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'place.shared_report_updated',
+            'Updated the shared Place Report.',
+            [
+                'place_id' =>
+                    $placeId,
+            ]
+        );
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+
+    return $reportData;
+}
+
+
+function admin_place_photo_url(
+    mixed $photo
+): string {
+    if (is_array($photo)) {
+        $src =
+            trim(
+                (string) (
+                    $photo['src']
+                    ?? $photo['path']
+                    ?? ''
+                )
+            );
+    } else {
+        $src =
+            trim(
+                (string) $photo
+            );
+    }
+
+    if ($src === '') {
+        return '';
+    }
+
+    if (
+        preg_match(
+            '#^https?://#i',
+            $src
+        )
+    ) {
+        return $src;
+    }
+
+    return
+        'https://llamascout.com/'
+        . ltrim(
+            $src,
+            '/'
+        );
+}
+
+
 $notice = '';
 $error = '';
 
@@ -32,7 +450,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
         !moderation_verify_csrf(
-            (string) ($_POST['csrf_token'] ?? '')
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            )
         )
     ) {
         $error =
@@ -45,41 +466,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ?? ''
                 );
 
-            if ($action === 'save-core') {
+            if ($action === 'save-report') {
 
-                admin_place_save_core(
+                admin_place_save_shared_report(
                     $db,
                     $actorUserId,
                     $placeId,
                     $_POST
                 );
 
+                $removePaths =
+                    is_array(
+                        $_POST['remove_existing_photos']
+                        ?? null
+                    )
+                        ? array_values(
+                            array_unique(
+                                array_filter(
+                                    array_map(
+                                        'strval',
+                                        $_POST['remove_existing_photos']
+                                    )
+                                )
+                            )
+                        )
+                        : [];
+
+                if ($removePaths) {
+                    foreach (
+                        admin_place_images(
+                            $db,
+                            $placeId
+                        )
+                        as $image
+                    ) {
+                        if (
+                            in_array(
+                                (string) ($image['src'] ?? ''),
+                                $removePaths,
+                                true
+                            )
+                        ) {
+                            admin_place_delete_image(
+                                $db,
+                                $actorUserId,
+                                $placeId,
+                                (int) $image['id']
+                            );
+                        }
+                    }
+                }
+
+                $photoToken =
+                    trim(
+                        (string) (
+                            $_POST['photo_stage_token']
+                            ?? ''
+                        )
+                    );
+
+                $newPhotos =
+                    llama_photo_decode_form_photos(
+                        $_POST['photos_json']
+                        ?? '[]'
+                    );
+
+                if ($newPhotos) {
+                    if ($photoToken === '') {
+                        throw new RuntimeException(
+                            'The photo upload session is missing. Upload the photos again.'
+                        );
+                    }
+
+                    admin_place_add_photos(
+                        $db,
+                        $actorUserId,
+                        $placeId,
+                        $photoToken,
+                        $newPhotos
+                    );
+                }
+
                 $notice =
-                    'Place details updated.';
-
-            } elseif ($action === 'save-amenities') {
-
-                admin_place_save_amenities(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Amenities updated.';
-
-            } elseif ($action === 'save-connectivity') {
-
-                admin_place_save_connectivity(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Connectivity updated.';
+                    'Place Report updated.';
 
             } elseif ($action === 'change-status') {
 
@@ -111,93 +580,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice =
                     'Verification added.';
-
-            } elseif ($action === 'save-details') {
-
-                admin_place_save_details(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Road, access, environment, and safety details updated.';
-
-            } elseif ($action === 'save-sensory') {
-
-                admin_place_save_sensory_details(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Sensory conditions updated.';
-
-            } elseif ($action === 'save-rules') {
-
-                admin_place_save_rules(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Rules and seasonal information updated.';
-
-            } elseif ($action === 'save-experience') {
-
-                admin_place_save_experience(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
-
-                $notice =
-                    'Experience ratings updated.';
-
-            } elseif ($action === 'add-photos') {
-
-                $photoToken = trim(
-                    (string) (
-                        $_POST['photo_stage_token']
-                        ?? ''
-                    )
-                );
-
-                $photos =
-                    llama_photo_decode_form_photos(
-                        $_POST['photos_json']
-                        ?? '[]'
-                    );
-
-                if (
-                    $photoToken === ''
-                    || !$photos
-                ) {
-                    throw new RuntimeException(
-                        'Choose at least one Place photo.'
-                    );
-                }
-
-                $count =
-                    admin_place_add_photos(
-                        $db,
-                        $actorUserId,
-                        $placeId,
-                        $photoToken,
-                        $photos
-                    );
-
-                $notice =
-                    $count === 1
-                        ? 'Place photo added.'
-                        : $count .
-                            ' Place photos added.';
 
             } elseif ($action === 'featured-image') {
 
@@ -289,6 +671,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
 
 $place =
     admin_place_get(
@@ -423,26 +806,16 @@ $operationalCounts =
         $placeId
     );
 
-$openReportsStmt =
-    $db->prepare(
-        'SELECT COUNT(*)
-         FROM place_reports
-         WHERE place_id = ?
-           AND status IN (
-                "open",
-                "investigating"
-           )'
-    );
-
-$openReportsStmt->execute([$placeId]);
-
-$openReports =
-    (int) $openReportsStmt->fetchColumn();
-
 $remainingPhotos =
     max(
         0,
         30 - count($images)
+    );
+
+$reportData =
+    admin_place_shared_report_data(
+        $db,
+        $placeId
     );
 
 $stats =
@@ -462,2604 +835,1564 @@ $adminPageTitle =
 $adminPageEyebrow =
     'Place Administration';
 
-$adminActiveNav = 'places';
+$adminActiveNav =
+    'places';
 
-$adminNeedsPhotoUploader = true;
+$adminNeedsPhotoUploader =
+    true;
 
-require __DIR__ . '/_header.php';
+require __DIR__
+    . '/_header.php';
 
-function admin_place_tri_option(
-    mixed $value,
-    mixed $current
-): string {
-    return (string) $value
-        === (string) $current
-            ? 'selected'
-            : '';
-}
-
-function admin_place_yes_no_options(
-    mixed $current
-): void {
-    ?>
-    <option
-        value=""
-        <?= $current === null
-            || $current === ''
-                ? 'selected'
-                : '' ?>
-    >
-        Unknown
-    </option>
-
-    <option
-        value="1"
-        <?= (string) $current === '1'
-            ? 'selected'
-            : '' ?>
-    >
-        Yes
-    </option>
-
-    <option
-        value="0"
-        <?= $current !== null
-            && $current !== ''
-            && (string) $current === '0'
-                ? 'selected'
-                : '' ?>
-    >
-        No
-    </option>
-    <?php
-}
-
-function admin_place_rating_options(
-    mixed $current
-): void {
-    ?>
-    <option
-        value=""
-        <?= $current === null
-            || $current === ''
-                ? 'selected'
-                : '' ?>
-    >
-        Unknown
-    </option>
-
-    <?php for ($i = 1; $i <= 5; $i++): ?>
-        <option
-            value="<?= $i ?>"
-            <?= (string) $current === (string) $i
-                ? 'selected'
-                : '' ?>
-        >
-            <?= $i ?>/5
-        </option>
-    <?php endfor; ?>
-    <?php
-}
-
-
-function admin_place_select_options(
-    array $options,
-    mixed $current,
-    bool $preserveLegacy = true
-): void {
-    $currentValue =
-        trim(
-            (string) (
-                $current
-                ?? ''
-            )
+$e =
+    static fn (mixed $value): string =>
+        htmlspecialchars(
+            (string) $value,
+            ENT_QUOTES,
+            'UTF-8'
         );
 
-    $normalized = [];
+$placeReportValues =
+    (
+        $_SERVER['REQUEST_METHOD'] === 'POST'
+        && ($action ?? '') === 'save-report'
+        && $error !== ''
+    )
+        ? $_POST
+        : llama_place_report_form_input_from_data(
+            $reportData
+        );
 
-    foreach ($options as $value => $label) {
-        $normalized[
-            (string) $value
-        ] =
-            (string) $label;
-    }
+$placeReportMode =
+    'moderator';
 
-    if (
-        $preserveLegacy
-        && $currentValue !== ''
-        && !array_key_exists(
-            $currentValue,
-            $normalized
+$placeReportExistingPhotos =
+    $images;
+
+$placeReportShowLocate =
+    true;
+
+$placeReportShowNameSuggestion =
+    false;
+
+$placeReportPhotoEndpoint =
+    '/photo-upload.php';
+
+$placeReportPhotoCsrf =
+    llama_photo_csrf_token();
+
+$placeReportPhotoMax =
+    max(
+        1,
+        min(
+            10,
+            $remainingPhotos > 0
+                ? $remainingPhotos
+                : 1
         )
-    ) {
-        $normalized =
-            [
-                $currentValue =>
-                    'Current value: ' .
-                    ucwords(
-                        str_replace(
-                            [
-                                '-',
-                                '_',
-                            ],
-                            ' ',
-                            $currentValue
-                        )
-                    ),
-            ]
-            +
-            $normalized;
-    }
+    );
 
-    foreach ($normalized as $value => $label) {
-        ?>
-        <option
-            value="<?= moderation_e($value) ?>"
-            <?= $currentValue === $value
-                ? 'selected'
-                : '' ?>
-        >
-            <?= moderation_e($label) ?>
-        </option>
-        <?php
-    }
-}
+$placeReportPhotoTitle =
+    'Place photos';
+
+$placeReportPhotoHelp =
+    $remainingPhotos > 0
+        ? 'Add up to '
+            . min(10, $remainingPhotos)
+            . ' new photos in this batch.'
+        : 'This Place already has the maximum of 30 photos.';
 ?>
 
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/site/pages/add-place.css"
+>
+
+<link
+    rel="stylesheet"
+    href="https://llamascout.com/css/site/features/place-report-form.css"
+>
+
+<style>
+.admin-place-shared-page {
+    display: grid;
+    gap: 20px;
+}
+
+.admin-place-summary,
+.admin-place-operations-strip,
+.admin-place-section-nav,
+.admin-place-admin-meta,
+.admin-place-report-shell,
+.admin-place-admin-section {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.admin-place-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    padding: 20px 22px;
+}
+
+.admin-place-summary-main {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+}
+
+.admin-place-summary-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-place-summary-heading p,
+.admin-place-summary-heading h2 {
+    margin: 0;
+}
+
+.admin-place-summary-heading p {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-status-pill {
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-summary-location {
+    color: var(--text-muted);
+}
+
+.admin-place-summary-actions {
+    flex: 0 0 auto;
+}
+
+.admin-place-operations-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+}
+
+.admin-place-operations-strip > div {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--background);
+}
+
+.admin-place-operations-strip span {
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-operations-strip strong {
+    font-size: .82rem;
+}
+
+.admin-place-operations-strip .is-good {
+    color: #55ad70;
+}
+
+.admin-place-section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    padding: 14px 18px;
+}
+
+.admin-place-section-nav a {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-place-section-nav a:hover,
+.admin-place-section-nav a:focus-visible {
+    color: var(--text);
+}
+
+.admin-place-admin-meta,
+.admin-place-report-shell,
+.admin-place-admin-section {
+    padding: 20px 22px;
+}
+
+.admin-place-admin-section > header,
+.admin-place-admin-meta > header,
+.admin-place-report-header {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.admin-place-admin-section > header p,
+.admin-place-admin-meta > header p,
+.admin-place-report-header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.admin-place-admin-section > header h2,
+.admin-place-admin-meta > header h2,
+.admin-place-report-header h2 {
+    margin: 0;
+}
+
+.admin-place-meta-grid,
+.admin-place-status-grid,
+.admin-place-verification-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-place-meta-grid label,
+.admin-place-status-grid label,
+.admin-place-verification-grid label,
+.admin-place-note-form label {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.admin-place-meta-grid label > span,
+.admin-place-status-grid label > span,
+.admin-place-verification-grid label > span,
+.admin-place-note-form label > span {
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.admin-place-meta-grid input,
+.admin-place-meta-grid select,
+.admin-place-meta-grid textarea,
+.admin-place-status-grid input,
+.admin-place-status-grid select,
+.admin-place-status-grid textarea,
+.admin-place-verification-grid input,
+.admin-place-verification-grid select,
+.admin-place-verification-grid textarea,
+.admin-place-note-form textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.admin-place-meta-wide,
+.admin-place-verification-wide,
+.admin-place-status-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-report-form {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-place-report-form .contribution-section {
+    background: var(--background);
+}
+
+.admin-place-report-form .contribution-section-body {
+    background: var(--surface);
+}
+
+.admin-place-report-form label:has(input[name="visited_at"]) {
+    display: none;
+}
+
+.admin-place-report-savebar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 50;
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+}
+
+.admin-place-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-place-photo-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.admin-place-photo-card img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+}
+
+.admin-place-photo-card-body {
+    display: grid;
+    gap: 9px;
+    padding: 10px;
+}
+
+.admin-place-photo-card-body form {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-place-photo-card-body input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-place-photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-place-note-list,
+.admin-place-history-list,
+.admin-place-verification-list {
+    display: grid;
+    gap: 9px;
+}
+
+.admin-place-note-card,
+.admin-place-history-card,
+.admin-place-verification-card {
+    display: grid;
+    gap: 5px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+}
+
+.admin-place-note-card header,
+.admin-place-history-card header,
+.admin-place-verification-card header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 14px;
+}
+
+.admin-place-muted {
+    color: var(--text-muted);
+    font-size: .7rem;
+}
+
+.admin-place-history-group + .admin-place-history-group {
+    margin-top: 18px;
+}
+
+.admin-place-history-group h3 {
+    margin: 0 0 9px;
+}
+
+.admin-place-empty {
+    padding: 14px;
+    border: 1px dashed var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 800px) {
+    .admin-place-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-place-operations-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-place-meta-grid,
+    .admin-place-status-grid,
+    .admin-place-verification-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-meta-wide,
+    .admin-place-verification-wide,
+    .admin-place-status-wide {
+        grid-column: auto;
+    }
+
+    .admin-place-photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-place-operations-strip,
+    .admin-place-photo-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 <?php if ($notice !== ''): ?>
-<div class="admin-user-notice is-success">
-    <?= moderation_e($notice) ?>
-</div>
+    <div class="admin-user-notice is-success">
+        <?= $e($notice) ?>
+    </div>
 <?php endif; ?>
 
 <?php if ($error !== ''): ?>
-<div class="admin-user-notice is-error">
-    <?= moderation_e($error) ?>
-</div>
+    <div class="admin-user-notice is-error">
+        <?= $e($error) ?>
+    </div>
 <?php endif; ?>
 
+<div class="admin-place-shared-page">
 
-<section class="admin-place-summary">
+    <section class="admin-place-summary">
+        <div class="admin-place-summary-main">
+            <div class="admin-place-summary-heading">
+                <p>Place #<?= (int) $place['id'] ?></p>
 
-<div>
+                <h2>
+                    <?= $e($place['name']) ?>
+                </h2>
 
-<div class="admin-place-summary-heading">
-    <p>
-        Place #<?= (int) $place['id'] ?>
-    </p>
+                <span class="admin-status-pill">
+                    <?= $e(
+                        ucfirst(
+                            (string) $place['status']
+                        )
+                    ) ?>
+                </span>
+            </div>
 
-    <h2>
-        <?= moderation_e(
-            (string) $place['name']
-        ) ?>
-    </h2>
+            <span class="admin-place-summary-location">
+                <?= $e(
+                    $place['public_location_label']
+                    ?: implode(
+                        ', ',
+                        array_filter(
+                            [
+                                $place['city']
+                                ?? null,
+                                $place['state']
+                                ?? null,
+                            ]
+                        )
+                    )
+                ) ?>
+            </span>
+        </div>
 
-    <span class="admin-status-pill">
-        <?= moderation_e(
-            ucfirst(
-                (string) $place['status']
-            )
-        ) ?>
-    </span>
-</div>
-
-<span>
-    <?= moderation_e(
-        (string) (
-            $place['public_location_label']
-            ?: implode(
-                ', ',
-                array_filter(
-                    [
-                        $place['city'],
-                        $place['state'],
-                    ]
+        <div class="admin-place-summary-actions">
+            <?php if (
+                in_array(
+                    (string) $place['status'],
+                    ['active', 'featured'],
+                    true
                 )
-            )
-        )
-    ) ?>
-</span>
-
-</div>
-
-
-<div class="admin-place-summary-actions">
-
-<?php if ($openReports > 0): ?>
-<a
-    class="admin-button admin-place-report-alert"
-    href="/reports.php?q=<?= rawurlencode((string) $place['name']) ?>"
->
-    <i
-        class="fa-solid fa-triangle-exclamation"
-        aria-hidden="true"
-    ></i>
-
-    <?= number_format($openReports) ?>
-    open report<?= $openReports === 1 ? '' : 's' ?>
-</a>
-<?php endif; ?>
-
-<?php if (
-    in_array(
-        (string) $place['status'],
-        ['active','featured'],
-        true
-    )
-): ?>
-<a
-    class="admin-button is-muted"
-    href="https://llamascout.com/place.php?slug=<?= rawurlencode(
-        (string) $place['slug']
-    ) ?>"
-    target="_blank"
-    rel="noopener"
->
-    View public Place
-</a>
-<?php endif; ?>
-
-</div>
-
-</section>
+            ): ?>
+                <a
+                    class="admin-button is-muted"
+                    href="https://llamascout.com/place.php?slug=<?= rawurlencode(
+                        (string) $place['slug']
+                    ) ?>"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    View public Place
+                </a>
+            <?php endif; ?>
+        </div>
+    </section>
 
 
-<section class="admin-place-operations-strip" aria-label="Place operational summary">
-
-<div>
-    <span>Scout status</span>
-    <strong class="<?= !empty($llamaScouted['ever_scouted']) ? 'is-good' : '' ?>">
-        <i
-            class="fa-solid <?= !empty($llamaScouted['ever_scouted']) ? 'fa-binoculars' : 'fa-circle-minus' ?>"
-            aria-hidden="true"
-        ></i>
-        <?= !empty($llamaScouted['ever_scouted'])
-            ? 'Llama Scouted'
-            : 'Not yet Llama Scouted' ?>
-    </strong>
-</div>
-
-<div>
-    <span>Contributions</span>
-    <strong><?= number_format((int) $operationalCounts['contributions']) ?></strong>
-</div>
-
-<div class="<?= (int) $operationalCounts['pending_updates'] > 0 ? 'has-attention' : '' ?>">
-    <span>Pending updates</span>
-    <strong><?= number_format((int) $operationalCounts['pending_updates']) ?></strong>
-</div>
-
-<div class="<?= (int) $operationalCounts['open_reports'] > 0 ? 'has-alert' : '' ?>">
-    <span>Open reports</span>
-    <strong><?= number_format((int) $operationalCounts['open_reports']) ?></strong>
-</div>
-
-<div>
-    <span>Photos</span>
-    <strong><?= number_format(count($images)) ?></strong>
-</div>
-
-<div>
-    <span>Verifications</span>
-    <strong><?= number_format((int) $operationalCounts['verifications']) ?></strong>
-</div>
-
-</section>
-
-
-<nav class="admin-place-section-nav">
-    <a href="#identity">Identity</a>
-    <a href="#location">Location</a>
-    <a href="#amenities">Amenities</a>
-    <a href="#connectivity">Connectivity</a>
-    <a href="#road-access">Road + Access</a>
-    <a href="#sensory-report">Sensory</a>
-    <a href="#rules">Rules + Seasons</a>
-    <a href="#experience">Experience</a>
-    <a href="#photos">Photos</a>
-    <a href="#notes">Notes</a>
-    <a href="#verification">Verification</a>
-    <a href="#status">Status</a>
-    <a href="#history">History</a>
-</nav>
-
-
-<div class="admin-place-editor-grid">
-
-<div class="admin-user-detail-main">
-
-<form method="post">
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-core">
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="identity"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Place</p>
-        <h2>Identity + Description</h2>
-    </div>
-</header>
-
-<div class="admin-user-form">
-
-<div class="admin-user-form-grid">
-
-<label>
-    <span>Name</span>
-    <input
-        id="admin-place-name"
-        type="text"
-        name="name"
-        value="<?= moderation_e(
-            (string) $place['name']
-        ) ?>"
-        required
+    <section
+        class="admin-place-operations-strip"
+        aria-label="Place operational summary"
     >
-</label>
+        <div>
+            <span>Scout status</span>
+
+            <strong class="<?= !empty($llamaScouted['ever_scouted']) ? 'is-good' : '' ?>">
+                <i
+                    class="fa-solid <?= !empty($llamaScouted['ever_scouted']) ? 'fa-binoculars' : 'fa-circle-minus' ?>"
+                    aria-hidden="true"
+                ></i>
+
+                <?= !empty($llamaScouted['ever_scouted'])
+                    ? 'Llama Scouted'
+                    : 'Not yet Llama Scouted' ?>
+            </strong>
+        </div>
+
+        <div>
+            <span>Contributions</span>
+            <strong><?= number_format((int) $operationalCounts['contributions']) ?></strong>
+        </div>
+
+        <div>
+            <span>Pending updates</span>
+            <strong><?= number_format((int) $operationalCounts['pending_updates']) ?></strong>
+        </div>
+
+        <div>
+            <span>Open reports</span>
+            <strong><?= number_format((int) $operationalCounts['open_reports']) ?></strong>
+        </div>
+
+        <div>
+            <span>Photos</span>
+            <strong><?= number_format(count($images)) ?></strong>
+        </div>
+
+        <div>
+            <span>Verifications</span>
+            <strong><?= number_format((int) $operationalCounts['verifications']) ?></strong>
+        </div>
+    </section>
+
+
+    <nav class="admin-place-section-nav">
+        <a href="#place-report">Place Report</a>
+        <a href="#photos">Photos</a>
+        <a href="#notes">Notes</a>
+        <a href="#verification">Verification</a>
+        <a href="#status">Status</a>
+        <a href="#history">History</a>
+    </nav>
 
-<label>
-    <span>Type</span>
-    <select
-        name="type"
-        required
-    >
-        <?php
-        admin_place_select_options(
-            community_place_types(),
-            $place['type'] ?? 'dispersed-camping'
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>URL slug</span>
-    <input
-        id="admin-place-slug"
-        type="text"
-        name="slug"
-        value="<?= moderation_e(
-            (string) $place['slug']
-        ) ?>"
-        required
-    >
-    <small>
-        Automatically generated from the Place name. You can edit it manually if needed.
-    </small>
-</label>
-
-<label>
-    <span>Record source</span>
-    <select name="source_type">
-        <?php foreach (
-            [
-                'llama-scouted' => 'Llama Scouted',
-                'community-scouted' => 'Community Scouted',
-                'external' => 'External source',
-                'legacy' => 'Legacy',
-            ]
-            as $value => $label
-        ): ?>
-            <option
-                value="<?= moderation_e($value) ?>"
-                <?= (string) $place['source_type'] === $value
-                    ? 'selected'
-                    : '' ?>
-            >
-                <?= moderation_e($label) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</label>
-
-<label class="is-wide">
-    <span>Full description (paid)</span>
-    <textarea
-        name="description"
-        rows="8"
-    ><?= moderation_e(
-        (string) ($place['description'] ?? '')
-    ) ?></textarea>
-</label>
-
-<label class="is-wide">
-    <span>Public summary / metadata note</span>
-    <textarea
-        name="public_summary"
-        rows="4"
-    ><?= moderation_e(
-        (string) ($place['public_summary'] ?? '')
-    ) ?></textarea>
-</label>
-
-<label class="is-wide">
-    <span>Sensory summary</span>
-    <textarea
-        name="sensory_summary"
-        rows="4"
-    ><?= moderation_e(
-        (string) ($place['sensory_summary'] ?? '')
-    ) ?></textarea>
-</label>
-
-<label class="is-wide">
-    <span>Access summary</span>
-    <textarea
-        name="access_summary"
-        rows="4"
-    ><?= moderation_e(
-        (string) ($place['access_summary'] ?? '')
-    ) ?></textarea>
-</label>
-
-</div>
-
-</div>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="location"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Coordinates + Land</p>
-        <h2>Location</h2>
-    </div>
-</header>
-
-<div class="admin-user-form">
-
-<div class="admin-user-form-grid">
-
-<label>
-    <span>Exact latitude</span>
-    <input
-        type="number"
-        step="0.0000001"
-        name="latitude"
-        value="<?= moderation_e(
-            (string) ($place['latitude'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Exact longitude</span>
-    <input
-        type="number"
-        step="0.0000001"
-        name="longitude"
-        value="<?= moderation_e(
-            (string) ($place['longitude'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Public latitude</span>
-    <input
-        type="number"
-        step="0.0000001"
-        name="public_latitude"
-        value="<?= moderation_e(
-            (string) ($place['public_latitude'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Public longitude</span>
-    <input
-        type="number"
-        step="0.0000001"
-        name="public_longitude"
-        value="<?= moderation_e(
-            (string) ($place['public_longitude'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label class="is-wide">
-    <span>Public location label</span>
-    <input
-        type="text"
-        name="public_location_label"
-        value="<?= moderation_e(
-            (string) ($place['public_location_label'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Elevation (feet)</span>
-    <input
-        type="number"
-        step="1"
-        name="elevation_feet"
-        value="<?= moderation_e(
-            (string) ($place['elevation_feet'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Road</span>
-    <input
-        type="text"
-        name="road"
-        value="<?= moderation_e(
-            (string) ($place['road'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>City / nearest town</span>
-    <input
-        type="text"
-        name="city"
-        value="<?= moderation_e(
-            (string) ($place['city'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>County</span>
-    <input
-        type="text"
-        name="county"
-        value="<?= moderation_e(
-            (string) ($place['county'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>State</span>
-    <input
-        type="text"
-        name="state"
-        value="<?= moderation_e(
-            (string) ($place['state'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Region</span>
-    <input
-        type="text"
-        name="region"
-        value="<?= moderation_e(
-            (string) ($place['region'] ?? '')
-        ) ?>"
-    >
-</label>
-
-<label>
-    <span>Land manager</span>
-    <select name="land_manager">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown / not sure',
-                'U.S. Forest Service' => 'U.S. Forest Service',
-                'Bureau of Land Management' => 'Bureau of Land Management (BLM)',
-                'National Park Service' => 'National Park Service',
-                'U.S. Fish and Wildlife Service' => 'U.S. Fish and Wildlife Service',
-                'U.S. Army Corps of Engineers' => 'U.S. Army Corps of Engineers',
-                'Bureau of Reclamation' => 'Bureau of Reclamation',
-                'State government' => 'State government',
-                'County / regional government' => 'County / regional government',
-                'City / municipal government' => 'City / municipal government',
-                'Tribal government' => 'Tribal government',
-                'Private' => 'Private',
-                'Other' => 'Other / mixed management',
-            ],
-            $place['land_manager'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Land type</span>
-    <select name="land_type">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown / not sure',
-                'National Forest' => 'National Forest',
-                'BLM Land' => 'BLM Land',
-                'National Park' => 'National Park',
-                'National Monument' => 'National Monument',
-                'National Recreation Area' => 'National Recreation Area',
-                'National Wildlife Refuge' => 'National Wildlife Refuge',
-                'State Forest' => 'State Forest',
-                'State Park' => 'State Park',
-                'State Trust Land' => 'State Trust Land',
-                'Wildlife Management Area' => 'Wildlife Management Area',
-                'County / Regional Park' => 'County / Regional Park',
-                'City / Municipal Land' => 'City / Municipal Land',
-                'Army Corps of Engineers' => 'Army Corps of Engineers',
-                'Bureau of Reclamation' => 'Bureau of Reclamation',
-                'Tribal Land' => 'Tribal Land',
-                'Private Land' => 'Private Land',
-                'Roadside / Highway Right-of-Way' => 'Roadside / Highway Right-of-Way',
-                'Other' => 'Other',
-            ],
-            $place['land_type'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-</div>
-
-
-<div class="admin-user-form-actions">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Save Place details
-    </button>
-</div>
-
-</div>
-
-</section>
-
-</form>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="amenities"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Public Data</p>
-        <h2>Amenities</h2>
-    </div>
-</header>
-
-<form
-    class="admin-place-compact-form"
-    method="post"
->
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-amenities">
-
-<div class="admin-place-tristate-grid">
-
-<?php foreach (
-    [
-        'toilets' => 'Toilets',
-        'potable_water' => 'Potable water',
-        'trash' => 'Trash',
-        'fire_ring' => 'Fire ring',
-        'picnic_table' => 'Picnic table',
-        'bear_box' => 'Bear box',
-        'showers' => 'Showers',
-        'electricity' => 'Electricity',
-        'dump_station' => 'Dump station',
-        'food_storage_required' => 'Food storage required',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-
-    <select name="<?= moderation_e($field) ?>">
-        <option
-            value=""
-            <?= !array_key_exists($field, $amenities)
-                || $amenities[$field] === null
-                    ? 'selected'
-                    : '' ?>
-        >
-            Unknown
-        </option>
-
-        <option
-            value="1"
-            <?= admin_place_tri_option(
-                1,
-                $amenities[$field] ?? null
-            ) ?>
-        >
-            Yes
-        </option>
-
-        <option
-            value="0"
-            <?= array_key_exists($field, $amenities)
-                && $amenities[$field] !== null
-                && (int) $amenities[$field] === 0
-                    ? 'selected'
-                    : '' ?>
-        >
-            No
-        </option>
-    </select>
-</label>
-<?php endforeach; ?>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Save amenities
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="connectivity"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Scout Report</p>
-        <h2>Connectivity</h2>
-    </div>
-</header>
-
-<form
-    class="admin-place-compact-form"
-    method="post"
->
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-connectivity">
-
-<div class="admin-place-rating-grid">
-
-<?php foreach (
-    [
-        'overall' => 'Overall',
-        't_mobile' => 'T-Mobile',
-        'verizon' => 'Verizon',
-        'att' => 'AT&T',
-        'other_cell' => 'Other cellular',
-        'starlink' => 'Starlink',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-
-    <select name="<?= moderation_e($field) ?>">
-        <?php
-        admin_place_rating_options(
-            $connectivity[$field] ?? null
-        );
-        ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-
-<label>
-    <span>Starlink tested</span>
-
-    <select name="starlink_tested">
-        <option
-            value=""
-            <?= !array_key_exists(
-                'starlink_tested',
-                $connectivity
-            ) || $connectivity['starlink_tested'] === null
-                ? 'selected'
-                : '' ?>
-        >
-            Unknown
-        </option>
-
-        <option
-            value="1"
-            <?= admin_place_tri_option(
-                1,
-                $connectivity['starlink_tested'] ?? null
-            ) ?>
-        >
-            Yes
-        </option>
-
-        <option
-            value="0"
-            <?= array_key_exists(
-                'starlink_tested',
-                $connectivity
-            )
-            && $connectivity['starlink_tested'] !== null
-            && (int) $connectivity['starlink_tested'] === 0
-                ? 'selected'
-                : '' ?>
-        >
-            No
-        </option>
-    </select>
-</label>
-
-<label class="is-wide">
-    <span>Starlink note</span>
-
-    <textarea
-        name="starlink_note"
-        rows="4"
-    ><?= moderation_e(
-        (string) (
-            $connectivity['starlink_note']
-            ?? ''
-        )
-    ) ?></textarea>
-</label>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Save connectivity
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="road-access"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Scout Report</p>
-        <h2>Road + Site Access</h2>
-    </div>
-</header>
-
-<form class="admin-place-compact-form" method="post">
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-details">
-
-<h3 class="admin-place-subsection-title">Site + Vehicle Fit</h3>
-
-<div class="admin-place-report-grid">
-
-<label>
-    <span>Vehicle capacity</span>
-    <select name="vehicle_capacity">
-        <?php
-        $vehicleCapacityOptions = [
-            '' => 'Unknown',
-        ];
-
-        for ($i = 1; $i <= 10; $i++) {
-            $vehicleCapacityOptions[
-                (string) $i
-            ] =
-                $i .
-                ' vehicle' .
-                ($i === 1 ? '' : 's');
-        }
-
-        $vehicleCapacityOptions['11'] =
-            '10+ vehicles';
-
-        admin_place_select_options(
-            $vehicleCapacityOptions,
-            $details['vehicle_capacity'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Maximum vehicle length</span>
-    <select name="max_vehicle_length_feet">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                '15' => 'About 15 ft',
-                '20' => 'About 20 ft',
-                '25' => 'About 25 ft',
-                '30' => 'About 30 ft',
-                '35' => 'About 35 ft',
-                '40' => 'About 40 ft',
-                '45' => 'About 45 ft',
-                '50' => 'About 50 ft',
-                '60' => '50+ ft',
-            ],
-            $details['max_vehicle_length_feet'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<?php foreach (
-    [
-        'tent_camping_suitable' => 'Tent camping suitable',
-        'rv_suitable' => 'RV suitable',
-        'trailer_suitable' => 'Trailer suitable',
-        'leveling_required' => 'Leveling required',
-        'turnaround_space' => 'Turnaround space',
-        'pull_through' => 'Pull-through',
-        'back_in' => 'Back-in',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label>
-    <span>Parking surface</span>
-    <select name="parking_surface">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'paved' => 'Paved / asphalt',
-                'concrete' => 'Concrete',
-                'graded-gravel' => 'Graded gravel',
-                'loose-gravel' => 'Loose gravel',
-                'hard-packed-dirt' => 'Hard-packed dirt',
-                'dirt' => 'Dirt',
-                'sand' => 'Sand',
-                'rock' => 'Rock / bedrock',
-                'grass' => 'Grass',
-                'mixed' => 'Mixed surface',
-            ],
-            $details['parking_surface'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Ground condition</span>
-    <select name="ground_condition">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'level-firm' => 'Mostly level and firm',
-                'uneven-firm' => 'Uneven but firm',
-                'rocky' => 'Rocky',
-                'soft' => 'Soft / sandy',
-                'mud-prone' => 'Mud-prone',
-                'grass' => 'Grassy',
-                'mixed' => 'Mixed',
-            ],
-            $details['ground_condition'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<?php foreach (
-    [
-        'levelness' => 'Levelness',
-        'site_open_sky' => 'Open sky',
-        'tree_cover' => 'Tree cover',
-        'site_shade' => 'Site shade',
-        'site_access_difficulty' => 'Site access difficulty',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-</div>
-
-
-<h3 class="admin-place-subsection-title">Road Conditions</h3>
-
-<div class="admin-place-report-grid">
-
-<?php foreach (
-    [
-        'road_overall_difficulty' => 'Overall road difficulty',
-        'road_difficulty' => 'Technical difficulty',
-        'road_stress' => 'Driver stress',
-        'rocks' => 'Rocks',
-        'washboards' => 'Washboards',
-        'potholes' => 'Potholes',
-        'mud_risk' => 'Mud risk',
-        'steep_grades' => 'Steep grades',
-        'drop_off_exposure' => 'Drop-off exposure',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label>
-    <span>Road surface</span>
-    <select name="road_surface">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'paved' => 'Paved / asphalt',
-                'concrete' => 'Concrete',
-                'graded-gravel' => 'Graded gravel',
-                'loose-gravel' => 'Loose gravel',
-                'hard-packed-dirt' => 'Hard-packed dirt',
-                'dirt' => 'Dirt',
-                'sand' => 'Sand',
-                'rock' => 'Rock / bedrock',
-                'mixed' => 'Mixed surface',
-            ],
-            $details['road_surface'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Road width</span>
-    <select name="road_width">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'one-lane' => 'One lane',
-                'one-and-half-lane' => 'About 1.5 lanes',
-                'two-lane' => 'Two lane',
-                'wide-two-lane' => 'Wide two lane',
-                'varies' => 'Varies significantly',
-            ],
-            $details['road_width'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<?php foreach (
-    [
-        'sedan_accessible' => 'Sedan accessible',
-        'high_clearance_recommended' => 'High clearance recommended',
-        'four_wheel_drive_recommended' => '4WD recommended',
-        'water_crossings' => 'Water crossings',
-        'downed_tree_risk' => 'Downed-tree risk',
-        'seasonal_closure' => 'Seasonal closure',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-</div>
-
-
-<h3 class="admin-place-subsection-title">Environment + Accessibility</h3>
-
-<div class="admin-place-report-grid">
-
-<?php foreach (
-    [
-        'forest' => 'Forest',
-        'mountains' => 'Mountains',
-        'water_nearby' => 'Water nearby',
-        'water_view' => 'Water view',
-        'mountain_view' => 'Mountain view',
-        'forest_view' => 'Forest view',
-        'wildlife' => 'Wildlife',
-        'bugs' => 'Bugs',
-        'wheelchair_friendly' => 'Wheelchair friendly',
-        'mobility_device_friendly' => 'Mobility-device friendly',
-        'flat_walking_surface' => 'Flat walking surface',
-        'step_free_access' => 'Step-free access',
-        'accessible_toilet' => 'Accessible toilet',
-        'accessible_picnic_table' => 'Accessible picnic table',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<?php foreach (
-    [
-        'wind_exposure' => 'Wind exposure',
-        'sun_exposure' => 'Sun exposure',
-        'environment_shade' => 'Environment shade',
-        'environment_open_sky' => 'Environment open sky',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label class="is-wide">
-    <span>Walking distance from vehicle</span>
-    <select name="walking_distance_from_vehicle">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'at-vehicle' => 'At / beside vehicle',
-                'under-50-ft' => 'Under 50 ft',
-                '50-100-ft' => '50-100 ft',
-                '100-250-ft' => '100-250 ft',
-                '250-500-ft' => '250-500 ft',
-                '500-plus-ft' => '500+ ft / short hike',
-            ],
-            $details['walking_distance_from_vehicle'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-</div>
-
-
-<h3 class="admin-place-subsection-title">Safety + Warnings</h3>
-
-<div class="admin-place-report-grid">
-
-<?php foreach (
-    [
-        'felt_safe_daytime' => 'Felt safe daytime',
-        'felt_safe_nighttime' => 'Felt safe nighttime',
-        'flash_flood_risk' => 'Flash-flood risk',
-        'wildfire_risk' => 'Wildfire risk',
-        'fall_hazard' => 'Fall hazard',
-        'cliff_exposure' => 'Cliff exposure',
-        'rockfall_risk' => 'Rockfall risk',
-        'wildlife_risk' => 'Wildlife risk',
-        'traffic_hazard' => 'Traffic hazard',
-        'emergency_access' => 'Emergency access',
-        'warning_exposed_to_road' => 'Warning: exposed to road',
-        'warning_zero_privacy' => 'Warning: zero privacy',
-        'warning_passing_vehicle_dust' => 'Warning: passing vehicle dust',
-        'warning_possible_downed_trees' => 'Warning: possible downed trees',
-        'warning_no_tent_camping' => 'Warning: no tent camping',
-        'warning_limited_vehicle_length' => 'Warning: limited vehicle length',
-        'warning_leveling_may_be_required' => 'Warning: leveling may be required',
-        'warning_no_amenities' => 'Warning: no amenities',
-        'warning_motorized_recreation_traffic' => 'Warning: motorized recreation traffic',
-        'warning_blind_turn_traffic_nearby' => 'Warning: blind-turn traffic nearby',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($details[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Save road + access report
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="sensory-report"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Scout Report</p>
-        <h2>Sensory Conditions</h2>
-    </div>
-</header>
-
-<form class="admin-place-compact-form" method="post">
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-sensory">
-
-<div class="admin-place-day-night-grid">
-
-<section>
-    <h3>Daytime</h3>
-
-    <div class="admin-place-report-grid">
-    <?php foreach (
-        [
-            'noise' => 'Noise',
-            'traffic' => 'Traffic',
-            'crowds' => 'Crowds',
-            'privacy' => 'Privacy',
-            'light_pollution' => 'Light pollution',
-            'sensory_comfort' => 'Sensory comfort',
-            'social_interaction_likelihood' => 'Social interaction likelihood',
-        ] as $field => $label
-    ): ?>
-        <label>
-            <span><?= moderation_e($label) ?></span>
-            <select name="daytime_<?= moderation_e($field) ?>">
-                <?php admin_place_rating_options($daytimeSensory[$field] ?? null); ?>
-            </select>
-        </label>
-    <?php endforeach; ?>
-    </div>
-</section>
-
-<section>
-    <h3>Nighttime</h3>
-
-    <div class="admin-place-report-grid">
-    <?php foreach (
-        [
-            'noise' => 'Noise',
-            'traffic' => 'Traffic',
-            'crowds' => 'Crowds',
-            'privacy' => 'Privacy',
-            'light_pollution' => 'Light pollution',
-            'sensory_comfort' => 'Sensory comfort',
-            'social_interaction_likelihood' => 'Social interaction likelihood',
-        ] as $field => $label
-    ): ?>
-        <label>
-            <span><?= moderation_e($label) ?></span>
-            <select name="nighttime_<?= moderation_e($field) ?>">
-                <?php admin_place_rating_options($nighttimeSensory[$field] ?? null); ?>
-            </select>
-        </label>
-    <?php endforeach; ?>
-    </div>
-</section>
-
-</div>
-
-
-<h3 class="admin-place-subsection-title">Specific Sensory Inputs</h3>
-
-<div class="admin-place-report-grid">
-
-<?php foreach (
-    [
-        'dust_from_traffic' => 'Dust from traffic',
-        'generator_noise' => 'Generator noise',
-        'aircraft_noise' => 'Aircraft noise',
-        'road_noise' => 'Road noise',
-        'human_activity' => 'Human activity',
-        'wildlife_noise' => 'Wildlife noise',
-        'wind_noise' => 'Wind noise',
-        'smoke_risk' => 'Smoke risk',
-        'strong_odors' => 'Strong odors',
-        'visual_exposure' => 'Visual exposure',
-        'predictability' => 'Predictability',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($sensoryDetails[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Save sensory report
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="rules"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Scout Report</p>
-        <h2>Rules + Seasonal Access</h2>
-    </div>
-</header>
-
-<form class="admin-place-compact-form" method="post">
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-rules">
-
-<div class="admin-place-report-grid">
-
-<label class="is-wide">
-    <span>Best months</span>
-    <select name="best_months">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                'year-round' => 'Year-round',
-                'spring' => 'Spring',
-                'summer' => 'Summer',
-                'fall' => 'Fall',
-                'winter' => 'Winter',
-                'spring-summer' => 'Spring through summer',
-                'summer-fall' => 'Summer through fall',
-                'late-spring-fall' => 'Late spring through fall',
-                'snow-free-months' => 'Generally snow-free months',
-            ],
-            $rules['best_months'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Winter access</span>
-    <select name="winter_access">
-        <?php admin_place_yes_no_options($rules['winter_access'] ?? null); ?>
-    </select>
-</label>
-
-<?php foreach (
-    [
-        'snow_risk' => 'Snow risk',
-        'mud_season_risk' => 'Mud-season risk',
-        'monsoon_risk' => 'Monsoon risk',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($rules[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label class="is-wide">
-    <span>Recommended travel season</span>
-    <input
-        type="text"
-        name="recommended_travel_season"
-        value="<?= moderation_e((string) ($rules['recommended_travel_season'] ?? '')) ?>"
-    >
-</label>
-
-<label class="is-wide">
-    <span>Seasonal access note</span>
-    <textarea name="seasonal_access_note" rows="4"><?= moderation_e((string) ($rules['seasonal_access_note'] ?? '')) ?></textarea>
-</label>
-
-<?php foreach (
-    [
-        'overnight_camping_allowed' => 'Overnight camping allowed',
-        'dispersed_camping_allowed' => 'Dispersed camping allowed',
-        'permit_required' => 'Permit required',
-        'campfire_allowed' => 'Campfire allowed',
-        'existing_sites_encouraged' => 'Existing sites encouraged',
-        'pack_it_in_pack_it_out' => 'Pack it in / pack it out',
-        'residential_use_prohibited' => 'Residential use prohibited',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($rules[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label>
-    <span>Stay limit</span>
-    <select name="stay_limit_days">
-        <?php
-        admin_place_select_options(
-            [
-                '' => 'Unknown',
-                '1' => '1 day',
-                '3' => '3 days',
-                '5' => '5 days',
-                '7' => '7 days',
-                '10' => '10 days',
-                '14' => '14 days',
-                '16' => '16 days',
-                '21' => '21 days',
-                '28' => '28 days',
-            ],
-            $rules['stay_limit_days'] ?? ''
-        );
-        ?>
-    </select>
-</label>
-
-<label>
-    <span>Maximum days per 60-day period</span>
-    <input type="number" min="0" step="1" name="maximum_days_per_60_day_period" value="<?= moderation_e((string) ($rules['maximum_days_per_60_day_period'] ?? '')) ?>">
-</label>
-
-<label>
-    <span>Move distance after stay (miles)</span>
-    <input type="number" min="0" step=".01" name="move_distance_after_stay_miles" value="<?= moderation_e((string) ($rules['move_distance_after_stay_miles'] ?? '')) ?>">
-</label>
-
-<label>
-    <span>Fee</span>
-    <input type="number" min="0" step=".01" name="fee" value="<?= moderation_e((string) ($rules['fee'] ?? '')) ?>">
-</label>
-
-<label class="is-wide">
-    <span>Current fire restrictions URL</span>
-    <input type="url" name="current_fire_restrictions_url" value="<?= moderation_e((string) ($rules['current_fire_restrictions_url'] ?? '')) ?>">
-</label>
-
-<label>
-    <span>Max distance from road (ft)</span>
-    <input type="number" min="0" step="1" name="vehicle_distance_from_road_max_feet" value="<?= moderation_e((string) ($rules['vehicle_distance_from_road_max_feet'] ?? '')) ?>">
-</label>
-
-<label>
-    <span>Minimum distance from water (ft)</span>
-    <input type="number" min="0" step="1" name="minimum_distance_from_water_feet" value="<?= moderation_e((string) ($rules['minimum_distance_from_water_feet'] ?? '')) ?>">
-</label>
-
-<?php foreach (
-    [
-        'nearest_town' => 'Nearest town',
-        'nearest_fuel' => 'Nearest fuel',
-        'nearest_grocery' => 'Nearest grocery',
-        'nearest_water' => 'Nearest water',
-        'nearest_toilet' => 'Nearest toilet',
-        'nearest_hospital' => 'Nearest hospital',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <input
-        type="text"
-        name="<?= moderation_e($field) ?>"
-        value="<?= moderation_e((string) ($rules[$field] ?? '')) ?>"
-    >
-</label>
-<?php endforeach; ?>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Save rules + seasons
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="experience"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Scout Report</p>
-        <h2>Experience + Recommendations</h2>
-    </div>
-</header>
-
-<form class="admin-place-compact-form" method="post">
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="save-experience">
-
-<div class="admin-place-report-grid">
-
-<?php foreach (
-    [
-        'sunrise_view' => 'Sunrise view',
-        'sunset_view' => 'Sunset view',
-        'mountain_view' => 'Mountain view',
-        'forest_view' => 'Forest view',
-        'night_sky' => 'Night sky',
-        'stargazing' => 'Stargazing',
-        'quiet_evening' => 'Quiet evening',
-        'overnight_comfort' => 'Overnight comfort',
-        'extended_stay_comfort' => 'Extended-stay comfort',
-        'sensory_retreat' => 'Sensory retreat',
-        'remote_work' => 'Remote work',
-        'overall_scenery' => 'Overall scenery',
-        'recommended_overnight_stop' => 'Recommended overnight stop',
-        'recommended_quiet_evening' => 'Recommended quiet evening',
-        'recommended_extended_stay' => 'Recommended extended stay',
-        'recommended_sensory_retreat' => 'Recommended sensory retreat',
-        'recommended_stargazing' => 'Recommended stargazing',
-        'recommended_remote_work' => 'Recommended remote work',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_rating_options($experience[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<?php foreach (
-    [
-        'recommended_solo_travel' => 'Recommended for solo travel',
-        'recommended_families' => 'Recommended for families',
-        'recommended_large_groups' => 'Recommended for large groups',
-    ] as $field => $label
-): ?>
-<label>
-    <span><?= moderation_e($label) ?></span>
-    <select name="<?= moderation_e($field) ?>">
-        <?php admin_place_yes_no_options($experience[$field] ?? null); ?>
-    </select>
-</label>
-<?php endforeach; ?>
-
-<label class="is-wide">
-    <span>Not recommended for</span>
-    <textarea
-        name="not_recommended_for"
-        rows="4"
-    ><?= moderation_e((string) ($experience['not_recommended_for'] ?? '')) ?></textarea>
-</label>
-
-</div>
-
-<div class="admin-user-form-actions">
-    <button class="admin-button" type="submit">
-        Save experience report
-    </button>
-</div>
-
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="photos"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Media</p>
-        <h2>Place Photos</h2>
-    </div>
-
-    <span>
-        <?= number_format(count($images)) ?>
-        of 30
-    </span>
-</header>
-
-<?php if ($images): ?>
-
-<div class="admin-place-image-grid">
-
-<?php foreach ($images as $image): ?>
-
-<article>
-
-<div class="admin-place-image-preview">
-
-<img
-    src="<?= moderation_e(
-        llama_photo_public_url(
-            (string) $image['src']
-        )
-    ) ?>"
-    alt="<?= moderation_e(
-        (string) (
-            $image['alt_text']
-            ?? ''
-        )
-    ) ?>"
-    loading="lazy"
->
-
-<?php if ((int) $image['is_featured'] === 1): ?>
-<span>Featured</span>
-<?php endif; ?>
-
-</div>
-
-<form
-    class="admin-place-image-meta-form"
-    method="post"
->
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="place_admin_action" value="save-image-meta">
-
-    <label>
-        <span>Caption / alt text</span>
-        <textarea
-            name="alt_text"
-            rows="2"
-            maxlength="500"
-        ><?= moderation_e((string) ($image['alt_text'] ?? '')) ?></textarea>
-    </label>
-
-    <label class="admin-place-image-order-field">
-        <span>Order</span>
-        <input
-            type="number"
-            name="sort_order"
-            min="0"
-            max="999"
-            value="<?= (int) ($image['sort_order'] ?? 0) ?>"
-        >
-    </label>
-
-    <button
-        class="admin-button is-muted"
-        type="submit"
-    >
-        Save photo details
-    </button>
-</form>
-
-<div class="admin-place-image-actions">
-
-<?php if ((int) $image['is_featured'] !== 1): ?>
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="place_admin_action" value="featured-image">
-
-    <button
-        class="admin-button is-muted"
-        type="submit"
-    >
-        Make featured
-    </button>
-</form>
-<?php endif; ?>
-
-<form method="post">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-    <input type="hidden" name="place_admin_action" value="delete-image">
-
-    <button
-        class="admin-button admin-commerce-delete-photo"
-        type="submit"
-    >
-        Delete
-    </button>
-</form>
-
-</div>
-
-</article>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php endif; ?>
-
-
-<?php if ($remainingPhotos > 0): ?>
-
-<form
-    class="admin-place-photo-upload"
-    method="post"
->
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="add-photos">
-<input type="hidden" name="photo_stage_token" value="">
-<input type="hidden" name="photos_json" value="[]">
-
-<div
-    data-photo-uploader
-    data-photo-context="add-place"
-    data-photo-max="<?= min(
-        10,
-        $remainingPhotos
-    ) ?>"
-    data-photo-csrf="<?= moderation_e(
-        llama_photo_csrf_token()
-    ) ?>"
-    data-photo-endpoint="/photo-upload.php"
-    data-photo-title="Add Place photos"
-    data-photo-help="Add up to <?= min(10, $remainingPhotos) ?> photos in this batch. They are cleaned, resized, and stripped of location metadata before permanent storage."
-></div>
-
-<div class="admin-user-form-actions">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Add photos
-    </button>
-</div>
-
-</form>
-
-<?php endif; ?>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="notes"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Field Context</p>
-        <h2>Place Notes</h2>
-    </div>
-
-    <span>
-        <?= number_format(count($placeNotes)) ?>
-    </span>
-</header>
-
-<?php if ($placeNotes): ?>
-
-<div class="admin-place-notes-list">
-
-<?php foreach ($placeNotes as $note): ?>
-
-<div>
-    <div>
-        <p><?= nl2br(moderation_e((string) $note['note'])) ?></p>
-        <span>
-            <?= moderation_e((string) $note['author_name']) ?>
-            &middot;
-            <?= moderation_e(
-                llama_format_viewer_datetime(
-                    (string) $note['created_at']
-                )
-            ) ?>
-        </span>
-    </div>
 
     <form
         method="post"
-        onsubmit="return confirm('Delete this Place note?');"
+        class="admin-place-report-form place-report-form"
+        id="place-report"
     >
-        <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-        <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-        <input type="hidden" name="note_id" value="<?= (int) $note['id'] ?>">
-        <input type="hidden" name="place_admin_action" value="delete-note">
-
-        <button
-            class="admin-icon-button is-danger"
-            type="submit"
-            aria-label="Delete note"
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= $e(
+                moderation_csrf_token()
+            ) ?>"
         >
-            <i class="fa-solid fa-trash" aria-hidden="true"></i>
-        </button>
-    </form>
-</div>
 
-<?php endforeach; ?>
+        <input
+            type="hidden"
+            name="place_id"
+            value="<?= $placeId ?>"
+        >
 
-</div>
+        <input
+            type="hidden"
+            name="place_admin_action"
+            value="save-report"
+        >
 
-<?php endif; ?>
-
-<form method="post" class="admin-place-add-note-form">
-    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-    <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-    <input type="hidden" name="place_admin_action" value="add-note">
-
-    <label>
-        <span>Add field / internal note</span>
-        <textarea
-            name="note"
-            rows="3"
-            maxlength="2000"
-            placeholder="Useful context that should remain attached to this Place record."
-        ></textarea>
-    </label>
-
-    <button class="admin-button" type="submit">
-        Add note
-    </button>
-</form>
-
-</section>
-
-
-<section
-    class="admin-panel admin-place-editor-section"
-    id="verification"
->
-
-<header class="admin-panel-header">
-    <div>
-        <p>Trust + Freshness</p>
-        <h2>Verification</h2>
-    </div>
-
-    <span>
-        Last verified:
-        <?= !empty($place['last_verified_at'])
-            ? moderation_e(
-                llama_format_viewer_datetime(
-                    (string) $place['last_verified_at']
+        <input
+            type="hidden"
+            name="photo_stage_token"
+            value="<?= $e(
+                (string) (
+                    $_POST['photo_stage_token']
+                    ?? ''
                 )
-            )
-            : 'Never' ?>
-    </span>
-</header>
+            ) ?>"
+        >
 
-<form
-    class="admin-place-verification-form"
-    method="post"
->
-
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="add-verification">
-
-<label>
-    <span>Verification type</span>
-    <select name="verification_type">
-        <option value="llama-scouted">Llama Scouted field visit</option>
-        <option value="official-source">Official source</option>
-        <option value="admin-review">Admin review</option>
-        <option value="member-evidence">Member evidence</option>
-    </select>
-</label>
-
-<label>
-    <span>Visited date</span>
-    <input
-        type="date"
-        name="visited_at"
-    >
-</label>
-
-<label class="is-wide">
-    <span>Source</span>
-    <input
-        type="text"
-        name="source"
-        placeholder="URL, agency, field visit, report, etc."
-    >
-</label>
-
-<label class="is-wide">
-    <span>Notes</span>
-    <textarea
-        name="notes"
-        rows="4"
-    ></textarea>
-</label>
-
-<label class="admin-place-inline-check is-wide">
-    <input
-        type="checkbox"
-        name="public_data_verified"
-        value="1"
-    >
-    <span>
-        Public-facing location and basic Place data were checked.
-    </span>
-</label>
-
-<div class="admin-user-form-actions is-wide">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Record verification
-    </button>
-</div>
-
-</form>
-
-
-<?php if ($verifications): ?>
-
-<div class="admin-place-history-list">
-
-<?php foreach ($verifications as $entry): ?>
-
-<div>
-    <strong>
-        <?= moderation_e(
-            ucwords(
-                str_replace(
-                    '-',
-                    ' ',
-                    (string) $entry['verification_type']
+        <input
+            type="hidden"
+            name="photos_json"
+            value="<?= $e(
+                (string) (
+                    $_POST['photos_json']
+                    ?? '[]'
                 )
-            )
-        ) ?>
-    </strong>
+            ) ?>"
+        >
 
-    <span>
-        <?= moderation_e(
-            (string) $entry['verifier_name']
-        ) ?>
-        &middot;
-        <?= moderation_e(
-            llama_format_viewer_datetime(
-                (string) $entry['verified_at']
-            )
-        ) ?>
+        <section class="admin-place-admin-meta">
+            <header>
+                <p>Admin metadata</p>
+                <h2>Publishing + URL</h2>
+            </header>
 
-        <?php if (!empty($entry['visited_at'])): ?>
-            &middot; visited
-            <?= moderation_e(
-                (string) $entry['visited_at']
-            ) ?>
-        <?php endif; ?>
-    </span>
+            <div class="admin-place-meta-grid">
+                <label>
+                    <span>URL slug</span>
 
-    <?php if (!empty($entry['notes'])): ?>
-        <p>
-            <?= moderation_e(
-                (string) $entry['notes']
-            ) ?>
-        </p>
-    <?php endif; ?>
-</div>
+                    <input
+                        type="text"
+                        name="admin_slug"
+                        value="<?= $e(
+                            $place['slug']
+                            ?? ''
+                        ) ?>"
+                        required
+                    >
+                </label>
 
-<?php endforeach; ?>
+                <label>
+                    <span>Record source</span>
 
-</div>
+                    <select name="admin_source_type">
+                        <?php foreach (
+                            [
+                                'llama-scouted' => 'Llama Scouted',
+                                'community-scouted' => 'Community Scouted',
+                                'external' => 'External source',
+                                'legacy' => 'Legacy',
+                            ]
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= $e($value) ?>"
+                                <?= (string) ($place['source_type'] ?? '') === $value
+                                    ? 'selected'
+                                    : '' ?>
+                            >
+                                <?= $e($label) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
 
-<?php endif; ?>
+                <label class="admin-place-meta-wide">
+                    <span>Public summary / metadata note</span>
 
-</section>
+                    <textarea
+                        name="admin_public_summary"
+                        rows="3"
+                    ><?= $e(
+                        $place['public_summary']
+                        ?? ''
+                    ) ?></textarea>
+                </label>
 
-</div>
+                <label class="admin-place-meta-wide">
+                    <span>Public location label</span>
+
+                    <input
+                        type="text"
+                        name="admin_public_location_label"
+                        value="<?= $e(
+                            $place['public_location_label']
+                            ?? ''
+                        ) ?>"
+                        placeholder="Pagosa Springs, Colorado"
+                    >
+                </label>
+            </div>
+        </section>
 
 
-<aside class="admin-user-detail-side">
+        <section class="admin-place-report-shell">
+            <header class="admin-place-report-header">
+                <p>Shared Place Report</p>
+                <h2>Edit Place Report</h2>
 
-<section
-    class="admin-panel"
-    id="status"
->
+                <span class="admin-place-muted">
+                    This is the same question set and control system used by Add Place and moderation.
+                </span>
+            </header>
 
-<header class="admin-panel-header">
-    <div>
-        <p>Publication</p>
-        <h2>Status</h2>
-    </div>
-</header>
+            <?php
+            require dirname(__DIR__)
+                . '/partials/place-report/form.php';
+            ?>
+        </section>
 
-<form
-    class="admin-user-action-box"
-    method="post"
->
 
-<input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-<input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-<input type="hidden" name="place_admin_action" value="change-status">
-
-<label>
-    <span>Status</span>
-
-    <select name="status">
-        <?php foreach (
-            [
-                'draft',
-                'active',
-                'featured',
-                'unlisted',
-                'archived',
-                'removed',
-            ] as $status
-        ): ?>
-            <option
-                value="<?= moderation_e($status) ?>"
-                <?= (string) $place['status'] === $status
-                    ? 'selected'
-                    : '' ?>
+        <div class="admin-place-report-savebar">
+            <button
+                class="admin-button"
+                type="submit"
             >
-                <?= moderation_e(
-                    ucfirst($status)
-                ) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</label>
-
-<label>
-    <span>Reason for change</span>
-
-    <textarea
-        name="status_reason"
-        rows="4"
-        placeholder="Required when changing status."
-    ></textarea>
-</label>
-
-<button
-    class="admin-button"
-    type="submit"
->
-    Save status
-</button>
-
-</form>
-
-</section>
+                <i
+                    class="fa-solid fa-floppy-disk"
+                    aria-hidden="true"
+                ></i>
+                Save Place Report
+            </button>
+        </div>
+    </form>
 
 
-<section
-    class="admin-panel admin-place-history-hub"
-    id="history"
->
+    <section
+        class="admin-place-admin-section"
+        id="photos"
+    >
+        <header>
+            <p>Media</p>
+            <h2>Photo management</h2>
+        </header>
 
-<header class="admin-panel-header">
-    <div>
-        <p>Canonical Record</p>
-        <h2>History + Provenance</h2>
-    </div>
-</header>
+        <?php if ($images): ?>
+            <div class="admin-place-photo-grid">
+                <?php foreach ($images as $image): ?>
+                    <?php
+                    $imageUrl =
+                        admin_place_photo_url(
+                            $image
+                        );
+                    ?>
 
-<div class="admin-place-history-tabs">
-
-<details open>
-    <summary>
-        Origin
-        <span>1</span>
-    </summary>
-
-    <div class="admin-place-history-detail">
-        <?php if ($provenance): ?>
-            <dl class="admin-user-definition-list">
-                <div>
-                    <dt>Origin</dt>
-                    <dd><?= moderation_e(ucwords(str_replace('-', ' ', (string) $provenance['origin_type']))) ?></dd>
-                </div>
-
-                <div>
-                    <dt>Original contributor</dt>
-                    <dd>
-                        <?php if ((int) ($provenance['original_contributor_id'] ?? 0) > 0): ?>
-                            <a href="/user.php?id=<?= (int) $provenance['original_contributor_id'] ?>">
-                                <?= moderation_e((string) ($provenance['contributor_name'] ?? 'Former member')) ?>
-                            </a>
-                        <?php else: ?>
-                            Unknown / legacy
+                    <article class="admin-place-photo-card">
+                        <?php if ($imageUrl !== ''): ?>
+                            <img
+                                src="<?= $e($imageUrl) ?>"
+                                alt="<?= $e(
+                                    $image['alt_text']
+                                    ?? ''
+                                ) ?>"
+                            >
                         <?php endif; ?>
-                    </dd>
-                </div>
 
-                <div>
-                    <dt>Established</dt>
-                    <dd>
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) (
-                                    $provenance['established_at']
-                                    ?: $place['created_at']
-                                )
-                            )
-                        ) ?>
-                    </dd>
-                </div>
+                        <div class="admin-place-photo-card-body">
+                            <?php if (
+                                (int) (
+                                    $image['is_featured']
+                                    ?? 0
+                                ) === 1
+                            ): ?>
+                                <strong>
+                                    Featured image
+                                </strong>
+                            <?php endif; ?>
 
-                <?php if (!empty($provenance['original_submission_id'])): ?>
-                <div>
-                    <dt>Original submission</dt>
-                    <dd>#<?= (int) $provenance['original_submission_id'] ?></dd>
-                </div>
-                <?php endif; ?>
-            </dl>
+                            <form method="post">
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="<?= $e(
+                                        moderation_csrf_token()
+                                    ) ?>"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="place_id"
+                                    value="<?= $placeId ?>"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="place_admin_action"
+                                    value="save-image-meta"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="image_id"
+                                    value="<?= (int) $image['id'] ?>"
+                                >
+
+                                <label>
+                                    <span>Alt text / caption</span>
+
+                                    <input
+                                        type="text"
+                                        name="alt_text"
+                                        value="<?= $e(
+                                            $image['alt_text']
+                                            ?? ''
+                                        ) ?>"
+                                    >
+                                </label>
+
+                                <label>
+                                    <span>Sort order</span>
+
+                                    <input
+                                        type="number"
+                                        name="sort_order"
+                                        min="0"
+                                        max="999"
+                                        value="<?= (int) (
+                                            $image['sort_order']
+                                            ?? 0
+                                        ) ?>"
+                                    >
+                                </label>
+
+                                <button
+                                    class="admin-button is-muted"
+                                    type="submit"
+                                >
+                                    Save photo details
+                                </button>
+                            </form>
+
+                            <div class="admin-place-photo-actions">
+                                <?php if (
+                                    (int) (
+                                        $image['is_featured']
+                                        ?? 0
+                                    ) !== 1
+                                ): ?>
+                                    <form method="post">
+                                        <input
+                                            type="hidden"
+                                            name="csrf_token"
+                                            value="<?= $e(
+                                                moderation_csrf_token()
+                                            ) ?>"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="place_id"
+                                            value="<?= $placeId ?>"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="place_admin_action"
+                                            value="featured-image"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="image_id"
+                                            value="<?= (int) $image['id'] ?>"
+                                        >
+
+                                        <button
+                                            class="admin-button is-muted"
+                                            type="submit"
+                                        >
+                                            Make featured
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+
+                                <form method="post">
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= $e(
+                                            moderation_csrf_token()
+                                        ) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="place_id"
+                                        value="<?= $placeId ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="place_admin_action"
+                                        value="delete-image"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="image_id"
+                                        value="<?= (int) $image['id'] ?>"
+                                    >
+
+                                    <button
+                                        class="admin-button is-danger"
+                                        type="submit"
+                                    >
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
         <?php else: ?>
-            <p class="admin-table-muted">
-                No separate provenance row is recorded. The Place's created-by and source fields remain the source of record.
-            </p>
+            <div class="admin-place-empty">
+                No photos are attached to this Place.
+            </div>
         <?php endif; ?>
 
-        <?php if (!empty($llamaScouted['ever_scouted'])): ?>
-            <?php $scouted = $llamaScouted['first']; ?>
-            <div class="admin-place-llama-scouted-banner">
-                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-                <div>
-                    <strong>Llama Scouted</strong>
+        <p class="admin-place-muted">
+            New photos can be added from the Photos section inside the shared Place Report above.
+        </p>
+    </section>
+
+
+    <section
+        class="admin-place-admin-section"
+        id="notes"
+    >
+        <header>
+            <p>Internal</p>
+            <h2>Place Notes</h2>
+        </header>
+
+        <?php if ($placeNotes): ?>
+            <div class="admin-place-note-list">
+                <?php foreach ($placeNotes as $note): ?>
+                    <article class="admin-place-note-card">
+                        <header>
+                            <strong>
+                                <?= $e(
+                                    $note['author_name']
+                                    ?? 'System'
+                                ) ?>
+                            </strong>
+
+                            <span class="admin-place-muted">
+                                <?= $e(
+                                    $note['created_at']
+                                    ?? ''
+                                ) ?>
+                            </span>
+                        </header>
+
+                        <div>
+                            <?= nl2br(
+                                $e(
+                                    $note['note']
+                                    ?? ''
+                                )
+                            ) ?>
+                        </div>
+
+                        <form method="post">
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="<?= $e(
+                                    moderation_csrf_token()
+                                ) ?>"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="place_id"
+                                value="<?= $placeId ?>"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="place_admin_action"
+                                value="delete-note"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="note_id"
+                                value="<?= (int) $note['id'] ?>"
+                            >
+
+                            <button
+                                class="admin-button is-danger"
+                                type="submit"
+                            >
+                                Delete note
+                            </button>
+                        </form>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <form
+            method="post"
+            class="admin-place-note-form"
+        >
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= $e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_id"
+                value="<?= $placeId ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_admin_action"
+                value="add-note"
+            >
+
+            <label>
+                <span>Add internal note</span>
+
+                <textarea
+                    name="note"
+                    rows="4"
+                    maxlength="2000"
+                ></textarea>
+            </label>
+
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Add note
+            </button>
+        </form>
+    </section>
+
+
+    <section
+        class="admin-place-admin-section"
+        id="verification"
+    >
+        <header>
+            <p>Verification</p>
+            <h2>Field + source verification</h2>
+        </header>
+
+        <?php if ($verifications): ?>
+            <div class="admin-place-verification-list">
+                <?php foreach ($verifications as $verification): ?>
+                    <article class="admin-place-verification-card">
+                        <header>
+                            <strong>
+                                <?= $e(
+                                    $verification['verification_type']
+                                    ?? 'Verification'
+                                ) ?>
+                            </strong>
+
+                            <span class="admin-place-muted">
+                                <?= $e(
+                                    $verification['verified_at']
+                                    ?? ''
+                                ) ?>
+                            </span>
+                        </header>
+
+                        <span class="admin-place-muted">
+                            By
+                            <?= $e(
+                                $verification['verifier_name']
+                                ?? 'System'
+                            ) ?>
+                        </span>
+
+                        <?php if (!empty($verification['notes'])): ?>
+                            <div>
+                                <?= nl2br(
+                                    $e(
+                                        $verification['notes']
+                                    )
+                                ) ?>
+                            </div>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= $e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_id"
+                value="<?= $placeId ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_admin_action"
+                value="add-verification"
+            >
+
+            <div class="admin-place-verification-grid">
+                <label>
+                    <span>Verification type</span>
+
+                    <select
+                        name="verification_type"
+                        required
+                    >
+                        <option value="">
+                            Select...
+                        </option>
+
+                        <option value="field-verified">
+                            Field verified
+                        </option>
+
+                        <option value="source-verified">
+                            Source verified
+                        </option>
+
+                        <option value="community-confirmed">
+                            Community confirmed
+                        </option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Date visited</span>
+
+                    <input
+                        type="date"
+                        name="visited_at"
+                    >
+                </label>
+
+                <label>
+                    <span>Source</span>
+
+                    <input
+                        type="text"
+                        name="source"
+                        placeholder="Llama Scouted, USFS, BLM..."
+                    >
+                </label>
+
+                <label>
+                    <span>Public data verified</span>
+
                     <span>
-                        This Place has been personally field-scouted and keeps that historical distinction even after later community edits.
-                        First recorded by <?= moderation_e((string) ($scouted['scout_name'] ?? 'a Llama Scout')) ?>
-                        <?= !empty($scouted['visited_at']) ? 'on ' . moderation_e((string) $scouted['visited_at']) : '' ?>.
+                        <input
+                            type="checkbox"
+                            name="public_data_verified"
+                            value="1"
+                        >
+                        Yes
                     </span>
+                </label>
+
+                <label class="admin-place-verification-wide">
+                    <span>Notes</span>
+
+                    <textarea
+                        name="notes"
+                        rows="3"
+                    ></textarea>
+                </label>
+            </div>
+
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Add verification
+            </button>
+        </form>
+    </section>
+
+
+    <section
+        class="admin-place-admin-section"
+        id="status"
+    >
+        <header>
+            <p>Publishing</p>
+            <h2>Status</h2>
+        </header>
+
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= $e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_id"
+                value="<?= $placeId ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_admin_action"
+                value="change-status"
+            >
+
+            <div class="admin-place-status-grid">
+                <label>
+                    <span>Status</span>
+
+                    <select name="status">
+                        <?php foreach (
+                            [
+                                'draft',
+                                'active',
+                                'featured',
+                                'unlisted',
+                                'removed',
+                                'archived',
+                            ]
+                            as $status
+                        ): ?>
+                            <option
+                                value="<?= $e($status) ?>"
+                                <?= (string) $place['status'] === $status
+                                    ? 'selected'
+                                    : '' ?>
+                            >
+                                <?= $e(
+                                    ucwords(
+                                        str_replace(
+                                            '-',
+                                            ' ',
+                                            $status
+                                        )
+                                    )
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label class="admin-place-status-wide">
+                    <span>
+                        Reason for status change
+                    </span>
+
+                    <textarea
+                        name="status_reason"
+                        rows="3"
+                    ></textarea>
+                </label>
+            </div>
+
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Update status
+            </button>
+        </form>
+    </section>
+
+
+    <section
+        class="admin-place-admin-section"
+        id="history"
+    >
+        <header>
+            <p>Record</p>
+            <h2>History + Provenance</h2>
+        </header>
+
+        <?php if ($provenance): ?>
+            <div class="admin-place-history-group">
+                <h3>Origin</h3>
+
+                <article class="admin-place-history-card">
+                    <strong>
+                        <?= $e(
+                            $provenance['origin_type']
+                            ?? 'Unknown'
+                        ) ?>
+                    </strong>
+
+                    <?php if (!empty($provenance['contributor_name'])): ?>
+                        <span>
+                            Original contributor:
+                            <?= $e(
+                                $provenance['contributor_name']
+                            ) ?>
+                        </span>
+                    <?php endif; ?>
+
+                    <span class="admin-place-muted">
+                        Established
+                        <?= $e(
+                            $provenance['established_at']
+                            ?? ''
+                        ) ?>
+                    </span>
+                </article>
+            </div>
+        <?php endif; ?>
+
+
+        <div class="admin-place-history-group">
+            <h3>Status timeline</h3>
+
+            <?php if ($statusHistory): ?>
+                <div class="admin-place-history-list">
+                    <?php foreach ($statusHistory as $entry): ?>
+                        <article class="admin-place-history-card">
+                            <header>
+                                <strong>
+                                    <?= $e(
+                                        ($entry['old_status'] ?? 'New')
+                                        . ' â '
+                                        . ($entry['new_status'] ?? '')
+                                    ) ?>
+                                </strong>
+
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $entry['changed_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
+
+                            <span>
+                                By
+                                <?= $e(
+                                    $entry['changed_by_name']
+                                    ?? 'System'
+                                ) ?>
+                            </span>
+
+                            <?php if (!empty($entry['reason'])): ?>
+                                <div>
+                                    <?= nl2br(
+                                        $e(
+                                            $entry['reason']
+                                        )
+                                    ) ?>
+                                </div>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="admin-place-empty">
+                    No status history.
+                </div>
+            <?php endif; ?>
+        </div>
+
+
+        <div class="admin-place-history-group">
+            <h3>
+                Contributions
+                (<?= count($contributions) ?>)
+            </h3>
+
+            <?php if ($contributions): ?>
+                <div class="admin-place-history-list">
+                    <?php foreach ($contributions as $contribution): ?>
+                        <article class="admin-place-history-card">
+                            <header>
+                                <strong>
+                                    <?= $e(
+                                        $contribution['contribution_type']
+                                        ?? 'Contribution'
+                                    ) ?>
+                                </strong>
+
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $contribution['approved_at']
+                                        ?? $contribution['created_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
+
+                            <span>
+                                <?= $e(
+                                    $contribution['contributor_name']
+                                    ?? 'Former Llama Scout Member'
+                                ) ?>
+                            </span>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="admin-place-empty">
+                    No contribution history.
+                </div>
+            <?php endif; ?>
+        </div>
+
+
+        <div class="admin-place-history-group">
+            <h3>
+                Update submissions
+                (<?= count($updateHistory) ?>)
+            </h3>
+
+            <?php if ($updateHistory): ?>
+                <div class="admin-place-history-list">
+                    <?php foreach ($updateHistory as $update): ?>
+                        <article class="admin-place-history-card">
+                            <header>
+                                <strong>
+                                    <?= $e(
+                                        ucfirst(
+                                            (string) (
+                                                $update['status']
+                                                ?? 'pending'
+                                            )
+                                        )
+                                    ) ?>
+                                </strong>
+
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $update['submitted_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
+
+                            <span>
+                                <?= $e(
+                                    $update['contributor_name']
+                                    ?? 'Former Llama Scout Member'
+                                ) ?>
+                            </span>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="admin-place-empty">
+                    No Place Update history.
+                </div>
+            <?php endif; ?>
+        </div>
+
+
+        <div class="admin-place-history-group">
+            <h3>
+                Reports
+                (<?= count($reportHistory) ?>)
+            </h3>
+
+            <?php if ($reportHistory): ?>
+                <div class="admin-place-history-list">
+                    <?php foreach ($reportHistory as $report): ?>
+                        <article class="admin-place-history-card">
+                            <header>
+                                <strong>
+                                    <?= $e(
+                                        ucfirst(
+                                            (string) (
+                                                $report['status']
+                                                ?? 'open'
+                                            )
+                                        )
+                                    ) ?>
+                                </strong>
+
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $report['created_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
+
+                            <span>
+                                <?= $e(
+                                    $report['reporter_name']
+                                    ?? 'Former Llama Scout Member'
+                                ) ?>
+                            </span>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="admin-place-empty">
+                    No reports.
+                </div>
+            <?php endif; ?>
+        </div>
+
+
+        <?php if ($placeAuditHistory): ?>
+            <div class="admin-place-history-group">
+                <h3>
+                    Admin audit
+                    (<?= count($placeAuditHistory) ?>)
+                </h3>
+
+                <div class="admin-place-history-list">
+                    <?php foreach ($placeAuditHistory as $audit): ?>
+                        <article class="admin-place-history-card">
+                            <header>
+                                <strong>
+                                    <?= $e(
+                                        $audit['action']
+                                        ?? 'Admin action'
+                                    ) ?>
+                                </strong>
+
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $audit['created_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
+
+                            <span>
+                                <?= $e(
+                                    $audit['actor_name']
+                                    ?? 'System'
+                                ) ?>
+                            </span>
+
+                            <?php if (!empty($audit['summary'])): ?>
+                                <div>
+                                    <?= $e(
+                                        $audit['summary']
+                                    ) ?>
+                                </div>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
             </div>
         <?php endif; ?>
-    </div>
-</details>
-
-
-<details>
-    <summary>
-        Contributions
-        <span><?= number_format(count($contributions)) ?></span>
-    </summary>
-
-    <?php if (!$contributions): ?>
-        <div class="admin-empty-state"><p>No contribution history recorded.</p></div>
-    <?php else: ?>
-        <div class="admin-place-history-list">
-            <?php foreach ($contributions as $contribution): ?>
-                <?php
-                $fieldsChanged = json_decode((string) ($contribution['fields_changed'] ?? ''), true);
-                $fieldCount = is_array($fieldsChanged) ? count($fieldsChanged) : 0;
-                ?>
-                <div>
-                    <strong>
-                        <?= moderation_e(ucwords(str_replace('_', ' ', (string) $contribution['contribution_type']))) ?>
-                    </strong>
-                    <span>
-                        <a href="/user.php?id=<?= (int) $contribution['user_id'] ?>">
-                            <?= moderation_e((string) $contribution['contributor_name']) ?>
-                        </a>
-                        &middot;
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) (
-                                    $contribution['approved_at']
-                                    ?: $contribution['created_at']
-                                )
-                            )
-                        ) ?>
-                    </span>
-                    <p>
-                        <?= number_format((int) $contribution['points_awarded']) ?> points
-                        <?php if ($fieldCount > 0): ?>
-                            &middot; <?= number_format($fieldCount) ?> changed field<?= $fieldCount === 1 ? '' : 's' ?>
-                        <?php endif; ?>
-                    </p>
-                    <?php if (!empty($contribution['notes'])): ?>
-                        <p><?= moderation_e((string) $contribution['notes']) ?></p>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</details>
-
-
-<details>
-    <summary>
-        Suggested updates
-        <span><?= number_format(count($updateHistory)) ?></span>
-    </summary>
-
-    <?php if (!$updateHistory): ?>
-        <div class="admin-empty-state"><p>No update submissions recorded.</p></div>
-    <?php else: ?>
-        <div class="admin-place-history-list">
-            <?php foreach ($updateHistory as $update): ?>
-                <?php
-                $changes = json_decode((string) $update['proposed_changes'], true);
-                $changeCount = is_array($changes) ? count($changes) : 0;
-                ?>
-                <div>
-                    <strong>
-                        Update #<?= (int) $update['id'] ?>
-                        &middot; <?= moderation_e(ucwords(str_replace('-', ' ', (string) $update['status']))) ?>
-                    </strong>
-                    <span>
-                        <a href="/user.php?id=<?= (int) $update['user_id'] ?>">
-                            <?= moderation_e((string) $update['contributor_name']) ?>
-                        </a>
-                        &middot;
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) $update['submitted_at']
-                            )
-                        ) ?>
-                    </span>
-                    <p>
-                        <?= moderation_e(ucwords(str_replace('-', ' ', (string) $update['update_type']))) ?>
-                        &middot; <?= number_format($changeCount) ?> top-level change group<?= $changeCount === 1 ? '' : 's' ?>
-                        &middot; <?= number_format((int) $update['points_awarded']) ?> points
-                    </p>
-                    <?php if (in_array((string) $update['status'], ['pending','needs-changes'], true)): ?>
-                        <a class="admin-inline-link" href="/moderate-update.php?id=<?= (int) $update['id'] ?>">
-                            Review this update
-                        </a>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</details>
-
-
-<details>
-    <summary>
-        Problem reports
-        <span><?= number_format(count($reportHistory)) ?></span>
-    </summary>
-
-    <?php if (!$reportHistory): ?>
-        <div class="admin-empty-state"><p>No problem reports recorded.</p></div>
-    <?php else: ?>
-        <div class="admin-place-history-list">
-            <?php foreach ($reportHistory as $report): ?>
-                <div class="<?= in_array((string) $report['status'], ['open','investigating'], true) ? 'has-attention' : '' ?>">
-                    <strong>
-                        Report #<?= (int) $report['id'] ?>
-                        &middot; <?= moderation_e(ucwords(str_replace('-', ' ', (string) $report['problem_type']))) ?>
-                    </strong>
-                    <span>
-                        <?= moderation_e((string) $report['reporter_name']) ?>
-                        &middot;
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) $report['created_at']
-                            )
-                        ) ?>
-                        &middot; <?= moderation_e(ucfirst((string) $report['status'])) ?>
-                    </span>
-                    <?php if (!empty($report['details'])): ?>
-                        <p><?= moderation_e((string) $report['details']) ?></p>
-                    <?php endif; ?>
-                    <a class="admin-inline-link" href="/moderate-report.php?id=<?= (int) $report['id'] ?>">
-                        Open report
-                    </a>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</details>
-
-
-<details>
-    <summary>
-        Administrative changes
-        <span><?= number_format(count($placeAuditHistory)) ?></span>
-    </summary>
-
-    <?php if (!$placeAuditHistory): ?>
-        <div class="admin-empty-state"><p>No matching Place audit entries were found.</p></div>
-    <?php else: ?>
-        <div class="admin-place-history-list">
-            <?php foreach ($placeAuditHistory as $auditRow): ?>
-                <div>
-                    <strong><?= moderation_e((string) $auditRow['summary']) ?></strong>
-                    <span>
-                        <?= moderation_e((string) $auditRow['actor_name']) ?>
-                        &middot;
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) $auditRow['created_at']
-                            )
-                        ) ?>
-                    </span>
-                    <p><?= moderation_e((string) $auditRow['action']) ?></p>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <div class="admin-place-history-footer">
-        <a
-            class="admin-button is-muted"
-            href="/audit.php?category=places"
-        >
-            Open full audit console
-        </a>
-    </div>
-</details>
-
-</div>
-
-</section>
-
-
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Record</p>
-        <h2>Place Facts</h2>
-    </div>
-</header>
-
-<dl class="admin-user-definition-list">
-
-<div>
-    <dt>Slug</dt>
-    <dd>
-        <?= moderation_e(
-            (string) $place['slug']
-        ) ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Source</dt>
-    <dd>
-        <?= moderation_e(
-            (string) $place['source_type']
-        ) ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Llama Scouted</dt>
-    <dd>
-        <?= !empty($llamaScouted['ever_scouted'])
-            ? 'Yes, historical field visit recorded'
-            : 'No field Scout visit recorded' ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Original contributor</dt>
-    <dd>
-        <?php if ((int) ($provenance['original_contributor_id'] ?? $place['created_by'] ?? 0) > 0): ?>
-            <?php $originUserId = (int) ($provenance['original_contributor_id'] ?? $place['created_by']); ?>
-            <a href="/user.php?id=<?= $originUserId ?>">
-                <?= moderation_e((string) ($provenance['contributor_name'] ?? ('User #' . $originUserId))) ?>
-            </a>
-        <?php else: ?>
-            Unknown / legacy
-        <?php endif; ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Created</dt>
-    <dd>
-        <?= moderation_e(
-            llama_format_viewer_datetime(
-                (string) $place['created_at']
-            )
-        ) ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Published</dt>
-    <dd>
-        <?= !empty($place['published_at'])
-            ? moderation_e(
-                llama_format_viewer_datetime(
-                    (string) $place['published_at']
-                )
-            )
-            : 'Not published' ?>
-    </dd>
-</div>
-
-<div>
-    <dt>Updated</dt>
-    <dd>
-        <?= moderation_e(
-            llama_format_viewer_datetime(
-                (string) $place['updated_at']
-            )
-        ) ?>
-    </dd>
-</div>
-
-</dl>
-
-</section>
-
-
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>History</p>
-        <h2>Status Timeline</h2>
-    </div>
-</header>
-
-<?php if (!$statusHistory): ?>
-
-<div class="admin-empty-state">
-    <p>No status changes recorded.</p>
-</div>
-
-<?php else: ?>
-
-<div class="admin-user-audit-list">
-
-<?php foreach ($statusHistory as $entry): ?>
-
-<div>
-    <strong>
-        <?= moderation_e(
-            (string) (
-                $entry['old_status']
-                ?: 'Created'
-            )
-        ) ?>
-        &rarr;
-        <?= moderation_e(
-            (string) $entry['new_status']
-        ) ?>
-    </strong>
-
-    <span>
-        <?= moderation_e(
-            (string) $entry['changed_by_name']
-        ) ?>
-        &middot;
-        <?= moderation_e(
-            llama_format_viewer_datetime(
-                (string) $entry['changed_at']
-            )
-        ) ?>
-    </span>
-
-    <?php if (!empty($entry['reason'])): ?>
-        <span>
-            <?= moderation_e(
-                (string) $entry['reason']
-            ) ?>
-        </span>
-    <?php endif; ?>
-</div>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php endif; ?>
-
-</section>
-
-</aside>
+    </section>
 
 </div>
 
 
-<script>
-(() => {
-    const nameInput =
-        document.getElementById(
-            'admin-place-name'
-        );
+<script src="https://llamascout.com/js/add-place-location.js"></script>
+<script src="https://llamascout.com/js/place-report-form.js"></script>
 
-    const slugInput =
-        document.getElementById(
-            'admin-place-slug'
-        );
-
-    if (!nameInput || !slugInput) {
-        return;
-    }
-
-    let slugWasManuallyEdited =
-        false;
-
-    const slugify = (value) =>
-        value
-            .normalize('NFKD')
-            .replace(
-                /[\u0300-\u036f]/g,
-                ''
-            )
-            .toLowerCase()
-            .trim()
-            .replace(
-                /[^a-z0-9]+/g,
-                '-'
-            )
-            .replace(
-                /^-+|-+$/g,
-                ''
-            );
-
-    slugInput.addEventListener(
-        'input',
-        () => {
-            slugWasManuallyEdited =
-                true;
-        }
-    );
-
-    nameInput.addEventListener(
-        'input',
-        () => {
-            if (
-                slugWasManuallyEdited
-            ) {
-                return;
-            }
-
-            slugInput.value =
-                slugify(
-                    nameInput.value
-                );
-        }
-    );
-
-    nameInput.addEventListener(
-        'change',
-        () => {
-            if (
-                !slugWasManuallyEdited
-            ) {
-                slugInput.value =
-                    slugify(
-                        nameInput.value
-                    );
-            }
-        }
-    );
-})();
-</script>
-
-<?php require __DIR__ . '/_footer.php'; ?>
+<?php
+require __DIR__
+    . '/_footer.php';
+?>
