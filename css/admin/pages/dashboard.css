@@ -72,7 +72,7 @@
 .admin-stat-grid {
     display: grid;
     grid-template-columns:
-        repeat(5, minmax(0, 1fr));
+        repeat(4, minmax(0, 1fr));
     gap: 10px;
 
     margin-bottom: var(--admin-panel-gap);
