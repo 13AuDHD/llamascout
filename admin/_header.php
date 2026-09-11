@@ -32,6 +32,14 @@ $adminUserId = (int) ($adminUser['id'] ?? 0);
 $adminDisplayName = trim((string) ($adminUser['display_name'] ?? ''));
 $adminUsername = trim((string) ($adminUser['username'] ?? ''));
 
+$adminShellRole =
+    user_has_role(
+        'owner',
+        $adminUserId
+    )
+        ? 'Owner'
+        : 'Admin';
+
 if ($adminDisplayName === '') {
     $adminDisplayName = $adminUsername !== ''
         ? $adminUsername
@@ -375,7 +383,7 @@ function admin_shell_nav_class(string $key, string $active): string
             aria-label="Llama Scout Admin dashboard"
         >
             <img src="<?= moderation_e($siteUrl . '/images/logo.png') ?>" alt="Llama Scout">
-            <span>Admin</span>
+            <span><?= moderation_e($adminShellRole) ?></span>
         </a>
 
         <button
