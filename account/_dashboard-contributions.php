@@ -27,28 +27,6 @@ $savedDraftCount = llama_place_draft_count(
 
     <div class="account-action-grid">
 
-        <?php if ($showActiveScout): ?>
-            <a
-                class="account-action-card account-scout-basecamp-card"
-                href="/scout.php"
-            >
-                <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-
-                <span>
-                    <strong>Scout Basecamp</strong>
-                    <small>
-                        Your Scout status, field-work requirements,
-                        contributions, and Master Scout progress.
-                    </small>
-                </span>
-
-                <i
-                    class="fa-solid fa-arrow-right account-action-arrow"
-                    aria-hidden="true"
-                ></i>
-            </a>
-        <?php endif; ?>
-
         <a
             class="account-action-card"
             href="<?= htmlspecialchars(
@@ -58,14 +36,24 @@ $savedDraftCount = llama_place_draft_count(
             ) ?>"
         >
             <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+
             <span>
                 <strong>Add a place</strong>
-                <small>Submit a new campsite or outdoor place.</small>
+                <small>
+                    Submit a new campsite or outdoor place.
+                </small>
             </span>
         </a>
 
-        <a class="account-action-card" href="/contributions.php">
-            <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+        <a
+            class="account-action-card"
+            href="/contributions.php"
+        >
+            <i
+                class="fa-solid fa-clock-rotate-left"
+                aria-hidden="true"
+            ></i>
+
             <span>
                 <strong>My contributions</strong>
                 <small>
@@ -75,8 +63,15 @@ $savedDraftCount = llama_place_draft_count(
             </span>
         </a>
 
-        <a class="account-action-card" href="/saved-later.php">
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+        <a
+            class="account-action-card"
+            href="/saved-later.php"
+        >
+            <i
+                class="fa-solid fa-floppy-disk"
+                aria-hidden="true"
+            ></i>
+
             <span>
                 <strong>Saved for Later</strong>
                 <small>
