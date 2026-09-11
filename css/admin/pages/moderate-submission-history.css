@@ -1,0 +1,231 @@
+/* =========================================================
+   NEW PLACE REVISION HISTORY + DECISION LAYOUT
+   ========================================================= */
+
+.admin-submission-history-timeline {
+    display: grid;
+}
+
+.admin-submission-history-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 11px;
+    padding-bottom: 18px;
+}
+
+.admin-submission-history-event:last-child {
+    padding-bottom: 0;
+}
+
+.admin-submission-history-event:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    top: 38px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+}
+
+.admin-submission-history-icon {
+    position: relative;
+    z-index: 1;
+
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--background);
+}
+
+.admin-submission-history-body {
+    min-width: 0;
+}
+
+.admin-submission-history-body > header {
+    min-height: 36px;
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px 12px;
+}
+
+.admin-submission-history-body > header strong {
+    font-size: .82rem;
+}
+
+.admin-submission-history-body time {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-submission-history-note,
+.admin-submission-history-diff {
+    margin-top: 8px;
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+}
+
+.admin-submission-history-note > span,
+.admin-submission-history-diff > span {
+    display: block;
+
+    color: var(--text-muted);
+
+    font-size: .63rem;
+    font-weight: 900;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.admin-submission-history-note p {
+    margin: 6px 0 0;
+    line-height: 1.5;
+}
+
+.admin-submission-history-change-list {
+    display: grid;
+    gap: 8px;
+
+    margin-top: 9px;
+}
+
+.admin-submission-history-change {
+    display: grid;
+    gap: 5px;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.admin-submission-history-change > strong {
+    font-size: .72rem;
+}
+
+.admin-submission-history-change > div {
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto
+        minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.admin-submission-history-change span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+
+    font-size: .7rem;
+}
+
+.admin-submission-history-change i {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-submission-history-meta {
+    margin: 8px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+}
+
+
+/* Decision */
+
+.admin-submission-publish-row {
+    display: grid;
+    grid-template-columns:
+        minmax(220px, 1fr)
+        auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.admin-submission-publish-row > label {
+    min-width: 0;
+}
+
+.admin-submission-approve {
+    min-height: 44px;
+    white-space: nowrap;
+}
+
+.admin-submission-secondary-actions {
+    justify-content: flex-start;
+}
+
+.admin-submission-delete {
+    margin-left: auto;
+
+    border-color: color-mix(
+        in srgb,
+        #c94a4a 44%,
+        var(--border)
+    );
+
+    color: #d86a6a;
+}
+
+.admin-submission-delete.is-armed {
+    border-color: #c94a4a;
+    border-style: solid;
+
+    background: #c94a4a;
+    color: #fff;
+}
+
+
+@media (max-width: 760px) {
+
+    .admin-submission-publish-row {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-submission-approve {
+        width: 100%;
+    }
+
+    .admin-submission-secondary-actions {
+        display: grid;
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-submission-secondary-actions
+    .admin-moderation-button {
+        width: 100%;
+    }
+
+    .admin-submission-delete {
+        margin-left: 0;
+        grid-column: 1 / -1;
+    }
+
+    .admin-submission-history-change > div {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-submission-history-change i {
+        transform: rotate(90deg);
+        justify-self: center;
+    }
+}
