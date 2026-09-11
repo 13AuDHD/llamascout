@@ -621,14 +621,7 @@ function admin_shell_nav_class(string $key, string $active): string
             <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
             View public site
         </a>
-
-        <a
-            class="admin-sidebar-utility"
-            href="<?= moderation_e($accountUrl . '/') ?>"
-        >
-            <i class="fa-solid fa-user" aria-hidden="true"></i>
-            My account
-        </a>
+        
     </div>
 
 </aside>
