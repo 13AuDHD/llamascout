@@ -24,6 +24,18 @@ $adminPageTitle = 'Review New Place';
 $adminPageEyebrow = 'Moderation';
 $adminActiveNav = 'submissions';
 
+$adminPageActions =
+    '<a class="admin-button" href="/edit-submission.php?id='
+    . (int) (
+        $_GET['id']
+        ?? $_POST['id']
+        ?? 0
+    )
+    . '">'
+    . '<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> '
+    . 'Edit Submission'
+    . '</a>';
+
 $submissionId =
     (int) (
         $_GET['id']
