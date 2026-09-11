@@ -813,7 +813,7 @@ function llama_place_update_shared_form_values(
                         $key
                     ]
                 )
-                : isset(
+            : isset(
                     $currentUnknownLookup[
                         $key
                     ]
@@ -895,7 +895,8 @@ function llama_place_update_shared_form_values(
 
 function llama_place_update_value_equal(
     mixed $a,
-    mixed $b
+    mixed $b,
+    ?array $field = null
 ): bool {
     if (is_bool($a)) {
         $a =
@@ -918,6 +919,29 @@ function llama_place_update_value_equal(
         || $b === null
     ) {
         return $a === $b;
+    }
+
+
+    /*
+     * Number fields are compared numerically so harmless database
+     * formatting differences are not treated as edits.
+     *
+     * Examples:
+     * 37.2522200 = 37.25222
+     * -107.2192000 = -107.2192
+     * 0.00 = 0
+     */
+    if (
+        (string) (
+            $field['type']
+            ?? ''
+        ) === 'number'
+        && is_numeric($a)
+        && is_numeric($b)
+    ) {
+        return
+            (float) $a
+            == (float) $b;
     }
 
 
@@ -1024,7 +1048,8 @@ function llama_place_update_build_changes(
         $valueChanged =
             !llama_place_update_value_equal(
                 $oldValue,
-                $newValue
+                $newValue,
+                $field
             );
 
 
@@ -1271,11 +1296,18 @@ function llama_place_update_changed_proposals(
             );
 
 
+        $field =
+            llama_place_update_field_by_storage(
+                (string) $path
+            );
+
+
         if (
             $hadOld === $hasNew
             && llama_place_update_value_equal(
                 $old,
-                $new
+                $new,
+                $field
             )
         ) {
             continue;
@@ -2685,7 +2717,9 @@ function llama_place_update_approve(
         if (
             !llama_place_update_value_equal(
                 $currentValue,
-                $original[$path]
+                $original[$path],
+                $definition['shared']
+                ?? null
             )
         ) {
             throw new RuntimeException(
