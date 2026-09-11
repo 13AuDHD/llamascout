@@ -41,16 +41,16 @@ $todoCsrfToken = moderation_csrf_token();
 
 function admin_todo_date_label(?string $value): string
 {
-    if (!$value) {
+    $value = trim((string) $value);
+
+    if ($value === '') {
         return '';
     }
 
-    try {
-        return (new DateTimeImmutable($value))
-            ->format('M j');
-    } catch (Throwable) {
-        return '';
-    }
+    return llama_format_viewer_datetime(
+        $value,
+        'M j, g:i A T'
+    );
 }
 ?>
 
@@ -115,10 +115,22 @@ function admin_todo_date_label(?string $value): string
                 <?php
                 $todoId = (int) $todoItem['id'];
                 $isCompleted = !empty($todoItem['is_completed']);
+
                 $dateLabel = $isCompleted
-                    ? admin_todo_date_label((string) ($todoItem['completed_at'] ?? ''))
-                    : admin_todo_date_label((string) ($todoItem['created_at'] ?? ''));
+                    ? admin_todo_date_label(
+                        (string) (
+                            $todoItem['completed_at']
+                            ?? ''
+                        )
+                    )
+                    : admin_todo_date_label(
+                        (string) (
+                            $todoItem['created_at']
+                            ?? ''
+                        )
+                    );
                 ?>
+
                 <article
                     class="admin-todo-item<?= $isCompleted ? ' is-completed' : '' ?>"
                     data-todo-item
