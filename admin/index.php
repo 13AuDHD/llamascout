@@ -113,7 +113,7 @@ require __DIR__ . '/_header.php';
         <div>
             <span>Pending Places</span>
             <strong><?= (int) $stats['new_places'] ?></strong>
-            <small>New Place submissions</small>
+            <small>New submissions</small>
         </div>
     </a>
 
@@ -135,7 +135,7 @@ require __DIR__ . '/_header.php';
         <div>
             <span>Open Reports</span>
             <strong><?= (int) $stats['reports'] ?></strong>
-            <small>Problems needing attention</small>
+            <small>Problems</small>
         </div>
     </a>
 
@@ -219,9 +219,9 @@ require __DIR__ . '/_header.php';
 
             <small>
                 <?php if ((int) $stats['errors'] === 1): ?>
-                    Open issue needing attention
+                    Open issue
                 <?php elseif ((int) $stats['errors'] > 1): ?>
-                    Open issues needing attention
+                    Open issues
                 <?php else: ?>
                     No open issues
                 <?php endif; ?>
