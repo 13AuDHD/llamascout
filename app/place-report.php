@@ -242,6 +242,131 @@ function llama_place_report_surface_options(bool $allowGrass = true): array
     return $options;
 }
 
+function llama_place_report_field_icon(
+    string $key,
+    array $field = []
+): string {
+    $icons = [
+        'name' => 'fa-signature',
+        'type' => 'fa-map-location-dot',
+        'visited_at' => 'fa-calendar-check',
+        'description' => 'fa-align-left',
+
+        'latitude' => 'fa-location-crosshairs',
+        'longitude' => 'fa-location-crosshairs',
+        'elevation_feet' => 'fa-mountain',
+        'road' => 'fa-road',
+        'city' => 'fa-city',
+        'county' => 'fa-map',
+        'state' => 'fa-map',
+        'region' => 'fa-signs-post',
+        'land_manager' => 'fa-building-columns',
+        'land_type' => 'fa-tree',
+
+        'vehicle_capacity' => 'fa-car-side',
+        'max_vehicle_length_feet' => 'fa-ruler-horizontal',
+        'parking_surface' => 'fa-square-parking',
+        'ground_condition' => 'fa-mountain-sun',
+        'tent_camping_suitable' => 'fa-tent',
+        'rv_suitable' => 'fa-caravan',
+        'trailer_suitable' => 'fa-trailer',
+        'leveling_required' => 'fa-scale-balanced',
+        'turnaround_space' => 'fa-rotate',
+        'pull_through' => 'fa-arrow-right',
+        'back_in' => 'fa-arrow-left',
+
+        'road_surface' => 'fa-road',
+        'road_width' => 'fa-arrows-left-right',
+        'sedan_accessible' => 'fa-car',
+        'high_clearance_recommended' => 'fa-truck-pickup',
+        'four_wheel_drive_recommended' => 'fa-truck-monster',
+        'water_crossings' => 'fa-water',
+        'downed_tree_risk' => 'fa-tree',
+        'seasonal_closure' => 'fa-calendar-xmark',
+
+        'amenity_none' => 'fa-circle-xmark',
+        'amenity_toilets' => 'fa-restroom',
+        'amenity_potable_water' => 'fa-faucet-drip',
+        'amenity_trash' => 'fa-trash-can',
+        'amenity_fire_ring' => 'fa-fire',
+        'amenity_picnic_table' => 'fa-table-picnic',
+        'amenity_bear_box' => 'fa-box',
+        'amenity_showers' => 'fa-shower',
+        'amenity_electricity' => 'fa-bolt',
+        'amenity_dump_station' => 'fa-truck-droplet',
+        'amenity_food_storage_required' => 'fa-box-archive',
+
+        'connectivity_starlink_tested' => 'fa-satellite',
+        'connectivity_starlink_note' => 'fa-satellite-dish',
+
+        'wheelchair_friendly' => 'fa-wheelchair',
+        'mobility_device_friendly' => 'fa-person-walking',
+        'flat_walking_surface' => 'fa-road',
+        'step_free_access' => 'fa-person-walking-arrow-right',
+        'accessible_toilet' => 'fa-restroom',
+        'accessible_picnic_table' => 'fa-table-picnic',
+        'walking_distance_from_vehicle' => 'fa-person-walking',
+
+        'felt_safe_daytime' => 'fa-sun',
+        'felt_safe_nighttime' => 'fa-moon',
+        'flash_flood_risk' => 'fa-water',
+        'wildfire_risk' => 'fa-fire-flame-curved',
+        'fall_hazard' => 'fa-person-falling',
+        'cliff_exposure' => 'fa-mountain',
+        'rockfall_risk' => 'fa-hill-rockslide',
+        'wildlife_risk' => 'fa-paw',
+        'traffic_hazard' => 'fa-car-burst',
+        'emergency_access' => 'fa-truck-medical',
+
+        'warning_exposed_to_road' => 'fa-road',
+        'warning_zero_privacy' => 'fa-eye',
+        'warning_passing_vehicle_dust' => 'fa-smog',
+        'warning_possible_downed_trees' => 'fa-tree',
+        'warning_no_tent_camping' => 'fa-tent-arrow-turn-left',
+        'warning_limited_vehicle_length' => 'fa-ruler-horizontal',
+        'warning_leveling_may_be_required' => 'fa-scale-balanced',
+        'warning_motorized_recreation_traffic' => 'fa-motorcycle',
+        'warning_blind_turn_traffic_nearby' => 'fa-triangle-exclamation',
+
+        'best_months' => 'fa-calendar-check',
+        'winter_access' => 'fa-snowflake',
+        'overnight_camping_allowed' => 'fa-moon',
+        'dispersed_camping_allowed' => 'fa-campground',
+        'stay_limit_days' => 'fa-calendar-day',
+        'permit_required' => 'fa-file-signature',
+        'fee' => 'fa-dollar-sign',
+        'campfire_allowed' => 'fa-fire',
+        'pack_it_in_pack_it_out' => 'fa-trash-arrow-up',
+        'existing_sites_encouraged' => 'fa-signs-post',
+        'residential_use_prohibited' => 'fa-house-circle-xmark',
+        'nearest_town' => 'fa-city',
+        'nearest_fuel' => 'fa-gas-pump',
+        'nearest_grocery' => 'fa-cart-shopping',
+        'nearest_water' => 'fa-faucet-drip',
+        'nearest_toilet' => 'fa-restroom',
+        'nearest_hospital' => 'fa-hospital',
+
+        'access_summary' => 'fa-road',
+        'sensory_summary' => 'fa-brain',
+        'contributor_notes' => 'fa-note-sticky',
+    ];
+
+    if (isset($icons[$key])) {
+        return $icons[$key];
+    }
+
+    return match ((string) ($field['section'] ?? '')) {
+        'connectivity' => 'fa-signal',
+        'sensory' => 'fa-ear-listen',
+        'environment_accessibility' => 'fa-tree',
+        'safety' => 'fa-shield-halved',
+        'rules' => 'fa-signs-post',
+        'experience' => 'fa-star',
+        default => 'fa-circle-info',
+    };
+}
+
+
 function llama_place_report_fields(): array
 {
     $distance = llama_place_report_distance_options();
