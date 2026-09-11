@@ -61,7 +61,7 @@ DirectoryIndex index.php index.html
 
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
-    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https://account.llamascout.com"
 
     Header always unset X-Powered-By
 
