@@ -35,49 +35,6 @@ $categories =
     href="https://llamascout.com/css/admin/features/moderation-points.css"
 >
 
-<?php
-$submittedAmenities =
-    is_array($data['amenities'] ?? null)
-        ? $data['amenities']
-        : [];
-
-$submittedDetails =
-    is_array($data['details'] ?? null)
-        ? $data['details']
-        : [];
-
-$reportedNoAmenities =
-    !empty(
-        $submittedDetails[
-            'warning_no_amenities'
-        ]
-    );
-
-$amenityModerationLabels = [
-    'toilets' => 'Toilets',
-    'potable_water' => 'Potable water',
-    'trash' => 'Trash service',
-    'fire_ring' => 'Fire ring',
-    'picnic_table' => 'Picnic table',
-    'bear_box' => 'Bear box',
-    'showers' => 'Showers',
-    'electricity' => 'Electricity',
-    'dump_station' => 'Dump station',
-    'food_storage_required' => 'Food storage required',
-];
-
-$reportedAmenities = [];
-
-foreach (
-    $amenityModerationLabels
-    as $amenityKey => $amenityLabel
-) {
-    if (!empty($submittedAmenities[$amenityKey])) {
-        $reportedAmenities[] = $amenityLabel;
-    }
-}
-?>
-
 <section
     class="admin-moderation-detail admin-moderation-points"
     aria-labelledby="amenities-observation-heading"
