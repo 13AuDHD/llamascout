@@ -258,6 +258,26 @@
                     ? 'rating'
                     : 'choice';
 
+        /*
+         * Longer written-choice questions stay as native
+         * dropdowns. The first empty option is the untouched
+         * state and reads "Select...".
+         */
+        if (type === 'choice') {
+            const firstOption =
+                select.options[0];
+
+            if (
+                firstOption
+                && String(firstOption.value) === ''
+            ) {
+                firstOption.textContent =
+                    'Select...';
+            }
+
+            return;
+        }
+
         const field =
             select.closest(
                 '.contribution-field'
@@ -316,14 +336,8 @@
         grid.className =
             'add-place-radio-options';
 
-        if (type === 'choice') {
-            grid.classList.add(
-                'is-text-choice'
-            );
-        }
-
         options.forEach(
-            (option, index) => {
+            (option) => {
                 const value =
                     String(
                         option.value
@@ -384,14 +398,6 @@
                     label.classList.add(
                         'is-unknown'
                     );
-
-                    if (
-                        type !== 'rating'
-                        && type !== 'yes-no'
-                    ) {
-                        text.textContent =
-                            'Unknown';
-                    }
                 }
 
                 input.addEventListener(
