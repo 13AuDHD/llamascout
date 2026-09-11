@@ -24,8 +24,6 @@ $adminPageTitle = 'Review New Place';
 $adminPageEyebrow = 'Moderation';
 $adminActiveNav = 'submissions';
 
-require __DIR__ . '/_header.php';
-
 $submissionId =
     (int) (
         $_GET['id']
@@ -44,6 +42,8 @@ $notice = '';
 
 if (!$item) {
     http_response_code(404);
+
+    require __DIR__ . '/_header.php';
 
     echo '<div class="admin-moderation-notice">Submission not found.</div>';
 
@@ -230,6 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $submissionId
         );
 }
+
+require __DIR__ . '/_header.php';
 
 $data = $item['data'];
 
