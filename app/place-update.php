@@ -7,31 +7,36 @@ require_once __DIR__ . '/place-report.php';
 
 /*
  * =========================================================
- * SHARED PLACE REPORT ↔ PLACE UPDATE BRIDGE
+ * PLACE UPDATE SYSTEM
+ *
+ * Suggest an Update uses the shared Place Report schema.
+ *
+ * There is no separate list of editable Place fields here.
+ * Storage information is derived from the same field
+ * definitions used by Add Place and moderation.
  * =========================================================
- *
- * Suggest an Update now uses the same Place Report controls
- * as Add Place, moderator editing, and admin Place editing.
- *
- * The contributor edits the populated form normally.
- * We translate that complete form back into the existing
- * proposed-change format, and the persistence layer performs
- * the before/after comparison.
- *
- * There is intentionally no user-facing "Change" checkbox.
+ */
+
+
+/*
+ * =========================================================
+ * SCHEMA
+ * =========================================================
  */
 
 
 function llama_place_update_field_by_storage(
     string $storage
 ): ?array {
-    foreach (llama_place_report_fields() as $field) {
+    foreach (
+        llama_place_report_fields()
+        as $field
+    ) {
         if (
             (string) (
                 $field['storage']
                 ?? ''
-            )
-            === $storage
+            ) === $storage
         ) {
             return $field;
         }
@@ -41,54 +46,320 @@ function llama_place_update_field_by_storage(
 }
 
 
-function llama_place_update_definitions(): array
-{
-    $persistence =
-        community_place_update_field_definitions();
+function llama_place_update_storage_definition(
+    array $field
+): ?array {
+    $storage =
+        trim(
+            (string) (
+                $field['storage']
+                ?? ''
+            )
+        );
 
-    $definitions = [];
+    if ($storage === '') {
+        return null;
+    }
 
-    foreach ($persistence as $path => $definition) {
-        $shared =
-            llama_place_update_field_by_storage(
-                (string) $path
+
+    /*
+     * Submission metadata is not part of the published Place.
+     */
+    if (
+        in_array(
+            $storage,
+            [
+                'visited_at',
+                'contributor_notes',
+            ],
+            true
+        )
+    ) {
+        return null;
+    }
+
+
+    /*
+     * Fields stored directly on places.
+     */
+    $placeColumns = [
+        'name',
+        'type',
+        'description',
+        'latitude',
+        'longitude',
+        'elevation_feet',
+        'road',
+        'city',
+        'county',
+        'state',
+        'region',
+        'land_manager',
+        'land_type',
+        'access_summary',
+        'sensory_summary',
+    ];
+
+    if (
+        in_array(
+            $storage,
+            $placeColumns,
+            true
+        )
+    ) {
+        return [
+            'table' =>
+                'places',
+
+            'column' =>
+                $storage,
+        ];
+    }
+
+
+    /*
+     * place_details
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'details.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen('details.')
             );
 
-        if ($shared) {
-            $definitions[$path] =
-                array_merge(
-                    $definition,
-                    [
-                        'shared' =>
-                            $shared,
+        return [
+            'table' =>
+                'place_details',
 
-                        'label' =>
-                            (string) (
-                                $shared['label']
-                                ?? $definition['label']
-                                ?? $path
-                            ),
+            'column' =>
+                $column,
+        ];
+    }
 
-                        'section' =>
-                            (string) (
-                                $shared['section']
-                                ?? 'other'
-                            ),
-                    ]
+
+    /*
+     * place_amenities
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'amenities.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen('amenities.')
+            );
+
+        return [
+            'table' =>
+                'place_amenities',
+
+            'column' =>
+                $column,
+        ];
+    }
+
+
+    /*
+     * place_connectivity
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'connectivity.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen('connectivity.')
+            );
+
+        return [
+            'table' =>
+                'place_connectivity',
+
+            'column' =>
+                $column,
+        ];
+    }
+
+
+    /*
+     * Day and night sensory values.
+     */
+    foreach (
+        [
+            'daytime',
+            'nighttime',
+        ]
+        as $period
+    ) {
+        $prefix =
+            'sensory.'
+            . $period
+            . '.';
+
+        if (
+            str_starts_with(
+                $storage,
+                $prefix
+            )
+        ) {
+            $column =
+                substr(
+                    $storage,
+                    strlen($prefix)
                 );
 
+            return [
+                'table' =>
+                    'place_sensory',
+
+                'column' =>
+                    $column,
+
+                'period' =>
+                    $period,
+            ];
+        }
+    }
+
+
+    /*
+     * Additional sensory conditions.
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'sensory.details.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen(
+                    'sensory.details.'
+                )
+            );
+
+        return [
+            'table' =>
+                'place_sensory_details',
+
+            'column' =>
+                $column,
+        ];
+    }
+
+
+    /*
+     * Rules and seasonal information.
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'rules.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen('rules.')
+            );
+
+        return [
+            'table' =>
+                'place_rules',
+
+            'column' =>
+                $column,
+        ];
+    }
+
+
+    /*
+     * Experience and recommendations.
+     */
+    if (
+        str_starts_with(
+            $storage,
+            'experience.'
+        )
+    ) {
+        $column =
+            substr(
+                $storage,
+                strlen('experience.')
+            );
+
+        return [
+            'table' =>
+                'place_experience',
+
+            'column' =>
+                $column,
+        ];
+    }
+
+    return null;
+}
+
+
+function llama_place_update_definitions(): array
+{
+    $definitions = [];
+
+    foreach (
+        llama_place_report_fields()
+        as $key => $field
+    ) {
+        $storageDefinition =
+            llama_place_update_storage_definition(
+                $field
+            );
+
+        if (!$storageDefinition) {
             continue;
         }
 
-        $definitions[$path] =
+        $storage =
+            (string) $field['storage'];
+
+        $definitions[$storage] =
             array_merge(
-                $definition,
+                $storageDefinition,
                 [
                     'shared' =>
-                        null,
+                        $field,
+
+                    'key' =>
+                        (string) $key,
+
+                    'label' =>
+                        (string) (
+                            $field['label']
+                            ?? $key
+                        ),
 
                     'section' =>
-                        'other',
+                        (string) (
+                            $field['section']
+                            ?? 'other'
+                        ),
+
+                    'type' =>
+                        (string) (
+                            $field['type']
+                            ?? 'text'
+                        ),
                 ]
             );
     }
@@ -99,7 +370,7 @@ function llama_place_update_definitions(): array
 
 function llama_place_update_sections(): array
 {
-    $shared =
+    $sharedSections =
         llama_place_report_sections();
 
     $sections = [];
@@ -108,33 +379,35 @@ function llama_place_update_sections(): array
         llama_place_update_definitions()
         as $path => $definition
     ) {
-        $section =
+        $sectionKey =
             (string) (
                 $definition['section']
                 ?? 'other'
             );
 
-        if (!isset($sections[$section])) {
-            $sections[$section] =
-                $shared[$section]
+        if (
+            !isset(
+                $sections[$sectionKey]
+            )
+        ) {
+            $sections[$sectionKey] =
+                $sharedSections[$sectionKey]
                 ?? [
                     'label' =>
-                        (string) (
-                            $definition['group']
-                            ?? 'Other'
-                        ),
+                        'Other',
 
                     'description' =>
-                        'Fields that can be updated on this Place.',
+                        'Additional Place information',
 
                     'icon' =>
                         'fa-pen-to-square',
                 ];
 
-            $sections[$section]['fields'] = [];
+            $sections[$sectionKey]['fields'] =
+                [];
         }
 
-        $sections[$section]['fields'][$path] =
+        $sections[$sectionKey]['fields'][$path] =
             $definition;
     }
 
@@ -143,15 +416,355 @@ function llama_place_update_sections(): array
 
 
 /*
- * Build the populated shared Place Report form.
- *
- * $currentValues uses storage paths such as:
- *   details.vehicle_capacity
- *   sensory.daytime.noise
- *
- * $proposedValues contains an existing Needs Changes proposal
- * and takes precedence over the currently published value.
+ * =========================================================
+ * CURRENT PUBLISHED VALUES
+ * =========================================================
  */
+
+
+function llama_place_update_valid_identifier(
+    string $value
+): bool {
+    return
+        preg_match(
+            '/^[a-z0-9_]+$/',
+            $value
+        ) === 1;
+}
+
+
+function llama_place_update_current_values(
+    PDO $db,
+    int $placeId,
+    bool $lock = false
+): array {
+    $definitions =
+        llama_place_update_definitions();
+
+    $values = [];
+    $cache = [];
+
+    foreach (
+        $definitions
+        as $path => $definition
+    ) {
+        $table =
+            (string) (
+                $definition['table']
+                ?? ''
+            );
+
+        $column =
+            (string) (
+                $definition['column']
+                ?? ''
+            );
+
+        if (
+            !llama_place_update_valid_identifier(
+                $table
+            )
+            || !llama_place_update_valid_identifier(
+                $column
+            )
+        ) {
+            continue;
+        }
+
+
+        /*
+         * places
+         */
+        if ($table === 'places') {
+            if (
+                !array_key_exists(
+                    'places',
+                    $cache
+                )
+            ) {
+                $sql =
+                    'SELECT *
+                     FROM places
+                     WHERE id = ?
+                     LIMIT 1';
+
+                if ($lock) {
+                    $sql .= ' FOR UPDATE';
+                }
+
+                $stmt =
+                    $db->prepare(
+                        $sql
+                    );
+
+                $stmt->execute([
+                    $placeId,
+                ]);
+
+                $cache['places'] =
+                    $stmt->fetch(
+                        PDO::FETCH_ASSOC
+                    )
+                    ?: [];
+            }
+
+            $values[$path] =
+                $cache['places'][$column]
+                ?? null;
+
+            continue;
+        }
+
+
+        /*
+         * place_sensory uses one row per period.
+         */
+        if (
+            $table === 'place_sensory'
+        ) {
+            $period =
+                (string) (
+                    $definition['period']
+                    ?? ''
+                );
+
+            $cacheKey =
+                'place_sensory:'
+                . $period;
+
+            if (
+                !array_key_exists(
+                    $cacheKey,
+                    $cache
+                )
+            ) {
+                $sql =
+                    'SELECT *
+                     FROM place_sensory
+                     WHERE place_id = ?
+                       AND period = ?
+                     LIMIT 1';
+
+                if ($lock) {
+                    $sql .= ' FOR UPDATE';
+                }
+
+                $stmt =
+                    $db->prepare(
+                        $sql
+                    );
+
+                $stmt->execute([
+                    $placeId,
+                    $period,
+                ]);
+
+                $cache[$cacheKey] =
+                    $stmt->fetch(
+                        PDO::FETCH_ASSOC
+                    )
+                    ?: [];
+            }
+
+            $values[$path] =
+                $cache[$cacheKey][$column]
+                ?? null;
+
+            continue;
+        }
+
+
+        /*
+         * All remaining Place child tables have one row
+         * identified by place_id.
+         */
+        if (
+            !array_key_exists(
+                $table,
+                $cache
+            )
+        ) {
+            $sql =
+                "SELECT *
+                 FROM `$table`
+                 WHERE place_id = ?
+                 LIMIT 1";
+
+            if ($lock) {
+                $sql .= ' FOR UPDATE';
+            }
+
+            $stmt =
+                $db->prepare(
+                    $sql
+                );
+
+            $stmt->execute([
+                $placeId,
+            ]);
+
+            $cache[$table] =
+                $stmt->fetch(
+                    PDO::FETCH_ASSOC
+                )
+                ?: [];
+        }
+
+        $values[$path] =
+            $cache[$table][$column]
+            ?? null;
+    }
+
+    return $values;
+}
+
+
+function llama_place_update_current_value(
+    PDO $db,
+    int $placeId,
+    string $path,
+    bool $lock = false
+): mixed {
+    $definitions =
+        llama_place_update_definitions();
+
+    if (
+        !isset(
+            $definitions[$path]
+        )
+    ) {
+        throw new RuntimeException(
+            'Unsupported Place update field: '
+            . $path
+        );
+    }
+
+    $definition =
+        $definitions[$path];
+
+    $table =
+        (string) $definition['table'];
+
+    $column =
+        (string) $definition['column'];
+
+    if (
+        !llama_place_update_valid_identifier(
+            $table
+        )
+        || !llama_place_update_valid_identifier(
+            $column
+        )
+    ) {
+        throw new RuntimeException(
+            'Invalid Place update storage definition.'
+        );
+    }
+
+
+    if ($table === 'places') {
+        $sql =
+            "SELECT `$column`
+             FROM places
+             WHERE id = ?
+             LIMIT 1";
+
+        if ($lock) {
+            $sql .= ' FOR UPDATE';
+        }
+
+        $stmt =
+            $db->prepare(
+                $sql
+            );
+
+        $stmt->execute([
+            $placeId,
+        ]);
+
+        $value =
+            $stmt->fetchColumn();
+
+        return $value === false
+            ? null
+            : $value;
+    }
+
+
+    if (
+        $table === 'place_sensory'
+    ) {
+        $period =
+            (string) (
+                $definition['period']
+                ?? ''
+            );
+
+        $sql =
+            "SELECT `$column`
+             FROM place_sensory
+             WHERE place_id = ?
+               AND period = ?
+             LIMIT 1";
+
+        if ($lock) {
+            $sql .= ' FOR UPDATE';
+        }
+
+        $stmt =
+            $db->prepare(
+                $sql
+            );
+
+        $stmt->execute([
+            $placeId,
+            $period,
+        ]);
+
+        $value =
+            $stmt->fetchColumn();
+
+        return $value === false
+            ? null
+            : $value;
+    }
+
+
+    $sql =
+        "SELECT `$column`
+         FROM `$table`
+         WHERE place_id = ?
+         LIMIT 1";
+
+    if ($lock) {
+        $sql .= ' FOR UPDATE';
+    }
+
+    $stmt =
+        $db->prepare(
+            $sql
+        );
+
+    $stmt->execute([
+        $placeId,
+    ]);
+
+    $value =
+        $stmt->fetchColumn();
+
+    return $value === false
+        ? null
+        : $value;
+}
+
+
+/*
+ * =========================================================
+ * FORM VALUES
+ * =========================================================
+ */
+
+
 function llama_place_update_shared_form_values(
     array $currentValues,
     array $unknownFields = [],
@@ -159,32 +772,27 @@ function llama_place_update_shared_form_values(
 ): array {
     $values = [];
 
-    $unknownLookup = [];
-
-    foreach ($unknownFields as $fieldKey) {
-        $fieldKey =
-            trim(
-                (string) $fieldKey
-            );
-
-        if ($fieldKey !== '') {
-            $unknownLookup[$fieldKey] = true;
-        }
-    }
+    $unknownLookup =
+        array_fill_keys(
+            array_map(
+                'strval',
+                $unknownFields
+            ),
+            true
+        );
 
     foreach (
-        llama_place_report_fields()
-        as $key => $field
+        llama_place_update_definitions()
+        as $storage => $definition
     ) {
-        $storage =
-            (string) (
-                $field['storage']
-                ?? ''
-            );
+        $field =
+            $definition['shared'];
 
-        if ($storage === '') {
-            continue;
-        }
+        $key =
+            (string) $field['key'];
+
+        $type =
+            (string) $field['type'];
 
         $hasProposed =
             array_key_exists(
@@ -210,28 +818,6 @@ function llama_place_update_shared_form_values(
                 ? $proposedValues[$storage]
                 : $currentValues[$storage];
 
-        $type =
-            (string) (
-                $field['type']
-                ?? 'text'
-            );
-
-        /*
-         * Existing Needs Changes submissions historically represented
-         * an explicit Unknown as NULL. For controls that support Unknown,
-         * restore that state in the shared form.
-         */
-        $explicitUnknown =
-            $hasProposed
-                ? (
-                    $value === null
-                    && !empty(
-                        $field['allow_unknown']
-                    )
-                )
-                : isset(
-                    $unknownLookup[$key]
-                );
 
         if ($type === 'checkbox') {
             if ((bool) $value) {
@@ -241,12 +827,36 @@ function llama_place_update_shared_form_values(
             continue;
         }
 
-        if ($explicitUnknown) {
+
+        if (
+            !$hasProposed
+            && isset(
+                $unknownLookup[$key]
+            )
+            && !empty(
+                $field['allow_unknown']
+            )
+        ) {
             $values[$key] =
                 llama_place_report_unknown_token();
 
             continue;
         }
+
+
+        if (
+            $hasProposed
+            && $value === null
+            && !empty(
+                $field['allow_unknown']
+            )
+        ) {
+            $values[$key] =
+                llama_place_report_unknown_token();
+
+            continue;
+        }
+
 
         if (
             in_array(
@@ -265,10 +875,12 @@ function llama_place_update_shared_form_values(
             continue;
         }
 
+
         if ($value === null) {
             $values[$key] = '';
             continue;
         }
+
 
         if (is_bool($value)) {
             $values[$key] =
@@ -279,6 +891,7 @@ function llama_place_update_shared_form_values(
             continue;
         }
 
+
         $values[$key] =
             (string) $value;
     }
@@ -288,89 +901,73 @@ function llama_place_update_shared_form_values(
 
 
 /*
- * Convert the normal shared Place Report POST back into the
- * existing update-submission format.
- *
- * Every supported field is supplied to the persistence layer.
- * submit_place_update() and community_resubmit_place_update()
- * compare each supplied value to the published value and keep
- * only actual differences.
- *
- * This means the user no longer has to manually identify which
- * fields changed.
+ * =========================================================
+ * CHANGE DETECTION
+ * =========================================================
  */
-function llama_place_update_prepare_shared_input(
-    array $input
-): array {
-    /*
-     * Preserve compatibility with an already-normalized legacy
-     * payload. This also keeps older callers safe while the UI
-     * migration is being completed.
-     */
-    if (
-        is_array(
-            $input['change_fields']
-            ?? null
-        )
-        && is_array(
-            $input['field_value']
-            ?? null
-        )
-    ) {
-        return $input;
+
+
+function llama_place_update_value_equal(
+    mixed $a,
+    mixed $b
+): bool {
+    if (is_bool($a)) {
+        $a =
+            $a
+                ? '1'
+                : '0';
     }
 
-    $prepared = $input;
+    if (is_bool($b)) {
+        $b =
+            $b
+                ? '1'
+                : '0';
+    }
 
-    $changeFields = [];
-    $fieldValues = [];
 
-    $unknownToken =
-        llama_place_report_unknown_token();
+    if (
+        $a === null
+        || $b === null
+    ) {
+        return $a === $b;
+    }
 
-    $unansweredToken =
-        llama_place_report_unanswered_token();
+
+    /*
+     * Database drivers frequently return numeric columns as
+     * strings. Compare normalized scalar values so "4" and 4
+     * are not treated as a change.
+     */
+    return (string) $a
+        === (string) $b;
+}
+
+
+function llama_place_update_build_changes(
+    array $input,
+    array $current
+): array {
+    $proposed = [];
+    $original = [];
+    $unknownFields = [];
 
     foreach (
         llama_place_update_definitions()
         as $path => $definition
     ) {
-        $shared =
-            is_array(
-                $definition['shared']
-                ?? null
-            )
-                ? $definition['shared']
-                : null;
-
-        /*
-         * A persistence field that is not represented in the
-         * shared Place Report must not be changed just because
-         * it is absent from the shared form.
-         */
-        if (!$shared) {
-            continue;
-        }
+        $field =
+            $definition['shared'];
 
         $key =
-            (string) (
-                $shared['key']
-                ?? ''
-            );
-
-        if ($key === '') {
-            continue;
-        }
+            (string) $field['key'];
 
         $type =
-            (string) (
-                $shared['type']
-                ?? 'text'
-            );
+            (string) $field['type'];
+
 
         /*
-         * Unchecked HTML checkboxes are absent from POST.
-         * In the shared Place Report that means False.
+         * Unchecked checkboxes are valid False values.
          */
         if ($type === 'checkbox') {
             $raw =
@@ -389,48 +986,67 @@ function llama_place_update_prepare_shared_input(
                 continue;
             }
 
-            $raw = $input[$key];
+            $raw =
+                $input[$key];
         }
+
 
         if (is_array($raw)) {
             continue;
         }
 
-        /*
-         * The existing update persistence layer uses __NULL__
-         * for a proposed empty/unknown value.
-         */
+
+        $newValue =
+            llama_place_report_parse_field(
+                $field,
+                $raw,
+                $unknownFields
+            );
+
+        $oldValue =
+            $current[$path]
+            ?? null;
+
+
         if (
-            $raw === $unknownToken
-            || $raw === $unansweredToken
+            llama_place_update_value_equal(
+                $oldValue,
+                $newValue
+            )
         ) {
-            $raw = '__NULL__';
-        } elseif (
-            is_string($raw)
-            && trim($raw) === ''
-        ) {
-            $raw = '__NULL__';
+            continue;
         }
 
-        $changeFields[] =
-            (string) $path;
 
-        $fieldValues[(string) $path] =
-            $raw;
+        $proposed[$path] =
+            $newValue;
+
+        $original[$path] =
+            $oldValue;
     }
 
-    $prepared['change_fields'] =
-        array_values(
-            array_unique(
-                $changeFields
-            )
-        );
+    return [
+        'proposed' =>
+            $proposed,
 
-    $prepared['field_value'] =
-        $fieldValues;
+        'original' =>
+            $original,
 
-    return $prepared;
+        'unknown_fields' =>
+            array_values(
+                array_keys(
+                    $unknownFields
+                )
+            ),
+    ];
 }
+
+
+/*
+ * =========================================================
+ * JSON / HISTORY
+ * =========================================================
+ */
 
 
 function llama_place_update_decode_json(
@@ -488,10 +1104,11 @@ function llama_place_update_fetch_row(
 function llama_place_update_history(
     array $row
 ): array {
-    return llama_place_update_decode_json(
-        $row['revision_history']
-        ?? null
-    );
+    return
+        llama_place_update_decode_json(
+            $row['revision_history']
+            ?? null
+        );
 }
 
 
@@ -523,8 +1140,7 @@ function llama_place_update_append_history(
             'Y-m-d H:i:s'
         );
 
-    $history[] =
-        $event;
+    $history[] = $event;
 
     $stmt =
         $db->prepare(
@@ -542,36 +1158,6 @@ function llama_place_update_append_history(
         ),
         $updateId,
     ]);
-}
-
-
-function llama_place_update_value_equal(
-    mixed $a,
-    mixed $b
-): bool {
-    if (is_bool($a)) {
-        $a =
-            $a
-                ? '1'
-                : '0';
-    }
-
-    if (is_bool($b)) {
-        $b =
-            $b
-                ? '1'
-                : '0';
-    }
-
-    if (
-        $a === null
-        || $b === null
-    ) {
-        return $a === $b;
-    }
-
-    return (string) $a
-        === (string) $b;
 }
 
 
@@ -610,6 +1196,7 @@ function llama_place_update_changed_proposals(
                 $after
             );
 
+
         if (
             $hadOld === $hasNew
             && llama_place_update_value_equal(
@@ -619,6 +1206,7 @@ function llama_place_update_changed_proposals(
         ) {
             continue;
         }
+
 
         $changes[$path] = [
             'before_present' =>
@@ -639,61 +1227,11 @@ function llama_place_update_changed_proposals(
 }
 
 
-function llama_place_update_validate_input(
-    array $input
-): void {
-    $selected =
-        is_array(
-            $input['change_fields']
-            ?? null
-        )
-            ? array_values(
-                array_unique(
-                    array_map(
-                        'strval',
-                        $input['change_fields']
-                    )
-                )
-            )
-            : [];
-
-    $values =
-        is_array(
-            $input['field_value']
-            ?? null
-        )
-            ? $input['field_value']
-            : [];
-
-    $definitions =
-        llama_place_update_definitions();
-
-    foreach ($selected as $path) {
-        if (
-            !isset(
-                $definitions[$path]
-            )
-        ) {
-            continue;
-        }
-
-        if (
-            !array_key_exists(
-                $path,
-                $values
-            )
-        ) {
-            throw new InvalidArgumentException(
-                'A value is missing for '
-                . (string) (
-                    $definitions[$path]['label']
-                    ?? $path
-                )
-                . '.'
-            );
-        }
-    }
-}
+/*
+ * =========================================================
+ * SUBMIT NEW UPDATE
+ * =========================================================
+ */
 
 
 function llama_place_update_submit(
@@ -701,23 +1239,251 @@ function llama_place_update_submit(
     array $place,
     array $input
 ): int {
-    $input =
-        llama_place_update_prepare_shared_input(
-            $input
+    $placeId =
+        (int) (
+            $place['id']
+            ?? 0
         );
 
-    llama_place_update_validate_input(
-        $input
-    );
+    if (
+        $userId < 1
+        || $placeId < 1
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid Place update.'
+        );
+    }
 
-    $updateId =
-        submit_place_update(
+
+    if (
+        community_open_update_for_user(
             $userId,
-            $place,
-            $input
+            $placeId
+        )
+    ) {
+        throw new RuntimeException(
+            'You already have an open update for this Place.'
         );
+    }
+
 
     $db = db();
+
+    $current =
+        llama_place_update_current_values(
+            $db,
+            $placeId
+        );
+
+    $changes =
+        llama_place_update_build_changes(
+            $input,
+            $current
+        );
+
+    $proposed =
+        $changes['proposed'];
+
+    $original =
+        $changes['original'];
+
+
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
+
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+
+    if (
+        !$proposed
+        && !$submittedPhotos
+    ) {
+        throw new InvalidArgumentException(
+            'Nothing changed. Edit at least one Place value or add a current photo before submitting.'
+        );
+    }
+
+
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
+    }
+
+
+    $visitedAt =
+        community_clean_text(
+            $input['visited_at']
+            ?? null,
+            30
+        );
+
+    $notes =
+        community_clean_text(
+            $input['contributor_notes']
+            ?? null
+        );
+
+
+    $updateId = 0;
+
+    try {
+        $db->beginTransaction();
+
+
+        $stmt =
+            $db->prepare(
+                'INSERT INTO place_update_submissions
+                    (
+                        place_id,
+                        user_id,
+                        update_type,
+                        status,
+                        role_at_submission,
+                        visited_at,
+                        proposed_changes,
+                        original_values,
+                        photos,
+                        contributor_notes
+                    )
+                 VALUES
+                    (
+                        :place_id,
+                        :user_id,
+                        :update_type,
+                        :status,
+                        :role_at_submission,
+                        :visited_at,
+                        :proposed_changes,
+                        :original_values,
+                        :photos,
+                        :contributor_notes
+                    )'
+            );
+
+
+        $stmt->execute([
+            ':place_id' =>
+                $placeId,
+
+            ':user_id' =>
+                $userId,
+
+            ':update_type' =>
+                'update',
+
+            ':status' =>
+                'pending',
+
+            ':role_at_submission' =>
+                community_role_at_submission(
+                    $userId
+                ),
+
+            ':visited_at' =>
+                $visitedAt !== null
+                    ? $visitedAt
+                        . (
+                            strlen(
+                                $visitedAt
+                            ) === 10
+                                ? ' 00:00:00'
+                                : ''
+                        )
+                    : null,
+
+            ':proposed_changes' =>
+                json_encode(
+                    $proposed,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+
+            ':original_values' =>
+                json_encode(
+                    $original,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+
+            ':photos' =>
+                '[]',
+
+            ':contributor_notes' =>
+                $notes,
+        ]);
+
+
+        $updateId =
+            (int) $db->lastInsertId();
+
+
+        if ($photoToken !== '') {
+            $committedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/'
+                    . $updateId
+                );
+
+            $photoUpdate =
+                $db->prepare(
+                    'UPDATE place_update_submissions
+                     SET photos = ?
+                     WHERE id = ?
+                       AND user_id = ?'
+                );
+
+            $photoUpdate->execute([
+                json_encode(
+                    $committedPhotos,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+                $updateId,
+                $userId,
+            ]);
+        }
+
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if (
+            $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        if ($updateId > 0) {
+            llama_photo_remove_tree(
+                dirname(__DIR__)
+                . '/uploads/place-updates/'
+                . $updateId
+            );
+        }
+
+        throw $exception;
+    }
+
 
     $row =
         llama_place_update_fetch_row(
@@ -767,8 +1533,16 @@ function llama_place_update_submit(
         );
     }
 
+
     return $updateId;
 }
+
+
+/*
+ * =========================================================
+ * RESUBMIT AFTER MODERATOR REQUEST
+ * =========================================================
+ */
 
 
 function llama_place_update_resubmit(
@@ -777,14 +1551,22 @@ function llama_place_update_resubmit(
     int $updateId,
     array $input
 ): int {
-    $input =
-        llama_place_update_prepare_shared_input(
-            $input
+    $placeId =
+        (int) (
+            $place['id']
+            ?? 0
         );
 
-    llama_place_update_validate_input(
-        $input
-    );
+    if (
+        $userId < 1
+        || $placeId < 1
+        || $updateId < 1
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid Place update.'
+        );
+    }
+
 
     $db = db();
 
@@ -794,22 +1576,107 @@ function llama_place_update_resubmit(
             $updateId
         );
 
-    if (!$before) {
+    if (
+        !$before
+        || (int) (
+            $before['user_id']
+            ?? 0
+        ) !== $userId
+        || (int) (
+            $before['place_id']
+            ?? 0
+        ) !== $placeId
+        || (string) (
+            $before['status']
+            ?? ''
+        ) !== 'needs-changes'
+    ) {
         throw new RuntimeException(
-            'This Place update could not be found.'
+            'This Place update is no longer available for resubmission.'
         );
     }
+
+
+    $current =
+        llama_place_update_current_values(
+            $db,
+            $placeId
+        );
+
+    $changes =
+        llama_place_update_build_changes(
+            $input,
+            $current
+        );
+
+    $proposed =
+        $changes['proposed'];
+
+    $original =
+        $changes['original'];
+
+
+    $existingPhotos =
+        llama_place_update_decode_json(
+            $before['photos']
+            ?? '[]'
+        );
+
+
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
+
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+
+    if (
+        !$proposed
+        && !$existingPhotos
+        && !$submittedPhotos
+    ) {
+        throw new InvalidArgumentException(
+            'Nothing changed. Edit at least one Place value or include a current photo before resubmitting.'
+        );
+    }
+
+
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
+    }
+
+
+    $visitedAt =
+        community_clean_text(
+            $input['visited_at']
+            ?? null,
+            30
+        );
+
+    $notes =
+        community_clean_text(
+            $input['contributor_notes']
+            ?? null
+        );
+
 
     $beforeProposed =
         llama_place_update_decode_json(
             $before['proposed_changes']
             ?? '{}'
-        );
-
-    $beforePhotos =
-        llama_place_update_decode_json(
-            $before['photos']
-            ?? '[]'
         );
 
     $reviewRequest =
@@ -820,13 +1687,151 @@ function llama_place_update_resubmit(
             )
         );
 
-    $result =
-        community_resubmit_place_update(
-            $userId,
-            $place,
+    $newCommittedPhotos = [];
+
+
+    try {
+        $db->beginTransaction();
+
+
+        if ($photoToken !== '') {
+            $newCommittedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/'
+                    . $updateId
+                );
+        }
+
+
+        $photos =
+            array_values(
+                array_merge(
+                    $existingPhotos,
+                    $newCommittedPhotos
+                )
+            );
+
+
+        $stmt =
+            $db->prepare(
+                'UPDATE place_update_submissions
+                 SET
+                    status = "pending",
+                    role_at_submission = ?,
+                    visited_at = ?,
+                    proposed_changes = ?,
+                    original_values = ?,
+                    photos = ?,
+                    contributor_notes = ?,
+                    submitted_at = CURRENT_TIMESTAMP,
+                    reviewed_at = NULL,
+                    reviewed_by = NULL,
+                    review_notes = NULL
+                 WHERE id = ?
+                   AND user_id = ?
+                   AND place_id = ?
+                   AND status = "needs-changes"'
+            );
+
+
+        $stmt->execute([
+            community_role_at_submission(
+                $userId
+            ),
+
+            $visitedAt !== null
+                ? $visitedAt
+                    . (
+                        strlen(
+                            $visitedAt
+                        ) === 10
+                            ? ' 00:00:00'
+                            : ''
+                    )
+                : null,
+
+            json_encode(
+                $proposed,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            ),
+
+            json_encode(
+                $original,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            ),
+
+            json_encode(
+                $photos,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            ),
+
+            $notes,
             $updateId,
-            $input
-        );
+            $userId,
+            $placeId,
+        ]);
+
+
+        if (
+            $stmt->rowCount()
+            !== 1
+        ) {
+            throw new RuntimeException(
+                'The Place update changed before it could be resubmitted.'
+            );
+        }
+
+
+        $db->commit();
+
+    } catch (Throwable $exception) {
+        if (
+            $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        foreach (
+            $newCommittedPhotos
+            as $photo
+        ) {
+            $src =
+                llama_place_report_photo_path(
+                    $photo
+                );
+
+            if ($src === '') {
+                continue;
+            }
+
+            $absolute =
+                dirname(__DIR__)
+                . $src;
+
+            if (
+                is_file(
+                    $absolute
+                )
+            ) {
+                @unlink(
+                    $absolute
+                );
+            }
+        }
+
+        throw $exception;
+    }
+
 
     $after =
         llama_place_update_fetch_row(
@@ -873,7 +1878,7 @@ function llama_place_update_resubmit(
 
                 'photo_count_before' =>
                     count(
-                        $beforePhotos
+                        $existingPhotos
                     ),
 
                 'photo_count_after' =>
@@ -892,8 +1897,498 @@ function llama_place_update_resubmit(
         );
     }
 
-    return $result;
+
+    return $updateId;
 }
+
+
+/*
+ * =========================================================
+ * APPLY APPROVED VALUE
+ * =========================================================
+ */
+
+
+function llama_place_update_apply_field(
+    PDO $db,
+    int $placeId,
+    string $path,
+    mixed $value
+): void {
+    $definitions =
+        llama_place_update_definitions();
+
+    if (
+        !isset(
+            $definitions[$path]
+        )
+    ) {
+        throw new RuntimeException(
+            'Unsupported Place update field: '
+            . $path
+        );
+    }
+
+    $definition =
+        $definitions[$path];
+
+    $table =
+        (string) $definition['table'];
+
+    $column =
+        (string) $definition['column'];
+
+    if (
+        !llama_place_update_valid_identifier(
+            $table
+        )
+        || !llama_place_update_valid_identifier(
+            $column
+        )
+    ) {
+        throw new RuntimeException(
+            'Invalid Place update storage definition.'
+        );
+    }
+
+
+    $storedValue =
+        is_bool($value)
+            ? (
+                $value
+                    ? 1
+                    : 0
+            )
+            : $value;
+
+
+    if ($table === 'places') {
+        $stmt =
+            $db->prepare(
+                "UPDATE places
+                 SET `$column` = ?
+                 WHERE id = ?"
+            );
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+
+
+        if ($path === 'latitude') {
+            $db->prepare(
+                'UPDATE places
+                 SET public_latitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+
+                $placeId,
+            ]);
+        }
+
+
+        if ($path === 'longitude') {
+            $db->prepare(
+                'UPDATE places
+                 SET public_longitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+
+                $placeId,
+            ]);
+        }
+
+
+        return;
+    }
+
+
+    if (
+        $table === 'place_sensory'
+    ) {
+        $period =
+            (string) (
+                $definition['period']
+                ?? ''
+            );
+
+        $exists =
+            $db->prepare(
+                'SELECT id
+                 FROM place_sensory
+                 WHERE place_id = ?
+                   AND period = ?
+                 LIMIT 1'
+            );
+
+        $exists->execute([
+            $placeId,
+            $period,
+        ]);
+
+
+        if (
+            $exists->fetchColumn()
+        ) {
+            $stmt =
+                $db->prepare(
+                    "UPDATE place_sensory
+                     SET `$column` = ?
+                     WHERE place_id = ?
+                       AND period = ?"
+                );
+
+            $stmt->execute([
+                $storedValue,
+                $placeId,
+                $period,
+            ]);
+        } else {
+            $stmt =
+                $db->prepare(
+                    "INSERT INTO place_sensory
+                        (
+                            place_id,
+                            period,
+                            `$column`
+                        )
+                     VALUES (?, ?, ?)"
+                );
+
+            $stmt->execute([
+                $placeId,
+                $period,
+                $storedValue,
+            ]);
+        }
+
+
+        return;
+    }
+
+
+    $exists =
+        $db->prepare(
+            "SELECT place_id
+             FROM `$table`
+             WHERE place_id = ?
+             LIMIT 1"
+        );
+
+    $exists->execute([
+        $placeId,
+    ]);
+
+
+    if (
+        $exists->fetchColumn()
+    ) {
+        $stmt =
+            $db->prepare(
+                "UPDATE `$table`
+                 SET `$column` = ?
+                 WHERE place_id = ?"
+            );
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+    } else {
+        $stmt =
+            $db->prepare(
+                "INSERT INTO `$table`
+                    (
+                        place_id,
+                        `$column`
+                    )
+                 VALUES (?, ?)"
+            );
+
+        $stmt->execute([
+            $placeId,
+            $storedValue,
+        ]);
+    }
+}
+
+
+/*
+ * =========================================================
+ * MODERATION APPROVAL
+ * =========================================================
+ */
+
+
+function llama_place_update_approve(
+    PDO $db,
+    int $updateId,
+    int $reviewedBy,
+    string $reviewNotes
+): int {
+    if (
+        !$db->inTransaction()
+    ) {
+        throw new RuntimeException(
+            'Place update approval requires an active database transaction.'
+        );
+    }
+
+
+    $update =
+        moderation_update(
+            $db,
+            $updateId,
+            true
+        );
+
+    if (!$update) {
+        throw new RuntimeException(
+            'The Place update could not be found.'
+        );
+    }
+
+
+    if (
+        !in_array(
+            (string) (
+                $update['status']
+                ?? ''
+            ),
+            [
+                'pending',
+                'needs-changes',
+            ],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'This Place update is no longer awaiting review.'
+        );
+    }
+
+
+    $placeId =
+        (int) $update['place_id'];
+
+    $proposed =
+        is_array(
+            $update['proposed']
+            ?? null
+        )
+            ? $update['proposed']
+            : [];
+
+    $original =
+        is_array(
+            $update['original']
+            ?? null
+        )
+            ? $update['original']
+            : [];
+
+
+    foreach (
+        $proposed
+        as $path => $value
+    ) {
+        if (
+            !array_key_exists(
+                $path,
+                $original
+            )
+        ) {
+            throw new RuntimeException(
+                'This update is missing its original value for '
+                . $path
+                . '.'
+            );
+        }
+
+
+        $current =
+            llama_place_update_current_value(
+                $db,
+                $placeId,
+                (string) $path,
+                true
+            );
+
+
+        if (
+            !llama_place_update_value_equal(
+                $current,
+                $original[$path]
+            )
+        ) {
+            throw new RuntimeException(
+                'This Place changed after the contribution was submitted. Review the current value of "'
+                . str_replace(
+                    [
+                        '.',
+                        '_',
+                    ],
+                    ' ',
+                    (string) $path
+                )
+                . '" before approving.'
+            );
+        }
+    }
+
+
+    $photos =
+        is_array(
+            $update['photo_list']
+            ?? null
+        )
+            ? $update['photo_list']
+            : [];
+
+
+    if (
+        !$proposed
+        && !$photos
+    ) {
+        throw new RuntimeException(
+            'This update does not contain any changes.'
+        );
+    }
+
+
+    foreach (
+        $proposed
+        as $path => $value
+    ) {
+        llama_place_update_apply_field(
+            $db,
+            $placeId,
+            (string) $path,
+            $value
+        );
+    }
+
+
+    moderation_attach_place_photos(
+        $db,
+        $placeId,
+        (int) $update['user_id'],
+        $photos,
+        '/uploads/place-updates/'
+        . $updateId
+        . '/'
+    );
+
+
+    $points =
+        llama_points_policy_required(
+            $db,
+            'approved_place_update'
+        );
+
+
+    $contributionId =
+        moderation_insert_contribution(
+            $db,
+            $placeId,
+            (int) $update['user_id'],
+            null,
+            (string) (
+                $update['update_type']
+                ?? 'update'
+            ),
+            trim(
+                (string) (
+                    $update['role_at_submission']
+                    ?? 'user'
+                )
+            ),
+            !empty(
+                $update['visited_at']
+            )
+                ? (string) $update['visited_at']
+                : null,
+            $reviewedBy,
+            $points,
+            array_keys(
+                $proposed
+            ),
+            $reviewNotes !== ''
+                ? $reviewNotes
+                : null
+        );
+
+
+    moderation_award_badge(
+        $db,
+        (int) $update['user_id'],
+        'first-contribution'
+    );
+
+    moderation_award_badge(
+        $db,
+        (int) $update['user_id'],
+        'helpful-editor'
+    );
+
+
+    $stmt =
+        $db->prepare(
+            'UPDATE place_update_submissions
+             SET
+                status = ?,
+                reviewed_by = ?,
+                review_notes = ?,
+                reviewed_at = CURRENT_TIMESTAMP,
+                contribution_id = ?,
+                points_awarded = ?
+             WHERE id = ?'
+        );
+
+    $stmt->execute([
+        'approved',
+        $reviewedBy,
+        $reviewNotes !== ''
+            ? $reviewNotes
+            : null,
+        $contributionId,
+        max(
+            0,
+            $points
+        ),
+        $updateId,
+    ]);
+
+
+    moderation_remove_tree(
+        dirname(__DIR__)
+        . '/uploads/place-updates/'
+        . $updateId
+    );
+
+
+    return $contributionId;
+}
+
+
+/*
+ * =========================================================
+ * HISTORY FROM MODERATION
+ * =========================================================
+ */
 
 
 function llama_place_update_record_review(
@@ -942,6 +2437,13 @@ function llama_place_update_record_review(
 }
 
 
+/*
+ * =========================================================
+ * DISPLAY HELPERS
+ * =========================================================
+ */
+
+
 function llama_place_update_display_value(
     string $path,
     mixed $value,
@@ -958,6 +2460,7 @@ function llama_place_update_display_value(
         return 'Not provided';
     }
 
+
     $field =
         llama_place_update_field_by_storage(
             $path
@@ -973,28 +2476,35 @@ function llama_place_update_display_value(
         return (string) $value;
     }
 
+
     $type =
         (string) (
             $field['type']
             ?? ''
         );
 
-    if ($type === 'tri') {
+
+    if (
+        in_array(
+            $type,
+            [
+                'tri',
+                'checkbox',
+            ],
+            true
+        )
+    ) {
         return (bool) $value
             ? 'Yes'
             : 'No';
     }
+
 
     if ($type === 'rating') {
         return (int) $value
             . '/5';
     }
 
-    if ($type === 'checkbox') {
-        return (bool) $value
-            ? 'Yes'
-            : 'No';
-    }
 
     if ($type === 'select') {
         $options =
@@ -1015,6 +2525,7 @@ function llama_place_update_display_value(
         }
     }
 
+
     if (
         ($field['format'] ?? '')
         === 'currency'
@@ -1025,6 +2536,7 @@ function llama_place_update_display_value(
                 2
             );
     }
+
 
     return (string) $value;
 }
@@ -1042,16 +2554,19 @@ function llama_place_update_schema_icon(
         return 'fa-pen-to-square';
     }
 
+
     if (
         function_exists(
             'llama_place_report_field_icon'
         )
     ) {
-        return llama_place_report_field_icon(
-            (string) $field['key'],
-            $field
-        );
+        return
+            llama_place_report_field_icon(
+                (string) $field['key'],
+                $field
+            );
     }
+
 
     return match (
         (string) (
@@ -1077,8 +2592,14 @@ function llama_place_update_schema_icon(
         'sensory' =>
             'fa-brain',
 
+        'environment_accessibility' =>
+            'fa-person-walking',
+
         'rules' =>
             'fa-cloud-sun',
+
+        'experience' =>
+            'fa-compass',
 
         default =>
             'fa-pen-to-square',
