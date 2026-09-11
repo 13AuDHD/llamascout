@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/place-report.php';
+
 /*
- * Moderator editing for New Place submissions.
- *
- * No schema changes are performed here.
+ * Moderator editing uses the exact same Place Report parser as
+ * contributor entry. This file owns only moderation-specific
+ * persistence and audit-diff support.
  */
 
 function moderation_submission_editor_flatten(
@@ -15,7 +17,10 @@ function moderation_submission_editor_flatten(
     $flat = [];
 
     foreach ($data as $key => $value) {
-        if ($key === 'photos' && $prefix === '') {
+        if (
+            $key === 'photos'
+            || $key === '_answer_state'
+        ) {
             continue;
         }
 
@@ -25,662 +30,24 @@ function moderation_submission_editor_flatten(
                 : $prefix . '.' . $key;
 
         if (is_array($value)) {
-            $flat += moderation_submission_editor_flatten(
-                $value,
-                $path
-            );
-
-            continue;
+            $flat +=
+                moderation_submission_editor_flatten(
+                    $value,
+                    $path
+                );
+        } else {
+            $flat[$path] = $value;
         }
-
-        $flat[$path] = $value;
     }
 
     return $flat;
 }
 
-
-function moderation_submission_editor_set_path(
-    array &$data,
-    string $path,
-    mixed $value
-): void {
-    $parts = explode('.', $path);
-    $cursor =& $data;
-
-    foreach ($parts as $index => $part) {
-        $last = $index === count($parts) - 1;
-
-        if ($last) {
-            $cursor[$part] = $value;
-            return;
-        }
-
-        if (
-            !isset($cursor[$part])
-            || !is_array($cursor[$part])
-        ) {
-            $cursor[$part] = [];
-        }
-
-        $cursor =& $cursor[$part];
-    }
-}
-
-
-function moderation_submission_editor_bool_paths(): array
-{
-    return [
-        'details.tent_camping_suitable',
-        'details.rv_suitable',
-        'details.trailer_suitable',
-        'details.leveling_required',
-        'details.turnaround_space',
-        'details.pull_through',
-        'details.back_in',
-        'details.sedan_accessible',
-        'details.high_clearance_recommended',
-        'details.four_wheel_drive_recommended',
-        'details.water_crossings',
-        'details.downed_tree_risk',
-        'details.seasonal_closure',
-        'details.forest',
-        'details.mountains',
-        'details.water_nearby',
-        'details.water_view',
-        'details.mountain_view',
-        'details.forest_view',
-        'details.wildlife',
-        'details.bugs',
-        'details.wheelchair_friendly',
-        'details.mobility_device_friendly',
-        'details.flat_walking_surface',
-        'details.step_free_access',
-        'details.accessible_toilet',
-        'details.accessible_picnic_table',
-        'details.felt_safe_daytime',
-        'details.felt_safe_nighttime',
-        'details.flash_flood_risk',
-        'details.wildfire_risk',
-        'details.fall_hazard',
-        'details.cliff_exposure',
-        'details.rockfall_risk',
-        'details.wildlife_risk',
-        'details.traffic_hazard',
-        'details.emergency_access',
-        'details.warning_exposed_to_road',
-        'details.warning_zero_privacy',
-        'details.warning_passing_vehicle_dust',
-        'details.warning_possible_downed_trees',
-        'details.warning_no_tent_camping',
-        'details.warning_limited_vehicle_length',
-        'details.warning_leveling_may_be_required',
-        'details.warning_no_amenities',
-        'details.warning_motorized_recreation_traffic',
-        'details.warning_blind_turn_traffic_nearby',
-        'connectivity.starlink_tested',
-        'rules.winter_access',
-        'rules.overnight_camping_allowed',
-        'rules.dispersed_camping_allowed',
-        'rules.permit_required',
-        'rules.campfire_allowed',
-        'rules.existing_sites_encouraged',
-        'rules.pack_it_in_pack_it_out',
-        'rules.residential_use_prohibited',
-        'experience.recommended_solo_travel',
-        'experience.recommended_families',
-        'experience.recommended_large_groups',
-        'amenities.toilets',
-        'amenities.potable_water',
-        'amenities.trash',
-        'amenities.fire_ring',
-        'amenities.picnic_table',
-        'amenities.bear_box',
-        'amenities.showers',
-        'amenities.electricity',
-        'amenities.dump_station',
-        'amenities.food_storage_required',
-    ];
-}
-
-
-function moderation_submission_editor_rating_paths(): array
-{
-    return [
-        'details.levelness',
-        'details.site_open_sky',
-        'details.tree_cover',
-        'details.site_shade',
-        'details.site_access_difficulty',
-        'details.road_overall_difficulty',
-        'details.road_difficulty',
-        'details.road_stress',
-        'details.rocks',
-        'details.washboards',
-        'details.potholes',
-        'details.mud_risk',
-        'details.steep_grades',
-        'details.drop_off_exposure',
-        'details.wind_exposure',
-        'details.sun_exposure',
-        'details.environment_shade',
-        'details.environment_open_sky',
-        'connectivity.overall',
-        'connectivity.t_mobile',
-        'connectivity.verizon',
-        'connectivity.att',
-        'connectivity.other_cell',
-        'connectivity.starlink',
-        'sensory.daytime.noise',
-        'sensory.daytime.traffic',
-        'sensory.daytime.crowds',
-        'sensory.daytime.privacy',
-        'sensory.daytime.light_pollution',
-        'sensory.daytime.sensory_comfort',
-        'sensory.daytime.social_interaction_likelihood',
-        'sensory.nighttime.noise',
-        'sensory.nighttime.traffic',
-        'sensory.nighttime.crowds',
-        'sensory.nighttime.privacy',
-        'sensory.nighttime.light_pollution',
-        'sensory.nighttime.sensory_comfort',
-        'sensory.nighttime.social_interaction_likelihood',
-        'sensory.details.dust_from_traffic',
-        'sensory.details.generator_noise',
-        'sensory.details.aircraft_noise',
-        'sensory.details.road_noise',
-        'sensory.details.human_activity',
-        'sensory.details.wildlife_noise',
-        'sensory.details.wind_noise',
-        'sensory.details.smoke_risk',
-        'sensory.details.strong_odors',
-        'sensory.details.visual_exposure',
-        'sensory.details.predictability',
-        'rules.snow_risk',
-        'rules.mud_season_risk',
-        'rules.monsoon_risk',
-        'experience.sunrise_view',
-        'experience.sunset_view',
-        'experience.mountain_view',
-        'experience.forest_view',
-        'experience.night_sky',
-        'experience.stargazing',
-        'experience.quiet_evening',
-        'experience.overnight_comfort',
-        'experience.extended_stay_comfort',
-        'experience.sensory_retreat',
-        'experience.remote_work',
-        'experience.overall_scenery',
-        'experience.recommended_overnight_stop',
-        'experience.recommended_quiet_evening',
-        'experience.recommended_extended_stay',
-        'experience.recommended_sensory_retreat',
-        'experience.recommended_stargazing',
-        'experience.recommended_remote_work',
-    ];
-}
-
-
-function moderation_submission_editor_integer_paths(): array
-{
-    return [
-        'elevation_feet',
-        'details.vehicle_capacity',
-        'details.max_vehicle_length_feet',
-        'rules.stay_limit_days',
-    ];
-}
-
-
-function moderation_submission_editor_float_paths(): array
-{
-    return [
-        'latitude',
-        'longitude',
-        'rules.fee',
-    ];
-}
-
-
-function moderation_submission_editor_long_text_paths(): array
-{
-    return [
-        'description',
-        'access_summary',
-        'sensory_summary',
-        'contributor_notes',
-        'connectivity.starlink_note',
-        'rules.seasonal_access_note',
-        'experience.not_recommended_for',
-    ];
-}
-
-
-function moderation_submission_editor_label(
-    string $path
-): string {
-    $special = [
-        'latitude' => 'Latitude',
-        'longitude' => 'Longitude',
-        'elevation_feet' => 'Elevation (ft)',
-        'city' => 'Nearest city / locality',
-        'county' => 'County / Parish / Municipality',
-        'state' => 'State',
-        'details.rv_suitable' => 'RV suitable',
-        'details.four_wheel_drive_recommended' => '4WD recommended',
-        'connectivity.t_mobile' => 'T-Mobile',
-        'connectivity.att' => 'AT&T',
-        'connectivity.starlink' => 'Starlink',
-        'connectivity.starlink_tested' => 'Starlink tested',
-        'rules.nearest_town' => 'Distance to nearest town',
-        'rules.nearest_fuel' => 'Distance to nearest fuel',
-        'rules.nearest_grocery' => 'Distance to nearest grocery',
-        'rules.nearest_water' => 'Distance to nearest potable water',
-        'rules.nearest_toilet' => 'Distance to nearest public toilet',
-        'rules.nearest_hospital' => 'Distance to nearest hospital / emergency care',
-    ];
-
-    if (isset($special[$path])) {
-        return $special[$path];
-    }
-
-    $leaf = basename(
-        str_replace('.', '/', $path)
-    );
-
-    return ucwords(
-        str_replace('_', ' ', $leaf)
-    );
-}
-
-
-function moderation_submission_editor_group(
-    string $path
-): string {
-    if (!str_contains($path, '.')) {
-        return in_array(
-            $path,
-            [
-                'name',
-                'type',
-                'description',
-                'visited_at',
-            ],
-            true
-        )
-            ? 'Basic information'
-            : 'Location and summaries';
-    }
-
-    $first = explode('.', $path, 2)[0];
-
-    return match ($first) {
-        'details' => 'Site, road, environment, accessibility, and safety',
-        'amenities' => 'Amenities',
-        'connectivity' => 'Connectivity',
-        'sensory' => 'Sensory profile',
-        'rules' => 'Seasons, rules, and nearby services',
-        'experience' => 'Experience and recommendations',
-        default => 'Other',
-    };
-}
-
-
-
-function moderation_submission_editor_choice_options(
-    string $path
-): array {
-    $states = [
-        '' => 'Select...',
-        'Alabama' => 'Alabama',
-        'Alaska' => 'Alaska',
-        'Arizona' => 'Arizona',
-        'Arkansas' => 'Arkansas',
-        'California' => 'California',
-        'Colorado' => 'Colorado',
-        'Connecticut' => 'Connecticut',
-        'Delaware' => 'Delaware',
-        'Florida' => 'Florida',
-        'Georgia' => 'Georgia',
-        'Hawaii' => 'Hawaii',
-        'Idaho' => 'Idaho',
-        'Illinois' => 'Illinois',
-        'Indiana' => 'Indiana',
-        'Iowa' => 'Iowa',
-        'Kansas' => 'Kansas',
-        'Kentucky' => 'Kentucky',
-        'Louisiana' => 'Louisiana',
-        'Maine' => 'Maine',
-        'Maryland' => 'Maryland',
-        'Massachusetts' => 'Massachusetts',
-        'Michigan' => 'Michigan',
-        'Minnesota' => 'Minnesota',
-        'Mississippi' => 'Mississippi',
-        'Missouri' => 'Missouri',
-        'Montana' => 'Montana',
-        'Nebraska' => 'Nebraska',
-        'Nevada' => 'Nevada',
-        'New Hampshire' => 'New Hampshire',
-        'New Jersey' => 'New Jersey',
-        'New Mexico' => 'New Mexico',
-        'New York' => 'New York',
-        'North Carolina' => 'North Carolina',
-        'North Dakota' => 'North Dakota',
-        'Ohio' => 'Ohio',
-        'Oklahoma' => 'Oklahoma',
-        'Oregon' => 'Oregon',
-        'Pennsylvania' => 'Pennsylvania',
-        'Rhode Island' => 'Rhode Island',
-        'South Carolina' => 'South Carolina',
-        'South Dakota' => 'South Dakota',
-        'Tennessee' => 'Tennessee',
-        'Texas' => 'Texas',
-        'Utah' => 'Utah',
-        'Vermont' => 'Vermont',
-        'Virginia' => 'Virginia',
-        'Washington' => 'Washington',
-        'West Virginia' => 'West Virginia',
-        'Wisconsin' => 'Wisconsin',
-        'Wyoming' => 'Wyoming',
-        'District of Columbia' => 'District of Columbia',
-        'Puerto Rico' => 'Puerto Rico',
-    ];
-
-    $distance = [
-        '' => 'Select...',
-    ];
-
-    for ($i = 1; $i <= 20; $i++) {
-        $label =
-            $i
-            . ' mile'
-            . ($i === 1 ? '' : 's');
-
-        $distance[$label] = $label;
-    }
-
-    $distance['Over 20 miles'] =
-        'Over 20 miles';
-
-    $surface = [
-        '' => 'Select...',
-        'paved' => 'Paved / asphalt',
-        'concrete' => 'Concrete',
-        'graded-gravel' => 'Graded gravel',
-        'loose-gravel' => 'Loose gravel',
-        'hard-packed-dirt' => 'Hard-packed dirt',
-        'dirt' => 'Dirt',
-        'sand' => 'Sand',
-        'rock' => 'Rock / bedrock',
-        'grass' => 'Grass',
-        'mixed' => 'Mixed surface',
-    ];
-
-    return match ($path) {
-        'type' => [
-            'dispersed-camping' => 'Dispersed camping',
-            'developed-campground' => 'Developed campground',
-            'vehicle-pulloff' => 'Vehicle pull-off',
-            'trailhead' => 'Trailhead',
-            'day-use' => 'Day-use area',
-            'other' => 'Other',
-        ],
-
-        'state' => $states,
-
-        'details.vehicle_capacity' => array_combine(
-            array_merge([''], range(1, 11)),
-            array_merge(
-                ['Select...'],
-                array_map(
-                    static fn (int $i): string =>
-                        $i === 11
-                            ? '10+ vehicles'
-                            : $i . ' vehicle' . ($i === 1 ? '' : 's'),
-                    range(1, 11)
-                )
-            )
-        ) ?: [],
-
-        'details.max_vehicle_length_feet' => [
-            '' => 'Select...',
-            '15' => 'About 15 ft',
-            '20' => 'About 20 ft',
-            '25' => 'About 25 ft',
-            '30' => 'About 30 ft',
-            '35' => 'About 35 ft',
-            '40' => 'About 40 ft',
-            '45' => 'About 45 ft',
-            '50' => 'About 50 ft',
-            '60' => '50+ ft',
-        ],
-
-        'details.parking_surface',
-        'details.road_surface' => $surface,
-
-        'details.ground_condition' => [
-            '' => 'Select...',
-            'level-firm' => 'Mostly level and firm',
-            'uneven-firm' => 'Uneven but firm',
-            'rocky' => 'Rocky',
-            'soft' => 'Soft / sandy',
-            'mud-prone' => 'Mud-prone',
-            'grass' => 'Grassy',
-            'mixed' => 'Mixed',
-        ],
-
-        'details.road_width' => [
-            '' => 'Select...',
-            'one-lane' => 'One lane',
-            'one-and-half-lane' => 'About 1.5 lanes',
-            'two-lane' => 'Two lane',
-            'wide-two-lane' => 'Wide two lane',
-            'varies' => 'Varies significantly',
-        ],
-
-        'details.walking_distance_from_vehicle' => [
-            '' => 'Select...',
-            'at-vehicle' => 'At / beside vehicle',
-            'under-50-ft' => 'Under 50 ft',
-            '50-100-ft' => '50-100 ft',
-            '100-250-ft' => '100-250 ft',
-            '250-500-ft' => '250-500 ft',
-            '500-plus-ft' => '500+ ft / short hike',
-        ],
-
-        'rules.best_months',
-        'rules.recommended_travel_season' => [
-            '' => 'Select...',
-            'year-round' => 'Year-round',
-            'spring' => 'Spring',
-            'summer' => 'Summer',
-            'fall' => 'Fall',
-            'winter' => 'Winter',
-            'spring-summer' => 'Spring through summer',
-            'summer-fall' => 'Summer through fall',
-            'late-spring-fall' => 'Late spring through fall',
-            'snow-free-months' => 'Generally snow-free months',
-        ],
-
-        'rules.stay_limit_days' => [
-            '' => 'Select...',
-            '1' => '1 day',
-            '3' => '3 days',
-            '5' => '5 days',
-            '7' => '7 days',
-            '10' => '10 days',
-            '14' => '14 days',
-            '16' => '16 days',
-            '21' => '21 days',
-            '28' => '28 days',
-        ],
-
-        'rules.nearest_town',
-        'rules.nearest_fuel',
-        'rules.nearest_grocery',
-        'rules.nearest_water',
-        'rules.nearest_toilet',
-        'rules.nearest_hospital' => $distance,
-
-        default => [],
-    };
-}
-
-
-function moderation_submission_editor_allowed_paths(): array
-{
-    $paths = array_merge(
-        [
-            'name',
-            'type',
-            'description',
-            'latitude',
-            'longitude',
-            'elevation_feet',
-            'road',
-            'city',
-            'county',
-            'state',
-            'region',
-            'land_manager',
-            'land_type',
-            'access_summary',
-            'sensory_summary',
-            'contributor_notes',
-            'visited_at',
-            'details.parking_surface',
-            'details.ground_condition',
-            'details.road_surface',
-            'details.road_width',
-            'details.walking_distance_from_vehicle',
-            'rules.best_months',
-            'rules.recommended_travel_season',
-            'rules.seasonal_access_note',
-            'rules.current_fire_restrictions_url',
-            'rules.nearest_town',
-            'rules.nearest_fuel',
-            'rules.nearest_grocery',
-            'rules.nearest_water',
-            'rules.nearest_toilet',
-            'rules.nearest_hospital',
-            'connectivity.starlink_note',
-            'experience.not_recommended_for',
-        ],
-        moderation_submission_editor_bool_paths(),
-        moderation_submission_editor_rating_paths(),
-        moderation_submission_editor_integer_paths(),
-        moderation_submission_editor_float_paths(),
-        moderation_submission_editor_long_text_paths()
-    );
-
-    return array_values(
-        array_unique($paths)
-    );
-}
-
-
-function moderation_submission_editor_parse_value(
-    string $path,
-    mixed $raw
-): mixed {
-    $raw = is_string($raw)
-        ? trim($raw)
-        : $raw;
-
-    if (
-        in_array(
-            $path,
-            moderation_submission_editor_bool_paths(),
-            true
-        )
-    ) {
-        if ($raw === '' || $raw === '__NULL__') {
-            return null;
-        }
-
-        return (string) $raw === '1';
-    }
-
-    if (
-        in_array(
-            $path,
-            moderation_submission_editor_rating_paths(),
-            true
-        )
-    ) {
-        if ($raw === '' || $raw === '__NULL__') {
-            return null;
-        }
-
-        $number = (int) $raw;
-
-        if ($number < 1 || $number > 5) {
-            throw new InvalidArgumentException(
-                moderation_submission_editor_label($path)
-                . ' must be 1 through 5 or Unknown.'
-            );
-        }
-
-        return $number;
-    }
-
-    if (
-        in_array(
-            $path,
-            moderation_submission_editor_integer_paths(),
-            true
-        )
-    ) {
-        if ($raw === '') {
-            return null;
-        }
-
-        if (filter_var($raw, FILTER_VALIDATE_INT) === false) {
-            throw new InvalidArgumentException(
-                moderation_submission_editor_label($path)
-                . ' must be a whole number.'
-            );
-        }
-
-        return (int) $raw;
-    }
-
-    if (
-        in_array(
-            $path,
-            moderation_submission_editor_float_paths(),
-            true
-        )
-    ) {
-        if ($raw === '') {
-            return null;
-        }
-
-        if (!is_numeric($raw)) {
-            throw new InvalidArgumentException(
-                moderation_submission_editor_label($path)
-                . ' must be numeric.'
-            );
-        }
-
-        return (float) $raw;
-    }
-
-    return $raw === ''
-        ? null
-        : mb_substr(
-            (string) $raw,
-            0,
-            5000
-        );
-}
-
-
 function moderation_save_submission_edits(
     PDO $db,
     int $submissionId,
     int $adminId,
-    array $postedFields,
+    array $input,
     array $removePhotoPaths,
     string $photoToken,
     array $submittedPhotos
@@ -719,7 +86,7 @@ function moderation_save_submission_edits(
         );
     }
 
-    $data =
+    $existingData =
         is_array(
             $submission['data']
             ?? null
@@ -727,79 +94,73 @@ function moderation_save_submission_edits(
             ? $submission['data']
             : [];
 
-    $before = moderation_submission_editor_flatten(
-        $data
-    );
-
-    $allowedPaths =
-        array_flip(
-            moderation_submission_editor_allowed_paths()
+    $before =
+        moderation_submission_editor_flatten(
+            $existingData
         );
 
-    foreach ($postedFields as $path => $rawValue) {
-        $path = (string) $path;
-
-        if (!isset($allowedPaths[$path])) {
-            continue;
-        }
-
-        $newValue =
-            moderation_submission_editor_parse_value(
-                $path,
-                $rawValue
-            );
-
-        moderation_submission_editor_set_path(
-            $data,
-            $path,
-            $newValue
+    $beforeUnknown =
+        llama_place_report_unknown_fields(
+            $existingData
         );
-    }
+
+    $data =
+        llama_place_report_build_data(
+            $input,
+            $existingData
+        );
 
     $existingPhotos =
-        is_array($data['photos'] ?? null)
-            ? $data['photos']
+        is_array(
+            $existingData['photos']
+            ?? null
+        )
+            ? $existingData['photos']
             : [];
 
     $removeLookup = [];
 
     foreach ($removePhotoPaths as $path) {
-        $path = '/' . ltrim(
-            trim((string) $path),
-            '/'
-        );
+        $path =
+            trim(
+                (string) $path
+            );
 
         if (
-            str_starts_with(
+            $path !== ''
+            && str_starts_with(
                 $path,
                 '/uploads/place-submissions/'
                 . $submissionId
                 . '/'
             )
         ) {
-            $removeLookup[$path] = true;
+            $removeLookup[$path] =
+                true;
         }
     }
 
     $keptPhotos = [];
 
     foreach ($existingPhotos as $photo) {
-        if (!is_array($photo)) {
-            continue;
-        }
-
-        $path = moderation_photo_path(
-            $photo
-        );
+        $path =
+            llama_place_report_photo_path(
+                $photo
+            );
 
         if (
             $path !== ''
-            && isset($removeLookup[$path])
+            && isset(
+                $removeLookup[$path]
+            )
         ) {
             continue;
         }
 
-        $keptPhotos[] = $photo;
+        if (is_array($photo)) {
+            $keptPhotos[] =
+                $photo;
+        }
     }
 
     $addedPhotos = [];
@@ -809,40 +170,17 @@ function moderation_save_submission_edits(
         && $submittedPhotos
     ) {
         $addedPhotos =
-            llama_photo_commit_stage(
-                'add-place',
-                $adminId,
-                $photoToken,
-                $submittedPhotos,
-                '/uploads/place-submissions/'
-                . $submissionId
-            );
-    }
-
-    /*
-     * Keep the historical submission photo shape compatible with
-     * member resubmission code, which reads the permanent path from
-     * the `src` key.
-     */
-    foreach ($addedPhotos as &$addedPhoto) {
-        if (!is_array($addedPhoto)) {
-            continue;
-        }
-
-        $addedPath =
-            trim(
-                (string) (
-                    $addedPhoto['path']
-                    ?? ''
+            llama_place_report_normalize_committed_photos(
+                llama_photo_commit_stage(
+                    'add-place',
+                    $adminId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-submissions/'
+                    . $submissionId
                 )
             );
-
-        if ($addedPath !== '') {
-            $addedPhoto['src'] =
-                $addedPath;
-        }
     }
-    unset($addedPhoto);
 
     $data['photos'] =
         array_values(
@@ -852,29 +190,7 @@ function moderation_save_submission_edits(
             )
         );
 
-    $name =
-        trim(
-            (string) (
-                $data['name']
-                ?? ''
-            )
-        );
-
-    if ($name === '') {
-        throw new InvalidArgumentException(
-            'Place name cannot be blank.'
-        );
-    }
-
-    $encoded =
-        json_encode(
-            $data,
-            JSON_UNESCAPED_SLASHES
-            | JSON_UNESCAPED_UNICODE
-            | JSON_THROW_ON_ERROR
-        );
-
-    $update =
+    $stmt =
         $db->prepare(
             'UPDATE place_submissions
              SET
@@ -884,9 +200,14 @@ function moderation_save_submission_edits(
                AND status IN ("pending","needs-changes")'
         );
 
-    $update->execute([
-        $name,
-        $encoded,
+    $stmt->execute([
+        (string) $data['name'],
+        json_encode(
+            $data,
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+            | JSON_THROW_ON_ERROR
+        ),
         $submissionId,
     ]);
 
@@ -895,9 +216,7 @@ function moderation_save_submission_edits(
             $data
         );
 
-    $fieldChanges = [];
-
-    $changePaths =
+    $paths =
         array_unique(
             array_merge(
                 array_keys($before),
@@ -905,47 +224,57 @@ function moderation_save_submission_edits(
             )
         );
 
-    foreach ($changePaths as $path) {
-        $oldValue =
+    $changes = [];
+
+    foreach ($paths as $path) {
+        $old =
             $before[$path]
             ?? null;
 
-        $newValue =
+        $new =
             $after[$path]
             ?? null;
 
-        if ($oldValue === $newValue) {
+        if ($old === $new) {
             continue;
         }
 
-        $fieldChanges[] = [
+        $changes[] = [
             'field' =>
                 $path,
-
-            'label' =>
-                moderation_submission_editor_label(
-                    $path
-                ),
-
             'before' =>
-                $oldValue,
-
+                $old,
             'after' =>
-                $newValue,
+                $new,
+        ];
+    }
+
+    $afterUnknown =
+        llama_place_report_unknown_fields(
+            $data
+        );
+
+    if ($beforeUnknown !== $afterUnknown) {
+        $changes[] = [
+            'field' =>
+                '_answer_state',
+            'before' =>
+                $beforeUnknown,
+            'after' =>
+                $afterUnknown,
         ];
     }
 
     return [
-        'submission' =>
-            $submission,
-
         'field_changes' =>
-            $fieldChanges,
-
+            $changes,
         'removed_photos' =>
-            array_keys($removeLookup),
-
+            array_keys(
+                $removeLookup
+            ),
         'added_photo_count' =>
-            count($addedPhotos),
+            count(
+                $addedPhotos
+            ),
     ];
 }
