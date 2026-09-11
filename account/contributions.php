@@ -9,6 +9,24 @@ $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $items = community_submissions_for_user($userId);
 $submitted = (string) ($_GET['submitted'] ?? '');
+$successMessage =
+    trim(
+        (string) (
+            $_SESSION['contribution_success_message']
+            ?? ''
+        )
+    );
+
+$successSubmissionId =
+    (int) (
+        $_SESSION['contribution_success_submission_id']
+        ?? 0
+    );
+
+unset(
+    $_SESSION['contribution_success_message'],
+    $_SESSION['contribution_success_submission_id']
+);
 $config = llama_config();
 $siteUrl = rtrim(
     (string) ($config['app']['url'] ?? 'https://llamascout.com'),
@@ -49,28 +67,47 @@ require dirname(__DIR__) . '/partials/header.php';
         </a>
     </header>
 
-    <?php if ($submitted !== ''): ?>
-        <div
-            class="contribution-message is-success"
-            role="status"
-        >
-            <i
-                class="fa-solid fa-circle-check"
-                aria-hidden="true"
-            ></i>
+<?php if ($successMessage !== '' || $submitted !== ''): ?>
+    <div
+        class="contribution-message is-success"
+        role="status"
+        aria-live="polite"
+    >
+        <i
+            class="fa-solid fa-circle-check"
+            aria-hidden="true"
+        ></i>
 
-            <?= in_array(
-                $submitted,
-                [
-                    'update-resubmitted',
-                    'new-resubmitted',
-                ],
-                true
-            )
-                ? 'Changes resubmitted for review.'
-                : 'Submitted for review.' ?>
+        <div>
+            <strong>
+                <?= $successMessage !== ''
+                    ? 'Changes resubmitted'
+                    : 'Submission received' ?>
+            </strong>
+
+            <span>
+                <?= htmlspecialchars(
+                    $successMessage !== ''
+                        ? $successMessage
+                        : (
+                            in_array(
+                                $submitted,
+                                [
+                                    'update-resubmitted',
+                                    'new-resubmitted',
+                                ],
+                                true
+                            )
+                                ? 'Your changes were resubmitted successfully and are back in review.'
+                                : 'Your contribution was submitted for review.'
+                        ),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </span>
         </div>
-    <?php endif; ?>
+    </div>
+<?php endif; ?>
 
     <?php if (!$items): ?>
         <div class="account-empty-state">
