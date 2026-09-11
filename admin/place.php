@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
+require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser =
@@ -571,7 +572,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             } elseif ($action === 'add-verification') {
 
-                admin_place_add_verification(
+                llama_place_add_verification(
                     $db,
                     $actorUserId,
                     $placeId,
@@ -580,6 +581,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice =
                     'Verification added.';
+
+            } elseif ($action === 'delete-verification') {
+
+                llama_place_delete_verification(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    (int) (
+                        $_POST['verification_id']
+                        ?? 0
+                    )
+                );
+
+                $notice =
+                    'Verification deleted.';
 
             } elseif ($action === 'featured-image') {
 
@@ -1231,6 +1247,66 @@ $placeReportPhotoHelp =
     color: var(--text-muted);
 }
 
+
+.admin-place-verification-intro {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.admin-place-verification-intro p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.admin-place-verification-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.admin-place-verification-card-main {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.admin-place-verification-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    color: var(--text-muted);
+    font-size: .68rem;
+}
+
+.admin-place-verification-card-notes {
+    margin-top: 3px;
+}
+
+.admin-place-verification-delete {
+    align-self: start;
+    border-color: color-mix(
+        in srgb,
+        #c94a4a 44%,
+        var(--border)
+    );
+    color: #d86a6a;
+}
+
+.admin-place-verification-delete.is-armed {
+    border-color: #c94a4a;
+    background: #c94a4a;
+    color: #fff;
+}
+
+.admin-place-verification-help {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: .64rem;
+}
+
 @media (max-width: 800px) {
     .admin-place-summary {
         align-items: flex-start;
@@ -1875,48 +1951,150 @@ $placeReportPhotoHelp =
     >
         <header>
             <p>Verification</p>
-            <h2>Field + source verification</h2>
+            <h2>Verification History</h2>
         </header>
+
+        <div class="admin-place-verification-intro">
+            <p>
+                Verifications document how current Place information was confirmed.
+                A Llama Scout field visit establishes the permanent Llama Scouted provenance.
+            </p>
+        </div>
 
         <?php if ($verifications): ?>
             <div class="admin-place-verification-list">
                 <?php foreach ($verifications as $verification): ?>
+                    <?php
+                    $verificationType =
+                        (string) (
+                            $verification['verification_type']
+                            ?? ''
+                        );
+
+                    $verificationLabel =
+                        llama_place_verification_type_label(
+                            $verificationType
+                        );
+                    ?>
+
                     <article class="admin-place-verification-card">
-                        <header>
-                            <strong>
-                                <?= $e(
-                                    $verification['verification_type']
-                                    ?? 'Verification'
-                                ) ?>
-                            </strong>
+                        <div class="admin-place-verification-card-main">
+                            <header>
+                                <strong>
+                                    <?= $e($verificationLabel) ?>
+                                </strong>
 
-                            <span class="admin-place-muted">
-                                <?= $e(
-                                    $verification['verified_at']
-                                    ?? ''
-                                ) ?>
-                            </span>
-                        </header>
+                                <span class="admin-place-muted">
+                                    <?= $e(
+                                        $verification['verified_at']
+                                        ?? ''
+                                    ) ?>
+                                </span>
+                            </header>
 
-                        <span class="admin-place-muted">
-                            By
-                            <?= $e(
-                                $verification['verifier_name']
-                                ?? 'System'
-                            ) ?>
-                        </span>
+                            <div class="admin-place-verification-card-meta">
+                                <span>
+                                    By
+                                    <?= $e(
+                                        $verification['verifier_name']
+                                        ?? 'System'
+                                    ) ?>
+                                </span>
 
-                        <?php if (!empty($verification['notes'])): ?>
-                            <div>
-                                <?= nl2br(
-                                    $e(
-                                        $verification['notes']
-                                    )
-                                ) ?>
+                                <?php if (!empty($verification['visited_at'])): ?>
+                                    <span>
+                                        Visited
+                                        <?= $e(
+                                            $verification['visited_at']
+                                        ) ?>
+                                    </span>
+                                <?php endif; ?>
+
+                                <?php if (!empty($verification['source'])): ?>
+                                    <span>
+                                        Source:
+                                        <?= $e(
+                                            $verification['source']
+                                        ) ?>
+                                    </span>
+                                <?php endif; ?>
+
+                                <?php if (!empty($verification['public_data_verified'])): ?>
+                                    <span>
+                                        Public data verified
+                                    </span>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
+
+                            <?php if (!empty($verification['notes'])): ?>
+                                <div class="admin-place-verification-card-notes">
+                                    <?= nl2br(
+                                        $e(
+                                            $verification['notes']
+                                        )
+                                    ) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if (
+                                !isset(
+                                    llama_place_verification_types()[
+                                        $verificationType
+                                    ]
+                                )
+                            ): ?>
+                                <span class="admin-place-muted">
+                                    Legacy verification type:
+                                    <?= $e($verificationType) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
+                        <form method="post">
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="<?= $e(
+                                    moderation_csrf_token()
+                                ) ?>"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="place_id"
+                                value="<?= $placeId ?>"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="place_admin_action"
+                                value="delete-verification"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="verification_id"
+                                value="<?= (int) $verification['id'] ?>"
+                            >
+
+                            <button
+                                class="admin-button admin-place-verification-delete"
+                                type="submit"
+                                data-delete-verification
+                            >
+                                <i
+                                    class="fa-solid fa-trash-can"
+                                    aria-hidden="true"
+                                ></i>
+                                Delete
+                            </button>
+                        </form>
                     </article>
                 <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="admin-place-empty">
+                No verification history yet.
             </div>
         <?php endif; ?>
 
@@ -1953,18 +2131,23 @@ $placeReportPhotoHelp =
                             Select...
                         </option>
 
-                        <option value="field-verified">
-                            Field verified
-                        </option>
-
-                        <option value="source-verified">
-                            Source verified
-                        </option>
-
-                        <option value="community-confirmed">
-                            Community confirmed
-                        </option>
+                        <?php foreach (
+                            llama_place_verification_types()
+                            as $verificationType => $verificationMeta
+                        ): ?>
+                            <option
+                                value="<?= $e($verificationType) ?>"
+                            >
+                                <?= $e(
+                                    $verificationMeta['label']
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
+
+                    <small class="admin-place-verification-help">
+                        Field visit means a Llama Scout personally visited the Place.
+                    </small>
                 </label>
 
                 <label>
@@ -1974,6 +2157,10 @@ $placeReportPhotoHelp =
                         type="date"
                         name="visited_at"
                     >
+
+                    <small class="admin-place-verification-help">
+                        Required for a Llama Scout field visit.
+                    </small>
                 </label>
 
                 <label>
@@ -1982,8 +2169,12 @@ $placeReportPhotoHelp =
                     <input
                         type="text"
                         name="source"
-                        placeholder="Llama Scouted, USFS, BLM..."
+                        placeholder="USFS, BLM, county website..."
                     >
+
+                    <small class="admin-place-verification-help">
+                        Required for Official source verified. Field visits automatically use Llama Scouted.
+                    </small>
                 </label>
 
                 <label>
@@ -2005,6 +2196,7 @@ $placeReportPhotoHelp =
                     <textarea
                         name="notes"
                         rows="3"
+                        placeholder="What was checked, confirmed, or observed?"
                     ></textarea>
                 </label>
             </div>
@@ -2013,6 +2205,10 @@ $placeReportPhotoHelp =
                 class="admin-button"
                 type="submit"
             >
+                <i
+                    class="fa-solid fa-circle-check"
+                    aria-hidden="true"
+                ></i>
                 Add verification
             </button>
         </form>
@@ -2391,6 +2587,7 @@ $placeReportPhotoHelp =
 
 <script src="https://llamascout.com/js/add-place-location.js"></script>
 <script src="https://llamascout.com/js/place-report-form.js"></script>
+<script src="https://llamascout.com/js/admin/place-verifications.js"></script>
 
 <?php
 require __DIR__
