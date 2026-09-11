@@ -1,26 +1,254 @@
-/* =========================================================
-   ADMIN PAGE: MODERATE PLACE UPDATE
-   Only admin/moderate-update.php belongs here.
-
-   Shared review components live in:
-   features/moderation-review.css
-   ========================================================= */
-
-.admin-update-comparison {
-    margin-top: 12px;
+.admin-update-summary,
+.admin-update-note,
+.admin-update-changes,
+.admin-update-history,
+.admin-update-photos,
+.admin-update-decision {
+    margin-bottom: 18px;
+    padding: 17px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
 }
 
-.admin-update-comparison:first-of-type {
-    margin-top: 0;
+.admin-update-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
 }
 
-.admin-update-comparison
-.admin-moderation-old strong,
-.admin-update-comparison
-.admin-moderation-new strong {
-    display: inline-block;
+.admin-update-summary h2,
+.admin-update-summary p,
+.admin-update-changes h2,
+.admin-update-history h2 {
+    margin: 0;
+}
 
-    margin-bottom: 5px;
+.admin-update-summary > div {
+    display: grid;
+    gap: 5px;
+}
 
-    font-size: .7rem;
+.admin-update-eyebrow {
+    margin: 0 0 3px;
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+}
+
+.admin-update-note > span,
+.admin-update-history-note > span,
+.admin-update-history-diff > span {
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.admin-update-note p,
+.admin-update-history-note p {
+    margin: 7px 0 0;
+    line-height: 1.55;
+}
+
+.admin-update-changes > header,
+.admin-update-history > header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.admin-update-change-count {
+    flex: 0 0 auto;
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-update-change-group + .admin-update-change-group {
+    margin-top: 18px;
+}
+
+.admin-update-change-group h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 9px;
+    font-size: .9rem;
+}
+
+.admin-update-change-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-update-change-card {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.admin-update-change-card h4 {
+    margin: 0 0 9px;
+    font-size: .76rem;
+}
+
+.admin-update-before-after {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 9px;
+    align-items: center;
+}
+
+.admin-update-before-after > i {
+    color: var(--text-muted);
+}
+
+.admin-update-before-after > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+    border-radius: 8px;
+}
+
+.admin-update-before-after .is-before {
+    background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+}
+
+.admin-update-before-after .is-after {
+    background: color-mix(in srgb, #37a15d 10%, transparent);
+}
+
+.admin-update-before-after span {
+    color: var(--text-muted);
+    font-size: .58rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.admin-update-before-after strong {
+    overflow-wrap: anywhere;
+    font-size: .72rem;
+    line-height: 1.35;
+}
+
+.admin-update-timeline {
+    display: grid;
+}
+
+.admin-update-timeline-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    padding-bottom: 18px;
+}
+
+.admin-update-timeline-event:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 17px;
+    top: 34px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+}
+
+.admin-update-timeline-icon {
+    position: relative;
+    z-index: 1;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--background);
+}
+
+.admin-update-timeline-event > div:last-child > header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin: 4px 0 8px;
+}
+
+.admin-update-timeline-event time {
+    color: var(--text-muted);
+    font-size: .62rem;
+}
+
+.admin-update-history-note,
+.admin-update-history-diff {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.admin-update-history-diff ul {
+    display: grid;
+    gap: 7px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-update-history-diff li {
+    display: grid;
+    gap: 2px;
+}
+
+.admin-update-history-diff li strong {
+    font-size: .68rem;
+}
+
+.admin-update-history-diff li span,
+.admin-update-history-meta {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+.admin-update-empty {
+    padding: 18px;
+    border: 1px dashed var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+@media (max-width: 820px) {
+    .admin-update-change-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-update-summary {
+        display: grid;
+    }
+
+    .admin-update-before-after {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-update-before-after > i {
+        transform: rotate(90deg);
+        justify-self: center;
+    }
 }
