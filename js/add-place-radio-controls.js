@@ -10,6 +10,356 @@
         return;
     }
 
+
+    /*
+     * =====================================================
+     * STATE
+     * =====================================================
+     */
+
+    const states = [
+        ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],
+        ['CA','California'],['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],
+        ['FL','Florida'],['GA','Georgia'],['HI','Hawaii'],['ID','Idaho'],
+        ['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],['KS','Kansas'],
+        ['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+        ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],
+        ['MO','Missouri'],['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],
+        ['NH','New Hampshire'],['NJ','New Jersey'],['NM','New Mexico'],['NY','New York'],
+        ['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],['OK','Oklahoma'],
+        ['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+        ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],
+        ['VT','Vermont'],['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],
+        ['WI','Wisconsin'],['WY','Wyoming'],['DC','District of Columbia'],['PR','Puerto Rico']
+    ];
+
+    const stateAliases = new Map();
+
+    states.forEach(([abbr, name]) => {
+        stateAliases.set(
+            abbr.toLowerCase(),
+            name
+        );
+
+        stateAliases.set(
+            name.toLowerCase(),
+            name
+        );
+    });
+
+    const normalizeState = (value) => {
+        const clean =
+            String(value ?? '')
+                .trim();
+
+        if (!clean) {
+            return '';
+        }
+
+        return (
+            stateAliases.get(
+                clean.toLowerCase()
+            )
+            || clean
+        );
+    };
+
+    const stateField =
+        form.querySelector(
+            '[data-location-field="state"], input[name="state"], select[name="state"]'
+        );
+
+    if (stateField) {
+        const currentState =
+            normalizeState(
+                stateField.value
+            );
+
+        const stateSelect =
+            document.createElement(
+                'select'
+            );
+
+        stateSelect.name =
+            'state';
+
+        stateSelect.setAttribute(
+            'data-location-field',
+            'state'
+        );
+
+        const blank =
+            document.createElement(
+                'option'
+            );
+
+        blank.value = '';
+        blank.textContent =
+            'Select...';
+
+        stateSelect.appendChild(
+            blank
+        );
+
+        states.forEach(
+            ([, name]) => {
+                const option =
+                    document.createElement(
+                        'option'
+                    );
+
+                option.value =
+                    name;
+
+                option.textContent =
+                    name;
+
+                if (
+                    currentState === name
+                ) {
+                    option.selected =
+                        true;
+                }
+
+                stateSelect.appendChild(
+                    option
+                );
+            }
+        );
+
+        if (
+            currentState
+            && !states.some(
+                ([, name]) =>
+                    name === currentState
+            )
+        ) {
+            const legacy =
+                document.createElement(
+                    'option'
+                );
+
+            legacy.value =
+                currentState;
+
+            legacy.textContent =
+                `${currentState} (previous entry)`;
+
+            legacy.selected =
+                true;
+
+            stateSelect.appendChild(
+                legacy
+            );
+        }
+
+        stateField.replaceWith(
+            stateSelect
+        );
+    }
+
+
+    /*
+     * =====================================================
+     * COUNTY LABEL
+     * =====================================================
+     */
+
+    const countyField =
+        form.querySelector(
+            'input[name="county"], select[name="county"]'
+        );
+
+    if (countyField) {
+        const countyLabel =
+            countyField
+                .closest(
+                    '.contribution-field'
+                )
+                ?.querySelector(
+                    ':scope > span'
+                );
+
+        if (countyLabel) {
+            countyLabel.textContent =
+                'County / Parish / Municipality';
+        }
+    }
+
+
+    /*
+     * =====================================================
+     * NEARBY SERVICES
+     *
+     * Every nearby field means straight-forward approximate
+     * distance from the Place, not a business or town name.
+     * =====================================================
+     */
+
+    const nearbyFields = {
+        nearest_town:
+            'Distance to nearest town',
+
+        nearest_fuel:
+            'Distance to nearest fuel',
+
+        nearest_grocery:
+            'Distance to nearest grocery',
+
+        nearest_water:
+            'Distance to nearest potable water',
+
+        nearest_toilet:
+            'Distance to nearest public toilet',
+
+        nearest_hospital:
+            'Distance to nearest hospital / emergency care',
+    };
+
+    const distanceOptions =
+        Array.from(
+            { length: 20 },
+            (_, index) => {
+                const miles =
+                    index + 1;
+
+                return (
+                    `${miles} mile`
+                    + (
+                        miles === 1
+                            ? ''
+                            : 's'
+                    )
+                );
+            }
+        );
+
+    distanceOptions.push(
+        'Over 20 miles'
+    );
+
+    Object.entries(
+        nearbyFields
+    ).forEach(
+        ([name, labelText]) => {
+            const field =
+                form.querySelector(
+                    `input[name="${name}"], select[name="${name}"]`
+                );
+
+            if (!field) {
+                return;
+            }
+
+            const current =
+                String(
+                    field.value
+                    || ''
+                ).trim();
+
+            const label =
+                field
+                    .closest(
+                        '.contribution-field'
+                    )
+                    ?.querySelector(
+                        ':scope > span'
+                    );
+
+            if (label) {
+                label.textContent =
+                    labelText;
+            }
+
+            const select =
+                document.createElement(
+                    'select'
+                );
+
+            select.name =
+                name;
+
+            const blank =
+                document.createElement(
+                    'option'
+                );
+
+            blank.value = '';
+            blank.textContent =
+                'Select...';
+
+            select.appendChild(
+                blank
+            );
+
+            distanceOptions.forEach(
+                (value) => {
+                    const option =
+                        document.createElement(
+                            'option'
+                        );
+
+                    option.value =
+                        value;
+
+                    option.textContent =
+                        value;
+
+                    if (
+                        current === value
+                    ) {
+                        option.selected =
+                            true;
+                    }
+
+                    select.appendChild(
+                        option
+                    );
+                }
+            );
+
+            /*
+             * Preserve old draft values from before these
+             * fields were standardized.
+             */
+            if (
+                current
+                && !distanceOptions.includes(
+                    current
+                )
+            ) {
+                const legacy =
+                    document.createElement(
+                        'option'
+                    );
+
+                legacy.value =
+                    current;
+
+                legacy.textContent =
+                    `${current} (previous entry)`;
+
+                legacy.selected =
+                    true;
+
+                select.appendChild(
+                    legacy
+                );
+            }
+
+            field.replaceWith(
+                select
+            );
+        }
+    );
+
+
+    /*
+     * =====================================================
+     * FORM STATE
+     * =====================================================
+     */
+
     let initialKeys = [];
 
     try {
@@ -37,7 +387,18 @@
         new Set([
             'land_manager',
             'land_type',
+            'state',
+            ...Object.keys(
+                nearbyFields
+            ),
         ]);
+
+
+    /*
+     * =====================================================
+     * RADIO CONTROL HELPERS
+     * =====================================================
+     */
 
     const selectElements =
         [
@@ -91,26 +452,18 @@
         const value =
             String(option.value);
 
-        const text =
-            String(
-                option.textContent
-                || ''
-            ).trim();
-
-        if (type === 'rating') {
-            return value === ''
-                ? '?'
-                : value;
-        }
-
-        if (
-            type === 'yes-no'
-            && value === ''
-        ) {
+        if (value === '') {
             return '?';
         }
 
-        return text;
+        if (type === 'rating') {
+            return value;
+        }
+
+        return String(
+            option.textContent
+            || value
+        ).trim();
     };
 
     const ratingHelp = (select) => {
@@ -130,7 +483,7 @@
                         === '5'
                 );
 
-        const cleanEndpoint = (
+        const endpoint = (
             option,
             fallback
         ) => {
@@ -142,52 +495,28 @@
                 .replace(/\s+/g, ' ')
                 .trim();
 
-            const parts =
+            const pieces =
                 text.split(/\s+-\s+/);
 
             return (
-                parts[1]
+                pieces[1]
                 || fallback
             ).trim();
         };
 
         return {
             low:
-                cleanEndpoint(
+                endpoint(
                     one,
                     'Low'
                 ),
+
             high:
-                cleanEndpoint(
+                endpoint(
                     five,
                     'High'
                 ),
         };
-    };
-
-    const makeHiddenValue = (
-        name,
-        value
-    ) => {
-        const hidden =
-            document.createElement(
-                'input'
-            );
-
-        hidden.type =
-            'hidden';
-
-        hidden.name =
-            name;
-
-        hidden.value =
-            value;
-
-        hidden.dataset
-            .radioControlValue =
-            name;
-
-        return hidden;
     };
 
     const currentHidden = (name) =>
@@ -204,10 +533,19 @@
 
         if (!hidden) {
             hidden =
-                makeHiddenValue(
-                    name,
-                    value
+                document.createElement(
+                    'input'
                 );
+
+            hidden.type =
+                'hidden';
+
+            hidden.name =
+                name;
+
+            hidden.dataset
+                .radioControlValue =
+                name;
 
             form.appendChild(
                 hidden
@@ -224,6 +562,28 @@
         currentHidden(name)
             ?.remove();
     };
+
+    const escapeHtml = (value) => {
+        const node =
+            document.createElement(
+                'div'
+            );
+
+        node.textContent =
+            String(value ?? '');
+
+        return node.innerHTML;
+    };
+
+
+    /*
+     * =====================================================
+     * RADIO CONTROL BUILDER
+     *
+     * Only Yes / No / Unknown and 1-5 ratings become radio
+     * rows. Written-choice questions remain dropdowns.
+     * =====================================================
+     */
 
     const buildRadioControl = (
         select
@@ -244,13 +604,6 @@
         const options =
             [...select.options];
 
-        if (
-            options.length < 2
-            || options.length > 12
-        ) {
-            return;
-        }
-
         const type =
             isYesNoUnknown(select)
                 ? 'yes-no'
@@ -258,18 +611,15 @@
                     ? 'rating'
                     : 'choice';
 
-        /*
-         * Longer written-choice questions stay as native
-         * dropdowns. The first empty option is the untouched
-         * state and reads "Select...".
-         */
         if (type === 'choice') {
             const firstOption =
                 select.options[0];
 
             if (
                 firstOption
-                && String(firstOption.value) === ''
+                && String(
+                    firstOption.value
+                ) === ''
             ) {
                 firstOption.textContent =
                     'Select...';
@@ -296,20 +646,14 @@
             return;
         }
 
-        const hadInitialKey =
-            initialKeySet.has(name);
-
         const initialValue =
-            String(select.value);
+            String(
+                select.value
+            );
 
-        /*
-         * A non-empty server-selected value is intentional.
-         * Empty is intentional only when the field existed in
-         * POST/draft data. Otherwise it is untouched.
-         */
         const hasInitialAnswer =
             initialValue !== ''
-            || hadInitialKey;
+            || initialKeySet.has(name);
 
         select.disabled = true;
         select.hidden = true;
@@ -489,44 +833,34 @@
             row
         );
 
+        const help =
+            document.createElement(
+                'div'
+            );
+
+        help.className =
+            'add-place-radio-help';
+
         if (type === 'rating') {
-            const helpValues =
+            const ends =
                 ratingHelp(select);
 
-            const help =
-                document.createElement(
-                    'div'
-                );
-
-            help.className =
-                'add-place-radio-help';
-
             help.innerHTML =
-                `<span>1 = ${escapeHtml(helpValues.low)}</span>`
-                + `<span>5 = ${escapeHtml(helpValues.high)}</span>`
+                `<span>1 = ${escapeHtml(ends.low)}</span>`
+                + `<span>5 = ${escapeHtml(ends.high)}</span>`
                 + '<span>? = Unknown</span>';
-
-            wrapper.appendChild(
-                help
+        } else {
+            help.classList.add(
+                'is-simple'
             );
-        } else if (
-            type === 'yes-no'
-        ) {
-            const help =
-                document.createElement(
-                    'div'
-                );
-
-            help.className =
-                'add-place-radio-help is-simple';
 
             help.textContent =
                 '? = Unknown / could not confidently determine';
-
-            wrapper.appendChild(
-                help
-            );
         }
+
+        wrapper.appendChild(
+            help
+        );
 
         title.insertAdjacentElement(
             'afterend',
@@ -543,18 +877,6 @@
                 'has-answer'
             );
         }
-    };
-
-    const escapeHtml = (value) => {
-        const node =
-            document.createElement(
-                'div'
-            );
-
-        node.textContent =
-            String(value ?? '');
-
-        return node.innerHTML;
     };
 
     selectElements.forEach(
