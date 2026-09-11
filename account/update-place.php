@@ -89,9 +89,15 @@ if (
                     (int) $openUpdate['id'],
                     $_POST
                 );
-
+                
+                $_SESSION['contribution_success_message'] =
+                    'Your changes were resubmitted successfully and are back in review.';
+                
+                $_SESSION['contribution_success_submission_id'] =
+                    (int) $openUpdate['id'];
+                
                 header(
-                    'Location: /contributions.php?submitted=update-resubmitted',
+                    'Location: https://account.llamascout.com/contributions.php',
                     true,
                     303
                 );
