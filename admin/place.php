@@ -992,13 +992,38 @@ $placeReportPhotoHelp =
     color: var(--text-muted);
 }
 
+.admin-place-summary-scout-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 2px;
+}
+
+.admin-place-summary-scout-status > span {
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-place-summary-scout-status > strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .76rem;
+}
+
+.admin-place-summary-scout-status > strong.is-good {
+    color: #55ad70;
+}
+
 .admin-place-summary-actions {
     flex: 0 0 auto;
 }
 
 .admin-place-operations-strip {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 1px;
     overflow: hidden;
 }
@@ -1314,7 +1339,7 @@ $placeReportPhotoHelp =
     }
 
     .admin-place-operations-strip {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
     .admin-place-meta-grid,
@@ -1334,8 +1359,19 @@ $placeReportPhotoHelp =
     }
 }
 
+@media (max-width: 760px) {
+    .admin-place-operations-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-place-operations-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 560px) {
-    .admin-place-operations-strip,
     .admin-place-photo-grid {
         grid-template-columns: 1fr;
     }
@@ -1390,6 +1426,21 @@ $placeReportPhotoHelp =
                     )
                 ) ?>
             </span>
+
+            <div class="admin-place-summary-scout-status">
+                <span>Scout status</span>
+
+                <strong class="<?= !empty($llamaScouted['ever_scouted']) ? 'is-good' : '' ?>">
+                    <i
+                        class="fa-solid <?= !empty($llamaScouted['ever_scouted']) ? 'fa-binoculars' : 'fa-circle-minus' ?>"
+                        aria-hidden="true"
+                    ></i>
+
+                    <?= !empty($llamaScouted['ever_scouted'])
+                        ? 'Llama Scouted'
+                        : 'Not yet Llama Scouted' ?>
+                </strong>
+            </div>
         </div>
 
         <div class="admin-place-summary-actions">
@@ -1419,21 +1470,6 @@ $placeReportPhotoHelp =
         class="admin-place-operations-strip"
         aria-label="Place operational summary"
     >
-        <div>
-            <span>Scout status</span>
-
-            <strong class="<?= !empty($llamaScouted['ever_scouted']) ? 'is-good' : '' ?>">
-                <i
-                    class="fa-solid <?= !empty($llamaScouted['ever_scouted']) ? 'fa-binoculars' : 'fa-circle-minus' ?>"
-                    aria-hidden="true"
-                ></i>
-
-                <?= !empty($llamaScouted['ever_scouted'])
-                    ? 'Llama Scouted'
-                    : 'Not yet Llama Scouted' ?>
-            </strong>
-        </div>
-
         <div>
             <span>Contributions</span>
             <strong><?= number_format((int) $operationalCounts['contributions']) ?></strong>
