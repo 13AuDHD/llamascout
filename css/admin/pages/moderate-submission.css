@@ -208,3 +208,9 @@
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 600px) {
+    .admin-moderation-readiness-grid {
+        grid-template-columns: 1fr;
+    }
+}
