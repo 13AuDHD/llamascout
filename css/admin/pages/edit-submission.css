@@ -1,178 +1,184 @@
 /* =========================================================
    ADMIN: EDIT NEW PLACE SUBMISSION
+   Add Place visual language inside the Admin shell.
    ========================================================= */
 
-.moderator-submission-editor-intro {
-    margin-bottom: var(--admin-panel-gap);
-    padding: var(--admin-panel-padding);
+.moderator-add-place-shell {
+    width: min(100%, 1120px);
 }
 
-.moderator-submission-editor-intro h2 {
-    margin: 10px 0 4px;
+.moderator-add-place-shell
+.contribution-header {
+    padding: 2px 0 4px;
 }
 
-.moderator-submission-editor-intro p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: .78rem;
-    line-height: 1.55;
+.moderator-add-place-shell
+.contribution-header h1 {
+    font-size: clamp(1.55rem, 3vw, 2rem);
 }
 
-.moderator-submission-editor-form {
-    display: grid;
-    gap: var(--admin-panel-gap);
+.moderator-add-place-shell
+.contribution-section {
+    box-shadow: none;
 }
 
-.moderator-submission-editor-section > header {
-    padding: 15px 17px;
-    border-bottom: 1px solid var(--border);
+.moderator-add-place-shell
+.contribution-field input,
+.moderator-add-place-shell
+.contribution-field select,
+.moderator-add-place-shell
+.contribution-field textarea {
+    box-sizing: border-box;
 }
 
-.moderator-submission-editor-section > header h2,
-.moderator-submission-editor-section > header p {
-    margin: 0;
+.moderator-add-place-shell
+.contribution-field input[type="number"] {
+    appearance: textfield;
 }
 
-.moderator-submission-editor-section > header p {
-    margin-top: 5px;
+.moderator-existing-photos {
+    margin-top: 16px;
+}
+
+.moderator-existing-photos > strong,
+.moderator-existing-photos > p {
+    display: block;
+}
+
+.moderator-existing-photos > p {
+    margin: 5px 0 12px;
     color: var(--text-muted);
     font-size: .72rem;
     line-height: 1.5;
 }
 
-.moderator-submission-editor-grid {
+.add-place-existing-photo-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: var(--admin-panel-padding);
-}
-
-.moderator-submission-editor-grid label {
-    min-width: 0;
-    display: grid;
-    gap: 5px;
-}
-
-.moderator-submission-editor-grid label.is-wide {
-    grid-column: 1 / -1;
-}
-
-.moderator-submission-editor-grid label > span {
-    font-size: .72rem;
-    font-weight: 850;
-}
-
-.moderator-submission-editor-grid label > small {
-    color: var(--text-muted);
-    font-size: .58rem;
-    overflow-wrap: anywhere;
-}
-
-.moderator-submission-editor-grid input,
-.moderator-submission-editor-grid select,
-.moderator-submission-editor-grid textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--admin-control-radius);
-    background: var(--background);
-    color: var(--text);
-    font: inherit;
-}
-
-.moderator-submission-editor-grid input,
-.moderator-submission-editor-grid select {
-    min-height: 42px;
-}
-
-.moderator-submission-editor-grid textarea {
-    resize: vertical;
-}
-
-.moderator-submission-photo-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
     gap: 10px;
-    padding: var(--admin-panel-padding);
 }
 
-.moderator-submission-photo {
+.add-place-existing-photo {
+    min-width: 0;
     display: grid;
     gap: 7px;
-    min-width: 0;
 }
 
-.moderator-submission-photo img {
+.add-place-existing-photo img {
     width: 100%;
     aspect-ratio: 4 / 3;
     object-fit: cover;
+
     border: 1px solid var(--border);
     border-radius: 10px;
 }
 
-.moderator-submission-photo span {
+.add-place-existing-photo > span {
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: .7rem;
+
+    color: var(--text);
+    font-size: .72rem;
     font-weight: 750;
 }
 
-.moderator-submission-editor-section
+.add-place-existing-photo input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.moderator-photo-empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+
+    margin-top: 16px;
+    padding: 26px 18px;
+
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.moderator-photo-empty i {
+    font-size: 1.4rem;
+}
+
+.moderator-photo-empty strong {
+    color: var(--text);
+}
+
+.moderator-photo-empty span {
+    max-width: 560px;
+
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.moderator-add-place-shell
 [data-photo-uploader] {
-    padding: var(--admin-panel-padding);
-    border-top: 1px solid var(--border);
+    margin-top: 16px;
 }
 
-.moderator-submission-editor-actions {
-    position: sticky;
-    bottom: 10px;
-    z-index: 20;
-
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-
-    padding: 10px;
-
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    background: color-mix(
-        in srgb,
-        var(--surface) 94%,
-        transparent
-    );
-
-    backdrop-filter: blur(10px);
+.moderator-save-bar {
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
 }
 
-@media (max-width: 760px) {
-    .moderator-submission-editor-grid {
-        grid-template-columns: 1fr;
-    }
+.moderator-save-bar
+> .contribution-submit {
+    grid-column: 1;
+}
 
-    .moderator-submission-editor-grid label.is-wide {
-        grid-column: auto;
-    }
+.moderator-save-bar
+> a {
+    grid-column: 2;
 
-    .moderator-submission-photo-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    align-self: center;
 
-    .moderator-submission-editor-actions {
-        display: grid;
-        grid-template-columns: 1fr;
-    }
+    font-size: .72rem;
+}
 
-    .moderator-submission-editor-actions .admin-button {
-        justify-content: center;
+
+/* Admin shell is narrower than the public page on some tablets. */
+@media (max-width: 900px) {
+    .add-place-existing-photo-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 440px) {
-    .moderator-submission-photo-grid {
+@media (max-width: 700px) {
+    .moderator-add-place-shell
+    .contribution-grid,
+    .moderator-add-place-shell
+    .contribution-checkbox-grid {
         grid-template-columns: 1fr;
+    }
+
+    .add-place-existing-photo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .moderator-save-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .moderator-save-bar
+    > .contribution-submit,
+    .moderator-save-bar
+    > a {
+        grid-column: 1;
+    }
+
+    .moderator-save-bar
+    > a {
+        justify-self: center;
     }
 }
