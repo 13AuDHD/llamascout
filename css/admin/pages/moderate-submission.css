@@ -84,11 +84,8 @@
 
 .admin-moderation-readiness-grid {
     display: grid;
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-    gap: 10px;
-
-    margin-bottom: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
 }
 
 .admin-moderation-readiness-grid > div {
