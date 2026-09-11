@@ -50,8 +50,20 @@ $renderValue =
             $value = 'Not provided';
         }
 
+        $type =
+            (string) $field['type'];
+
+        $isAnsweredRating =
+            $type === 'rating'
+            && $state === 'answered';
+
         $class =
-            'scout-report-item scout-report-value-item'
+            'scout-report-item '
+            . (
+                $isAnsweredRating
+                    ? 'scout-report-rating-item'
+                    : 'scout-report-value-item'
+            )
             . (
                 $state === 'unknown'
                     ? ' is-explicit-unknown'
@@ -62,27 +74,24 @@ $renderValue =
                     ? ' is-unanswered'
                     : ''
             );
-
-        $type = (string) $field['type'];
         ?>
+
         <div class="<?= $e($class) ?>">
-            <div class="scout-report-value-content">
-                <span>
-                    <?= $e(
-                        rtrim(
-                            (string) $field['label'],
-                            '*'
-                        )
-                    ) ?>
-                </span>
 
-                <strong><?= $e($value) ?></strong>
-            </div>
+            <?php if ($isAnsweredRating): ?>
+                <div class="scout-rating-content">
+                    <span>
+                        <?= $e(
+                            rtrim(
+                                (string) $field['label'],
+                                '*'
+                            )
+                        ) ?>
+                    </span>
 
-            <?php if (
-                $type === 'rating'
-                && $state === 'answered'
-            ): ?>
+                    <strong><?= $e($value) ?></strong>
+                </div>
+
                 <?php
                 $rating =
                     (int) llama_place_report_get_path(
@@ -102,7 +111,22 @@ $renderValue =
                         ></span>
                     <?php endfor; ?>
                 </div>
+
+            <?php else: ?>
+                <div class="scout-report-value-content">
+                    <span>
+                        <?= $e(
+                            rtrim(
+                                (string) $field['label'],
+                                '*'
+                            )
+                        ) ?>
+                    </span>
+
+                    <strong><?= $e($value) ?></strong>
+                </div>
             <?php endif; ?>
+
         </div>
         <?php
     };
