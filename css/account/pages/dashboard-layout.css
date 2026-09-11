@@ -18,7 +18,7 @@
     display: grid;
     grid-template-columns:
         repeat(
-            4,
+            2,
             minmax(0, 1fr)
         );
     gap: 10px;
@@ -75,8 +75,15 @@
 
 
 /* =========================================================
-   SCOUT BASECAMP CONTRIBUTION CARD
+   SCOUT BASECAMP DASHBOARD CARD
    ========================================================= */
+
+.account-dashboard-scout-card {
+    grid-column: 1 / -1;
+
+    box-sizing: border-box;
+    width: 100%;
+}
 
 .account-scout-basecamp-card {
     position: relative;
@@ -223,16 +230,6 @@
    RESPONSIVE
    ========================================================= */
 
-@media (max-width: 1080px) {
-    .account-dashboard-stat-grid {
-        grid-template-columns:
-            repeat(
-                2,
-                minmax(0, 1fr)
-            );
-    }
-}
-
 @media (max-width: 700px) {
     .account-dashboard-stat-grid {
         grid-template-columns:
@@ -240,6 +237,19 @@
                 2,
                 minmax(0, 1fr)
             );
+    }
+
+    .account-dashboard-stat-card {
+        grid-template-columns:
+            38px minmax(0, 1fr);
+
+        gap: 8px;
+
+        padding: 11px;
+    }
+
+    .account-dashboard-stat-card strong {
+        font-size: 1.1rem;
     }
 
     .account-email-verification-banner {
@@ -257,8 +267,26 @@
     }
 }
 
-@media (max-width: 460px) {
-    .account-dashboard-stat-grid {
-        grid-template-columns: 1fr;
+@media (max-width: 390px) {
+    .account-dashboard-stat-card {
+        grid-template-columns:
+            34px minmax(0, 1fr);
+
+        gap: 7px;
+
+        padding: 10px;
+    }
+
+    .account-dashboard-stat-card
+    .account-glance-icon i {
+        font-size: 1rem;
+    }
+
+    .account-dashboard-stat-card strong {
+        font-size: 1rem;
+    }
+
+    .account-dashboard-stat-card > div > span {
+        font-size: .62rem;
     }
 }
