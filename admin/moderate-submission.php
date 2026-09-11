@@ -518,11 +518,16 @@ $placeReportReadMode =
                     llama_place_report_photo_path(
                         $photo
                     );
+                
+                $photoUrl =
+                    llama_place_report_photo_url(
+                        $photo
+                    );
                 ?>
 
                 <?php if ($src !== ''): ?>
                     <img
-                        src="<?= moderation_e($src) ?>"
+                        src="<?= moderation_e($photoUrl) ?>"
                         alt="<?= moderation_e(
                             is_array($photo)
                                 ? ($photo['alt'] ?? '')
