@@ -60,7 +60,7 @@
 
                     <a
                         class="place-detail-action-button"
-                        href="https://account.llamascout.com/update-place.php?place_id=<?= (int) $place['id'] ?>"
+                        href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
                     >
                         <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
                         Suggest Update
