@@ -7,13 +7,17 @@ require_once dirname(__DIR__) . '/app/place-update.php';
 
 require_verified_email();
 
-$user = current_user();
+
+$user =
+    current_user();
+
 
 $userId =
     (int) (
         $user['id']
         ?? 0
     );
+
 
 $slug =
     trim(
@@ -23,6 +27,7 @@ $slug =
             ?? ''
         )
     );
+
 
 $place =
     $slug !== ''
@@ -43,6 +48,7 @@ if (!$place) {
 
     $pageTitle =
         'Place not found | Llama Scout';
+
 
     require dirname(__DIR__)
         . '/partials/header.php';
@@ -65,6 +71,7 @@ if (!$place) {
     </section>
 
     <?php
+
     require dirname(__DIR__)
         . '/partials/footer.php';
 
@@ -72,7 +79,9 @@ if (!$place) {
 }
 
 
-$db = db();
+$db =
+    db();
+
 
 $placeId =
     (int) (
@@ -80,7 +89,9 @@ $placeId =
         ?? 0
     );
 
-$error = null;
+
+$error =
+    null;
 
 
 /*
@@ -95,6 +106,7 @@ $openUpdate =
         $placeId
     );
 
+
 $isNeedsChanges =
     $openUpdate
     && (
@@ -104,6 +116,7 @@ $isNeedsChanges =
         )
         === 'needs-changes'
     );
+
 
 $isPendingUpdate =
     $openUpdate
@@ -122,27 +135,41 @@ $isPendingUpdate =
  * =========================================================
  */
 
-$editProposed = [];
+$editProposed =
+    [];
 
-$editPhotos = [];
 
-$editVisitedAt = '';
+$editPhotos =
+    [];
 
-$editContributorNotes = '';
+
+$editVisitedAt =
+    '';
+
+
+$editContributorNotes =
+    '';
+
+
+$editProposedUnknownFields =
+    [];
 
 
 if ($isNeedsChanges) {
+
     $editProposed =
         llama_place_update_decode_json(
             $openUpdate['proposed_changes']
             ?? '{}'
         );
 
+
     $editPhotos =
         llama_place_update_decode_json(
             $openUpdate['photos']
             ?? '[]'
         );
+
 
     $editVisitedAt =
         !empty(
@@ -155,11 +182,36 @@ if ($isNeedsChanges) {
             )
             : '';
 
+
     $editContributorNotes =
         (string) (
             $openUpdate['contributor_notes']
             ?? ''
         );
+
+
+    /*
+     * The proposed value itself can be NULL for both:
+     *
+     * 1. explicitly Unknown
+     * 2. blank / not provided
+     *
+     * Revision history preserves which one the contributor
+     * actually submitted.
+     */
+    $editHistoryRow =
+        llama_place_update_fetch_row(
+            $db,
+            (int) $openUpdate['id']
+        );
+
+
+    if ($editHistoryRow) {
+        $editProposedUnknownFields =
+            llama_place_update_latest_unknown_fields(
+                $editHistoryRow
+            );
+    }
 }
 
 
@@ -173,6 +225,7 @@ if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
     && !$isPendingUpdate
 ) {
+
     if (
         !community_verify_csrf(
             (string) (
@@ -183,10 +236,13 @@ if (
     ) {
         $error =
             'Your session expired. Refresh the page and try again.';
+
     } else {
+
         try {
 
             if ($isNeedsChanges) {
+
                 llama_place_update_resubmit(
                     $userId,
                     $place,
@@ -194,11 +250,13 @@ if (
                     $_POST
                 );
 
+
                 header(
                     'Location: https://account.llamascout.com/contributions.php?submitted=update-resubmitted',
                     true,
                     303
                 );
+
 
                 exit;
             }
@@ -210,11 +268,13 @@ if (
                 $_POST
             );
 
+
             header(
                 'Location: https://account.llamascout.com/contributions.php?submitted=update',
                 true,
                 303
             );
+
 
             exit;
 
@@ -237,6 +297,7 @@ if (
                     ]
                 );
 
+
             $error =
                 $reference === null
                     ? $exception->getMessage()
@@ -251,13 +312,8 @@ if (
 
 /*
  * =========================================================
- * CURRENT PUBLISHED PLACE DATA
+ * CURRENT PUBLISHED PLACE
  * =========================================================
- *
- * This now comes from the shared Place Report schema through
- * app/place-update.php.
- *
- * Do not use community_update_current_values() here anymore.
  */
 
 $currentValues =
@@ -265,6 +321,7 @@ $currentValues =
         $db,
         $placeId
     );
+
 
 $publishedUnknownFields =
     llama_place_report_published_answer_state(
@@ -279,10 +336,11 @@ $publishedUnknownFields =
  * =========================================================
  *
  * Normal update:
- *     published values
+ *     Published Place values and answer state.
  *
  * Needs Changes:
- *     published values + prior proposed values overlaid
+ *     Published Place values, overlaid with the contributor's
+ *     latest proposed values and proposed Unknown state.
  */
 
 $placeReportValues =
@@ -291,31 +349,107 @@ $placeReportValues =
         $publishedUnknownFields,
         $isNeedsChanges
             ? $editProposed
+            : [],
+        $isNeedsChanges
+            ? $editProposedUnknownFields
             : []
     );
 
 
 /*
- * If submission failed, keep exactly what the contributor
- * just entered.
+ * =========================================================
+ * PRESERVE FAILED POST
+ * =========================================================
+ *
+ * The posted form must win over database values after an
+ * unsuccessful submission.
+ *
+ * Checkbox inputs require special handling because unchecked
+ * boxes do not appear in $_POST.
  */
 
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
     && $error !== null
 ) {
+
     foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
+        llama_place_update_definitions()
+        as $definition
     ) {
+        $field =
+            $definition['shared']
+            ?? null;
+
+
+        if (!is_array($field)) {
+            continue;
+        }
+
+
+        $fieldKey =
+            (string) (
+                $field['key']
+                ?? ''
+            );
+
+
+        if ($fieldKey === '') {
+            continue;
+        }
+
+
+        $fieldType =
+            (string) (
+                $field['type']
+                ?? ''
+            );
+
+
+        if ($fieldType === 'checkbox') {
+
+            if (
+                !empty(
+                    $_POST[$fieldKey]
+                )
+            ) {
+                $placeReportValues[$fieldKey] =
+                    '1';
+
+            } else {
+                /*
+                 * No array value means the user intentionally
+                 * submitted this checkbox unchecked.
+                 */
+                unset(
+                    $placeReportValues[$fieldKey]
+                );
+            }
+
+
+            continue;
+        }
+
+
         if (
             array_key_exists(
                 $fieldKey,
                 $_POST
             )
         ) {
-            $placeReportValues[$fieldKey] =
+            $postedValue =
                 $_POST[$fieldKey];
+
+
+            if (
+                is_scalar(
+                    $postedValue
+                )
+                || $postedValue === null
+            ) {
+                $placeReportValues[$fieldKey] =
+                    (string) $postedValue;
+            }
         }
     }
 }
@@ -323,14 +457,8 @@ if (
 
 /*
  * =========================================================
- * UPDATE FIELD ALLOW-LIST
+ * SHARED FORM FIELD ALLOW-LIST
  * =========================================================
- *
- * This is generated from the shared Place Report schema.
- *
- * Submission-only values such as visited_at and
- * contributor_notes have already been excluded by
- * llama_place_update_definitions().
  */
 
 $placeReportAllowedStoragePaths =
@@ -348,27 +476,33 @@ $placeReportAllowedStoragePaths =
 $placeReportMode =
     'contributor';
 
+
 $placeReportShowLocate =
     true;
+
 
 $placeReportShowNameSuggestion =
     false;
 
 
 /*
- * Suggest an Update has its own evidence-photo section.
+ * Updates use their own evidence-photo section below.
  */
 $placeReportShowPhotos =
     false;
 
+
 $placeReportExistingPhotos =
     [];
+
 
 $placeReportPhotoContext =
     'update-place';
 
+
 $placeReportPhotoMax =
     5;
+
 
 $placeReportPhotoCsrf =
     llama_photo_csrf_token();
@@ -385,6 +519,7 @@ $visitedAtValue =
         $_POST['visited_at']
         ?? $editVisitedAt
     );
+
 
 $contributorNotesValue =
     (string) (
@@ -404,10 +539,12 @@ $pageTitle =
         ? 'Revise Update | Llama Scout'
         : 'Suggest an Update | Llama Scout';
 
+
 $pageStyles = [
     'account/pages/update-place.css',
     'site/features/place-report-form.css',
 ];
+
 
 require dirname(__DIR__)
     . '/partials/header.php';
@@ -420,6 +557,7 @@ $e =
             ENT_QUOTES,
             'UTF-8'
         );
+
 ?>
 
 
@@ -428,34 +566,43 @@ $e =
 
     <header class="contribution-header place-update-header">
 
+
         <p class="eyebrow">
+
             <?= $isNeedsChanges
                 ? 'Changes requested'
                 : 'Community contribution' ?>
+
         </p>
 
 
         <h1>
+
             <?= $isNeedsChanges
                 ? 'Revise this update'
                 : 'Suggest an update' ?>
+
         </h1>
 
 
         <p class="place-update-place-name">
+
             <?= $e(
                 $place['name']
                 ?? ''
             ) ?>
+
         </p>
 
 
         <p class="place-update-intro">
+
             Update anything that has changed.
             The current Place information is already filled in.
             Edit only what needs correcting or updating.
             Llama Scout will automatically detect what changed
             and send those changes for review.
+
         </p>
 
 
@@ -474,6 +621,7 @@ $e =
 
         </div>
 
+
     </header>
 
 
@@ -486,6 +634,7 @@ $e =
                 class="fa-solid fa-clock"
                 aria-hidden="true"
             ></i>
+
 
             <div>
 
@@ -522,12 +671,14 @@ $e =
 
             <section class="place-update-request-card">
 
+
                 <div class="place-update-request-heading">
 
                     <i
                         class="fa-solid fa-triangle-exclamation"
                         aria-hidden="true"
                     ></i>
+
 
                     <div>
 
@@ -560,6 +711,7 @@ $e =
 
                 <?php endif; ?>
 
+
             </section>
 
 
@@ -573,7 +725,9 @@ $e =
                 class="contribution-message is-error"
                 role="alert"
             >
-                <?= $e($error) ?>
+                <?= $e(
+                    $error
+                ) ?>
             </div>
 
 
@@ -625,14 +779,16 @@ $e =
 
 
             <?php
+
             /*
              * Shared Place Report form.
              *
-             * Same source of truth used by Add Place,
-             * moderation, and Place editing.
+             * This is the same field definition and rendering
+             * system used by the rest of the Place workflow.
              */
             require dirname(__DIR__)
                 . '/partials/place-report/form.php';
+
             ?>
 
 
@@ -640,6 +796,7 @@ $e =
                 class="contribution-section place-update-observation-section"
                 open
             >
+
 
                 <summary>
 
@@ -653,6 +810,7 @@ $e =
                         Your observation
 
                     </span>
+
 
                     <small>
                         When you personally observed these changes
@@ -708,6 +866,7 @@ $e =
 
                 </div>
 
+
             </details>
 
 
@@ -715,6 +874,7 @@ $e =
                 class="contribution-section place-update-photo-section"
                 open
             >
+
 
                 <summary>
 
@@ -728,6 +888,7 @@ $e =
                         Photos from this visit
 
                     </span>
+
 
                     <small>
                         Evidence of changed or current conditions
@@ -747,9 +908,11 @@ $e =
 
                         <div class="place-update-existing-photos">
 
+
                             <strong>
                                 Already attached
                             </strong>
+
 
                             <p>
                                 These photos remain attached to this update.
@@ -767,15 +930,18 @@ $e =
 
 
                                     <?php
+
                                     $src =
                                         llama_place_report_photo_path(
                                             $photo
                                         );
 
+
                                     $photoUrl =
                                         llama_place_report_photo_url(
                                             $photo
                                         );
+
                                     ?>
 
 
@@ -809,6 +975,7 @@ $e =
 
                             </div>
 
+
                         </div>
 
 
@@ -829,6 +996,7 @@ $e =
 
                 </div>
 
+
             </details>
 
 
@@ -844,6 +1012,7 @@ $e =
                         class="fa-solid fa-paper-plane"
                         aria-hidden="true"
                     ></i>
+
 
                     <?= $isNeedsChanges
                         ? 'Resubmit Update'
@@ -883,6 +1052,8 @@ $e =
 
 
 <?php
+
 require dirname(__DIR__)
     . '/partials/footer.php';
+
 ?>
