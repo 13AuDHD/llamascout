@@ -1316,6 +1316,34 @@ function llama_place_report_normalize_committed_photos(array $photos): array
     );
 }
 
+function llama_place_report_photo_url(mixed $photo): string
+{
+    $path =
+        llama_place_report_photo_path(
+            $photo
+        );
+
+    if ($path === '') {
+        return '';
+    }
+
+    if (
+        preg_match(
+            '#^https?://#i',
+            $path
+        )
+    ) {
+        return $path;
+    }
+
+    return
+        'https://llamascout.com/'
+        . ltrim(
+            $path,
+            '/'
+        );
+}
+
 function llama_place_report_photo_path(mixed $photo): string
 {
     if (!is_array($photo)) {
