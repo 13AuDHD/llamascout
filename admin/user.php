@@ -156,6 +156,41 @@ $userStats = admin_users_stats(
     $userId
 );
 
+/*
+ * Presence is intentionally approximate.
+ * A user is considered active when an authenticated request has
+ * touched users.last_seen_at within the last five minutes.
+ */
+$lastSeenAt = trim(
+    (string) (
+        $user['last_seen_at']
+        ?? ''
+    )
+);
+
+$isRecentlyActive = false;
+$lastSeenDisplay = 'Never';
+
+if ($lastSeenAt !== '') {
+    try {
+        $lastSeenUtc = new DateTimeImmutable(
+            $lastSeenAt,
+            new DateTimeZone('UTC')
+        );
+
+        $isRecentlyActive =
+            $lastSeenUtc->getTimestamp()
+            >= (time() - 300);
+
+        $lastSeenDisplay =
+            llama_format_viewer_datetime(
+                $lastSeenAt
+            );
+    } catch (Throwable) {
+        $lastSeenDisplay = 'Unavailable';
+    }
+}
+
 $contributions = admin_users_recent_contributions(
     $db,
     $userId
@@ -641,14 +676,14 @@ require __DIR__ . '/_header.php';
                     </div>
 
                     <span
-                        class="admin-user-session-status <?= (int) $userStats['sessions'] > 0 ? 'is-active' : 'is-inactive' ?>"
+                        class="admin-user-session-status <?= $isRecentlyActive ? 'is-active' : 'is-inactive' ?>"
                     >
                         <i
-                            class="fa-solid <?= (int) $userStats['sessions'] > 0 ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
+                            class="fa-solid <?= $isRecentlyActive ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
                             aria-hidden="true"
                         ></i>
 
-                        <?= (int) $userStats['sessions'] > 0
+                        <?= $isRecentlyActive
                             ? 'Active'
                             : 'Not active' ?>
                     </span>
@@ -660,8 +695,8 @@ require __DIR__ . '/_header.php';
                     <input type="hidden" name="admin_user_action" value="force-logout">
 
                     <div class="admin-user-session-count">
-                        <span>Active sessions</span>
-                        <strong><?= number_format((int) $userStats['sessions']) ?></strong>
+                        <span>Last seen</span>
+                        <strong><?= moderation_e($lastSeenDisplay) ?></strong>
                     </div>
 
                     <p>
@@ -686,14 +721,14 @@ require __DIR__ . '/_header.php';
                     </div>
 
                     <span
-                        class="admin-user-session-status <?= (int) $userStats['sessions'] > 0 ? 'is-active' : 'is-inactive' ?>"
+                        class="admin-user-session-status <?= $isRecentlyActive ? 'is-active' : 'is-inactive' ?>"
                     >
                         <i
-                            class="fa-solid <?= (int) $userStats['sessions'] > 0 ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
+                            class="fa-solid <?= $isRecentlyActive ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
                             aria-hidden="true"
                         ></i>
 
-                        <?= (int) $userStats['sessions'] > 0
+                        <?= $isRecentlyActive
                             ? 'Active'
                             : 'Not active' ?>
                     </span>
@@ -701,8 +736,8 @@ require __DIR__ . '/_header.php';
 
                 <div class="admin-user-action-box">
                     <div class="admin-user-session-count">
-                        <span>Active sessions</span>
-                        <strong><?= number_format((int) $userStats['sessions']) ?></strong>
+                        <span>Last seen</span>
+                        <strong><?= moderation_e($lastSeenDisplay) ?></strong>
                     </div>
 
                     <p>
