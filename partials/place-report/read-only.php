@@ -61,10 +61,19 @@ $renderValue =
             (string) $field['type'];
 
         $icon =
-            llama_place_report_field_icon(
+            in_array(
                 $key,
-                $field
-            );
+                [
+                    'amenity_picnic_table',
+                    'accessible_picnic_table',
+                ],
+                true
+            )
+                ? 'fa-utensils'
+                : llama_place_report_field_icon(
+                    $key,
+                    $field
+                );
 
         $isAnsweredRating =
             $type === 'rating'
@@ -337,16 +346,21 @@ foreach (
 
                     $amenityIcon =
                         $key === 'amenity_picnic_table'
-                            ? 'fa-table'
+                            ? 'fa-utensils'
                             : llama_place_report_field_icon(
                                 $key,
                                 $field
                             );
+
+                    $amenityLabel =
+                        $key === 'amenity_fire_ring'
+                            ? 'Metal fire ring'
+                            : (string) $field['label'];
                     ?>
 
                     <div class="scout-report-item scout-report-value-item">
                         <div class="scout-report-value-content">
-                            <span><?= $e($field['label']) ?></span>
+                            <span><?= $e($amenityLabel) ?></span>
                             <strong><?= $amenityValue ?></strong>
                         </div>
 
