@@ -1357,7 +1357,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <link
     rel="stylesheet"
-    href="https://llamascout.com/css/account-delete-v2.css"
+    href="https://llamascout.com/css/account/pages/delete-account.css"
 >
 
 <section class="delete-account-shell">
