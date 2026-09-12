@@ -1,35 +1,51 @@
 /* =========================================================
    ADMIN USER: EMAIL VERIFICATION
+   Compatibility stylesheet. Primary user-page presentation
+   now lives in css/admin/pages/user.css.
    ========================================================= */
 
 .admin-user-email-verification-panel {
-    margin-bottom: var(--admin-panel-gap);
+    margin: 0;
 }
 
 .admin-user-email-verification-status {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
 
-    padding: 4px 7px;
+    padding: 5px 9px;
 
-    border: 1px solid var(--border);
+    border: 1px solid;
     border-radius: 999px;
 
-    color: var(--text-muted);
-
-    font-size: .56rem;
+    font-size: .62rem;
     font-weight: 900;
+    white-space: nowrap;
+}
+
+.admin-user-email-verification-status.is-verified {
+    border-color: #58a66a;
+    background: color-mix(
+        in srgb,
+        #58a66a 14%,
+        transparent
+    );
+    color: #58a66a;
 }
 
 .admin-user-email-verification-status.is-unverified {
-    border-style: dashed;
+    border-color: #d95d5d;
+    background: color-mix(
+        in srgb,
+        #d95d5d 14%,
+        transparent
+    );
+    color: #d95d5d;
 }
 
 .admin-user-email-verification-body {
     display: grid;
     gap: 12px;
-
     padding: 15px;
 }
 
@@ -40,51 +56,41 @@
 
 .admin-user-email-verification-body > div > span {
     color: var(--text-muted);
-
     font-size: .58rem;
     font-weight: 850;
 }
 
 .admin-user-email-verification-body > div > strong {
     overflow-wrap: anywhere;
-
     font-size: .7rem;
 }
 
 .admin-user-email-verification-body > p {
     margin: 0;
-
     color: var(--text-muted);
-
-    font-size: .64rem;
+    font-size: .68rem;
     line-height: 1.5;
 }
 
 .admin-user-email-verification-form {
     display: flex;
+    width: 100%;
+}
+
+.admin-user-email-verification-form .admin-button {
+    width: 100%;
+    justify-content: center;
 }
 
 .admin-user-email-verification-message {
     margin: 12px 15px 0;
     padding: 9px 10px;
-
     border: 1px solid var(--border);
     border-radius: 8px;
-
     font-size: .61rem;
     line-height: 1.45;
 }
 
 .admin-user-email-verification-message.is-error {
-    border-style: dashed;
-}
-
-
-.admin-user-email-verification-form,
-.admin-user-email-verification-form .admin-button {
-    width: 100%;
-}
-
-.admin-user-email-verification-form .admin-button {
-    justify-content: center;
+    border-color: #d95d5d;
 }
