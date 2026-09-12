@@ -93,10 +93,6 @@
 
 /* =========================================================
    RATING CARD
-
-   Card title
-
-   1/5                         ○ ○ ○ ○ ○
    ========================================================= */
 
 .scout-report-rating-item {
@@ -161,10 +157,6 @@
 
 /* =========================================================
    VALUE / YES-NO CARD
-
-   Card title
-
-   Yes                              [icon]
    ========================================================= */
 
 .scout-report-value-item {
@@ -212,6 +204,12 @@
     font-size: 1.2rem;
     line-height: 1;
     text-align: center;
+}
+
+
+/* Picnic-table fallback for Font Awesome builds without fa-table-picnic. */
+.fa-table-picnic::before {
+    content: "\f0ce";
 }
 
 
@@ -517,7 +515,7 @@
        min-height: 68px;
        padding: 10px 12px;
    }
-   
+
    .scout-report-item-wide {
        min-height: 0;
    }
