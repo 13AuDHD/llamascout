@@ -223,22 +223,14 @@ require __DIR__ . '/_header.php';
                         (@<?= moderation_e((string) $candidate['username']) ?>)
                     <?php endif; ?>
                     <?php if ((string) ($candidate['scout_status'] ?? '') === 'invited'): ?>
-                        · resend invitation
+                        Â· resend invitation
                     <?php elseif ((string) ($candidate['scout_status'] ?? '') === 'declined'): ?>
-                        · previously declined
+                        Â· previously declined
                     <?php endif; ?>
                 </option>
             <?php endforeach; ?>
         </select>
     </label>
-
-    <div>
-        <strong>30-day invitation</strong>
-        <span>
-            The member receives an email and an onboarding card
-            in their Llama Scout account.
-        </span>
-    </div>
 
     <button
         class="admin-button"
