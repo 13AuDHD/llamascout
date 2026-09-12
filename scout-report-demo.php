@@ -264,6 +264,27 @@ $demoAmenities = [
     'electricity' => false,
 ];
 
+/*
+ * Feed the fictional demo values into the same structure used by a
+ * published member-access Place so the shared Scout Report renderer
+ * can display the complete example.
+ */
+
+$place['details'] = $details;
+$place['connectivity'] = $connectivity;
+$place['sensory'] = $sensory;
+$place['sensory_details'] = $sensoryDetails;
+$place['rules'] = $rules;
+$place['experience'] = $experience;
+
+$place['amenities'] = array_map(
+    static fn (bool $available): int =>
+        $available ? 1 : 0,
+    $demoAmenities
+);
+
+$isDemoScoutReport = true;
+
 /* Demo images are optional. */
 $demoImageCandidates = [
     ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpeg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpeg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
