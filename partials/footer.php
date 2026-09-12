@@ -202,6 +202,7 @@ $footerUser = current_user();
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/mobile-menu.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/photo-uploader.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/share.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/session-heartbeat.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 
 </body>
 </html>
