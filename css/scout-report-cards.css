@@ -207,9 +207,9 @@
 }
 
 
-/* Picnic-table fallback for Font Awesome builds without fa-table-picnic. */
+/* Legacy picnic-table references fall back to the free utensils glyph. */
 .fa-table-picnic::before {
-    content: "\f0ce";
+    content: "\f2e7";
 }
 
 
