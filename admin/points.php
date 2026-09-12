@@ -158,6 +158,50 @@ try {
     }
 }
 
+$manualAdjustmentUsers = [];
+$manualAdjustmentSelected = null;
+$manualAdjustmentSelectedId =
+    (int) (
+        $_POST['user_id']
+        ?? 0
+    );
+
+if ($actorIsOwner) {
+    try {
+        $manualAdjustmentUsers =
+            admin_points_manual_adjustment_users(
+                $db
+            );
+
+        if ($manualAdjustmentSelectedId > 0) {
+            foreach (
+                $manualAdjustmentUsers
+                as $member
+            ) {
+                if (
+                    (int) (
+                        $member['id']
+                        ?? 0
+                    ) === $manualAdjustmentSelectedId
+                ) {
+                    $manualAdjustmentSelected =
+                        $member;
+                    break;
+                }
+            }
+        }
+    } catch (Throwable $exception) {
+        $manualAdjustmentUsers = [];
+        $manualAdjustmentSelected = null;
+
+        if ($error === '') {
+            $error =
+                $exception->getMessage();
+        }
+    }
+}
+
+
 $ledger =
     admin_points_recent(
         $db,
@@ -456,6 +500,64 @@ require
 
 <?php if ($actorIsOwner): ?>
 
+<?php
+$selectedMemberName = '';
+$selectedMemberMeta = '';
+
+if (is_array($manualAdjustmentSelected)) {
+    $selectedDisplayName =
+        trim(
+            (string) (
+                $manualAdjustmentSelected['display_name']
+                ?? ''
+            )
+        );
+
+    $selectedUsername =
+        trim(
+            (string) (
+                $manualAdjustmentSelected['username']
+                ?? ''
+            )
+        );
+
+    $selectedEmail =
+        trim(
+            (string) (
+                $manualAdjustmentSelected['email']
+                ?? ''
+            )
+        );
+
+    $selectedMemberName =
+        $selectedDisplayName !== ''
+            ? $selectedDisplayName
+            : (
+                $selectedUsername !== ''
+                    ? '@' . $selectedUsername
+                    : $selectedEmail
+            );
+
+    $selectedMemberMeta =
+        trim(
+            implode(
+                ' · ',
+                array_filter(
+                    [
+                        $selectedUsername !== ''
+                            ? '@' . $selectedUsername
+                            : null,
+                        $selectedEmail !== ''
+                            ? $selectedEmail
+                            : null,
+                        '#' . $manualAdjustmentSelectedId,
+                    ]
+                )
+            )
+        );
+}
+?>
+
 <section class="admin-panel admin-points-adjustment-panel">
 
     <header class="admin-panel-header">
@@ -468,6 +570,7 @@ require
     <form
         class="admin-points-adjustment"
         method="post"
+        data-points-adjustment-form
     >
         <input
             type="hidden"
@@ -483,16 +586,170 @@ require
             value="manual-adjustment"
         >
 
-        <label>
-            <span>User ID</span>
+        <label class="admin-points-member-field">
+            <span>Member</span>
 
-            <input
-                type="number"
-                name="user_id"
-                min="1"
-                step="1"
-                required
+            <div
+                class="admin-points-member-picker"
+                data-member-picker
             >
+                <input
+                    type="search"
+                    class="admin-points-member-search"
+                    placeholder="Search name, username, or email"
+                    value="<?= moderation_e($selectedMemberName) ?>"
+                    autocomplete="off"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-controls="admin-points-member-results"
+                    data-member-search
+                >
+
+                <input
+                    type="hidden"
+                    name="user_id"
+                    value="<?= $manualAdjustmentSelectedId > 0
+                        ? $manualAdjustmentSelectedId
+                        : ''
+                    ?>"
+                    data-member-id
+                >
+
+                <div
+                    id="admin-points-member-results"
+                    class="admin-points-member-results"
+                    role="listbox"
+                    hidden
+                    data-member-results
+                >
+                    <?php foreach (
+                        $manualAdjustmentUsers
+                        as $member
+                    ): ?>
+                        <?php
+                        $memberName =
+                            trim(
+                                (string) (
+                                    $member['display_name']
+                                    ?? ''
+                                )
+                            );
+
+                        $memberUsername =
+                            trim(
+                                (string) (
+                                    $member['username']
+                                    ?? ''
+                                )
+                            );
+
+                        $memberEmail =
+                            trim(
+                                (string) (
+                                    $member['email']
+                                    ?? ''
+                                )
+                            );
+
+                        $memberId =
+                            (int) (
+                                $member['id']
+                                ?? 0
+                            );
+
+                        $memberStatus =
+                            trim(
+                                (string) (
+                                    $member['status']
+                                    ?? ''
+                                )
+                            );
+
+                        $memberPrimary =
+                            $memberName !== ''
+                                ? $memberName
+                                : (
+                                    $memberUsername !== ''
+                                        ? '@' . $memberUsername
+                                        : $memberEmail
+                                );
+
+                        $memberSearchText =
+                            strtolower(
+                                implode(
+                                    ' ',
+                                    [
+                                        $memberPrimary,
+                                        $memberUsername,
+                                        $memberEmail,
+                                        (string) $memberId,
+                                    ]
+                                )
+                            );
+                        ?>
+
+                        <button
+                            type="button"
+                            class="admin-points-member-option"
+                            role="option"
+                            data-member-option
+                            data-member-id="<?= $memberId ?>"
+                            data-member-label="<?= moderation_e($memberPrimary) ?>"
+                            data-member-meta="<?= moderation_e(
+                                trim(
+                                    implode(
+                                        ' · ',
+                                        array_filter(
+                                            [
+                                                $memberUsername !== ''
+                                                    ? '@' . $memberUsername
+                                                    : null,
+                                                $memberEmail !== ''
+                                                    ? $memberEmail
+                                                    : null,
+                                                '#' . $memberId,
+                                                $memberStatus !== ''
+                                                    ? ucfirst($memberStatus)
+                                                    : null,
+                                            ]
+                                        )
+                                    )
+                                )
+                            ) ?>"
+                            data-member-search-text="<?= moderation_e($memberSearchText) ?>"
+                            hidden
+                        >
+                            <strong>
+                                <?= moderation_e($memberPrimary) ?>
+                            </strong>
+
+                            <small>
+                                <?php if ($memberUsername !== ''): ?>
+                                    @<?= moderation_e($memberUsername) ?>
+                                    ·
+                                <?php endif; ?>
+
+                                <?= moderation_e($memberEmail) ?>
+
+                                · #<?= $memberId ?>
+                            </small>
+                        </button>
+
+                    <?php endforeach; ?>
+                </div>
+
+                <small
+                    class="admin-points-member-selected"
+                    data-member-selected
+                    aria-live="polite"
+                >
+                    <?= $selectedMemberMeta !== ''
+                        ? moderation_e($selectedMemberMeta)
+                        : 'Search for a member, then select the correct account.'
+                    ?>
+                </small>
+            </div>
         </label>
 
         <label>
@@ -632,6 +889,8 @@ require
     <?php endif; ?>
 
 </section>
+
+<script src="https://llamascout.com/js/admin/points.js"></script>
 
 <?php
 require
