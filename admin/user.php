@@ -72,6 +72,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice =
                     'Account signed out everywhere. Existing authenticated browsers '
                     . 'will be rejected on their next request.';
+            } elseif ($action === 'verify-support-pin') {
+                $supportPhone =
+                    llama_support_phone_number(
+                        $db,
+                        $userId
+                    );
+
+                if ($supportPhone === null) {
+                    throw new RuntimeException(
+                        'This account does not currently have a phone number on file.'
+                    );
+                }
+
+                if (
+                    !llama_support_pin_verify(
+                        $db,
+                        $userId,
+                        (string) ($_POST['support_pin'] ?? '')
+                    )
+                ) {
+                    throw new InvalidArgumentException(
+                        'That support PIN is not valid.'
+                    );
+                }
+
+                admin_users_audit(
+                    $db,
+                    $actorUserId,
+                    $userId,
+                    'user.support_identity_verified',
+                    'Verified the caller using the member-created support PIN.'
+                );
+
+                $notice =
+                    'Support PIN verified. Caller identity matched the account.';
+            } elseif ($action === 'reset-mfa-support') {
+                if ($userId === $actorUserId) {
+                    throw new RuntimeException(
+                        'You cannot use the support reset on your own account.'
+                    );
+                }
+
+                $targetIsPrivileged =
+                    user_has_role(
+                        'owner',
+                        $userId
+                    )
+                    ||
+                    user_has_role(
+                        'admin',
+                        $userId
+                    );
+
+                if (
+                    $targetIsPrivileged
+                    &&
+                    !$actorIsOwner
+                ) {
+                    throw new RuntimeException(
+                        'Only an Owner can reset MFA for an Administrator or Owner account.'
+                    );
+                }
+
+                $supportPhone =
+                    llama_support_phone_number(
+                        $db,
+                        $userId
+                    );
+
+                if ($supportPhone === null) {
+                    throw new RuntimeException(
+                        'This account does not currently have a phone number on file.'
+                    );
+                }
+
+                if (
+                    !llama_mfa_is_enabled(
+                        $userId,
+                        $db
+                    )
+                ) {
+                    throw new RuntimeException(
+                        'Multi-factor authentication is not currently enabled for this account.'
+                    );
+                }
+
+                llama_support_pin_reset_mfa(
+                    $db,
+                    $userId,
+                    (string) ($_POST['support_pin'] ?? '')
+                );
+
+                admin_users_audit(
+                    $db,
+                    $actorUserId,
+                    $userId,
+                    'user.mfa_support_reset',
+                    'Reset MFA after successful phone support PIN verification.'
+                );
+
+                $notice =
+                    'MFA was reset. The support PIN remains valid for future identity verification, '
+                    . 'but its one-time MFA reset allowance has been used.';
             } elseif ($action === 'anonymize') {
                 $confirmation = trim(
                     (string) ($_POST['confirmation'] ?? '')
@@ -155,6 +258,55 @@ $targetIsOwner = in_array(
     $targetRoles,
     true
 );
+
+$targetIsAdmin = in_array(
+    'admin',
+    $targetRoles,
+    true
+);
+
+$supportPhoneNumber =
+    trim(
+        (string) (
+            $user['phone_number']
+            ?? ''
+        )
+    );
+
+$supportPinRecord =
+    llama_support_pin_record(
+        $db,
+        $userId
+    );
+
+$supportPinIsSet =
+    is_array($supportPinRecord)
+    &&
+    !empty(
+        $supportPinRecord['pin_hash']
+    );
+
+$supportMfaEnabled =
+    llama_mfa_is_enabled(
+        $userId,
+        $db
+    );
+
+$supportMfaResetAvailable =
+    $supportPinIsSet
+    &&
+    empty(
+        $supportPinRecord['mfa_reset_used_at']
+    );
+
+$supportResetPermitted =
+    $userId !== $actorUserId
+    &&
+    (
+        !($targetIsOwner || $targetIsAdmin)
+        ||
+        $actorIsOwner
+    );
 
 
 /*
@@ -389,7 +541,7 @@ require __DIR__ . '/_header.php';
                     empty($user['anonymized_at']) &&
                     !empty($user['username'])
                 ): ?>
-                    · @<?= moderation_e($user['username']) ?>
+                    Â· @<?= moderation_e($user['username']) ?>
                 <?php endif; ?>
             </p>
 
@@ -1059,6 +1211,179 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 
+<?php if (empty($user['anonymized_at'])): ?>
+
+    <section class="admin-panel admin-user-support-panel">
+
+        <header class="admin-panel-header">
+            <div>
+                <p>Account Recovery</p>
+                <h2>Support Verification</h2>
+            </div>
+
+            <span
+                class="admin-user-support-status <?= $supportPinIsSet ? 'is-ready' : 'is-unavailable' ?>"
+            >
+                <i
+                    class="fa-solid <?= $supportPinIsSet ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
+                    aria-hidden="true"
+                ></i>
+                <?= $supportPinIsSet ? 'Support PIN set' : 'Not configured' ?>
+            </span>
+        </header>
+
+        <div class="admin-user-support-body">
+
+            <dl class="admin-user-definition-list">
+                <div>
+                    <dt>Phone</dt>
+                    <dd>
+                        <?= $supportPhoneNumber !== ''
+                            ? moderation_e($supportPhoneNumber)
+                            : 'Not provided' ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>MFA</dt>
+                    <dd>
+                        <?= $supportMfaEnabled
+                            ? 'Enabled'
+                            : 'Not enabled' ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>MFA reset</dt>
+                    <dd>
+                        <?php if (!$supportPinIsSet): ?>
+                            Not configured
+                        <?php elseif ($supportMfaResetAvailable): ?>
+                            Available
+                        <?php else: ?>
+                            Used
+                        <?php endif; ?>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Last support verification</dt>
+                    <dd>
+                        <?= !empty($supportPinRecord['last_verified_at'])
+                            ? moderation_e(
+                                llama_format_viewer_datetime(
+                                    (string) $supportPinRecord['last_verified_at']
+                                )
+                            )
+                            : 'Never' ?>
+                    </dd>
+                </div>
+            </dl>
+
+            <?php if (!$supportPinIsSet): ?>
+
+                <p class="admin-user-support-note">
+                    This member has not created a Support PIN.
+                </p>
+
+            <?php elseif ($supportPhoneNumber === ''): ?>
+
+                <p class="admin-user-support-note">
+                    A Support PIN exists, but there is no phone number on the account.
+                    Support verification and MFA reset are unavailable until the member
+                    adds a phone number.
+                </p>
+
+            <?php else: ?>
+
+                <p class="admin-user-support-note">
+                    Call the phone number on the account and ask the member to read their
+                    8-digit Support PIN. The PIN may verify support calls repeatedly.
+                    Its MFA reset privilege can be used only once.
+                </p>
+
+                <form
+                    class="admin-user-support-form"
+                    method="post"
+                    autocomplete="off"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= moderation_e(moderation_csrf_token()) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="user_id"
+                        value="<?= (int) $userId ?>"
+                    >
+
+                    <label>
+                        <span>Support PIN</span>
+                        <input
+                            type="password"
+                            name="support_pin"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            pattern="[0-9]{8}"
+                            maxlength="8"
+                            required
+                        >
+                    </label>
+
+                    <div class="admin-user-support-actions">
+                        <button
+                            class="admin-button"
+                            type="submit"
+                            name="admin_user_action"
+                            value="verify-support-pin"
+                        >
+                            Verify caller
+                        </button>
+
+                        <button
+                            class="admin-danger-button"
+                            type="submit"
+                            name="admin_user_action"
+                            value="reset-mfa-support"
+                            <?= (
+                                !$supportMfaEnabled
+                                ||
+                                !$supportMfaResetAvailable
+                                ||
+                                !$supportResetPermitted
+                            ) ? 'disabled' : '' ?>
+                        >
+                            Reset MFA
+                        </button>
+                    </div>
+                </form>
+
+                <?php if (
+                    ($targetIsOwner || $targetIsAdmin)
+                    &&
+                    !$actorIsOwner
+                ): ?>
+                    <p class="admin-user-support-note">
+                        Owner access is required to reset MFA for privileged accounts.
+                    </p>
+                <?php elseif (!$supportMfaResetAvailable): ?>
+                    <p class="admin-user-support-note">
+                        This Support PIN has already used its one-time MFA reset.
+                        The member must replace the PIN while fully authenticated to
+                        create a new reset allowance.
+                    </p>
+                <?php endif; ?>
+
+            <?php endif; ?>
+
+        </div>
+
+    </section>
+
+<?php endif; ?>
+
+
 <?php if (
     $actorIsOwner &&
     empty($user['anonymized_at']) &&
@@ -1138,7 +1463,7 @@ require __DIR__ . '/_header.php';
                     <strong><?= moderation_e((string) $entry['summary']) ?></strong>
                     <span>
                         <?= moderation_e((string) $entry['actor_name']) ?>
-                        ·
+                        Â·
                         <?= moderation_e(
                             llama_format_viewer_datetime(
                                 (string) $entry['created_at']
