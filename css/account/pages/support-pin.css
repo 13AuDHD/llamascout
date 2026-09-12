@@ -1,0 +1,275 @@
+/* =========================================================
+   ACCOUNT: SUPPORT PIN
+   ========================================================= */
+
+.support-pin-page {
+    width: min(820px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 42px 0 64px;
+}
+
+.support-pin-header {
+    max-width: 680px;
+    margin-bottom: 24px;
+}
+
+.support-pin-header h1 {
+    margin: 6px 0 10px;
+}
+
+.support-pin-header p {
+    margin: 0;
+}
+
+.support-pin-card {
+    margin-bottom: 18px;
+    padding: 22px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 16px;
+
+    background: var(--surface, #fff);
+}
+
+.support-pin-card-heading {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.support-pin-card-heading > i {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: rgba(23, 40, 34, .08);
+}
+
+.support-pin-card-heading h2 {
+    margin: 0 0 5px;
+
+    font-size: 1.08rem;
+}
+
+.support-pin-card-heading p {
+    margin: 0;
+
+    color: var(--text-muted, #667069);
+}
+
+.support-pin-status {
+    width: fit-content;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    margin-top: 18px;
+    padding: 7px 10px;
+
+    border-radius: 999px;
+
+    font-size: .8rem;
+    font-weight: 750;
+}
+
+.support-pin-status > span {
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+}
+
+.support-pin-status.is-on {
+    background: rgba(40, 120, 75, .1);
+}
+
+.support-pin-status.is-on > span {
+    background: #28784b;
+}
+
+.support-pin-status.is-off {
+    background: rgba(120, 120, 120, .1);
+}
+
+.support-pin-status.is-off > span {
+    background: #777;
+}
+
+.support-pin-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-top: 16px;
+}
+
+.support-pin-fact {
+    display: grid;
+    gap: 4px;
+
+    margin-top: 16px;
+}
+
+.support-pin-facts .support-pin-fact {
+    margin-top: 0;
+    padding: 12px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 10px;
+}
+
+.support-pin-fact > span {
+    color: var(--text-muted, #667069);
+
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.support-pin-fact > strong {
+    overflow-wrap: anywhere;
+
+    font-size: .9rem;
+}
+
+.support-pin-warning {
+    margin-top: 16px;
+    padding: 11px 12px;
+
+    border: 1px solid rgba(190, 145, 45, .35);
+    border-radius: 10px;
+
+    background: rgba(190, 145, 45, .08);
+
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+.support-pin-button,
+.support-pin-form button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 42px;
+    margin-top: 16px;
+    padding: 10px 15px;
+
+    border: 0;
+    border-radius: 9px;
+
+    background: #172822;
+    color: #fff;
+
+    font: inherit;
+    font-weight: 750;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.support-pin-secondary-link {
+    display: inline-block;
+
+    margin-top: 10px;
+
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.support-pin-manage {
+    margin-top: 20px;
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border, #d7ddd8);
+}
+
+.support-pin-manage summary {
+    cursor: pointer;
+
+    font-weight: 750;
+}
+
+.support-pin-manage > p {
+    color: var(--text-muted, #667069);
+
+    font-size: .82rem;
+    line-height: 1.5;
+}
+
+.support-pin-manage.is-danger {
+    border-top-color: rgba(140, 35, 35, .25);
+}
+
+.support-pin-form {
+    display: grid;
+    gap: 13px;
+
+    margin-top: 14px;
+}
+
+.support-pin-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.support-pin-form label > span {
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.support-pin-form input {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.support-pin-form button.is-danger {
+    background: #8c2323;
+}
+
+.support-pin-message {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+
+    border-radius: 10px;
+}
+
+.support-pin-message.is-success {
+    background: rgba(40, 120, 75, .1);
+}
+
+.support-pin-message.is-error {
+    background: rgba(140, 35, 35, .1);
+}
+
+.support-pin-back {
+    margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+    .support-pin-page {
+        width: min(100% - 20px, 820px);
+        padding-top: 28px;
+    }
+
+    .support-pin-facts {
+        grid-template-columns: 1fr;
+    }
+}
