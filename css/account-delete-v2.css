@@ -1,6 +1,0 @@
-/*
- * Compatibility loader during the Account CSS migration.
- * Real styles: /css/account/pages/delete-account.css
- */
-
-@import url("./account/pages/delete-account.css");
