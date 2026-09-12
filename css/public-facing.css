@@ -586,7 +586,7 @@
 
 .membership-public-plan-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
 }
 
@@ -755,7 +755,7 @@
 
 .membership-public-table-wrap table {
     width: 100%;
-    min-width: 720px;
+    min-width: 620px;
     border-collapse: collapse;
     background: var(--surface);
 }
@@ -846,10 +846,6 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .membership-public-plan.is-paid {
-        grid-column: 1 / -1;
-    }
-
     .public-home-membership-grid,
     .field-guide-article-footer,
     .membership-public-explainer-grid {
@@ -885,10 +881,6 @@
     .membership-public-plan-grid,
     .field-guides-controls {
         grid-template-columns: 1fr;
-    }
-
-    .membership-public-plan.is-paid {
-        grid-column: auto;
     }
 
     .public-home-hero-note {
