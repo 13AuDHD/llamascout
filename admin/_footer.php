@@ -16,58 +16,6 @@ if (
 
     <script>
         (() => {
-            const staging =
-                document.getElementById(
-                    'admin-user-email-verification-staging'
-                );
-
-            const panel =
-                staging?.querySelector(
-                    '[data-user-email-verification-panel]'
-                );
-
-            if (!staging || !panel) {
-                return;
-            }
-
-            const danger =
-                document.querySelector(
-                    '.admin-danger-panel'
-                );
-
-            const auditHeading = [
-                ...document.querySelectorAll(
-                    '.admin-panel-header h2'
-                )
-            ].find(
-                (heading) =>
-                    heading.textContent.trim()
-                    === 'Admin Activity'
-            );
-
-            const auditPanel =
-                auditHeading?.closest(
-                    '.admin-panel'
-                );
-
-            if (danger?.parentNode) {
-                danger.parentNode.insertBefore(
-                    panel,
-                    danger
-                );
-            } else if (auditPanel?.parentNode) {
-                auditPanel.parentNode.insertBefore(
-                    panel,
-                    auditPanel
-                );
-            } else {
-                staging.parentNode?.insertBefore(
-                    panel,
-                    staging
-                );
-            }
-
-            staging.remove();
 
             const timezoneInput =
                 document.querySelector(
