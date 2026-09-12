@@ -738,17 +738,6 @@ if (is_array($manualAdjustmentSelected)) {
 
                     <?php endforeach; ?>
                 </div>
-
-                <small
-                    class="admin-points-member-selected"
-                    data-member-selected
-                    aria-live="polite"
-                >
-                    <?= $selectedMemberMeta !== ''
-                        ? moderation_e($selectedMemberMeta)
-                        : 'Search for a member, then select the correct account.'
-                    ?>
-                </small>
             </div>
         </label>
 
