@@ -7,19 +7,21 @@ require_once dirname(__DIR__, 3)
 
 $publishedUnknown = [];
 
-try {
-    $publishedUnknown =
-        llama_place_report_published_answer_state(
-            db(),
-            (int) ($place['id'] ?? 0)
-        );
-} catch (Throwable $exception) {
-    /*
-     * This fallback prevents an old published Place from white-screening
-     * if the explicit answer-state migration has not been installed yet.
-     * New approvals require the migration and will fail safely instead.
-     */
-    $publishedUnknown = [];
+if (empty($isDemoScoutReport)) {
+    try {
+        $publishedUnknown =
+            llama_place_report_published_answer_state(
+                db(),
+                (int) ($place['id'] ?? 0)
+            );
+    } catch (Throwable $exception) {
+        /*
+         * This fallback prevents an old published Place from white-screening
+         * if the explicit answer-state migration has not been installed yet.
+         * New approvals require the migration and will fail safely instead.
+         */
+        $publishedUnknown = [];
+    }
 }
 
 $placeReportData =
