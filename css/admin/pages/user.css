@@ -184,6 +184,8 @@
 
 .admin-user-session-count strong {
     font-size: .8rem;
+    text-align: right;
+    overflow-wrap: anywhere;
 }
 
 
