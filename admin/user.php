@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
+require_once dirname(__DIR__) . '/app/memberships.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -154,6 +155,89 @@ $targetIsOwner = in_array(
     $targetRoles,
     true
 );
+
+
+/*
+ * Current membership/access source.
+ *
+ * Complimentary access lives in membership_grants and should not
+ * be mistaken for a missing Stripe subscription.
+ */
+$complimentaryGrant =
+    llama_active_complimentary_grant(
+        $db,
+        $userId
+    );
+
+$membershipStatus =
+    strtolower(
+        trim(
+            (string) (
+                $user['membership_status']
+                ?? 'none'
+            )
+        )
+    );
+
+$hasPaidMembership =
+    !$complimentaryGrant
+    &&
+    !in_array(
+        $membershipStatus,
+        [
+            '',
+            'none',
+            'free',
+        ],
+        true
+    );
+
+$membershipDaysLeft =
+    static function (
+        ?string $endsAt
+    ): string {
+        $endsAt =
+            trim(
+                (string) $endsAt
+            );
+
+        if ($endsAt === '') {
+            return '';
+        }
+
+        try {
+            $end =
+                new DateTimeImmutable(
+                    $endsAt,
+                    new DateTimeZone('UTC')
+                );
+
+            $seconds =
+                $end->getTimestamp()
+                - time();
+
+            if ($seconds <= 0) {
+                return 'Ended';
+            }
+
+            if ($seconds < 86400) {
+                return '<1 day left';
+            }
+
+            $days =
+                (int) ceil(
+                    $seconds / 86400
+                );
+
+            return
+                number_format($days)
+                . ' day'
+                . ($days === 1 ? '' : 's')
+                . ' left';
+        } catch (Throwable) {
+            return '';
+        }
+    };
 
 $userStats = admin_users_stats(
     $db,
@@ -567,42 +651,232 @@ require __DIR__ . '/_header.php';
             </header>
 
             <dl class="admin-user-definition-list">
-                <div>
-                    <dt>Status</dt>
-                    <dd><?= moderation_e((string) $user['membership_status']) ?></dd>
-                </div>
-                <div>
-                    <dt>Billing interval</dt>
-                    <dd><?= moderation_e((string) ($user['membership_interval'] ?: 'None')) ?></dd>
-                </div>
-                <div>
-                    <dt>Started</dt>
-                    <dd>
-                        <?= !empty($user['membership_started_at'])
-                            ? moderation_e(
-                                llama_format_viewer_datetime(
-                                    (string) $user['membership_started_at']
-                                )
+
+                <?php if ($complimentaryGrant): ?>
+                    <?php
+                    $complimentaryEndsAt =
+                        (string) (
+                            $complimentaryGrant['ends_at']
+                            ?? ''
+                        );
+
+                    $complimentaryRemaining =
+                        $membershipDaysLeft(
+                            $complimentaryEndsAt
+                        );
+
+                    $grantor =
+                        trim(
+                            (string) (
+                                $complimentaryGrant['granted_by_display_name']
+                                ?: $complimentaryGrant['granted_by_username']
+                                ?: ''
                             )
-                            : 'Not applicable' ?>
-                    </dd>
-                </div>
-                <div>
-                    <dt>Ends / renews</dt>
-                    <dd>
-                        <?= !empty($user['membership_ends_at'])
-                            ? moderation_e(
+                        );
+                    ?>
+
+                    <div>
+                        <dt>Access type</dt>
+                        <dd>
+                            <span class="admin-user-access-pill is-complimentary">
+                                Complimentary
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Status</dt>
+                        <dd>Active</dd>
+                    </div>
+
+                    <div>
+                        <dt>Started</dt>
+                        <dd>
+                            <?= moderation_e(
                                 llama_format_viewer_datetime(
-                                    (string) $user['membership_ends_at']
+                                    (string) $complimentaryGrant['starts_at']
                                 )
+                            ) ?>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Good through</dt>
+                        <dd class="admin-user-access-date">
+                            <span>
+                                <?= moderation_e(
+                                    llama_format_viewer_datetime(
+                                        $complimentaryEndsAt
+                                    )
+                                ) ?>
+                            </span>
+
+                            <?php if ($complimentaryRemaining !== ''): ?>
+                                <small>
+                                    <?= moderation_e($complimentaryRemaining) ?>
+                                </small>
+                            <?php endif; ?>
+                        </dd>
+                    </div>
+
+                    <?php if ($grantor !== ''): ?>
+                        <div>
+                            <dt>Granted by</dt>
+                            <dd><?= moderation_e($grantor) ?></dd>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($complimentaryGrant['reason'])): ?>
+                        <div>
+                            <dt>Reason</dt>
+                            <dd>
+                                <?= moderation_e(
+                                    (string) $complimentaryGrant['reason']
+                                ) ?>
+                            </dd>
+                        </div>
+                    <?php endif; ?>
+
+                    <div>
+                        <dt>Stripe customer</dt>
+                        <dd>
+                            <?= moderation_e(
+                                (string) (
+                                    $user['stripe_customer_id']
+                                    ?: 'None'
+                                )
+                            ) ?>
+                        </dd>
+                    </div>
+
+                <?php elseif ($hasPaidMembership): ?>
+                    <?php
+                    $paidEndsAt =
+                        trim(
+                            (string) (
+                                $user['membership_ends_at']
+                                ?? ''
                             )
-                            : 'Not applicable' ?>
-                    </dd>
-                </div>
-                <div>
-                    <dt>Stripe customer</dt>
-                    <dd><?= moderation_e((string) ($user['stripe_customer_id'] ?: 'None')) ?></dd>
-                </div>
+                        );
+
+                    $paidRemaining =
+                        $membershipDaysLeft(
+                            $paidEndsAt
+                        );
+
+                    $paidEndLabel =
+                        in_array(
+                            $membershipStatus,
+                            [
+                                'active',
+                                'trialing',
+                            ],
+                            true
+                        )
+                            ? 'Renews'
+                            : 'Ends';
+                    ?>
+
+                    <div>
+                        <dt>Access type</dt>
+                        <dd>
+                            <span class="admin-user-access-pill is-paid">
+                                Paid membership
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Status</dt>
+                        <dd>
+                            <?= moderation_e(
+                                ucwords(
+                                    str_replace(
+                                        '_',
+                                        ' ',
+                                        $membershipStatus
+                                    )
+                                )
+                            ) ?>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Billing interval</dt>
+                        <dd>
+                            <?= moderation_e(
+                                (string) (
+                                    $user['membership_interval']
+                                    ?: 'None'
+                                )
+                            ) ?>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Started</dt>
+                        <dd>
+                            <?= !empty($user['membership_started_at'])
+                                ? moderation_e(
+                                    llama_format_viewer_datetime(
+                                        (string) $user['membership_started_at']
+                                    )
+                                )
+                                : 'Not available' ?>
+                        </dd>
+                    </div>
+
+                    <?php if ($paidEndsAt !== ''): ?>
+                        <div>
+                            <dt><?= moderation_e($paidEndLabel) ?></dt>
+                            <dd class="admin-user-access-date">
+                                <span>
+                                    <?= moderation_e(
+                                        llama_format_viewer_datetime(
+                                            $paidEndsAt
+                                        )
+                                    ) ?>
+                                </span>
+
+                                <?php if ($paidRemaining !== ''): ?>
+                                    <small>
+                                        <?= moderation_e($paidRemaining) ?>
+                                    </small>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                    <?php endif; ?>
+
+                    <div>
+                        <dt>Stripe customer</dt>
+                        <dd>
+                            <?= moderation_e(
+                                (string) (
+                                    $user['stripe_customer_id']
+                                    ?: 'None'
+                                )
+                            ) ?>
+                        </dd>
+                    </div>
+
+                <?php else: ?>
+
+                    <div>
+                        <dt>Access type</dt>
+                        <dd>
+                            <span class="admin-user-access-pill is-free">
+                                Free
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Status</dt>
+                        <dd>No paid access</dd>
+                    </div>
+
+                <?php endif; ?>
+
             </dl>
 
         </section>
