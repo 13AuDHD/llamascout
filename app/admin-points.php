@@ -56,11 +56,57 @@ function admin_points_policy_definitions(): array
             'description' => 'Maximum points available from experience ratings and recommendations.',
         ],
 
-        'approved_place_update' => [
-            'group' => 'Other Contributions',
-            'label' => 'Approved Place Update',
-            'description' => 'Points awarded for an approved Place update.',
+        'place_update_site_vehicle' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Site + Vehicle',
+            'description' => 'Maximum points available from approved Site + Vehicle changes.',
         ],
+        'place_update_road_access' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Road Access',
+            'description' => 'Maximum points available from approved Road Access changes.',
+        ],
+        'place_update_amenities' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Amenities',
+            'description' => 'Maximum points available from approved Amenities changes.',
+        ],
+        'place_update_connectivity' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Connectivity',
+            'description' => 'Maximum points available from approved cellular, Starlink, or connectivity changes.',
+        ],
+        'place_update_sensory' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Sensory',
+            'description' => 'Maximum points available from approved Sensory changes.',
+        ],
+        'place_update_environment' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Environment',
+            'description' => 'Maximum points available from approved Environment changes.',
+        ],
+        'place_update_accessibility' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Accessibility',
+            'description' => 'Maximum points available from approved Accessibility changes.',
+        ],
+        'place_update_safety_warnings' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Safety + Warnings',
+            'description' => 'Maximum points available from approved Safety + Warnings changes.',
+        ],
+        'place_update_seasons_rules_services' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Seasons + Rules + Services',
+            'description' => 'Maximum points available from approved seasonal, rules, fee, fire, or nearby-service changes.',
+        ],
+        'place_update_experience_recommendations' => [
+            'group' => 'Place Update Categories',
+            'label' => 'Experience + Recommendations',
+            'description' => 'Maximum points available from approved Experience + Recommendation changes.',
+        ],
+
         'approved_correction' => [
             'group' => 'Other Contributions',
             'label' => 'Approved Correction',
@@ -268,32 +314,55 @@ function admin_points_save_policy(
     }
 
     /*
-     * approved_new_place is retained as a compatibility /
-     * reporting value, but is derived from the ten category
-     * policies rather than edited separately.
+     * These two legacy totals remain available for reporting and
+     * compatibility, but are derived from their ten category policies.
+     * They are not separately editable anymore.
      */
     $newPlaceMax =
         llama_points_new_place_max_points(
             $db
         );
 
+    $placeUpdateMax =
+        llama_points_place_update_max_points(
+            $db
+        );
+
     $derived =
         $db->prepare(
-            'UPDATE points_policy
-             SET
-                points_value = ?,
-                updated_by = ?
-             WHERE policy_key = ?'
+            'INSERT INTO points_policy
+                (
+                    policy_key,
+                    points_value,
+                    description,
+                    updated_by
+                )
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                points_value = VALUES(points_value),
+                description = VALUES(description),
+                updated_by = VALUES(updated_by)'
         );
 
     $derived->execute([
-        $newPlaceMax,
-        $actorUserId,
         'approved_new_place',
+        $newPlaceMax,
+        'Derived maximum for the weighted New Place category policy.',
+        $actorUserId,
     ]);
 
     $saved['approved_new_place'] =
         $newPlaceMax;
+
+    $derived->execute([
+        'approved_place_update',
+        $placeUpdateMax,
+        'Derived maximum for the weighted Place Update category policy.',
+        $actorUserId,
+    ]);
+
+    $saved['approved_place_update'] =
+        $placeUpdateMax;
 
     admin_users_audit(
         $db,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/place-report.php';
+require_once __DIR__ . '/points.php';
 
 
 /*
@@ -2967,10 +2967,17 @@ function llama_place_update_approve(
     );
 
 
-    $points =
-        llama_points_policy_required(
+    $pointEstimate =
+        llama_points_estimate_place_update(
             $db,
-            'approved_place_update'
+            $proposed
+        );
+
+
+    $points =
+        (int) (
+            $pointEstimate['estimated_points']
+            ?? 0
         );
 
 

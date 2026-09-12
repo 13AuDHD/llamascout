@@ -449,3 +449,301 @@ function llama_points_estimate_new_place(
             $missingMinimum,
     ];
 }
+
+
+/* =========================================================
+   PLACE UPDATE SCORING POLICY
+
+   Updates use the same Place Report category membership, but
+   every category is weighted by the specific fields changed.
+   "Any information" categories used by New Places do not get
+   an all-or-nothing award here.
+
+   A legitimate approved change to one scored field earns at
+   least 1 point when that category has a nonzero policy value.
+   This includes answer-state improvements such as Unknown ->
+   a measured value, because those changes are present in the
+   proposed-change map.
+   ========================================================= */
+
+function llama_points_place_update_categories(): array
+{
+    $categories =
+        llama_place_report_category_definitions();
+
+    $fields =
+        llama_place_report_fields();
+
+    foreach ($categories as $slug => &$category) {
+        $category['policy_key'] =
+            'place_update_' . $slug;
+
+        $category['mode'] =
+            'weighted';
+
+        $category['fields'] = [];
+
+        foreach ($fields as $fieldKey => $field) {
+            if (
+                in_array(
+                    $slug,
+                    (array) (
+                        $field['points_categories']
+                        ?? []
+                    ),
+                    true
+                )
+                && (string) (
+                    $field['type']
+                    ?? ''
+                ) !== 'derived'
+            ) {
+                $category['fields'][] =
+                    (string) $fieldKey;
+            }
+        }
+    }
+    unset($category);
+
+    return $categories;
+}
+
+function llama_points_place_update_max_points(
+    PDO $db
+): int {
+    $total = 0;
+
+    foreach (
+        llama_points_place_update_categories()
+        as $category
+    ) {
+        $total +=
+            llama_points_policy_required(
+                $db,
+                (string) $category['policy_key']
+            );
+    }
+
+    return $total;
+}
+
+function llama_points_estimate_place_update(
+    PDO $db,
+    array $proposedChanges
+): array {
+    $fields =
+        llama_place_report_fields();
+
+    $changedStorageLookup =
+        array_fill_keys(
+            array_map(
+                'strval',
+                array_keys(
+                    $proposedChanges
+                )
+            ),
+            true
+        );
+
+    $scoredStorageLookup = [];
+    $categoryRows = [];
+    $estimatedPoints = 0;
+    $maxPoints = 0;
+    $scoredChangedFields = 0;
+
+    foreach (
+        llama_points_place_update_categories()
+        as $slug => $category
+    ) {
+        $eligibleFieldKeys =
+            (array) (
+                $category['fields']
+                ?? []
+            );
+
+        $eligibleStorage = [];
+        $changed = 0;
+
+        foreach ($eligibleFieldKeys as $fieldKey) {
+            $field =
+                $fields[(string) $fieldKey]
+                ?? null;
+
+            if (!$field) {
+                continue;
+            }
+
+            $storage =
+                trim(
+                    (string) (
+                        $field['storage']
+                        ?? ''
+                    )
+                );
+
+            if (
+                $storage === ''
+                || str_starts_with(
+                    $storage,
+                    'computed.'
+                )
+            ) {
+                continue;
+            }
+
+            $eligibleStorage[$storage] =
+                true;
+
+            $scoredStorageLookup[$storage] =
+                true;
+
+            if (
+                isset(
+                    $changedStorageLookup[$storage]
+                )
+            ) {
+                $changed++;
+            }
+        }
+
+        $fieldCount =
+            count($eligibleStorage);
+
+        $categoryMax =
+            llama_points_policy_required(
+                $db,
+                (string) $category['policy_key']
+            );
+
+        $maxPoints +=
+            $categoryMax;
+
+        $points = 0;
+
+        if (
+            $changed > 0
+            && $fieldCount > 0
+            && $categoryMax > 0
+        ) {
+            $points =
+                (int) round(
+                    $categoryMax
+                    * (
+                        $changed
+                        / $fieldCount
+                    )
+                );
+
+            /*
+             * A real, moderator-approved single-field improvement
+             * should still earn something even in a large category.
+             */
+            $points =
+                max(
+                    1,
+                    $points
+                );
+
+            $points =
+                min(
+                    $categoryMax,
+                    $points
+                );
+        }
+
+        $estimatedPoints +=
+            $points;
+
+        $scoredChangedFields +=
+            $changed;
+
+        $categoryRows[] = [
+            'slug' =>
+                (string) $slug,
+            'label' =>
+                (string) (
+                    $category['label']
+                    ?? $slug
+                ),
+            'policy_key' =>
+                (string) $category['policy_key'],
+            'mode' =>
+                'weighted',
+            'changed' =>
+                $changed,
+            'total' =>
+                $fieldCount,
+            'points' =>
+                $points,
+            'max_points' =>
+                $categoryMax,
+            'started' =>
+                $changed > 0,
+        ];
+    }
+
+    $unscoredChangedFields = 0;
+
+    foreach (
+        array_keys(
+            $changedStorageLookup
+        )
+        as $storage
+    ) {
+        if (
+            !isset(
+                $scoredStorageLookup[
+                    (string) $storage
+                ]
+            )
+        ) {
+            $unscoredChangedFields++;
+        }
+    }
+
+    return [
+        'estimated_points' =>
+            max(
+                0,
+                min(
+                    $maxPoints,
+                    $estimatedPoints
+                )
+            ),
+
+        'max_points' =>
+            $maxPoints,
+
+        'changed_fields' =>
+            count(
+                $changedStorageLookup
+            ),
+
+        'scored_changed_fields' =>
+            $scoredChangedFields,
+
+        'unscored_changed_fields' =>
+            $unscoredChangedFields,
+
+        'categories_started' =>
+            count(
+                array_filter(
+                    $categoryRows,
+                    static fn (
+                        array $row
+                    ): bool =>
+                        !empty(
+                            $row['started']
+                        )
+                )
+            ),
+
+        'category_count' =>
+            count(
+                $categoryRows
+            ),
+
+        'categories' =>
+            $categoryRows,
+    ];
+}
