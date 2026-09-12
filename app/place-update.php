@@ -2527,6 +2527,149 @@ function llama_place_update_apply_answer_state(
 }
 
 
+
+/*
+ * =========================================================
+ * DELETE UNPUBLISHED UPDATE
+ * =========================================================
+ */
+
+
+function llama_place_update_delete_unpublished(
+    PDO $db,
+    int $updateId
+): array {
+    if (!$db->inTransaction()) {
+        throw new RuntimeException(
+            'Deleting a Place update requires an active transaction.'
+        );
+    }
+
+
+    $stmt =
+        $db->prepare(
+            'SELECT *
+             FROM place_update_submissions
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+
+
+    $stmt->execute([
+        $updateId,
+    ]);
+
+
+    $row =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+
+    if (!$row) {
+        throw new RuntimeException(
+            'The Place update could not be found.'
+        );
+    }
+
+
+    if (
+        (string) (
+            $row['status']
+            ?? ''
+        ) === 'approved'
+    ) {
+        throw new RuntimeException(
+            'An approved Place update cannot be deleted here.'
+        );
+    }
+
+
+    $delete =
+        $db->prepare(
+            'DELETE FROM place_update_submissions
+             WHERE id = ?
+               AND status <> "approved"'
+        );
+
+
+    $delete->execute([
+        $updateId,
+    ]);
+
+
+    if ($delete->rowCount() !== 1) {
+        throw new RuntimeException(
+            'The Place update changed before it could be deleted.'
+        );
+    }
+
+
+    return $row;
+}
+
+
+function llama_place_update_remove_files(
+    int $updateId
+): void {
+    $path =
+        dirname(__DIR__)
+        . '/uploads/place-updates/'
+        . $updateId;
+
+
+    if (
+        function_exists(
+            'moderation_remove_tree'
+        )
+    ) {
+        moderation_remove_tree(
+            $path
+        );
+
+        return;
+    }
+
+
+    if (!is_dir($path)) {
+        return;
+    }
+
+
+    $iterator =
+        new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(
+                $path,
+                FilesystemIterator::SKIP_DOTS
+            ),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+
+    foreach ($iterator as $item) {
+
+        if ($item->isDir()) {
+            @rmdir(
+                $item->getPathname()
+            );
+
+            continue;
+        }
+
+
+        @unlink(
+            $item->getPathname()
+        );
+    }
+
+
+    @rmdir(
+        $path
+    );
+}
+
+
 /*
  * =========================================================
  * MODERATION APPROVAL
