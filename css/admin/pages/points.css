@@ -388,3 +388,113 @@
         text-align: left;
     }
 }
+
+/* Searchable member picker */
+
+.admin-points-member-field {
+    min-width: 0;
+}
+
+.admin-points-member-picker {
+    position: relative;
+    min-width: 0;
+}
+
+.admin-points-member-search {
+    padding-right: 34px;
+}
+
+.admin-points-member-results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 80;
+
+    width: min(520px, calc(100vw - 48px));
+    max-height: 320px;
+    overflow-y: auto;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+
+    box-shadow:
+        0 14px 34px rgba(0, 0, 0, .2);
+}
+
+.admin-points-member-option {
+    width: 100%;
+
+    display: grid;
+    gap: 3px;
+
+    padding: 10px 12px;
+
+    border: 0;
+    border-bottom: 1px solid var(--border);
+
+    background: transparent;
+    color: var(--text);
+
+    font: inherit;
+    text-align: left;
+
+    cursor: pointer;
+}
+
+.admin-points-member-option:last-child {
+    border-bottom: 0;
+}
+
+.admin-points-member-option:hover,
+.admin-points-member-option:focus-visible,
+.admin-points-member-option.is-active {
+    background: color-mix(
+        in srgb,
+        var(--text) 7%,
+        var(--surface)
+    );
+}
+
+.admin-points-member-option strong {
+    font-size: .74rem;
+}
+
+.admin-points-member-option small {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.4;
+}
+
+.admin-points-member-selected {
+    display: block;
+    margin-top: 5px;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.4;
+}
+
+.admin-points-member-selected.is-selected {
+    color: #58a66a;
+}
+
+.admin-points-member-selected.is-error {
+    color: #c95a52;
+    font-weight: 800;
+}
+
+@media (min-width: 981px) {
+    .admin-points-adjustment {
+        grid-template-columns:
+            minmax(250px, .8fr)
+            minmax(120px, .35fr)
+            minmax(260px, 1fr)
+            auto;
+    }
+}
