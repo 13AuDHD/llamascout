@@ -15,6 +15,169 @@
 }
 
 
+/* Weighted category matrix */
+
+.admin-points-category-policy {
+    border-top: 1px solid var(--border);
+}
+
+.admin-points-category-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+
+    padding: 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-points-category-header h3,
+.admin-points-category-header p {
+    margin: 0;
+}
+
+.admin-points-category-header p {
+    max-width: 700px;
+    margin-top: 5px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.5;
+}
+
+.admin-points-policy-maxima {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.admin-points-policy-maxima > span {
+    min-width: 104px;
+
+    display: grid;
+    gap: 2px;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.admin-points-policy-maxima strong {
+    color: var(--text);
+
+    font-size: .95rem;
+}
+
+.admin-points-category-table {
+    display: grid;
+}
+
+.admin-points-category-columns,
+.admin-points-category-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(110px, 145px)
+        minmax(110px, 145px);
+    gap: 14px;
+    align-items: center;
+}
+
+.admin-points-category-columns {
+    padding: 9px 16px;
+
+    border-bottom: 1px solid var(--border);
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-points-category-columns span:not(:first-child) {
+    text-align: center;
+}
+
+.admin-points-category-row {
+    padding: 13px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-points-category-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-points-category-copy {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.admin-points-category-copy strong {
+    font-size: .74rem;
+}
+
+.admin-points-category-copy small {
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    line-height: 1.45;
+}
+
+.admin-points-category-row label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-points-category-row label > span {
+    display: none;
+
+    color: var(--text-muted);
+
+    font-size: .6rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.admin-points-category-row input {
+    width: 100%;
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 8px 9px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    text-align: right;
+}
+
+.admin-points-category-row input:disabled {
+    opacity: .62;
+    cursor: not-allowed;
+}
+
+
 /* Manual adjustment */
 
 .admin-points-adjustment-panel {
@@ -161,6 +324,39 @@
     .admin-points-adjustment
     .is-wide {
         grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .admin-points-category-header {
+        display: grid;
+    }
+
+    .admin-points-policy-maxima {
+        justify-content: flex-start;
+    }
+
+    .admin-points-category-columns {
+        display: none;
+    }
+
+    .admin-points-category-row {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .admin-points-category-copy {
+        grid-column: 1 / -1;
+    }
+
+    .admin-points-category-row label > span {
+        display: block;
+    }
+
+    .admin-points-category-row input {
+        text-align: left;
     }
 }
 
