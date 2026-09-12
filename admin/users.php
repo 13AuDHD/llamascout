@@ -14,13 +14,230 @@ $status = trim((string) ($_GET['status'] ?? ''));
 $role = trim((string) ($_GET['role'] ?? ''));
 $membership = trim((string) ($_GET['membership'] ?? ''));
 
+/*
+ * Paid can still use the existing database-level filter.
+ *
+ * Complimentary and Free need a little more context because a
+ * complimentary membership can come from either users.membership_status
+ * or an active membership_grants row.
+ */
+$listMembershipFilter =
+    $membership === 'paid'
+        ? 'paid'
+        : '';
+
 $users = admin_users_list(
     $db,
     $search,
     $status,
     $role,
-    $membership
+    $listMembershipFilter
 );
+
+
+/*
+ * =========================================================
+ * MEMBERSHIP DISPLAY STATE
+ * =========================================================
+ *
+ * Keep the Users table aligned with the same complimentary-grant
+ * rules used by member access. This lets Basecamp distinguish:
+ *
+ *   Paid
+ *   Complimentary
+ *   Free
+ *
+ * rather than grouping complimentary access under Free.
+ */
+
+$activeComplimentaryGrantUserIds = [];
+
+if ($users) {
+    $userIds =
+        array_values(
+            array_filter(
+                array_map(
+                    static fn (array $user): int =>
+                        (int) ($user['id'] ?? 0),
+                    $users
+                ),
+                static fn (int $id): bool =>
+                    $id > 0
+            )
+        );
+
+    if ($userIds) {
+        try {
+            $placeholders =
+                implode(
+                    ',',
+                    array_fill(
+                        0,
+                        count($userIds),
+                        '?'
+                    )
+                );
+
+            $grantStmt =
+                $db->prepare(
+                    'SELECT DISTINCT user_id
+                     FROM membership_grants
+                     WHERE grant_type = "complimentary"
+                       AND revoked_at IS NULL
+                       AND starts_at <= UTC_TIMESTAMP()
+                       AND ends_at >= UTC_TIMESTAMP()
+                       AND user_id IN (' . $placeholders . ')'
+                );
+
+            $grantStmt->execute($userIds);
+
+            foreach (
+                $grantStmt->fetchAll(PDO::FETCH_COLUMN)
+                ?: []
+                as $grantedUserId
+            ) {
+                $activeComplimentaryGrantUserIds[
+                    (int) $grantedUserId
+                ] = true;
+            }
+        } catch (Throwable $exception) {
+            /*
+             * The Users page should remain usable if membership_grants
+             * is temporarily unavailable. users.membership_status can
+             * still identify direct complimentary memberships.
+             */
+            $activeComplimentaryGrantUserIds = [];
+        }
+    }
+}
+
+$membershipKind =
+    static function (
+        array $user
+    ) use (
+        $activeComplimentaryGrantUserIds
+    ): string {
+        $userId =
+            (int) (
+                $user['id']
+                ?? 0
+            );
+
+        $membershipStatus =
+            strtolower(
+                trim(
+                    (string) (
+                        $user['membership_status']
+                        ?? ''
+                    )
+                )
+            );
+
+        $membershipEndsAt =
+            trim(
+                (string) (
+                    $user['membership_ends_at']
+                    ?? ''
+                )
+            );
+
+        $membershipStillCurrent =
+            $membershipEndsAt === '';
+
+        if (
+            !$membershipStillCurrent
+            && function_exists(
+                'llama_access_utc_timestamp'
+            )
+        ) {
+            $endsTimestamp =
+                llama_access_utc_timestamp(
+                    $membershipEndsAt
+                );
+
+            $membershipStillCurrent =
+                $endsTimestamp !== null
+                && $endsTimestamp >= time();
+        } elseif (
+            !$membershipStillCurrent
+        ) {
+            $endsTimestamp =
+                strtotime(
+                    $membershipEndsAt
+                    . ' UTC'
+                );
+
+            $membershipStillCurrent =
+                $endsTimestamp !== false
+                && $endsTimestamp >= time();
+        }
+
+        if (
+            in_array(
+                $membershipStatus,
+                [
+                    'active',
+                    'trialing',
+                ],
+                true
+            )
+            && $membershipStillCurrent
+        ) {
+            return 'paid';
+        }
+
+        if (
+            (
+                $membershipStatus
+                === 'complimentary'
+                && $membershipStillCurrent
+            )
+            || isset(
+                $activeComplimentaryGrantUserIds[
+                    $userId
+                ]
+            )
+        ) {
+            return 'complimentary';
+        }
+
+        return 'free';
+    };
+
+
+/*
+ * Complimentary and truly Free are filtered after grant state has
+ * been resolved. Search, role, and account-status filters were
+ * already applied by admin_users_list().
+ */
+if (
+    in_array(
+        $membership,
+        [
+            'complimentary',
+            'free',
+        ],
+        true
+    )
+) {
+    $users =
+        array_values(
+            array_filter(
+                $users,
+                static function (
+                    array $user
+                ) use (
+                    $membership,
+                    $membershipKind
+                ): bool {
+                    return
+                        $membershipKind($user)
+                        === $membership;
+                }
+            )
+        );
+}
+
 
 $stats = admin_dashboard_stats($db);
 
@@ -119,6 +336,7 @@ require __DIR__ . '/_header.php';
             <select name="membership">
                 <option value="">All memberships</option>
                 <option value="paid" <?= $membership === 'paid' ? 'selected' : '' ?>>Paid</option>
+                <option value="complimentary" <?= $membership === 'complimentary' ? 'selected' : '' ?>>Complimentary</option>
                 <option value="free" <?= $membership === 'free' ? 'selected' : '' ?>>Free</option>
             </select>
         </label>
@@ -203,6 +421,11 @@ require __DIR__ . '/_header.php';
                         )
                     )
                 );
+
+                $userMembershipKind =
+                    $membershipKind(
+                        $user
+                    );
                 ?>
 
                 <tr>
@@ -344,18 +567,10 @@ require __DIR__ . '/_header.php';
 
                     <td>
                         <?php if (
-                            in_array(
-                                (string) $user[
-                                    'membership_status'
-                                ],
-                                [
-                                    'active',
-                                    'trialing',
-                                ],
-                                true
-                            )
+                            $userMembershipKind
+                            === 'paid'
                         ): ?>
-                            <strong>
+                            <strong class="admin-membership-label is-paid">
                                 Paid
 
                                 <?php if (
@@ -375,8 +590,17 @@ require __DIR__ . '/_header.php';
                                     ) ?>
                                 <?php endif; ?>
                             </strong>
+
+                        <?php elseif (
+                            $userMembershipKind
+                            === 'complimentary'
+                        ): ?>
+                            <strong class="admin-membership-label is-complimentary">
+                                Complimentary
+                            </strong>
+
                         <?php else: ?>
-                            <span class="admin-table-muted">
+                            <span class="admin-membership-label is-free">
                                 Free
                             </span>
                         <?php endif; ?>
