@@ -321,319 +321,320 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<div class="admin-user-detail-grid">
+<?php if (empty($user['anonymized_at'])): ?>
 
-    <div class="admin-user-detail-main">
+    <section class="admin-panel">
 
-        <?php if (empty($user['anonymized_at'])): ?>
+        <header class="admin-panel-header">
+            <div>
+                <p>Account</p>
+                <h2>Identity + Status</h2>
+            </div>
+        </header>
 
-            <section class="admin-panel">
+        <form class="admin-user-form" method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
+            <input type="hidden" name="admin_user_action" value="save-account">
 
-                <header class="admin-panel-header">
-                    <div>
-                        <p>Account</p>
-                        <h2>Identity + Status</h2>
-                    </div>
-                </header>
+            <div class="admin-user-form-grid">
 
-                <form class="admin-user-form" method="post">
-                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-                    <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
-                    <input type="hidden" name="admin_user_action" value="save-account">
+                <label>
+                    <span>Display name</span>
+                    <input
+                        type="text"
+                        name="display_name"
+                        maxlength="100"
+                        value="<?= moderation_e((string) ($user['display_name'] ?? '')) ?>"
+                    >
+                </label>
 
-                    <div class="admin-user-form-grid">
+                <label>
+                    <span>Username</span>
+                    <input
+                        type="text"
+                        name="username"
+                        maxlength="16"
+                        value="<?= moderation_e((string) ($user['username'] ?? '')) ?>"
+                    >
+                </label>
 
-                        <label>
-                            <span>Display name</span>
-                            <input
-                                type="text"
-                                name="display_name"
-                                maxlength="100"
-                                value="<?= moderation_e((string) ($user['display_name'] ?? '')) ?>"
+                <label class="is-wide">
+                    <span>Email</span>
+                    <input
+                        type="email"
+                        name="email"
+                        value="<?= moderation_e((string) $user['email']) ?>"
+                        required
+                    >
+                </label>
+
+                <label>
+                    <span>Timezone</span>
+                    <input
+                        type="text"
+                        name="timezone"
+                        value="<?= moderation_e((string) $user['timezone']) ?>"
+                    >
+                </label>
+
+                <label>
+                    <span>Account status</span>
+                    <select name="status">
+                        <?php foreach (['active','pending','suspended','disabled'] as $option): ?>
+                            <option
+                                value="<?= moderation_e($option) ?>"
+                                <?= (string) $user['status'] === $option ? 'selected' : '' ?>
                             >
-                        </label>
+                                <?= moderation_e(ucfirst($option)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
 
-                        <label>
-                            <span>Username</span>
-                            <input
-                                type="text"
-                                name="username"
-                                maxlength="16"
-                                value="<?= moderation_e((string) ($user['username'] ?? '')) ?>"
-                            >
-                        </label>
+            </div>
 
-                        <label class="is-wide">
-                            <span>Email</span>
-                            <input
-                                type="email"
-                                name="email"
-                                value="<?= moderation_e((string) $user['email']) ?>"
-                                required
-                            >
-                        </label>
+            <div class="admin-user-form-actions">
+                <button class="admin-button" type="submit">
+                    Save account
+                </button>
+            </div>
+        </form>
 
-                        <label>
-                            <span>Timezone</span>
-                            <input
-                                type="text"
-                                name="timezone"
-                                value="<?= moderation_e((string) $user['timezone']) ?>"
-                            >
-                        </label>
+    </section>
 
-                        <label>
-                            <span>Account status</span>
-                            <select name="status">
-                                <?php foreach (['active','pending','suspended','disabled'] as $option): ?>
-                                    <option
-                                        value="<?= moderation_e($option) ?>"
-                                        <?= (string) $user['status'] === $option ? 'selected' : '' ?>
-                                    >
-                                        <?= moderation_e(ucfirst($option)) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </label>
-
-                    </div>
-
-                    <div class="admin-user-form-actions">
-                        <button class="admin-button" type="submit">
-                            Save account
-                        </button>
-                    </div>
-                </form>
-
-            </section>
+<?php endif; ?>
 
 
-            <section class="admin-panel">
+<section class="admin-panel">
 
-                <header class="admin-panel-header">
-                    <div>
-                        <p>Permissions</p>
-                        <h2>Roles</h2>
-                    </div>
+    <header class="admin-panel-header">
+        <div>
+            <p>History</p>
+            <h2>Recent Contributions</h2>
+        </div>
+    </header>
 
-                    <?php if (!$actorIsOwner): ?>
-                        <span>Owner access required to edit</span>
-                    <?php endif; ?>
-                </header>
+    <?php if (!$contributions): ?>
 
-                <form class="admin-user-role-form" method="post">
-                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-                    <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
-                    <input type="hidden" name="admin_user_action" value="save-roles">
+        <div class="admin-empty-state">
+            <p>No contribution history yet.</p>
+        </div>
 
-                    <?php foreach (
-                        [
-                            'member' => ['Member', 'Normal member account access.'],
-                            'scout' => ['Llama Scout', 'Scout workflows and Scout identity.'],
-                            'admin' => ['Administrator', 'Routine site administration and moderation.'],
-                            'owner' => ['Owner', 'Highest trust level and destructive account operations.'],
-                        ]
-                        as $slug => [$name, $description]
-                    ): ?>
-                        <label class="admin-user-role-option">
-                            <input
-                                type="checkbox"
-                                name="roles[]"
-                                value="<?= moderation_e($slug) ?>"
-                                <?= in_array($slug, $targetRoles, true) ? 'checked' : '' ?>
-                                <?= !$actorIsOwner ? 'disabled' : '' ?>
-                            >
+    <?php else: ?>
 
-                            <span>
-                                <strong><?= moderation_e($name) ?></strong>
-                                <small><?= moderation_e($description) ?></small>
-                            </span>
-                        </label>
-                    <?php endforeach; ?>
+        <div class="admin-user-history-list">
 
-                    <?php if ($actorIsOwner): ?>
-                        <div class="admin-user-form-actions">
-                            <button class="admin-button" type="submit">
-                                Save roles
-                            </button>
-                        </div>
-                    <?php endif; ?>
-                </form>
-
-            </section>
-
-
-            <section class="admin-panel">
-
-                <header class="admin-panel-header">
-                    <div>
-                        <p>Membership</p>
-                        <h2>Current Access</h2>
-                    </div>
-                </header>
-
-                <dl class="admin-user-definition-list">
-                    <div>
-                        <dt>Status</dt>
-                        <dd><?= moderation_e((string) $user['membership_status']) ?></dd>
-                    </div>
-                    <div>
-                        <dt>Billing interval</dt>
-                        <dd><?= moderation_e((string) ($user['membership_interval'] ?: 'None')) ?></dd>
-                    </div>
-                    <div>
-                        <dt>Started</dt>
-                        <dd>
-                            <?= !empty($user['membership_started_at'])
-                                ? moderation_e(
-                                    llama_format_viewer_datetime(
-                                        (string) $user['membership_started_at']
+            <?php foreach ($contributions as $contribution): ?>
+                <a
+                    href="https://llamascout.com/place.php?id=<?= (int) $contribution['place_id'] ?>"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    <span>
+                        <strong><?= moderation_e((string) $contribution['place_name']) ?></strong>
+                        <small>
+                            <?= moderation_e(
+                                ucwords(
+                                    str_replace(
+                                        '_',
+                                        ' ',
+                                        (string) $contribution['contribution_type']
                                     )
                                 )
-                                : 'Not applicable' ?>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Ends / renews</dt>
-                        <dd>
-                            <?= !empty($user['membership_ends_at'])
-                                ? moderation_e(
-                                    llama_format_viewer_datetime(
-                                        (string) $user['membership_ends_at']
-                                    )
-                                )
-                                : 'Not applicable' ?>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Stripe customer</dt>
-                        <dd><?= moderation_e((string) ($user['stripe_customer_id'] ?: 'None')) ?></dd>
-                    </div>
-                </dl>
+                            ) ?>
+                        </small>
+                    </span>
 
-            </section>
+                    <span>
+                        +<?= number_format((int) $contribution['points_awarded']) ?> pts
+                    </span>
+                </a>
+            <?php endforeach; ?>
 
-        <?php endif; ?>
+        </div>
 
+    <?php endif; ?>
+
+</section>
+
+
+<?php if (empty($user['anonymized_at'])): ?>
+
+    <div class="admin-user-half-grid">
 
         <section class="admin-panel">
 
             <header class="admin-panel-header">
                 <div>
-                    <p>History</p>
-                    <h2>Recent Contributions</h2>
+                    <p>Permissions</p>
+                    <h2>Roles</h2>
                 </div>
+
+                <?php if (!$actorIsOwner): ?>
+                    <span>Owner access required to edit</span>
+                <?php endif; ?>
             </header>
 
-            <?php if (!$contributions): ?>
+            <form class="admin-user-role-form" method="post">
+                <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
+                <input type="hidden" name="admin_user_action" value="save-roles">
 
-                <div class="admin-empty-state">
-                    <p>No contribution history yet.</p>
-                </div>
-
-            <?php else: ?>
-
-                <div class="admin-user-history-list">
-
-                    <?php foreach ($contributions as $contribution): ?>
-                        <a
-                            href="https://llamascout.com/place.php?id=<?= (int) $contribution['place_id'] ?>"
-                            target="_blank"
-                            rel="noopener"
+                <?php foreach (
+                    [
+                        'member' => ['Member', 'Normal member account access.'],
+                        'scout' => ['Llama Scout', 'Scout workflows and Scout identity.'],
+                        'admin' => ['Administrator', 'Routine site administration and moderation.'],
+                        'owner' => ['Owner', 'Highest trust level and destructive account operations.'],
+                    ]
+                    as $slug => [$name, $description]
+                ): ?>
+                    <label class="admin-user-role-option">
+                        <input
+                            type="checkbox"
+                            name="roles[]"
+                            value="<?= moderation_e($slug) ?>"
+                            <?= in_array($slug, $targetRoles, true) ? 'checked' : '' ?>
+                            <?= !$actorIsOwner ? 'disabled' : '' ?>
                         >
-                            <span>
-                                <strong><?= moderation_e((string) $contribution['place_name']) ?></strong>
-                                <small>
-                                    <?= moderation_e(
-                                        ucwords(
-                                            str_replace(
-                                                '_',
-                                                ' ',
-                                                (string) $contribution['contribution_type']
-                                            )
-                                        )
-                                    ) ?>
-                                </small>
-                            </span>
 
-                            <span>
-                                +<?= number_format((int) $contribution['points_awarded']) ?> pts
-                            </span>
-                        </a>
-                    <?php endforeach; ?>
+                        <span>
+                            <strong><?= moderation_e($name) ?></strong>
+                            <small><?= moderation_e($description) ?></small>
+                        </span>
+                    </label>
+                <?php endforeach; ?>
 
-                </div>
-
-            <?php endif; ?>
+                <?php if ($actorIsOwner): ?>
+                    <div class="admin-user-form-actions">
+                        <button class="admin-button" type="submit">
+                            Save roles
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </form>
 
         </section>
 
-    </div>
-
-
-    <aside class="admin-user-detail-side">
 
         <section class="admin-panel">
 
             <header class="admin-panel-header">
                 <div>
-                    <p>Account Facts</p>
-                    <h2>Overview</h2>
+                    <p>Membership</p>
+                    <h2>Current Access</h2>
                 </div>
             </header>
 
             <dl class="admin-user-definition-list">
                 <div>
-                    <dt>Created</dt>
-                    <dd>
-                        <?= moderation_e(
-                            llama_format_viewer_datetime(
-                                (string) $user['created_at']
-                            )
-                        ) ?>
-                    </dd>
+                    <dt>Status</dt>
+                    <dd><?= moderation_e((string) $user['membership_status']) ?></dd>
                 </div>
                 <div>
-                    <dt>Email verified</dt>
+                    <dt>Billing interval</dt>
+                    <dd><?= moderation_e((string) ($user['membership_interval'] ?: 'None')) ?></dd>
+                </div>
+                <div>
+                    <dt>Started</dt>
                     <dd>
-                        <?= !empty($user['email_verified_at'])
+                        <?= !empty($user['membership_started_at'])
                             ? moderation_e(
                                 llama_format_viewer_datetime(
-                                    (string) $user['email_verified_at']
+                                    (string) $user['membership_started_at']
                                 )
                             )
-                            : 'No' ?>
+                            : 'Not applicable' ?>
                     </dd>
                 </div>
                 <div>
-                    <dt>Last login</dt>
+                    <dt>Ends / renews</dt>
                     <dd>
-                        <?= !empty($user['last_login_at'])
+                        <?= !empty($user['membership_ends_at'])
                             ? moderation_e(
                                 llama_format_viewer_datetime(
-                                    (string) $user['last_login_at']
+                                    (string) $user['membership_ends_at']
                                 )
                             )
-                            : 'Never' ?>
+                            : 'Not applicable' ?>
                     </dd>
                 </div>
                 <div>
-                    <dt>Active sessions</dt>
-                    <dd><?= number_format((int) $userStats['sessions']) ?></dd>
-                </div>
-                <div>
-                    <dt>Saved Places</dt>
-                    <dd><?= number_format((int) $userStats['saved_places']) ?></dd>
+                    <dt>Stripe customer</dt>
+                    <dd><?= moderation_e((string) ($user['stripe_customer_id'] ?: 'None')) ?></dd>
                 </div>
             </dl>
 
         </section>
 
+    </div>
 
-        <?php if (
-            empty($user['anonymized_at']) &&
-            $userId !== $actorUserId
-        ): ?>
+<?php endif; ?>
+
+
+<section class="admin-panel">
+
+    <header class="admin-panel-header">
+        <div>
+            <p>Account Facts</p>
+            <h2>Overview</h2>
+        </div>
+    </header>
+
+    <dl class="admin-user-definition-list">
+        <div>
+            <dt>Created</dt>
+            <dd>
+                <?= moderation_e(
+                    llama_format_viewer_datetime(
+                        (string) $user['created_at']
+                    )
+                ) ?>
+            </dd>
+        </div>
+        <div>
+            <dt>Email verified</dt>
+            <dd>
+                <?= !empty($user['email_verified_at'])
+                    ? moderation_e(
+                        llama_format_viewer_datetime(
+                            (string) $user['email_verified_at']
+                        )
+                    )
+                    : 'No' ?>
+            </dd>
+        </div>
+        <div>
+            <dt>Last login</dt>
+            <dd>
+                <?= !empty($user['last_login_at'])
+                    ? moderation_e(
+                        llama_format_viewer_datetime(
+                            (string) $user['last_login_at']
+                        )
+                    )
+                    : 'Never' ?>
+            </dd>
+        </div>
+        <div>
+            <dt>Active sessions</dt>
+            <dd><?= number_format((int) $userStats['sessions']) ?></dd>
+        </div>
+        <div>
+            <dt>Saved Places</dt>
+            <dd><?= number_format((int) $userStats['saved_places']) ?></dd>
+        </div>
+    </dl>
+
+</section>
+
+
+<?php if (empty($user['anonymized_at'])): ?>
+
+    <div class="admin-user-half-grid">
+
+        <?php if ($userId !== $actorUserId): ?>
 
             <section class="admin-panel">
 
@@ -661,105 +662,126 @@ require __DIR__ . '/_header.php';
 
             </section>
 
-        <?php endif; ?>
+        <?php else: ?>
 
-
-        <?php if (
-            $actorIsOwner &&
-            empty($user['anonymized_at']) &&
-            $userId !== $actorUserId &&
-            !$targetIsOwner
-        ): ?>
-
-            <section class="admin-panel admin-danger-panel">
-
+            <section class="admin-panel">
                 <header class="admin-panel-header">
                     <div>
-                        <p>Destructive Action</p>
-                        <h2>Anonymize Account</h2>
+                        <p>Security</p>
+                        <h2>Sessions</h2>
                     </div>
                 </header>
 
-                <form class="admin-user-action-box" method="post">
-                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
-                    <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
-                    <input type="hidden" name="admin_user_action" value="anonymize">
-
+                <div class="admin-user-action-box">
                     <p>
-                        Removes personal profile and authentication data while
-                        keeping the member's approved contribution and Place history.
+                        Session controls are unavailable for your own Admin account.
                     </p>
-
-                    <label>
-                        <span>Reason</span>
-                        <textarea
-                            name="reason"
-                            rows="3"
-                            required
-                            placeholder="Account deletion request, privacy request, etc."
-                        ></textarea>
-                    </label>
-
-                    <label>
-                        <span>Type ANONYMIZE to confirm</span>
-                        <input
-                            type="text"
-                            name="confirmation"
-                            autocomplete="off"
-                            required
-                        >
-                    </label>
-
-                    <button class="admin-danger-button" type="submit">
-                        Anonymize account
-                    </button>
-                </form>
-
+                </div>
             </section>
 
         <?php endif; ?>
 
 
-        <section class="admin-panel">
+        <?php require __DIR__ . '/_user-email-verification-panel.php'; ?>
 
-            <header class="admin-panel-header">
+    </div>
+
+<?php endif; ?>
+
+
+<?php if (
+    $actorIsOwner &&
+    empty($user['anonymized_at']) &&
+    $userId !== $actorUserId &&
+    !$targetIsOwner
+): ?>
+
+    <section class="admin-panel admin-danger-panel">
+
+        <header class="admin-panel-header">
+            <div>
+                <p>Destructive Action</p>
+                <h2>Anonymize Account</h2>
+            </div>
+        </header>
+
+        <form class="admin-user-action-box" method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
+            <input type="hidden" name="admin_user_action" value="anonymize">
+
+            <p>
+                Removes personal profile and authentication data while
+                keeping the member's approved contribution and Place history.
+            </p>
+
+            <label>
+                <span>Reason</span>
+                <textarea
+                    name="reason"
+                    rows="3"
+                    required
+                    placeholder="Account deletion request, privacy request, etc."
+                ></textarea>
+            </label>
+
+            <label>
+                <span>Type ANONYMIZE to confirm</span>
+                <input
+                    type="text"
+                    name="confirmation"
+                    autocomplete="off"
+                    required
+                >
+            </label>
+
+            <button class="admin-danger-button" type="submit">
+                Anonymize account
+            </button>
+        </form>
+
+    </section>
+
+<?php endif; ?>
+
+
+<section class="admin-panel">
+
+    <header class="admin-panel-header">
+        <div>
+            <p>Audit Trail</p>
+            <h2>Admin Activity</h2>
+        </div>
+    </header>
+
+    <?php if (!$auditHistory): ?>
+
+        <div class="admin-empty-state">
+            <p>No administrative changes recorded yet.</p>
+        </div>
+
+    <?php else: ?>
+
+        <div class="admin-user-audit-list">
+            <?php foreach ($auditHistory as $entry): ?>
                 <div>
-                    <p>Audit Trail</p>
-                    <h2>Admin Activity</h2>
+                    <strong><?= moderation_e((string) $entry['summary']) ?></strong>
+                    <span>
+                        <?= moderation_e((string) $entry['actor_name']) ?>
+                        ·
+                        <?= moderation_e(
+                            llama_format_viewer_datetime(
+                                (string) $entry['created_at']
+                            )
+                        ) ?>
+                    </span>
                 </div>
-            </header>
+            <?php endforeach; ?>
+        </div>
 
-            <?php if (!$auditHistory): ?>
+    <?php endif; ?>
 
-                <div class="admin-empty-state">
-                    <p>No administrative changes recorded yet.</p>
-                </div>
+</section>
 
-            <?php else: ?>
-
-                <div class="admin-user-audit-list">
-                    <?php foreach ($auditHistory as $entry): ?>
-                        <div>
-                            <strong><?= moderation_e((string) $entry['summary']) ?></strong>
-                            <span>
-                                <?= moderation_e((string) $entry['actor_name']) ?>
-                                ·
-                                <?= moderation_e(
-                                    llama_format_viewer_datetime(
-                                        (string) $entry['created_at']
-                                    )
-                                ) ?>
-                            </span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-            <?php endif; ?>
-
-        </section>
-
-    </aside>
-
-</div>
 
 <?php require __DIR__ . '/_footer.php'; ?>

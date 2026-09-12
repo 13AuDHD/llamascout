@@ -88,7 +88,7 @@ $isVerified =
 
             <?= $isVerified
                 ? 'Verified'
-                : 'Verification required' ?>
+                : 'Not verified' ?>
         </span>
     </header>
 
@@ -141,26 +141,9 @@ $isVerified =
             </strong>
         </div>
 
-
-        <?php if ($isVerified): ?>
-
-            <p>
-                Use this when you need the account to prove ownership of its
-                current email address again. The account will be signed out
-                everywhere. Normal site features and all non-verification email
-                remain paused until the verification link is completed.
-            </p>
-
-        <?php else: ?>
-
-            <p>
-                This account is already waiting for email verification.
-                Normal site features and non-verification email are paused.
-                Sending a fresh message invalidates older unused verification
-                links and starts a new 24-hour verification window.
-            </p>
-
-        <?php endif; ?>
+        <p>
+            Use this when you need the account to prove ownership of its current email address again.
+        </p>
 
 
         <?php if (
