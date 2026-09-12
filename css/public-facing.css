@@ -119,7 +119,7 @@
     left: 18px;
     bottom: 18px;
 
-    width: min(430px, calc(100% - 36px));
+    width: min(240px, calc(100% - 36px));
 
     display: grid;
     grid-template-columns: 1fr;
