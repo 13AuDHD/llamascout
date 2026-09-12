@@ -79,6 +79,15 @@ function home_image_url(?string $src): ?string
     return '/' . ltrim($src, '/');
 }
 
+/*
+ * The homepage hero previews the same card language used by Scout Reports.
+ * Only the positioning lives in public-facing.css. The card presentation
+ * itself comes from the shared Scout Report stylesheet.
+ */
+$pageStyles = [
+    'scout-report-cards.css',
+];
+
 require __DIR__ . '/partials/header.php';
 ?>
 
@@ -126,11 +135,75 @@ require __DIR__ . '/partials/header.php';
                     src="/images/hero-art.jpg"
                     alt="A quiet mountain campsite beside a stream"
                 >
-                <div class="public-home-hero-note">
-                    <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
-                    <div>
-                        <strong>Less guessing.</strong>
-                        <span>More useful context before the pavement ends.</span>
+
+                <div
+                    class="public-home-scout-preview"
+                    aria-label="Example Scout Report details"
+                >
+                    <div class="scout-report-item scout-report-rating-item">
+                        <div class="scout-rating-content">
+                            <span>Open sky</span>
+                            <strong>4/5</strong>
+                        </div>
+
+                        <div
+                            class="scout-rating-dots"
+                            aria-label="Open sky rated 4 out of 5"
+                        >
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot" aria-hidden="true"></span>
+                        </div>
+                    </div>
+
+                    <div class="scout-report-item scout-report-value-item">
+                        <div class="scout-report-value-content">
+                            <span>Mountain view?</span>
+                            <strong>Yes</strong>
+                        </div>
+
+                        <i
+                            class="fa-solid fa-tree scout-report-value-icon"
+                            aria-hidden="true"
+                        ></i>
+                    </div>
+
+                    <div class="scout-report-item scout-report-rating-item">
+                        <div class="scout-rating-content">
+                            <span>Overall cell service</span>
+                            <strong>4/5</strong>
+                        </div>
+
+                        <div
+                            class="scout-rating-dots"
+                            aria-label="Overall cell service rated 4 out of 5"
+                        >
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot" aria-hidden="true"></span>
+                        </div>
+                    </div>
+
+                    <div class="scout-report-item scout-report-rating-item">
+                        <div class="scout-rating-content">
+                            <span>Levelness</span>
+                            <strong>4/5</strong>
+                        </div>
+
+                        <div
+                            class="scout-rating-dots"
+                            aria-label="Levelness rated 4 out of 5"
+                        >
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot" aria-hidden="true"></span>
+                        </div>
                     </div>
                 </div>
             </div>
