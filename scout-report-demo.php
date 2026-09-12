@@ -173,7 +173,7 @@ $details = [
     'downed_tree_risk' => 1,
     'seasonal_closure' => 0,
 
-        /* Environment and accessibility */
+    /* Environment and accessibility */
     'forest' => 1,
     'mountains' => 1,
     'water_nearby' => 1,
@@ -288,8 +288,8 @@ $amenityLabels = [
     'toilets' => ['fa-restroom', 'Toilets'],
     'potable_water' => ['fa-faucet-drip', 'Potable water'],
     'trash' => ['fa-trash-can', 'Trash'],
-    'fire_ring' => ['fa-fire', 'Fire ring'],
-    'picnic_table' => ['fa-table-picnic', 'Picnic table'],
+    'fire_ring' => ['fa-fire', 'Metal fire ring'],
+    'picnic_table' => ['fa-utensils', 'Picnic table'],
     'bear_box' => ['fa-box', 'Bear box'],
     'showers' => ['fa-shower', 'Showers'],
     'electricity' => ['fa-bolt', 'Electricity'],
