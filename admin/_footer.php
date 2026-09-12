@@ -13,20 +13,6 @@ if (
     && isset($user, $userId, $actorUserId)
 ): ?>
 
-    <link
-        rel="stylesheet"
-        href="https://llamascout.com/css/admin/pages/user-email-verification.css"
-    >
-
-    <div
-        id="admin-user-email-verification-staging"
-        hidden
-    >
-        <?php
-        require __DIR__
-            . '/_user-email-verification-panel.php';
-        ?>
-    </div>
 
     <script>
         (() => {
