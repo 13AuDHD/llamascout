@@ -538,11 +538,11 @@ require __DIR__ . '/_header.php';
                     ) ?>
                 </h2>
 
-                <span class="admin-status-pill">
+                <span class="admin-status-pill admin-scout-rank-pill">
                     <?= $isMaster ? 'Master Scout' : 'Llama Scout' ?>
                 </span>
 
-                <span class="admin-status-pill">
+                <span class="admin-status-pill admin-scout-status-pill <?= $scoutStatus === 'active' ? 'is-good' : '' ?>">
                     <?= moderation_e(
                         ucwords(
                             str_replace(
@@ -571,14 +571,6 @@ require __DIR__ . '/_header.php';
 </section>
 
 <section class="admin-scout-operation-strip">
-    <div>
-        <span>Current rank</span>
-        <strong><?= $isMaster ? 'Master Scout' : 'Llama Scout' ?></strong>
-    </div>
-    <div class="<?= (string) $scout['status'] === 'active' ? 'is-good' : 'has-attention' ?>">
-        <span>Program status</span>
-        <strong><?= moderation_e(ucwords(str_replace('_', ' ', (string) $scout['status']))) ?></strong>
-    </div>
     <div class="<?= !empty($currentPeriod['met']) ? 'is-good' : '' ?>">
         <span>Current period</span>
         <strong><?= number_format((int) $currentPeriod['completed']) ?> / <?= number_format((int) $currentPeriod['required']) ?> new Places</strong>
@@ -597,6 +589,7 @@ require __DIR__ . '/_header.php';
         <strong><?= $isMaster ? 'Earned' : (!empty($masterQualification['eligible']) ? 'Ready' : 'In progress') ?></strong>
     </div>
 </section>
+
 
 
 <div class="admin-user-detail-grid">
