@@ -105,6 +105,27 @@
 }
 
 
+/* Membership state */
+
+.admin-membership-label {
+    font-size: .76rem;
+    font-weight: 850;
+}
+
+.admin-membership-label.is-paid {
+    color: var(--text);
+}
+
+.admin-membership-label.is-complimentary {
+    color: var(--text);
+}
+
+.admin-membership-label.is-free {
+    color: var(--text-muted);
+    font-weight: 650;
+}
+
+
 /* Mobile-only account facts */
 
 .admin-user-mobile-login,
