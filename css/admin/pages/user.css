@@ -396,3 +396,98 @@
         max-height: 360px;
     }
 }
+
+
+/* Support verification */
+
+.admin-user-support-body {
+    display: grid;
+    gap: 15px;
+
+    padding: 15px;
+}
+
+.admin-user-support-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 9px;
+
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-size: .62rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.admin-user-support-status.is-ready {
+    border-color: #58a66a;
+    background: color-mix(
+        in srgb,
+        #58a66a 14%,
+        transparent
+    );
+    color: #58a66a;
+}
+
+.admin-user-support-status.is-unavailable {
+    border-color: var(--border);
+    color: var(--text-muted);
+}
+
+.admin-user-support-note {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.admin-user-support-form {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-user-support-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-user-support-form label > span {
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.admin-user-support-form input {
+    width: min(240px, 100%);
+    min-height: 40px;
+
+    box-sizing: border-box;
+
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    letter-spacing: .08em;
+}
+
+.admin-user-support-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-user-support-actions button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
