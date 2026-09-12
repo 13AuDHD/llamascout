@@ -4,12 +4,35 @@
    Shared person-detail components live in features/person-detail.css.
    ========================================================= */
 
+/* Summary pills */
+
+.admin-scout-rank-pill {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 55%,
+        var(--border)
+    );
+}
+
+.admin-scout-status-pill.is-good {
+    border-color: #58a66a;
+
+    background: color-mix(
+        in srgb,
+        #58a66a 12%,
+        var(--surface)
+    );
+
+    color: var(--text);
+}
+
+
 /* Operational summary */
 
 .admin-scout-operation-strip {
     display: grid;
     grid-template-columns:
-        repeat(5, minmax(0, 1fr));
+        repeat(3, minmax(0, 1fr));
     gap: 10px;
 
     margin-bottom: var(--admin-panel-gap);
