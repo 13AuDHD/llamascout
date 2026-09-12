@@ -95,6 +95,26 @@ declare(strict_types=1);
 
 
         <a
+            class="account-action-card"
+            href="/support-pin.php"
+        >
+            <i
+                class="fa-solid fa-phone-volume"
+                aria-hidden="true"
+            ></i>
+
+            <span>
+                <strong>Support PIN</strong>
+
+                <small>
+                    Set up phone support verification and a one-time
+                    emergency MFA reset.
+                </small>
+            </span>
+        </a>
+
+
+        <a
             class="account-action-card account-action-card-danger"
             href="/delete-account.php"
         >
