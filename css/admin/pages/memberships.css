@@ -582,6 +582,14 @@ input[type="checkbox"] {
 
 @media (max-width: 900px) {
 
+    .admin-campaign-results {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+
     .admin-membership-plan-list {
         grid-template-columns: 1fr;
     }
@@ -590,14 +598,6 @@ input[type="checkbox"] {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
-
-    .admin-campaign-results {
-        grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 680px) {
 
     .admin-membership-form-grid,
     .admin-membership-promotion-meta {
@@ -621,7 +621,6 @@ input[type="checkbox"] {
 
 @media (max-width: 640px) {
 
-    .admin-campaign-summary-grid,
     .admin-campaign-toggle-grid,
     .admin-campaign-results {
         grid-template-columns: 1fr;
