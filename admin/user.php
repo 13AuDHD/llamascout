@@ -618,10 +618,6 @@ require __DIR__ . '/_header.php';
             </dd>
         </div>
         <div>
-            <dt>Active sessions</dt>
-            <dd><?= number_format((int) $userStats['sessions']) ?></dd>
-        </div>
-        <div>
             <dt>Saved Places</dt>
             <dd><?= number_format((int) $userStats['saved_places']) ?></dd>
         </div>
@@ -643,12 +639,30 @@ require __DIR__ . '/_header.php';
                         <p>Security</p>
                         <h2>Sessions</h2>
                     </div>
+
+                    <span
+                        class="admin-user-session-status <?= (int) $userStats['sessions'] > 0 ? 'is-active' : 'is-inactive' ?>"
+                    >
+                        <i
+                            class="fa-solid <?= (int) $userStats['sessions'] > 0 ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
+                            aria-hidden="true"
+                        ></i>
+
+                        <?= (int) $userStats['sessions'] > 0
+                            ? 'Active'
+                            : 'Not active' ?>
+                    </span>
                 </header>
 
                 <form class="admin-user-action-box" method="post">
                     <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
                     <input type="hidden" name="user_id" value="<?= (int) $userId ?>">
                     <input type="hidden" name="admin_user_action" value="force-logout">
+
+                    <div class="admin-user-session-count">
+                        <span>Active sessions</span>
+                        <strong><?= number_format((int) $userStats['sessions']) ?></strong>
+                    </div>
 
                     <p>
                         Immediately revoke browser sessions and remember-me tokens.
@@ -670,9 +684,27 @@ require __DIR__ . '/_header.php';
                         <p>Security</p>
                         <h2>Sessions</h2>
                     </div>
+
+                    <span
+                        class="admin-user-session-status <?= (int) $userStats['sessions'] > 0 ? 'is-active' : 'is-inactive' ?>"
+                    >
+                        <i
+                            class="fa-solid <?= (int) $userStats['sessions'] > 0 ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
+                            aria-hidden="true"
+                        ></i>
+
+                        <?= (int) $userStats['sessions'] > 0
+                            ? 'Active'
+                            : 'Not active' ?>
+                    </span>
                 </header>
 
                 <div class="admin-user-action-box">
+                    <div class="admin-user-session-count">
+                        <span>Active sessions</span>
+                        <strong><?= number_format((int) $userStats['sessions']) ?></strong>
+                    </div>
+
                     <p>
                         Session controls are unavailable for your own Admin account.
                     </p>
