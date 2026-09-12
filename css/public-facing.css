@@ -116,15 +116,11 @@
 
 .public-home-scout-preview {
     position: absolute;
-    left: 18px;
-    bottom: 18px;
-
-    width: min(240px, calc(100% - 36px));
-
-    display: grid;
+    left: 13px;
+    bottom: 13px;
+    width: min(190px, calc(100% - 24px));
     grid-template-columns: 1fr;
-    gap: 8px;
-
+    gap: 6px;
     pointer-events: none;
 }
 
