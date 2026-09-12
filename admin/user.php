@@ -206,34 +206,57 @@ $membershipDaysLeft =
         }
 
         try {
-            $end =
-                new DateTimeImmutable(
-                    $endsAt,
-                    new DateTimeZone('UTC')
+            $viewerTimezone =
+                new DateTimeZone(
+                    llama_viewer_timezone()
                 );
 
-            $seconds =
-                $end->getTimestamp()
-                - time();
+            /*
+             * Remaining time is based on calendar days from today
+             * through the end of the current access period.
+             */
+            $today =
+                new DateTimeImmutable(
+                    'today',
+                    $viewerTimezone
+                );
 
-            if ($seconds <= 0) {
+            $end =
+                (
+                    new DateTimeImmutable(
+                        $endsAt,
+                        new DateTimeZone('UTC')
+                    )
+                )
+                ->setTimezone(
+                    $viewerTimezone
+                )
+                ->setTime(
+                    0,
+                    0,
+                    0
+                );
+
+            $days =
+                (int) $today
+                    ->diff(
+                        $end
+                    )
+                    ->format('%r%a');
+
+            if ($days < 0) {
                 return 'Ended';
             }
 
-            if ($seconds < 86400) {
-                return '<1 day left';
+            if ($days === 0) {
+                return 'Ends today';
             }
-
-            $days =
-                (int) ceil(
-                    $seconds / 86400
-                );
 
             return
                 number_format($days)
                 . ' day'
                 . ($days === 1 ? '' : 's')
-                . ' left';
+                . ' remaining';
         } catch (Throwable) {
             return '';
         }
@@ -712,7 +735,7 @@ require __DIR__ . '/_header.php';
                             </span>
 
                             <?php if ($complimentaryRemaining !== ''): ?>
-                                <small>
+                                <small class="admin-user-access-remaining">
                                     <?= moderation_e($complimentaryRemaining) ?>
                                 </small>
                             <?php endif; ?>
@@ -839,7 +862,7 @@ require __DIR__ . '/_header.php';
                                 </span>
 
                                 <?php if ($paidRemaining !== ''): ?>
-                                    <small>
+                                    <small class="admin-user-access-remaining">
                                         <?= moderation_e($paidRemaining) ?>
                                     </small>
                                 <?php endif; ?>
