@@ -12,11 +12,10 @@
 .admin-scout-invite-form {
     display: grid;
     grid-template-columns:
-        minmax(280px, 1.35fr)
-        minmax(250px, .9fr)
+        minmax(0, 1fr)
         auto;
     gap: 12px;
-    align-items: center;
+    align-items: end;
 
     padding: 15px var(--admin-panel-padding);
 }
@@ -50,35 +49,8 @@
     font: inherit;
 }
 
-.admin-scout-invite-form > div {
-    min-height: 42px;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-
-    box-sizing: border-box;
-    padding: 8px 11px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: var(--background);
-}
-
-.admin-scout-invite-form > div strong {
-    font-size: .72rem;
-}
-
-.admin-scout-invite-form > div span {
-    color: var(--text-muted);
-
-    font-size: .65rem;
-    line-height: 1.35;
-}
-
 .admin-scout-invite-form > .admin-button {
+    min-height: 42px;
     white-space: nowrap;
 }
 
@@ -187,11 +159,9 @@
 .admin-scout-list-row {
     display: grid;
     grid-template-columns:
-        minmax(235px, .95fr)
-        minmax(360px, 1.55fr)
-        minmax(235px, .85fr)
+        minmax(220px, 1fr)
         auto;
-    gap: 12px;
+    gap: 10px 14px;
     align-items: center;
 
     padding: 13px var(--admin-panel-padding);
@@ -227,14 +197,17 @@
 }
 
 
-/* Five compact Scout facts */
+/* Five Scout facts */
 
 .admin-scout-list-facts {
     min-width: 0;
 
+    grid-column: 1 / -1;
+    grid-row: 2;
+
     display: grid;
     grid-template-columns:
-        repeat(5, minmax(56px, 1fr));
+        repeat(5, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -281,6 +254,9 @@
 .admin-scout-period-mini {
     min-width: 0;
 
+    grid-column: 1 / -1;
+    grid-row: 3;
+
     display: grid;
     gap: 2px;
 
@@ -318,47 +294,16 @@
 
 .admin-scout-list-row
 > .admin-button {
+    grid-column: 2;
+    grid-row: 1;
+
     justify-self: end;
+    align-self: center;
 
     min-height: 36px;
     padding-inline: 11px;
 
     white-space: nowrap;
-}
-
-
-/* Medium screens
-   Keep the Scout identity and Manage action together on the first row,
-   then place facts and period beneath them without the old row-spanning
-   button layout.
-*/
-
-@media (max-width: 1100px) {
-
-    .admin-scout-list-row {
-        grid-template-columns:
-            minmax(220px, 1fr)
-            auto;
-        gap: 10px 14px;
-    }
-
-    .admin-scout-list-facts {
-        grid-column: 1 / -1;
-        grid-row: 2;
-    }
-
-    .admin-scout-period-mini {
-        grid-column: 1 / -1;
-        grid-row: 3;
-    }
-
-    .admin-scout-list-row
-    > .admin-button {
-        grid-column: 2;
-        grid-row: 1;
-
-        align-self: center;
-    }
 }
 
 
@@ -369,19 +314,6 @@
     .admin-scout-stat-grid {
         grid-template-columns:
             repeat(3, minmax(0, 1fr));
-    }
-
-    .admin-scout-invite-form {
-        grid-template-columns:
-            minmax(0, 1fr)
-            minmax(220px, .8fr);
-    }
-
-    .admin-scout-invite-form
-    > .admin-button {
-        grid-column: 1 / -1;
-
-        justify-self: start;
     }
 
     .admin-scout-filter-form {
