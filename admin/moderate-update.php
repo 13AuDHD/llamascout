@@ -142,6 +142,81 @@ if (
             );
 
 
+        /*
+         * =================================================
+         * DELETE
+         * =================================================
+         *
+         * Same behavior as deleting an unpublished New Place:
+         * remove the moderation submission completely, keep
+         * only the administrator audit event, then remove any
+         * staged update files.
+         */
+
+        if ($action === 'delete') {
+
+            $db->beginTransaction();
+
+
+            $deletedUpdate =
+                llama_place_update_delete_unpublished(
+                    $db,
+                    $updateId
+                );
+
+
+            admin_users_audit(
+                $db,
+                (int) $adminUser['id'],
+                (int) (
+                    $deletedUpdate['user_id']
+                    ?? $item['user_id']
+                ),
+                'place.update_deleted',
+                'Deleted Place update #'
+                    . $updateId
+                    . '.',
+                [
+                    'update_id' =>
+                        $updateId,
+
+                    'place_id' =>
+                        (int) (
+                            $deletedUpdate['place_id']
+                            ?? $item['place_id']
+                        ),
+
+                    'place_name' =>
+                        (string) (
+                            $item['place_name']
+                            ?? ''
+                        ),
+
+                    'status' =>
+                        (string) (
+                            $deletedUpdate['status']
+                            ?? ''
+                        ),
+                ]
+            );
+
+
+            $db->commit();
+
+
+            llama_place_update_remove_files(
+                $updateId
+            );
+
+
+            header(
+                'Location: /updates.php?deleted=1'
+            );
+
+            exit;
+        }
+
+
         $points =
             llama_points_policy_required(
                 $db,
@@ -1258,7 +1333,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                →
+                                                â
 
                                                 <?= $e(
                                                     $afterText
@@ -1299,7 +1374,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                →
+                                â
 
                                 <?= (int) (
                                     $event['photo_count_after']
@@ -1529,12 +1604,31 @@ require __DIR__
             </button>
 
 
+            <button
+                class="admin-moderation-button admin-submission-delete"
+                type="submit"
+                name="action"
+                value="delete"
+                data-delete-submission
+            >
+                <i
+                    class="fa-solid fa-trash-can"
+                    aria-hidden="true"
+                ></i>
+
+                Delete Submission
+            </button>
+
+
         </div>
 
 
     </form>
 
 </section>
+
+
+<script src="https://llamascout.com/js/admin/moderate-submission.js"></script>
 
 
 <?php
