@@ -217,10 +217,26 @@ if (
         }
 
 
-        $points =
-            llama_points_policy_required(
+        $actionProposed =
+            is_array(
+                $item['proposed']
+                ?? null
+            )
+                ? $item['proposed']
+                : [];
+
+
+        $actionPointEstimate =
+            llama_points_estimate_place_update(
                 $db,
-                'approved_place_update'
+                $actionProposed
+            );
+
+
+        $points =
+            (int) (
+                $actionPointEstimate['estimated_points']
+                ?? 0
             );
 
 
@@ -470,10 +486,10 @@ $photos =
         : [];
 
 
-$updatePointValue =
-    llama_points_policy_required(
+$updatePointEstimate =
+    llama_points_estimate_place_update(
         $db,
-        'approved_place_update'
+        $proposed
     );
 
 
@@ -1333,7 +1349,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                â
+                                                →
 
                                                 <?= $e(
                                                     $afterText
@@ -1374,7 +1390,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                â
+                                →
 
                                 <?= (int) (
                                     $event['photo_count_after']

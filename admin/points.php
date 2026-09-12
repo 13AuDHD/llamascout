@@ -103,19 +103,54 @@ if (
     }
 }
 
+$policyRows = [];
+$policyLookup = [];
+$categoryDefinitions = [];
+$otherPolicyRows = [];
+$newPlaceMax = 0;
+$placeUpdateMax = 0;
+
 try {
-    $policyGroups =
-        admin_points_policy_groups(
+    $policyRows =
+        admin_points_policy_rows(
             $db
         );
+
+    foreach ($policyRows as $row) {
+        $policyLookup[
+            (string) $row['policy_key']
+        ] = $row;
+
+        if (
+            (string) (
+                $row['group']
+                ?? ''
+            ) === 'Other Contributions'
+        ) {
+            $otherPolicyRows[] =
+                $row;
+        }
+    }
+
+    $categoryDefinitions =
+        llama_place_report_category_definitions();
 
     $newPlaceMax =
         llama_points_new_place_max_points(
             $db
         );
+
+    $placeUpdateMax =
+        llama_points_place_update_max_points(
+            $db
+        );
 } catch (Throwable $exception) {
-    $policyGroups = [];
+    $policyRows = [];
+    $policyLookup = [];
+    $categoryDefinitions = [];
+    $otherPolicyRows = [];
     $newPlaceMax = 0;
+    $placeUpdateMax = 0;
 
     if ($error === '') {
         $error =
@@ -189,19 +224,18 @@ require
 
     <div class="admin-points-source-note">
         <strong>
-            All point values belong here.
+            New Places and Place Updates have separate weighted policies.
         </strong>
 
         <span>
-            Draft estimates, contribution awards, moderation,
-            and other point-aware features must read from this
-            policy. Historical ledger entries never change when
-            these values are edited.
+            New Place points reward how much of the Place Report is supplied.
+            Update points reward only the specific approved fields that changed.
+            Historical ledger entries never change when these values are edited.
         </span>
     </div>
 
 
-    <?php if ($policyGroups): ?>
+    <?php if ($categoryDefinitions): ?>
 
         <form method="post">
 
@@ -220,39 +254,146 @@ require
             >
 
 
-            <?php foreach (
-                $policyGroups
-                as $group => $rows
-            ): ?>
+            <section class="admin-points-policy-group admin-points-category-policy">
+
+                <header class="admin-points-category-header">
+                    <div>
+                        <h3>Place Contribution Categories</h3>
+                        <p>
+                            The same Place Report categories are weighted independently
+                            for a new Place and for later updates.
+                        </p>
+                    </div>
+
+                    <div class="admin-points-policy-maxima">
+                        <span>
+                            New Place max
+                            <strong><?= number_format($newPlaceMax) ?></strong>
+                        </span>
+
+                        <span>
+                            Update max
+                            <strong><?= number_format($placeUpdateMax) ?></strong>
+                        </span>
+                    </div>
+                </header>
+
+
+                <div class="admin-points-category-table">
+
+                    <div class="admin-points-category-columns" aria-hidden="true">
+                        <span>Category</span>
+                        <span>New Place</span>
+                        <span>Update</span>
+                    </div>
+
+
+                    <?php foreach (
+                        $categoryDefinitions
+                        as $slug => $category
+                    ): ?>
+
+                        <?php
+                        $newKey =
+                            (string) (
+                                $category['policy_key']
+                                ?? ''
+                            );
+
+                        $updateKey =
+                            'place_update_'
+                            . (string) $slug;
+
+                        $newRow =
+                            $policyLookup[$newKey]
+                            ?? null;
+
+                        $updateRow =
+                            $policyLookup[$updateKey]
+                            ?? null;
+
+                        if (!$newRow || !$updateRow) {
+                            continue;
+                        }
+                        ?>
+
+                        <div class="admin-points-category-row">
+
+                            <span class="admin-points-category-copy">
+                                <strong>
+                                    <?= moderation_e(
+                                        (string) (
+                                            $category['label']
+                                            ?? $slug
+                                        )
+                                    ) ?>
+                                </strong>
+
+                                <small>
+                                    <?= moderation_e(
+                                        (string) (
+                                            $newRow['description']
+                                            ?? ''
+                                        )
+                                    ) ?>
+                                </small>
+                            </span>
+
+
+                            <label>
+                                <span>New Place</span>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    name="policy[<?= moderation_e($newKey) ?>]"
+                                    value="<?= (int) $newRow['points_value'] ?>"
+                                    <?= !$actorIsOwner
+                                        ? 'disabled'
+                                        : ''
+                                    ?>
+                                >
+                            </label>
+
+
+                            <label>
+                                <span>Update</span>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    name="policy[<?= moderation_e($updateKey) ?>]"
+                                    value="<?= (int) $updateRow['points_value'] ?>"
+                                    <?= !$actorIsOwner
+                                        ? 'disabled'
+                                        : ''
+                                    ?>
+                                >
+                            </label>
+
+                        </div>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+            </section>
+
+
+            <?php if ($otherPolicyRows): ?>
 
                 <section class="admin-points-policy-group">
 
                     <header>
-                        <h3>
-                            <?= moderation_e(
-                                $group
-                            ) ?>
-                        </h3>
-
-                        <?php if (
-                            $group
-                            === 'New Place Categories'
-                        ): ?>
-                            <span>
-                                Current maximum:
-                                <?= number_format(
-                                    $newPlaceMax
-                                ) ?>
-                                points
-                            </span>
-                        <?php endif; ?>
+                        <h3>Other Contributions</h3>
                     </header>
-
 
                     <div class="admin-policy-grid">
 
                         <?php foreach (
-                            $rows
+                            $otherPolicyRows
                             as $row
                         ): ?>
 
@@ -292,7 +433,7 @@ require
 
                 </section>
 
-            <?php endforeach; ?>
+            <?php endif; ?>
 
 
             <?php if ($actorIsOwner): ?>
@@ -496,3 +637,4 @@ require
 require
     __DIR__
     . '/_footer.php';
+?>
