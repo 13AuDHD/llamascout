@@ -172,6 +172,48 @@ $details = [
     'water_crossings' => 0,
     'downed_tree_risk' => 1,
     'seasonal_closure' => 0,
+
+        /* Environment and accessibility */
+    'forest' => 1,
+    'mountains' => 1,
+    'water_nearby' => 1,
+    'water_view' => 0,
+    'mountain_view' => 1,
+    'forest_view' => 1,
+    'wildlife' => 1,
+    'bugs' => 1,
+
+    'wheelchair_friendly' => 0,
+    'mobility_device_friendly' => 0,
+    'flat_walking_surface' => 0,
+    'step_free_access' => 1,
+    'accessible_toilet' => 0,
+    'accessible_picnic_table' => 0,
+
+    'wind_exposure' => 3,
+    'sun_exposure' => 4,
+    'environment_shade' => 3,
+    'environment_open_sky' => 4,
+    'walking_distance_from_vehicle' => 'at-vehicle',
+
+    /* Safety and warnings */
+    'felt_safe_daytime' => 1,
+    'felt_safe_nighttime' => 1,
+    'flash_flood_risk' => 0,
+    'wildfire_risk' => 1,
+    'fall_hazard' => 0,
+    'cliff_exposure' => 0,
+    'rockfall_risk' => 0,
+    'wildlife_risk' => 1,
+    'traffic_hazard' => 0,
+    'emergency_access' => 1,
+
+    'warning_possible_downed_trees' => 1,
+    'warning_passing_vehicle_dust' => 1,
+    'warning_motorized_recreation_traffic' => 0,
+    'warning_blind_turn_traffic_nearby' => 0,
+
+    'road_exposure' => 2,
 ];
 
 $connectivity = [
