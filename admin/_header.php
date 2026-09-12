@@ -202,7 +202,7 @@ function admin_shell_nav_class(string $key, string $active): string
             'features' => ['person-detail.css'],
         ],
         'submissions.php' => [
-            'pages' => ['submissions.css'],
+            'pages' => [],
             'features' => ['moderation-queue.css'],
         ],
         'moderate-submission.php' => [
@@ -210,7 +210,7 @@ function admin_shell_nav_class(string $key, string $active): string
             'features' => ['moderation-review.css'],
         ],
         'updates.php' => [
-            'pages' => ['updates.css'],
+            'pages' => [],
             'features' => ['moderation-queue.css'],
         ],
         'moderate-update.php' => [
@@ -306,7 +306,7 @@ function admin_shell_nav_class(string $key, string $active): string
             'features' => ['audit-console.css'],
         ],
         'audit.php' => [
-            'pages' => ['audit.css'],
+            'pages' => [],
             'features' => ['audit-console.css'],
         ],
     ];
