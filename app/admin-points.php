@@ -107,11 +107,6 @@ function admin_points_policy_definitions(): array
             'description' => 'Maximum points available from approved Experience + Recommendation changes.',
         ],
 
-        'approved_correction' => [
-            'group' => 'Other Contributions',
-            'label' => 'Approved Correction',
-            'description' => 'Points awarded for an approved correction.',
-        ],
     ];
 }
 
@@ -190,6 +185,33 @@ function admin_points_policy_groups(
 
     return $groups;
 }
+
+function admin_points_manual_adjustment_users(
+    PDO $db
+): array {
+    $sql =
+        'SELECT
+            u.id,
+            u.email,
+            u.username,
+            u.display_name,
+            u.status
+         FROM users u
+         WHERE u.anonymized_at IS NULL
+         ORDER BY
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                u.email
+            ) ASC,
+            u.id ASC';
+
+    return
+        $db->query($sql)
+            ->fetchAll(PDO::FETCH_ASSOC)
+        ?: [];
+}
+
 
 function admin_points_recent(
     PDO $db,
