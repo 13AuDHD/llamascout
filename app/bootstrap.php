@@ -15,6 +15,7 @@ require_once __DIR__ . '/error-logging.php';
 llama_error_register_handlers();
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/session-invalidation.php';
 require_once __DIR__ . '/timezone.php';
 require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
@@ -37,6 +38,7 @@ require_once __DIR__ . '/email-verification-guard.php';
 
 start_llama_session();
 
+llama_enforce_session_invalidation(db());
 llama_enforce_verified_email_session(db());
 
 if (!empty($_SESSION['user_id'])) {
