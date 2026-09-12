@@ -55,18 +55,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $notice = 'Roles updated.';
             } elseif ($action === 'force-logout') {
-                $revoked = admin_users_force_logout(
+                llama_invalidate_user_authentication(
                     $db,
-                    $actorUserId,
                     $userId
                 );
 
+                admin_users_audit(
+                    $db,
+                    $actorUserId,
+                    $userId,
+                    'user.sessions_revoked',
+                    'Invalidated all authenticated sessions and remember-me tokens.'
+                );
+
                 $notice =
-                    'Account signed out everywhere. ' .
-                    number_format($revoked) .
-                    ' session or remember-me record' .
-                    ($revoked === 1 ? '' : 's') .
-                    ' revoked.';
+                    'Account signed out everywhere. Existing authenticated browsers '
+                    . 'will be rejected on their next request.';
             } elseif ($action === 'anonymize') {
                 $confirmation = trim(
                     (string) ($_POST['confirmation'] ?? '')
