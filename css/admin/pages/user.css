@@ -15,7 +15,7 @@
     margin-bottom: var(--admin-panel-gap);
 }
 
-.admin-user-stat-grid > div {
+.admin-user-stat-card {
     min-width: 0;
 
     padding: 14px;
@@ -43,23 +43,26 @@
     font-size: 1.25rem;
 }
 
-.admin-user-stat-link {
-    display: inline-block;
+.admin-user-stat-card-link {
+    display: block;
 
-    margin-top: 5px;
-
-    color: var(--text-muted);
-
-    font-size: .65rem;
-    font-weight: 800;
+    color: inherit;
     text-decoration: none;
+    cursor: pointer;
 }
 
-.admin-user-stat-link:hover,
-.admin-user-stat-link:focus-visible {
-    color: var(--text);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+.admin-user-stat-card-link:hover,
+.admin-user-stat-card-link:focus-visible {
+    border-color: color-mix(
+        in srgb,
+        var(--text) 34%,
+        var(--border)
+    );
+}
+
+.admin-user-stat-card-link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
 }
 
 
@@ -367,7 +370,7 @@
 
 /* Responsive */
 
-@media (max-width: 1180px) {
+@media (max-width: 767px) {
 
     .admin-user-stat-grid {
         grid-template-columns:
@@ -375,12 +378,15 @@
     }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 650px) {
 
     .admin-user-stat-grid {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
+}
+
+@media (max-width: 620px) {
 
     .admin-user-half-grid {
         grid-template-columns: 1fr;
