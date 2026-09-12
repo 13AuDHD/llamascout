@@ -130,6 +130,63 @@
 }
 
 
+/* Sessions */
+
+.admin-user-session-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 9px;
+
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-size: .62rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.admin-user-session-status.is-active {
+    border-color: #58a66a;
+    background: color-mix(
+        in srgb,
+        #58a66a 14%,
+        transparent
+    );
+    color: #58a66a;
+}
+
+.admin-user-session-status.is-inactive {
+    border-color: #d95d5d;
+    background: color-mix(
+        in srgb,
+        #d95d5d 14%,
+        transparent
+    );
+    color: #d95d5d;
+}
+
+.admin-user-session-count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    padding-bottom: 11px;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-user-session-count span {
+    color: var(--text-muted);
+    font-size: .68rem;
+}
+
+.admin-user-session-count strong {
+    font-size: .8rem;
+}
+
+
 /* Email verification */
 
 .admin-user-email-verification-panel {
