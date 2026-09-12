@@ -428,38 +428,40 @@ require __DIR__ . '/_header.php';
 
 <section class="admin-user-stat-grid">
 
-    <div>
-        <span>Contribution Points</span>
+    <div class="admin-user-stat-card">
+        <span>Points</span>
         <strong><?= number_format((int) $userStats['points']) ?></strong>
     </div>
 
-    <div>
+    <div class="admin-user-stat-card">
         <span>Contributions</span>
         <strong><?= number_format((int) $userStats['contributions']) ?></strong>
     </div>
 
-    <div>
+    <div class="admin-user-stat-card">
         <span>Places Added</span>
         <strong><?= number_format((int) $userStats['places_added']) ?></strong>
     </div>
 
-    <div>
+    <div class="admin-user-stat-card">
         <span>Updates</span>
         <strong><?= number_format((int) $userStats['updates']) ?></strong>
     </div>
 
-    <div>
+    <a
+        class="admin-user-stat-card admin-user-stat-card-link"
+        href="/badges.php?user_id=<?= (int) $userId ?>"
+        aria-label="Manage badges for <?= moderation_e(
+            $user['display_name']
+            ?: $user['username']
+            ?: 'this user'
+        ) ?>"
+    >
         <span>Badges</span>
         <strong><?= number_format((int) $userStats['badges']) ?></strong>
-        <a
-            class="admin-user-stat-link"
-            href="/badges.php?user_id=<?= (int) $userId ?>"
-        >
-            Manage
-        </a>
-    </div>
+    </a>
 
-    <div>
+    <div class="admin-user-stat-card">
         <span>Reports</span>
         <strong><?= number_format((int) $userStats['reports']) ?></strong>
     </div>
