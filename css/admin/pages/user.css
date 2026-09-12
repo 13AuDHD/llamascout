@@ -167,26 +167,19 @@
 }
 
 .admin-user-access-date {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 5px 8px;
+    display: grid;
+    justify-items: end;
+    gap: 3px;
 }
 
-.admin-user-access-date small {
-    display: inline-flex;
-
-    padding: 3px 7px;
-
-    border: 1px solid var(--border);
-    border-radius: 999px;
+.admin-user-access-remaining {
+    display: block;
 
     color: var(--text-muted);
 
-    font-size: .58rem;
-    font-weight: 800;
-    white-space: nowrap;
+    font-size: .61rem;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
 
