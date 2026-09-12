@@ -160,12 +160,12 @@ require __DIR__ . '/partials/header.php';
 
                     <div class="scout-report-item scout-report-value-item">
                         <div class="scout-report-value-content">
-                            <span>Mountain view?</span>
+                            <span>Turnaround space?</span>
                             <strong>Yes</strong>
                         </div>
 
                         <i
-                            class="fa-solid fa-tree scout-report-value-icon"
+                            class="fa-solid fa-rotate scout-report-value-icon"
                             aria-hidden="true"
                         ></i>
                     </div>
@@ -173,17 +173,17 @@ require __DIR__ . '/partials/header.php';
                     <div class="scout-report-item scout-report-rating-item">
                         <div class="scout-rating-content">
                             <span>Overall cell service</span>
-                            <strong>4/5</strong>
+                            <strong>3/5</strong>
                         </div>
 
                         <div
                             class="scout-rating-dots"
-                            aria-label="Overall cell service rated 4 out of 5"
+                            aria-label="Overall cell service rated 3 out of 5"
                         >
                             <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
                             <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
                             <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
-                            <span class="scout-rating-dot is-filled" aria-hidden="true"></span>
+                            <span class="scout-rating-dot" aria-hidden="true"></span>
                             <span class="scout-rating-dot" aria-hidden="true"></span>
                         </div>
                     </div>
