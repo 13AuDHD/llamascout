@@ -138,7 +138,7 @@ $renderValue =
                         $field
                     );
                 ?>
-            
+
                 <div class="scout-report-value-content">
                     <span>
                         <?= $e(
@@ -148,10 +148,10 @@ $renderValue =
                             )
                         ) ?>
                     </span>
-            
+
                     <strong><?= $e($value) ?></strong>
                 </div>
-            
+
                 <i
                     class="fa-solid <?= $e($icon) ?> scout-report-value-icon"
                     aria-hidden="true"
@@ -215,7 +215,7 @@ if ($warnings):
                         $field
                     );
                 ?>
-            
+
                 <div
                     class="scout-report-item scout-report-value-item scout-report-warning-item"
                 >
@@ -228,10 +228,10 @@ if ($warnings):
                                 )
                             ) ?>
                         </span>
-            
+
                         <strong>Warning</strong>
                     </div>
-            
+
                     <i
                         class="fa-solid <?= $e($warningIcon) ?> scout-report-value-icon"
                         aria-hidden="true"
@@ -317,72 +317,45 @@ foreach (
             <?php endforeach; ?>
 
         <?php elseif ($sectionKey === 'amenities'): ?>
-            <?php
-            $noAmenities =
-                !empty(
-                    llama_place_report_get_path(
-                        $placeReportData,
-                        'details.warning_no_amenities'
-                    )
-                );
-
-            $selectedAmenities = [];
-
-            foreach ($fields as $key => $field) {
-                if ($key === 'amenity_none') {
-                    continue;
-                }
-
-                if (
-                    (bool) llama_place_report_get_path(
-                        $placeReportData,
-                        (string) $field['storage']
-                    )
-                ) {
-                    $selectedAmenities[$key] = $field;
-                }
-            }
-            ?>
-
             <div class="scout-report-grid">
-                <?php if ($noAmenities): ?>
+                <?php foreach ($fields as $key => $field): ?>
                     <?php
-                    $renderValue(
-                        'amenity_none',
-                        $placeReportFields['amenity_none']
-                    );
+                    if ($key === 'amenity_none') {
+                        continue;
+                    }
+
+                    $rawAmenityValue =
+                        llama_place_report_get_path(
+                            $placeReportData,
+                            (string) $field['storage']
+                        );
+
+                    $amenityValue =
+                        !empty($rawAmenityValue)
+                            ? 'Yes'
+                            : 'No';
+
+                    $amenityIcon =
+                        $key === 'amenity_picnic_table'
+                            ? 'fa-table'
+                            : llama_place_report_field_icon(
+                                $key,
+                                $field
+                            );
                     ?>
 
-                <?php elseif ($selectedAmenities): ?>
-                    <?php foreach ($fields as $key => $field): ?>
-                        <?php if ($key === 'amenity_none'): ?>
-                            <?php continue; ?>
-                        <?php endif; ?>
-
-                        <?php if (isset($selectedAmenities[$key])): ?>
-                            <?php $renderValue($key, $field); ?>
-                        <?php elseif ($placeReportReadMode === 'moderation'): ?>
-                            <div
-                                class="scout-report-item scout-report-value-item is-unanswered"
-                            >
-                                <div class="scout-report-value-content">
-                                    <span><?= $e($field['label']) ?></span>
-                                    <strong>No</strong>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-
-                <?php else: ?>
-                    <div
-                        class="scout-report-item scout-report-value-item is-unanswered"
-                    >
+                    <div class="scout-report-item scout-report-value-item">
                         <div class="scout-report-value-content">
-                            <span>Amenities observation</span>
-                            <strong>Not provided</strong>
+                            <span><?= $e($field['label']) ?></span>
+                            <strong><?= $amenityValue ?></strong>
                         </div>
+
+                        <i
+                            class="fa-solid <?= $e($amenityIcon) ?> scout-report-value-icon"
+                            aria-hidden="true"
+                        ></i>
                     </div>
-                <?php endif; ?>
+                <?php endforeach; ?>
             </div>
 
         <?php else: ?>
