@@ -334,7 +334,7 @@ function admin_shell_nav_class(string $key, string $active): string
         href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
     >
 
-    <?php foreach ($adminPageStyles as $adminStyle): ?>
+<?php foreach ($adminPageStyles as $adminStyle): ?>
         <?php
         $adminStyle = basename((string) $adminStyle);
         ?>
@@ -379,8 +379,10 @@ function admin_shell_nav_class(string $key, string $active): string
     <div class="admin-sidebar-top">
         <a
             class="admin-brand"
-            href="<?= moderation_e($adminUrl . '/') ?>"
-            aria-label="Llama Scout Admin dashboard"
+            href="<?= moderation_e($siteUrl . '/') ?>"
+            target="_blank"
+            rel="noopener"
+            aria-label="Open the Llama Scout public site"
         >
             <img src="<?= moderation_e($siteUrl . '/images/logo.png') ?>" alt="Llama Scout">
             <span><?= moderation_e($adminShellRole) ?></span>
@@ -619,19 +621,6 @@ function admin_shell_nav_class(string $key, string $active): string
 
     </nav>
 
-    <div class="admin-sidebar-bottom">
-        <a
-            class="admin-sidebar-utility"
-            href="<?= moderation_e($siteUrl . '/') ?>"
-            target="_blank"
-            rel="noopener"
-        >
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-            View public site
-        </a>
-        
-    </div>
-
 </aside>
 
 <div class="admin-sidebar-scrim" data-admin-menu-close></div>
@@ -650,19 +639,19 @@ function admin_shell_nav_class(string $key, string $active): string
     >
         <i class="fa-solid fa-bars" aria-hidden="true"></i>
     </button>
-    
+
     <div class="admin-topbar-title">
         <span><?= moderation_e($adminPageEyebrow) ?></span>
         <strong><?= moderation_e($adminPageTitle) ?></strong>
     </div>
-    
+
     <?php
     require __DIR__
         . '/_topbar-user.php';
     ?>
-    
+
     </header>
-    
+
     <main class="admin-main" id="admin-main">
 
 <header class="admin-page-header">
