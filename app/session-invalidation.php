@@ -40,10 +40,17 @@ function llama_enforce_session_invalidation(
         );
 
 
+    /*
+     * Ask MySQL for an epoch value directly. This avoids any
+     * PHP / SQL timezone interpretation differences.
+     */
     $stmt =
         $db->prepare(
             '
-            SELECT session_invalidated_at
+            SELECT
+                UNIX_TIMESTAMP(
+                    session_invalidated_at
+                )
             FROM users
             WHERE id = ?
             LIMIT 1
@@ -54,40 +61,27 @@ function llama_enforce_session_invalidation(
         $userId
     ]);
 
+
     $invalidatedAt =
-        trim(
-            (string) (
-                $stmt->fetchColumn()
-                ?: ''
-            )
+        (int) (
+            $stmt->fetchColumn()
+            ?: 0
         );
 
-    if ($invalidatedAt === '') {
+
+    if ($invalidatedAt < 1) {
         return;
     }
 
 
-    try {
-        $invalidatedTimestamp =
-            (
-                new DateTimeImmutable(
-                    $invalidatedAt,
-                    new DateTimeZone('UTC')
-                )
-            )->getTimestamp();
-    } catch (Throwable $exception) {
-        error_log(
-            'Llama Scout session invalidation timestamp error: '
-            . $exception->getMessage()
-        );
-
-        return;
-    }
-
-
+    /*
+     * A session with no login timestamp is not trusted once an
+     * invalidation exists. Sessions created at or before the
+     * invalidation moment are also rejected.
+     */
     if (
         $loggedInAt > 0
-        && $loggedInAt > $invalidatedTimestamp
+        && $loggedInAt > $invalidatedAt
     ) {
         return;
     }
@@ -112,13 +106,17 @@ function llama_invalidate_user_authentication(
     $db->beginTransaction();
 
     try {
+        /*
+         * Do not erase last_seen_at here. It is useful historical
+         * information and lets Basecamp show when the account was
+         * last active before it was revoked.
+         */
         $stmt =
             $db->prepare(
                 '
                 UPDATE users
-                SET
-                    session_invalidated_at = UTC_TIMESTAMP(),
-                    last_seen_at = NULL
+                SET session_invalidated_at =
+                    UTC_TIMESTAMP()
                 WHERE id = ?
                 '
             );
