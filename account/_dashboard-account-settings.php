@@ -114,6 +114,33 @@ declare(strict_types=1);
         </a>
 
 
+        <?php if (
+            llama_passkey_account_is_owner(
+                db(),
+                (int) ($user['id'] ?? 0)
+            )
+        ): ?>
+            <a
+                class="account-action-card"
+                href="/passkeys.php"
+            >
+                <i
+                    class="fa-solid fa-fingerprint"
+                    aria-hidden="true"
+                ></i>
+
+                <span>
+                    <strong>Passkeys</strong>
+
+                    <small>
+                        Add and manage passkeys for faster Owner sign-in
+                        on Apple and Android devices.
+                    </small>
+                </span>
+            </a>
+        <?php endif; ?>
+
+
         <a
             class="account-action-card account-action-card-danger"
             href="/delete-account.php"
