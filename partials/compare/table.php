@@ -6,15 +6,24 @@ $columnCount =
     count(
         $comparePlaces
     );
+
+$columnClass =
+    'has-'
+    . max(
+        LLAMA_COMPARE_MIN_PLACES,
+        min(
+            LLAMA_COMPARE_MAX_PLACES,
+            $columnCount
+        )
+    )
+    . '-places';
 ?>
 
 <section
     class="compare-results"
     aria-labelledby="compare-results-heading"
 >
-
     <div class="compare-results-heading">
-
         <div>
             <p class="compare-eyebrow">
                 Side by Side
@@ -30,26 +39,15 @@ $columnCount =
             Ratings are displayed as reported.
             A higher number is not automatically better for every metric.
         </p>
-
     </div>
 
-
     <div class="compare-table-scroll">
-
-        <div
-            class="compare-table"
-            style="--compare-place-count: <?= (int) $columnCount ?>;"
-        >
-
+        <div class="compare-table <?= llama_compare_h($columnClass) ?>">
             <div class="compare-corner">
                 <span>Place</span>
             </div>
 
-
-            <?php foreach (
-                $comparePlaces
-                as $place
-            ): ?>
+            <?php foreach ($comparePlaces as $place): ?>
                 <?php
                 $imageUrl =
                     llama_compare_image_url(
@@ -84,16 +82,13 @@ $columnCount =
                 ?>
 
                 <article class="compare-place-header">
-
                     <a
                         class="compare-place-photo"
                         href="/place.php?slug=<?= rawurlencode(
                             (string) $place['slug']
                         ) ?>"
                     >
-
                         <?php if ($imageUrl !== ''): ?>
-
                             <img
                                 src="<?= llama_compare_h(
                                     $imageUrl
@@ -102,23 +97,17 @@ $columnCount =
                                     $imageAlt
                                 ) ?>"
                             >
-
                         <?php else: ?>
-
                             <span>
                                 <i
                                     class="fa-solid fa-mountain-sun"
                                     aria-hidden="true"
                                 ></i>
                             </span>
-
                         <?php endif; ?>
-
                     </a>
 
-
                     <div class="compare-place-header-copy">
-
                         <small>
                             <?= llama_compare_h(
                                 llama_compare_label(
@@ -155,21 +144,12 @@ $columnCount =
                                 aria-hidden="true"
                             ></i>
                         </a>
-
                     </div>
-
                 </article>
-
             <?php endforeach; ?>
 
-
-            <?php foreach (
-                $compareSections
-                as $section
-            ): ?>
-
+            <?php foreach ($compareSections as $section): ?>
                 <div class="compare-section-heading">
-
                     <i
                         class="fa-solid <?= llama_compare_h(
                             (string) $section['icon']
@@ -180,15 +160,9 @@ $columnCount =
                     <?= llama_compare_h(
                         (string) $section['title']
                     ) ?>
-
                 </div>
 
-
-                <?php foreach (
-                    (array) $section['rows']
-                    as $row
-                ): ?>
-
+                <?php foreach ((array) $section['rows'] as $row): ?>
                     <?php if (
                         !llama_compare_row_has_data(
                             $comparePlaces,
@@ -204,11 +178,7 @@ $columnCount =
                         ) ?>
                     </div>
 
-
-                    <?php foreach (
-                        $comparePlaces
-                        as $place
-                    ): ?>
+                    <?php foreach ($comparePlaces as $place): ?>
                         <?php
                         $value =
                             llama_compare_format_row_value(
@@ -239,7 +209,6 @@ $columnCount =
                                 <?= $isNo ? 'is-no' : '' ?>
                                 <?= $isRating ? 'is-rating' : '' ?>"
                         >
-
                             <?php if ($isYes): ?>
                                 <i
                                     class="fa-solid fa-circle-check"
@@ -251,7 +220,6 @@ $columnCount =
                                     aria-hidden="true"
                                 ></i>
                             <?php endif; ?>
-
 
                             <?php if ($isRating): ?>
                                 <?php
@@ -275,23 +243,15 @@ $columnCount =
                                 </span>
                             <?php endif; ?>
 
-
                             <span>
                                 <?= llama_compare_h(
                                     $value
                                 ) ?>
                             </span>
-
                         </div>
-
                     <?php endforeach; ?>
-
                 <?php endforeach; ?>
-
             <?php endforeach; ?>
-
         </div>
-
     </div>
-
 </section>
