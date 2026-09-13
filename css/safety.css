@@ -1,0 +1,283 @@
+/* =========================================================
+   LLAMA SCOUT
+   STANDALONE SAFETY + ERROR PAGES
+
+   Keep this file independent from the application stylesheet stack.
+   safety.php must remain usable even when the app bootstrap fails.
+   ========================================================= */
+
+:root {
+    color-scheme: dark;
+
+    --safety-bg: #111312;
+    --safety-panel: #1b1e1c;
+    --safety-panel-2: #222623;
+    --safety-line: rgba(255, 255, 255, .12);
+    --safety-text: #f4f5f4;
+    --safety-muted: #a9b0ab;
+    --safety-accent: #e7a85d;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+
+    display: grid;
+    place-items: center;
+
+    margin: 0;
+    padding: 28px;
+
+    background:
+        radial-gradient(
+            circle at top,
+            rgba(231, 168, 93, .08),
+            transparent 34rem
+        ),
+        var(--safety-bg);
+
+    color: var(--safety-text);
+
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+.safety-shell {
+    width: min(720px, 100%);
+}
+
+.safety-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 22px;
+}
+
+.safety-brand img {
+    width: min(220px, 58vw);
+    max-height: 84px;
+
+    object-fit: contain;
+}
+
+.safety-card {
+    padding:
+        clamp(
+            28px,
+            6vw,
+            52px
+        );
+
+    border: 1px solid var(--safety-line);
+    border-radius: 24px;
+
+    background:
+        linear-gradient(
+            180deg,
+            var(--safety-panel-2),
+            var(--safety-panel)
+        );
+
+    box-shadow:
+        0 24px 80px
+        rgba(0, 0, 0, .28);
+
+    text-align: center;
+}
+
+.safety-icon {
+    margin-bottom: 18px;
+
+    font-size: 38px;
+    line-height: 1;
+}
+
+.safety-eyebrow {
+    margin: 0 0 9px;
+
+    color: var(--safety-accent);
+
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .13em;
+
+    text-transform: uppercase;
+}
+
+.safety-card h1 {
+    margin: 0;
+
+    font-size:
+        clamp(
+            32px,
+            7vw,
+            52px
+        );
+
+    line-height: 1.02;
+    letter-spacing: -.04em;
+}
+
+.safety-message {
+    max-width: 570px;
+
+    margin: 20px auto 0;
+
+    color: var(--safety-muted);
+
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.safety-requested {
+    max-width: 100%;
+
+    margin: 22px auto 0;
+    padding: 12px 14px;
+
+    overflow-wrap: anywhere;
+
+    border: 1px solid var(--safety-line);
+    border-radius: 12px;
+
+    background: rgba(0, 0, 0, .17);
+    color: var(--safety-muted);
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+    font-size: 13px;
+}
+
+.safety-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+
+    margin-top: 30px;
+}
+
+.safety-button {
+    min-height: 46px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 18px;
+
+    border: 1px solid var(--safety-line);
+    border-radius: 12px;
+
+    background: transparent;
+    color: var(--safety-text);
+
+    font: inherit;
+    font-weight: 750;
+
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.safety-button:hover,
+.safety-button:focus-visible {
+    border-color: var(--safety-text);
+}
+
+.safety-button-primary {
+    background: var(--safety-text);
+    border-color: var(--safety-text);
+    color: #101210;
+}
+
+.safety-footer {
+    margin: 18px 0 0;
+
+    color: #767d78;
+
+    text-align: center;
+    font-size: 13px;
+}
+
+@media (max-width: 520px) {
+
+    body {
+        padding: 18px;
+    }
+
+    .safety-card {
+        border-radius: 18px;
+    }
+
+    .safety-actions {
+        display: grid;
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .safety-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+
+    .safety-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+
+    :root {
+        color-scheme: light;
+
+        --safety-bg: #f3f4f1;
+        --safety-panel: #ffffff;
+        --safety-panel-2: #ffffff;
+        --safety-line: rgba(18, 24, 20, .13);
+        --safety-text: #151915;
+        --safety-muted: #626a64;
+        --safety-accent: #9a5b18;
+    }
+
+    .safety-card {
+        box-shadow:
+            0 24px 70px
+            rgba(25, 32, 27, .09);
+    }
+
+    .safety-requested {
+        background: rgba(0, 0, 0, .025);
+    }
+
+    .safety-button-primary {
+        background: #151915;
+        border-color: #151915;
+        color: #ffffff;
+    }
+}
