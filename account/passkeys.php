@@ -79,8 +79,8 @@ require
 
         <p>
             Add separate passkeys for the devices you use.
-            A passkey will eventually let this Owner account sign in
-            without entering a password or authenticator code.
+            A passkey lets this Owner account sign in without entering
+            a password or authenticator code.
         </p>
     </header>
 
@@ -284,7 +284,7 @@ require
                 <h2>Fallback stays available</h2>
 
                 <p>
-                    Adding a passkey does not remove your password, TOTP,
+                    Passkey sign-in does not remove your password, TOTP,
                     recovery codes, or Support PIN. Those remain available
                     if your devices are lost.
                 </p>

@@ -8,13 +8,15 @@ declare(strict_types=1);
    LOGIN
    account/login.php
 
-   Login flow:
-   1. Turnstile completes as the page loads.
-   2. Password is verified.
-   3. Ordinary accounts complete sign-in normally.
-   4. Owner/Admin accounts are routed into MFA before any
-      authenticated user session or Remember Me token is
-      created.
+   Password flow:
+   - Turnstile
+   - Password
+   - MFA when required/enabled
+
+   Passkey flow:
+   - WebAuthn user verification
+   - Successful passkey = strong authentication
+   - No separate TOTP challenge after a valid passkey
    ========================================================= */
 
 
@@ -25,6 +27,14 @@ require_once
 require_once
     dirname(__DIR__)
     . '/app/mfa.php';
+
+require_once
+    dirname(__DIR__)
+    . '/app/passkeys.php';
+
+require_once
+    dirname(__DIR__)
+    . '/app/passkey-library.php';
 
 
 start_llama_session();
@@ -56,80 +66,58 @@ $existingUser =
 
 
 if ($existingUser) {
-
     $existingUserId =
-        (int)
-        $existingUser['id'];
-
-
-    /*
-     * Once centralized MFA enforcement is added to auth.php,
-     * privileged sessions will also be checked globally.
-     *
-     * For this page, never send a privileged user forward
-     * merely because a pre-MFA session exists unless this
-     * session has already completed MFA.
-     */
+        (int) $existingUser['id'];
 
     if (
-    (
-        llama_mfa_role_requires_mfa(
+        (
+            llama_mfa_role_requires_mfa(
+                $existingUserId
+            )
+            ||
+            llama_mfa_is_enabled(
+                $existingUserId
+            )
+        )
+        &&
+        !llama_mfa_session_is_verified(
             $existingUserId
         )
-        ||
-        llama_mfa_is_enabled(
-            $existingUserId
-        )
-    )
-    &&
-    !llama_mfa_session_is_verified(
-        $existingUserId
-    )
-) {
-
+    ) {
         llama_mfa_begin_login_challenge(
             $existingUserId,
             false,
             $returnUrl
         );
 
-
         if (
             llama_mfa_is_enabled(
                 $existingUserId
             )
         ) {
-
             header(
                 'Location: /mfa-challenge.php'
             );
-
-
         } else {
-
             header(
                 'Location: /mfa-setup.php'
             );
         }
 
-
         exit;
     }
 
-
     header(
         'Location: '
-        .
-        $destination
+        . $destination
     );
-
 
     exit;
 }
 
 
 /* =========================================================
-   TURNSTILE CONFIG
+   TURNSTILE
    ========================================================= */
 
 
@@ -160,61 +148,33 @@ $turnstileSecretKey =
     );
 
 
-$error =
-    '';
-
-
-$login =
-    '';
-
-
-$remember =
-    true;
-
-
-/* =========================================================
-   TURNSTILE VERIFY
-   ========================================================= */
-
-
 function verify_turnstile(
     string $secretKey,
     string $token
 ): bool {
-
     if (
         $secretKey === ''
         ||
         $token === ''
     ) {
-
         return false;
     }
-
 
     $curl =
         curl_init(
             'https://challenges.cloudflare.com/turnstile/v0/siteverify'
         );
 
-
-    if (
-        $curl === false
-    ) {
-
+    if ($curl === false) {
         return false;
     }
 
-
     $fields = [
-
         'secret' =>
             $secretKey,
-
         'response' =>
             $token,
     ];
-
 
     $remoteIp =
         trim(
@@ -224,37 +184,26 @@ function verify_turnstile(
             )
         );
 
-
-    if (
-        $remoteIp !== ''
-    ) {
-
+    if ($remoteIp !== '') {
         $fields['remoteip'] =
             $remoteIp;
     }
 
-
     curl_setopt_array(
         $curl,
         [
-
             CURLOPT_POST =>
                 true,
-
             CURLOPT_POSTFIELDS =>
                 http_build_query(
                     $fields
                 ),
-
             CURLOPT_RETURNTRANSFER =>
                 true,
-
             CURLOPT_CONNECTTIMEOUT =>
                 5,
-
             CURLOPT_TIMEOUT =>
                 10,
-
             CURLOPT_HTTPHEADER =>
                 [
                     'Content-Type: application/x-www-form-urlencoded',
@@ -262,37 +211,28 @@ function verify_turnstile(
         ]
     );
 
-
     $response =
         curl_exec(
             $curl
         );
 
-
     $status =
-        (int)
-        curl_getinfo(
+        (int) curl_getinfo(
             $curl,
             CURLINFO_HTTP_CODE
         );
-
 
     curl_close(
         $curl
     );
 
-
     if (
-        !is_string(
-            $response
-        )
+        !is_string($response)
         ||
         $status !== 200
     ) {
-
         return false;
     }
-
 
     $result =
         json_decode(
@@ -300,11 +240,8 @@ function verify_turnstile(
             true
         );
 
-
     return
-        is_array(
-            $result
-        )
+        is_array($result)
         &&
         !empty(
             $result['success']
@@ -313,14 +250,13 @@ function verify_turnstile(
 
 
 /* =========================================================
-   CREDENTIAL LOOKUP FOR MFA ROUTING
+   USER LOOKUP FOR PASSWORD + MFA ROUTING
    ========================================================= */
 
 
 function login_find_user(
     string $login
 ): ?array {
-
     $login =
         strtolower(
             trim(
@@ -328,14 +264,9 @@ function login_find_user(
             )
         );
 
-
-    if (
-        $login === ''
-    ) {
-
+    if ($login === '') {
         return null;
     }
-
 
     $stmt =
         db()->prepare(
@@ -357,38 +288,37 @@ function login_find_user(
             '
         );
 
-
     $stmt->execute([
         $login,
         $login,
     ]);
-
 
     $user =
         $stmt->fetch(
             PDO::FETCH_ASSOC
         );
 
-
     return
-        is_array(
-            $user
-        )
+        is_array($user)
             ? $user
             : null;
 }
 
 
 /* =========================================================
-   POST
+   PASSWORD POST
    ========================================================= */
 
 
+$error = '';
+$login = '';
+$remember = true;
+
+
 if (
-    $_SERVER['REQUEST_METHOD']
+    ($_SERVER['REQUEST_METHOD'] ?? '')
     === 'POST'
 ) {
-
     $login =
         trim(
             (string) (
@@ -397,19 +327,16 @@ if (
             )
         );
 
-
     $password =
         (string) (
             $_POST['password']
             ?? ''
         );
 
-
     $remember =
         isset(
             $_POST['remember']
         );
-
 
     $turnstileToken =
         trim(
@@ -419,29 +346,21 @@ if (
             )
         );
 
-
     if (
         $turnstileSiteKey === ''
         ||
         $turnstileSecretKey === ''
     ) {
-
         error_log(
             'Llama Scout login Turnstile configuration is missing.'
         );
 
-
         $error =
             'Security verification is temporarily unavailable.';
 
-
-    } elseif (
-        $turnstileToken === ''
-    ) {
-
+    } elseif ($turnstileToken === '') {
         $error =
             'Security verification was not ready. Please try again.';
-
 
     } elseif (
         !verify_turnstile(
@@ -449,41 +368,28 @@ if (
             $turnstileToken
         )
     ) {
-
         error_log(
             'Llama Scout login blocked by Turnstile.'
         );
 
-
         $error =
             'Security verification failed. Please try again.';
-
 
     } elseif (
         $login === ''
         ||
         $password === ''
     ) {
-
         $error =
             'Enter your email or username and password.';
 
-
     } else {
-
-        /*
-         * A fresh password submission replaces any abandoned
-         * MFA challenge that may still exist in the session.
-         */
-
         llama_mfa_clear_session_state();
-
 
         $candidate =
             login_find_user(
                 $login
             );
-
 
         if (
             !$candidate
@@ -491,119 +397,74 @@ if (
             !password_verify(
                 $password,
                 (string) (
-                    $candidate[
-                        'password_hash'
-                    ]
+                    $candidate['password_hash']
                     ?? ''
                 )
             )
         ) {
-
             $error =
                 'The email, username, or password is incorrect.';
 
-
         } else {
-
             $candidateStatus =
                 (string) (
-                    $candidate[
-                        'status'
-                    ]
+                    $candidate['status']
                     ?? ''
                 );
-
 
             if (
                 $candidateStatus ===
                 'suspended'
             ) {
-
                 $error =
                     'This account has been suspended. Please contact Llama Scout if you believe this is an error.';
-
 
             } elseif (
                 $candidateStatus ===
                 'disabled'
             ) {
-
                 $error =
                     'This account is currently disabled. Please contact Llama Scout for assistance.';
 
-
             } else {
-
                 $candidateUserId =
-                    (int)
-                    $candidate['id'];
+                    (int) $candidate['id'];
 
-
-            if (
-                llama_mfa_role_requires_mfa(
-                    $candidateUserId
-                )
-                ||
-                llama_mfa_is_enabled(
-                    $candidateUserId
-                )
-            ) {
-
-                    /*
-                     * Do NOT call attempt_login_result() here.
-                     *
-                     * That function creates the authenticated
-                     * session and may create a Remember Me
-                     * token. Privileged users must complete
-                     * MFA before either happens.
-                     */
-
+                if (
+                    llama_mfa_role_requires_mfa(
+                        $candidateUserId
+                    )
+                    ||
+                    llama_mfa_is_enabled(
+                        $candidateUserId
+                    )
+                ) {
                     llama_mfa_begin_login_challenge(
                         $candidateUserId,
                         $remember,
                         $returnUrl
                     );
 
-
-                    /*
-                     * Remove any older persistent login token
-                     * belonging to this privileged account.
-                     * A new one is created only after MFA
-                     * succeeds.
-                     */
-
                     llama_mfa_invalidate_remember_tokens(
                         $candidateUserId
                     );
-
 
                     if (
                         llama_mfa_is_enabled(
                             $candidateUserId
                         )
                     ) {
-
                         header(
                             'Location: /mfa-challenge.php'
                         );
-
-
                     } else {
-
                         header(
                             'Location: /mfa-setup.php'
                         );
                     }
 
-
                     exit;
                 }
-
-
-                /*
-                 * Ordinary member/Scout login keeps using the
-                 * existing authentication implementation.
-                 */
 
                 $loginResult =
                     attempt_login_result(
@@ -612,34 +473,24 @@ if (
                         $remember
                     );
 
-
                 if (
                     $loginResult ===
                     'success'
                 ) {
-
                     header(
                         'Location: '
-                        .
-                        $destination
+                        . $destination
                     );
-
 
                     exit;
                 }
 
-
                 $error =
-                    match (
-                        $loginResult
-                    ) {
-
+                    match ($loginResult) {
                         'suspended' =>
                             'This account has been suspended. Please contact Llama Scout if you believe this is an error.',
-
                         'disabled' =>
                             'This account is currently disabled. Please contact Llama Scout for assistance.',
-
                         default =>
                             'The email, username, or password is incorrect.',
                     };
@@ -650,14 +501,13 @@ if (
 
 
 /* =========================================================
-   OUTPUT ESCAPE
+   OUTPUT
    ========================================================= */
 
 
 function e(
     string $value
 ): string {
-
     return htmlspecialchars(
         $value,
         ENT_QUOTES,
@@ -665,6 +515,9 @@ function e(
     );
 }
 
+
+$passkeyLoginAvailable =
+    llama_passkey_library_ready();
 
 ?>
 <!doctype html>
@@ -689,7 +542,6 @@ function e(
     content="Log in to your Llama Scout account."
   >
 
-
   <link
     rel="stylesheet"
     href="https://llamascout.com/css/site.css"
@@ -700,6 +552,10 @@ function e(
     href="https://llamascout.com/css/account/features/auth.css"
   >
 
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+  >
 
   <script
     src="https://llamascout.com/js/accessibility.js"
@@ -711,23 +567,17 @@ function e(
   ): ?>
 
     <script>
-
       function llamaLoginButton() {
-
         return document.getElementById(
           'login-submit'
         );
       }
 
-
       function llamaTurnstileReady() {
-
         const button =
           llamaLoginButton();
 
-
         if (button) {
-
           button.disabled =
             false;
 
@@ -737,15 +587,11 @@ function e(
         }
       }
 
-
       function llamaTurnstileWaiting() {
-
         const button =
           llamaLoginButton();
 
-
         if (button) {
-
           button.disabled =
             true;
 
@@ -756,14 +602,10 @@ function e(
         }
       }
 
-
       function llamaTurnstileError() {
-
         llamaTurnstileWaiting();
       }
-
     </script>
-
 
     <script
       src="https://challenges.cloudflare.com/turnstile/v0/api.js"
@@ -801,26 +643,52 @@ function e(
 
 
     <p class="account-auth-intro">
-
       Log in to access your Llama Scout account,
       saved places, membership, and Scout activity.
-
     </p>
 
 
-    <?php if (
-        $error !== ''
-    ): ?>
+    <?php if ($error !== ''): ?>
 
       <div
         class="account-error"
         role="alert"
       >
+        <?= e($error) ?>
+      </div>
 
-        <?= e(
-            $error
-        ) ?>
+    <?php endif; ?>
 
+
+    <?php if ($passkeyLoginAvailable): ?>
+
+      <div class="account-passkey-login">
+
+        <button
+          id="passkey-login-button"
+          type="button"
+          class="account-passkey-button"
+        >
+          <i
+            class="fa-solid fa-fingerprint"
+            aria-hidden="true"
+          ></i>
+
+          Sign in with a passkey
+        </button>
+
+        <div
+          id="passkey-login-message"
+          class="account-passkey-message"
+          role="status"
+          hidden
+        ></div>
+
+      </div>
+
+
+      <div class="account-auth-divider">
+        <span>or use your password</span>
       </div>
 
     <?php endif; ?>
@@ -836,9 +704,7 @@ function e(
         <input
           type="hidden"
           name="return"
-          value="<?= e(
-              $returnUrl
-          ) ?>"
+          value="<?= e($returnUrl) ?>"
         >
 
       <?php endif; ?>
@@ -852,9 +718,7 @@ function e(
 
           <div
             class="cf-turnstile"
-            data-sitekey="<?= e(
-                $turnstileSiteKey
-            ) ?>"
+            data-sitekey="<?= e($turnstileSiteKey) ?>"
             data-theme="auto"
             data-callback="llamaTurnstileReady"
             data-expired-callback="llamaTurnstileWaiting"
@@ -880,9 +744,7 @@ function e(
           autocomplete="username"
           autocapitalize="none"
           spellcheck="false"
-          value="<?= e(
-              $login
-          ) ?>"
+          value="<?= e($login) ?>"
           required
         >
 
@@ -970,6 +832,392 @@ function e(
 
 
 </main>
+
+
+<?php if ($passkeyLoginAvailable): ?>
+
+<script>
+(() => {
+    'use strict';
+
+    const button =
+        document.getElementById(
+            'passkey-login-button'
+        );
+
+    const message =
+        document.getElementById(
+            'passkey-login-message'
+        );
+
+    if (!button || !message) {
+        return;
+    }
+
+    const returnUrl =
+        <?= json_encode(
+            $returnUrl ?? '',
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const showMessage = (
+        text,
+        isError = false
+    ) => {
+        message.hidden =
+            false;
+
+        message.textContent =
+            text;
+
+        message.classList.toggle(
+            'is-error',
+            isError
+        );
+
+        message.classList.toggle(
+            'is-success',
+            !isError
+        );
+    };
+
+    const base64urlToBytes = (
+        value
+    ) => {
+        const padding =
+            '='.repeat(
+                (4 - (value.length % 4)) % 4
+            );
+
+        const base64 =
+            (value + padding)
+                .replace(/-/g, '+')
+                .replace(/_/g, '/');
+
+        const binary =
+            atob(
+                base64
+            );
+
+        const bytes =
+            new Uint8Array(
+                binary.length
+            );
+
+        for (
+            let index = 0;
+            index < binary.length;
+            index += 1
+        ) {
+            bytes[index] =
+                binary.charCodeAt(
+                    index
+                );
+        }
+
+        return bytes;
+    };
+
+    const bytesToBase64url = (
+        value
+    ) => {
+        const bytes =
+            new Uint8Array(
+                value
+            );
+
+        let binary =
+            '';
+
+        for (const byte of bytes) {
+            binary +=
+                String.fromCharCode(
+                    byte
+                );
+        }
+
+        return btoa(
+            binary
+        )
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/g, '');
+    };
+
+    const parseRequestOptions = (
+        json
+    ) => {
+        if (
+            typeof PublicKeyCredential !==
+                'undefined'
+            &&
+            typeof PublicKeyCredential
+                .parseRequestOptionsFromJSON ===
+                'function'
+        ) {
+            return PublicKeyCredential
+                .parseRequestOptionsFromJSON(
+                    json
+                );
+        }
+
+        const copy =
+            structuredClone(
+                json
+            );
+
+        copy.challenge =
+            base64urlToBytes(
+                copy.challenge
+            );
+
+        if (
+            Array.isArray(
+                copy.allowCredentials
+            )
+        ) {
+            copy.allowCredentials =
+                copy.allowCredentials.map(
+                    (item) => ({
+                        ...item,
+                        id:
+                            base64urlToBytes(
+                                item.id
+                            ),
+                    })
+                );
+        }
+
+        return copy;
+    };
+
+    const credentialToJson = (
+        credential
+    ) => {
+        if (
+            typeof credential.toJSON ===
+            'function'
+        ) {
+            return credential.toJSON();
+        }
+
+        const response =
+            credential.response;
+
+        return {
+            id:
+                credential.id,
+            rawId:
+                bytesToBase64url(
+                    credential.rawId
+                ),
+            type:
+                credential.type,
+            authenticatorAttachment:
+                credential
+                    .authenticatorAttachment
+                ?? null,
+            clientExtensionResults:
+                credential
+                    .getClientExtensionResults(),
+            response: {
+                clientDataJSON:
+                    bytesToBase64url(
+                        response.clientDataJSON
+                    ),
+                authenticatorData:
+                    bytesToBase64url(
+                        response.authenticatorData
+                    ),
+                signature:
+                    bytesToBase64url(
+                        response.signature
+                    ),
+                userHandle:
+                    response.userHandle
+                        ? bytesToBase64url(
+                            response.userHandle
+                        )
+                        : null,
+            },
+        };
+    };
+
+    button.addEventListener(
+        'click',
+        async () => {
+            if (
+                !window.PublicKeyCredential
+                ||
+                !navigator.credentials
+            ) {
+                showMessage(
+                    'This browser does not support passkeys.',
+                    true
+                );
+
+                return;
+            }
+
+            button.disabled =
+                true;
+
+            button.textContent =
+                'Preparing passkey...';
+
+            message.hidden =
+                true;
+
+            try {
+                const optionsResponse =
+                    await fetch(
+                        '/passkey-login-options.php',
+                        {
+                            method:
+                                'POST',
+                            credentials:
+                                'same-origin',
+                            headers: {
+                                'Content-Type':
+                                    'application/json',
+                            },
+                            body:
+                                '{}',
+                        }
+                    );
+
+                const optionsData =
+                    await optionsResponse.json();
+
+                if (!optionsResponse.ok) {
+                    throw new Error(
+                        optionsData.message
+                        ||
+                        'Passkey sign-in could not begin.'
+                    );
+                }
+
+                button.textContent =
+                    'Waiting for passkey...';
+
+                const credential =
+                    await navigator.credentials.get({
+                        publicKey:
+                            parseRequestOptions(
+                                optionsData
+                            ),
+                    });
+
+                if (!credential) {
+                    throw new Error(
+                        'Passkey sign-in was cancelled.'
+                    );
+                }
+
+                button.textContent =
+                    'Signing in...';
+
+                let verifyUrl =
+                    '/passkey-login-verify.php';
+
+                if (returnUrl) {
+                    verifyUrl +=
+                        '?return='
+                        +
+                        encodeURIComponent(
+                            returnUrl
+                        );
+                }
+
+                const verifyResponse =
+                    await fetch(
+                        verifyUrl,
+                        {
+                            method:
+                                'POST',
+                            credentials:
+                                'same-origin',
+                            headers: {
+                                'Content-Type':
+                                    'application/json',
+                            },
+                            body:
+                                JSON.stringify(
+                                    credentialToJson(
+                                        credential
+                                    )
+                                ),
+                        }
+                    );
+
+                const verifyData =
+                    await verifyResponse.json();
+
+                if (
+                    !verifyResponse.ok
+                    ||
+                    !verifyData.ok
+                ) {
+                    throw new Error(
+                        verifyData.message
+                        ||
+                        'Passkey sign-in failed.'
+                    );
+                }
+
+                showMessage(
+                    'Passkey verified. Signing in...'
+                );
+
+                window.location.assign(
+                    verifyData.destination
+                    ||
+                    'https://account.llamascout.com/'
+                );
+
+            } catch (error) {
+                let text =
+                    'Passkey sign-in did not complete.';
+
+                if (
+                    error
+                    &&
+                    typeof error.message ===
+                        'string'
+                    &&
+                    error.message !== ''
+                ) {
+                    text =
+                        error.message;
+                }
+
+                if (
+                    error
+                    &&
+                    error.name ===
+                        'NotAllowedError'
+                ) {
+                    text =
+                        'Passkey sign-in was cancelled or timed out.';
+                }
+
+                showMessage(
+                    text,
+                    true
+                );
+
+                button.disabled =
+                    false;
+
+                button.innerHTML =
+                    '<i class="fa-solid fa-fingerprint" aria-hidden="true"></i> Sign in with a passkey';
+            }
+        }
+    );
+})();
+</script>
+
+<?php endif; ?>
 
 
 </body>
