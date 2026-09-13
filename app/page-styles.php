@@ -22,13 +22,6 @@ function llama_page_styles(string $scriptName = ''): array
         'promotion-banner.css',
     ];
 
-    /*
-     * On the account subdomain SCRIPT_NAME is normally just
-     * /profile.php, /index.php, etc. Checking the path alone therefore
-     * misclassified account pages as public pages. Use both the path
-     * and the request host so account.llamascout.com always gets the
-     * account stylesheet manifest.
-     */
     $requestHost = strtolower(
         trim(
             (string) (
@@ -79,6 +72,10 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'map.css';
     }
 
+    if (!$isAccount && $basename === 'compare.php') {
+        $styles[] = 'site/pages/compare.css';
+    }
+
     if (!$isAccount && $basename === 'place.php') {
         $styles[] = 'place-detail.css';
         $styles[] = 'site/features/place-shared.css';
@@ -107,10 +104,6 @@ function llama_page_styles(string $scriptName = ''): array
         }
     }
 
-    /*
-     * Public commerce pages only.
-     * Internal fulfillment routing lives under app/ and is not a page.
-     */
     if (
         !$isAccount
         && in_array(
