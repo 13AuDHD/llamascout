@@ -423,7 +423,6 @@ div > div > span {
 
 @media (max-width: 760px) {
 
-    .admin-verification-health-summary,
     .admin-verification-filters,
     .admin-verification-row {
         grid-template-columns: 1fr;
