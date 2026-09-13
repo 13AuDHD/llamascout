@@ -83,6 +83,70 @@
 
 
 /* =========================================================
+   VALIDATION / ERROR ALERT
+   ========================================================= */
+
+
+.place-update-page
+.contribution-message.is-error {
+    position: relative;
+
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+
+    padding: 16px 18px;
+
+    border: 2px solid #d95050;
+    border-left-width: 6px;
+    border-radius: 12px;
+
+    background:
+        color-mix(
+            in srgb,
+            #d95050 15%,
+            var(--surface)
+        );
+
+    color: var(--text);
+
+    font-size: .9rem;
+    font-weight: 800;
+    line-height: 1.5;
+
+    box-shadow:
+        0 0 0 3px
+        color-mix(
+            in srgb,
+            #d95050 12%,
+            transparent
+        );
+}
+
+
+.place-update-page
+.contribution-message.is-error::before {
+    content: "!";
+
+    width: 30px;
+    height: 30px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: #d95050;
+    color: #fff;
+
+    font-size: 1rem;
+    font-weight: 950;
+    line-height: 1;
+}
+
+
+/* =========================================================
    MODERATION REQUEST
    ========================================================= */
 
@@ -314,6 +378,16 @@
 
     .place-update-request-card {
         padding: 14px;
+    }
+
+
+    .place-update-page
+    .contribution-message.is-error {
+        grid-template-columns: 30px minmax(0, 1fr);
+
+        padding: 14px 15px;
+
+        font-size: .84rem;
     }
 
 }
