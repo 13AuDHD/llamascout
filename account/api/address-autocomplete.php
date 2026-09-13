@@ -2,13 +2,24 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
-require_once dirname(__DIR__, 2) . '/app/address-autocomplete.php';
+require_once
+    dirname(__DIR__, 2)
+    . '/app/bootstrap.php';
+
+require_once
+    dirname(__DIR__, 2)
+    . '/app/address-autocomplete.php';
 
 require_login();
 
-header('Content-Type: application/json; charset=UTF-8');
-header('Cache-Control: no-store, max-age=0');
+header(
+    'Content-Type: application/json; charset=UTF-8'
+);
+
+header(
+    'Cache-Control: no-store, max-age=0'
+);
+
 
 function account_address_json(
     array $payload,
@@ -25,6 +36,7 @@ function account_address_json(
     exit;
 }
 
+
 if (
     strtoupper(
         (string) (
@@ -38,27 +50,28 @@ if (
     account_address_json(
         [
             'success' => false,
-            'message' => 'Method not allowed.',
+            'message' =>
+                'Method not allowed.',
         ],
         405
     );
 }
 
-$query =
-    trim(
-        (string) (
-            $_GET['q']
-            ?? ''
-        )
-    );
 
 $latitude = null;
 $longitude = null;
 
 if (
-    isset($_GET['lat'], $_GET['lon'])
-    && is_numeric((string) $_GET['lat'])
-    && is_numeric((string) $_GET['lon'])
+    isset(
+        $_GET['lat'],
+        $_GET['lon']
+    )
+    && is_numeric(
+        (string) $_GET['lat']
+    )
+    && is_numeric(
+        (string) $_GET['lon']
+    )
 ) {
     $candidateLat =
         (float) $_GET['lat'];
@@ -77,7 +90,44 @@ if (
     }
 }
 
+
 try {
+    if (
+        !empty(
+            $_GET['reverse']
+        )
+    ) {
+        if (
+            $latitude === null
+            || $longitude === null
+        ) {
+            throw new InvalidArgumentException(
+                'Location coordinates are required.'
+            );
+        }
+
+        $result =
+            llama_address_reverse_lookup(
+                $latitude,
+                $longitude
+            );
+
+        account_address_json(
+            [
+                'success' => true,
+                'result' => $result,
+            ]
+        );
+    }
+
+    $query =
+        trim(
+            (string) (
+                $_GET['q']
+                ?? ''
+            )
+        );
+
     $results =
         llama_address_autocomplete_query(
             $query,
@@ -95,32 +145,47 @@ try {
                 && $longitude !== null,
         ]
     );
-} catch (InvalidArgumentException $exception) {
+
+} catch (
+    InvalidArgumentException
+    $exception
+) {
     account_address_json(
         [
             'success' => false,
-            'message' => $exception->getMessage(),
+            'message' =>
+                $exception->getMessage(),
         ],
         400
     );
+
 } catch (Throwable $exception) {
-    llama_log_caught_exception(
-        $exception,
-        'api.account_address_autocomplete',
-        [
-            'user_id' =>
-                (int) (
-                    current_user()['id']
-                    ?? 0
-                ),
-        ],
-        [RuntimeException::class]
-    );
+    $reference =
+        llama_log_caught_exception(
+            $exception,
+            'api.account_address_lookup',
+            [
+                'user_id' =>
+                    (int) (
+                        current_user()['id']
+                        ?? 0
+                    ),
+            ],
+            [
+                RuntimeException::class,
+            ]
+        );
 
     account_address_json(
         [
             'success' => false,
-            'message' => $exception->getMessage(),
+            'message' =>
+                $reference === null
+                    ? $exception->getMessage()
+                    : llama_error_message_with_reference(
+                        'Address lookup is temporarily unavailable.',
+                        $reference
+                    ),
         ],
         503
     );
