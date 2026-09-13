@@ -94,23 +94,13 @@ $pageRobots =
 require __DIR__ . '/partials/header.php';
 ?>
 
-<link
-    rel="stylesheet"
-    href="/css/site/pages/compare.css"
->
-
-
 <main
     id="main-content"
     class="compare-page"
 >
-
     <header class="compare-hero">
-
         <div class="compare-shell">
-
             <div class="compare-hero-copy">
-
                 <p class="compare-eyebrow">
                     Complete Access
                 </p>
@@ -125,12 +115,9 @@ require __DIR__ . '/partials/header.php';
                     road access, vehicle fit, sensory conditions,
                     connectivity, amenities, elevation, and more.
                 </p>
-
             </div>
 
-
             <div class="compare-hero-actions">
-
                 <a
                     class="compare-button is-secondary"
                     href="/map.php"
@@ -147,7 +134,6 @@ require __DIR__ . '/partials/header.php';
                     $hasMemberAccess
                     && count($comparePlaces) >= 2
                 ): ?>
-
                     <button
                         class="compare-button"
                         type="button"
@@ -163,22 +149,14 @@ require __DIR__ . '/partials/header.php';
                             Copy Comparison Link
                         </span>
                     </button>
-
                 <?php endif; ?>
-
             </div>
-
         </div>
-
     </header>
 
-
     <div class="compare-shell compare-content">
-
         <?php if (!$hasMemberAccess): ?>
-
             <section class="compare-access-card">
-
                 <span class="compare-access-icon">
                     <i
                         class="fa-solid fa-lock"
@@ -208,41 +186,30 @@ require __DIR__ . '/partials/header.php';
                         See Membership
                     </a>
                 </div>
-
             </section>
-
         <?php else: ?>
-
             <?php
             require __DIR__
                 . '/partials/compare/picker.php';
             ?>
 
-
             <?php if (
                 count($comparePlaces)
                 >= LLAMA_COMPARE_MIN_PLACES
             ): ?>
-
                 <?php
                 require __DIR__
                     . '/partials/compare/table.php';
                 ?>
-
             <?php elseif ($requestedSlugs): ?>
-
                 <div
                     class="compare-notice"
                     role="status"
                 >
-                    Select at least two available Places
-                    to start a comparison.
+                    Add at least one more Place to start comparing.
                 </div>
-
             <?php else: ?>
-
                 <section class="compare-empty">
-
                     <i
                         class="fa-solid fa-code-compare"
                         aria-hidden="true"
@@ -253,20 +220,13 @@ require __DIR__ . '/partials/header.php';
                     </h2>
 
                     <p>
-                        Search the list above, choose two to four,
-                        then build the comparison.
+                        Search above and add the Places you want to compare.
                     </p>
-
                 </section>
-
             <?php endif; ?>
-
         <?php endif; ?>
-
     </div>
-
 </main>
-
 
 <script src="/js/compare.js"></script>
 
