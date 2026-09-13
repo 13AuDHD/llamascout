@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/username-policy.php';
+require_once __DIR__ . '/timezone.php';
 
 
 function llama_account_info_schema_ready(PDO $db): bool
@@ -11,6 +12,16 @@ function llama_account_info_schema_ready(PDO $db): bool
     $requiredColumns = [
         'phone_number',
         'pending_email',
+        'full_name',
+        'address_line_1',
+        'address_line_2',
+        'address_city',
+        'address_state',
+        'address_postal_code',
+        'address_country',
+        'address_latitude',
+        'address_longitude',
+        'timezone',
     ];
 
     $stmt =
@@ -24,9 +35,7 @@ function llama_account_info_schema_ready(PDO $db): bool
         );
 
     foreach ($requiredColumns as $column) {
-        $stmt->execute([
-            $column,
-        ]);
+        $stmt->execute([$column]);
 
         if (!$stmt->fetchColumn()) {
             return false;
@@ -44,8 +53,7 @@ function llama_account_info_schema_ready(PDO $db): bool
 
     $tableStmt->execute();
 
-    return
-        (bool) $tableStmt->fetchColumn();
+    return (bool) $tableStmt->fetchColumn();
 }
 
 
@@ -61,7 +69,16 @@ function llama_account_info_user(
                 pending_email,
                 username,
                 display_name,
+                full_name,
                 phone_number,
+                address_line_1,
+                address_line_2,
+                address_city,
+                address_state,
+                address_postal_code,
+                address_country,
+                address_latitude,
+                address_longitude,
                 timezone,
                 status,
                 email_verified_at,
@@ -72,14 +89,10 @@ function llama_account_info_user(
              LIMIT 1'
         );
 
-    $stmt->execute([
-        $userId,
-    ]);
+    $stmt->execute([$userId]);
 
     $row =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ?: null;
 }
@@ -144,27 +157,83 @@ function llama_account_info_assert_email_available(
 function llama_account_info_normalize_phone(
     string $phone
 ): ?string {
-    $phone =
-        trim($phone);
+    $phone = trim($phone);
 
     if ($phone === '') {
         return null;
     }
 
-    if (mb_strlen($phone) > 32) {
-        throw new InvalidArgumentException(
-            'Phone number is too long.'
-        );
+    $digits =
+        preg_replace(
+            '/\D+/',
+            '',
+            $phone
+        )
+        ?? '';
+
+    if (strlen($digits) === 10) {
+        return '+1' . $digits;
     }
 
     if (
-        !preg_match(
-            '/^[0-9+().\-\sxeXtT]+$/',
-            $phone
+        strlen($digits) === 11
+        && str_starts_with(
+            $digits,
+            '1'
         )
     ) {
-        throw new InvalidArgumentException(
-            'Enter a valid phone number.'
+        return '+' . $digits;
+    }
+
+    if (
+        str_starts_with(
+            $phone,
+            '+'
+        )
+        && strlen($digits) >= 7
+        && strlen($digits) <= 15
+    ) {
+        return '+' . $digits;
+    }
+
+    throw new InvalidArgumentException(
+        'Enter a complete phone number. US numbers may be entered with or without +1. International numbers must include the country code.'
+    );
+}
+
+
+function llama_account_info_format_phone(
+    ?string $phone
+): string {
+    $phone =
+        trim(
+            (string) $phone
+        );
+
+    if ($phone === '') {
+        return '';
+    }
+
+    $digits =
+        preg_replace(
+            '/\D+/',
+            '',
+            $phone
+        )
+        ?? '';
+
+    if (
+        strlen($digits) === 11
+        && str_starts_with(
+            $digits,
+            '1'
+        )
+    ) {
+        return sprintf(
+            '(%s) %s-%s',
+            substr($digits, 1, 3),
+            substr($digits, 4, 3),
+            substr($digits, 7, 4)
         );
     }
 
@@ -172,12 +241,70 @@ function llama_account_info_normalize_phone(
 }
 
 
-function llama_account_info_save_identity(
+function llama_account_info_clean_text(
+    mixed $value,
+    int $maxLength,
+    string $label
+): ?string {
+    $value =
+        trim(
+            (string) $value
+        );
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (
+        mb_strlen($value)
+        > $maxLength
+    ) {
+        throw new InvalidArgumentException(
+            $label
+            . ' is too long.'
+        );
+    }
+
+    return $value;
+}
+
+
+function llama_account_info_coordinate(
+    mixed $value,
+    float $minimum,
+    float $maximum
+): ?float {
+    if (
+        $value === null
+        || trim(
+            (string) $value
+        ) === ''
+    ) {
+        return null;
+    }
+
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $number = (float) $value;
+
+    if (
+        $number < $minimum
+        || $number > $maximum
+    ) {
+        return null;
+    }
+
+    return $number;
+}
+
+
+function llama_account_info_save_public_identity(
     PDO $db,
     int $userId,
     string $displayName,
-    string $username,
-    string $phone
+    string $username
 ): void {
     $displayName =
         trim($displayName);
@@ -230,6 +357,38 @@ function llama_account_info_save_identity(
         );
     }
 
+    $stmt =
+        $db->prepare(
+            'UPDATE users
+             SET
+                display_name = ?,
+                username = ?
+             WHERE id = ?
+               AND anonymized_at IS NULL'
+        );
+
+    $stmt->execute([
+        $displayName,
+        $username,
+        $userId,
+    ]);
+}
+
+
+function llama_account_info_save_identity(
+    PDO $db,
+    int $userId,
+    string $displayName,
+    string $username,
+    string $phone
+): void {
+    llama_account_info_save_public_identity(
+        $db,
+        $userId,
+        $displayName,
+        $username
+    );
+
     $phoneNumber =
         llama_account_info_normalize_phone(
             $phone
@@ -238,20 +397,192 @@ function llama_account_info_save_identity(
     $stmt =
         $db->prepare(
             'UPDATE users
-             SET
-                display_name = ?,
-                username = ?,
-                phone_number = ?
+             SET phone_number = ?
              WHERE id = ?
                AND anonymized_at IS NULL'
         );
 
     $stmt->execute([
-        $displayName,
-        $username,
         $phoneNumber,
         $userId,
     ]);
+}
+
+
+function llama_account_info_save_private_details(
+    PDO $db,
+    int $userId,
+    array $input
+): void {
+    $fullName =
+        llama_account_info_clean_text(
+            $input['full_name']
+            ?? '',
+            150,
+            'Full name'
+        );
+
+    $phoneNumber =
+        llama_account_info_normalize_phone(
+            (string) (
+                $input['phone_number']
+                ?? ''
+            )
+        );
+
+    $addressLine1 =
+        llama_account_info_clean_text(
+            $input['address_line_1']
+            ?? '',
+            190,
+            'Street address'
+        );
+
+    $addressLine2 =
+        llama_account_info_clean_text(
+            $input['address_line_2']
+            ?? '',
+            190,
+            'Apartment, suite, or unit'
+        );
+
+    $city =
+        llama_account_info_clean_text(
+            $input['address_city']
+            ?? '',
+            120,
+            'City'
+        );
+
+    $state =
+        llama_account_info_clean_text(
+            $input['address_state']
+            ?? '',
+            120,
+            'State or region'
+        );
+
+    $postalCode =
+        llama_account_info_clean_text(
+            $input['address_postal_code']
+            ?? '',
+            32,
+            'ZIP or postal code'
+        );
+
+    $country =
+        llama_account_info_clean_text(
+            $input['address_country']
+            ?? '',
+            120,
+            'Country'
+        );
+
+    $timezone =
+        trim(
+            (string) (
+                $input['timezone']
+                ?? ''
+            )
+        );
+
+    if (
+        !llama_timezone_is_valid(
+            $timezone
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid timezone.'
+        );
+    }
+
+    $hasAddress =
+        $addressLine1 !== null
+        || $addressLine2 !== null
+        || $city !== null
+        || $state !== null
+        || $postalCode !== null
+        || $country !== null;
+
+    if (
+        $hasAddress
+        && (
+            $addressLine1 === null
+            || $city === null
+            || $state === null
+            || $postalCode === null
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Complete the street address, city, state or region, and ZIP or postal code, or clear all address fields.'
+        );
+    }
+
+    if (
+        $hasAddress
+        && $country === null
+    ) {
+        $country =
+            'United States';
+    }
+
+    $latitude =
+        llama_account_info_coordinate(
+            $input['address_latitude']
+            ?? null,
+            -90,
+            90
+        );
+
+    $longitude =
+        llama_account_info_coordinate(
+            $input['address_longitude']
+            ?? null,
+            -180,
+            180
+        );
+
+    if (!$hasAddress) {
+        $latitude = null;
+        $longitude = null;
+        $country = null;
+    }
+
+    $stmt =
+        $db->prepare(
+            'UPDATE users
+             SET
+                full_name = ?,
+                phone_number = ?,
+                address_line_1 = ?,
+                address_line_2 = ?,
+                address_city = ?,
+                address_state = ?,
+                address_postal_code = ?,
+                address_country = ?,
+                address_latitude = ?,
+                address_longitude = ?,
+                timezone = ?
+             WHERE id = ?
+               AND anonymized_at IS NULL'
+        );
+
+    $stmt->execute([
+        $fullName,
+        $phoneNumber,
+        $addressLine1,
+        $addressLine2,
+        $city,
+        $state,
+        $postalCode,
+        $country,
+        $latitude,
+        $longitude,
+        $timezone,
+        $userId,
+    ]);
+
+    llama_reset_viewer_timezone_cache();
 }
 
 
@@ -386,15 +717,12 @@ function llama_account_info_request_email_change(
     }
 
     $mailUser = [
-        'email' =>
-            $newEmail,
-
+        'email' => $newEmail,
         'username' =>
             (string) (
                 $user['username']
                 ?? ''
             ),
-
         'display_name' =>
             (string) (
                 $user['display_name']
@@ -415,10 +743,8 @@ function llama_account_info_request_email_change(
                     ?: 'Scout'
                 )
             ),
-
         'username' =>
             (string) $mailUser['username'],
-
         'verification_url' =>
             $verificationUrl,
     ];
@@ -444,11 +770,8 @@ function llama_account_info_request_email_change(
     }
 
     return [
-        'email' =>
-            $newEmail,
-
-        'sent' =>
-            $sent,
+        'email' => $newEmail,
+        'sent' => $sent,
     ];
 }
 
@@ -612,15 +935,12 @@ function llama_admin_issue_reverification(
     $sent =
         send_verification_email(
             [
-                'email' =>
-                    $email,
-
+                'email' => $email,
                 'username' =>
                     (string) (
                         $user['username']
                         ?? ''
                     ),
-
                 'display_name' =>
                     (string) (
                         $user['display_name']
@@ -631,10 +951,7 @@ function llama_admin_issue_reverification(
         );
 
     return [
-        'email' =>
-            $email,
-
-        'sent' =>
-            $sent,
+        'email' => $email,
+        'sent' => $sent,
     ];
 }
