@@ -1,8 +1,15 @@
 (() => {
     'use strict';
 
-    const root = document.querySelector('[data-product-page]');
-    const dataNode = document.getElementById('product-variant-data');
+    const root =
+        document.querySelector(
+            '[data-product-page]'
+        );
+
+    const dataNode =
+        document.getElementById(
+            'product-variant-data'
+        );
 
     if (!root || !dataNode) {
         return;
@@ -11,138 +18,411 @@
     let data;
 
     try {
-        data = JSON.parse(dataNode.textContent || '{}');
+        data =
+            JSON.parse(
+                dataNode.textContent
+                || '{}'
+            );
     } catch (error) {
-        console.error('Llama Scout product data could not be read.', error);
+        console.error(
+            'Llama Scout product data could not be read.',
+            error
+        );
+
         return;
     }
 
-    const options = Array.isArray(data.options) ? data.options : [];
-    const variants = Array.isArray(data.variants) ? data.variants : [];
-    const images = Array.isArray(data.images) ? data.images : [];
+    const options =
+        Array.isArray(data.options)
+            ? data.options
+            : [];
 
-    const optionOrder = options
-        .map((option) => String(option.name || ''))
-        .filter(Boolean);
+    const variants =
+        Array.isArray(data.variants)
+            ? data.variants
+            : [];
+
+    const images =
+        Array.isArray(data.images)
+            ? data.images
+            : [];
+
+    const optionOrder =
+        options
+            .map(
+                (option) =>
+                    String(
+                        option.name
+                        || ''
+                    )
+            )
+            .filter(Boolean);
 
     const selected = {};
+
     let currentVariant = null;
     let currentImageIndex = 0;
-    let activeImageCriteria = null;
 
-    const variantInput = root.querySelector('[data-selected-variant]');
-    const quantitySelect = root.querySelector('[data-product-quantity]');
-    const addButton = root.querySelector('[data-add-to-cart]');
-    const addButtonLabel = root.querySelector('[data-add-to-cart-label]');
-    const priceNode = root.querySelector('[data-product-price]');
-    const compareNode = root.querySelector('[data-compare-price]');
-    const saleBadge = root.querySelector('[data-sale-badge]');
-    const stockNode = root.querySelector('[data-stock-status]');
-    const mainImage = root.querySelector('[data-main-product-image]');
-    const thumbnailTrack = root.querySelector('[data-thumbnail-track]');
-    const thumbnails = Array.from(
-        root.querySelectorAll('[data-thumbnail-index]')
-    );
-    const optionPills = Array.from(
-        root.querySelectorAll('.product-option-pill')
-    );
+    const variantInput =
+        root.querySelector(
+            '[data-selected-variant]'
+        );
 
-    const money = (cents, currency = 'usd') => {
-        const amount = Number(cents || 0) / 100;
+    const quantitySelect =
+        root.querySelector(
+            '[data-product-quantity]'
+        );
+
+    const addButton =
+        root.querySelector(
+            '[data-add-to-cart]'
+        );
+
+    const addButtonLabel =
+        root.querySelector(
+            '[data-add-to-cart-label]'
+        );
+
+    const priceNode =
+        root.querySelector(
+            '[data-product-price]'
+        );
+
+    const compareNode =
+        root.querySelector(
+            '[data-compare-price]'
+        );
+
+    const saleBadge =
+        root.querySelector(
+            '[data-sale-badge]'
+        );
+
+    const stockNode =
+        root.querySelector(
+            '[data-stock-status]'
+        );
+
+    const mainImage =
+        root.querySelector(
+            '[data-main-product-image]'
+        );
+
+    const thumbnailTrack =
+        root.querySelector(
+            '[data-thumbnail-track]'
+        );
+
+    const thumbnails =
+        Array.from(
+            root.querySelectorAll(
+                '[data-thumbnail-index]'
+            )
+        );
+
+    const optionPills =
+        Array.from(
+            root.querySelectorAll(
+                '.product-option-pill'
+            )
+        );
+
+
+    /* =====================================================
+       VARIANTS
+       ===================================================== */
+
+    const money = (
+        cents,
+        currency = 'usd'
+    ) => {
+        const amount =
+            Number(cents || 0)
+            / 100;
 
         try {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: String(currency || 'usd').toUpperCase(),
-            }).format(amount);
+            return new Intl.NumberFormat(
+                'en-US',
+                {
+                    style:
+                        'currency',
+                    currency:
+                        String(
+                            currency
+                            || 'usd'
+                        ).toUpperCase(),
+                }
+            ).format(
+                amount
+            );
         } catch (_) {
-            return '$' + amount.toFixed(2);
+            return '$'
+                + amount.toFixed(2);
         }
     };
 
-    const variantById = (id) => (
+
+    const variantById = (
+        id
+    ) => (
         variants.find(
-            (variant) => Number(variant.id) === Number(id)
+            (variant) =>
+                Number(
+                    variant.id
+                )
+                ===
+                Number(id)
         )
         || null
     );
 
-    const exactVariant = (selection = selected) => {
+
+    const exactVariant = (
+        selection = selected
+    ) => {
         if (!optionOrder.length) {
-            return variants[0] || null;
+            return variants[0]
+                || null;
         }
 
-        return variants.find((variant) => {
-            const pairs = variant.options || {};
+        return variants.find(
+            (variant) => {
+                const pairs =
+                    variant.options
+                    || {};
 
-            return optionOrder.every((name) => (
-                String(pairs[name] || '')
-                === String(selection[name] || '')
-            ));
-        }) || null;
+                return optionOrder.every(
+                    (name) =>
+                        String(
+                            pairs[name]
+                            || ''
+                        )
+                        ===
+                        String(
+                            selection[name]
+                            || ''
+                        )
+                );
+            }
+        ) || null;
     };
 
-    const variantMatchesSelection = (
-        variant,
-        wanted,
-        ignoredOption = ''
+
+    const variantCanSell = (
+        variant
     ) => {
-        const pairs = variant.options || {};
-
-        return optionOrder.every((name) => {
-            if (name === ignoredOption) {
-                return true;
-            }
-
-            if (!wanted[name]) {
-                return true;
-            }
-
-            return (
-                String(pairs[name] || '')
-                === String(wanted[name])
-            );
-        });
-    };
-
-    const variantCanSell = (variant) => {
-        if (!variant || !variant.active) {
+        if (
+            !variant
+            || !variant.active
+        ) {
             return false;
         }
 
         return Boolean(
             variant.state
             && variant.state.purchasable
-            && Number(variant.priceCents || 0) > 0
+            && Number(
+                variant.priceCents
+                || 0
+            ) > 0
         );
     };
 
-    const criteriaForImage = (image) => {
+
+    const variantsForOptionValue = (
+        name,
+        value
+    ) => (
+        variants.filter(
+            (variant) =>
+                String(
+                    (
+                        variant.options
+                        || {}
+                    )[name]
+                    || ''
+                )
+                ===
+                String(value)
+        )
+    );
+
+
+    const selectionScore = (
+        variant,
+        ignoredOption = ''
+    ) => {
+        const pairs =
+            variant.options
+            || {};
+
+        let score = 0;
+
+        optionOrder.forEach(
+            (name) => {
+                if (
+                    name ===
+                    ignoredOption
+                ) {
+                    return;
+                }
+
+                const wanted =
+                    String(
+                        selected[name]
+                        || ''
+                    );
+
+                if (
+                    wanted !== ''
+                    &&
+                    String(
+                        pairs[name]
+                        || ''
+                    )
+                    === wanted
+                ) {
+                    score += 1;
+                }
+            }
+        );
+
+        return score;
+    };
+
+
+    /*
+     * When a customer chooses an option value, prefer the exact
+     * combination they already have. If that combination does not
+     * exist, choose the closest real variant instead of leaving the
+     * storefront in a fake impossible combination.
+     */
+    const bestVariantForOption = (
+        name,
+        value
+    ) => {
+        const wanted = {
+            ...selected,
+            [name]:
+                String(value),
+        };
+
+        const exact =
+            exactVariant(
+                wanted
+            );
+
+        if (exact) {
+            return exact;
+        }
+
+        const candidates =
+            variantsForOptionValue(
+                name,
+                value
+            );
+
+        if (!candidates.length) {
+            return null;
+        }
+
+        return candidates
+            .map(
+                (variant) => ({
+                    variant,
+                    score:
+                        selectionScore(
+                            variant,
+                            name
+                        ),
+                    sellable:
+                        variantCanSell(
+                            variant
+                        )
+                            ? 1
+                            : 0,
+                    active:
+                        variant.active
+                            ? 1
+                            : 0,
+                })
+            )
+            .sort(
+                (a, b) =>
+                    b.score
+                    - a.score
+                    ||
+                    b.sellable
+                    - a.sellable
+                    ||
+                    b.active
+                    - a.active
+            )[0]
+            ?.variant
+            || null;
+    };
+
+
+    /*
+     * Crossed-out pills now mean the option value really has no
+     * purchasable variant. A product photo is never allowed to make
+     * another color/size appear sold out.
+     */
+    const optionValueCanSell = (
+        name,
+        value
+    ) => (
+        variantsForOptionValue(
+            name,
+            value
+        ).some(
+            variantCanSell
+        )
+    );
+
+
+    /* =====================================================
+       PRODUCT PHOTOS
+       ===================================================== */
+
+    const criteriaForImage = (
+        image
+    ) => {
         if (
             !image
             || !image.criteria
-            || typeof image.criteria !== 'object'
+            || typeof image.criteria
+                !== 'object'
         ) {
             return {};
         }
 
         const criteria = {};
 
-        Object.entries(image.criteria).forEach(
+        Object.entries(
+            image.criteria
+        ).forEach(
             ([name, values]) => {
-                const list = Array.isArray(values)
-                    ? values
-                    : [values];
+                const list =
+                    Array.isArray(values)
+                        ? values
+                        : [values];
 
-                const clean = list
-                    .map(
-                        (value) =>
-                            String(value || '').trim()
-                    )
-                    .filter(Boolean);
+                const clean =
+                    list
+                        .map(
+                            (value) =>
+                                String(
+                                    value
+                                    || ''
+                                ).trim()
+                        )
+                        .filter(Boolean);
 
                 if (clean.length) {
-                    criteria[String(name)] = clean;
+                    criteria[
+                        String(name)
+                    ] = clean;
                 }
             }
         );
@@ -150,75 +430,127 @@
         return criteria;
     };
 
+
     const imageMatchesVariant = (
         image,
         variant
     ) => {
-        if (!image || !variant) {
+        if (
+            !image
+            || !variant
+        ) {
             return false;
         }
 
         const criteria =
-            criteriaForImage(image);
-
-        if (criteria.__variant__) {
-            return criteria.__variant__.some(
-                (value) =>
-                    Number(value)
-                    === Number(variant.id)
+            criteriaForImage(
+                image
             );
+
+        if (
+            !Object.keys(criteria)
+                .length
+        ) {
+            return false;
+        }
+
+        if (
+            criteria.__variant__
+        ) {
+            return criteria
+                .__variant__
+                .some(
+                    (value) =>
+                        Number(value)
+                        ===
+                        Number(
+                            variant.id
+                        )
+                );
         }
 
         const pairs =
-            variant.options || {};
+            variant.options
+            || {};
 
-        return Object.entries(criteria).every(
+        return Object.entries(
+            criteria
+        ).every(
             ([name, values]) => {
-                if (name === '__variant__') {
+                if (
+                    name ===
+                    '__variant__'
+                ) {
                     return true;
                 }
 
                 return values.includes(
-                    String(pairs[name] || '')
+                    String(
+                        pairs[name]
+                        || ''
+                    )
                 );
             }
         );
     };
 
-    const imageSpecificity = (image) => {
-        const criteria =
-            criteriaForImage(image);
 
-        if (criteria.__variant__) {
+    const imageSpecificity = (
+        image
+    ) => {
+        const criteria =
+            criteriaForImage(
+                image
+            );
+
+        if (
+            criteria.__variant__
+        ) {
             return 10000;
         }
 
         let groups = 0;
         let breadth = 0;
 
-        Object.values(criteria).forEach(
+        Object.values(
+            criteria
+        ).forEach(
             (values) => {
                 groups += 1;
-                breadth += values.length;
+                breadth +=
+                    values.length;
             }
         );
 
-        return (groups * 100) - breadth;
+        return (
+            groups * 100
+        ) - breadth;
     };
+
 
     const bestImageIndexForVariant = (
         variant
     ) => {
-        if (!variant || !images.length) {
+        if (
+            !variant
+            || !images.length
+        ) {
             return -1;
         }
 
         const currentImage =
-            images[currentImageIndex];
+            images[
+                currentImageIndex
+            ];
 
+        /*
+         * Keep the photo the customer is already viewing if it
+         * actually belongs to the newly selected variant.
+         */
         if (
             currentImage
-            && imageMatchesVariant(
+            &&
+            imageMatchesVariant(
                 currentImage,
                 variant
             )
@@ -226,35 +558,43 @@
             return currentImageIndex;
         }
 
-        const matching = images
-            .map((image, index) => ({
-                image,
-                index,
-                score:
-                    imageSpecificity(image),
-            }))
-            .filter((entry) => (
-                Object.keys(
-                    criteriaForImage(entry.image)
-                ).length > 0
-                && imageMatchesVariant(
-                    entry.image,
-                    variant
+        const matching =
+            images
+                .map(
+                    (image, index) => ({
+                        image,
+                        index,
+                        score:
+                            imageSpecificity(
+                                image
+                            ),
+                    })
                 )
-            ))
-            .sort(
-                (a, b) =>
-                    b.score - a.score
-                    || a.index - b.index
-            );
+                .filter(
+                    (entry) =>
+                        imageMatchesVariant(
+                            entry.image,
+                            variant
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        b.score
+                        - a.score
+                        ||
+                        a.index
+                        - b.index
+                );
 
         if (matching.length) {
-            return matching[0].index;
+            return matching[0]
+                .index;
         }
 
         const primary =
             images.findIndex(
-                (image) => image.primary
+                (image) =>
+                    image.primary
             );
 
         if (primary >= 0) {
@@ -265,7 +605,9 @@
             images.findIndex(
                 (image) =>
                     Object.keys(
-                        criteriaForImage(image)
+                        criteriaForImage(
+                            image
+                        )
                     ).length === 0
             );
 
@@ -273,6 +615,7 @@
             ? general
             : 0;
     };
+
 
     const variantMatchesImageCriteria = (
         variant,
@@ -284,121 +627,81 @@
 
         if (
             !criteria
-            || !Object.keys(criteria).length
+            || !Object.keys(
+                criteria
+            ).length
         ) {
-            return true;
+            return false;
         }
 
-        if (criteria.__variant__) {
-            return criteria.__variant__.some(
-                (value) =>
-                    Number(value)
-                    === Number(variant.id)
-            );
+        if (
+            criteria.__variant__
+        ) {
+            return criteria
+                .__variant__
+                .some(
+                    (value) =>
+                        Number(value)
+                        ===
+                        Number(
+                            variant.id
+                        )
+                );
         }
 
         const pairs =
-            variant.options || {};
+            variant.options
+            || {};
 
-        return Object.entries(criteria).every(
+        return Object.entries(
+            criteria
+        ).every(
             ([name, values]) => {
-                if (name === '__variant__') {
+                if (
+                    name ===
+                    '__variant__'
+                ) {
                     return true;
                 }
 
                 return values.includes(
-                    String(pairs[name] || '')
+                    String(
+                        pairs[name]
+                        || ''
+                    )
                 );
             }
         );
     };
 
-    const applyImageCriteriaToSelection = (
-        criteria
+
+    /*
+     * Photos are allowed to select the variant they depict, but they
+     * do not become an availability filter. That keeps "this is the
+     * blue photo" separate from "only blue is available".
+     */
+    const bestVariantForImage = (
+        image
     ) => {
-        if (
-            !criteria
-            || !Object.keys(criteria).length
-        ) {
-            return;
-        }
-
-        if (criteria.__variant__) {
-            const variant =
-                variantById(
-                    criteria.__variant__[0]
-                );
-
-            if (variant) {
-                optionOrder.forEach(
-                    (name) => {
-                        selected[name] =
-                            String(
-                                (
-                                    variant.options
-                                    || {}
-                                )[name]
-                                || ''
-                            );
-                    }
-                );
-            }
-
-            return;
-        }
-
-        optionOrder.forEach((name) => {
-            const allowed =
-                criteria[name];
-
-            if (
-                !Array.isArray(allowed)
-                || !allowed.length
-            ) {
-                return;
-            }
-
-            if (
-                !allowed.includes(
-                    String(
-                        selected[name]
-                        || ''
-                    )
-                )
-            ) {
-                selected[name] =
-                    String(allowed[0]);
-            }
-        });
-    };
-
-    const bestVariantForImageCriteria = (
-        criteria
-    ) => {
-        if (
-            !criteria
-            || !Object.keys(criteria).length
-        ) {
-            return currentVariant;
-        }
-
-        if (criteria.__variant__) {
-            return variantById(
-                criteria.__variant__[0]
+        const criteria =
+            criteriaForImage(
+                image
             );
-        }
-
-        const direct =
-            exactVariant(selected);
 
         if (
-            direct
-            && variantMatchesImageCriteria(
-                direct,
-                criteria
-            )
+            !Object.keys(criteria)
+                .length
         ) {
-            return direct;
+            return null;
+        }
+
+        if (
+            criteria.__variant__
+        ) {
+            return variantById(
+                criteria
+                    .__variant__[0]
+            );
         }
 
         const matches =
@@ -414,55 +717,60 @@
             return null;
         }
 
-        const preservesMost =
-            matches
-                .map((variant) => {
-                    const pairs =
-                        variant.options || {};
+        const currentExact =
+            exactVariant(
+                selected
+            );
 
-                    let score = 0;
+        if (
+            currentExact
+            &&
+            matches.includes(
+                currentExact
+            )
+        ) {
+            return currentExact;
+        }
 
-                    optionOrder.forEach(
-                        (name) => {
-                            if (
-                                selected[name]
-                                && String(
-                                    pairs[name]
-                                    || ''
-                                )
-                                === String(
-                                    selected[name]
-                                )
-                            ) {
-                                score += 1;
-                            }
-                        }
-                    );
-
-                    return {
-                        variant,
-                        score,
-                    };
+        return matches
+            .map(
+                (variant) => ({
+                    variant,
+                    score:
+                        selectionScore(
+                            variant
+                        ),
+                    sellable:
+                        variantCanSell(
+                            variant
+                        )
+                            ? 1
+                            : 0,
+                    active:
+                        variant.active
+                            ? 1
+                            : 0,
                 })
-                .sort((a, b) => (
-                    b.score - a.score
-                    || Number(
-                        variantCanSell(
-                            b.variant
-                        )
-                    )
-                    - Number(
-                        variantCanSell(
-                            a.variant
-                        )
-                    )
-                ));
-
-        return (
-            preservesMost[0]?.variant
-            || matches[0]
-        );
+            )
+            .sort(
+                (a, b) =>
+                    b.score
+                    - a.score
+                    ||
+                    b.sellable
+                    - a.sellable
+                    ||
+                    b.active
+                    - a.active
+            )[0]
+            ?.variant
+            || null;
     };
+
+
+    /* =====================================================
+       RENDERING
+       ===================================================== */
 
     const renderQuantity = (
         maxQuantity
@@ -471,15 +779,17 @@
             return;
         }
 
-        const previous = Math.max(
-            1,
-            Number(
-                quantitySelect.value
-                || 1
-            )
-        );
+        const previous =
+            Math.max(
+                1,
+                Number(
+                    quantitySelect.value
+                    || 1
+                )
+            );
 
-        quantitySelect.innerHTML = '';
+        quantitySelect.innerHTML =
+            '';
 
         if (maxQuantity < 1) {
             const option =
@@ -487,12 +797,16 @@
                     'option'
                 );
 
-            option.value = '1';
-            option.textContent = '1';
+            option.value =
+                '1';
 
-            quantitySelect.appendChild(
-                option
-            );
+            option.textContent =
+                '1';
+
+            quantitySelect
+                .appendChild(
+                    option
+                );
 
             quantitySelect.disabled =
                 true;
@@ -519,9 +833,10 @@
             option.textContent =
                 String(quantity);
 
-            quantitySelect.appendChild(
-                option
-            );
+            quantitySelect
+                .appendChild(
+                    option
+                );
         }
 
         quantitySelect.value =
@@ -533,161 +848,64 @@
             );
     };
 
+
     const renderPills = () => {
-        optionPills.forEach((pill) => {
-            const name =
-                String(
-                    pill.dataset
-                        .optionName
-                    || ''
-                );
-
-            const value =
-                String(
-                    pill.dataset
-                        .optionValue
-                    || ''
-                );
-
-            const isSelected =
-                String(
-                    selected[name]
-                    || ''
-                )
-                === value;
-
-            const candidateSelection = {
-                ...selected,
-                [name]: value,
-            };
-
-            const exact =
-                exactVariant(
-                    candidateSelection
-                );
-
-            let hasVariantPath =
-                Boolean(exact);
-
-            if (!hasVariantPath) {
-                hasVariantPath =
-                    variants.some(
-                        (variant) => {
-                            const pairs =
-                                variant.options
-                                || {};
-
-                            return (
-                                String(
-                                    pairs[name]
-                                    || ''
-                                )
-                                === value
-                                && variantMatchesSelection(
-                                    variant,
-                                    candidateSelection,
-                                    name
-                                )
-                            );
-                        }
-                    );
-            }
-
-            let allowedByPhoto =
-                true;
-
-            if (
-                activeImageCriteria
-                && Array.isArray(
-                    activeImageCriteria[
-                        name
-                    ]
-                )
-                && activeImageCriteria[
-                    name
-                ].length
-            ) {
-                allowedByPhoto =
-                    activeImageCriteria[
-                        name
-                    ].includes(value);
-            }
-
-            if (
-                activeImageCriteria
-                    ?.__variant__
-            ) {
-                const lockedVariant =
-                    variantById(
-                        activeImageCriteria
-                            .__variant__[0]
+        optionPills.forEach(
+            (pill) => {
+                const name =
+                    String(
+                        pill.dataset
+                            .optionName
+                        || ''
                     );
 
-                allowedByPhoto =
-                    Boolean(
-                        lockedVariant
-                        && String(
-                            (
-                                lockedVariant
-                                    .options
-                                || {}
-                            )[name]
-                            || ''
-                        )
-                        === value
+                const value =
+                    String(
+                        pill.dataset
+                            .optionValue
+                        || ''
                     );
-            }
 
-            const sellablePath =
-                variants.some(
-                    (variant) => {
-                        if (
-                            !variantCanSell(
-                                variant
-                            )
-                        ) {
-                            return false;
-                        }
+                const isSelected =
+                    String(
+                        selected[name]
+                        || ''
+                    )
+                    === value;
 
-                        const pairs =
-                            variant.options
-                            || {};
+                const sellable =
+                    optionValueCanSell(
+                        name,
+                        value
+                    );
 
-                        return (
-                            String(
-                                pairs[name]
-                                || ''
-                            )
-                            === value
-                            && variantMatchesSelection(
-                                variant,
-                                candidateSelection,
-                                name
-                            )
-                        );
-                    }
+                pill.classList.toggle(
+                    'is-selected',
+                    isSelected
                 );
 
-            pill.classList.toggle(
-                'is-selected',
-                isSelected
-            );
+                pill.classList.toggle(
+                    'is-unavailable',
+                    !sellable
+                );
 
-            pill.classList.toggle(
-                'is-unavailable',
-                !hasVariantPath
-                || !sellablePath
-                || !allowedByPhoto
-            );
+                pill.setAttribute(
+                    'aria-pressed',
+                    isSelected
+                        ? 'true'
+                        : 'false'
+                );
 
-            pill.setAttribute(
-                'aria-pressed',
-                isSelected
-                    ? 'true'
-                    : 'false'
-            );
-        });
+                pill.setAttribute(
+                    'aria-disabled',
+                    sellable
+                        ? 'false'
+                        : 'true'
+                );
+            }
+        );
     };
+
 
     const renderVariant = () => {
         const variant =
@@ -706,7 +924,8 @@
 
         const compareCents =
             exact
-            && variant
+            &&
+            variant
                 .compareAtPriceCents
                 != null
                 ? Number(
@@ -717,12 +936,14 @@
 
         const onSale =
             priceCents > 0
-            && compareCents
+            &&
+            compareCents
                 > priceCents;
 
         const state =
             exact
-            && variant.state
+            &&
+            variant.state
                 ? variant.state
                 : {
                     key:
@@ -736,8 +957,10 @@
         const purchasable =
             Boolean(
                 exact
-                && state.purchasable
-                && priceCents > 0
+                &&
+                state.purchasable
+                &&
+                priceCents > 0
             );
 
         const maxQuantity =
@@ -792,7 +1015,8 @@
         if (stockNode) {
             stockNode.className =
                 'product-stock-status is-'
-                + String(
+                +
+                String(
                     state.key
                     || 'unavailable'
                 );
@@ -810,7 +1034,8 @@
 
         if (
             addButton
-            && addButtonLabel
+            &&
+            addButtonLabel
         ) {
             addButton.disabled =
                 !purchasable;
@@ -828,8 +1053,9 @@
                     break;
 
                 case 'backorder':
-                    addButtonLabel.textContent =
-                        'Backorder';
+                    addButtonLabel
+                        .textContent =
+                            'Backorder';
                     break;
 
                 case 'out_of_stock':
@@ -853,32 +1079,38 @@
         }
     };
 
+
     const render = () => {
         renderPills();
         renderVariant();
     };
 
-    const selectBestImageForVariant =
-        (variant) => {
-            const index =
-                bestImageIndexForVariant(
-                    variant
-                );
 
-            if (index >= 0) {
-                showImage(
-                    index,
-                    {
-                        syncVariant:
-                            false,
-                        useImageCriteria:
-                            false,
-                        scrollThumbnail:
-                            true,
-                    }
-                );
-            }
-        };
+    /* =====================================================
+       SELECTION
+       ===================================================== */
+
+    const selectBestImageForVariant = (
+        variant
+    ) => {
+        const index =
+            bestImageIndexForVariant(
+                variant
+            );
+
+        if (index >= 0) {
+            showImage(
+                index,
+                {
+                    syncVariant:
+                        false,
+                    scrollThumbnail:
+                        true,
+                }
+            );
+        }
+    };
+
 
     const applyVariantSelection = (
         variant,
@@ -887,19 +1119,23 @@
         } = {}
     ) => {
         if (!variant) {
-            currentVariant = null;
+            currentVariant =
+                null;
+
             render();
+
             return;
         }
 
-        currentVariant = variant;
+        currentVariant =
+            variant;
 
         optionOrder.forEach(
             (name) => {
                 if (
                     variant.options
-                    && variant
-                        .options[name]
+                    &&
+                    variant.options[name]
                         != null
                 ) {
                     selected[name] =
@@ -922,15 +1158,27 @@
         }
     };
 
+
     const setSelectionValue = (
         name,
         value
     ) => {
-        activeImageCriteria =
-            null;
+        const variant =
+            bestVariantForOption(
+                name,
+                value
+            );
+
+        if (variant) {
+            applyVariantSelection(
+                variant
+            );
+
+            return;
+        }
 
         selected[name] =
-            value;
+            String(value);
 
         currentVariant =
             exactVariant(
@@ -938,19 +1186,13 @@
             );
 
         render();
-
-        if (currentVariant) {
-            selectBestImageForVariant(
-                currentVariant
-            );
-        }
     };
+
 
     function showImage(
         index,
         {
             syncVariant = true,
-            useImageCriteria = true,
             scrollThumbnail = true,
         } = {}
     ) {
@@ -972,7 +1214,9 @@
             % images.length;
 
         const image =
-            images[normalized];
+            images[
+                normalized
+            ];
 
         currentImageIndex =
             normalized;
@@ -1000,8 +1244,7 @@
                     === normalized;
 
                 thumbnail
-                    .classList
-                    .toggle(
+                    .classList.toggle(
                         'is-active',
                         active
                     );
@@ -1016,9 +1259,7 @@
             }
         );
 
-        if (
-            scrollThumbnail
-        ) {
+        if (scrollThumbnail) {
             const activeThumbnail =
                 thumbnails.find(
                     (thumbnail) =>
@@ -1045,32 +1286,9 @@
             return;
         }
 
-        const criteria =
-            criteriaForImage(
-                image
-            );
-
-        activeImageCriteria =
-            useImageCriteria
-                ? criteria
-                : null;
-
-        if (
-            !Object.keys(
-                criteria
-            ).length
-        ) {
-            render();
-            return;
-        }
-
-        applyImageCriteriaToSelection(
-            criteria
-        );
-
         const variant =
-            bestVariantForImageCriteria(
-                criteria
+            bestVariantForImage(
+                image
             );
 
         if (variant) {
@@ -1081,15 +1299,13 @@
                         false,
                 }
             );
-        } else {
-            currentVariant =
-                exactVariant(
-                    selected
-                );
-
-            render();
         }
     }
+
+
+    /* =====================================================
+       EVENTS
+       ===================================================== */
 
     optionPills.forEach(
         (pill) => {
@@ -1098,14 +1314,12 @@
                 () => {
                     setSelectionValue(
                         String(
-                            pill
-                                .dataset
+                            pill.dataset
                                 .optionName
                             || ''
                         ),
                         String(
-                            pill
-                                .dataset
+                            pill.dataset
                                 .optionValue
                             || ''
                         )
@@ -1115,24 +1329,24 @@
         }
     );
 
+
     thumbnails.forEach(
         (thumbnail) => {
-            thumbnail
-                .addEventListener(
-                    'click',
-                    () => {
-                        showImage(
-                            Number(
-                                thumbnail
-                                    .dataset
-                                    .thumbnailIndex
-                                || 0
-                            )
-                        );
-                    }
-                );
+            thumbnail.addEventListener(
+                'click',
+                () => {
+                    showImage(
+                        Number(
+                            thumbnail.dataset
+                                .thumbnailIndex
+                            || 0
+                        )
+                    );
+                }
+            );
         }
     );
+
 
     root.querySelector(
         '[data-gallery-previous]'
@@ -1140,10 +1354,12 @@
         'click',
         () => {
             showImage(
-                currentImageIndex - 1
+                currentImageIndex
+                - 1
             );
         }
     );
+
 
     root.querySelector(
         '[data-gallery-next]'
@@ -1151,10 +1367,12 @@
         'click',
         () => {
             showImage(
-                currentImageIndex + 1
+                currentImageIndex
+                + 1
             );
         }
     );
+
 
     root.querySelector(
         '[data-thumbnails-previous]'
@@ -1163,20 +1381,23 @@
         () => {
             if (!thumbnailTrack) {
                 showImage(
-                    currentImageIndex - 1
+                    currentImageIndex
+                    - 1
                 );
+
                 return;
             }
 
-            const target =
+            showImage(
                 Math.max(
                     0,
-                    currentImageIndex - 1
-                );
-
-            showImage(target);
+                    currentImageIndex
+                    - 1
+                )
+            );
         }
     );
+
 
     root.querySelector(
         '[data-thumbnails-next]'
@@ -1185,20 +1406,27 @@
         () => {
             if (!thumbnailTrack) {
                 showImage(
-                    currentImageIndex + 1
+                    currentImageIndex
+                    + 1
                 );
+
                 return;
             }
 
-            const target =
+            showImage(
                 Math.min(
                     images.length - 1,
-                    currentImageIndex + 1
-                );
-
-            showImage(target);
+                    currentImageIndex
+                    + 1
+                )
+            );
         }
     );
+
+
+    /* =====================================================
+       INITIAL STATE
+       ===================================================== */
 
     const initial =
         variantById(
@@ -1209,45 +1437,46 @@
         applyVariantSelection(
             initial
         );
-    } else {
-        optionOrder.forEach(
-            (name) => {
-                const option =
-                    options.find(
-                        (entry) =>
-                            String(
-                                entry.name
-                                || ''
-                            )
-                            === name
-                    );
 
-                const first =
-                    Array.isArray(
-                        option?.values
-                    )
-                        ? option
-                            .values[0]
-                        : '';
+        return;
+    }
 
-                if (first) {
-                    selected[name] =
-                        String(first);
-                }
+    optionOrder.forEach(
+        (name) => {
+            const option =
+                options.find(
+                    (entry) =>
+                        String(
+                            entry.name
+                            || ''
+                        )
+                        === name
+                );
+
+            const first =
+                Array.isArray(
+                    option?.values
+                )
+                    ? option.values[0]
+                    : '';
+
+            if (first) {
+                selected[name] =
+                    String(first);
             }
+        }
+    );
+
+    currentVariant =
+        exactVariant(
+            selected
         );
 
-        currentVariant =
-            exactVariant(
-                selected
-            );
+    render();
 
-        render();
-
-        if (currentVariant) {
-            selectBestImageForVariant(
-                currentVariant
-            );
-        }
+    if (currentVariant) {
+        selectBestImageForVariant(
+            currentVariant
+        );
     }
 })();
