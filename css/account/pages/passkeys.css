@@ -1,0 +1,271 @@
+/* =========================================================
+   ACCOUNT: PASSKEYS
+   ========================================================= */
+
+.passkeys-page {
+    width: min(820px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 42px 0 64px;
+}
+
+.passkeys-header {
+    max-width: 700px;
+    margin-bottom: 24px;
+}
+
+.passkeys-header h1 {
+    margin: 6px 0 10px;
+}
+
+.passkeys-header p {
+    margin: 0;
+}
+
+.passkeys-card {
+    margin-bottom: 18px;
+    padding: 22px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 16px;
+
+    background: var(--surface, #fff);
+}
+
+.passkeys-card.is-note {
+    background: color-mix(
+        in srgb,
+        var(--surface, #fff) 94%,
+        #58a66a
+    );
+}
+
+.passkeys-card-heading {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.passkeys-card-heading > i {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: rgba(23, 40, 34, .08);
+}
+
+.passkeys-card-heading h2 {
+    margin: 0 0 5px;
+
+    font-size: 1.08rem;
+}
+
+.passkeys-card-heading p {
+    margin: 0;
+
+    color: var(--text-muted, #667069);
+}
+
+.passkeys-list {
+    display: grid;
+    gap: 9px;
+
+    margin-top: 18px;
+}
+
+.passkeys-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+
+    padding: 13px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 10px;
+}
+
+.passkeys-list-item > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.passkeys-list-item strong,
+.passkeys-list-item span {
+    display: block;
+}
+
+.passkeys-list-item strong {
+    overflow-wrap: anywhere;
+
+    font-size: .9rem;
+}
+
+.passkeys-list-item > div > span {
+    color: var(--text-muted, #667069);
+
+    font-size: .7rem;
+}
+
+.passkeys-sync-pill {
+    flex: 0 0 auto;
+
+    padding: 4px 8px;
+
+    border: 1px solid rgba(88, 166, 106, .5);
+    border-radius: 999px;
+
+    font-size: .64rem;
+    font-weight: 800;
+}
+
+.passkeys-empty {
+    display: grid;
+    gap: 4px;
+
+    margin-top: 18px;
+    padding: 14px;
+
+    border: 1px dashed var(--border, #d7ddd8);
+    border-radius: 10px;
+}
+
+.passkeys-empty span {
+    color: var(--text-muted, #667069);
+
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.passkeys-add {
+    margin-top: 22px;
+    padding-top: 20px;
+
+    border-top: 1px solid var(--border, #d7ddd8);
+}
+
+.passkeys-add h3 {
+    margin: 0 0 6px;
+}
+
+.passkeys-add > p {
+    margin: 0;
+
+    color: var(--text-muted, #667069);
+
+    font-size: .82rem;
+    line-height: 1.5;
+}
+
+.passkeys-form {
+    display: grid;
+    gap: 13px;
+
+    margin-top: 15px;
+}
+
+.passkeys-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.passkeys-form label > span {
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.passkeys-form input {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border, #d7ddd8);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.passkeys-button,
+.passkeys-form button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: fit-content;
+    min-height: 42px;
+    margin-top: 16px;
+    padding: 10px 15px;
+
+    border: 0;
+    border-radius: 9px;
+
+    background: #172822;
+    color: #fff;
+
+    font: inherit;
+    font-weight: 750;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.passkeys-form button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.passkeys-warning {
+    margin-top: 18px;
+    padding: 11px 12px;
+
+    border: 1px solid rgba(190, 145, 45, .35);
+    border-radius: 10px;
+
+    background: rgba(190, 145, 45, .08);
+
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+.passkeys-message {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+
+    border-radius: 10px;
+}
+
+.passkeys-message.is-success {
+    background: rgba(40, 120, 75, .1);
+}
+
+.passkeys-message.is-error {
+    background: rgba(140, 35, 35, .1);
+}
+
+.passkeys-back {
+    margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+    .passkeys-page {
+        width: min(100% - 20px, 820px);
+        padding-top: 28px;
+    }
+
+    .passkeys-list-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
