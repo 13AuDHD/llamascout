@@ -16,6 +16,36 @@
             '[data-compare-count]'
         );
 
+    const headingCount =
+        document.querySelector(
+            '[data-compare-heading-count]'
+        );
+
+    const selectedPanel =
+        document.querySelector(
+            '[data-compare-selected]'
+        );
+
+    const selectedList =
+        document.querySelector(
+            '[data-compare-selected-list]'
+        );
+
+    const optionsPanel =
+        document.querySelector(
+            '[data-compare-options]'
+        );
+
+    const emptySearch =
+        document.querySelector(
+            '[data-compare-search-empty]'
+        );
+
+    const submitButton =
+        document.querySelector(
+            '[data-compare-submit]'
+        );
+
     if (picker) {
         const maxPlaces =
             Number(
@@ -23,11 +53,165 @@
                 || 4
             );
 
+        const minPlaces =
+            Number(
+                picker.dataset.minPlaces
+                || 2
+            );
+
         const checkboxes = [
             ...picker.querySelectorAll(
                 'input[type="checkbox"][name="places[]"]'
             )
         ];
+
+        const escapeHtml = (value) => {
+            const div =
+                document.createElement(
+                    'div'
+                );
+
+            div.textContent =
+                String(
+                    value
+                    ?? ''
+                );
+
+            return div.innerHTML;
+        };
+
+        const optionForCheckbox = (
+            checkbox
+        ) =>
+            checkbox.closest(
+                '[data-compare-option]'
+            );
+
+        const renderSelected = (
+            selected
+        ) => {
+            if (
+                !selectedPanel
+                ||
+                !selectedList
+            ) {
+                return;
+            }
+
+            selectedPanel.hidden =
+                selected.length === 0;
+
+            selectedList.innerHTML =
+                selected.map(
+                    (checkbox) => {
+                        const option =
+                            optionForCheckbox(
+                                checkbox
+                            );
+
+                        const slug =
+                            String(
+                                option?.dataset.placeSlug
+                                || checkbox.value
+                            );
+
+                        const name =
+                            String(
+                                option?.dataset.placeName
+                                || 'Place'
+                            );
+
+                        const meta =
+                            String(
+                                option?.dataset.placeMeta
+                                || ''
+                            );
+
+                        return `
+                            <button
+                                type="button"
+                                class="compare-selected-chip"
+                                data-remove-compare-place="${escapeHtml(slug)}"
+                                aria-label="Remove ${escapeHtml(name)} from comparison"
+                            >
+                                <span>
+                                    <strong>${escapeHtml(name)}</strong>
+                                    ${meta ? `<small>${escapeHtml(meta)}</small>` : ''}
+                                </span>
+
+                                <i
+                                    class="fa-solid fa-xmark"
+                                    aria-hidden="true"
+                                ></i>
+                            </button>
+                        `;
+                    }
+                ).join('');
+        };
+
+        const updateSearchResults = () => {
+            if (
+                !search
+                ||
+                !optionsPanel
+            ) {
+                return;
+            }
+
+            const query =
+                search.value
+                    .trim()
+                    .toLowerCase();
+
+            let visibleCount = 0;
+
+            checkboxes.forEach(
+                (checkbox) => {
+                    const option =
+                        optionForCheckbox(
+                            checkbox
+                        );
+
+                    if (!option) {
+                        return;
+                    }
+
+                    const haystack =
+                        String(
+                            option.dataset.searchText
+                            || ''
+                        );
+
+                    const show =
+                        query !== ''
+                        &&
+                        !checkbox.checked
+                        &&
+                        haystack.includes(
+                            query
+                        );
+
+                    option.hidden =
+                        !show;
+
+                    if (show) {
+                        visibleCount++;
+                    }
+                }
+            );
+
+            optionsPanel.classList.toggle(
+                'has-query',
+                query !== ''
+            );
+
+            if (emptySearch) {
+                emptySearch.hidden =
+                    query === ''
+                    ||
+                    visibleCount > 0;
+            }
+        };
 
         const syncSelection = () => {
             const selected =
@@ -39,8 +223,8 @@
             checkboxes.forEach(
                 (checkbox) => {
                     const option =
-                        checkbox.closest(
-                            '[data-compare-option]'
+                        optionForCheckbox(
+                            checkbox
                         );
 
                     option?.classList.toggle(
@@ -50,7 +234,8 @@
 
                     checkbox.disabled =
                         !checkbox.checked
-                        && selected.length
+                        &&
+                        selected.length
                             >= maxPlaces;
                 }
             );
@@ -59,55 +244,95 @@
                 countLabel.textContent =
                     `${selected.length} selected`;
             }
+
+            if (headingCount) {
+                headingCount.textContent =
+                    `${selected.length} of ${maxPlaces} selected`;
+            }
+
+            if (submitButton) {
+                submitButton.disabled =
+                    selected.length
+                    <
+                    minPlaces;
+            }
+
+            renderSelected(
+                selected
+            );
+
+            updateSearchResults();
         };
 
-        checkboxes.forEach(
-            (checkbox) => {
-                checkbox.addEventListener(
-                    'change',
-                    syncSelection
-                );
+        picker.addEventListener(
+            'change',
+            (event) => {
+                const checkbox =
+                    event.target.closest(
+                        'input[type="checkbox"][name="places[]"]'
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                if (checkbox.checked) {
+                    if (search) {
+                        search.value = '';
+                        search.focus();
+                    }
+                }
+
+                syncSelection();
             }
         );
+
+        picker.addEventListener(
+            'click',
+            (event) => {
+                const removeButton =
+                    event.target.closest(
+                        '[data-remove-compare-place]'
+                    );
+
+                if (!removeButton) {
+                    return;
+                }
+
+                const slug =
+                    String(
+                        removeButton.dataset.removeComparePlace
+                        || ''
+                    );
+
+                const checkbox =
+                    checkboxes.find(
+                        (item) =>
+                            item.value
+                            ===
+                            slug
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                checkbox.checked =
+                    false;
+
+                syncSelection();
+            }
+        );
+
+        if (search) {
+            search.addEventListener(
+                'input',
+                updateSearchResults
+            );
+        }
 
         syncSelection();
     }
-
-
-    if (search) {
-        const options = [
-            ...document.querySelectorAll(
-                '[data-compare-option]'
-            )
-        ];
-
-        search.addEventListener(
-            'input',
-            () => {
-                const query =
-                    search.value
-                        .trim()
-                        .toLowerCase();
-
-                options.forEach(
-                    (option) => {
-                        const haystack =
-                            String(
-                                option.dataset.searchText
-                                || ''
-                            );
-
-                        option.hidden =
-                            query !== ''
-                            && !haystack.includes(
-                                query
-                            );
-                    }
-                );
-            }
-        );
-    }
-
 
     const copyButton =
         document.querySelector(
