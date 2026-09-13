@@ -17,7 +17,7 @@ $pages = [
         'status' => 403,
         'eyebrow' => 'Access restricted',
         'title' => 'That trail is not open to you.',
-        'message' => 'You do not have permission to access that part of Llama Scout. If you think you should have access, sign in with the correct account or contact us with what you were trying to open.',
+        'message' => 'You do not have permission to access that part of Llama Scout. If you think you should have access, sign in with the correct account or report what you were trying to open.',
         'icon' => '🔒',
     ],
     '401' => [
@@ -40,6 +40,13 @@ $pages = [
         'title' => 'Looks like this trail disappeared.',
         'message' => 'The page you were looking for does not exist, was moved, or the address is incorrect.',
         'icon' => '🧭',
+    ],
+    '405' => [
+        'status' => 405,
+        'eyebrow' => '405 · Method not allowed',
+        'title' => 'That action cannot be used here.',
+        'message' => 'The page exists, but it does not accept the type of request that was sent.',
+        'icon' => '🚫',
     ],
     '410' => [
         'status' => 410,
@@ -93,177 +100,186 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 
-$requested = (string) ($_SERVER['HTTP_X_ORIGINAL_URI'] ?? $_SERVER['REQUEST_URI'] ?? '');
+$requested =
+    (string) (
+        $_SERVER['HTTP_X_ORIGINAL_URI']
+        ?? $_SERVER['REQUEST_URI']
+        ?? ''
+    );
+
 if (str_contains($requested, '/safety.php')) {
     $requested = '';
 }
 
+/*
+ * Never carry a query string into a support-report link. Erroring URLs can
+ * contain reset tokens, checkout state, or other values that do not belong in
+ * a support ticket URL.
+ */
+$requestedPath = '';
+
+if ($requested !== '') {
+    $parsedPath =
+        parse_url(
+            $requested,
+            PHP_URL_PATH
+        );
+
+    if (is_string($parsedPath)) {
+        $requestedPath =
+            substr(
+                $parsedPath,
+                0,
+                1000
+            );
+    }
+}
+
+$reportQuery = [
+    'reason' => $reason,
+];
+
+if ($requestedPath !== '') {
+    $reportQuery['path'] =
+        $requestedPath;
+}
+
+$reportUrl =
+    'https://llamascout.com/contact.php?'
+    . http_build_query(
+        $reportQuery,
+        '',
+        '&',
+        PHP_QUERY_RFC3986
+    );
+
 function safety_e(string $value): string
 {
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(
+        $value,
+        ENT_QUOTES,
+        'UTF-8'
+    );
 }
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
     <meta name="color-scheme" content="dark light">
-    <title><?= safety_e((string) $page['eyebrow']) ?> · Llama Scout</title>
-    <link rel="icon" href="/images/logo.png">
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #111312;
-            --panel: #1b1e1c;
-            --panel-2: #222623;
-            --line: rgba(255,255,255,.12);
-            --text: #f4f5f4;
-            --muted: #a9b0ab;
-            --accent: #e7a85d;
-        }
-        * { box-sizing: border-box; }
-        html, body { min-height: 100%; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 28px;
-            background:
-                radial-gradient(circle at top, rgba(231,168,93,.08), transparent 34rem),
-                var(--bg);
-            color: var(--text);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        .shell { width: min(720px, 100%); }
-        .brand {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 22px;
-        }
-        .brand img {
-            width: min(220px, 58vw);
-            max-height: 84px;
-            object-fit: contain;
-        }
-        .card {
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(180deg, var(--panel-2), var(--panel));
-            padding: clamp(28px, 6vw, 52px);
-            box-shadow: 0 24px 80px rgba(0,0,0,.28);
-            text-align: center;
-        }
-        .icon { font-size: 38px; line-height: 1; margin-bottom: 18px; }
-        .eyebrow {
-            margin: 0 0 9px;
-            color: var(--accent);
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-        }
-        h1 {
-            margin: 0;
-            font-size: clamp(32px, 7vw, 52px);
-            line-height: 1.02;
-            letter-spacing: -.04em;
-        }
-        .message {
-            max-width: 570px;
-            margin: 20px auto 0;
-            color: var(--muted);
-            font-size: 17px;
-            line-height: 1.6;
-        }
-        .requested {
-            margin: 22px auto 0;
-            padding: 12px 14px;
-            max-width: 100%;
-            overflow-wrap: anywhere;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            background: rgba(0,0,0,.17);
-            color: var(--muted);
-            font-size: 13px;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-        .actions {
-            margin-top: 30px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-        }
-        .button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 46px;
-            padding: 0 18px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: transparent;
-            color: var(--text);
-            font-weight: 750;
-            text-decoration: none;
-        }
-        .button.primary {
-            background: var(--text);
-            border-color: var(--text);
-            color: #101210;
-        }
-        .footer {
-            margin: 18px 0 0;
-            color: #767d78;
-            text-align: center;
-            font-size: 13px;
-        }
-        @media (prefers-color-scheme: light) {
-            :root {
-                color-scheme: light;
-                --bg: #f3f4f1;
-                --panel: #ffffff;
-                --panel-2: #ffffff;
-                --line: rgba(18,24,20,.13);
-                --text: #151915;
-                --muted: #626a64;
-                --accent: #9a5b18;
-            }
-            .card { box-shadow: 0 24px 70px rgba(25,32,27,.09); }
-            .requested { background: rgba(0,0,0,.025); }
-            .button.primary { color: #fff; background: #151915; border-color: #151915; }
-        }
-    </style>
+
+    <title>
+        <?= safety_e((string) $page['eyebrow']) ?> · Llama Scout
+    </title>
+
+    <link
+        rel="icon"
+        href="https://llamascout.com/images/logo.png"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://llamascout.com/css/safety.css"
+    >
 </head>
+
 <body>
-<main class="shell">
-    <a class="brand" href="https://llamascout.com/" aria-label="Llama Scout home">
-        <img src="https://llamascout.com/images/logo.png" alt="Llama Scout">
+
+<main class="safety-shell">
+
+    <a
+        class="safety-brand"
+        href="https://llamascout.com/"
+        aria-label="Llama Scout home"
+    >
+        <img
+            src="https://llamascout.com/images/logo.png"
+            alt="Llama Scout"
+        >
     </a>
 
-    <section class="card">
-        <div class="icon" aria-hidden="true"><?= safety_e((string) $page['icon']) ?></div>
-        <p class="eyebrow"><?= safety_e((string) $page['eyebrow']) ?></p>
-        <h1><?= safety_e((string) $page['title']) ?></h1>
-        <p class="message"><?= safety_e((string) $page['message']) ?></p>
+    <section class="safety-card">
 
-        <?php if ($requested !== ''): ?>
-            <div class="requested"><?= safety_e($requested) ?></div>
+        <div
+            class="safety-icon"
+            aria-hidden="true"
+        >
+            <?= safety_e((string) $page['icon']) ?>
+        </div>
+
+        <p class="safety-eyebrow">
+            <?= safety_e((string) $page['eyebrow']) ?>
+        </p>
+
+        <h1>
+            <?= safety_e((string) $page['title']) ?>
+        </h1>
+
+        <p class="safety-message">
+            <?= safety_e((string) $page['message']) ?>
+        </p>
+
+        <?php if ($requestedPath !== ''): ?>
+            <div class="safety-requested">
+                <?= safety_e($requestedPath) ?>
+            </div>
         <?php endif; ?>
 
-        <div class="actions">
-            <a class="button primary" href="https://llamascout.com/">Go home</a>
-            <a class="button" href="https://llamascout.com/map.php">Open the map</a>
-            <?php if ($reason === 'permission' || $reason === '401' || $reason === '403'): ?>
-                <a class="button" href="https://account.llamascout.com/login.php">Sign in</a>
+        <div class="safety-actions">
+
+            <button
+                class="safety-button safety-button-primary"
+                type="button"
+                data-safety-back
+            >
+                Go back
+            </button>
+
+            <a
+                class="safety-button"
+                href="<?= safety_e($reportUrl) ?>"
+            >
+                Report
+            </a>
+
+            <a
+                class="safety-button"
+                href="https://llamascout.com/"
+            >
+                Go home
+            </a>
+
+            <?php if (
+                $reason === 'permission'
+                || $reason === '401'
+                || $reason === '403'
+            ): ?>
+                <a
+                    class="safety-button"
+                    href="https://account.llamascout.com/login.php"
+                >
+                    Sign in
+                </a>
             <?php endif; ?>
+
         </div>
+
     </section>
 
-    <p class="footer">Know the place before you go.</p>
+    <p class="safety-footer">
+        Know the place before you go.
+    </p>
+
 </main>
+
+<script
+    src="https://llamascout.com/js/safety.js"
+    defer
+></script>
+
 </body>
 </html>
