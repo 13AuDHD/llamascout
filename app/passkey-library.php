@@ -139,6 +139,16 @@ function llama_passkey_assert_library_ready(): void
 }
 
 
+if (
+    interface_exists(
+        'ShipMonk\\Passkeys\\PendingCeremonyStore'
+    )
+    &&
+    interface_exists(
+        'ShipMonk\\Passkeys\\PasskeyStore'
+    )
+) {
+
 final class LlamaPasskeyPendingStore
     implements \ShipMonk\Passkeys\PendingCeremonyStore
 {
@@ -727,6 +737,9 @@ final class LlamaPasskeyStore
                     $transports
             );
     }
+}
+
+
 }
 
 
