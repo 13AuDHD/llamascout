@@ -219,6 +219,11 @@
     text-decoration: none;
 
     cursor: pointer;
+
+    transition:
+        background-color .16s ease,
+        border-color .16s ease,
+        color .16s ease;
 }
 
 .admin-moderation-button.is-primary {
@@ -265,6 +270,59 @@
 }
 
 
+/* Destructive delete action */
+
+.admin-submission-delete {
+    border-color: #c94a4a;
+
+    background:
+        color-mix(
+            in srgb,
+            #c94a4a 8%,
+            transparent
+        );
+
+    color: #e36a63;
+}
+
+.admin-submission-delete:hover,
+.admin-submission-delete:focus-visible {
+    border-color: #df5a53;
+
+    background:
+        color-mix(
+            in srgb,
+            #c94a4a 15%,
+            transparent
+        );
+
+    color: #f17b73;
+}
+
+.admin-submission-delete.is-armed {
+    border-color: #c94a4a;
+
+    background: #c94a4a;
+    color: #ffffff;
+
+    box-shadow:
+        0 0 0 3px
+        color-mix(
+            in srgb,
+            #c94a4a 20%,
+            transparent
+        );
+}
+
+.admin-submission-delete.is-armed:hover,
+.admin-submission-delete.is-armed:focus-visible {
+    border-color: #b43d3d;
+
+    background: #b43d3d;
+    color: #ffffff;
+}
+
+
 /* Notices */
 
 .admin-moderation-notice {
@@ -294,5 +352,20 @@
     .admin-moderation-actions {
         align-items: stretch;
         flex-direction: column;
+    }
+}
+
+
+/* Reduced motion */
+
+html[data-reduced-motion="true"]
+.admin-moderation-button {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .admin-moderation-button {
+        transition: none;
     }
 }
