@@ -165,6 +165,22 @@ form {
     border: 0 !important;
 }
 
+/* =========================================================
+   LOCAL SVG ICONS
+   ========================================================= */
+
+.llama-icon {
+    width: 1em;
+    height: 1em;
+
+    display: inline-block;
+    flex: 0 0 auto;
+
+    overflow: visible;
+
+    vertical-align: -.125em;
+}
+
 .eyebrow {
     margin: 0 0 8px;
 
@@ -312,8 +328,9 @@ form {
     font-weight: 600;
 }
 
-.accessibility-setting label i {
+.accessibility-setting label .llama-icon {
     width: 24px;
+    height: 24px;
 }
 
 .accessibility-setting select {
