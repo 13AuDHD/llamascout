@@ -58,6 +58,16 @@
                         </button>
                     </form>
 
+                    <?php if ($hasMemberAccess): ?>
+                        <a
+                            class="place-detail-action-button"
+                            href="/compare.php?places=<?= rawurlencode((string) $place['slug']) ?>"
+                        >
+                            <i class="fa-solid fa-code-compare" aria-hidden="true"></i>
+                            Compare
+                        </a>
+                    <?php endif; ?>
+
                     <a
                         class="place-detail-action-button"
                         href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
