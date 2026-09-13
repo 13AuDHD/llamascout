@@ -272,7 +272,7 @@
      */
     .accessibility-panel {
         position: relative;
-        z-index: 1004;
+        z-index: 2001;
     }
 }
 
@@ -313,6 +313,7 @@ html[data-reduced-motion="true"]
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .site-menu-toggle-icon span {
         transition: none;
     }
