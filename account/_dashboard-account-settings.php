@@ -25,10 +25,7 @@ declare(strict_types=1);
             class="account-action-card"
             href="/account-information.php"
         >
-            <i
-                class="fa-solid fa-address-card"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('user-circle') ?>
 
             <span>
                 <strong>Account information</strong>
@@ -44,10 +41,7 @@ declare(strict_types=1);
             class="account-action-card"
             href="/billing.php"
         >
-            <i
-                class="fa-solid fa-credit-card"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('credit-card') ?>
 
             <span>
                 <strong>
@@ -74,10 +68,7 @@ declare(strict_types=1);
             class="account-action-card"
             href="/security.php"
         >
-            <i
-                class="fa-solid fa-shield-halved"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('shield') ?>
 
             <span>
                 <strong>Password &amp; security</strong>
@@ -99,10 +90,7 @@ declare(strict_types=1);
                 class="account-action-card"
                 href="/passkeys.php"
             >
-                <i
-                    class="fa-solid fa-fingerprint"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon('fingerprint') ?>
 
                 <span>
                     <strong>Passkeys</strong>
@@ -119,10 +107,7 @@ declare(strict_types=1);
             class="account-action-card account-action-card-danger"
             href="/delete-account.php"
         >
-            <i
-                class="fa-solid fa-user-slash"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('user-off') ?>
 
             <span>
                 <strong>

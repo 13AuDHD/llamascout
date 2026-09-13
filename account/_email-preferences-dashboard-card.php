@@ -59,10 +59,7 @@ $accountEmailPreferenceDetail =
     class="account-action-card account-settings-email"
     href="/email-preferences.php"
 >
-    <i
-        class="fa-solid fa-envelope"
-        aria-hidden="true"
-    ></i>
+    <?= llama_icon('mail') ?>
 
     <span>
         <strong>

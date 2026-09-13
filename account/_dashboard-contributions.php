@@ -35,7 +35,7 @@ $savedDraftCount = llama_place_draft_count(
                 'UTF-8'
             ) ?>"
         >
-            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <?= llama_icon('map-pin') ?>
 
             <span>
                 <strong>Add a place</strong>
@@ -49,10 +49,7 @@ $savedDraftCount = llama_place_draft_count(
             class="account-action-card"
             href="/contributions.php"
         >
-            <i
-                class="fa-solid fa-clock-rotate-left"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('history') ?>
 
             <span>
                 <strong>My contributions</strong>
@@ -67,10 +64,7 @@ $savedDraftCount = llama_place_draft_count(
             class="account-action-card"
             href="/saved-later.php"
         >
-            <i
-                class="fa-solid fa-floppy-disk"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('bookmark') ?>
 
             <span>
                 <strong>Saved for Later</strong>

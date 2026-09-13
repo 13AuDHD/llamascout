@@ -61,10 +61,7 @@ $dashboardScoutDescription =
 
         <div class="account-dashboard-stat-card">
             <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-star"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon('star') ?>
             </span>
 
             <div>
@@ -79,10 +76,7 @@ $dashboardScoutDescription =
 
         <div class="account-dashboard-stat-card">
             <span class="account-glance-icon">
-                <i
-                    class="fa-solid fa-location-dot"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon('map-pin') ?>
             </span>
 
             <div>
@@ -108,10 +102,7 @@ $dashboardScoutDescription =
                 class="account-action-card account-scout-basecamp-card account-dashboard-scout-card"
                 href="/scout.php"
             >
-                <i
-                    class="fa-solid fa-binoculars"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon('binoculars') ?>
 
                 <span>
                     <strong>

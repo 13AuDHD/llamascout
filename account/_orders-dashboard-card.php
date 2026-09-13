@@ -86,10 +86,7 @@ $accountOrderDetail =
     class="account-action-card account-settings-orders"
     href="/orders.php"
 >
-    <i
-        class="fa-solid fa-bag-shopping"
-        aria-hidden="true"
-    ></i>
+    <?= llama_icon('shopping-bag') ?>
 
     <span>
         <strong>

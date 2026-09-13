@@ -45,10 +45,7 @@ $dashboardEmail =
         role="alert"
     >
         <span class="account-email-verification-banner-icon">
-            <i
-                class="fa-solid fa-envelope-circle-check"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('mail-check') ?>
         </span>
 
         <div class="account-email-verification-banner-copy">
@@ -78,10 +75,7 @@ $dashboardEmail =
                     class="place-save-button"
                     href="/account-information.php#email-address"
                 >
-                    <i
-                        class="fa-solid fa-pen"
-                        aria-hidden="true"
-                    ></i>
+                    <?= llama_icon('edit') ?>
 
                     Correct Email Address
                 </a>
@@ -90,10 +84,7 @@ $dashboardEmail =
                     class="place-save-button"
                     href="/resend-verification.php"
                 >
-                    <i
-                        class="fa-solid fa-paper-plane"
-                        aria-hidden="true"
-                    ></i>
+                    <?= llama_icon('mail') ?>
 
                     Resend Verification
                 </a>

@@ -84,10 +84,7 @@ $accountSupportDetail =
         'UTF-8'
     ) ?>"
 >
-    <i
-        class="fa-solid fa-headset"
-        aria-hidden="true"
-    ></i>
+    <?= llama_icon('headset') ?>
 
     <span>
         <strong>
