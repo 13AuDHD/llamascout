@@ -148,6 +148,15 @@
 
 @media (max-width: 980px) {
 
+   .admin-moderation-overview-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
     .admin-moderation-console-grid {
         grid-template-columns: 1fr;
     }
