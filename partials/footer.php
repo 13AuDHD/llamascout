@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/icons.php';
+
 $config = llama_config();
 
 $footerSiteBase = rtrim(
@@ -51,7 +53,7 @@ $footerUser = current_user();
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+                    <?= llama_icon('brand-instagram') ?>
                 </a>
 
                 <a
@@ -60,16 +62,16 @@ $footerUser = current_user();
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <i class="fa-brands fa-tiktok" aria-hidden="true"></i>
+                    <?= llama_icon('brand-tiktok') ?>
                 </a>
 
                 <a
                     href="https://x.com/thellamascout"
-                    aria-label="Llama Scout on X"
+                    aria-label="Llama Scout on Twitter"
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <i class="fa-brands fa-x-twitter" aria-hidden="true"></i>
+                    <?= llama_icon('brand-twitter') ?>
                 </a>
 
                 <a
@@ -78,7 +80,7 @@ $footerUser = current_user();
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <i class="fa-brands fa-bluesky" aria-hidden="true"></i>
+                    <?= llama_icon('brand-bluesky') ?>
                 </a>
 
                 <a
@@ -87,7 +89,7 @@ $footerUser = current_user();
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
+                    <?= llama_icon('brand-facebook') ?>
                 </a>
 
             </div>

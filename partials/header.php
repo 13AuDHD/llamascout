@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/shop-cart.php';
 require_once dirname(__DIR__) . '/app/promotion-banner.php';
 require_once dirname(__DIR__) . '/app/page-styles.php';
+require_once dirname(__DIR__) . '/app/icons.php';
 
 $user = current_user();
 $config = llama_config();
@@ -258,32 +259,32 @@ $promotionBannerEndsAt = $activeWebsitePromotion
         >
 
             <a href="<?= htmlspecialchars($siteUrl . '/', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-house" aria-hidden="true"></i>
+                <?= llama_icon('home') ?>
                 <span>Home</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                <?= llama_icon('map') ?>
                 <span>Map</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/field-guides', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-compass" aria-hidden="true"></i>
+                <?= llama_icon('compass') ?>
                 <span>Guides</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/about.php', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                <?= llama_icon('info-circle') ?>
                 <span>About</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/membership', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+                <?= llama_icon('id') ?>
                 <span>Membership</span>
             </a>
 
             <a href="<?= htmlspecialchars($siteUrl . '/shop.php', ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
+                <?= llama_icon('shopping-bag') ?>
                 <span>Shop</span>
             </a>
 
@@ -291,7 +292,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 class="site-cart-link"
                 href="<?= htmlspecialchars($siteUrl . '/cart.php', ENT_QUOTES, 'UTF-8') ?>"
             >
-                <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                <?= llama_icon('shopping-cart') ?>
                 <span>Cart</span>
 
                 <?php if (shop_cart_count() > 0): ?>
@@ -304,12 +305,12 @@ $promotionBannerEndsAt = $activeWebsitePromotion
             <?php if ($user): ?>
 
                 <a href="<?= htmlspecialchars($siteUrl . '/add-place.php', ENT_QUOTES, 'UTF-8') ?>">
-                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                    <?= llama_icon('map-pin') ?>
                     <span>Add a Place</span>
                 </a>
 
                 <a href="<?= htmlspecialchars($accountUrl . '/', ENT_QUOTES, 'UTF-8') ?>">
-                    <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    <?= llama_icon('user') ?>
                     <span>Account</span>
                 </a>
 
@@ -318,7 +319,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                         class="site-nav-admin"
                         href="<?= htmlspecialchars($adminUrl . '/', ENT_QUOTES, 'UTF-8') ?>"
                     >
-                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                        <?= llama_icon('shield') ?>
                         <span>Admin</span>
                     </a>
                 <?php endif; ?>
@@ -326,7 +327,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
             <?php else: ?>
 
                 <a href="<?= htmlspecialchars($accountUrl . '/login.php', ENT_QUOTES, 'UTF-8') ?>">
-                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+                    <?= llama_icon('login') ?>
                     <span>Sign in</span>
                 </a>
 
@@ -340,7 +341,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 aria-controls="accessibility-panel"
                 aria-expanded="false"
             >
-                <i class="fa-solid fa-universal-access" aria-hidden="true"></i>
+                <?= llama_icon('accessible') ?>
                 <span class="visually-hidden">Accessibility settings</span>
             </button>
 
@@ -356,7 +357,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 aria-controls="accessibility-panel"
                 aria-expanded="false"
             >
-                <i class="fa-solid fa-universal-access" aria-hidden="true"></i>
+                <?= llama_icon('accessible') ?>
                 <span class="visually-hidden">Accessibility settings</span>
             </button>
 
@@ -400,14 +401,14 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                     id="accessibility-close"
                     aria-label="Close accessibility settings"
                 >
-                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    <?= llama_icon('x') ?>
                 </button>
             </div>
 
 
             <div class="accessibility-setting">
                 <label for="theme-select">
-                    <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+                    <?= llama_icon('sun-moon') ?>
                     Appearance
                 </label>
 
@@ -421,7 +422,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
 
             <div class="accessibility-setting">
                 <label for="font-size-select">
-                    <i class="fa-solid fa-text-height" aria-hidden="true"></i>
+                    <?= llama_icon('text-size') ?>
                     Text size
                 </label>
 
@@ -437,7 +438,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 <input type="checkbox" id="reduced-motion">
 
                 <label for="reduced-motion">
-                    <i class="fa-solid fa-person-walking-arrow-right" aria-hidden="true"></i>
+                    <?= llama_icon('walk') ?>
                     Reduce motion
                 </label>
             </div>
