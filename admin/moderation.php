@@ -60,7 +60,7 @@ require __DIR__ . '/_header.php';
 </a>
 
 <a href="/updates.php">
-    <span>Place Updates</span>
+    <span>Updates</span>
     <strong>
         <?= number_format(
             $queueStats['updates']
@@ -77,7 +77,7 @@ require __DIR__ . '/_header.php';
 </a>
 
 <a href="/reports.php">
-    <span>Problem Reports</span>
+    <span>Reports</span>
     <strong>
         <?= number_format(
             $queueStats['reports']
