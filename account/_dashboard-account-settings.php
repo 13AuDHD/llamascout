@@ -19,7 +19,6 @@ declare(strict_types=1);
         </div>
     </div>
 
-
     <div class="account-action-grid account-settings-grid">
 
         <a
@@ -32,15 +31,14 @@ declare(strict_types=1);
             ></i>
 
             <span>
-                <strong>Edit account information</strong>
+                <strong>Account information</strong>
 
                 <small>
-                    Display name, username, phone number,
-                    email address, and verification.
+                    Public identity, private contact details, address,
+                    time zone, email, and Support PIN.
                 </small>
             </span>
         </a>
-
 
         <a
             class="account-action-card"
@@ -67,12 +65,10 @@ declare(strict_types=1);
             </span>
         </a>
 
-
         <?php
         require __DIR__
             . '/_orders-dashboard-card.php';
         ?>
-
 
         <a
             class="account-action-card"
@@ -87,32 +83,11 @@ declare(strict_types=1);
                 <strong>Password &amp; security</strong>
 
                 <small>
-                    Change your password, set up multi-factor
-                    authentication, and manage recovery codes.
+                    Change your password, manage multi-factor
+                    authentication, recovery codes, and security.
                 </small>
             </span>
         </a>
-
-
-        <a
-            class="account-action-card"
-            href="/support-pin.php"
-        >
-            <i
-                class="fa-solid fa-phone-volume"
-                aria-hidden="true"
-            ></i>
-
-            <span>
-                <strong>Support PIN</strong>
-
-                <small>
-                    Set up phone support verification and a one-time
-                    emergency MFA reset.
-                </small>
-            </span>
-        </a>
-
 
         <?php if (
             llama_passkey_account_is_owner(
@@ -140,7 +115,6 @@ declare(strict_types=1);
             </a>
         <?php endif; ?>
 
-
         <a
             class="account-action-card account-action-card-danger"
             href="/delete-account.php"
@@ -163,5 +137,4 @@ declare(strict_types=1);
         </a>
 
     </div>
-
 </section>
