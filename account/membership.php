@@ -141,7 +141,7 @@ require dirname(__DIR__) . '/partials/header.php';
     class="signup-membership-back"
     href="https://llamascout.com/membership"
 >
-    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
     Membership details
 </a>
 
@@ -160,7 +160,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <?php if (isset($_GET['verified'])): ?>
 
 <div class="signup-membership-notice is-success">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     Email verified. Your account is ready. Continue with the
     membership you selected.
 </div>
@@ -174,7 +174,7 @@ require dirname(__DIR__) . '/partials/header.php';
 ): ?>
 
 <div class="signup-membership-notice is-success">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     Payment completed. Stripe is confirming your membership and
     your account will update automatically.
 </div>
@@ -363,7 +363,7 @@ $promotion = $offer['promotion'] ?? null;
 
 <div class="signup-membership-security">
 
-<i class="fa-solid fa-lock" aria-hidden="true"></i>
+<i aria-hidden="true"><?= llama_icon('lock') ?></i>
 
 <div>
     <strong>Secure checkout stays on Llama Scout</strong>

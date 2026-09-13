@@ -115,14 +115,14 @@ require dirname(__DIR__) . '/partials/header.php';
                 'UTF-8'
             ) ?>"
         >
-            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('plus') ?></i>
             Start a Place
         </a>
     </header>
 
     <?php if ($notice !== ''): ?>
         <div class="contribution-message is-success" role="status">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8') ?>
         </div>
     <?php endif; ?>
@@ -135,7 +135,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <?php if (!$drafts): ?>
         <div class="account-empty-state">
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
             <h2>Nothing saved for later</h2>
             <p>
                 Start a Place report and use Save for Later whenever you want
@@ -175,9 +175,8 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <?php if ($draftId === $savedDraftId): ?>
                                     <span class="saved-later-just-saved">
                                         <i
-                                            class="fa-solid fa-circle-check"
                                             aria-hidden="true"
-                                        ></i>
+                                        ><?= llama_icon('circle-check') ?></i>
                                         Saved just now
                                     </span>
                                 <?php endif; ?>
@@ -219,12 +218,12 @@ require dirname(__DIR__) . '/partials/header.php';
 
                         <?php if (!empty($progress['minimum_ready'])): ?>
                             <p class="saved-later-readiness is-ready">
-                                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                                <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
                                 Minimum submission information is present.
                             </p>
                         <?php else: ?>
                             <p class="saved-later-readiness">
-                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                                <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
                                 Still needed for the minimum:
                                 <?= htmlspecialchars(
                                     implode(', ', (array) ($progress['missing_minimum'] ?? [])),
@@ -256,7 +255,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                 'UTF-8'
                             ) ?>"
                         >
-                            <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('edit') ?></i>
                             Continue editing
                         </a>
 
@@ -278,7 +277,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                 value="1"
                                 class="saved-later-delete"
                             >
-                                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                <i aria-hidden="true"><?= llama_icon('trash') ?></i>
                                 Delete
                             </button>
                         </form>

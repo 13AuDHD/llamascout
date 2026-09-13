@@ -118,12 +118,12 @@ require dirname(__DIR__) . '/partials/header.php';
                     $siteUrl . '/' . rawurlencode($username)
                 ) ?>"
             >
-                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('eye') ?></i>
                 View profile
             </a>
 
             <a class="place-save-button" href="/index.php">
-                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
                 Account
             </a>
         </div>
@@ -131,7 +131,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <?php if ($success !== ''): ?>
         <div class="contribution-message is-success" role="status">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <span><?= profile_e($success) ?></span>
         </div>
     <?php endif; ?>
@@ -139,9 +139,8 @@ require dirname(__DIR__) . '/partials/header.php';
     <?php if ($errors): ?>
         <div class="contribution-message is-error" role="alert">
             <i
-                class="fa-solid fa-triangle-exclamation"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('alert-triangle') ?></i>
             <div>
                 <?php foreach ($errors as $error): ?>
                     <p><?= profile_e($error) ?></p>
@@ -213,9 +212,8 @@ require dirname(__DIR__) . '/partials/header.php';
                             <?php if ($isPrimary): ?>
                                 <span class="community-profile-primary-badge">
                                     <i
-                                        class="fa-solid fa-circle-check"
                                         aria-hidden="true"
-                                    ></i>
+                                    ><?= llama_icon('circle-check') ?></i>
                                     Profile picture
                                 </span>
                             <?php else: ?>
@@ -223,7 +221,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                     <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
                                     <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
                                     <button class="photo-manager-button" type="submit" name="action" value="primary">
-                                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('user') ?></i>
                                         Make primary
                                     </button>
                                 </form>
@@ -233,7 +231,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
                                 <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
                                 <button class="photo-manager-button" type="submit" name="action" value="delete">
-                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                    <i aria-hidden="true"><?= llama_icon('trash') ?></i>
                                     Remove
                                 </button>
                             </form>
@@ -264,7 +262,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 ></div>
 
                 <button type="submit" class="contribution-submit">
-                    <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('cloud-upload') ?></i>
                     Save selected photos
                 </button>
             </form>
@@ -320,7 +318,7 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
         <?php else: ?>
             <div class="account-empty-state">
-                <i class="fa-solid fa-award" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('award') ?></i>
                 <h3>No badges yet</h3>
                 <p>
                     Badges appear here as you earn Llama Scout
@@ -443,7 +441,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="community-profile-form-grid">
                 <label class="community-profile-field community-profile-field-wide">
                     <span>
-                        <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('world') ?></i>
                         Website
                     </span>
                     <input
@@ -457,18 +455,18 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <?php
                 $socialFields = [
-                    ['name' => 'instagram_url', 'label' => 'Instagram', 'icon' => 'fa-brands fa-instagram', 'placeholder' => 'username'],
-                    ['name' => 'facebook_url', 'label' => 'Facebook', 'icon' => 'fa-brands fa-facebook', 'placeholder' => 'username'],
-                    ['name' => 'bluesky_url', 'label' => 'Bluesky', 'icon' => 'fa-solid fa-cloud', 'placeholder' => 'name.bsky.social'],
-                    ['name' => 'youtube_url', 'label' => 'YouTube', 'icon' => 'fa-brands fa-youtube', 'placeholder' => 'channelhandle'],
-                    ['name' => 'tiktok_url', 'label' => 'TikTok', 'icon' => 'fa-brands fa-tiktok', 'placeholder' => 'username'],
+                    ['name' => 'instagram_url', 'label' => 'Instagram', 'icon' => 'brand-instagram', 'placeholder' => 'username'],
+                    ['name' => 'facebook_url', 'label' => 'Facebook', 'icon' => 'brand-facebook', 'placeholder' => 'username'],
+                    ['name' => 'bluesky_url', 'label' => 'Bluesky', 'icon' => 'brand-bluesky', 'placeholder' => 'name.bsky.social'],
+                    ['name' => 'youtube_url', 'label' => 'YouTube', 'icon' => 'brand-youtube', 'placeholder' => 'channelhandle'],
+                    ['name' => 'tiktok_url', 'label' => 'TikTok', 'icon' => 'brand-tiktok', 'placeholder' => 'username'],
                 ];
                 ?>
 
                 <?php foreach ($socialFields as $field): ?>
                     <label class="community-profile-field">
                         <span>
-                            <i class="<?= profile_e($field['icon']) ?>" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon((string) $field['icon']) ?></i>
                             <?= profile_e($field['label']) ?>
                         </span>
 
@@ -489,7 +487,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <label class="community-profile-field">
                     <span>
-                        <i class="fa-solid fa-link" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('link') ?></i>
                         Other link
                     </span>
                     <input
@@ -539,7 +537,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 value="1"
                 class="contribution-submit"
             >
-                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
                 Save Profile
             </button>
         </div>

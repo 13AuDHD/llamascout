@@ -243,7 +243,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <a class="account-logout-link" href="/logout.php">
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('logout') ?></i>
             Log out
         </a>
     </header>
@@ -255,9 +255,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <div class="account-scout-onboarding-icon">
                 <i
-                    class="fa-solid fa-binoculars"
                     aria-hidden="true"
-                ></i>
+                ><?= llama_icon('binoculars') ?></i>
             </div>
 
             <div class="account-scout-onboarding-copy">
@@ -313,9 +312,8 @@ require dirname(__DIR__) . '/partials/header.php';
                                 : 'Continue onboarding'
                         ) ?>
                     <i
-                        class="fa-solid fa-arrow-right"
                         aria-hidden="true"
-                    ></i>
+                    ><?= llama_icon('arrow-right') ?></i>
                 </a>
             </div>
 
@@ -345,9 +343,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <div class="account-empty-state account-badges-empty">
                 <i
-                    class="fa-solid fa-award"
                     aria-hidden="true"
-                ></i>
+                ><?= llama_icon('award') ?></i>
 
                 <h3>No badges earned yet</h3>
 
@@ -484,11 +481,11 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <?php if (!$savedPlaces): ?>
             <div class="account-empty-state">
-                <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
                 <h3>No saved places yet</h3>
                 <p>Save places from the map or a place page and they will appear here.</p>
                 <a class="place-save-button" href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
-                    <i class="fa-solid fa-map" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('map') ?></i>
                     Explore the map
                 </a>
             </div>
@@ -549,14 +546,14 @@ require dirname(__DIR__) . '/partials/header.php';
                                         aria-label="Remove <?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?> from saved places"
                                         title="Remove from saved places"
                                     >
-                                        <i class="fa-solid fa-bookmark" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
                                     </button>
                                 </form>
                             </div>
 
                             <?php if ($location): ?>
                                 <p class="saved-place-card-location">
-                                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                    <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                                     <?= htmlspecialchars(implode(', ', $location), ENT_QUOTES, 'UTF-8') ?>
                                 </p>
                             <?php endif; ?>
@@ -573,7 +570,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                     href="<?= htmlspecialchars($siteUrl . '/place.php?slug=' . rawurlencode($slug), ENT_QUOTES, 'UTF-8') ?>"
                                 >
                                     View place
-                                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                                 </a>
                             <?php else: ?>
                                 <p class="saved-place-card-unavailable">
@@ -598,11 +595,11 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <div class="account-action-grid">
             <a class="account-action-card" href="/profile.php">
-                <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('id') ?></i>
                 <span><strong>Manage Profile</strong><small>Profile photo, optional photos, bio, interests, social handles, and public visibility.</small></span>
             </a>
             <a class="account-action-card" href="<?= htmlspecialchars($siteUrl . '/' . rawurlencode((string) ($user['username'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
-                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('eye') ?></i>
                 <span><strong>View My Profile</strong><small>Preview your Llama Scout profile at your username URL.</small></span>
             </a>
         </div>
