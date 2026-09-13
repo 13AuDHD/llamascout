@@ -69,7 +69,12 @@
 }
 
 .account-dashboard-stat-card
-.account-glance-icon i {
+.account-glance-icon i,
+.account-dashboard-stat-card
+.account-glance-icon .llama-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+
     font-size: 1.15rem;
 }
 
@@ -113,7 +118,8 @@
         );
 }
 
-.account-scout-basecamp-card > i:first-child {
+.account-scout-basecamp-card > i:first-child,
+.account-scout-basecamp-card > .llama-icon:first-child {
     color: #43b56b;
 }
 
@@ -165,6 +171,11 @@
     color: var(--text);
 }
 
+.account-email-verification-banner-icon .llama-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
 .account-email-verification-banner-copy {
     min-width: 0;
 }
@@ -208,8 +219,11 @@
 }
 
 .account-settings-grid
-.account-action-card > i {
+.account-action-card > i,
+.account-settings-grid
+.account-action-card > .llama-icon {
     width: 34px;
+    height: 34px;
 
     font-size: 1.35rem;
 }
@@ -278,7 +292,12 @@
     }
 
     .account-dashboard-stat-card
-    .account-glance-icon i {
+    .account-glance-icon i,
+    .account-dashboard-stat-card
+    .account-glance-icon .llama-icon {
+        width: 1rem;
+        height: 1rem;
+
         font-size: 1rem;
     }
 

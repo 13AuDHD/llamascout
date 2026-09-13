@@ -94,6 +94,7 @@
 }
 
 .account-action-card-danger > i,
+.account-action-card-danger > .llama-icon,
 .account-action-card-danger strong {
     color: #c65c52;
 }
@@ -559,8 +560,10 @@
     text-decoration: none;
 }
 
-.account-action-card > i {
+.account-action-card > i,
+.account-action-card > .llama-icon {
     width: 28px;
+    height: 28px;
 
     flex: 0 0 auto;
 
