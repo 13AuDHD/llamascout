@@ -114,7 +114,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <section class="billing-page checkout-return-page">
     <div class="checkout-return-card is-<?= payment_return_e($status) ?>">
         <div class="checkout-return-icon">
-            <i class="fa-solid <?= $status === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon($status === 'success' ? 'circle-check' : 'alert-triangle') ?></i>
         </div>
         <p class="eyebrow">Payment method</p>
         <h1><?= $status === 'success' ? 'Updated.' : 'Update problem' ?></h1>

@@ -38,7 +38,7 @@ if (!$order) {
     >
     <section class="account-page account-orders-page">
         <section class="account-orders-empty">
-            <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('package') ?></i>
             <h1>Order not found</h1>
             <p>
                 This order is not associated with your account.
@@ -112,7 +112,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <a class="account-orders-back" href="/orders.php">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Orders
     </a>
 </header>
@@ -196,7 +196,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 alt=""
             >
         <?php else: ?>
-            <i class="fa-solid fa-box" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('package') ?></i>
         <?php endif; ?>
     </div>
 
@@ -314,10 +314,7 @@ require dirname(__DIR__) . '/partials/header.php';
             rel="noopener"
         >
             Track package
-            <i
-                class="fa-solid fa-arrow-up-right-from-square"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
         </a>
         <?php endif; ?>
     </div>

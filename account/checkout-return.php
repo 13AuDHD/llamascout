@@ -104,11 +104,11 @@ require dirname(__DIR__) . '/partials/header.php';
     <div class="checkout-return-card is-<?= checkout_return_e($status) ?>">
         <div class="checkout-return-icon">
             <?php if ($status === 'success'): ?>
-                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <?php elseif ($status === 'processing'): ?>
-                <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('clock') ?></i>
             <?php else: ?>
-                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
             <?php endif; ?>
         </div>
 

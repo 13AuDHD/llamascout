@@ -164,7 +164,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 data-client-secret="<?= payment_method_e($clientSecret) ?>"
             >
                 <div class="checkout-loading" id="payment-method-loading">
-                    <i class="fa-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
+                    <i class="llama-icon-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
                     Loading secure payment form…
                 </div>
             </div>
@@ -174,7 +174,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <button id="payment-method-submit" class="billing-primary-button payment-method-submit" type="submit" disabled>
                 <span class="payment-method-submit-label">Save payment method</span>
                 <span class="payment-method-submit-working" hidden>
-                    <i class="fa-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
+                    <i class="llama-icon-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
                     Saving…
                 </span>
             </button>

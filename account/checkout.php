@@ -325,7 +325,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <header class="checkout-page-header">
     <a class="checkout-back-link" href="/membership.php?plan=<?= checkout_e($interval) ?>">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Change membership
     </a>
 
@@ -340,7 +340,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <?php if ($checkoutError !== ''): ?>
 
 <div class="checkout-error-card">
-    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <h2>Checkout could not start.</h2>
     <p><?= checkout_e($checkoutError) ?></p>
     <a class="checkout-primary-button" href="/membership.php?plan=<?= checkout_e($interval) ?>">
@@ -386,13 +386,13 @@ require dirname(__DIR__) . '/partials/header.php';
     <?php endif; ?>
 
     <ul class="checkout-trust-list">
-        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Full Llama Scout membership access</li>
-        <li><i class="fa-solid fa-lock" aria-hidden="true"></i> Payment details handled by Stripe</li>
-        <li><i class="fa-solid fa-rotate" aria-hidden="true"></i> Manage membership from your account</li>
+        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Full Llama Scout membership access</li>
+        <li><i aria-hidden="true"><?= llama_icon('lock') ?></i> Payment details handled by Stripe</li>
+        <li><i aria-hidden="true"><?= llama_icon('refresh') ?></i> Manage membership from your account</li>
     </ul>
 
     <div class="checkout-secure-note">
-        <i class="fa-brands fa-stripe" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('brand-stripe') ?></i>
         <span>Secure payment processing by Stripe</span>
     </div>
 </aside>
@@ -405,7 +405,7 @@ require dirname(__DIR__) . '/partials/header.php';
         data-client-secret="<?= checkout_e($clientSecret) ?>"
     >
         <div class="checkout-loading">
-            <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+            <i class="llama-icon-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
             Loading secure payment form&hellip;
         </div>
     </div>

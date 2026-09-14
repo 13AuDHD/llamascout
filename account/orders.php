@@ -52,7 +52,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <a class="account-orders-back" href="/">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Account
     </a>
 </header>
@@ -60,7 +60,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <?php if (!$orders): ?>
 
 <section class="account-orders-empty">
-    <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('shopping-bag') ?></i>
     <h2>No orders yet</h2>
     <p>
         When you buy something from the Llama Scout Shop,
@@ -88,7 +88,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <div class="account-order-card-main">
     <div class="account-order-card-icon">
-        <i class="fa-solid fa-box" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('package') ?></i>
     </div>
 
     <div>
@@ -142,10 +142,7 @@ require dirname(__DIR__) . '/partials/header.php';
         ) ?>
     </strong>
 
-    <i
-        class="fa-solid fa-chevron-right"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
 </div>
 
 </a>
