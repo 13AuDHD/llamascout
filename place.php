@@ -78,10 +78,9 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
         </div>
 
         <?php if ($icon): ?>
-            <i
-                class="fa-solid <?= place_h($icon) ?> scout-report-value-icon"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon($icon, ['class' => 'scout-report-value-icon']) ?>
+            </i>
         <?php endif; ?>
 
     </div>
@@ -206,16 +205,16 @@ $locationParts = array_filter([
 ]);
 
 $amenityLabels = [
-    'toilets' => ['fa-restroom', 'Toilets'],
-    'potable_water' => ['fa-faucet-drip', 'Potable water'],
-    'trash' => ['fa-trash-can', 'Trash'],
-    'fire_ring' => ['fa-fire', 'Metal fire ring'],
-    'picnic_table' => ['fa-utensils', 'Picnic table'],
-    'bear_box' => ['fa-box', 'Bear box'],
-    'showers' => ['fa-shower', 'Showers'],
-    'electricity' => ['fa-bolt', 'Electricity'],
-    'dump_station' => ['fa-truck-droplet', 'Dump station'],
-    'food_storage_required' => ['fa-box-archive', 'Food storage required'],
+    'toilets' => ['toilet-paper', 'Toilets'],
+    'potable_water' => ['droplet', 'Potable water'],
+    'trash' => ['trash', 'Trash'],
+    'fire_ring' => ['campfire', 'Metal fire ring'],
+    'picnic_table' => ['picnic-table', 'Picnic table'],
+    'bear_box' => ['package', 'Bear box'],
+    'showers' => ['shower', 'Showers'],
+    'electricity' => ['bolt', 'Electricity'],
+    'dump_station' => ['caravan', 'Dump station'],
+    'food_storage_required' => ['packages', 'Food storage required'],
 ];
 
 $details = $hasMemberAccess ? ($place['details'] ?? []) : [];
