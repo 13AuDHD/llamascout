@@ -56,7 +56,7 @@ require __DIR__ . '/partials/header.php';
 
             <div class="field-guides-controls">
                 <label>
-                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('search') ?></i>
                     <input
                         type="search"
                         id="field-guide-search"
@@ -126,7 +126,7 @@ require __DIR__ . '/partials/header.php';
                                 href="/field-guides/<?= rawurlencode((string) $guide['slug']) ?>"
                             >
                                 Read guide
-                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                                <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                             </a>
                         </div>
                     </article>

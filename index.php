@@ -113,7 +113,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="public-home-actions">
                     <a class="public-home-button is-primary" href="/map.php">
-                        <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         Explore the Map
                     </a>
 
@@ -123,10 +123,10 @@ require __DIR__ . '/partials/header.php';
                 </div>
 
                 <ul class="public-home-trust-list" aria-label="Llama Scout highlights">
-                    <li><i class="fa-solid fa-road" aria-hidden="true"></i> Road and vehicle access</li>
-                    <li><i class="fa-solid fa-ear-listen" aria-hidden="true"></i> Sensory details</li>
-                    <li><i class="fa-solid fa-signal" aria-hidden="true"></i> Connectivity</li>
-                    <li><i class="fa-solid fa-cloud-sun" aria-hidden="true"></i> Place-aware weather</li>
+                    <li><i aria-hidden="true"><?= llama_icon('road') ?></i> Road and vehicle access</li>
+                    <li><i aria-hidden="true"><?= llama_icon('ear') ?></i> Sensory details</li>
+                    <li><i aria-hidden="true"><?= llama_icon('antenna-bars-5') ?></i> Connectivity</li>
+                    <li><i aria-hidden="true"><?= llama_icon('sun-moon') ?></i> Place-aware weather</li>
                 </ul>
             </div>
 
@@ -165,9 +165,9 @@ require __DIR__ . '/partials/header.php';
                         </div>
 
                         <i
-                            class="fa-solid fa-rotate scout-report-value-icon"
+                            class="scout-report-value-icon"
                             aria-hidden="true"
-                        ></i>
+                        ><?= llama_icon('refresh') ?></i>
                     </div>
 
                     <div class="scout-report-item scout-report-rating-item">
@@ -227,7 +227,7 @@ require __DIR__ . '/partials/header.php';
 
                 <a href="/map.php">
                     Open full map
-                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                 </a>
             </div>
 
@@ -255,7 +255,7 @@ require __DIR__ . '/partials/header.php';
 
                 <a href="/map.php">
                     See all places
-                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                 </a>
             </div>
 
@@ -284,7 +284,7 @@ require __DIR__ . '/partials/header.php';
                                     >
                                 <?php else: ?>
                                     <span class="public-home-place-placeholder">
-                                        <i class="fa-solid fa-mountain-sun" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('mountain') ?></i>
                                     </span>
                                 <?php endif; ?>
                             </a>
@@ -302,7 +302,7 @@ require __DIR__ . '/partials/header.php';
 
                                 <?php if ($location !== ''): ?>
                                     <p>
-                                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                                         <?= home_e($location) ?>
                                     </p>
                                 <?php endif; ?>
@@ -341,7 +341,7 @@ require __DIR__ . '/partials/header.php';
 
                 <a href="/field-guides">
                     Read the Field Guides
-                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                 </a>
             </div>
 

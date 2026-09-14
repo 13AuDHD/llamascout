@@ -58,7 +58,7 @@ require __DIR__ . '/partials/header.php';
         <div class="field-guide-article-container">
 
             <a class="field-guide-back" href="/field-guides">
-                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
                 Field Guides
             </a>
 
@@ -73,14 +73,14 @@ require __DIR__ . '/partials/header.php';
             <div class="field-guide-article-meta">
                 <?php if (!empty($guide['published'])): ?>
                     <span>
-                        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('calendar') ?></i>
                         <?= guide_e(date('M j, Y', strtotime((string) $guide['published']))) ?>
                     </span>
                 <?php endif; ?>
 
                 <?php if (!empty($guide['readTime'])): ?>
                     <span>
-                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('clock') ?></i>
                         <?= guide_e($guide['readTime']) ?>
                     </span>
                 <?php endif; ?>
@@ -120,7 +120,7 @@ require __DIR__ . '/partials/header.php';
 
                 <?php if (!empty($section['tip'])): ?>
                     <aside class="field-guide-tip">
-                        <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('bulb') ?></i>
                         <p><?= guide_e($section['tip']) ?></p>
                     </aside>
                 <?php endif; ?>

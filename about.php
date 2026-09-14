@@ -33,7 +33,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="about-actions">
                     <a class="about-button is-primary" href="/map.php">
-                        <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         Explore the Map
                     </a>
 
@@ -105,7 +105,7 @@ require __DIR__ . '/partials/header.php';
             <div class="about-feature-grid">
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-road" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('road') ?></i>
                     <h3>Road and vehicle access</h3>
                     <p>
                         Surface, difficulty, clearance concerns, exposure,
@@ -115,7 +115,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-ear-listen" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('ear') ?></i>
                     <h3>Sensory conditions</h3>
                     <p>
                         Noise, traffic, crowds, odors, lighting, privacy,
@@ -125,7 +125,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-signal" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('antenna-bars-5') ?></i>
                     <h3>Connectivity</h3>
                     <p>
                         Cell service, carrier observations, Starlink suitability,
@@ -134,7 +134,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-cloud-sun" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('sun-moon') ?></i>
                     <h3>Weather</h3>
                     <p>
                         Public city weather for planning, with exact-location
@@ -144,7 +144,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-campground" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('tent') ?></i>
                     <h3>Site details</h3>
                     <p>
                         Amenities, land manager, elevation, rules, nearby context,
@@ -154,7 +154,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
                     <h3>Scout context</h3>
                     <p>
                         Field observations, contribution history, provenance,

@@ -38,7 +38,7 @@ require __DIR__ . '/partials/header.php';
 
             <?php if (!$hasMapMemberAccess): ?>
                 <div class="map-privacy-note">
-                    <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
                     <div>
                         <strong>Public pins are approximate.</strong>
                         <span>
@@ -58,7 +58,7 @@ require __DIR__ . '/partials/header.php';
             <div class="map-toolbar">
 
                 <label class="map-search">
-                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('search') ?></i>
 
                     <span class="visually-hidden">Search Places</span>
 
@@ -78,7 +78,7 @@ require __DIR__ . '/partials/header.php';
                     aria-controls="map-filter-panel"
                     aria-expanded="false"
                 >
-                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('adjustments-alt') ?></i>
                     Filters
                     <span id="map-filter-count" class="map-filter-count" hidden></span>
                 </button>
@@ -189,7 +189,7 @@ require __DIR__ . '/partials/header.php';
                                 aria-label="Map style"
                             >
                                 <span class="map-layer-label">
-                                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                                    <i aria-hidden="true"><?= llama_icon('layers-subtract') ?></i>
                                     Map
                                 </span>
 
@@ -236,7 +236,7 @@ require __DIR__ . '/partials/header.php';
                             type="button"
                             class="map-fit-results"
                         >
-                            <i class="fa-solid fa-expand" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('arrows-maximize') ?></i>
                             Fit map
                         </button>
                     </div>
@@ -252,7 +252,7 @@ require __DIR__ . '/partials/header.php';
                         class="map-empty"
                         hidden
                     >
-                        <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         <h3>No Places match those filters.</h3>
                         <p>Try clearing one or more filters.</p>
                     </div>
