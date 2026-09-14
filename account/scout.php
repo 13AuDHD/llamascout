@@ -460,12 +460,13 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <div class="scout-basecamp-rank">
-        <i
-            class="fa-solid <?= $isMasterScout
-                ? 'fa-compass'
-                : 'fa-binoculars' ?>"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon(
+                $isMasterScout
+                    ? 'compass'
+                    : 'binoculars'
+            ) ?>
+        </i>
 
         <span>
             <?= htmlspecialchars(
@@ -494,9 +495,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <div class="scout-basecamp-notice is-attention">
     <i
-        class="fa-solid fa-triangle-exclamation"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('alert-triangle') ?></i>
 
     <div>
         <strong>
@@ -655,9 +655,8 @@ require dirname(__DIR__) . '/partials/header.php';
         href="/add-place.php"
     >
         <i
-            class="fa-solid fa-location-dot"
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('map-pin') ?></i>
         Add a new Place
     </a>
 
@@ -927,12 +926,13 @@ require dirname(__DIR__) . '/partials/header.php';
         ? 'is-met'
         : '' ?>"
     >
-        <i
-            class="fa-solid <?= !empty($requirement['met'])
-                ? 'fa-circle-check'
-                : 'fa-circle' ?>"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon(
+                !empty($requirement['met'])
+                    ? 'circle-check'
+                    : 'circle-minus'
+            ) ?>
+        </i>
 
         <span>
             <strong>
@@ -976,9 +976,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="scout-basecamp-panel scout-basecamp-master-panel">
     <i
-        class="fa-solid fa-compass"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('compass') ?></i>
 
     <div>
         <p class="eyebrow">Current Rank</p>
@@ -1004,22 +1003,22 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <nav class="scout-basecamp-links">
     <a href="/add-place.php">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
         Add a Place
     </a>
 
     <a href="/">
-        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('user') ?></i>
         My account
     </a>
 
     <a href="/points.php">
-        <i class="fa-solid fa-star" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('star') ?></i>
         Points history
     </a>
 
     <a href="/badges.php">
-        <i class="fa-solid fa-award" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('award') ?></i>
         My badges
     </a>
 </nav>

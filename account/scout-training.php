@@ -141,7 +141,7 @@ require dirname(__DIR__) . '/partials/header.php';
     : '' ?>">
 
 <a class="account-scout-back" href="/">
-    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
     My account
 </a>
 
@@ -177,7 +177,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="account-scout-panel account-scout-awaiting">
     <div class="account-scout-status-icon is-good">
-        <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('clipboard-check') ?></i>
     </div>
 
     <h2>Awaiting Basecamp approval</h2>
@@ -190,19 +190,19 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <div class="account-scout-progress-list">
         <div class="is-complete">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <span><strong>Invitation accepted</strong></span>
         </div>
         <div class="is-complete">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <span><strong>About You submitted</strong></span>
         </div>
         <div class="is-complete">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <span><strong>Scout training complete</strong></span>
         </div>
         <div class="is-current">
-            <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('hourglass-empty') ?></i>
             <span><strong>Basecamp review</strong></span>
         </div>
     </div>
@@ -257,7 +257,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 aria-controls="scout-test-video"
             >
                 <span class="account-scout-media-check-icon">
-                    <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('video') ?></i>
                 </span>
 
                 <span class="account-scout-media-check-copy">
@@ -274,14 +274,14 @@ require dirname(__DIR__) . '/partials/header.php';
                         data-scout-test-media-play
                         aria-label="Play test audio and video"
                     >
-                        <i class="fa-solid fa-play" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('player-play') ?></i>
                     </button>
 
                     <i
-                        class="fa-solid fa-chevron-down account-scout-test-chevron"
+                        class="account-scout-test-chevron"
                         aria-hidden="true"
                         data-scout-test-chevron
-                    ></i>
+                    ><?= llama_icon('chevron-down') ?></i>
                 </span>
             </div>
 
@@ -330,7 +330,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     data-scout-video-toggle
                     aria-label="Play Scout training video"
                 >
-                    <i class="fa-solid fa-play" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('player-play') ?></i>
                     <span>Play training</span>
                 </button>
 
@@ -357,7 +357,7 @@ require dirname(__DIR__) . '/partials/header.php';
             data-scout-video-status
             role="status"
         >
-            <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('player-play') ?></i>
             <span>
                 Watch the video through to the end to unlock the final
                 acknowledgements.
@@ -487,6 +487,48 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <script>
 (() => {
+    const iconChevronDown =
+        <?= json_encode(
+            llama_icon('chevron-down'),
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const iconChevronUp =
+        <?= json_encode(
+            llama_icon('chevron-up'),
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const iconPlay =
+        <?= json_encode(
+            llama_icon('player-play'),
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const iconPause =
+        <?= json_encode(
+            llama_icon('player-pause'),
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const statusIconCheck =
+        <?= json_encode(
+            '<i aria-hidden="true">' . llama_icon('circle-check') . '</i>',
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const statusIconAlert =
+        <?= json_encode(
+            '<i aria-hidden="true">' . llama_icon('alert-triangle') . '</i>',
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+    const statusIconPlay =
+        <?= json_encode(
+            '<i aria-hidden="true">' . llama_icon('player-play') . '</i>',
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
     const form = document.querySelector('[data-scout-training-form]');
     if (!form) return;
 
@@ -532,10 +574,10 @@ require dirname(__DIR__) . '/partials/header.php';
         );
 
         if (testChevron) {
-            testChevron.className =
+            testChevron.innerHTML =
                 expanded
-                    ? 'fa-solid fa-chevron-up account-scout-test-chevron'
-                    : 'fa-solid fa-chevron-down account-scout-test-chevron';
+                    ? iconChevronUp
+                    : iconChevronDown;
         }
 
         if (!expanded && testMedia && !testMedia.paused) {
@@ -552,10 +594,10 @@ require dirname(__DIR__) . '/partials/header.php';
             && !testMedia.ended;
 
         if (icon) {
-            icon.className =
+            icon.innerHTML =
                 playing
-                    ? 'fa-solid fa-pause'
-                    : 'fa-solid fa-play';
+                    ? iconPause
+                    : iconPlay;
         }
 
         testPlay.setAttribute(
@@ -697,9 +739,9 @@ require dirname(__DIR__) . '/partials/header.php';
         const playing = !video.paused && !video.ended;
 
         if (icon) {
-            icon.className = playing
-                ? 'fa-solid fa-pause'
-                : 'fa-solid fa-play';
+            icon.innerHTML = playing
+                ? iconPause
+                : iconPlay;
         }
 
         if (label) {
@@ -742,7 +784,7 @@ require dirname(__DIR__) . '/partials/header.php';
         confirmLabel.classList.remove('is-locked');
         status.classList.add('is-complete');
         status.innerHTML =
-            '<i class="fa-solid fa-circle-check" aria-hidden="true"></i>'
+            statusIconCheck
             + '<span>Video complete. Finish the acknowledgements below.</span>';
 
         refreshSubmit();
@@ -763,7 +805,7 @@ require dirname(__DIR__) . '/partials/header.php';
             }
         } catch (error) {
             status.innerHTML =
-                '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>'
+                statusIconAlert
                 + '<span>The training video could not start. Tap Play training again.</span>';
         }
 
@@ -826,7 +868,7 @@ require dirname(__DIR__) . '/partials/header.php';
         } else {
             video.currentTime = maxWatched;
             status.innerHTML =
-                '<i class="fa-solid fa-circle-play" aria-hidden="true"></i>'
+                statusIconPlay
                 + '<span>Continue watching the training video through to the end.</span>';
         }
 

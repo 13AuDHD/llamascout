@@ -609,9 +609,8 @@ $e =
         <div class="add-place-form-note">
 
             <i
-                class="fa-solid fa-circle-info"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('info-circle') ?></i>
 
             <span>
                 Your edits do not change the live Place immediately.
@@ -631,9 +630,8 @@ $e =
         <div class="contribution-message">
 
             <i
-                class="fa-solid fa-clock"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('clock') ?></i>
 
 
             <div>
@@ -675,9 +673,8 @@ $e =
                 <div class="place-update-request-heading">
 
                     <i
-                        class="fa-solid fa-triangle-exclamation"
                         aria-hidden="true"
-                    ></i>
+                    ><?= llama_icon('alert-triangle') ?></i>
 
 
                     <div>
@@ -751,7 +748,7 @@ $e =
 
             <input
                 type="hidden"
-                name="slug"
+              name="slug"
                 value="<?= $e(
                     $slug
                 ) ?>"
@@ -803,9 +800,8 @@ $e =
                     <span>
 
                         <i
-                            class="fa-solid fa-calendar-check"
                             aria-hidden="true"
-                        ></i>
+                        ><?= llama_icon('calendar-check') ?></i>
 
                         Your observation
 
@@ -881,9 +877,8 @@ $e =
                     <span>
 
                         <i
-                            class="fa-solid fa-camera"
                             aria-hidden="true"
-                        ></i>
+                        ><?= llama_icon('camera') ?></i>
 
                         Photos from this visit
 
@@ -1009,9 +1004,8 @@ $e =
                 >
 
                     <i
-                        class="fa-solid fa-paper-plane"
                         aria-hidden="true"
-                    ></i>
+                    ><?= llama_icon('send') ?></i>
 
 
                     <?= $isNeedsChanges

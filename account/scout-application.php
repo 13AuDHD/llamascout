@@ -138,7 +138,7 @@ function scout_app_value(
 <div class="account-scout-shell">
 
 <a class="account-scout-back" href="/">
-    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
     My account
 </a>
 
@@ -151,7 +151,7 @@ function scout_app_value(
     </p>
 
     <div class="account-scout-private-note">
-        <i class="fa-solid fa-lock" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('lock') ?></i>
         <div>
             <strong>Private Scout information</strong>
             <span>
@@ -232,7 +232,7 @@ function scout_app_value(
             <label class="is-wide account-scout-address-field">
                 <span class="account-scout-address-label">
                     Mailing address
-                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                 </span>
 
                 <div class="account-scout-address-row">
@@ -270,7 +270,7 @@ function scout_app_value(
                         class="account-scout-address-location"
                         data-scout-address-location
                     >
-                        <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
                         <span>Use my location</span>
                     </button>
 

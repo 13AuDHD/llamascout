@@ -135,7 +135,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="account-scout-shell">
 
 <a class="account-scout-back" href="/">
-    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
     My account
 </a>
 
@@ -158,7 +158,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="account-scout-panel">
     <div class="account-scout-status-icon">
-        <i class="fa-solid fa-circle-minus" aria-hidden="true"></i>
+        <i  aria-hidden="true"><?= llama_icon('circle-minus') ?></i>
     </div>
     <h2>Invitation declined</h2>
     <p>
@@ -171,7 +171,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="account-scout-panel">
     <div class="account-scout-status-icon">
-        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+        <i  aria-hidden="true"><?= llama_icon('clock') ?></i>
     </div>
     <h2>This invitation has expired</h2>
     <p>
@@ -190,21 +190,21 @@ require dirname(__DIR__) . '/partials/header.php';
 
     <div class="account-scout-feature-list">
         <div>
-            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('map-pin') ?></i>
             <span>
                 <strong>Scout Places</strong>
                 Add new Places you've personally visited and improve existing records.
             </span>
         </div>
         <div>
-            <i class="fa-solid fa-camera" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('camera') ?></i>
             <span>
                 <strong>Document conditions</strong>
                 Photos, access information, sensory details, amenities, and current conditions.
             </span>
         </div>
         <div>
-            <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('shield') ?></i>
             <span>
                 <strong>Help protect accuracy</strong>
                 Scouts are trusted contributors, but Scout observations remain transparent and attributable.

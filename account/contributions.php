@@ -62,7 +62,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 'UTF-8'
             ) ?>"
         >
-            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('plus') ?></i>
             Add a place
         </a>
     </header>
@@ -74,9 +74,9 @@ require dirname(__DIR__) . '/partials/header.php';
         aria-live="polite"
     >
         <i
-            class="fa-solid fa-circle-check"
+            
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('circle-check') ?></i>
 
         <div>
             <strong>
@@ -112,9 +112,9 @@ require dirname(__DIR__) . '/partials/header.php';
     <?php if (!$items): ?>
         <div class="account-empty-state">
             <i
-                class="fa-solid fa-route"
+                
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('route') ?></i>
 
             <h2>No contributions yet</h2>
 
@@ -232,9 +232,9 @@ require dirname(__DIR__) . '/partials/header.php';
                                 ) ?>"
                             >
                                 <i
-                                    class="fa-solid fa-pen"
+                                    
                                     aria-hidden="true"
-                                ></i>
+                                ><?= llama_icon('edit') ?></i>
                                 Edit &amp; resubmit
                             </a>
                         <?php endif; ?>
@@ -257,9 +257,9 @@ require dirname(__DIR__) . '/partials/header.php';
                                 ) ?>"
                             >
                                 <i
-                                    class="fa-solid fa-pen"
+                                    
                                     aria-hidden="true"
-                                ></i>
+                                ><?= llama_icon('edit') ?></i>
                                 Edit &amp; resubmit
                             </a>
                         <?php endif; ?>
