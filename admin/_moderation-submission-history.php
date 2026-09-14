@@ -34,10 +34,9 @@ $historyTime = static function (mixed $value): string {
     <header class="admin-moderation-section-header">
         <div>
             <p class="admin-moderation-eyebrow">
-                <i
-                    class="fa-solid fa-clock-rotate-left"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('history') ?>
+                </i>
                 Revision History
             </p>
 
@@ -65,20 +64,19 @@ $historyTime = static function (mixed $value): string {
             };
 
             $icon = match ($type) {
-                'changes-requested' => 'fa-rotate-left',
-                'resubmitted' => 'fa-arrows-rotate',
-                'approved' => 'fa-circle-check',
-                'rejected' => 'fa-circle-xmark',
-                default => 'fa-circle',
+                'changes-requested' => 'arrow-back-up',
+                'resubmitted' => 'refresh',
+                'approved' => 'circle-check',
+                'rejected' => 'xbox-x',
+                default => 'circle',
             };
             ?>
 
             <article class="admin-submission-history-event">
                 <div class="admin-submission-history-icon">
-                    <i
-                        class="fa-solid <?= $historyE($icon) ?>"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true">
+                        <?= llama_icon($icon) ?>
+                    </i>
                 </div>
 
                 <div class="admin-submission-history-body">
@@ -169,10 +167,9 @@ $historyTime = static function (mixed $value): string {
                                             <div>
                                                 <span><?= $historyE($before) ?></span>
 
-                                                <i
-                                                    class="fa-solid fa-arrow-right"
-                                                    aria-hidden="true"
-                                                ></i>
+                                                <i aria-hidden="true">
+                                                    <?= llama_icon('arrow-right') ?>
+                                                </i>
 
                                                 <span><?= $historyE($after) ?></span>
                                             </div>

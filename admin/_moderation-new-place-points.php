@@ -43,10 +43,9 @@ $categories =
     <header class="admin-moderation-points-header">
         <div>
             <p class="admin-moderation-eyebrow">
-                <i
-                    class="fa-solid fa-star"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('star') ?>
+                </i>
                 Points
             </p>
 

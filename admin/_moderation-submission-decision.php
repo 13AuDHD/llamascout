@@ -38,10 +38,9 @@ declare(strict_types=1);
                 name="action"
                 value="approve"
             >
-                <i
-                    class="fa-solid fa-circle-check"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('circle-check') ?>
+                </i>
                 Approve and Publish
             </button>
         </div>
@@ -82,10 +81,9 @@ declare(strict_types=1);
                 value="delete"
                 data-delete-submission
             >
-                <i
-                    class="fa-solid fa-trash-can"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('trash') ?>
+                </i>
                 Delete Submission
             </button>
         </div>
