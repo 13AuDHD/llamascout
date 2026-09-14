@@ -41,7 +41,7 @@ $adminActiveNav = 'orders';
 
 $adminPageActions =
     '<a class="admin-button" href="/shop-integrity.php">'
-    . '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i> '
+    . '<i aria-hidden="true">' . llama_icon('shield') . '</i> '
     . 'Shop Integrity'
     . '</a>';
 
@@ -138,7 +138,7 @@ require __DIR__ . '/_header.php';
 
 <?php if (!$orders): ?>
 <div class="admin-empty-state">
-    <i class="fa-solid fa-box" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('package') ?></i>
     <h3>No matching orders.</h3>
 </div>
 <?php else: ?>

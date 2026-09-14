@@ -347,22 +347,22 @@ $selectedType =
     <?php
     $audienceCards = [
         'monthly' => [
-            'fa-newspaper',
+            'news',
             'Llama Scout Monthly',
             'Optional newsletter subscribers',
         ],
         'member_dispatch' => [
-            'fa-compass',
+            'compass',
             'Member Dispatch',
             'Members with Dispatch enabled',
         ],
         'policy_updates' => [
-            'fa-file-signature',
+            'signature',
             'Policy Updates',
             'All active verified accounts',
         ],
         'important_news' => [
-            'fa-bullhorn',
+            'speakerphone',
             'Important News',
             'All active verified accounts',
         ],
@@ -375,10 +375,9 @@ $selectedType =
     ): ?>
 
         <article>
-            <i
-                class="fa-solid <?= moderation_e($icon) ?>"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon($icon) ?>
+            </i>
 
             <div>
                 <strong>
@@ -534,10 +533,9 @@ $selectedType =
 </label>
 
 <div class="admin-newsletter-editor-note">
-    <i
-        class="fa-solid fa-code"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('code') ?>
+    </i>
 
     <div>
         <strong>Rich HTML email is supported</strong>
@@ -587,20 +585,18 @@ $selectedType =
             true
         )
     ): ?>
-        <i
-            class="fa-solid fa-circle-exclamation"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('mail-exclamation') ?>
+        </i>
 
         <span>
             This category is an account-wide notice and sends to
             all active verified Llama Scout accounts.
         </span>
     <?php else: ?>
-        <i
-            class="fa-solid fa-envelope"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('mail') ?>
+        </i>
 
         <span>
             This category follows the member's optional email preferences.
@@ -699,10 +695,9 @@ $selectedType =
 <?php if (!$issues): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-envelope-open-text"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('mail-opened') ?>
+    </i>
 
     <h3>No newsletters yet.</h3>
 </div>

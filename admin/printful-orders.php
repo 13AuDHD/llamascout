@@ -236,10 +236,9 @@ require __DIR__
 <?php if (!$rows): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-shirt"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('shirt') ?>
+    </i>
 
     <h3>No Printful orders yet.</h3>
 

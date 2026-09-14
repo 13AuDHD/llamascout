@@ -162,10 +162,9 @@ require __DIR__ . '/_header.php';
 <?php if ($catalogError !== ''): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-triangle-exclamation"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('alert-triangle') ?>
+    </i>
 
     <h3>Printful catalog unavailable.</h3>
 
@@ -177,10 +176,9 @@ require __DIR__ . '/_header.php';
 <?php elseif (!$catalog['products']): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-shirt"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('shirt') ?>
+    </i>
 
     <h3>No Printful products found.</h3>
 
@@ -193,10 +191,9 @@ require __DIR__ . '/_header.php';
 <?php else: ?>
 
 <div class="admin-printful-explainer">
-    <i
-        class="fa-solid fa-link"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('link') ?>
+    </i>
 
     <div>
         <strong>
@@ -243,10 +240,9 @@ require __DIR__ . '/_header.php';
 
 <?php else: ?>
 
-<i
-    class="fa-solid fa-shirt"
-    aria-hidden="true"
-></i>
+<i aria-hidden="true">
+    <?= llama_icon('shirt') ?>
+</i>
 
 <?php endif; ?>
 

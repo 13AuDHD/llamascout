@@ -403,7 +403,7 @@ require __DIR__ . '/_header.php';
             alt=""
         >
     <?php else: ?>
-        <i class="fa-solid fa-box" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('package') ?></i>
     <?php endif; ?>
 </div>
 
@@ -519,10 +519,9 @@ $itemReturn =
             class="admin-button"
             href="/refund-order.php?id=<?= (int) $orderId ?>"
         >
-            <i
-                class="fa-solid fa-money-bill-transfer"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('credit-card-refund') ?>
+            </i>
             Refund customer
         </a>
 
@@ -558,10 +557,9 @@ $itemReturn =
             class="admin-button"
             href="/return-order.php?id=<?= (int) $orderId ?>"
         >
-            <i
-                class="fa-solid fa-rotate-left"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('arrow-back-up') ?>
+            </i>
             Receive remaining return
         </a>
 
@@ -620,10 +618,9 @@ $itemReturn =
 >
 
 <div class="admin-commerce-order-status-note">
-    <i
-        class="fa-solid fa-hourglass-start"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('hourglass-low') ?>
+    </i>
 
     <p>
         New fulfillments always begin as
@@ -760,7 +757,7 @@ $itemReturn =
     <span>Tracking link</span>
     <a href="<?= moderation_e((string) $fulfillment['tracking_url']) ?>" target="_blank" rel="noopener">
         Open <?= moderation_e(admin_shop_tracking_carrier_label((string) ($fulfillment['tracking_carrier'] ?? ''))) ?> tracking
-        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
     </a>
 </div>
 <?php endif; ?>
@@ -792,7 +789,7 @@ if ($printfulProviderOrderId !== '') {
 ?>
 <div class="admin-commerce-provider-box">
 <div>
-    <i class="fa-solid fa-shirt" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('shirt') ?></i>
     <div>
         <strong>Printful Fulfillment</strong>
         <?php if ($printfulProviderOrderId === ''): ?>
@@ -825,7 +822,7 @@ if ($printfulProviderOrderId !== '') {
     <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
     <input type="hidden" name="shop_admin_action" value="refresh-printful">
     <button class="admin-button" type="submit">
-        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('refresh') ?></i>
         Refresh from Printful
     </button>
 </form>
@@ -937,7 +934,7 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 <?php if ($shippingLabel): ?>
 <div class="admin-commerce-label-result">
     <div>
-        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
         <div>
             <strong>Shipping label ready</strong>
             <span>
@@ -956,7 +953,7 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 </div>
 <?php elseif (!$shippingConfigured): ?>
 <div>
-    <i class="fa-solid fa-plug" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('plug') ?></i>
     <div>
         <strong>Connect EasyPost</strong>
         <span>Add the EasyPost API key and Llama Scout Fulfillment origin address to the private shipping configuration.</span>
@@ -966,7 +963,7 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 <?php else: ?>
 <div class="admin-commerce-label-heading">
     <div>
-        <i class="fa-solid fa-tag" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('tag') ?></i>
         <div>
             <strong>Create shipping label</strong>
             <span>Get live carrier rates, choose one, then purchase the label.</span>
@@ -1100,10 +1097,9 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
             class="admin-button"
             href="/refund-order.php?id=<?= (int) $orderId ?>"
         >
-            <i
-                class="fa-solid fa-money-bill-transfer"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('credit-card-refund') ?>
+            </i>
             Refund customer
         </a>
 
@@ -1111,10 +1107,9 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
             class="admin-button"
             href="/return-order.php?id=<?= (int) $orderId ?>"
         >
-            <i
-                class="fa-solid fa-rotate-left"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('arrow-back-up') ?>
+            </i>
             Receive return
         </a>
 
@@ -1194,10 +1189,9 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
     class="admin-button"
     type="submit"
 >
-    <i
-        class="fa-solid fa-triangle-exclamation"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('alert-triangle') ?>
+    </i>
     Move order to Problem
 </button>
 
