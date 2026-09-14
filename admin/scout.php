@@ -771,10 +771,9 @@ require __DIR__ . '/_header.php';
                                 name="review_action"
                                 value="approve"
                             >
-                                <i
-                                    class="fa-solid fa-circle-check"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true">
+                                    <?= llama_icon('circle-check') ?>
+                                </i>
                                 Approve Scout
                             </button>
                         <?php endif; ?>
@@ -1205,7 +1204,13 @@ require __DIR__ . '/_header.php';
 
                 <?php if ((string) $scout['status'] === 'active'): ?>
                     <div class="admin-scout-period-status <?= !empty($currentPeriod['met']) ? 'is-good' : 'has-attention' ?>">
-                        <i class="fa-solid <?= !empty($currentPeriod['met']) ? 'fa-circle-check' : 'fa-hourglass-half' ?>" aria-hidden="true"></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon(
+                                !empty($currentPeriod['met'])
+                                    ? 'circle-check'
+                                    : 'hourglass'
+                            ) ?>
+                        </i>
                         <div>
                             <strong><?= !empty($currentPeriod['met']) ? 'Current period requirement complete' : 'Current period still in progress' ?></strong>
                             <span>
@@ -1219,7 +1224,9 @@ require __DIR__ . '/_header.php';
                     </div>
                 <?php else: ?>
                     <div class="admin-scout-period-status has-attention">
-                        <i class="fa-solid fa-circle-pause" aria-hidden="true"></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('player-pause') ?>
+                        </i>
                         <div>
                             <strong>No active Scout period</strong>
                             <span>Activating this Scout establishes a new period using the current Scout policy.</span>
@@ -1300,7 +1307,13 @@ require __DIR__ . '/_header.php';
             <div class="admin-scout-master-checklist">
                 <?php foreach ($masterQualification['requirements'] as $requirement): ?>
                     <div class="<?= !empty($requirement['met']) ? 'is-met' : '' ?>">
-                        <i class="fa-solid <?= !empty($requirement['met']) ? 'fa-circle-check' : 'fa-circle' ?>" aria-hidden="true"></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon(
+                                !empty($requirement['met'])
+                                    ? 'circle-check'
+                                    : 'circle'
+                            ) ?>
+                        </i>
                         <span>
                             <strong><?= moderation_e((string) $requirement['label']) ?></strong>
                             <small>

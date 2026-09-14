@@ -236,10 +236,9 @@ require __DIR__ . '/_header.php';
         class="admin-button"
         type="submit"
     >
-        <i
-            class="fa-solid fa-paper-plane"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('send') ?>
+        </i>
         Send Scout invitation
     </button>
 </form>
@@ -294,7 +293,9 @@ require __DIR__ . '/_header.php';
 
     <?php if (!$scouts): ?>
         <div class="admin-empty-state">
-            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                <?= llama_icon('binoculars') ?>
+            </i>
             <h3>No Scout profiles match this view.</h3>
         </div>
     <?php else: ?>

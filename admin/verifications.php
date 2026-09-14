@@ -121,7 +121,7 @@ $needsAttention = array_values(
 <?php if (!$needsAttention): ?>
 
 <div class="admin-empty-state admin-verification-all-current">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <h3>Published Place verification is current.</h3>
     <p>No active or featured Places are currently more than one year out of date or missing verification.</p>
 </div>
@@ -173,7 +173,7 @@ $published = in_array(
 
         <?php if ((int) $place['open_report_count'] > 0): ?>
             <span class="is-report">
-                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
                 <?= number_format((int) $place['open_report_count']) ?> open report<?= (int) $place['open_report_count'] === 1 ? '' : 's' ?>
             </span>
         <?php endif; ?>
@@ -263,10 +263,9 @@ $published = in_array(
     <span>Search</span>
 
     <div>
-        <i
-            class="fa-solid fa-magnifying-glass"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('search') ?>
+        </i>
 
         <input
             type="search"
@@ -404,10 +403,9 @@ $published = in_array(
 
 <div class="admin-empty-state">
 
-<i
-    class="fa-solid fa-binoculars"
-    aria-hidden="true"
-></i>
+<i aria-hidden="true">
+    <?= llama_icon('binoculars') ?>
+</i>
 
 <h3>No verifications found.</h3>
 
