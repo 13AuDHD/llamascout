@@ -108,7 +108,7 @@ require __DIR__ . '/_header.php';
 
     <a class="admin-stat-card is-action" href="/submissions.php">
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
         </span>
         <div>
             <span>Pending Places</span>
@@ -119,7 +119,7 @@ require __DIR__ . '/_header.php';
 
     <a class="admin-stat-card is-action" href="/updates.php">
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('edit') ?></i>
         </span>
         <div>
             <span>Pending Updates</span>
@@ -130,7 +130,7 @@ require __DIR__ . '/_header.php';
 
     <a class="admin-stat-card is-action" href="/reports.php">
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
         </span>
         <div>
             <span>Open Reports</span>
@@ -141,7 +141,7 @@ require __DIR__ . '/_header.php';
 
     <a class="admin-stat-card is-action" href="/support.php">
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-headset" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('headset') ?></i>
         </span>
         <div>
             <span>Support Tickets</span>
@@ -155,7 +155,7 @@ require __DIR__ . '/_header.php';
         href="/scouts.php?filter=attention"
     >
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
         </span>
         <div>
             <span>Scout Reviews</span>
@@ -169,7 +169,7 @@ require __DIR__ . '/_header.php';
         href="/orders.php"
     >
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-box" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('package') ?></i>
         </span>
         <div>
             <span>Orders to Fulfill</span>
@@ -183,7 +183,7 @@ require __DIR__ . '/_header.php';
         href="/newsletters.php"
     >
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('news') ?></i>
         </span>
         <div>
             <span>Newsletter Queue</span>
@@ -207,7 +207,7 @@ require __DIR__ . '/_header.php';
         href="/errors.php?status=open"
     >
         <span class="admin-stat-icon">
-            <i class="fa-solid fa-bug" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('bug') ?></i>
         </span>
 
         <div>
@@ -250,7 +250,7 @@ require __DIR__ . '/_header.php';
         <?php if (!$queue): ?>
 
             <div class="admin-empty-state">
-                <i class="fa-solid fa-mug-hot" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('coffee') ?></i>
                 <h3>Nothing is yelling for attention.</h3>
                 <p>
                     Moderation, support, Scout reviews, and paid-order
@@ -267,10 +267,9 @@ require __DIR__ . '/_header.php';
                     <article class="admin-inbox-item">
 
                         <span class="admin-inbox-icon">
-                            <i
-                                class="fa-solid <?= moderation_e($item['icon']) ?>"
-                                aria-hidden="true"
-                            ></i>
+                            <i aria-hidden="true">
+                                <?= llama_icon((string) $item['icon']) ?>
+                            </i>
                         </span>
 
                         <div class="admin-inbox-content">

@@ -94,9 +94,8 @@ $acquisitionCaptureRate =
 
 <div class="admin-empty-state">
     <i
-        class="fa-solid fa-chart-column"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('chart-bar') ?></i>
 
     <h3>Acquisition data unavailable.</h3>
 
@@ -110,9 +109,8 @@ $acquisitionCaptureRate =
 
 <div class="admin-empty-state">
     <i
-        class="fa-solid fa-compass"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('compass') ?></i>
 
     <h3>No acquisition responses yet.</h3>
 

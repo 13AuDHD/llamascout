@@ -246,7 +246,7 @@ function admin_dashboard_queue(PDO $db): array
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
             $items[] = [
                 'type' => 'New Place',
-                'icon' => 'fa-location-dot',
+                'icon' => 'map-pin',
                 'title' => (string) $row['title'],
                 'meta' => 'Submitted by ' . (string) $row['actor'],
                 'time' => (string) $row['occurred_at'],
@@ -282,7 +282,7 @@ function admin_dashboard_queue(PDO $db): array
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
             $items[] = [
                 'type' => 'Place Update',
-                'icon' => 'fa-pen-to-square',
+                'icon' => 'edit',
                 'title' => (string) $row['title'],
                 'meta' => 'Submitted by ' . (string) $row['actor'],
                 'time' => (string) $row['occurred_at'],
@@ -327,7 +327,7 @@ function admin_dashboard_queue(PDO $db): array
 
             $items[] = [
                 'type' => 'Problem Report',
-                'icon' => 'fa-triangle-exclamation',
+                'icon' => 'alert-triangle',
                 'title' => (string) $row['title'],
                 'meta' => $problem . ' | ' . (string) $row['actor'],
                 'time' => (string) $row['occurred_at'],
@@ -387,7 +387,7 @@ function admin_dashboard_queue(PDO $db): array
 
             $items[] = [
                 'type' => 'Support Ticket',
-                'icon' => 'fa-headset',
+                'icon' => 'headset',
                 'title' =>
                     'Ticket #' . $ticket
                     . ' | '
@@ -450,7 +450,7 @@ function admin_dashboard_queue(PDO $db): array
 
             $items[] = [
                 'type' => 'Paid Order',
-                'icon' => 'fa-box',
+                'icon' => 'package',
                 'title' => (string) $row['order_number'],
                 'meta' => $customer . ' | $' .
                     number_format(
@@ -494,7 +494,7 @@ function admin_dashboard_queue(PDO $db): array
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
             $items[] = [
                 'type' => 'Scout Review',
-                'icon' => 'fa-binoculars',
+                'icon' => 'binoculars',
                 'title' => (string) $row['actor'],
                 'meta' => ucwords(
                     str_replace(

@@ -60,6 +60,9 @@ function admin_todo_date_label(?string $value): string
     data-endpoint="/todo-action.php"
     data-csrf="<?= moderation_e($todoCsrfToken) ?>"
 >
+    <template data-todo-icon-open><?= llama_icon('circle') ?></template>
+    <template data-todo-icon-complete><?= llama_icon('circle-check') ?></template>
+    <template data-todo-icon-delete><?= llama_icon('x') ?></template>
     <header class="admin-panel-header">
         <div>
             <p>Site Work</p>
@@ -74,7 +77,7 @@ function admin_todo_date_label(?string $value): string
     <?php if (!$todoSchemaReady): ?>
 
         <div class="admin-todo-schema-warning">
-            <i class="fa-solid fa-database" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('database') ?></i>
             <div>
                 <strong>To-Do list needs its database table.</strong>
                 <span><?= moderation_e($todoLoadError) ?></span>
@@ -99,7 +102,7 @@ function admin_todo_date_label(?string $value): string
             >
 
             <button type="submit">
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('plus') ?></i>
                 <span>Add</span>
             </button>
         </form>
@@ -145,11 +148,13 @@ function admin_todo_date_label(?string $value): string
                         aria-pressed="<?= $isCompleted ? 'true' : 'false' ?>"
                     >
                         <i
-                            class="<?= $isCompleted
-                                ? 'fa-solid fa-circle-check'
-                                : 'fa-regular fa-circle' ?>"
+                            data-todo-state-icon
                             aria-hidden="true"
-                        ></i>
+                        ><?= llama_icon(
+                            $isCompleted
+                                ? 'circle-check'
+                                : 'circle'
+                        ) ?></i>
                     </button>
 
                     <div class="admin-todo-copy">
@@ -179,7 +184,7 @@ function admin_todo_date_label(?string $value): string
                         aria-label="Remove task"
                         title="Tap twice to remove"
                     >
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('x') ?></i>
                         <span class="visually-hidden">Remove task</span>
                     </button>
                 </article>
@@ -191,7 +196,7 @@ function admin_todo_date_label(?string $value): string
             data-todo-empty
             <?= $todoItems ? 'hidden' : '' ?>
         >
-            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
             <strong>Nothing left on the list.</strong>
             <span>Suspicious, but enjoy it while it lasts.</span>
         </div>
