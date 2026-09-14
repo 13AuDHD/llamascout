@@ -258,9 +258,9 @@ require dirname(__DIR__)
         class="email-preferences-top-back"
     >
         <i
-            class="fa-solid fa-arrow-left"
-            aria-hidden="true"
-        ></i>
+            aria-hidden="true">
+            <?= llama_icon('arrow-left') ?>
+        </i>
         <span>Back to account</span>
     </a>
 <?php endif; ?>
@@ -340,9 +340,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-shield-halved"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('shield') ?>
+                    </i>
                 </span>
 
                 <div>
@@ -388,9 +388,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-file-signature"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('signature') ?>
+                    </i>
                 </span>
 
                 <div>
@@ -434,9 +434,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-bullhorn"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('speakerphone') ?>
+                    </i>
                 </span>
 
                 <div>
@@ -480,9 +480,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-newspaper"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('news') ?>
+                    </i>
                 </span>
 
                 <div>
@@ -535,9 +535,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-compass"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('compass') ?>
+                    </i>
                 </span>
 
                 <div>
@@ -601,9 +601,9 @@ require dirname(__DIR__)
             <div class="email-preference-heading">
                 <span class="email-preference-icon">
                     <i
-                        class="fa-solid fa-tags"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('tag') ?>
+                    </i>
                 </span>
 
                 <div>

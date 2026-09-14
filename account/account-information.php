@@ -389,9 +389,9 @@ $displayPhone =
             href="/"
         >
             <i
-                class="fa-solid fa-arrow-left"
-                aria-hidden="true"
-            ></i>
+                aria-hidden="true">
+                <?= llama_icon('arrow-left') ?>
+            </i>
             Back to account
         </a>
 
@@ -448,9 +448,9 @@ $displayPhone =
                 <header class="account-information-zone-heading">
                     <span class="account-information-visibility-badge is-public">
                         <i
-                            class="fa-solid fa-globe"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('world') ?>
+                        </i>
                         Public
                     </span>
 
@@ -542,9 +542,9 @@ $displayPhone =
                     href="/profile.php"
                 >
                     <i
-                        class="fa-solid fa-user"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('user') ?>
+                    </i>
 
                     <span>
                         <strong>Public profile</strong>
@@ -555,9 +555,9 @@ $displayPhone =
                     </span>
 
                     <i
-                        class="fa-solid fa-chevron-right"
-                        aria-hidden="true"
-                    ></i>
+                        aria-hidden="true">
+                        <?= llama_icon('chevron-right') ?>
+                    </i>
                 </a>
             </section>
 
@@ -568,9 +568,9 @@ $displayPhone =
                 <header class="account-information-zone-heading">
                     <span class="account-information-visibility-badge is-private">
                         <i
-                            class="fa-solid fa-lock"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('lock') ?>
+                        </i>
                         Private
                     </span>
 
@@ -705,9 +705,9 @@ $displayPhone =
                                         data-address-use-location
                                     >
                                         <i
-                                            class="fa-solid fa-location-crosshairs"
-                                            aria-hidden="true"
-                                        ></i>
+                                            aria-hidden="true">
+                                            <?= llama_icon('current-location') ?>
+                                        </i>
 
                                         Use my location
                                     </button>
@@ -882,12 +882,13 @@ $displayPhone =
                         </div>
 
                         <span class="account-information-verified">
-                            <i
-                                class="fa-solid <?= $accountEmailVerified
-                                    ? 'fa-circle-check'
-                                    : 'fa-circle-exclamation' ?>"
-                                aria-hidden="true"
-                            ></i>
+                            <i aria-hidden="true">
+                                <?= llama_icon(
+                                    $accountEmailVerified
+                                        ? 'circle-check'
+                                        : 'mail-exclamation'
+                                ) ?>
+                            </i>
 
                             <?= $accountEmailVerified
                                 ? 'Verified'
@@ -917,9 +918,9 @@ $displayPhone =
                     <?php if (!$accountEmailVerified): ?>
                         <div class="account-information-email-note">
                             <i
-                                class="fa-solid fa-envelope-circle-check"
-                                aria-hidden="true"
-                            ></i>
+                                aria-hidden="true">
+                                <?= llama_icon('mail-check') ?>
+                            </i>
 
                             <p>
                                 If the address above is correct, resend the
@@ -1061,9 +1062,9 @@ $displayPhone =
 
                             <div class="account-information-email-note">
                                 <i
-                                    class="fa-solid fa-shield-halved"
-                                    aria-hidden="true"
-                                ></i>
+                                    aria-hidden="true">
+                                    <?= llama_icon('shield') ?>
+                                </i>
 
                                 <p>
                                     <?= $accountEmailVerified
@@ -1107,9 +1108,9 @@ $displayPhone =
                     <div class="account-information-support-pin">
                         <div class="account-information-support-summary">
                             <i
-                                class="fa-solid fa-phone-volume"
-                                aria-hidden="true"
-                            ></i>
+                                aria-hidden="true">
+                                <?= llama_icon('phone-call') ?>
+                            </i>
 
                             <div>
                                 <strong>
@@ -1346,9 +1347,9 @@ $displayPhone =
                 <div class="account-information-links">
                     <a href="/security.php">
                         <i
-                            class="fa-solid fa-shield-halved"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('shield') ?>
+                        </i>
 
                         <span>
                             <strong>Password &amp; security</strong>
@@ -1358,9 +1359,9 @@ $displayPhone =
                         </span>
 
                         <i
-                            class="fa-solid fa-chevron-right"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('chevron-right') ?>
+                        </i>
                     </a>
 
                     <?php if (
@@ -1374,9 +1375,9 @@ $displayPhone =
                     ): ?>
                         <a href="/passkeys.php">
                             <i
-                                class="fa-solid fa-fingerprint"
-                                aria-hidden="true"
-                            ></i>
+                                aria-hidden="true">
+                                <?= llama_icon('fingerprint') ?>
+                            </i>
 
                             <span>
                                 <strong>Passkeys</strong>
@@ -1386,17 +1387,17 @@ $displayPhone =
                             </span>
 
                             <i
-                                class="fa-solid fa-chevron-right"
-                                aria-hidden="true"
-                            ></i>
+                                aria-hidden="true">
+                                <?= llama_icon('chevron-right') ?>
+                            </i>
                         </a>
                     <?php endif; ?>
 
                     <a href="/email-preferences.php">
                         <i
-                            class="fa-solid fa-envelope"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('mail') ?>
+                        </i>
 
                         <span>
                             <strong>Email preferences</strong>
@@ -1406,16 +1407,16 @@ $displayPhone =
                         </span>
 
                         <i
-                            class="fa-solid fa-chevron-right"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('chevron-right') ?>
+                        </i>
                     </a>
 
                     <div class="account-information-coming-soon">
                         <i
-                            class="fa-solid fa-sliders"
-                            aria-hidden="true"
-                        ></i>
+                            aria-hidden="true">
+                            <?= llama_icon('adjustments-alt') ?>
+                        </i>
 
                         <span>
                             <strong>Place preferences</strong>

@@ -122,10 +122,9 @@ $dashboardScoutDescription =
                     </small>
                 </span>
 
-                <i
-                    class="fa-solid fa-arrow-right account-action-arrow"
-                    aria-hidden="true"
-                ></i>
+                <i class="account-action-arrow" aria-hidden="true">
+                    <?= llama_icon('arrow-right') ?>
+                </i>
             </a>
 
         <?php endif; ?>

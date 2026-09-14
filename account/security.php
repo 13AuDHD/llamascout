@@ -328,9 +328,9 @@ require
         <section class="account-security-card is-important">
             <div class="account-security-card-heading">
                 <i
-                    class="fa-solid fa-key"
-                    aria-hidden="true"
-                ></i>
+                    aria-hidden="true">
+                    <?= llama_icon('key') ?>
+                </i>
 
                 <div>
                     <h2>
@@ -367,9 +367,9 @@ require
         <section class="account-security-card">
             <div class="account-security-card-heading">
                 <i
-                    class="fa-solid fa-lock"
-                    aria-hidden="true"
-                ></i>
+                    aria-hidden="true">
+                    <?= llama_icon('lock') ?>
+                </i>
 
                 <div>
                     <h2>Password</h2>
@@ -393,9 +393,9 @@ require
         <section class="account-security-card">
             <div class="account-security-card-heading">
                 <i
-                    class="fa-solid fa-shield-halved"
-                    aria-hidden="true"
-                ></i>
+                    aria-hidden="true">
+                    <?= llama_icon('shield') ?>
+                </i>
 
                 <div>
                     <h2>
@@ -656,9 +656,9 @@ require
     <p class="account-security-back">
         <a href="/">
             <i
-                class="fa-solid fa-arrow-left"
-                aria-hidden="true"
-            ></i>
+                aria-hidden="true">
+                <?= llama_icon('arrow-left') ?>
+            </i>
             Return to My Account
         </a>
     </p>
