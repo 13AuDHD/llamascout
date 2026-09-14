@@ -24,7 +24,7 @@ if (!$product) {
     ?>
     <section class="shop-page">
         <div class="shop-empty">
-            <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('package-off') ?></i>
             <h1>Product not found.</h1>
             <p>This product may be unavailable or no longer active.</p>
             <a class="shop-primary-button" href="/shop.php">Back to the Shop</a>
@@ -237,7 +237,7 @@ require __DIR__ . '/partials/header.php';
 <section class="shop-page product-page" data-product-page>
 
 <a class="shop-back-link" href="/shop.php">
-    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
     Shop
 </a>
 
@@ -256,11 +256,11 @@ require __DIR__ . '/partials/header.php';
 
     <?php if (count($images) > 1): ?>
     <button class="product-gallery-arrow is-previous" type="button" data-gallery-previous aria-label="Previous product photo">
-        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
     </button>
 
     <button class="product-gallery-arrow is-next" type="button" data-gallery-next aria-label="Next product photo">
-        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
     </button>
     <?php endif; ?>
 </div>
@@ -268,7 +268,7 @@ require __DIR__ . '/partials/header.php';
 <?php if (count($images) > 1): ?>
 <div class="product-thumbnail-carousel">
     <button class="product-thumbnail-arrow" type="button" data-thumbnails-previous aria-label="Scroll product photos left">
-        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
     </button>
 
     <div class="product-thumbnail-track" data-thumbnail-track>
@@ -290,14 +290,14 @@ require __DIR__ . '/partials/header.php';
     </div>
 
     <button class="product-thumbnail-arrow" type="button" data-thumbnails-next aria-label="Scroll product photos right">
-        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
     </button>
 </div>
 <?php endif; ?>
 
 <?php else: ?>
 <div class="product-primary-image product-image-empty">
-    <i class="fa-solid fa-image" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('photo') ?></i>
 </div>
 <?php endif; ?>
 
@@ -321,7 +321,7 @@ require __DIR__ . '/partials/header.php';
         data-share-url="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>"
         aria-label="Share <?= htmlspecialchars((string) $product['name'], ENT_QUOTES, 'UTF-8') ?>"
     >
-        <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('share') ?></i>
         <span data-share-label>Share</span>
     </button>
 </div>
@@ -405,7 +405,7 @@ require __DIR__ . '/partials/header.php';
         data-add-to-cart
         <?= empty($initialState['purchasable']) ? 'disabled' : '' ?>
     >
-        <i class="fa-solid fa-cart-plus" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('shopping-cart-plus') ?></i>
         <span data-add-to-cart-label>
             <?= match ((string) $initialState['key']) {
                 'preorder' => 'Preorder',

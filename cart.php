@@ -205,10 +205,7 @@ require __DIR__ . '/partials/header.php';
 
 <section class="shop-empty">
 
-<i
-    class="fa-solid fa-cart-shopping"
-    aria-hidden="true"
-></i>
+<i aria-hidden="true"><?= llama_icon('shopping-cart-off') ?></i>
 
 <h2>Your cart is empty.</h2>
 
@@ -266,10 +263,7 @@ $image =
 
 <?php else: ?>
 
-<i
-    class="fa-solid fa-image"
-    aria-hidden="true"
-></i>
+<i aria-hidden="true"><?= llama_icon('photo') ?></i>
 
 <?php endif; ?>
 
@@ -443,10 +437,7 @@ $image =
 </a>
 
 <p class="cart-summary-secure">
-    <i
-        class="fa-solid fa-lock"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('lock') ?></i>
 
     Payments will be securely processed by Stripe.
 </p>

@@ -47,7 +47,7 @@ require __DIR__ . '/partials/header.php';
 <section class="shop-page shop-order-confirmation">
 <?php if ($pageError !== ''): ?>
     <section class="shop-checkout-error" role="alert">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
         <div>
             <h1>We could not load that order.</h1>
             <p><?= htmlspecialchars($pageError, ENT_QUOTES, 'UTF-8') ?></p>
@@ -61,7 +61,7 @@ require __DIR__ . '/partials/header.php';
     ?>
     <header class="shop-order-confirmation-heading">
         <div class="shop-order-confirmation-icon<?= $paid ? ' is-paid' : ($failed ? ' is-failed' : ' is-pending') ?>">
-            <i class="fa-solid <?= $paid ? 'fa-check' : ($failed ? 'fa-xmark' : 'fa-clock') ?>" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon($paid ? 'check' : ($failed ? 'x' : 'clock')) ?></i>
         </div>
         <p class="eyebrow">Order <?= htmlspecialchars((string) $order['order_number'], ENT_QUOTES, 'UTF-8') ?></p>
         <h1><?= $paid ? 'Your order is confirmed.' : ($failed ? 'Payment was not completed.' : 'We are confirming your payment.') ?></h1>

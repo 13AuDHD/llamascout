@@ -56,10 +56,7 @@ require __DIR__ . '/partials/header.php';
 
 <section class="shop-empty">
 
-<i
-    class="fa-solid fa-box-open"
-    aria-hidden="true"
-></i>
+<i aria-hidden="true"><?= llama_icon('package-off') ?></i>
 
 <h2>The shelves are being stocked.</h2>
 
@@ -112,10 +109,7 @@ $image =
 <?php else: ?>
 
 <div class="shop-product-image-empty">
-    <i
-        class="fa-solid fa-image"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('photo') ?></i>
 </div>
 
 <?php endif; ?>

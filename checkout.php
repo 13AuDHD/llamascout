@@ -120,7 +120,7 @@ require __DIR__ . '/partials/header.php';
 
 <header class="shop-checkout-heading">
     <a class="shop-back-link" href="/cart.php">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Return to cart
     </a>
 
@@ -134,7 +134,7 @@ require __DIR__ . '/partials/header.php';
 
 <?php if ($checkoutError !== ''): ?>
 <section class="shop-checkout-error" role="alert">
-    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <div>
         <h2>Checkout could not start.</h2>
         <p><?= htmlspecialchars($checkoutError, ENT_QUOTES, 'UTF-8') ?></p>
@@ -158,7 +158,7 @@ require __DIR__ . '/partials/header.php';
                     <?php if ($image !== ''): ?>
                     <img src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>" alt="">
                     <?php else: ?>
-                    <i class="fa-solid fa-image" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('photo') ?></i>
                     <?php endif; ?>
                 </div>
                 <div class="shop-checkout-item-copy">
@@ -192,7 +192,7 @@ require __DIR__ . '/partials/header.php';
         </p>
 
         <div class="shop-checkout-secure-note">
-            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('lock') ?></i>
             <span>Payment information is handled securely by Stripe.</span>
         </div>
     </aside>
@@ -205,7 +205,7 @@ require __DIR__ . '/partials/header.php';
 
         <div id="stripe-shop-checkout" class="stripe-shop-checkout">
             <div id="shop-checkout-loading" class="shop-checkout-loading">
-                <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+                <i class="llama-icon-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
                 <span>Loading secure checkout...</span>
             </div>
         </div>
