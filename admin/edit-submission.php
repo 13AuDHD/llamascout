@@ -270,7 +270,8 @@ $adminPageActions =
     '<a class="admin-button" href="/moderate-submission.php?id='
     . $submissionId
     . '">'
-    . '<i class="fa-solid fa-arrow-left" aria-hidden="true"></i> '
+    . llama_icon('arrow-left')
+    . ' '
     . 'Back to Review'
     . '</a>';
 
@@ -357,10 +358,9 @@ $placeReportPhotoHelp =
         </p>
 
         <div class="add-place-form-note">
-            <i
-                class="fa-solid fa-shield-halved"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('shield') ?>
+            </i>
 
             <span>
                 Status remains
@@ -449,10 +449,9 @@ $placeReportPhotoHelp =
                 class="contribution-submit"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-floppy-disk"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('device-floppy') ?>
+                </i>
 
                 Save Submission Changes
             </button>

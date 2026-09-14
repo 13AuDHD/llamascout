@@ -85,25 +85,25 @@ function audit_console_icon(
 ): string {
     return match ($category) {
         'users' =>
-            'fa-user-gear',
+            'user-cog',
         'places' =>
-            'fa-location-dot',
+            'location',
         'scouts' =>
-            'fa-binoculars',
+            'binoculars',
         'points' =>
-            'fa-star',
+            'star',
         'shop' =>
-            'fa-store',
+            'building-store',
         'reports' =>
-            'fa-flag',
+            'flag',
         'system' =>
-            'fa-gears',
+            'settings',
         'badges' =>
-            'fa-award',
+            'award',
         'policy' =>
-            'fa-file-shield',
+            'file-text-shield',
         default =>
-            'fa-clipboard-list',
+            'clipboard-list',
     };
 }
 
@@ -276,10 +276,9 @@ require __DIR__ .
                 class="admin-button"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-filter"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('filter') ?>
+                </i>
                 Filter
             </button>
 
@@ -328,14 +327,13 @@ require __DIR__ .
                 <article class="admin-audit-row">
 
                     <span class="admin-audit-icon">
-                        <i
-                            class="fa-solid <?= moderation_e(
+                        <i aria-hidden="true">
+                            <?= llama_icon(
                                 audit_console_icon(
                                     $category
                                 )
-                            ) ?>"
-                            aria-hidden="true"
-                        ></i>
+                            ) ?>
+                        </i>
                     </span>
 
                     <div class="admin-audit-main">
@@ -485,10 +483,9 @@ require __DIR__ .
                             ])
                         ) ?>"
                     >
-                        <i
-                            class="fa-solid fa-chevron-left"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('chevron-left') ?>
+                        </i>
                         Previous
                     </a>
                 <?php endif; ?>
@@ -514,10 +511,9 @@ require __DIR__ .
                         ) ?>"
                     >
                         Next
-                        <i
-                            class="fa-solid fa-chevron-right"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('chevron-right') ?>
+                        </i>
                     </a>
                 <?php endif; ?>
 
