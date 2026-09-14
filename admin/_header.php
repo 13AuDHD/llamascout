@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/icons.php';
+
 if (!isset($adminUser) || !is_array($adminUser)) {
     $adminUser = moderation_require_admin();
 }
@@ -394,7 +396,7 @@ function admin_shell_nav_class(string $key, string $active): string
             data-admin-menu-close
             aria-label="Close admin navigation"
         >
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('x') ?></i>
         </button>
     </div>
 
@@ -406,7 +408,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('dashboard', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/') ?>"
         >
-            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('gauge') ?></i>
             <span>Dashboard</span>
         </a>
 
@@ -414,7 +416,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('support', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/support.php') ?>"
         >
-            <i class="fa-solid fa-headset" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('headset') ?></i>
             <span>Support</span>
             <?php if ($adminSupportCount > 0): ?>
                 <b><?= $adminSupportCount ?></b>
@@ -427,7 +429,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('moderation', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/moderation.php') ?>"
         >
-            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('list-check') ?></i>
             <span>Moderation</span>
             <?php
             $moderationTotal =
@@ -444,7 +446,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('places', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/places.php') ?>"
         >
-            <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('map') ?></i>
             <span>Places</span>
         </a>
 
@@ -452,7 +454,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('verifications', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
         >
-            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('binoculars') ?></i>
             <span>Verifications</span>
         </a>
 
@@ -460,7 +462,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('submissions', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/submissions.php') ?>"
         >
-            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('map-pin') ?></i>
             <span>New Places</span>
             <?php if (!empty($adminNavCounts['new_places'])): ?>
                 <b><?= (int) $adminNavCounts['new_places'] ?></b>
@@ -471,7 +473,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('updates', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/updates.php') ?>"
         >
-            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('edit') ?></i>
             <span>Place Updates</span>
             <?php if (!empty($adminNavCounts['updates'])): ?>
                 <b><?= (int) $adminNavCounts['updates'] ?></b>
@@ -482,7 +484,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('reports', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/reports.php') ?>"
         >
-            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
             <span>Reports</span>
             <?php if (!empty($adminNavCounts['reports'])): ?>
                 <b><?= (int) $adminNavCounts['reports'] ?></b>
@@ -495,7 +497,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('users', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/users.php') ?>"
         >
-            <i class="fa-solid fa-users" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('users') ?></i>
             <span>Users</span>
         </a>
 
@@ -503,7 +505,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('scouts', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/scouts.php') ?>"
         >
-            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('binoculars') ?></i>
             <span>Scouts</span>
             <?php if (!empty($adminNavCounts['scout_reviews'])): ?>
                 <b><?= (int) $adminNavCounts['scout_reviews'] ?></b>
@@ -514,7 +516,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('badges', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/badges.php') ?>"
         >
-            <i class="fa-solid fa-award" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('award') ?></i>
             <span>Badges</span>
         </a>
 
@@ -526,7 +528,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('memberships', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/memberships.php') ?>"
         >
-            <i class="fa-solid fa-tags" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('tag') ?></i>
             <span>Pricing & Promotions</span>
         </a>
 
@@ -534,7 +536,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('promotion-codes', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/promotion-codes.php') ?>"
         >
-            <i class="fa-solid fa-ticket" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('ticket') ?></i>
             <span>Promotion Codes</span>
         </a>
 
@@ -542,7 +544,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('products', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/products.php') ?>"
         >
-            <i class="fa-solid fa-shirt" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('shirt') ?></i>
             <span>Products</span>
         </a>
 
@@ -550,7 +552,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('orders', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/orders.php') ?>"
         >
-            <i class="fa-solid fa-box" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('package') ?></i>
             <span>Orders</span>
             <?php if (!empty($adminNavCounts['orders'])): ?>
                 <b><?= (int) $adminNavCounts['orders'] ?></b>
@@ -561,7 +563,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('printful-orders', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/printful-orders.php') ?>"
         >
-            <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('truck-delivery') ?></i>
             <span>Printful Orders</span>
         </a>
 
@@ -571,7 +573,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('policies', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/policies.php') ?>"
         >
-            <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('scale') ?></i>
             <span>Policies</span>
         </a>
 
@@ -579,7 +581,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('points', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/points.php') ?>"
         >
-            <i class="fa-solid fa-star" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('star') ?></i>
             <span>Points</span>
         </a>
 
@@ -587,7 +589,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('integrations', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/integrations.php') ?>"
         >
-            <i class="fa-solid fa-plug" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('plug') ?></i>
             <span>Integrations</span>
         </a>
 
@@ -595,7 +597,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('system', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/system.php') ?>"
         >
-            <i class="fa-solid fa-gears" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('settings') ?></i>
             <span>System</span>
         </a>
 
@@ -603,7 +605,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/errors.php?status=open') ?>"
         >
-            <i class="fa-solid fa-bug" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('bug') ?></i>
             <span>Error Log</span>
 
             <?php if ($adminOpenErrorCount > 0): ?>
@@ -615,7 +617,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('audit', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/audit.php') ?>"
         >
-            <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+            <i  aria-hidden="true"><?= llama_icon('history') ?></i>
             <span>Audit Log</span>
         </a>
 
@@ -637,7 +639,7 @@ function admin_shell_nav_class(string $key, string $active): string
         aria-expanded="false"
         aria-label="Open admin navigation"
     >
-        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+        <i  aria-hidden="true"><?= llama_icon('menu-2') ?></i>
     </button>
 
     <div class="admin-topbar-title">

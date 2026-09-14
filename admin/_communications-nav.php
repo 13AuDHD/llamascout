@@ -11,7 +11,7 @@
     class="<?= admin_shell_nav_class('emails', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/emails.php') ?>"
 >
-    <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('mail') ?></i>
     <span>Emails</span>
 </a>
 
@@ -19,7 +19,7 @@
     class="<?= admin_shell_nav_class('email-campaigns', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/email-campaigns.php') ?>"
 >
-    <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('speakerphone') ?></i>
     <span>Email Campaigns</span>
 </a>
 
@@ -27,7 +27,7 @@
     class="<?= admin_shell_nav_class('complimentary-invitations', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/complimentary-invitations.php') ?>"
 >
-    <i class="fa-solid fa-gift" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('gift-card') ?></i>
     <span>Invitations</span>
 </a>
 
@@ -35,7 +35,7 @@
     class="<?= admin_shell_nav_class('email-activity', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/email-activity.php') ?>"
 >
-    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('send') ?></i>
     <span>Email Activity</span>
 </a>
 
@@ -43,7 +43,7 @@
     class="<?= admin_shell_nav_class('newsletters', $adminActiveNav) ?>"
     href="<?= moderation_e($adminUrl . '/newsletters.php') ?>"
 >
-    <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+    <i  aria-hidden="true"><?= llama_icon('news') ?></i>
     <span>Newsletters</span>
 
     <?php if ($adminNewsletterQueueCount > 0): ?>

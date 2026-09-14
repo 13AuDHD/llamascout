@@ -80,9 +80,9 @@ try {
         </span>
 
         <i
-            class="fa-solid fa-chevron-down admin-topbar-user-chevron"
+            class="admin-topbar-user-chevron"
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('chevron-down') ?></i>
     </button>
 
 
@@ -100,9 +100,9 @@ try {
             role="menuitem"
         >
             <i
-                class="fa-solid fa-user"
+                
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('user') ?></i>
 
             <span>My Account</span>
         </a>
@@ -115,9 +115,9 @@ try {
             class="admin-topbar-user-signout"
         >
             <i
-                class="fa-solid fa-right-from-bracket"
+                
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('logout') ?></i>
 
             <span>Sign Out</span>
         </a>
