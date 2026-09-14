@@ -1,7 +1,9 @@
 <?php if (!$selectedTemplate): ?>
 
     <section class="admin-panel email-editor-empty">
-        <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+        <i aria-hidden="true">
+                    <?= llama_icon('mail') ?>
+                </i>
         <h2>Select an email template</h2>
         <p>
             Choose an email from the template library to edit,
@@ -162,7 +164,9 @@
                     name="email_action"
                     value="save"
                 >
-                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                    <i aria-hidden="true">
+                    <?= llama_icon('device-floppy') ?>
+                </i>
                     Save Email
                 </button>
 
@@ -172,7 +176,9 @@
                     name="email_action"
                     value="test"
                 >
-                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                    <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
                     Send Test to dev@llamascout.com
                 </button>
             </div>

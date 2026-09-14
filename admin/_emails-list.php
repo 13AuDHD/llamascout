@@ -14,49 +14,49 @@ foreach ($emailTemplates as $emailTemplate) {
 
 $emailTemplateIcons = [
     'verify_email' =>
-        'fa-solid fa-envelope-circle-check',
+        'mail-check',
 
     'welcome' =>
-        'fa-solid fa-hand-sparkles',
+        'user-circle',
 
     'password_reset' =>
-        'fa-solid fa-key',
+        'key',
 
     'goodbye' =>
-        'fa-solid fa-door-open',
+        'logout',
 
     'order_confirmation' =>
-        'fa-solid fa-receipt',
+        'receipt',
 
     'order_shipped' =>
-        'fa-solid fa-truck-fast',
+        'truck-delivery',
 
     'order_delivered' =>
-        'fa-solid fa-box-circle-check',
+        'package',
 
     'refund_confirmation' =>
-        'fa-solid fa-money-bill-transfer',
+        'credit-card',
 
     'membership_started' =>
-        'fa-solid fa-circle-check',
+        'circle-check',
 
     'membership_cancel_scheduled' =>
-        'fa-solid fa-calendar-xmark',
+        'calendar-event',
 
     'membership_payment_failed' =>
-        'fa-solid fa-credit-card',
+        'credit-card',
 
     'membership_ended' =>
-        'fa-solid fa-door-closed',
+        'circle-minus',
 
     'complimentary_started' =>
-        'fa-solid fa-gift',
+        'gift-card',
 
     'complimentary_ending' =>
-        'fa-solid fa-hourglass-end',
+        'hourglass-empty',
 
     'complimentary_invitation' =>
-        'fa-solid fa-envelope-circle-check',
+        'mail-check',
 ];
 ?>
 
@@ -103,7 +103,7 @@ $emailTemplateIcons = [
 
                     $icon =
                         $emailTemplateIcons[$key]
-                        ?? 'fa-solid fa-envelope';
+                        ?? 'mail';
                     ?>
 
                     <a
@@ -111,10 +111,9 @@ $emailTemplateIcons = [
                         href="/emails.php?template=<?= rawurlencode($key) ?>"
                     >
                         <span class="email-template-icon">
-                            <i
-                                class="<?= moderation_e($icon) ?>"
-                                aria-hidden="true"
-                            ></i>
+                            <i aria-hidden="true">
+                                <?= llama_icon($icon) ?>
+                            </i>
                         </span>
 
                         <span class="email-template-copy">

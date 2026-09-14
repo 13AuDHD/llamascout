@@ -72,10 +72,9 @@
                     href="/email-campaigns.php?id=<?= $id ?>"
                 >
                     <span class="email-campaign-row-icon">
-                        <i
-                            class="fa-solid fa-bullhorn"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                    <?= llama_icon('speakerphone') ?>
+                </i>
                     </span>
 
                     <span class="email-campaign-row-copy">

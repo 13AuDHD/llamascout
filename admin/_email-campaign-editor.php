@@ -1,10 +1,9 @@
 <?php if (!$selectedCampaign): ?>
 
     <section class="admin-panel email-campaign-empty">
-        <i
-            class="fa-solid fa-bullhorn"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+                    <?= llama_icon('speakerphone') ?>
+                </i>
 
         <h2>Select a promotion</h2>
 
@@ -112,10 +111,9 @@
                 class="admin-button is-secondary"
                 href="/memberships.php"
             >
-                <i
-                    class="fa-solid fa-tags"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('tag') ?>
+                </i>
 
                 Pricing + Promotion Rules
             </a>
@@ -297,10 +295,9 @@
                         name="campaign_email_action"
                         value="test-announcement"
                     >
-                        <i
-                            class="fa-solid fa-paper-plane"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
 
                         Test Announcement
                     </button>
@@ -408,10 +405,9 @@
                         name="campaign_email_action"
                         value="test-reminder"
                     >
-                        <i
-                            class="fa-solid fa-paper-plane"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
 
                         Test Reminder
                     </button>
@@ -450,10 +446,9 @@
                 name="campaign_email_action"
                 value="save"
             >
-                <i
-                    class="fa-solid fa-floppy-disk"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('device-floppy') ?>
+                </i>
 
                 Save Campaign Emails
             </button>

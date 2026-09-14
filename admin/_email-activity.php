@@ -2,7 +2,9 @@
 
     <div class="email-activity-stat">
         <span>
-            <i class="fa-solid fa-calendar-day" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('calendar') ?>
+                </i>
             Today
         </span>
         <strong>
@@ -12,7 +14,9 @@
 
     <div class="email-activity-stat">
         <span>
-            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
             Live
         </span>
         <strong>
@@ -22,7 +26,9 @@
 
     <div class="email-activity-stat">
         <span>
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('circle-check') ?>
+                </i>
             Sent
         </span>
         <strong>
@@ -32,7 +38,9 @@
 
     <div class="email-activity-stat<?= $emailActivityTotals['failed'] > 0 ? ' is-warning' : '' ?>">
         <span>
-            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('alert-triangle') ?>
+                </i>
             Failed
         </span>
         <strong>
@@ -42,7 +50,9 @@
 
     <div class="email-activity-stat">
         <span>
-            <i class="fa-solid fa-flask" aria-hidden="true"></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('flask') ?>
+                </i>
             Tests
         </span>
         <strong>
@@ -175,10 +185,9 @@
                 class="admin-button"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-filter"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('filter') ?>
+                </i>
 
                 Filter
             </button>
@@ -197,10 +206,9 @@
     <?php if (!$emailActivityRows): ?>
 
         <div class="admin-empty-state email-activity-empty">
-            <i
-                class="fa-regular fa-paper-plane"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
 
             <h3>No email activity found.</h3>
 
