@@ -98,10 +98,7 @@
                             <?php endif; ?>
                         </span>
 
-                        <i
-                            class="fa-solid fa-xmark"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true"><?= llama_icon('x') ?></i>
                     </button>
                 <?php endforeach; ?>
             </div>
@@ -113,10 +110,7 @@
             </label>
 
             <div class="compare-picker-search">
-                <i
-                    class="fa-solid fa-magnifying-glass"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('search') ?></i>
 
                 <input
                     id="compare-place-search"
@@ -225,10 +219,7 @@
                     >
 
                     <span class="compare-place-option-check">
-                        <i
-                            class="fa-solid fa-plus"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
                     </span>
 
                     <span class="compare-place-option-copy">
@@ -278,10 +269,7 @@
                     data-compare-submit
                     <?= count($compareSlugs) < LLAMA_COMPARE_MIN_PLACES ? 'disabled' : '' ?>
                 >
-                    <i
-                        class="fa-solid fa-code-compare"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon('arrows-diff') ?></i>
 
                     Compare Selected
                 </button>

@@ -99,10 +99,7 @@ $columnClass =
                             >
                         <?php else: ?>
                             <span>
-                                <i
-                                    class="fa-solid fa-mountain-sun"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true"><?= llama_icon('mountain') ?></i>
                             </span>
                         <?php endif; ?>
                     </a>
@@ -139,10 +136,7 @@ $columnClass =
                         >
                             Scout Report
 
-                            <i
-                                class="fa-solid fa-arrow-right"
-                                aria-hidden="true"
-                            ></i>
+                            <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
                         </a>
                     </div>
                 </article>
@@ -150,12 +144,9 @@ $columnClass =
 
             <?php foreach ($compareSections as $section): ?>
                 <div class="compare-section-heading">
-                    <i
-                        class="fa-solid <?= llama_compare_h(
-                            (string) $section['icon']
-                        ) ?>"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon(
+                        (string) $section['icon']
+                    ) ?></i>
 
                     <?= llama_compare_h(
                         (string) $section['title']
@@ -210,15 +201,9 @@ $columnClass =
                                 <?= $isRating ? 'is-rating' : '' ?>"
                         >
                             <?php if ($isYes): ?>
-                                <i
-                                    class="fa-solid fa-circle-check"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
                             <?php elseif ($isNo): ?>
-                                <i
-                                    class="fa-regular fa-circle-xmark"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true"><?= llama_icon('xbox-x') ?></i>
                             <?php endif; ?>
 
                             <?php if ($isRating): ?>
