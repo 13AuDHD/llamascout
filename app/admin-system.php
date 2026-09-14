@@ -743,7 +743,7 @@ function admin_system_health_card(
     string $status,
     string $value,
     string $detail,
-    string $icon = 'fa-circle-check'
+    string $icon = 'circle-check'
 ): array {
     if (
         !in_array(
@@ -911,7 +911,7 @@ function admin_system_health(
                 $databaseVersion !== ''
                     ? 'MariaDB/MySQL ' . $databaseVersion
                     : 'Database connection is responding.',
-                'fa-database'
+                'database'
             );
     } catch (Throwable $exception) {
         $cards[] =
@@ -921,7 +921,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'The database health query failed.',
-                'fa-database'
+                'database'
             );
     }
 
@@ -932,7 +932,7 @@ function admin_system_health(
             'good',
             PHP_VERSION,
             'Application runtime is available.',
-            'fa-code'
+            'code'
         );
 
     $projectRoot =
@@ -961,7 +961,7 @@ function admin_system_health(
             is_readable($configPath)
                 ? 'Private application configuration is available outside public_html.'
                 : 'Required private application configuration cannot be read.',
-            'fa-shield-halved'
+            'shield'
         );
 
     $config = [];
@@ -1009,7 +1009,7 @@ function admin_system_health(
             $turnstileReady
                 ? 'Site and secret keys are configured.'
                 : 'Login and registration security configuration needs attention.',
-            'fa-cloud'
+            'cloud'
         );
 
     $stripeConfig =
@@ -1173,7 +1173,7 @@ function admin_system_health(
                 ' ',
                 $stripeDetailParts
             ),
-            'fa-credit-card'
+            'credit-card'
         );
 
     $mailConfig =
@@ -1219,7 +1219,7 @@ function admin_system_health(
             $mailReady
                 ? 'Mail configuration and PHPMailer are available.'
                 : 'Verification and password-reset email cannot operate normally.',
-            'fa-envelope'
+            'mail'
         );
 
     $uploadsRoot =
@@ -1250,7 +1250,7 @@ function admin_system_health(
                     $uploadsStats['bytes']
                 )
                 : 'The uploads directory will be created when needed.',
-            'fa-folder-open'
+            'folder-open'
         );
 
     $stagingRoot =
@@ -1305,7 +1305,7 @@ function admin_system_health(
                     ' is older than 24 hours.'
                     : 'No abandoned files are currently due for cleanup.'
             ),
-            'fa-images'
+            'photo'
         );
 
     try {
@@ -1484,7 +1484,7 @@ function admin_system_health(
                 $errorHealthStatus,
                 $errorHealthValue,
                 $errorHealthDetail,
-                'fa-triangle-exclamation'
+                'alert-triangle'
             );
     } catch (Throwable) {
         $cards[] =
@@ -1494,7 +1494,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'The application error log could not be checked.',
-                'fa-triangle-exclamation'
+                'alert-triangle'
             );
     }
 
@@ -1532,7 +1532,7 @@ function admin_system_health(
                             $lastAudit
                         )
                     : 'Audit table is available and ready.',
-                'fa-clipboard-list'
+                'clipboard-list'
             );
     } catch (Throwable) {
         $cards[] =
@@ -1542,7 +1542,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'The administrative audit log could not be read.',
-                'fa-clipboard-list'
+                'clipboard-list'
             );
     }
 
@@ -1570,7 +1570,7 @@ function admin_system_health(
                     'attention',
                     'No run recorded',
                     'Scout renewal maintenance has not recorded a successful run yet.',
-                    'fa-binoculars'
+                    'binoculars'
                 );
         } else {
             try {
@@ -1609,7 +1609,7 @@ function admin_system_health(
                     llama_format_viewer_datetime(
                         (string) $lastRun
                     ),
-                    'fa-binoculars'
+                    'binoculars'
                 );
         }
     } catch (Throwable) {
@@ -1620,7 +1620,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'Scout maintenance status could not be read.',
-                'fa-binoculars'
+                'binoculars'
             );
     }
 
@@ -1705,7 +1705,7 @@ function admin_system_health(
                         ) .
                         '.'
                     : 'All Scout, reactivation, Master Scout, point-cap, and maintenance policy settings are configured.',
-                'fa-sliders'
+                'adjustments-alt'
             );
     } catch (Throwable) {
         $cards[] =
@@ -1715,7 +1715,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'Scout policy configuration could not be checked.',
-                'fa-sliders'
+                'adjustments-alt'
             );
     }
 
@@ -1767,7 +1767,7 @@ function admin_system_health(
                         ) .
                         '.'
                     : 'Canonical Scout and Master Scout roles are available.',
-                'fa-user-shield'
+                'user-shield'
             );
     } catch (Throwable) {
         $cards[] =
@@ -1777,7 +1777,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'Scout role definitions could not be checked.',
-                'fa-user-shield'
+                'user-shield'
             );
     }
 
@@ -1866,7 +1866,7 @@ function admin_system_health(
                     ) .
                         '.'
                     : 'Scout profile status and current Scout authority agree.',
-                'fa-binoculars'
+                'binoculars'
             );
     } catch (Throwable) {
         $cards[] =
@@ -1876,7 +1876,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'Scout profile and role consistency could not be checked.',
-                'fa-binoculars'
+                'binoculars'
             );
     }
 
@@ -2013,7 +2013,7 @@ function admin_system_health(
                     ) .
                         '.'
                     : 'Active reactivation records are unique and consistent with Scout state.',
-                'fa-rotate'
+                'refresh'
             );
     } catch (Throwable) {
         $cards[] =
@@ -2023,7 +2023,7 @@ function admin_system_health(
                 'down',
                 'Unavailable',
                 'Scout reactivation consistency could not be checked.',
-                'fa-rotate'
+                'refresh'
             );
     }
 
