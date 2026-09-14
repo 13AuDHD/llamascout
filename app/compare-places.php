@@ -516,7 +516,7 @@ function llama_compare_sections(): array
                 'Location',
 
             'icon' =>
-                'fa-location-dot',
+                'map-pin',
 
             'rows' => [
                 [
@@ -594,7 +594,7 @@ function llama_compare_sections(): array
                 'Site & Vehicle',
 
             'icon' =>
-                'fa-campground',
+                'tent',
 
             'rows' => [
                 [
@@ -764,7 +764,7 @@ function llama_compare_sections(): array
                 'Road & Access',
 
             'icon' =>
-                'fa-road',
+                'road',
 
             'rows' => [
                 [
@@ -934,7 +934,7 @@ function llama_compare_sections(): array
                 'Sensory, Daytime',
 
             'icon' =>
-                'fa-sun',
+                'sun',
 
             'rows' =>
                 llama_compare_sensory_rows(
@@ -950,7 +950,7 @@ function llama_compare_sections(): array
                 'Sensory, Nighttime',
 
             'icon' =>
-                'fa-moon',
+                'moon-stars',
 
             'rows' =>
                 llama_compare_sensory_rows(
@@ -966,7 +966,7 @@ function llama_compare_sections(): array
                 'Other Sensory Conditions',
 
             'icon' =>
-                'fa-ear-listen',
+                'ear',
 
             'rows' => [
                 llama_compare_rating_row(
@@ -1059,7 +1059,7 @@ function llama_compare_sections(): array
                 'Connectivity',
 
             'icon' =>
-                'fa-signal',
+                'antenna-bars-5',
 
             'rows' => [
                 llama_compare_rating_row(
@@ -1134,7 +1134,7 @@ function llama_compare_sections(): array
                 'Amenities',
 
             'icon' =>
-                'fa-list-check',
+                'list-check',
 
             'rows' => [
                 llama_compare_yes_no_row(
