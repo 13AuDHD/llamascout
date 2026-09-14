@@ -1,7 +1,7 @@
 <section class="place-facts" aria-label="Place details">
     <?php if (!empty($place['elevation_feet'])): ?>
         <div class="place-fact">
-            <i class="fa-solid fa-mountain" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('mountain') ?></i>
             <span>Elevation</span>
             <strong><?= number_format((int) $place['elevation_feet']) ?> ft</strong>
         </div>
@@ -9,7 +9,7 @@
 
     <?php if ($hasMemberAccess && !empty($place['road'])): ?>
         <div class="place-fact">
-            <i class="fa-solid fa-road" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('road') ?></i>
             <span>Road</span>
             <strong><?= place_h($place['road']) ?></strong>
         </div>
@@ -21,7 +21,7 @@
         && ($place['longitude'] ?? null) !== null
     ): ?>
         <div class="place-fact">
-            <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
             <span>GPS coordinates</span>
             <strong>
                 <?= place_h($place['latitude']) ?>,
@@ -44,7 +44,7 @@
                 <?= $hasMemberAccess ? 'Campsite weather' : 'Local weather' ?>
             </h2>
         </div>
-        <i class="fa-solid fa-cloud-sun place-weather-heading-icon" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('temperature-sun', ['class' => 'place-weather-heading-icon']) ?></i>
     </div>
 
     <div class="place-weather-content" data-place-weather-content aria-live="polite">
@@ -95,10 +95,9 @@ try {
 
         <div class="amenity-grid">
             <div class="amenity-item is-unavailable">
-                <i
-                    class="fa-solid fa-circle-xmark"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('xbox-x') ?>
+                </i>
 
                 <span>No amenities</span>
                 <strong>Reported</strong>
@@ -128,10 +127,9 @@ try {
             <div class="amenity-grid">
                 <?php foreach ($availableAmenities as $key => [$icon, $label]): ?>
                     <div class="amenity-item is-available">
-                        <i
-                            class="fa-solid <?= place_h($icon) ?>"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon($icon) ?>
+                        </i>
 
                         <span><?= place_h($label) ?></span>
                         <strong>Yes</strong>

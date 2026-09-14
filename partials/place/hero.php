@@ -13,7 +13,7 @@
     <div class="place-detail-hero-inner">
 
         <a class="place-detail-back" href="/map.php">
-            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
             Explore Map
         </a>
 
@@ -28,7 +28,7 @@
 
                 <?php if ($locationParts): ?>
                     <p class="place-detail-location">
-                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         <?= place_h(implode(', ', $locationParts)) ?>
                     </p>
                 <?php endif; ?>
@@ -53,7 +53,7 @@
                             class="place-detail-action-button<?= $isSaved ? ' is-saved' : '' ?>"
                             aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"
                         >
-                            <i class="<?= $isSaved ? 'fa-solid' : 'fa-regular' ?> fa-bookmark" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
                             <?= $isSaved ? 'Saved' : 'Save Place' ?>
                         </button>
                     </form>
@@ -63,7 +63,7 @@
                             class="place-detail-action-button"
                             href="/compare.php?places=<?= rawurlencode((string) $place['slug']) ?>"
                         >
-                            <i class="fa-solid fa-code-compare" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('arrows-diff') ?></i>
                             Compare
                         </a>
                     <?php endif; ?>
@@ -72,12 +72,12 @@
                         class="place-detail-action-button"
                         href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
                     >
-                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('edit') ?></i>
                         Suggest Update
                     </a>
                 <?php else: ?>
                     <a class="place-detail-action-button" href="https://account.llamascout.com/login.php">
-                        <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
                         Sign in to save
                     </a>
                 <?php endif; ?>
@@ -90,7 +90,7 @@
                     data-share-text="<?= place_h('Check out ' . $place['name'] . ' on Llama Scout.') ?>"
                     data-share-url="<?= place_h($canonicalUrl) ?>"
                 >
-                    <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('share') ?></i>
                     <span data-share-label>Share</span>
                 </button>
             </div>

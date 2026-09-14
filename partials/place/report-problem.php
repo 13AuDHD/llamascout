@@ -1,21 +1,21 @@
 <section class="place-report-section" id="report-place">
     <details class="place-report"<?= $reportError !== null ? ' open' : '' ?>>
         <summary>
-            <i class="fa-regular fa-flag" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('flag') ?></i>
             Report a problem with this place
         </summary>
 
         <div class="place-report-body">
             <?php if ($reportSubmitted): ?>
                 <div class="place-report-message is-success" role="status">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
                     <p>Thanks. Your report has been submitted for review.</p>
                 </div>
             <?php endif; ?>
 
             <?php if ($reportError !== null): ?>
                 <div class="place-report-message is-error" role="alert">
-                    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
                     <p><?= place_h($reportError) ?></p>
                 </div>
             <?php endif; ?>
@@ -58,7 +58,7 @@
                     </div>
 
                     <button type="submit" class="place-report-submit">
-                        <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('send') ?></i>
                         Submit report
                     </button>
                 </form>

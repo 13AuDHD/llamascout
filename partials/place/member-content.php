@@ -72,7 +72,18 @@ if ($hasMemberAccess):
             'title' =>
                 (string) $section['label'],
             'icon' =>
-                (string) $section['icon'],
+                match ($sectionKey) {
+                    'site_vehicle' => 'camper',
+                    'road_access' => 'road',
+                    'amenities' => 'list-check',
+                    'connectivity' => 'antenna-bars-5',
+                    'sensory' => 'brain',
+                    'environment_accessibility' => 'trees',
+                    'safety' => 'shield',
+                    'rules' => 'calendar-event',
+                    'experience' => 'star',
+                    default => 'info-circle',
+                },
             'fields' =>
                 $labels,
         ];
@@ -89,10 +100,7 @@ if ($hasMemberAccess):
             </h2>
 
             <span class="locked-member-pill">
-                <i
-                    class="fa-solid fa-lock"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('lock') ?></i>
                 Members only
             </span>
         </div>
@@ -128,10 +136,7 @@ if ($hasMemberAccess):
                 class="locked-scout-upgrade"
                 href="/membership.php"
             >
-                <i
-                    class="fa-solid fa-lock-open"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('key') ?></i>
                 Unlock this Scout Report
             </a>
         </header>
@@ -145,10 +150,9 @@ if ($hasMemberAccess):
         <?php foreach ($lockedScoutSections as $lockedSection): ?>
             <section class="scout-report-section locked-scout-section">
                 <h3>
-                    <i
-                        class="fa-solid <?= place_h($lockedSection['icon']) ?>"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true">
+                        <?= llama_icon((string) $lockedSection['icon']) ?>
+                    </i>
 
                     <?= place_h($lockedSection['title']) ?>
                 </h3>
@@ -161,10 +165,7 @@ if ($hasMemberAccess):
                             </span>
 
                             <strong class="locked-scout-card-value">
-                                <i
-                                    class="fa-solid fa-lock"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true"><?= llama_icon('lock') ?></i>
                                 Members only
                             </strong>
                         </div>
@@ -174,10 +175,7 @@ if ($hasMemberAccess):
         <?php endforeach; ?>
 
         <div class="locked-scout-cta">
-            <i
-                class="fa-solid fa-binoculars"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
 
             <div>
                 <h3>

@@ -40,19 +40,19 @@
             <div class="place-gallery-lightbox-top">
                 <span id="place-gallery-counter"></span>
                 <button type="button" class="place-gallery-close" id="place-gallery-close" aria-label="Close photo viewer">
-                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('x') ?></i>
                 </button>
             </div>
 
             <div class="place-gallery-stage">
                 <button type="button" class="place-gallery-arrow is-previous" id="place-gallery-previous" aria-label="Previous photo">
-                    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
                 </button>
 
                 <img id="place-gallery-large-image" src="" alt="">
 
                 <button type="button" class="place-gallery-arrow is-next" id="place-gallery-next" aria-label="Next photo">
-                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
                 </button>
             </div>
 

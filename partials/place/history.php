@@ -22,7 +22,7 @@
             ?>
             <div class="place-history-origin">
                 <div class="place-history-badge<?= $originIsScout ? ' is-scouted' : '' ?>">
-                    <i class="fa-solid <?= $originIsScout ? 'fa-binoculars' : 'fa-people-group' ?>" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon($originIsScout ? 'binoculars' : 'users') ?></i>
                     <div>
                         <span><?= $originIsScout ? 'Llama Scouted' : 'Member contributed' ?></span>
                         <strong>
@@ -66,7 +66,7 @@
                     ?>
                     <article class="place-activity-item">
                         <div class="place-activity-icon">
-                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('check') ?></i>
                         </div>
 
                         <div>
