@@ -1441,3 +1441,21 @@
         gap: 5px;
     }
 }
+
+/* Local SVG loading spinner. */
+.llama-icon-spin {
+    display: inline-flex;
+    animation: llama-icon-spin .9s linear infinite;
+}
+
+@keyframes llama-icon-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-icon-spin {
+        animation: none;
+    }
+}
