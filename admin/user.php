@@ -570,7 +570,7 @@ require __DIR__ . '/_header.php';
             target="_blank"
             rel="noopener"
         >
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
             Public profile
         </a>
     <?php endif; ?>
@@ -1133,10 +1133,9 @@ require __DIR__ . '/_header.php';
                     <span
                         class="admin-user-session-status <?= $isRecentlyActive ? 'is-active' : 'is-inactive' ?>"
                     >
-                        <i
-                            class="fa-solid <?= $isRecentlyActive ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon($isRecentlyActive ? 'circle-check' : 'xbox-x') ?>
+                        </i>
 
                         <?= $isRecentlyActive
                             ? 'Active'
@@ -1159,7 +1158,7 @@ require __DIR__ . '/_header.php';
                     </p>
 
                     <button class="admin-button" type="submit">
-                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('logout') ?></i>
                         Sign out everywhere
                     </button>
                 </form>
@@ -1178,10 +1177,9 @@ require __DIR__ . '/_header.php';
                     <span
                         class="admin-user-session-status <?= $isRecentlyActive ? 'is-active' : 'is-inactive' ?>"
                     >
-                        <i
-                            class="fa-solid <?= $isRecentlyActive ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon($isRecentlyActive ? 'circle-check' : 'xbox-x') ?>
+                        </i>
 
                         <?= $isRecentlyActive
                             ? 'Active'
@@ -1224,10 +1222,9 @@ require __DIR__ . '/_header.php';
             <span
                 class="admin-user-support-status <?= $supportPinIsSet ? 'is-ready' : 'is-unavailable' ?>"
             >
-                <i
-                    class="fa-solid <?= $supportPinIsSet ? 'fa-circle-check' : 'fa-circle-xmark' ?>"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon($supportPinIsSet ? 'circle-check' : 'xbox-x') ?>
+                </i>
                 <?= $supportPinIsSet ? 'Support PIN set' : 'Not configured' ?>
             </span>
         </header>

@@ -275,10 +275,9 @@ require __DIR__ . '/_header.php';
             <span>Search accounts</span>
 
             <div>
-                <i
-                    class="fa-solid fa-magnifying-glass"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('search') ?>
+                </i>
 
                 <input
                     type="search"
@@ -378,10 +377,9 @@ require __DIR__ . '/_header.php';
     <?php if (!$users): ?>
 
         <div class="admin-empty-state">
-            <i
-                class="fa-solid fa-user-slash"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon('user-off') ?>
+            </i>
 
             <h3>No accounts found.</h3>
 
