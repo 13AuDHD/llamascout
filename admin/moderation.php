@@ -114,7 +114,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$newPlaces): ?>
 
 <div class="admin-empty-state">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <p>No new Place submissions waiting.</p>
 </div>
 
@@ -216,7 +216,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$updates): ?>
 
 <div class="admin-empty-state">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <p>No Place updates waiting.</p>
 </div>
 
@@ -320,7 +320,7 @@ $changes =
 <?php if (!$reports): ?>
 
 <div class="admin-empty-state">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <p>No open problem reports.</p>
 </div>
 

@@ -7,6 +7,21 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-reports.php';
 require_once __DIR__ . '/_dashboard.php';
 
+function admin_report_problem_icon_name(string $problemType): string
+{
+    return match ($problemType) {
+        'safety' => 'alert-triangle',
+        'closure-status' => 'barrier-block',
+        'location-access' => 'current-location',
+        'amenities' => 'info-circle',
+        'sensory-information' => 'brain',
+        'photo' => 'photo',
+        'duplicate-place' => 'copy',
+        'incorrect-information' => 'edit',
+        default => 'flag',
+    };
+}
+
 $adminUser = moderation_require_admin();
 $db = db();
 
@@ -207,7 +222,6 @@ require __DIR__ . '/_header.php';
 
 </section>
 
-
 <section class="admin-panel admin-user-filter-panel">
 
 <form
@@ -220,9 +234,8 @@ require __DIR__ . '/_header.php';
 
     <div>
         <i
-            class="fa-solid fa-magnifying-glass"
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('search') ?></i>
 
         <input
             type="search"
@@ -232,7 +245,6 @@ require __DIR__ . '/_header.php';
         >
     </div>
 </label>
-
 
 <label>
     <span>Status</span>
@@ -265,7 +277,6 @@ require __DIR__ . '/_header.php';
     </select>
 </label>
 
-
 <label>
     <span>Problem type</span>
 
@@ -294,7 +305,6 @@ require __DIR__ . '/_header.php';
     </select>
 </label>
 
-
 <div class="admin-user-filter-actions">
     <button
         class="admin-button"
@@ -314,7 +324,6 @@ require __DIR__ . '/_header.php';
 </form>
 
 </section>
-
 
 <section class="admin-panel">
 
@@ -336,15 +345,13 @@ require __DIR__ . '/_header.php';
     </div>
 </header>
 
-
 <?php if (!$items): ?>
 
 <div class="admin-empty-state">
 
 <i
-    class="fa-solid fa-circle-check"
     aria-hidden="true"
-></i>
+><?= llama_icon('circle-check') ?></i>
 
 <h2>Queue clear.</h2>
 
@@ -479,15 +486,13 @@ if ($verifiedAt !== '') {
     </div>
 </div>
 
-
 <div class="admin-report-place-flags">
 
     <?php if ($published): ?>
         <span class="admin-report-place-flag is-published">
             <i
-                class="fa-solid fa-eye"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('eye') ?></i>
             Published
         </span>
     <?php endif; ?>
@@ -495,9 +500,8 @@ if ($verifiedAt !== '') {
     <?php if ((int) $group['llama_scouted_count'] > 0): ?>
         <span class="admin-report-place-flag is-scouted">
             <i
-                class="fa-solid fa-binoculars"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('binoculars') ?></i>
             Llama Scouted
         </span>
     <?php endif; ?>
@@ -508,9 +512,8 @@ if ($verifiedAt !== '') {
         ) ?>"
     >
         <i
-            class="fa-solid fa-circle"
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('circle') ?></i>
         <?= moderation_e(
             $verificationLabel
         ) ?>
@@ -519,9 +522,8 @@ if ($verifiedAt !== '') {
     <?php if ((int) $group['pending_update_count'] > 0): ?>
         <span class="admin-report-place-flag is-update">
             <i
-                class="fa-solid fa-pen"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('edit') ?></i>
             <?= number_format(
                 (int) $group['pending_update_count']
             ) ?>
@@ -530,7 +532,6 @@ if ($verifiedAt !== '') {
     <?php endif; ?>
 
 </div>
-
 
 <div class="admin-report-place-group-actions">
     <a
@@ -556,7 +557,6 @@ if ($verifiedAt !== '') {
 
 </header>
 
-
 <div class="admin-report-place-group-summary">
     <strong>
         <?= number_format(
@@ -572,7 +572,6 @@ if ($verifiedAt !== '') {
         </span>
     <?php endif; ?>
 </div>
-
 
 <div class="admin-report-place-group-reports">
 
@@ -591,14 +590,14 @@ $meta =
 >
 
 <div class="admin-report-priority-icon">
-    <i
-        class="fa-solid <?= moderation_e(
-            $meta['icon']
-        ) ?>"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon(
+            admin_report_problem_icon_name(
+                (string) $item['problem_type']
+            )
+        ) ?>
+    </i>
 </div>
-
 
 <div class="admin-report-queue-main">
 
@@ -630,7 +629,6 @@ $meta =
 
 </div>
 
-
 <p>
     <?= moderation_e(
         $item['display_name']
@@ -651,14 +649,12 @@ $meta =
     photo<?= (int) $item['image_count'] === 1 ? '' : 's' ?>
 </p>
 
-
 <?php if ((int) $item['matching_report_count'] > 1): ?>
 
 <div class="admin-report-related-pill">
     <i
-        class="fa-solid fa-layer-group"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('stack-2') ?></i>
 
     <?= number_format(
         (int) $item['matching_report_count']
@@ -677,7 +673,6 @@ $meta =
 <?php endif; ?>
 
 </div>
-
 
 <div class="admin-report-queue-actions">
 

@@ -58,9 +58,8 @@ require __DIR__ . '/_header.php';
     <span>Search Places</span>
     <div>
         <i
-            class="fa-solid fa-magnifying-glass"
             aria-hidden="true"
-        ></i>
+        ><?= llama_icon('search') ?></i>
 
         <input
             type="search"
@@ -162,9 +161,8 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-empty-state">
     <i
-        class="fa-solid fa-map-location-dot"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('map') ?></i>
 
     <h3>No Places found.</h3>
 
@@ -195,9 +193,8 @@ require __DIR__ . '/_header.php';
     >
 <?php else: ?>
     <i
-        class="fa-solid fa-mountain-sun"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('photo') ?></i>
 <?php endif; ?>
 
 </div>
@@ -245,14 +242,14 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-place-list-facts">
     <span>
-        <i class="fa-regular fa-images" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('photo') ?></i>
         <?= number_format(
             (int) $place['image_count']
         ) ?>
     </span>
 
     <span>
-        <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
         <?= number_format(
             (int) $place['verification_count']
         ) ?>
@@ -261,7 +258,7 @@ require __DIR__ . '/_header.php';
     <span class="<?= (int) $place['open_report_count'] > 0
         ? 'has-alert'
         : '' ?>">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
         <?= number_format(
             (int) $place['open_report_count']
         ) ?>

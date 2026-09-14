@@ -6,6 +6,21 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-reports.php';
 
+function admin_report_problem_icon_name(string $problemType): string
+{
+    return match ($problemType) {
+        'safety' => 'alert-triangle',
+        'closure-status' => 'barrier-block',
+        'location-access' => 'current-location',
+        'amenities' => 'info-circle',
+        'sensory-information' => 'brain',
+        'photo' => 'photo',
+        'duplicate-place' => 'copy',
+        'incorrect-information' => 'edit',
+        default => 'flag',
+    };
+}
+
 $adminUser =
     moderation_require_admin();
 
@@ -197,12 +212,13 @@ require __DIR__ . '/_header.php';
 <section class="admin-report-review-summary">
 
 <div class="admin-report-review-icon">
-    <i
-        class="fa-solid <?= moderation_e(
-            $meta['icon']
-        ) ?>"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon(
+            admin_report_problem_icon_name(
+                (string) $item['problem_type']
+            )
+        ) ?>
+    </i>
 </div>
 
 <div>
@@ -289,9 +305,8 @@ require __DIR__ . '/_header.php';
     <?php if (!empty($placeContext['is_published'])): ?>
         <span class="admin-report-published-warning">
             <i
-                class="fa-solid fa-eye"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('eye') ?></i>
             This Place is published
         </span>
     <?php endif; ?>
@@ -349,12 +364,13 @@ require __DIR__ . '/_header.php';
     <strong class="<?= !empty($placeContext['ever_llama_scouted'])
         ? 'is-scouted'
         : '' ?>">
-        <i
-            class="fa-solid <?= !empty($placeContext['ever_llama_scouted'])
-                ? 'fa-binoculars'
-                : 'fa-circle-minus' ?>"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon(
+                !empty($placeContext['ever_llama_scouted'])
+                    ? 'binoculars'
+                    : 'circle-minus'
+            ) ?>
+        </i>
 
         <?= !empty($placeContext['ever_llama_scouted'])
             ? 'Llama Scouted'
@@ -407,9 +423,8 @@ require __DIR__ . '/_header.php';
 <?php if (!empty($placeContext['is_published'])): ?>
 <div class="admin-report-public-impact-note">
     <i
-        class="fa-solid fa-triangle-exclamation"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('alert-triangle') ?></i>
 
     <div>
         <strong>
@@ -867,9 +882,8 @@ $openMeta =
     ) ?>"
 >
     <i
-        class="fa-solid fa-pen-to-square"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('edit') ?></i>
     <span>
         <strong>
             <?= moderation_e(
@@ -884,9 +898,8 @@ $openMeta =
     href="/place.php?id=<?= (int) $item['place_id'] ?>#verification"
 >
     <i
-        class="fa-solid fa-shield-halved"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('shield') ?></i>
     <span>
         <strong>Verification</strong>
         <small>Review freshness or record a new verification.</small>
@@ -897,9 +910,8 @@ $openMeta =
     href="/place.php?id=<?= (int) $item['place_id'] ?>#history"
 >
     <i
-        class="fa-solid fa-clock-rotate-left"
         aria-hidden="true"
-    ></i>
+    ><?= llama_icon('history') ?></i>
     <span>
         <strong>Place history</strong>
         <small>Contributions, reports, updates, and provenance.</small>

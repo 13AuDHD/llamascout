@@ -32,7 +32,7 @@ $items = moderation_new_place_queue($db);
     <?php if (!$items): ?>
 
         <div class="admin-empty-state">
-            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <h2>Queue clear.</h2>
             <p>There are no new Place submissions waiting for review.</p>
         </div>
