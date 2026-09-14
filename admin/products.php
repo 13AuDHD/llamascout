@@ -164,7 +164,7 @@ require __DIR__ . '/_header.php';
     </div>
 
     <a class="admin-button" href="/product-new.php">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
         New product
     </a>
 </header>
@@ -227,7 +227,7 @@ $statusSections = [
 <?php if (!$grouped[$statusKey]): ?>
 
 <div class="admin-empty-state">
-    <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('packages') ?></i>
     <h3><?= moderation_e($section['empty']) ?></h3>
 </div>
 
@@ -259,7 +259,7 @@ $orderHistoryCount =
             loading="lazy"
         >
     <?php else: ?>
-        <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('package') ?></i>
     <?php endif; ?>
 </div>
 

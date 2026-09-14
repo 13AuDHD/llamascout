@@ -838,7 +838,7 @@ $valueText =
 <?php else: ?>
 
 <div class="admin-empty-state admin-commerce-photo-empty">
-    <i class="fa-regular fa-images" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('photo') ?></i>
     <h3>No product images.</h3>
     <p>Add fresh product photos below.</p>
 </div>
@@ -1640,10 +1640,7 @@ $variantProtected =
 
     <?php if ($variantProtected): ?>
         <span class="admin-commerce-protected">
-            <i
-                class="fa-solid fa-lock"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('lock') ?></i>
             Used in order history; delete disabled
         </span>
     <?php endif; ?>

@@ -184,10 +184,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$hasCrossedShippingBoundary): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-box"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('package') ?></i>
 
     <h3>Nothing has shipped yet</h3>
 
@@ -320,7 +317,7 @@ $returnable = max(0, $ordered - $alreadyReturned);
 <?php if (!$returns): ?>
 
 <div class="admin-empty-state">
-    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('arrow-back-up') ?></i>
     <h3>No returns recorded.</h3>
 </div>
 

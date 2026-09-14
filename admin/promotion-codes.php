@@ -333,7 +333,7 @@ require __DIR__ . '/_header.php';
 
     <?php if (!$codes): ?>
         <div class="admin-empty-state">
-            <i class="fa-solid fa-ticket" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('ticket') ?></i>
             <h3>No promotion codes.</h3>
         </div>
     <?php else: ?>

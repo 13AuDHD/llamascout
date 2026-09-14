@@ -1070,10 +1070,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$issues): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-circle-check"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <h3>No integrity problems found.</h3>
     <p>
         The Shop order, payment, inventory, refund, and

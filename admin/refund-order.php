@@ -409,10 +409,7 @@ $canAttemptReconciliation =
             class="admin-button"
             type="submit"
         >
-            <i
-                class="fa-solid fa-arrows-rotate"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('refresh') ?></i>
             Check Stripe and reconcile refund
         </button>
 
@@ -429,10 +426,7 @@ $canAttemptReconciliation =
 ): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-triangle-exclamation"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <h3>Refund paused</h3>
     <p>
         <?= moderation_e($refundBlocker) ?>
@@ -456,10 +450,7 @@ $canAttemptReconciliation =
 <?php elseif ($localRefundComplete): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-circle-check"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <h3>Refunded</h3>
     <p>
         Stripe has completed the full refund for this order and any
@@ -474,10 +465,7 @@ $canAttemptReconciliation =
 ): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-circle-info"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
     <h3>Refund unavailable</h3>
     <p>
         This order is not currently in a state where a new full refund
