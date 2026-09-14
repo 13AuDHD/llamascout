@@ -56,10 +56,9 @@ $placeReportReadMode =
     <?php if (!empty($place['notes'])): ?>
         <section class="scout-report-section">
             <h3>
-                <i
-                    class="fa-solid fa-clipboard-list"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('clipboard-list') ?>
+                </i>
                 Scout notes
             </h3>
 
