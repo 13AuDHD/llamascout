@@ -150,7 +150,7 @@ require __DIR__ . '/_header.php';
 
     <div class="admin-error-tools">
         <section class="admin-error-tool-card">
-            <span class="admin-error-tool-icon" aria-hidden="true"><i class="fa-solid fa-vial"></i></span>
+            <span class="admin-error-tool-icon" aria-hidden="true"><i aria-hidden="true"><?= llama_icon('flask') ?></i></span>
             <div class="admin-error-tool-copy">
                 <strong>Error-log self-test</strong>
                 <p>Creates a harmless test exception so you can verify reference IDs, database logging, the Admin viewer, and System Health without breaking a real workflow.</p>
@@ -158,12 +158,12 @@ require __DIR__ . '/_header.php';
             <form method="post" class="admin-error-tool-action">
                 <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
                 <input type="hidden" name="admin_action" value="self_test">
-                <button class="admin-button" type="submit"><i class="fa-solid fa-vial" aria-hidden="true"></i> Run error-log test</button>
+                <button class="admin-button" type="submit"><i aria-hidden="true"><?= llama_icon('flask') ?></i> Run error-log test</button>
             </form>
         </section>
 
         <section class="admin-error-tool-card">
-            <span class="admin-error-tool-icon" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span class="admin-error-tool-icon" aria-hidden="true"><i aria-hidden="true"><?= llama_icon('history') ?></i></span>
             <div class="admin-error-tool-copy">
                 <strong>Resolved error history</strong>
                 <p>Open issues are never removed automatically. Resolved issues are kept for the retention period, then cleaned up after they age out.</p>
@@ -182,7 +182,7 @@ require __DIR__ . '/_header.php';
                 <form method="post">
                     <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
                     <input type="hidden" name="admin_action" value="cleanup">
-                    <button class="admin-button is-muted" type="submit"><i class="fa-solid fa-broom" aria-hidden="true"></i> Clean up now</button>
+                    <button class="admin-button is-muted" type="submit"><i aria-hidden="true"><?= llama_icon('broom') ?></i> Clean up now</button>
                 </form>
             </div>
         </section>
@@ -218,7 +218,7 @@ require __DIR__ . '/_header.php';
         </label>
 
         <div class="admin-audit-filter-actions">
-            <button class="admin-button" type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Filter</button>
+            <button class="admin-button" type="submit"><i aria-hidden="true"><?= llama_icon('filter') ?></i> Filter</button>
             <a class="admin-button is-muted" href="/errors.php">Clear</a>
         </div>
     </form>

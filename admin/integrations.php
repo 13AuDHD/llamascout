@@ -385,10 +385,9 @@ require __DIR__ . '/_header.php';
 <?php if (!$printfulConfigured): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-plug"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('plug') ?>
+    </i>
 
     <h3>Printful token missing.</h3>
 
@@ -471,10 +470,9 @@ require __DIR__ . '/_header.php';
         class="admin-button"
         href="/printful.php"
     >
-        <i
-            class="fa-solid fa-box-open"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('package') ?>
+        </i>
 
         Open Printful Catalog
     </a>
@@ -500,10 +498,9 @@ require __DIR__ . '/_header.php';
 </header>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-truck-fast"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('truck-delivery') ?>
+    </i>
 
     <h3>Approval pending.</h3>
 
@@ -531,10 +528,9 @@ require __DIR__ . '/_header.php';
 </header>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-boxes-packing"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('packages') ?>
+    </i>
 
     <h3>Integration queued.</h3>
 
@@ -570,10 +566,9 @@ require __DIR__ . '/_header.php';
 <?php if ($printfulError): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-triangle-exclamation"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('alert-triangle') ?>
+    </i>
 
     <h3>Mappings cannot be checked.</h3>
 
@@ -585,10 +580,9 @@ require __DIR__ . '/_header.php';
 <?php elseif (!$printfulDiagnostics): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-shirt"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('shirt') ?>
+    </i>
 
     <h3>No local Printful variants yet.</h3>
 

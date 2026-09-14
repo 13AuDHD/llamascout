@@ -986,11 +986,11 @@ foreach ($promotions as $promotion) {
 
                     <div class="admin-campaign-badges">
                         <span class="admin-campaign-badge">
-                            <i class="fa-brands fa-stripe" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('brand-stripe') ?></i>
                             <?= !empty($plan['stripe_product_id']) ? 'Product connected' : 'Product missing' ?>
                         </span>
                         <span class="admin-campaign-badge">
-                            <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon('tag') ?></i>
                             <?= !empty($plan['stripe_price_id']) ? 'Price connected' : 'Price missing' ?>
                         </span>
                     </div>
@@ -1318,7 +1318,7 @@ foreach ($promotions as $promotion) {
 
     <?php if (!$promotions): ?>
         <div class="admin-empty-state">
-            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('calendar') ?></i>
             <h3>No promotions scheduled.</h3>
             <p>Create your first campaign above.</p>
         </div>
@@ -1453,28 +1453,28 @@ foreach ($promotions as $promotion) {
                             <div class="admin-campaign-badges">
                                 <?php if (!empty($promotion['show_site_banner'])): ?>
                                     <span class="admin-campaign-badge">
-                                        <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('speakerphone') ?></i>
                                         Site banner
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if (!empty($promotion['show_countdown'])): ?>
                                     <span class="admin-campaign-badge">
-                                        <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('hourglass') ?></i>
                                         Countdown
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if (!empty($promotion['email_enabled'])): ?>
                                     <span class="admin-campaign-badge">
-                                        <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('mail') ?></i>
                                         Email scheduled
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if (!empty($promotion['reminder_enabled'])): ?>
                                     <span class="admin-campaign-badge">
-                                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                                        <i aria-hidden="true"><?= llama_icon('bell-ringing') ?></i>
                                         Reminder scheduled
                                     </span>
                                 <?php endif; ?>
