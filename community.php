@@ -10,7 +10,7 @@ $pageTitle = 'Not Found | Llama Scout';
 require __DIR__ . '/partials/header.php';
 ?>
 <section class="account-empty-state">
-    <i class="fa-solid fa-map" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('map') ?></i>
     <h1>There is no member directory here.</h1>
     <p>Llama Scout profiles are reached directly from a member's username or activity around the site.</p>
     <a class="place-save-button" href="/map.php">Explore the map</a>

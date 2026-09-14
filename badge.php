@@ -13,6 +13,32 @@ function badge_e(mixed $value): string
     );
 }
 
+function badge_icon_name(mixed $value): string
+{
+    $raw = strtolower(trim((string) $value));
+
+    if ($raw !== '') {
+        $tokens = preg_split('/\s+/', $raw) ?: [];
+        $raw = (string) end($tokens);
+
+        $legacyPrefix = 'fa' . '-';
+
+        if (str_starts_with($raw, $legacyPrefix)) {
+            $raw = substr($raw, strlen($legacyPrefix));
+        }
+    }
+
+    if (
+        $raw === ''
+        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $raw)
+        || !is_file(__DIR__ . '/assets/icons/' . $raw . '.svg')
+    ) {
+        return 'award';
+    }
+
+    return $raw;
+}
+
 $slug = strtolower(
     trim((string) ($_GET['slug'] ?? ''))
 );
@@ -193,7 +219,7 @@ require __DIR__ . '/partials/header.php';
     <div class="badge-detail-container">
 
         <a class="badge-detail-back" href="javascript:history.back()">
-            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
             Back
         </a>
 
@@ -213,12 +239,13 @@ require __DIR__ . '/partials/header.php';
                     >
                 <?php else: ?>
                     <div class="badge-detail-fallback">
-                        <i
-                            class="fa-solid <?= badge_e(
-                                $badge['icon'] ?: 'fa-award'
-                            ) ?>"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon(
+                                badge_icon_name(
+                                    $badge['icon'] ?? 'award'
+                                )
+                            ) ?>
+                        </i>
                     </div>
                 <?php endif; ?>
 

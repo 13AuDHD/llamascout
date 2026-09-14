@@ -61,19 +61,19 @@ require __DIR__ . '/partials/header.php';
                     </p>
 
                     <ul>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Browse published Places</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Approximate public map location</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> City, county, and state</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Elevation</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Land manager and land type</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Amenities</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> City-based current weather</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Featured Place photo</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Save and remove favorite Places</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Add new Place submissions</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Suggest Place updates</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Report problems with photos</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Member profile, badges, and contribution stats</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Browse published Places</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Approximate public map location</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> City, county, and state</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Elevation</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Land manager and land type</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Amenities</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> City-based current weather</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Featured Place photo</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Save and remove favorite Places</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Add new Place submissions</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Suggest Place updates</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Report problems with photos</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Member profile, badges, and contribution stats</li>
                     </ul>
 
                     <a
@@ -172,25 +172,25 @@ require __DIR__ . '/partials/header.php';
                     </p>
 
                     <ul>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Everything in Free Member</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Exact coordinates</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Exact road and location details</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Complete Place photo gallery</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Full description</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Road and vehicle access</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Sensory conditions</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Environment and accessibility</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Safety and warnings</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Connectivity</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Rules, experience, and Scout Notes</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Exact-location weather plus 5-day forecast</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Everything in Free Member</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact coordinates</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact road and location details</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Complete Place photo gallery</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Full description</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Road and vehicle access</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Sensory conditions</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Environment and accessibility</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Safety and warnings</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Connectivity</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Rules, experience, and Scout Notes</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact-location weather plus 5-day forecast</li>
                     </ul>
 
                     <a
                         class="public-home-button"
                         href="/scout-report-demo.php"
                     >
-                        <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
                         See a Complete Example
                     </a>
 

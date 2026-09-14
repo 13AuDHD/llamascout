@@ -307,10 +307,7 @@ $placeReportPhotoHelp =
         </p>
 
         <div class="add-place-form-note">
-            <i
-                class="fa-solid fa-circle-info"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
 
             <span>
                 Nothing publishes automatically. A moderator reviews the full
@@ -323,10 +320,7 @@ $placeReportPhotoHelp =
         <div
             class="contribution-message is-attention add-place-review-request"
         >
-            <i
-                class="fa-solid fa-triangle-exclamation"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
 
             <div>
                 <strong>
@@ -433,10 +427,7 @@ $placeReportPhotoHelp =
                 name="submit_for_review"
                 value="1"
             >
-                <i
-                    class="fa-solid fa-paper-plane"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('send') ?></i>
 
                 <?= $isNeedsChanges
                     ? 'Resubmit for Review'
@@ -451,10 +442,7 @@ $placeReportPhotoHelp =
                     value="1"
                     formnovalidate
                 >
-                    <i
-                        class="fa-solid fa-floppy-disk"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
 
                     Save for Later
                 </button>
