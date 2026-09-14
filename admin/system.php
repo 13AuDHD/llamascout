@@ -555,12 +555,9 @@ require __DIR__ . '/_header.php';
     ></span>
 
     <div class="admin-health-card-icon">
-        <i
-            class="fa-solid <?= moderation_e(
-                (string) $card['icon']
-            ) ?>"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon((string) $card['icon']) ?>
+        </i>
     </div>
 
     <div class="admin-health-card-copy">
@@ -841,10 +838,9 @@ require __DIR__ . '/_header.php';
         target="_blank"
         rel="noopener"
     >
-        <i
-            class="fa-solid fa-eye"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('eye') ?>
+        </i>
 
         Preview maintenance page
     </a>
@@ -898,12 +894,13 @@ require __DIR__ . '/_header.php';
         ? 'is-test'
         : 'is-live' ?>"
 >
-    <i
-        class="fa-solid <?= $stripeTestMode
-            ? 'fa-flask'
-            : 'fa-triangle-exclamation' ?>"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon(
+            $stripeTestMode
+                ? 'flask'
+                : 'alert-triangle'
+        ) ?>
+    </i>
 
     <span>
         <strong>
@@ -1069,10 +1066,9 @@ require __DIR__ . '/_header.php';
 
 
 <div class="admin-system-testing-warning">
-    <i
-        class="fa-solid fa-bolt"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('bolt') ?>
+    </i>
 
     <span>
         <strong>Immediate action</strong>
@@ -1088,10 +1084,9 @@ require __DIR__ . '/_header.php';
         class="admin-button is-danger"
         type="submit"
     >
-        <i
-            class="fa-solid fa-rotate-left"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('arrow-back-up') ?>
+        </i>
 
         Reset selected test state
     </button>
@@ -1266,10 +1261,9 @@ require __DIR__ . '/_header.php';
         class="admin-button is-muted"
         type="submit"
     >
-        <i
-            class="fa-solid fa-broom"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('broom') ?>
+        </i>
 
         Run safe cleanup
     </button>

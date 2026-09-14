@@ -404,10 +404,9 @@ $replySubject =
 <?php if (!$requests): ?>
 
 <div class="admin-empty-state">
-    <i
-        class="fa-solid fa-inbox"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('inbox') ?>
+    </i>
 
     <h3>No support tickets here.</h3>
 </div>
@@ -429,10 +428,9 @@ $requestTicket = trim(
 <article class="admin-inbox-item">
 
 <span class="admin-inbox-icon">
-    <i
-        class="fa-solid fa-headset"
-        aria-hidden="true"
-    ></i>
+    <i aria-hidden="true">
+        <?= llama_icon('headset') ?>
+    </i>
 </span>
 
 <div class="admin-inbox-content">
