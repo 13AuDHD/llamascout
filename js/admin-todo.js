@@ -17,6 +17,18 @@
     const count = module.querySelector('[data-todo-open-count]');
     const feedback = module.querySelector('[data-todo-feedback]');
 
+    const iconOpen =
+        module.querySelector('[data-todo-icon-open]')?.innerHTML.trim()
+        || '';
+
+    const iconComplete =
+        module.querySelector('[data-todo-icon-complete]')?.innerHTML.trim()
+        || '';
+
+    const iconDelete =
+        module.querySelector('[data-todo-icon-delete]')?.innerHTML.trim()
+        || '';
+
     let armedDelete = null;
     let armedDeleteTimer = null;
 
@@ -121,7 +133,7 @@
         item.classList.toggle('is-completed', completed);
 
         const toggle = item.querySelector('[data-todo-toggle]');
-        const icon = toggle?.querySelector('i');
+        const icon = toggle?.querySelector('[data-todo-state-icon]');
         const date = item.querySelector('[data-todo-date]');
 
         if (toggle) {
@@ -137,9 +149,9 @@
         }
 
         if (icon) {
-            icon.className = completed
-                ? 'fa-solid fa-circle-check'
-                : 'fa-regular fa-circle';
+            icon.innerHTML = completed
+                ? iconComplete
+                : iconOpen;
         }
 
         if (date) {
@@ -167,7 +179,7 @@
                 aria-label="Mark task complete"
                 aria-pressed="false"
             >
-                <i class="fa-regular fa-circle" aria-hidden="true"></i>
+                <i data-todo-state-icon aria-hidden="true">${iconOpen}</i>
             </button>
 
             <div class="admin-todo-copy">
@@ -188,7 +200,7 @@
                 aria-label="Remove task"
                 title="Tap twice to remove"
             >
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                <i aria-hidden="true">${iconDelete}</i>
                 <span class="visually-hidden">Remove task</span>
             </button>
         `;
