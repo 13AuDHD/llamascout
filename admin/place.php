@@ -972,10 +972,13 @@ $placeReportPhotoHelp =
                 <span>Scout status</span>
 
                 <strong class="<?= !empty($llamaScouted['ever_scouted']) ? 'is-good' : '' ?>">
-                    <i
-                        class="fa-solid <?= !empty($llamaScouted['ever_scouted']) ? 'fa-binoculars' : 'fa-circle-minus' ?>"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true">
+                        <?= llama_icon(
+                            !empty($llamaScouted['ever_scouted'])
+                                ? 'binoculars'
+                                : 'circle-minus'
+                        ) ?>
+                    </i>
 
                     <?= !empty($llamaScouted['ever_scouted'])
                         ? 'Llama Scouted'
@@ -1192,10 +1195,9 @@ $placeReportPhotoHelp =
                 class="admin-button"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-floppy-disk"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('device-floppy') ?>
+                </i>
                 Save Place Report
             </button>
         </div>
@@ -1659,10 +1661,9 @@ $placeReportPhotoHelp =
                                 type="submit"
                                 data-delete-verification
                             >
-                                <i
-                                    class="fa-solid fa-trash-can"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true">
+                                    <?= llama_icon('trash') ?>
+                                </i>
                                 Delete
                             </button>
                         </form>
@@ -1782,10 +1783,9 @@ $placeReportPhotoHelp =
                 class="admin-button"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-circle-check"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('circle-check') ?>
+                </i>
                 Add verification
             </button>
         </form>

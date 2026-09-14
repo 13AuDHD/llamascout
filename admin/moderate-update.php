@@ -569,6 +569,23 @@ $originalUnknownLookup =
 $groupedChanges = [];
 
 
+$sectionIconNames = [
+    'basic' => 'location',
+    'location' => 'current-location',
+    'site_vehicle' => 'parking',
+    'road_access' => 'road',
+    'amenities' => 'info-circle',
+    'connectivity' => 'satellite',
+    'sensory' => 'brain',
+    'environment_accessibility' => 'accessible',
+    'safety' => 'shield',
+    'rules' => 'sun-moon',
+    'experience' => 'star',
+    'summaries' => 'edit',
+    'other' => 'edit',
+];
+
+
 foreach (
     $proposed
     as $path => $newValue
@@ -617,8 +634,13 @@ foreach (
                 ),
 
             'icon' =>
-                'fa-pen-to-square',
+                'edit',
         ];
+
+
+    $groupedChanges[$section]['local_icon'] =
+        $sectionIconNames[$section]
+        ?? 'edit';
 
 
     $groupedChanges[$section]['changes'][$path] = [
@@ -745,10 +767,9 @@ $formatTime =
         rel="noopener"
     >
 
-        <i
-            class="fa-solid fa-arrow-up-right-from-square"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('external-link') ?>
+        </i>
 
         Open live Place
 
@@ -838,6 +859,12 @@ $formatTime =
         $changes =
             $group['changes'];
 
+        $groupIcon =
+            (string) (
+                $group['local_icon']
+                ?? 'edit'
+            );
+
         ?>
 
 
@@ -845,13 +872,9 @@ $formatTime =
 
             <h3>
 
-                <i
-                    class="fa-solid <?= $e(
-                        $meta['icon']
-                        ?? 'fa-pen-to-square'
-                    ) ?>"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon($groupIcon) ?>
+                </i>
 
                 <?= $e(
                     $meta['label']
@@ -963,10 +986,9 @@ $formatTime =
                             </div>
 
 
-                            <i
-                                class="fa-solid fa-arrow-right"
-                                aria-hidden="true"
-                            ></i>
+                            <i aria-hidden="true">
+                                <?= llama_icon('arrow-right') ?>
+                            </i>
 
 
                             <div class="is-after">
@@ -1093,22 +1115,22 @@ $formatTime =
                     match ($type) {
 
                         'submitted' =>
-                            'fa-paper-plane',
+                            'send',
 
                         'changes-requested' =>
-                            'fa-rotate-left',
+                            'arrow-back-up',
 
                         'resubmitted' =>
-                            'fa-arrows-rotate',
+                            'refresh',
 
                         'approved' =>
-                            'fa-circle-check',
+                            'circle-check',
 
                         'rejected' =>
-                            'fa-circle-xmark',
+                            'xbox-x',
 
                         default =>
-                            'fa-circle',
+                            'circle',
                     };
 
 
@@ -1155,12 +1177,9 @@ $formatTime =
 
                     <div class="admin-update-timeline-icon">
 
-                        <i
-                            class="fa-solid <?= $e(
-                                $icon
-                            ) ?>"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon($icon) ?>
+                        </i>
 
                     </div>
 
@@ -1627,10 +1646,9 @@ require __DIR__
                 value="delete"
                 data-delete-submission
             >
-                <i
-                    class="fa-solid fa-trash-can"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('trash') ?>
+                </i>
 
                 Delete Submission
             </button>

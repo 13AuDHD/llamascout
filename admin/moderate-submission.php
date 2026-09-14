@@ -66,7 +66,9 @@ $adminPageActions =
     '<a class="admin-button" href="/edit-submission.php?id='
     . $submissionId
     . '">'
-    . '<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> '
+    . '<i aria-hidden="true">'
+    . llama_icon('edit')
+    . '</i> '
     . 'Edit Submission'
     . '</a>';
 
@@ -535,10 +537,9 @@ require __DIR__
     <header class="admin-moderation-section-header">
         <div>
             <p class="admin-moderation-eyebrow">
-                <i
-                    class="fa-solid fa-clipboard-check"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('clipboard-check') ?>
+                </i>
 
                 Review Readiness
             </p>
