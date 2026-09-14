@@ -97,9 +97,8 @@ require
 
         <div class="passkeys-card-heading">
             <i
-                class="fa-solid fa-fingerprint"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('fingerprint') ?></i>
 
             <div>
                 <h2>Your passkeys</h2>
@@ -276,9 +275,8 @@ require
 
         <div class="passkeys-card-heading">
             <i
-                class="fa-solid fa-shield-halved"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('shield') ?></i>
 
             <div>
                 <h2>Fallback stays available</h2>
@@ -297,9 +295,8 @@ require
     <p class="passkeys-back">
         <a href="/">
             <i
-                class="fa-solid fa-arrow-left"
                 aria-hidden="true"
-            ></i>
+            ><?= llama_icon('arrow-left') ?></i>
             Return to My Account
         </a>
     </p>

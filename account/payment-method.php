@@ -122,7 +122,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <section class="billing-page checkout-page">
 <header class="billing-page-header checkout-page-header">
     <a class="billing-back-link" href="/billing.php">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Membership & billing
     </a>
     <p class="eyebrow">Secure payment method</p>
@@ -134,7 +134,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <?php if ($pageError !== ''): ?>
 <div class="billing-error-card checkout-error-card">
-    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <h2>Payment method could not open.</h2>
     <p><?= payment_method_e($pageError) ?></p>
     <a class="billing-primary-button" href="/billing.php">Return to billing</a>
@@ -145,12 +145,12 @@ require dirname(__DIR__) . '/partials/header.php';
         <p class="eyebrow">Payment security</p>
         <h2>Your card details stay with Stripe.</h2>
         <ul class="checkout-trust-list">
-            <li><i class="fa-solid fa-lock" aria-hidden="true"></i> Encrypted Stripe payment fields</li>
-            <li><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Llama Scout never stores the full card number</li>
-            <li><i class="fa-solid fa-receipt" aria-hidden="true"></i> Used for future membership invoices</li>
+            <li><i aria-hidden="true"><?= llama_icon('lock') ?></i> Encrypted Stripe payment fields</li>
+            <li><i aria-hidden="true"><?= llama_icon('shield') ?></i> Llama Scout never stores the full card number</li>
+            <li><i aria-hidden="true"><?= llama_icon('receipt') ?></i> Used for future membership invoices</li>
         </ul>
         <div class="checkout-secure-note">
-            <i class="fa-brands fa-stripe" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('brand-stripe') ?></i>
             <span>Secure payment processing by Stripe</span>
         </div>
     </aside>
@@ -164,8 +164,8 @@ require dirname(__DIR__) . '/partials/header.php';
                 data-client-secret="<?= payment_method_e($clientSecret) ?>"
             >
                 <div class="checkout-loading" id="payment-method-loading">
-                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                    Loading secure payment formâ¦
+                    <i class="fa-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
+                    Loading secure payment form…
                 </div>
             </div>
 
@@ -174,8 +174,8 @@ require dirname(__DIR__) . '/partials/header.php';
             <button id="payment-method-submit" class="billing-primary-button payment-method-submit" type="submit" disabled>
                 <span class="payment-method-submit-label">Save payment method</span>
                 <span class="payment-method-submit-working" hidden>
-                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                    Savingâ¦
+                    <i class="fa-spin" aria-hidden="true"><?= llama_icon('loader-2') ?></i>
+                    Saving…
                 </span>
             </button>
         </form>

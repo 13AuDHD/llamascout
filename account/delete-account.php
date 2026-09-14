@@ -1172,13 +1172,13 @@ if (
 
        $goodbyeEmail =
           (string) $account['email'];
-      
+
       $goodbyeDisplayName =
           (string) (
               $account['display_name']
               ?? ''
           );
-      
+
       $goodbyeUsername =
           (string) $account['username'];
 
@@ -1378,9 +1378,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
       <div class="delete-account-icon">
         <i
-          class="fa-solid fa-check"
           aria-hidden="true"
-        ></i>
+        ><?= llama_icon('check') ?></i>
       </div>
 
       <p class="delete-account-eyebrow">
@@ -1433,9 +1432,8 @@ require dirname(__DIR__) . '/partials/header.php';
         class="delete-account-back"
       >
         <i
-          class="fa-solid fa-arrow-left"
           aria-hidden="true"
-        ></i>
+        ><?= llama_icon('arrow-left') ?></i>
         Back to My Account
       </a>
 
@@ -1499,9 +1497,8 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <span class="delete-account-legal-icon">
           <i
-            class="fa-solid fa-scale-balanced"
             aria-hidden="true"
-          ></i>
+          ><?= llama_icon('scale') ?></i>
         </span>
 
         <div>
@@ -1814,9 +1811,8 @@ require dirname(__DIR__) . '/partials/header.php';
             "
           >
             <i
-              class="fa-solid fa-trash-can"
               aria-hidden="true"
-            ></i>
+            ><?= llama_icon('trash') ?></i>
 
             Permanently Delete My Account
           </button>

@@ -36,6 +36,10 @@ require_once
     dirname(__DIR__)
     . '/app/passkey-library.php';
 
+require_once
+    dirname(__DIR__)
+    . '/app/icons.php';
+
 
 start_llama_session();
 
@@ -552,11 +556,6 @@ $passkeyLoginAvailable =
     href="https://llamascout.com/css/account/features/auth.css"
   >
 
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-  >
-
   <script
     src="https://llamascout.com/js/accessibility.js"
   ></script>
@@ -669,10 +668,7 @@ $passkeyLoginAvailable =
           type="button"
           class="account-passkey-button"
         >
-          <i
-            class="fa-solid fa-fingerprint"
-            aria-hidden="true"
-          ></i>
+          <i aria-hidden="true"><?= llama_icon('fingerprint') ?></i>
 
           Sign in with a passkey
         </button>
@@ -849,6 +845,11 @@ $passkeyLoginAvailable =
         document.getElementById(
             'passkey-login-message'
         );
+
+    const originalButtonHtml =
+        button
+            ? button.innerHTML
+            : '';
 
     if (!button || !message) {
         return;
@@ -1210,7 +1211,7 @@ $passkeyLoginAvailable =
                     false;
 
                 button.innerHTML =
-                    '<i class="fa-solid fa-fingerprint" aria-hidden="true"></i> Sign in with a passkey';
+                    originalButtonHtml;
             }
         }
     );

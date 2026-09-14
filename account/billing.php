@@ -189,7 +189,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <header class="billing-page-header">
     <a class="billing-back-link" href="/index.php">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
         Your account
     </a>
 
@@ -203,28 +203,28 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <?php if ($notice !== ''): ?>
 <div class="billing-notice is-success">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
     <?= billing_e($notice) ?>
 </div>
 <?php endif; ?>
 
 <?php if ($billingError !== ''): ?>
 <div class="billing-notice is-error">
-    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <?= billing_e($billingError) ?>
 </div>
 <?php endif; ?>
 
 <?php if ($billingSnapshotError !== ''): ?>
 <div class="billing-notice is-warning">
-    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
     <?= billing_e($billingSnapshotError) ?>
 </div>
 <?php endif; ?>
 
 <section class="billing-status-card">
     <div class="billing-status-icon">
-        <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('id') ?></i>
     </div>
 
     <div class="billing-status-main">
@@ -257,7 +257,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <article class="billing-detail-card">
     <div class="billing-detail-heading">
         <div class="billing-action-icon">
-            <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('calendar-check') ?></i>
         </div>
         <div>
             <span>Membership</span>
@@ -294,14 +294,14 @@ require dirname(__DIR__) . '/partials/header.php';
 <article class="billing-detail-card">
     <div class="billing-detail-heading">
         <div class="billing-action-icon">
-            <i class="fa-solid fa-credit-card" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('credit-card') ?></i>
         </div>
         <div>
             <span>Payment method</span>
             <h2>
                 <?php if (!empty($billingSnapshot['payment_method'])): ?>
                     <?= billing_e(billing_brand((string) $billingSnapshot['payment_method']['brand'])) ?>
-                    â¢â¢â¢â¢ <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
+                    •••• <?= billing_e((string) $billingSnapshot['payment_method']['last4']) ?>
                 <?php elseif ($hasStripeCustomer): ?>
                     Securely stored with Stripe
                 <?php else: ?>
@@ -327,7 +327,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <input type="hidden" name="csrf_token" value="<?= billing_e($csrfToken) ?>">
         <button type="submit" class="billing-secondary-button">
             Update payment method
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
         </button>
     </form>
     <?php endif; ?>
@@ -379,7 +379,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <input type="hidden" name="interval" value="<?= billing_e($interval) ?>">
                     <button type="submit" class="billing-plan-action">
                         Switch to <?= billing_e($interval === 'annual' ? 'annual' : 'monthly') ?>
-                        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
                     </button>
                 </form>
             <?php elseif (!$isPaidMembership): ?>
@@ -426,7 +426,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <input type="hidden" name="action" value="cancel_subscription">
                 <button type="submit" class="billing-danger-button">
                     Cancel membership
-                    <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
                 </button>
             </form>
         <?php endif; ?>
@@ -478,7 +478,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
     <?php else: ?>
     <div class="billing-empty-state">
-        <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('receipt') ?></i>
         <div>
             <strong>No Stripe invoices to show yet.</strong>
             <p>Your paid membership invoices will appear here after Stripe creates them.</p>
@@ -498,14 +498,14 @@ require dirname(__DIR__) . '/partials/header.php';
         <input type="hidden" name="action" value="manage_billing">
         <button type="submit" class="billing-text-button">
             Advanced billing options
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('external-link') ?></i>
         </button>
     </form>
 </section>
 <?php endif; ?>
 
 <section class="billing-explainer">
-    <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+    <i aria-hidden="true"><?= llama_icon('shield') ?></i>
     <div>
         <strong>Payment information stays with Stripe.</strong>
         <p>
