@@ -244,6 +244,24 @@
     font-size: 1.2rem;
 }
 
+.llama-icon-spin {
+    display: inline-flex;
+    transform-origin: center;
+    animation: llama-icon-spin .85s linear infinite;
+}
+
+@keyframes llama-icon-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-icon-spin {
+        animation: none;
+    }
+}
+
 .checkout-load-error {
     margin: 10px;
     padding: 14px;
