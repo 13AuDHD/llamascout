@@ -300,10 +300,33 @@ require dirname(__DIR__) . '/partials/header.php';
                                     alt=""
                                 >
                             <?php else: ?>
-                                <i
-                                    class="fa-solid <?= profile_e($badge['icon'] ?: 'fa-award') ?>"
-                                    aria-hidden="true"
-                                ></i>
+                                <?php
+                                $badgeIcon = trim(
+                                    (string) ($badge['icon'] ?? 'award')
+                                );
+                                $badgeIcon = preg_replace(
+                                    '/^fa-/',
+                                    '',
+                                    $badgeIcon
+                                ) ?? $badgeIcon;
+
+                                if (
+                                    $badgeIcon === ''
+                                    || !preg_match(
+                                        '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                                        $badgeIcon
+                                    )
+                                ) {
+                                    $badgeIcon = 'award';
+                                }
+
+                                $badgeIconMarkup = llama_icon($badgeIcon);
+
+                                if ($badgeIconMarkup === '') {
+                                    $badgeIconMarkup = llama_icon('award');
+                                }
+                                ?>
+                                <i aria-hidden="true"><?= $badgeIconMarkup ?></i>
                             <?php endif; ?>
                         </span>
 

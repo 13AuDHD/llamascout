@@ -389,19 +389,30 @@ require dirname(__DIR__) . '/partials/header.php';
                         trim(
                             (string) (
                                 $badge['icon']
-                                ?? 'fa-award'
+                                ?? 'award'
                             )
                         );
 
+                    $badgeIcon = preg_replace(
+                        '/^fa-/',
+                        '',
+                        $badgeIcon
+                    ) ?? $badgeIcon;
+
                     if (
-                        $badgeIcon !== ''
-                        && !str_contains(
-                            $badgeIcon,
-                            'fa-'
+                        $badgeIcon === ''
+                        || !preg_match(
+                            '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                            $badgeIcon
                         )
                     ) {
-                        $badgeIcon =
-                            'fa-award';
+                        $badgeIcon = 'award';
+                    }
+
+                    $badgeIconMarkup = llama_icon($badgeIcon);
+
+                    if ($badgeIconMarkup === '') {
+                        $badgeIconMarkup = llama_icon('award');
                     }
                     ?>
 
@@ -423,14 +434,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
                             <?php else: ?>
 
-                                <i
-                                    class="fa-solid <?= htmlspecialchars(
-                                        $badgeIcon,
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>"
-                                    aria-hidden="true"
-                                ></i>
+                                <i aria-hidden="true"><?= $badgeIconMarkup ?></i>
 
                             <?php endif; ?>
 

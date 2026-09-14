@@ -474,10 +474,7 @@ $registerUrl =
     <section class="complimentary-invite-card">
 
         <div class="complimentary-invite-badge">
-            <i
-                class="fa-solid fa-gift"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true"><?= llama_icon('gift') ?></i>
 
             Complimentary Membership
         </div>
@@ -486,10 +483,7 @@ $registerUrl =
         <?php if ($accepted): ?>
 
             <div class="complimentary-invite-success-icon">
-                <i
-                    class="fa-solid fa-circle-check"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             </div>
 
             <h1>
@@ -508,32 +502,32 @@ $registerUrl =
 
                 <div>
                     <span>
-                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         Exact Place locations
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-map" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map') ?></i>
                         Member map layers
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-images" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('photo') ?></i>
                         Complete galleries
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-cloud-sun" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('sun-moon') ?></i>
                         Exact-location weather
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-ear-listen" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('ear') ?></i>
                         Sensory details
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-road" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('road') ?></i>
                         Access details
                     </span>
                 </div>
@@ -562,10 +556,7 @@ $registerUrl =
         <?php elseif ($error !== ''): ?>
 
             <div class="complimentary-invite-error-icon">
-                <i
-                    class="fa-solid fa-circle-exclamation"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
             </div>
 
             <h1>
@@ -646,32 +637,32 @@ $registerUrl =
 
                 <div>
                     <span>
-                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         Exact coordinates and Place locations
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-map" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map') ?></i>
                         Exact pins, street-level zoom, and member map layers
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-images" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('photo') ?></i>
                         Complete Place photo galleries
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-road" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('road') ?></i>
                         Full road, vehicle, and access details
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-ear-listen" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('ear') ?></i>
                         Sensory conditions and Scout Notes
                     </span>
 
                     <span>
-                        <i class="fa-solid fa-cloud-sun" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('sun-moon') ?></i>
                         Exact-location weather and 5-day forecast
                     </span>
                 </div>
@@ -831,10 +822,7 @@ $registerUrl =
                         class="complimentary-invite-primary"
                         type="submit"
                     >
-                        <i
-                            class="fa-solid fa-gift"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true"><?= llama_icon('gift') ?></i>
 
                         Activate Complete Access
                     </button>
