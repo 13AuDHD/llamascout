@@ -122,10 +122,7 @@ require __DIR__ . '/partials/header.php';
                     class="compare-button is-secondary"
                     href="/map.php"
                 >
-                    <i
-                        class="fa-solid fa-map-location-dot"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
 
                     Back to Map
                 </a>
@@ -140,10 +137,7 @@ require __DIR__ . '/partials/header.php';
                         data-copy-compare-link
                         data-compare-url="<?= llama_compare_h($compareUrl) ?>"
                     >
-                        <i
-                            class="fa-solid fa-link"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true"><?= llama_icon('link') ?></i>
 
                         <span data-copy-label>
                             Copy Comparison Link
@@ -158,10 +152,7 @@ require __DIR__ . '/partials/header.php';
         <?php if (!$hasMemberAccess): ?>
             <section class="compare-access-card">
                 <span class="compare-access-icon">
-                    <i
-                        class="fa-solid fa-lock"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon('lock') ?></i>
                 </span>
 
                 <div>
@@ -210,10 +201,7 @@ require __DIR__ . '/partials/header.php';
                 </div>
             <?php else: ?>
                 <section class="compare-empty">
-                    <i
-                        class="fa-solid fa-code-compare"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true"><?= llama_icon('arrows-diff') ?></i>
 
                     <h2>
                         Start with two Places.

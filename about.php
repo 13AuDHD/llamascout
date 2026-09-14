@@ -134,7 +134,7 @@ require __DIR__ . '/partials/header.php';
                 </article>
 
                 <article class="about-feature-card">
-                    <i aria-hidden="true"><?= llama_icon('sun-moon') ?></i>
+                    <i aria-hidden="true"><?= llama_icon('temperature-sun') ?></i>
                     <h3>Weather</h3>
                     <p>
                         Public city weather for planning, with exact-location

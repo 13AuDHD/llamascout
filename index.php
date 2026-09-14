@@ -126,7 +126,7 @@ require __DIR__ . '/partials/header.php';
                     <li><i aria-hidden="true"><?= llama_icon('road') ?></i> Road and vehicle access</li>
                     <li><i aria-hidden="true"><?= llama_icon('ear') ?></i> Sensory details</li>
                     <li><i aria-hidden="true"><?= llama_icon('antenna-bars-5') ?></i> Connectivity</li>
-                    <li><i aria-hidden="true"><?= llama_icon('sun-moon') ?></i> Place-aware weather</li>
+                    <li><i aria-hidden="true"><?= llama_icon('temperature-sun') ?></i> Place-aware weather</li>
                 </ul>
             </div>
 
