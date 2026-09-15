@@ -169,6 +169,10 @@ form {
    LOCAL SVG ICONS
    ========================================================= */
 
+:root {
+    --llama-icon-scale: 1.10;
+}
+
 .llama-icon {
     width: 1em;
     height: 1em;
@@ -179,6 +183,9 @@ form {
     overflow: visible;
 
     vertical-align: -.125em;
+
+    transform: scale(var(--llama-icon-scale));
+    transform-origin: center;
 }
 
 /*
@@ -205,6 +212,9 @@ form {
     mask-size: contain;
 
     vertical-align: -.125em;
+
+    transform: scale(var(--llama-icon-scale));
+    transform-origin: center;
 }
 
 .llama-icon-mask.is-spinning {
@@ -212,8 +222,16 @@ form {
 }
 
 @keyframes llama-icon-mask-spin {
+    from {
+        transform:
+            scale(var(--llama-icon-scale))
+            rotate(0deg);
+    }
+
     to {
-        transform: rotate(360deg);
+        transform:
+            scale(var(--llama-icon-scale))
+            rotate(360deg);
     }
 }
 
