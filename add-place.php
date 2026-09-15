@@ -310,8 +310,8 @@ $placeReportPhotoHelp =
             <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
 
             <span>
-                Nothing publishes automatically. A moderator reviews the full
-                submission, photos, and location data before it becomes a Place.
+                A moderator reviews the full submission, photos, and location 
+                data before it becomes a Place.
             </span>
         </div>
     </header>
