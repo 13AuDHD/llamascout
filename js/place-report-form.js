@@ -804,54 +804,16 @@
             isAdminReport
             && adminSaveButton
         ) {
+            /*
+             * Keep Admin saving native. The button already uses
+             * formnovalidate, so Safari cannot silently block it on an
+             * off-screen required field. Do not cancel the click or
+             * re-trigger submission from JavaScript.
+             */
             form.noValidate = true;
 
             adminSaveButtonHtml =
                 adminSaveButton.innerHTML;
-
-            adminSaveButton.addEventListener(
-                'click',
-                (event) => {
-                    event.preventDefault();
-
-                    if (submitting) {
-                        return;
-                    }
-
-                    /*
-                     * requestSubmit after noValidate is set guarantees
-                     * the form submit event runs instead of being
-                     * silently stopped by an off-screen native field.
-                     */
-                    if (
-                        typeof form.requestSubmit
-                            === 'function'
-                    ) {
-                        form.requestSubmit();
-                    } else {
-                        form.dispatchEvent(
-                            new Event(
-                                'submit',
-                                {
-                                    bubbles:
-                                        true,
-                                    cancelable:
-                                        true,
-                                }
-                            )
-                        );
-
-                        if (!submitting) {
-                            return;
-                        }
-
-                        HTMLFormElement
-                            .prototype
-                            .submit
-                            .call(form);
-                    }
-                }
-            );
         }
 
         form.addEventListener(
