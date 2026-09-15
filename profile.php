@@ -369,17 +369,17 @@ require __DIR__ . '/partials/header.php';
             </div>
             <div class="public-community-profile-fact">
                 <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                <span>Places submitted</span>
+                <span>New Places</span>
                 <strong><?= number_format((int) ($stats['places_submitted'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
                 <i aria-hidden="true"><?= llama_icon('edit') ?></i>
-                <span>Places improved</span>
+                <span>Improvements</span>
                 <strong><?= number_format((int) ($stats['places_improved'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
                 <i aria-hidden="true"><?= llama_icon('check') ?></i>
-                <span>Approved contributions</span>
+                <span>Contributions</span>
                 <strong><?= number_format((int) ($stats['approved_contributions'] ?? 0)) ?></strong>
             </div>
         </div>
