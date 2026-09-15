@@ -139,6 +139,11 @@ function llama_place_report_sections(): array
             'description' => 'Views, stars, comfort, quiet, remote work, and who it suits',
             'icon' => 'star',
         ],
+        'scout_notes' => [
+            'label' => 'Scout notes',
+            'description' => 'Short useful observations worth spotting at a glance',
+            'icon' => 'clipboard-list',
+        ],
         'summaries' => [
             'label' => 'Summaries and reviewer notes',
             'description' => 'Useful context that does not fit into a dropdown',
@@ -285,7 +290,7 @@ function llama_place_report_field_icon(
         'sedan_accessible' => 'car',
         'high_clearance_recommended' => 'car-suv',
         'four_wheel_drive_recommended' => 'car-4wd',
-        'water_crossings' => 'flood',
+        'water_crossings' => 'ripple',
         'downed_tree_risk' => 'trees',
         'seasonal_closure' => 'calendar-event',
         'site_access_difficulty' => 'route',
@@ -384,10 +389,19 @@ function llama_place_report_field_icon(
         'nearest_toilet' => 'at-toilet',
         'nearest_hospital' => 'hospital',
 
+        'recommended_overnight_stop' => 'moon-stars',
+        'recommended_quiet_evening' => 'ear-off',
+        'recommended_extended_stay' => 'calendar-week',
+        'recommended_sensory_retreat' => 'at-brain',
+        'recommended_stargazing' => 'shooting-star-line',
+        'recommended_remote_work' => 'at-laptop',
         'recommended_solo_travel' => 'user',
         'recommended_families' => 'at-users',
         'recommended_large_groups' => 'users-group',
         'not_recommended_for' => 'at-warning',
+        'scout_note_1' => 'file-text',
+        'scout_note_2' => 'file-text',
+        'scout_note_3' => 'file-text',
 
         'access_summary' => 'road',
         'sensory_summary' => 'at-brain',
@@ -405,6 +419,7 @@ function llama_place_report_field_icon(
         'safety' => 'shield',
         'rules' => 'at-directions-post',
         'experience' => 'star',
+        'scout_notes' => 'file-text',
         default => 'info-circle',
     };
 }
@@ -992,12 +1007,6 @@ function llama_place_report_fields(): array
         'experience_sensory_retreat' => ['Sensory retreat', 'experience.sensory_retreat'],
         'experience_remote_work' => ['Remote work', 'experience.remote_work'],
         'experience_overall_scenery' => ['Overall scenery', 'experience.overall_scenery'],
-        'recommended_overnight_stop' => ['Recommended overnight stop', 'experience.recommended_overnight_stop'],
-        'recommended_quiet_evening' => ['Recommended quiet evening', 'experience.recommended_quiet_evening'],
-        'recommended_extended_stay' => ['Recommended extended stay', 'experience.recommended_extended_stay'],
-        'recommended_sensory_retreat' => ['Recommended sensory retreat', 'experience.recommended_sensory_retreat'],
-        'recommended_stargazing' => ['Recommended stargazing', 'experience.recommended_stargazing'],
-        'recommended_remote_work' => ['Recommended remote work', 'experience.recommended_remote_work'],
     ] as $key => [$label, $storage]) {
         $add($key, $label, 'experience', 'rating', $storage, [
             'allow_unknown' => true,
@@ -1007,6 +1016,12 @@ function llama_place_report_fields(): array
         ]);
     }
     foreach ([
+        'recommended_overnight_stop' => 'Recommended for an overnight stop?',
+        'recommended_quiet_evening' => 'Recommended for a quiet evening?',
+        'recommended_extended_stay' => 'Recommended for an extended stay?',
+        'recommended_sensory_retreat' => 'Recommended for a sensory retreat?',
+        'recommended_stargazing' => 'Recommended for stargazing?',
+        'recommended_remote_work' => 'Recommended for remote work?',
         'recommended_solo_travel' => 'Good for solo travel?',
         'recommended_families' => 'Good for families?',
         'recommended_large_groups' => 'Good for large groups?',
@@ -1022,6 +1037,24 @@ function llama_place_report_fields(): array
         'placeholder' => 'Example: low-clearance vehicles, people sensitive to road noise, large trailers...',
         'points_categories' => ['experience_recommendations'],
     ]);
+
+    /* Scout notes */
+    foreach ([1, 2, 3] as $noteNumber) {
+        $add(
+            'scout_note_' . $noteNumber,
+            'Scout note ' . $noteNumber,
+            'scout_notes',
+            'textarea',
+            'experience.scout_note_' . $noteNumber,
+            [
+                'wide' => true,
+                'rows' => 2,
+                'maxlength' => 200,
+                'placeholder' => 'Short observation, tip, or useful detail worth spotting at a glance.',
+                'points_categories' => ['experience_recommendations'],
+            ]
+        );
+    }
 
     /* Summaries */
     $add('access_summary', 'Access summary', 'summaries', 'textarea', 'access_summary', [
