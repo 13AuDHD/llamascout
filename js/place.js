@@ -30,6 +30,66 @@
 
     };
 
+    const iconHtml = (name, extraClass = '') => {
+
+        const className = [
+
+            'place-weather-svg-icon',
+
+            extraClass
+
+        ]
+            .filter(Boolean)
+            .join(' ');
+
+        return `
+
+            <span
+
+                class="${className}"
+
+                style="--place-weather-icon:url('/assets/icons/${escapeHtml(name)}.svg')"
+
+                aria-hidden="true"
+
+            ></span>
+
+        `;
+
+    };
+
+    const forecastTime = (value) => {
+
+        const match = String(value ?? '').match(
+
+            /T(\d{2}):(\d{2})/
+
+        );
+
+        if (!match) {
+
+            return '';
+
+        }
+
+        let hour = Number(match[1]);
+
+        const minute = match[2];
+
+        const suffix = hour >= 12 ? 'PM' : 'AM';
+
+        hour %= 12;
+
+        if (hour === 0) {
+
+            hour = 12;
+
+        }
+
+        return `${hour}:${minute} ${suffix}`;
+
+    };
+
     const number = (value) => {
 
         const parsed = Number(value);
@@ -56,19 +116,31 @@
 
                 label: 'Clear',
 
-                icon: isDay ? 'fa-sun' : 'fa-moon'
+                icon: isDay ? 'at-sunny' : 'at-moon'
 
             };
 
         }
 
-        if ([1, 2].includes(value)) {
+        if (value === 1) {
+
+            return {
+
+                label: 'Mainly clear',
+
+                icon: isDay ? 'at-day-cloudy' : 'at-cloudy-night'
+
+            };
+
+        }
+
+        if (value === 2) {
 
             return {
 
                 label: 'Partly cloudy',
 
-                icon: isDay ? 'fa-cloud-sun' : 'fa-cloud-moon'
+                icon: isDay ? 'at-partly-cloudy' : 'at-cloudy-night'
 
             };
 
@@ -80,7 +152,7 @@
 
                 label: 'Overcast',
 
-                icon: 'fa-cloud'
+                icon: 'at-cloudy'
 
             };
 
@@ -92,55 +164,163 @@
 
                 label: 'Fog',
 
-                icon: 'fa-smog'
+                icon: 'at-misty-cloud'
 
             };
 
         }
 
-        if ([51, 53, 55, 56, 57].includes(value)) {
+        if ([51, 53, 55].includes(value)) {
 
             return {
 
                 label: 'Drizzle',
 
-                icon: 'fa-cloud-rain'
+                icon: isDay ? 'at-rain-drop-sun' : 'at-rain-drop-moon'
 
             };
 
         }
 
-        if ([61, 63, 65, 66, 67, 80, 81, 82].includes(value)) {
+        if ([56, 57].includes(value)) {
+
+            return {
+
+                label: 'Freezing drizzle',
+
+                icon: 'at-freeze'
+
+            };
+
+        }
+
+        if ([61, 63].includes(value)) {
 
             return {
 
                 label: 'Rain',
 
-                icon: 'fa-cloud-showers-heavy'
+                icon: isDay ? 'at-raining-day' : 'at-raining-night'
 
             };
 
         }
 
-        if ([71, 73, 75, 77, 85, 86].includes(value)) {
+        if (value === 65) {
+
+            return {
+
+                label: 'Heavy rain',
+
+                icon: isDay ? 'at-strong-raining-day' : 'at-strong-rain-night'
+
+            };
+
+        }
+
+        if ([66, 67].includes(value)) {
+
+            return {
+
+                label: 'Freezing rain',
+
+                icon: 'at-freeze'
+
+            };
+
+        }
+
+        if (value === 80) {
+
+            return {
+
+                label: 'Rain showers',
+
+                icon: 'at-partly-cloudy-rain'
+
+            };
+
+        }
+
+        if (value === 81) {
+
+            return {
+
+                label: 'Rain showers',
+
+                icon: 'at-rain-storm'
+
+            };
+
+        }
+
+        if (value === 82) {
+
+            return {
+
+                label: 'Heavy rain showers',
+
+                icon: 'at-heavy-rain'
+
+            };
+
+        }
+
+        if ([71, 73, 75].includes(value)) {
 
             return {
 
                 label: 'Snow',
 
-                icon: 'fa-snowflake'
+                icon: 'at-snowing'
 
             };
 
         }
 
-        if ([95, 96, 99].includes(value)) {
+        if (value === 77) {
+
+            return {
+
+                label: 'Snow grains',
+
+                icon: 'at-snowing-snowflakes'
+
+            };
+
+        }
+
+        if ([85, 86].includes(value)) {
+
+            return {
+
+                label: 'Snow showers',
+
+                icon: 'at-snowing-snowflakes'
+
+            };
+
+        }
+
+        if (value === 95) {
 
             return {
 
                 label: 'Thunderstorms',
 
-                icon: 'fa-cloud-bolt'
+                icon: 'at-electric-storm'
+
+            };
+
+        }
+
+        if ([96, 99].includes(value)) {
+
+            return {
+
+                label: 'Thunderstorms with hail',
+
+                icon: 'at-strong-wind-hail'
 
             };
 
@@ -150,7 +330,7 @@
 
             label: 'Conditions unavailable',
 
-            icon: 'fa-cloud'
+            icon: 'at-clouds'
 
         };
 
@@ -186,7 +366,7 @@
 
             <div class="place-weather-unavailable">
 
-                <i class="fa-solid fa-cloud" aria-hidden="true"></i>
+                ${iconHtml('at-clouds')}
 
                 <p>Weather is temporarily unavailable.</p>
 
@@ -238,6 +418,18 @@
 
         );
 
+        const sunrise = isMember
+
+            ? forecastTime(daily.sunrise?.[0])
+
+            : '';
+
+        const sunset = isMember
+
+            ? forecastTime(daily.sunset?.[0])
+
+            : '';
+
         let locationLabel = 'Nearby city';
 
         if (isMember) {
@@ -266,13 +458,7 @@
 
                 <div class="place-weather-condition-icon">
 
-                    <i
-
-                        class="fa-solid ${currentWeather.icon}"
-
-                        aria-hidden="true"
-
-                    ></i>
+                    ${iconHtml(currentWeather.icon)}
 
                 </div>
 
@@ -404,6 +590,58 @@
 
                     }
 
+                    ${
+
+                        sunrise === ''
+
+                            ? ''
+
+                            : `
+
+                                <div>
+
+                                    <span class="place-weather-fact-label">
+
+                                        ${iconHtml('sunrise')}
+
+                                        Sunrise
+
+                                    </span>
+
+                                    <strong>${sunrise}</strong>
+
+                                </div>
+
+                            `
+
+                    }
+
+                    ${
+
+                        sunset === ''
+
+                            ? ''
+
+                            : `
+
+                                <div>
+
+                                    <span class="place-weather-fact-label">
+
+                                        ${iconHtml('sunset')}
+
+                                        Sunset
+
+                                    </span>
+
+                                    <strong>${sunset}</strong>
+
+                                </div>
+
+                            `
+
+                    }
+
                 </div>
 
             </div>
@@ -498,13 +736,7 @@
 
                         </strong>
 
-                        <i
-
-                            class="fa-solid ${info.icon}"
-
-                            aria-hidden="true"
-
-                        ></i>
+                        ${iconHtml(info.icon)}
 
                         <span class="place-weather-day-condition">
 
@@ -554,13 +786,7 @@
 
                                     <span class="place-weather-day-detail">
 
-                                        <i
-
-                                            class="fa-solid fa-droplet"
-
-                                            aria-hidden="true"
-
-                                        ></i>
+                                        ${iconHtml('at-rain-drops')}
 
                                         ${rainChance}%
 
@@ -580,13 +806,7 @@
 
                                     <span class="place-weather-day-detail">
 
-                                        <i
-
-                                            class="fa-solid fa-wind"
-
-                                            aria-hidden="true"
-
-                                        ></i>
+                                        ${iconHtml('at-wind-strength')}
 
                                         ${maxWind} mph
 
