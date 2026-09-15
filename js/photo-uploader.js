@@ -255,6 +255,21 @@
             )
         );
 
+        /*
+         * Only dedicated photo-only forms should require at least
+         * one staged photo before their submit button is enabled.
+         *
+         * The shared uploader also lives inside larger forms such
+         * as Admin Place Report, Add Place, Suggest an Update,
+         * badge editing, and Report a Problem. Those forms must
+         * remain savable even when no new photo is staged.
+         */
+        const requiresPhotoSelection =
+            form.matches(
+                '.community-profile-photo-upload-form, '
+                + '.admin-commerce-photo-upload-form'
+            );
+
         const normalizePhoto = (photo) => ({
             path: String(photo?.path || ''),
             url: String(photo?.url || ''),
@@ -284,7 +299,11 @@
         const updateSubmitControls = () => {
             submitControls.forEach((control) => {
                 control.disabled =
-                    busy || photos.length === 0;
+                    busy
+                    || (
+                        requiresPhotoSelection
+                        && photos.length === 0
+                    );
             });
         };
 
