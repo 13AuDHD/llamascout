@@ -11,6 +11,7 @@ if (!headers_sent()) {
 
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/error-logging.php';
+require_once __DIR__ . '/icons.php';
 
 llama_error_register_handlers();
 
