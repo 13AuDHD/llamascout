@@ -217,6 +217,76 @@ function admin_badges_validate_url(string $value): ?string {
     return $value;
 }
 
+function admin_badges_icon_name(
+    mixed $value,
+    string $fallback = 'award'
+): string {
+    $raw = strtolower(trim((string) $value));
+
+    if ($raw !== '') {
+        $tokens = preg_split('/\s+/', $raw) ?: [];
+        $raw = (string) end($tokens);
+
+        if (str_starts_with($raw, 'fa-')) {
+            $raw = substr($raw, 3);
+        }
+    }
+
+    if (
+        $raw === ''
+        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $raw)
+        || !is_file(dirname(__DIR__) . '/assets/icons/' . $raw . '.svg')
+    ) {
+        return $fallback;
+    }
+
+    return $raw;
+}
+
+function admin_badges_validate_icon(mixed $value): ?string
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return null;
+    }
+
+    $icon = admin_badges_icon_name($raw, '');
+
+    if ($icon === '') {
+        throw new RuntimeException(
+            'Choose a local SVG icon from /assets/icons. Enter the filename without .svg.'
+        );
+    }
+
+    return $icon;
+}
+
+function admin_badges_icon_options(): array
+{
+    $paths = glob(
+        dirname(__DIR__) . '/assets/icons/*.svg'
+    ) ?: [];
+
+    $icons = [];
+
+    foreach ($paths as $path) {
+        $name = pathinfo($path, PATHINFO_FILENAME);
+
+        if (
+            is_string($name)
+            && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)
+        ) {
+            $icons[] = $name;
+        }
+    }
+
+    $icons = array_values(array_unique($icons));
+    natcasesort($icons);
+
+    return array_values($icons);
+}
+
 function admin_badges_save_definition(
     PDO $db,
     int $actorUserId,
@@ -288,7 +358,7 @@ function admin_badges_save_definition(
     $thresholdRaw = trim((string) ($data['threshold_value'] ?? ''));
     $threshold = $thresholdRaw === '' ? null : max(0, (int) $thresholdRaw);
     $sourceOrganization = trim((string) ($data['source_organization'] ?? ''));
-    $icon = trim((string) ($data['icon'] ?? ''));
+    $icon = admin_badges_validate_icon($data['icon'] ?? '');
     $imageSrc = trim((string) ($data['image_src'] ?? ''));
     $sortOrder = max(0, min(99999, (int) ($data['sort_order'] ?? 0)));
     $active = ((string) ($data['is_active'] ?? '0')) === '1' ? 1 : 0;
@@ -316,7 +386,7 @@ function admin_badges_save_definition(
             $description !== '' ? $description : null,
             $category,
             $sourceOrganization !== '' ? $sourceOrganization : null,
-            $icon !== '' ? $icon : null,
+            $icon,
             $imageSrc !== '' ? $imageSrc : null,
             $awardType,
             $threshold,
@@ -368,7 +438,7 @@ function admin_badges_save_definition(
         $description !== '' ? $description : null,
         $category,
         $sourceOrganization !== '' ? $sourceOrganization : null,
-        $icon !== '' ? $icon : null,
+        $icon,
         $imageSrc !== '' ? $imageSrc : null,
         $awardType,
         $threshold,

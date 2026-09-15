@@ -106,15 +106,24 @@ function llama_place_contributors(
 
 function llama_contributor_badge_icon(array $badge): string
 {
-    $icon = trim((string) ($badge['icon'] ?? ''));
+    $icon = strtolower(trim((string) ($badge['icon'] ?? '')));
 
-    if ($icon === '') {
-        return 'fa-award';
+    if ($icon !== '') {
+        $tokens = preg_split('/\s+/', $icon) ?: [];
+        $icon = (string) end($tokens);
+
+        if (str_starts_with($icon, 'fa-')) {
+            $icon = substr($icon, 3);
+        }
     }
 
-    if (str_starts_with($icon, 'fa-')) {
-        return $icon;
+    if (
+        $icon === ''
+        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $icon)
+        || !is_file(dirname(__DIR__) . '/assets/icons/' . $icon . '.svg')
+    ) {
+        return 'award';
     }
 
-    return 'fa-' . $icon;
+    return $icon;
 }
