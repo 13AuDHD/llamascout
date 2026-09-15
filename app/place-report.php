@@ -276,7 +276,7 @@ function llama_place_report_field_icon(
         'tent_camping_suitable' => 'tent',
         'rv_suitable' => 'at-camper-vehicle',
         'trailer_suitable' => 'caravan',
-        'leveling_required' => 'scale',
+        'leveling_required' => 'at-level-tool',
         'turnaround_space' => 'refresh',
         'pull_through' => 'arrow-right',
         'back_in' => 'arrow-left',
