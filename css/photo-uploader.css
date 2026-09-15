@@ -57,7 +57,11 @@
     background: var(--surface);
     text-align: center;
     cursor: pointer;
-    transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+    transition:
+        border-color 0.16s ease,
+        background 0.16s ease,
+        transform 0.16s ease,
+        opacity 0.16s ease;
 }
 
 .llama-photo-drop:hover,
@@ -99,21 +103,127 @@
     line-height: 1.45;
 }
 
+
+/* =========================================================
+   WORKING / PROGRESS STATE
+   ========================================================= */
+
+.llama-photo-working {
+    display: grid;
+    grid-template-columns:
+        42px
+        minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+
+    padding: 13px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: var(--background);
+}
+
+.llama-photo-working[hidden] {
+    display: none;
+}
+
+.llama-photo-working-icon {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--surface);
+}
+
+.llama-photo-working-icon .llama-icon-mask {
+    width: 20px;
+    height: 20px;
+}
+
+.llama-photo-working-copy {
+    min-width: 0;
+
+    display: grid;
+    gap: 3px;
+}
+
+.llama-photo-working-copy strong {
+    font-size: 0.9rem;
+}
+
+.llama-photo-working-copy span {
+    color: var(--text-muted);
+
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.llama-photo-progress {
+    height: 7px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: color-mix(
+        in srgb,
+        var(--text) 10%,
+        var(--surface)
+    );
+}
+
+.llama-photo-progress[hidden] {
+    display: none;
+}
+
+.llama-photo-progress > span {
+    width: 0;
+    height: 100%;
+
+    display: block;
+
+    border-radius: inherit;
+
+    background: currentColor;
+
+    transition: width 0.18s ease;
+}
+
 .llama-photo-status {
     min-height: 1.2em;
+
     color: var(--text-muted);
+
     font-size: 0.85rem;
+    line-height: 1.45;
 }
 
 .llama-photo-status.is-error {
-    color: var(--text);
+    color: #c95a52;
     font-weight: 800;
 }
 
+
+/* =========================================================
+   STAGED PHOTOS
+   ========================================================= */
+
 .llama-photo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(170px, 1fr)
+        );
     gap: 14px;
+
+    transition: opacity 0.16s ease;
 }
 
 .llama-photo-card {
@@ -168,7 +278,9 @@
     background: rgba(255, 255, 255, 0.94);
     color: #172822;
     cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+    box-shadow:
+        0 2px 10px
+        rgba(0, 0, 0, 0.14);
 }
 
 .llama-photo-caption {
@@ -202,16 +314,38 @@
     font-size: 0.88rem;
 }
 
-.llama-photo-uploader.is-busy {
-    pointer-events: none;
-    opacity: 0.7;
+
+/* =========================================================
+   BUSY BEHAVIOR
+   ========================================================= */
+
+.llama-photo-uploader.is-busy
+.llama-photo-drop,
+.llama-photo-uploader.is-busy
+.llama-photo-grid,
+.llama-photo-uploader.is-busy
+.llama-photo-empty {
+    opacity: 0.48;
 }
 
-/* Existing-photo manager used by profile and shop pages */
+.llama-photo-uploader.is-busy
+.llama-photo-drop {
+    cursor: wait;
+}
+
+
+/* =========================================================
+   EXISTING PHOTO MANAGER
+   Used by profile and shop pages
+   ========================================================= */
 
 .photo-manager-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(190px, 1fr)
+        );
     gap: 16px;
 }
 
@@ -273,6 +407,11 @@
     cursor: pointer;
 }
 
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
 @media (max-width: 600px) {
     .llama-photo-heading {
         display: grid;
@@ -285,5 +424,26 @@
     .llama-photo-grid,
     .photo-manager-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .llama-photo-working {
+        grid-template-columns:
+            36px
+            minmax(0, 1fr);
+
+        padding: 11px 12px;
+    }
+
+    .llama-photo-working-icon {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-photo-progress > span {
+        transition: none;
     }
 }
