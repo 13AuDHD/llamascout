@@ -205,16 +205,16 @@ $locationParts = array_filter([
 ]);
 
 $amenityLabels = [
-    'toilets' => ['toilet-paper', 'Toilets'],
-    'potable_water' => ['droplet', 'Potable water'],
+    'toilets' => ['at-toilet', 'Toilets'],
+    'potable_water' => ['at-water-tap', 'Potable water'],
     'trash' => ['trash', 'Trash'],
     'fire_ring' => ['campfire', 'Metal fire ring'],
     'picnic_table' => ['picnic-table', 'Picnic table'],
-    'bear_box' => ['package', 'Bear box'],
-    'showers' => ['shower', 'Showers'],
-    'electricity' => ['bolt', 'Electricity'],
+    'bear_box' => ['bear', 'Bear box'],
+    'showers' => ['at-shower-facilities', 'Showers'],
+    'electricity' => ['at-electricity-socket', 'Electricity'],
     'dump_station' => ['caravan', 'Dump station'],
-    'food_storage_required' => ['packages', 'Food storage required'],
+    'food_storage_required' => ['bear-paw', 'Food storage required'],
 ];
 
 $details = $hasMemberAccess ? ($place['details'] ?? []) : [];

@@ -229,10 +229,12 @@ $details = [
     /* Environment and accessibility */
     'forest' => 1,
     'mountains' => 1,
+    'desert' => 0,
     'water_nearby' => 1,
     'water_view' => 0,
     'mountain_view' => 1,
     'forest_view' => 1,
+    'desert_view' => 0,
     'wildlife' => 1,
     'bugs' => 1,
 
@@ -338,14 +340,16 @@ $experience = [
 ];
 
 $amenityLabels = [
-    'toilets' => ['toilet-paper', 'Toilets'],
-    'potable_water' => ['droplet', 'Potable water'],
+    'toilets' => ['at-toilet', 'Toilets'],
+    'potable_water' => ['at-water-tap', 'Potable water'],
     'trash' => ['trash', 'Trash'],
     'fire_ring' => ['campfire', 'Metal fire ring'],
     'picnic_table' => ['picnic-table', 'Picnic table'],
-    'bear_box' => ['package', 'Bear box'],
-    'showers' => ['shower', 'Showers'],
-    'electricity' => ['bolt', 'Electricity'],
+    'bear_box' => ['bear', 'Bear box'],
+    'showers' => ['at-shower-facilities', 'Showers'],
+    'electricity' => ['at-electricity-socket', 'Electricity'],
+    'dump_station' => ['caravan', 'Dump station'],
+    'food_storage_required' => ['bear-paw', 'Food storage required'],
 ];
 
 $demoAmenities = [
@@ -357,6 +361,8 @@ $demoAmenities = [
     'bear_box' => false,
     'showers' => false,
     'electricity' => false,
+    'dump_station' => false,
+    'food_storage_required' => false,
 ];
 
 /*
