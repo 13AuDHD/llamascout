@@ -329,6 +329,33 @@
         }
     };
 
+    const stagedPhotoCount = () => {
+        const raw =
+            form.querySelector(
+                '[name="photos_json"]'
+            )?.value
+            || '[]';
+
+        try {
+            const parsed =
+                JSON.parse(raw);
+
+            return Array.isArray(parsed)
+                ? parsed.length
+                : 0;
+        } catch (_) {
+            return 0;
+        }
+    };
+
+    const syncPhotoUploader = () => {
+        form.dispatchEvent(
+            new CustomEvent(
+                'llama:photo-uploader-sync'
+            )
+        );
+    };
+
     const save = async () => {
         if (busy) {
             return;
@@ -336,12 +363,19 @@
 
         busy = true;
 
+        syncPhotoUploader();
+
+        const expectedPhotos =
+            stagedPhotoCount();
+
         setButtonState(
             'saving'
         );
 
         setStatus(
-            'Saving Place Report to the database...'
+            expectedPhotos > 0
+                ? `Saving Place Report and ${expectedPhotos} photo${expectedPhotos === 1 ? '' : 's'}...`
+                : 'Saving Place Report to the database...'
         );
 
         const controller =
@@ -370,7 +404,7 @@
                             'follow',
                         headers: {
                             Accept:
-                                'text/html',
+                                'application/json',
                             'X-Llama-Admin-Save':
                                 'place-report',
                         },
@@ -379,52 +413,96 @@
                     }
                 );
 
-            const html =
+            const raw =
                 await response.text();
 
-            refreshCsrf(html);
+            let payload = null;
 
-            const finalUrl =
-                new URL(
-                    response.url,
-                    window.location.href
-                );
-
-            const confirmed =
-                response.ok
-                && (
-                    finalUrl
-                        .searchParams
-                        .get('saved')
-                        === 'report'
-                    || html.includes(
-                        'Place Report saved.'
-                    )
-                );
-
-            if (!confirmed) {
-                const serverError =
-                    extractError(html);
-
+            try {
+                payload =
+                    JSON.parse(raw);
+            } catch (_) {
                 throw new Error(
-                    serverError
-                    || (
-                        response.ok
-                            ? 'The server did not confirm that the Place Report was saved.'
-                            : `Server returned HTTP ${response.status}.`
-                    )
+                    'The server returned an unexpected response while saving.'
                 );
             }
 
+            if (
+                !response.ok
+                || payload?.success !== true
+            ) {
+                const reference =
+                    payload?.reference
+                        ? ` Error reference: ${payload.reference}`
+                        : '';
+
+                throw new Error(
+                    (
+                        payload?.message
+                        || `Server returned HTTP ${response.status}.`
+                    )
+                    + reference
+                );
+            }
+
+            const photosAdded =
+                Number(
+                    payload.photos_added
+                    || 0
+                );
+
+            if (
+                expectedPhotos > 0
+                && photosAdded
+                    !== expectedPhotos
+            ) {
+                throw new Error(
+                    `The Place Report saved, but only ${photosAdded} of ${expectedPhotos} staged photos were attached.`
+                );
+            }
+
+            const csrfToken =
+                form.querySelector(
+                    'input[name="csrf_token"]'
+                );
+
+            if (
+                csrfToken
+                && typeof payload.csrf_token
+                    === 'string'
+                && payload.csrf_token !== ''
+            ) {
+                csrfToken.value =
+                    payload.csrf_token;
+            }
+
             clearRecoveryCopies();
+
+            form.dispatchEvent(
+                new CustomEvent(
+                    'llama:photo-uploader-committed',
+                    {
+                        detail: {
+                            context:
+                                'add-place',
+                            count:
+                                photosAdded,
+                            total:
+                                Number(
+                                    payload.photo_total
+                                    || 0
+                                ),
+                        },
+                    }
+                )
+            );
 
             setButtonState(
                 'saved'
             );
 
-            setStatus(
-                'Saved to the database at '
-                + new Date()
+            const savedAt =
+                new Date()
                     .toLocaleTimeString(
                         [],
                         {
@@ -433,14 +511,14 @@
                             minute:
                                 '2-digit',
                         }
-                    )
-                + '.'
+                    );
+
+            setStatus(
+                photosAdded > 0
+                    ? `Saved to the database at ${savedAt}. ${photosAdded} photo${photosAdded === 1 ? '' : 's'} attached to this Place.`
+                    : `Saved to the database at ${savedAt}.`
             );
 
-            /*
-             * Tell the shared recovery script, if the current
-             * version is loaded, that the database save succeeded.
-             */
             window.dispatchEvent(
                 new CustomEvent(
                     'llama:admin-place-report-saved',
@@ -451,6 +529,12 @@
                                     '[name="place_id"]'
                                 )?.value
                                 || '',
+                            photosAdded,
+                            photoTotal:
+                                Number(
+                                    payload.photo_total
+                                    || 0
+                                ),
                         },
                     }
                 )
@@ -460,10 +544,10 @@
             const message =
                 error?.name
                     === 'AbortError'
-                    ? 'Not saved. The server did not respond within 45 seconds. Your browser backup is still intact.'
+                    ? 'Not saved. The server did not respond within 45 seconds. Your browser backup and staged photos are still intact.'
                     : (
                         error?.message
-                        || 'Not saved. Your browser backup is still intact.'
+                        || 'Not saved. Your browser backup and staged photos are still intact.'
                     );
 
             setButtonState(
