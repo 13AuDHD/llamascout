@@ -1240,6 +1240,61 @@
 
 
         /*
+         * A dedicated Admin save script owns the live AJAX save.
+         * When that script confirms a database save, make the
+         * browser-recovery copy agree with the newly saved state.
+         *
+         * Without this handshake, local recovery continues to use
+         * the page-load state as its baseline and can later treat
+         * already-saved answers as unsaved or restore the wrong
+         * version after a reload/crash.
+         */
+        window.addEventListener(
+            'llama:admin-place-report-saved',
+            (event) => {
+                if (!isAdminReport) {
+                    return;
+                }
+
+                const formPlaceId =
+                    String(
+                        form.querySelector(
+                            '[name="place_id"]'
+                        )?.value
+                        || ''
+                    );
+
+                const savedPlaceId =
+                    String(
+                        event?.detail?.placeId
+                        || ''
+                    );
+
+                if (
+                    savedPlaceId !== ''
+                    && formPlaceId !== ''
+                    && savedPlaceId
+                        !== formPlaceId
+                ) {
+                    return;
+                }
+
+                window.clearTimeout(
+                    savingTimer
+                );
+
+                baseline =
+                    stateJson(form);
+
+                dirty = false;
+                submitting = false;
+
+                removeRecovery();
+            }
+        );
+
+
+        /*
          * Back-forward cache can restore the page after Safari
          * navigates away. Never leave the save button stuck.
          */
