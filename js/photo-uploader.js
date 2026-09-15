@@ -81,7 +81,7 @@
                         data-photo-files
                     >
                     <span class="llama-photo-drop-content">
-                        <i class="fa-solid fa-images" aria-hidden="true"></i>
+                        <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/photo.svg')" aria-hidden="true"></i>
                         <strong>Choose photos</strong>
                         <small>Tap to choose files or drop photos here. Up to ${maxPhotos} photos, 15 MB each.</small>
                     </span>
@@ -205,7 +205,7 @@
                 remove.type = 'button';
                 remove.className = 'llama-photo-remove';
                 remove.setAttribute('aria-label', `Remove photo ${index + 1}`);
-                remove.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+                remove.innerHTML = '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/x.svg\')" aria-hidden="true"></i>';
 
                 remove.addEventListener('click', async () => {
                     if (busy || !photo.path) {

@@ -188,7 +188,8 @@
 
             saveButton.innerHTML = `
                 <i
-                    class="fa-solid fa-spinner fa-spin"
+                    class="llama-icon-mask is-spinning"
+                    style="--llama-icon-mask:url('/assets/icons/loader-2.svg')"
                     aria-hidden="true"
                 ></i>
                 Saving...

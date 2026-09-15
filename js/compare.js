@@ -140,7 +140,8 @@
                                 </span>
 
                                 <i
-                                    class="fa-solid fa-xmark"
+                                    class="llama-icon-mask"
+                                    style="--llama-icon-mask:url('/assets/icons/x.svg')"
                                     aria-hidden="true"
                                 ></i>
                             </button>

@@ -37,7 +37,7 @@ document.addEventListener(
       ) {
 
         status.innerHTML =
-          '<i class="fa-solid fa-circle-check"></i> Analytics are currently allowed.';
+          '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/circle-check.svg\')" aria-hidden="true"></i> Analytics are currently allowed.';
 
       } else if (
         choice ===
@@ -45,7 +45,7 @@ document.addEventListener(
       ) {
 
         status.innerHTML =
-          '<i class="fa-solid fa-circle-xmark"></i> Analytics are currently rejected.';
+          '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/xbox-x.svg\')" aria-hidden="true"></i> Analytics are currently rejected.';
 
       } else {
 

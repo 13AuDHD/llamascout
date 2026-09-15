@@ -566,7 +566,7 @@
 
                     ${
                         memberMapAccess
-                            ? '<span class="map-popup-exact"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Exact location</span>'
+                            ? '<span class="map-popup-exact"><i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/current-location.svg\')" aria-hidden="true"></i> Exact location</span>'
                             : ''
                     }
 
@@ -617,7 +617,7 @@
                         `
                         : `
                             <span class="map-place-image-placeholder">
-                                <i class="fa-solid fa-mountain-sun" aria-hidden="true"></i>
+                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/mountain.svg')" aria-hidden="true"></i>
                             </span>
                         `
                 }
@@ -626,7 +626,7 @@
                     place.status === 'featured'
                         ? `
                             <span class="map-featured-badge">
-                                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/star.svg')" aria-hidden="true"></i>
                                 Featured
                             </span>
                         `
@@ -649,7 +649,7 @@
                     location
                         ? `
                             <p class="map-place-location">
-                                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
                                 ${escapeHtml(location)}
                             </p>
                         `
