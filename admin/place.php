@@ -319,7 +319,12 @@ function admin_place_save_shared_report(
         }
     }
 
-    $db->beginTransaction();
+    $ownsTransaction =
+        !$db->inTransaction();
+
+    if ($ownsTransaction) {
+        $db->beginTransaction();
+    }
 
     try {
         admin_place_save_core(
@@ -389,10 +394,15 @@ function admin_place_save_shared_report(
             ]
         );
 
-        $db->commit();
+        if ($ownsTransaction) {
+            $db->commit();
+        }
 
     } catch (Throwable $exception) {
-        if ($db->inTransaction()) {
+        if (
+            $ownsTransaction
+            && $db->inTransaction()
+        ) {
             $db->rollBack();
         }
 
@@ -442,6 +452,311 @@ function admin_place_photo_url(
             '/'
         );
 }
+
+
+/*
+ * Add Place photos while an outer database transaction is already active.
+ *
+ * The shared admin_place_add_photos() helper owns its own transaction,
+ * which is correct for standalone photo actions but cannot be nested inside
+ * the all-or-nothing Place Report save. This local helper performs the same
+ * database work without starting or committing a second transaction.
+ *
+ * $committedForCleanup receives the permanent photo paths that were moved
+ * from staging. If the outer database transaction later fails, the caller
+ * removes those moved files so the filesystem does not claim a save that
+ * the database rolled back.
+ */
+function admin_place_add_photos_in_report_transaction(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    string $photoToken,
+    array $photos,
+    array &$committedForCleanup
+): int {
+    if (!$db->inTransaction()) {
+        throw new RuntimeException(
+            'Place Report photo attachment requires an active database transaction.'
+        );
+    }
+
+    $existing =
+        admin_place_images(
+            $db,
+            $placeId
+        );
+
+    $remaining =
+        max(
+            0,
+            30 - count($existing)
+        );
+
+    if ($remaining < 1) {
+        throw new RuntimeException(
+            'This Place already has the maximum of 30 photos.'
+        );
+    }
+
+    if (count($photos) > $remaining) {
+        throw new RuntimeException(
+            'You can add only '
+            . $remaining
+            . ' more photos.'
+        );
+    }
+
+    $committed =
+        llama_photo_commit_stage(
+            'add-place',
+            $actorUserId,
+            $photoToken,
+            $photos,
+            '/uploads/places/'
+            . $placeId
+        );
+
+    /*
+     * Expose moved files immediately. Anything below this point can
+     * still throw, including a DB insert or the outer transaction commit.
+     */
+    $committedForCleanup =
+        $committed;
+
+    $orderStmt =
+        $db->prepare(
+            'SELECT COALESCE(MAX(sort_order), -1)
+             FROM place_images
+             WHERE place_id = ?'
+        );
+
+    $orderStmt->execute([
+        $placeId
+    ]);
+
+    $sortOrder =
+        (int) $orderStmt->fetchColumn()
+        + 1;
+
+    $hasFeatured =
+        false;
+
+    foreach ($existing as $image) {
+        if (
+            (int) (
+                $image['is_featured']
+                ?? 0
+            ) === 1
+        ) {
+            $hasFeatured =
+                true;
+
+            break;
+        }
+    }
+
+    $insert =
+        $db->prepare(
+            'INSERT INTO place_images (
+                place_id,
+                src,
+                alt_text,
+                is_featured,
+                sort_order,
+                uploaded_by
+             ) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+
+    $inserted =
+        0;
+
+    foreach ($committed as $photo) {
+        $path =
+            trim(
+                (string) (
+                    $photo['path']
+                    ?? ''
+                )
+            );
+
+        if ($path === '') {
+            continue;
+        }
+
+        $isFeatured =
+            !$hasFeatured
+            && $inserted === 0;
+
+        $insert->execute([
+            $placeId,
+            $path,
+            trim(
+                (string) (
+                    $photo['alt']
+                    ?? ''
+                )
+            ) ?: null,
+            $isFeatured ? 1 : 0,
+            $sortOrder++,
+            $actorUserId,
+        ]);
+
+        $inserted++;
+    }
+
+    if ($inserted !== count($committed)) {
+        throw new RuntimeException(
+            'One or more Place photos could not be attached.'
+        );
+    }
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.photos_added',
+        'Added Place photos.',
+        [
+            'place_id' =>
+                $placeId,
+            'count' =>
+                $inserted,
+        ]
+    );
+
+    return
+        $inserted;
+}
+
+
+/*
+ * Remove a Place image record inside the outer Place Report transaction,
+ * but deliberately leave the physical file alone until AFTER commit.
+ *
+ * Returning the path lets the caller perform the irreversible filesystem
+ * deletion only after every database part of Save Place Report succeeds.
+ */
+function admin_place_delete_image_in_report_transaction(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    int $imageId
+): string {
+    if (!$db->inTransaction()) {
+        throw new RuntimeException(
+            'Place Report photo removal requires an active database transaction.'
+        );
+    }
+
+    $stmt =
+        $db->prepare(
+            'SELECT *
+             FROM place_images
+             WHERE id = ?
+               AND place_id = ?
+             LIMIT 1'
+        );
+
+    $stmt->execute([
+        $imageId,
+        $placeId,
+    ]);
+
+    $image =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    if (!$image) {
+        throw new RuntimeException(
+            'Place image not found.'
+        );
+    }
+
+    $path =
+        trim(
+            (string) (
+                $image['src']
+                ?? ''
+            )
+        );
+
+    $wasFeatured =
+        (int) (
+            $image['is_featured']
+            ?? 0
+        ) === 1;
+
+    $delete =
+        $db->prepare(
+            'DELETE FROM place_images
+             WHERE id = ?
+               AND place_id = ?'
+        );
+
+    $delete->execute([
+        $imageId,
+        $placeId,
+    ]);
+
+    if ($delete->rowCount() !== 1) {
+        throw new RuntimeException(
+            'Place image could not be removed.'
+        );
+    }
+
+    if ($wasFeatured) {
+        $next =
+            $db->prepare(
+                'SELECT id
+                 FROM place_images
+                 WHERE place_id = ?
+                 ORDER BY
+                    sort_order ASC,
+                    id ASC
+                 LIMIT 1'
+            );
+
+        $next->execute([
+            $placeId
+        ]);
+
+        $nextId =
+            (int) (
+                $next->fetchColumn()
+                ?: 0
+            );
+
+        if ($nextId > 0) {
+            $db->prepare(
+                'UPDATE place_images
+                 SET is_featured = 1
+                 WHERE id = ?'
+            )->execute([
+                $nextId
+            ]);
+        }
+    }
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.image_deleted',
+        'Deleted a Place image.',
+        [
+            'place_id' =>
+                $placeId,
+            'image_id' =>
+                $imageId,
+        ]
+    );
+
+    return
+        $path;
+}
+
 
 
 function admin_place_background_save_requested(): bool
@@ -532,150 +847,240 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             if ($action === 'save-report') {
 
-                admin_place_save_shared_report(
-                    $db,
-                    $actorUserId,
-                    $placeId,
-                    $_POST
-                );
+                $photosAdded =
+                    0;
 
-                $removePaths =
-                    is_array(
-                        $_POST['remove_existing_photos']
-                        ?? null
-                    )
-                        ? array_values(
-                            array_unique(
-                                array_filter(
-                                    array_map(
-                                        'strval',
-                                        $_POST['remove_existing_photos']
+                $committedPhotosForCleanup =
+                    [];
+
+                $deferredPhotoDeletes =
+                    [];
+
+                /*
+                 * One database transaction owns the entire Place Report save.
+                 *
+                 * Report answers, answer-state, photo rows, featured-image
+                 * reassignment, and audit records either all commit together
+                 * or all roll back together.
+                 */
+                $db->beginTransaction();
+
+                try {
+                    admin_place_save_shared_report(
+                        $db,
+                        $actorUserId,
+                        $placeId,
+                        $_POST
+                    );
+
+                    $removePaths =
+                        is_array(
+                            $_POST['remove_existing_photos']
+                            ?? null
+                        )
+                            ? array_values(
+                                array_unique(
+                                    array_filter(
+                                        array_map(
+                                            'strval',
+                                            $_POST['remove_existing_photos']
+                                        )
                                     )
                                 )
                             )
-                        )
-                        : [];
+                            : [];
 
-                if ($removePaths) {
-                    foreach (
-                        admin_place_images(
-                            $db,
-                            $placeId
-                        )
-                        as $image
-                    ) {
-                        if (
-                            in_array(
-                                (string) ($image['src'] ?? ''),
-                                $removePaths,
-                                true
+                    if ($removePaths) {
+                        foreach (
+                            admin_place_images(
+                                $db,
+                                $placeId
                             )
+                            as $image
                         ) {
-                            admin_place_delete_image(
+                            if (
+                                !in_array(
+                                    (string) (
+                                        $image['src']
+                                        ?? ''
+                                    ),
+                                    $removePaths,
+                                    true
+                                )
+                            ) {
+                                continue;
+                            }
+
+                            $path =
+                                admin_place_delete_image_in_report_transaction(
+                                    $db,
+                                    $actorUserId,
+                                    $placeId,
+                                    (int) $image['id']
+                                );
+
+                            if ($path !== '') {
+                                $deferredPhotoDeletes[] =
+                                    $path;
+                            }
+                        }
+                    }
+
+                    $photoToken =
+                        trim(
+                            (string) (
+                                $_POST['photo_stage_token']
+                                ?? ''
+                            )
+                        );
+
+                    $newPhotos =
+                        llama_photo_decode_form_photos(
+                            $_POST['photos_json']
+                            ?? '[]'
+                        );
+
+                    if ($newPhotos) {
+                        if ($photoToken === '') {
+                            throw new RuntimeException(
+                                'The photo upload session is missing. Upload the photos again.'
+                            );
+                        }
+
+                        /*
+                         * Verify that every staged path submitted by the
+                         * browser still exists before any file is moved.
+                         */
+                        $manifest =
+                            llama_photo_read_manifest(
+                                'add-place',
+                                $actorUserId,
+                                $photoToken
+                            );
+
+                        $manifestPaths =
+                            [];
+
+                        foreach ($manifest as $photo) {
+                            $path =
+                                trim(
+                                    (string) (
+                                        $photo['path']
+                                        ?? ''
+                                    )
+                                );
+
+                            if ($path !== '') {
+                                $manifestPaths[$path] =
+                                    true;
+                            }
+                        }
+
+                        $submittedPaths =
+                            [];
+
+                        foreach ($newPhotos as $photo) {
+                            $path =
+                                trim(
+                                    (string) (
+                                        $photo['path']
+                                        ?? ''
+                                    )
+                                );
+
+                            if ($path !== '') {
+                                $submittedPaths[$path] =
+                                    true;
+                            }
+                        }
+
+                        $missingPaths =
+                            array_diff_key(
+                                $submittedPaths,
+                                $manifestPaths
+                            );
+
+                        if ($missingPaths) {
+                            throw new RuntimeException(
+                                'One or more staged photos are no longer available. Upload those photos again before saving.'
+                            );
+                        }
+
+                        $photosAdded =
+                            admin_place_add_photos_in_report_transaction(
                                 $db,
                                 $actorUserId,
                                 $placeId,
-                                (int) $image['id']
+                                $photoToken,
+                                $newPhotos,
+                                $committedPhotosForCleanup
+                            );
+
+                        if (
+                            $photosAdded
+                            !== count($newPhotos)
+                        ) {
+                            throw new RuntimeException(
+                                'The Place Report could not save all staged photos.'
                             );
                         }
-                    }
-                }
-
-                $photosAdded = 0;
-
-                $photoToken =
-                    trim(
-                        (string) (
-                            $_POST['photo_stage_token']
-                            ?? ''
-                        )
-                    );
-
-                $newPhotos =
-                    llama_photo_decode_form_photos(
-                        $_POST['photos_json']
-                        ?? '[]'
-                    );
-
-                if ($newPhotos) {
-                    if ($photoToken === '') {
-                        throw new RuntimeException(
-                            'The photo upload session is missing. Upload the photos again.'
-                        );
                     }
 
                     /*
-                     * Verify every submitted staged path still exists
-                     * in the active manifest before moving anything.
-                     * This prevents a false green "Saved" when Safari
-                     * has already discarded a staging folder.
+                     * This is the single database commit for Save Place Report.
                      */
-                    $manifest =
-                        llama_photo_read_manifest(
-                            'add-place',
-                            $actorUserId,
-                            $photoToken
-                        );
+                    $db->commit();
 
-                    $manifestPaths = [];
-
-                    foreach ($manifest as $photo) {
-                        $path =
-                            trim(
-                                (string) (
-                                    $photo['path']
-                                    ?? ''
-                                )
-                            );
-
-                        if ($path !== '') {
-                            $manifestPaths[$path] = true;
-                        }
+                } catch (Throwable $saveException) {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
                     }
 
-                    $submittedPaths = [];
-
-                    foreach ($newPhotos as $photo) {
-                        $path =
-                            trim(
-                                (string) (
-                                    $photo['path']
-                                    ?? ''
-                                )
-                            );
-
-                        if ($path !== '') {
-                            $submittedPaths[$path] = true;
-                        }
-                    }
-
-                    $missingPaths =
-                        array_diff_key(
-                            $submittedPaths,
-                            $manifestPaths
-                        );
-
-                    if ($missingPaths) {
-                        throw new RuntimeException(
-                            'One or more staged photos are no longer available. Upload those photos again before saving.'
-                        );
-                    }
-
-                    $photosAdded =
-                        admin_place_add_photos(
-                            $db,
-                            $actorUserId,
-                            $placeId,
-                            $photoToken,
-                            $newPhotos
-                        );
-
-                    if (
-                        $photosAdded
-                        !== count($newPhotos)
+                    /*
+                     * A staging commit physically moved these files before the
+                     * DB transaction finished. If the DB rolls back, remove the
+                     * moved copies so permanent storage cannot contradict the DB.
+                     */
+                    foreach (
+                        $committedPhotosForCleanup
+                        as $photo
                     ) {
-                        throw new RuntimeException(
-                            'The Place Report saved, but one or more photos did not attach. Upload those photos again before leaving this page.'
+                        llama_photo_delete_owned_permanent_path(
+                            (string) (
+                                $photo['path']
+                                ?? ''
+                            ),
+                            [
+                                'uploads/places',
+                            ]
+                        );
+                    }
+
+                    throw $saveException;
+                }
+
+                /*
+                 * Existing files are deleted only AFTER the database commit.
+                 * If anything above fails, their DB rows roll back and their
+                 * physical files remain untouched.
+                 */
+                foreach (
+                    array_unique(
+                        $deferredPhotoDeletes
+                    )
+                    as $path
+                ) {
+                    if (
+                        !llama_photo_delete_owned_permanent_path(
+                            (string) $path,
+                            [
+                                'uploads/places',
+                            ]
+                        )
+                    ) {
+                        error_log(
+                            'Llama Scout could not remove committed Place photo file: '
+                            . (string) $path
                         );
                     }
                 }
@@ -684,15 +1089,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     admin_place_background_save_respond(
                         200,
                         [
-                            'success' => true,
-                            'message' => 'Place Report saved.',
-                            'photos_added' => $photosAdded,
-                            'photo_total' => count(
-                                admin_place_images(
-                                    $db,
-                                    $placeId
-                                )
-                            ),
+                            'success' =>
+                                true,
+                            'message' =>
+                                'Place Report saved.',
+                            'photos_added' =>
+                                $photosAdded,
+                            'photo_total' =>
+                                count(
+                                    admin_place_images(
+                                        $db,
+                                        $placeId
+                                    )
+                                ),
                             'csrf_token' =>
                                 moderation_csrf_token(),
                         ]
