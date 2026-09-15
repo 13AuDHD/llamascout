@@ -140,10 +140,6 @@ function admin_shell_nav_class(string $key, string $active): string
         })();
     </script>
 
-    <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-    >
     <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
 
     <?php
