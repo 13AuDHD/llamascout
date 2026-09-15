@@ -236,6 +236,32 @@ $renderValue =
                     );
                 ?>
 
+                <?php
+                $safeUrl = null;
+
+                if (
+                    $type === 'url'
+                    && $state === 'answered'
+                    && is_string($value)
+                    && $value !== ''
+                ) {
+                    $urlParts = parse_url($value);
+                    $urlScheme = strtolower(
+                        (string) ($urlParts['scheme'] ?? '')
+                    );
+
+                    if (
+                        in_array(
+                            $urlScheme,
+                            ['http', 'https'],
+                            true
+                        )
+                    ) {
+                        $safeUrl = $value;
+                    }
+                }
+                ?>
+
                 <div class="scout-report-value-content">
                     <span>
                         <?= $e(
@@ -246,7 +272,17 @@ $renderValue =
                         ) ?>
                     </span>
 
-                    <strong><?= $e($value) ?></strong>
+                    <strong>
+                        <?php if ($safeUrl !== null): ?>
+                            <a
+                                href="<?= $e($safeUrl) ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            ><?= $e($value) ?></a>
+                        <?php else: ?>
+                            <?= $e($value) ?>
+                        <?php endif; ?>
+                    </strong>
                 </div>
 
                 <?= llama_icon(
@@ -261,13 +297,34 @@ $renderValue =
     };
 
 /*
- * Quick warnings are calculated only from the canonical Place Report answers.
- * There are no separate manual warning switches.
+ * Quick warnings are derived from the same field definitions.
  */
-$warnings =
-    llama_place_report_quick_warnings(
-        $placeReportData
-    );
+$warnings = [];
+
+foreach ($placeReportFields as $key => $field) {
+    if (empty($field['warning'])) {
+        continue;
+    }
+
+    $state =
+        llama_place_report_answer_state(
+            $placeReportData,
+            $key
+        );
+
+    $raw =
+        llama_place_report_get_path(
+            $placeReportData,
+            (string) $field['storage']
+        );
+
+    if (
+        $state === 'answered'
+        && (bool) $raw
+    ) {
+        $warnings[$key] = $field;
+    }
+}
 
 if ($warnings):
 ?>
@@ -286,7 +343,10 @@ if ($warnings):
                 <?php
                 $warningIcon =
                     $localIcon(
-                        (string) ($field['icon'] ?? 'info-circle'),
+                        llama_place_report_field_icon(
+                            $key,
+                            $field
+                        ),
                         $key
                     );
                 ?>
