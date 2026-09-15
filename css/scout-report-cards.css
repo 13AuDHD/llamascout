@@ -45,6 +45,12 @@
     font-size: 1.35rem;
 }
 
+.scout-report-section h3 > .llama-icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex: 0 0 auto;
+}
+
 .scout-report-section h4 {
     margin: 24px 0 12px;
     font-size: 1.05rem;
@@ -195,21 +201,16 @@
     overflow-wrap: anywhere;
 }
 
-.scout-report-value-item > i.scout-report-value-icon {
+.scout-report-value-item > .scout-report-value-icon {
     grid-area: icon;
     align-self: end;
     justify-self: end;
     width: 30px;
+    height: 30px;
     margin: 0;
     font-size: 1.2rem;
     line-height: 1;
     text-align: center;
-}
-
-
-/* Legacy picnic-table references fall back to the free utensils glyph. */
-.fa-table-picnic::before {
-    content: "\f2e7";
 }
 
 
