@@ -661,7 +661,6 @@ function llama_place_report_fields(): array
     /* Amenities */
     $add('amenity_none', 'No amenities', 'amenities', 'checkbox', 'details.warning_no_amenities', [
         'points_categories' => ['amenities', 'safety_warnings'],
-        'warning' => true,
     ]);
     foreach ([
         'toilets' => 'Toilets',
@@ -707,28 +706,6 @@ function llama_place_report_fields(): array
         'points_categories' => ['connectivity'],
     ]);
 
-    /*
-     * Derived warning.
-     *
-     * This field is intentionally assigned to a non-rendered section and
-     * a computed storage path. It never creates a duplicate form question,
-     * never creates a database column, and is excluded automatically from
-     * the Place Update persistence map.
-     *
-     * Quick warnings still see it because they iterate the shared field
-     * definitions directly. The computed value is resolved below by
-     * llama_place_report_get_path().
-     */
-    $add(
-        'warning_no_cell_service',
-        'No cell service',
-        '__derived',
-        'derived',
-        'computed.warning_no_cell_service',
-        [
-            'warning' => true,
-        ]
-    );
 
     /* Sensory */
     foreach ([
@@ -820,31 +797,23 @@ function llama_place_report_fields(): array
 
     /* Safety and warnings */
     foreach ([
-        'felt_safe_daytime' => ['Felt safe during the day?', 'details.felt_safe_daytime', false],
-        'felt_safe_nighttime' => ['Felt safe at night?', 'details.felt_safe_nighttime', false],
-        'flash_flood_risk' => ['Flash-flood risk?', 'details.flash_flood_risk', false],
-        'wildfire_risk' => ['Wildfire risk?', 'details.wildfire_risk', false],
-        'fall_hazard' => ['Fall hazard?', 'details.fall_hazard', false],
-        'cliff_exposure' => ['Cliff exposure?', 'details.cliff_exposure', false],
-        'rockfall_risk' => ['Rockfall risk?', 'details.rockfall_risk', false],
-        'wildlife_risk' => ['Wildlife risk?', 'details.wildlife_risk', false],
-        'traffic_hazard' => ['Traffic hazard?', 'details.traffic_hazard', false],
-        'emergency_access' => ['Emergency vehicle access?', 'details.emergency_access', false],
-
-        /*
-         * Historical storage is retained so existing Place data survives.
-         * This is useful site-condition information, but it is no longer a
-         * Quick Warning.
-         */
-        'warning_possible_downed_trees' => ['Downed trees possible at the campsite?', 'details.warning_possible_downed_trees', false],
-
-        'warning_passing_vehicle_dust' => ['Passing vehicle dust?', 'details.warning_passing_vehicle_dust', true],
-        'warning_motorized_recreation_traffic' => ['Motorized recreation traffic?', 'details.warning_motorized_recreation_traffic', true],
-        'warning_blind_turn_traffic_nearby' => ['Blind-turn traffic nearby?', 'details.warning_blind_turn_traffic_nearby', true],
-    ] as $key => [$label, $storage, $warning]) {
+        'felt_safe_daytime' => ['Felt safe during the day?', 'details.felt_safe_daytime'],
+        'felt_safe_nighttime' => ['Felt safe at night?', 'details.felt_safe_nighttime'],
+        'flash_flood_risk' => ['Flash-flood risk?', 'details.flash_flood_risk'],
+        'wildfire_risk' => ['Wildfire risk?', 'details.wildfire_risk'],
+        'fall_hazard' => ['Fall hazard?', 'details.fall_hazard'],
+        'cliff_exposure' => ['Cliff exposure?', 'details.cliff_exposure'],
+        'rockfall_risk' => ['Rockfall risk?', 'details.rockfall_risk'],
+        'wildlife_risk' => ['Wildlife risk?', 'details.wildlife_risk'],
+        'traffic_hazard' => ['Traffic hazard?', 'details.traffic_hazard'],
+        'emergency_access' => ['Emergency vehicle access?', 'details.emergency_access'],
+        'warning_possible_downed_trees' => ['Downed trees possible at the campsite?', 'details.warning_possible_downed_trees'],
+        'warning_passing_vehicle_dust' => ['Passing vehicle dust?', 'details.warning_passing_vehicle_dust'],
+        'warning_motorized_recreation_traffic' => ['Motorized recreation traffic?', 'details.warning_motorized_recreation_traffic'],
+        'warning_blind_turn_traffic_nearby' => ['Blind-turn traffic nearby?', 'details.warning_blind_turn_traffic_nearby'],
+    ] as $key => [$label, $storage]) {
         $add($key, $label, 'safety', 'tri', $storage, [
             'allow_unknown' => true,
-            'warning' => $warning,
             'points_categories' => ['safety_warnings'],
         ]);
     }
@@ -856,53 +825,6 @@ function llama_place_report_fields(): array
         'points_categories' => ['safety_warnings'],
     ]);
 
-    /*
-     * Derived warnings.
-     *
-     * These are not form questions and do not create database columns.
-     * They turn existing canonical answers into Quick Warnings.
-     *
-     * Legacy warning columns are still consulted when the newer canonical
-     * answer has never been recorded. This preserves older published Places
-     * without keeping duplicate questions in the active Place Report.
-     */
-    foreach ([
-        'warning_no_tent_camping_derived' => [
-            'No tent camping',
-            'computed.warning_no_tent_camping',
-        ],
-        'warning_leveling_required_derived' => [
-            'Leveling may be required',
-            'computed.warning_leveling_required',
-        ],
-        'warning_no_privacy' => [
-            'No privacy',
-            'computed.warning_no_privacy',
-        ],
-        'warning_high_road_exposure' => [
-            'Highly exposed to road',
-            'computed.warning_high_road_exposure',
-        ],
-        'warning_limited_vehicle_length_derived' => [
-            'Limited vehicle length',
-            'computed.warning_limited_vehicle_length',
-        ],
-        'warning_limited_trailer_length' => [
-            'Limited trailer length',
-            'computed.warning_limited_trailer_length',
-        ],
-    ] as $key => [$label, $storage]) {
-        $add(
-            $key,
-            $label,
-            '__derived',
-            'derived',
-            $storage,
-            [
-                'warning' => true,
-            ]
-        );
-    }
 
     /* Seasons, rules, and nearby services */
     $add('best_months', 'Best months', 'rules', 'select', 'rules.best_months', [
@@ -1077,172 +999,177 @@ function llama_place_report_fields(): array
     return $f;
 }
 
+/**
+ * Build the Quick Warnings panel exclusively from canonical Place Report answers.
+ *
+ * There are no manually maintained warning switches here. Every warning is
+ * calculated from the matching report field, so changing that answer changes
+ * the warning automatically.
+ */
+function llama_place_report_quick_warnings(array $data): array
+{
+    $fields = llama_place_report_fields();
+    $warnings = [];
+
+    $state = static function (string $key) use ($data): string {
+        return llama_place_report_answer_state($data, $key);
+    };
+
+    $value = static function (string $key) use ($data, $fields): mixed {
+        $field = $fields[$key] ?? null;
+
+        if (!is_array($field)) {
+            return null;
+        }
+
+        return llama_place_report_get_path(
+            $data,
+            (string) $field['storage']
+        );
+    };
+
+    $isYes = static fn (mixed $raw): bool =>
+        in_array($raw, [true, 1, '1'], true);
+
+    $isNo = static fn (mixed $raw): bool =>
+        in_array($raw, [false, 0, '0'], true);
+
+    $add = static function (
+        string $key,
+        string $label,
+        string $iconKey
+    ) use (&$warnings, $fields): void {
+        $warnings[$key] = [
+            'label' => $label,
+            'icon' => llama_place_report_field_icon(
+                $iconKey,
+                $fields[$iconKey] ?? []
+            ),
+        ];
+    };
+
+    /* Amenities */
+    if ($state('amenity_none') === 'answered' && $isYes($value('amenity_none'))) {
+        $add('amenity_none', 'No amenities', 'amenity_none');
+    }
+
+    /* Connectivity */
+    if (
+        $state('connectivity_overall') === 'answered'
+        && is_numeric($value('connectivity_overall'))
+        && (int) $value('connectivity_overall') === 1
+    ) {
+        $add('warning_no_cell_service', 'No cell service', 'warning_no_cell_service');
+    }
+
+    /* Safety answers that become warnings when the answer is No. */
+    foreach ([
+        'felt_safe_daytime' => ['Did not feel safe during the day', 'felt_safe_daytime'],
+        'felt_safe_nighttime' => ['Did not feel safe at night', 'felt_safe_nighttime'],
+        'emergency_access' => ['No emergency vehicle access', 'emergency_access'],
+    ] as $key => [$label, $iconKey]) {
+        if ($state($key) === 'answered' && $isNo($value($key))) {
+            $add($key . '_warning', $label, $iconKey);
+        }
+    }
+
+    /* Safety answers that become warnings when the answer is Yes. */
+    foreach ([
+        'flash_flood_risk' => 'Flash-flood risk',
+        'wildfire_risk' => 'Wildfire risk',
+        'fall_hazard' => 'Fall hazard',
+        'cliff_exposure' => 'Cliff exposure',
+        'rockfall_risk' => 'Rockfall risk',
+        'wildlife_risk' => 'Wildlife risk',
+        'traffic_hazard' => 'Traffic hazard',
+        'warning_possible_downed_trees' => 'Downed trees possible at the campsite',
+        'warning_passing_vehicle_dust' => 'Passing vehicle dust',
+        'warning_motorized_recreation_traffic' => 'Motorized recreation traffic',
+        'warning_blind_turn_traffic_nearby' => 'Blind-turn traffic nearby',
+    ] as $key => $label) {
+        if ($state($key) === 'answered' && $isYes($value($key))) {
+            $add($key, $label, $key);
+        }
+    }
+
+    /* Site + vehicle answers */
+    if (
+        $state('tent_camping_suitable') === 'answered'
+        && $isNo($value('tent_camping_suitable'))
+    ) {
+        $add(
+            'warning_no_tent_camping_derived',
+            'No tent camping',
+            'warning_no_tent_camping_derived'
+        );
+    }
+
+    if (
+        $state('leveling_required') === 'answered'
+        && $isYes($value('leveling_required'))
+    ) {
+        $add(
+            'warning_leveling_required_derived',
+            'Leveling may be required',
+            'warning_leveling_required_derived'
+        );
+    }
+
+    /* Sensory privacy */
+    foreach (['daytime_privacy', 'nighttime_privacy'] as $privacyKey) {
+        if (
+            $state($privacyKey) === 'answered'
+            && is_numeric($value($privacyKey))
+            && (int) $value($privacyKey) === 1
+        ) {
+            $add('warning_no_privacy', 'No privacy', 'warning_no_privacy');
+            break;
+        }
+    }
+
+    /* Road exposure */
+    if (
+        $state('road_exposure') === 'answered'
+        && is_numeric($value('road_exposure'))
+        && (int) $value('road_exposure') === 5
+    ) {
+        $add(
+            'warning_high_road_exposure',
+            'Highly exposed to road',
+            'warning_high_road_exposure'
+        );
+    }
+
+    /* Vehicle and trailer fit */
+    if (
+        $state('max_vehicle_length_feet') === 'answered'
+        && is_numeric($value('max_vehicle_length_feet'))
+        && (float) $value('max_vehicle_length_feet') <= 25
+    ) {
+        $add(
+            'warning_limited_vehicle_length_derived',
+            'Limited vehicle length',
+            'warning_limited_vehicle_length_derived'
+        );
+    }
+
+    if (
+        $state('max_trailer_length_feet') === 'answered'
+        && is_numeric($value('max_trailer_length_feet'))
+        && (float) $value('max_trailer_length_feet') <= 25
+    ) {
+        $add(
+            'warning_limited_trailer_length',
+            'Limited trailer length',
+            'warning_limited_trailer_length'
+        );
+    }
+
+    return $warnings;
+}
+
 function llama_place_report_get_path(array $data, string $path): mixed
 {
-    /*
-     * Derived warnings live in the shared Place Report schema without
-     * creating duplicate questions or database columns.
-     *
-     * When a newer canonical answer exists, it always wins. Legacy warning
-     * columns are only used as fallbacks for older Places that have never
-     * recorded the replacement answer.
-     */
-    if ($path === 'computed.warning_no_cell_service') {
-        $overall =
-            $data['connectivity']['overall']
-            ?? null;
-
-        if ($overall === null || $overall === '') {
-            return null;
-        }
-
-        return
-            is_numeric($overall)
-            && (int) $overall === 1;
-    }
-
-    if ($path === 'computed.warning_no_tent_camping') {
-        if (
-            isset($data['details'])
-            && is_array($data['details'])
-            && array_key_exists(
-                'tent_camping_suitable',
-                $data['details']
-            )
-            && $data['details']['tent_camping_suitable'] !== null
-            && $data['details']['tent_camping_suitable'] !== ''
-        ) {
-            return in_array(
-                $data['details']['tent_camping_suitable'],
-                [
-                    false,
-                    0,
-                    '0',
-                ],
-                true
-            );
-        }
-
-        return !empty(
-            $data['details']['warning_no_tent_camping']
-            ?? false
-        );
-    }
-
-    if ($path === 'computed.warning_leveling_required') {
-        if (
-            isset($data['details'])
-            && is_array($data['details'])
-            && array_key_exists(
-                'leveling_required',
-                $data['details']
-            )
-            && $data['details']['leveling_required'] !== null
-            && $data['details']['leveling_required'] !== ''
-        ) {
-            return in_array(
-                $data['details']['leveling_required'],
-                [
-                    true,
-                    1,
-                    '1',
-                ],
-                true
-            );
-        }
-
-        return !empty(
-            $data['details']['warning_leveling_may_be_required']
-            ?? false
-        );
-    }
-
-    if ($path === 'computed.warning_no_privacy') {
-        $privacyAnswers = [];
-
-        foreach (
-            [
-                'daytime',
-                'nighttime',
-            ]
-            as $period
-        ) {
-            $privacy =
-                $data['sensory'][$period]['privacy']
-                ?? null;
-
-            if ($privacy !== null && $privacy !== '') {
-                $privacyAnswers[] = $privacy;
-            }
-        }
-
-        if ($privacyAnswers) {
-            foreach ($privacyAnswers as $privacy) {
-                if (
-                    is_numeric($privacy)
-                    && (int) $privacy === 1
-                ) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        return !empty(
-            $data['details']['warning_zero_privacy']
-            ?? false
-        );
-    }
-
-    if ($path === 'computed.warning_high_road_exposure') {
-        $exposure =
-            $data['details']['road_exposure']
-            ?? null;
-
-        if ($exposure !== null && $exposure !== '') {
-            return
-                is_numeric($exposure)
-                && (int) $exposure === 5;
-        }
-
-        return !empty(
-            $data['details']['warning_exposed_to_road']
-            ?? false
-        );
-    }
-
-    if ($path === 'computed.warning_limited_vehicle_length') {
-        $length =
-            $data['details']['max_vehicle_length_feet']
-            ?? null;
-
-        if ($length !== null && $length !== '') {
-            return
-                is_numeric($length)
-                && (float) $length <= 25;
-        }
-
-        return !empty(
-            $data['details']['warning_limited_vehicle_length']
-            ?? false
-        );
-    }
-
-    if ($path === 'computed.warning_limited_trailer_length') {
-        $length =
-            $data['details']['max_trailer_length_feet']
-            ?? null;
-
-        if ($length === null || $length === '') {
-            return null;
-        }
-
-        return
-            is_numeric($length)
-            && (float) $length <= 25;
-    }
-
     $value = $data;
 
     foreach (explode('.', $path) as $part) {
