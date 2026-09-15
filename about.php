@@ -40,6 +40,11 @@ require __DIR__ . '/partials/header.php';
                     <a class="about-button" href="/field-guides">
                         Read the Field Guides
                     </a>
+
+                    <a class="about-button" href="/scout-report-demo.php">
+                        <i aria-hidden="true"><?= llama_icon('file-text') ?></i>
+                        View Example Scout Report
+                    </a>
                 </div>
             </div>
 
