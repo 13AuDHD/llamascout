@@ -72,6 +72,27 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
     <?php
 }
 
+
+function demo_weather_icon(string $name): string
+{
+    $name = strtolower(trim($name));
+
+    if (
+        $name === ''
+        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)
+    ) {
+        return '';
+    }
+
+    return '<span'
+        . ' class="place-weather-svg-icon"'
+        . ' style="--place-weather-icon:url(\'/assets/icons/'
+        . htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+        . '.svg\')"'
+        . ' aria-hidden="true"'
+        . '></span>';
+}
+
 function demo_weather_info(mixed $code, bool $isDay = true): array
 {
     $code = (int) $code;
@@ -644,7 +665,7 @@ require __DIR__ . '/partials/header.php';
 
         <?php if (!$forecast): ?>
             <div class="place-weather-unavailable">
-                <?= llama_icon('at-clouds', ['class' => 'place-weather-svg-icon']) ?>
+                <?= demo_weather_icon('at-clouds') ?>
                 <p>Weather is temporarily unavailable.</p>
             </div>
         <?php else: ?>
@@ -665,12 +686,7 @@ require __DIR__ . '/partials/header.php';
 
             <div class="place-weather-current">
                 <div class="place-weather-condition-icon">
-                    <?= llama_icon(
-                        $currentIcon,
-                        [
-                            'class' => 'place-weather-svg-icon',
-                        ]
-                    ) ?>
+                    <?= demo_weather_icon($currentIcon) ?>
                 </div>
 
                 <div class="place-weather-current-main">
@@ -701,7 +717,7 @@ require __DIR__ . '/partials/header.php';
                     <?php if ($sunrise !== ''): ?>
                         <div>
                             <span class="place-weather-fact-label">
-                                <?= llama_icon('sunrise', ['class' => 'place-weather-svg-icon']) ?>
+                                <?= demo_weather_icon('sunrise') ?>
                                 Sunrise
                             </span>
                             <strong><?= place_h($sunrise) ?></strong>
@@ -711,7 +727,7 @@ require __DIR__ . '/partials/header.php';
                     <?php if ($sunset !== ''): ?>
                         <div>
                             <span class="place-weather-fact-label">
-                                <?= llama_icon('sunset', ['class' => 'place-weather-svg-icon']) ?>
+                                <?= demo_weather_icon('sunset') ?>
                                 Sunset
                             </span>
                             <strong><?= place_h($sunset) ?></strong>
@@ -750,12 +766,7 @@ require __DIR__ . '/partials/header.php';
 
                             <article class="place-weather-day">
                                 <strong class="place-weather-day-name"><?= place_h($dayName) ?></strong>
-                                <?= llama_icon(
-                                    $dayIcon,
-                                    [
-                                        'class' => 'place-weather-svg-icon',
-                                    ]
-                                ) ?>
+                                <?= demo_weather_icon($dayIcon) ?>
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
@@ -765,14 +776,14 @@ require __DIR__ . '/partials/header.php';
 
                                 <?php if ($rain !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <?= llama_icon('at-rain-drops', ['class' => 'place-weather-svg-icon']) ?>
+                                        <?= demo_weather_icon('at-rain-drops') ?>
                                         <?= $rain ?>%
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if ($maxWind !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <?= llama_icon('at-wind-strength', ['class' => 'place-weather-svg-icon']) ?>
+                                        <?= demo_weather_icon('at-wind-strength') ?>
                                         <?= $maxWind ?> mph
                                     </span>
                                 <?php endif; ?>
