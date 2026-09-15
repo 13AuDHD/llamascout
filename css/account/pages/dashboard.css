@@ -561,25 +561,25 @@
 }
 
 .account-action-card > i {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
 
     display: inline-grid;
     place-items: center;
 
-    flex: 0 0 28px;
+    flex: 0 0 40px;
 
     text-align: center;
 }
 
 .account-action-card > i > .llama-icon,
 .account-action-card > .llama-icon {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
 }
 
 .account-action-card > .llama-icon {
-    flex: 0 0 20px;
+    flex: 0 0 32px;
     margin-inline: 4px;
 }
 
