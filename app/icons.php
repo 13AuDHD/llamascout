@@ -106,7 +106,8 @@ function llama_icon(string $name, array $options = []): string
         static function (array $matches) use (
             $classNames,
             $label,
-            $strokeWidth
+            $strokeWidth,
+            $name
         ): string {
             $attributes = (string) ($matches[1] ?? '');
 
@@ -130,6 +131,19 @@ function llama_icon(string $name, array $options = []): string
                     $attributes,
                     'stroke-width',
                     llama_icon_format_stroke_width($strokeWidth)
+                );
+            }
+
+            /*
+             * Atlas icons are monochrome SVGs with a hard-coded dark root fill.
+             * Normalize only the at-* set so it inherits the surrounding color
+             * just like the Tabler icons do, including in dark mode.
+             */
+            if (str_starts_with($name, 'at-')) {
+                $attributes = llama_icon_set_root_attribute(
+                    $attributes,
+                    'fill',
+                    'currentColor'
                 );
             }
 
