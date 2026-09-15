@@ -179,6 +179,387 @@ function moderation_move_photo_file(
     return $destinationDirectory . '/' . $filename;
 }
 
+
+/*
+ * Copy a submitted photo into permanent Place storage without removing
+ * the submission source file.
+ *
+ * Moderation approvals run inside a database transaction. A physical
+ * rename cannot be rolled back if a later database step fails, so approval
+ * uses copy-first semantics and removes the original submission files only
+ * after the database transaction commits successfully.
+ */
+function moderation_copy_photo_file(
+    string $sourceRelative,
+    string $destinationDirectory,
+    ?string $preferredFilename = null
+): ?string {
+    $sourceRelative =
+        '/'
+        . ltrim(
+            trim(
+                $sourceRelative
+            ),
+            '/'
+        );
+
+    if (
+        $sourceRelative === '/'
+        || str_contains(
+            $sourceRelative,
+            '..'
+        )
+        || !str_starts_with(
+            $sourceRelative,
+            '/uploads/'
+        )
+    ) {
+        return null;
+    }
+
+    $root =
+        dirname(
+            __DIR__
+        );
+
+    $sourceAbsolute =
+        $root
+        . $sourceRelative;
+
+    if (!is_file($sourceAbsolute)) {
+        return null;
+    }
+
+    $destinationDirectory =
+        '/'
+        . trim(
+            $destinationDirectory,
+            '/'
+        );
+
+    $destinationAbsoluteDirectory =
+        $root
+        . $destinationDirectory;
+
+    if (
+        !is_dir(
+            $destinationAbsoluteDirectory
+        )
+        && !mkdir(
+            $destinationAbsoluteDirectory,
+            0755,
+            true
+        )
+        && !is_dir(
+            $destinationAbsoluteDirectory
+        )
+    ) {
+        throw new RuntimeException(
+            'The permanent Place photo directory could not be created.'
+        );
+    }
+
+    $filename =
+        basename(
+            $preferredFilename
+            ?: $sourceAbsolute
+        );
+
+    if (
+        $filename === ''
+        || $filename === '.'
+        || $filename === '..'
+    ) {
+        $filename =
+            'photo-'
+            . bin2hex(
+                random_bytes(
+                    6
+                )
+            )
+            . '.jpg';
+    }
+
+    $destinationAbsolute =
+        $destinationAbsoluteDirectory
+        . '/'
+        . $filename;
+
+    if (is_file($destinationAbsolute)) {
+        $ext =
+            pathinfo(
+                $filename,
+                PATHINFO_EXTENSION
+            );
+
+        $stem =
+            pathinfo(
+                $filename,
+                PATHINFO_FILENAME
+            );
+
+        $filename =
+            $stem
+            . '-'
+            . bin2hex(
+                random_bytes(
+                    4
+                )
+            )
+            . (
+                $ext !== ''
+                    ? '.'
+                        . $ext
+                    : ''
+            );
+
+        $destinationAbsolute =
+            $destinationAbsoluteDirectory
+            . '/'
+            . $filename;
+    }
+
+    if (
+        !@copy(
+            $sourceAbsolute,
+            $destinationAbsolute
+        )
+    ) {
+        throw new RuntimeException(
+            'A submitted photo could not be copied into permanent Place storage.'
+        );
+    }
+
+    return
+        $destinationDirectory
+        . '/'
+        . $filename;
+}
+
+
+/*
+ * Remove transaction-created permanent copies after a database rollback.
+ * Only paths under /uploads/places/ are eligible.
+ */
+function moderation_cleanup_copied_place_photos(
+    array $paths
+): void {
+    $root =
+        dirname(
+            __DIR__
+        );
+
+    $directories =
+        [];
+
+    foreach ($paths as $path) {
+        $path =
+            '/'
+            . ltrim(
+                trim(
+                    (string) $path
+                ),
+                '/'
+            );
+
+        if (
+            $path === '/'
+            || str_contains(
+                $path,
+                '..'
+            )
+            || !str_starts_with(
+                $path,
+                '/uploads/places/'
+            )
+        ) {
+            continue;
+        }
+
+        $absolute =
+            $root
+            . $path;
+
+        if (is_file($absolute)) {
+            @unlink(
+                $absolute
+            );
+        }
+
+        $directories[] =
+            dirname(
+                $absolute
+            );
+    }
+
+    foreach (
+        array_unique(
+            $directories
+        )
+        as $directory
+    ) {
+        if (!is_dir($directory)) {
+            continue;
+        }
+
+        $contents =
+            @scandir(
+                $directory
+            );
+
+        if (
+            is_array($contents)
+            && count($contents) === 2
+        ) {
+            @rmdir(
+                $directory
+            );
+        }
+    }
+}
+
+
+/*
+ * Transaction-safe moderation photo attachment.
+ *
+ * Database rows are inserted inside the caller's transaction, while the
+ * source submission files remain untouched until the caller commits.
+ * $copiedPaths is a rollback journal for the caller.
+ */
+function moderation_attach_place_photos_transactional(
+    PDO $db,
+    int $placeId,
+    int $uploadedBy,
+    array $photos,
+    string $allowedSourcePrefix,
+    array &$copiedPaths
+): int {
+    if (!$db->inTransaction()) {
+        throw new RuntimeException(
+            'Transactional Place photo attachment requires an active database transaction.'
+        );
+    }
+
+    if (!$photos) {
+        return 0;
+    }
+
+    $orderStmt =
+        $db->prepare(
+            'SELECT COALESCE(MAX(sort_order), -1)
+             FROM place_images
+             WHERE place_id = ?'
+        );
+
+    $orderStmt->execute([
+        $placeId
+    ]);
+
+    $sortOrder =
+        ((int) $orderStmt->fetchColumn())
+        + 1;
+
+    $insert =
+        $db->prepare(
+            'INSERT INTO place_images
+                (
+                    place_id,
+                    src,
+                    alt_text,
+                    is_featured,
+                    sort_order,
+                    uploaded_by
+                )
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+
+    $existingStmt =
+        $db->prepare(
+            'SELECT COUNT(*)
+             FROM place_images
+             WHERE place_id = ?'
+        );
+
+    $existingStmt->execute([
+        $placeId
+    ]);
+
+    $hasAnyImage =
+        ((int) $existingStmt->fetchColumn())
+        > 0;
+
+    $added =
+        0;
+
+    foreach ($photos as $photo) {
+        if (!is_array($photo)) {
+            continue;
+        }
+
+        $source =
+            moderation_photo_path(
+                $photo
+            );
+
+        if (
+            $source === ''
+            || !str_starts_with(
+                $source,
+                $allowedSourcePrefix
+            )
+        ) {
+            continue;
+        }
+
+        $copied =
+            moderation_copy_photo_file(
+                $source,
+                '/uploads/places/'
+                . $placeId,
+                (string) (
+                    $photo['filename']
+                    ?? ''
+                )
+            );
+
+        if ($copied === null) {
+            continue;
+        }
+
+        $copiedPaths[] =
+            $copied;
+
+        $isFeatured =
+            !$hasAnyImage
+            && $added === 0
+                ? 1
+                : 0;
+
+        $insert->execute([
+            $placeId,
+            $copied,
+            trim(
+                (string) (
+                    $photo['alt']
+                    ?? ''
+                )
+            ) ?: null,
+            $isFeatured,
+            $sortOrder,
+            $uploadedBy > 0
+                ? $uploadedBy
+                : null,
+        ]);
+
+        $sortOrder++;
+        $added++;
+    }
+
+    return
+        $added;
+}
+
+
 function moderation_remove_tree(string $absolutePath): void
 {
     if (!is_dir($absolutePath)) {
@@ -758,7 +1139,8 @@ function moderation_approve_new_place(
     int $reviewedBy,
     string $publishStatus,
     string $reviewNotes,
-    int $points = 0
+    int $points = 0,
+    array &$copiedPhotoPaths = []
 ): int {
     if (!in_array($publishStatus, ['active', 'featured'], true)) {
         throw new InvalidArgumentException('Choose Active or Featured for the published Place.');
@@ -899,13 +1281,23 @@ $name = trim(
         $reviewedBy,
     ]);
 
-    $photos = is_array($data['photos'] ?? null) ? $data['photos'] : [];
-    moderation_attach_place_photos(
+    $photos =
+        is_array(
+            $data['photos']
+            ?? null
+        )
+            ? $data['photos']
+            : [];
+
+    moderation_attach_place_photos_transactional(
         $db,
         $placeId,
         (int) $submission['user_id'],
         $photos,
-        '/uploads/place-submissions/' . $submissionId . '/'
+        '/uploads/place-submissions/'
+        . $submissionId
+        . '/',
+        $copiedPhotoPaths
     );
 
     $visitedAt = trim((string) ($data['visited_at'] ?? ''));
@@ -944,7 +1336,13 @@ $name = trim(
         $submissionId,
     ]);
 
-    moderation_remove_tree(dirname(__DIR__) . '/uploads/place-submissions/' . $submissionId);
+    /*
+     * Do not remove the source submission folder here.
+     *
+     * The caller still has database work to perform before COMMIT.
+     * Source files are removed only after the outer approval transaction
+     * has committed successfully.
+     */
 
     return $placeId;
 }
