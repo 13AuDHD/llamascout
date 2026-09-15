@@ -119,14 +119,17 @@
     left: 13px;
     bottom: 13px;
     width: min(190px, calc(100% - 24px));
+
+    display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+
     pointer-events: none;
 }
 
 .public-home-scout-preview .scout-report-item {
-    height: 58px;
-    min-height: 58px;
+    height: 60px;
+    min-height: 60px;
     padding: 7px 9px;
 
     border-color: color-mix(
@@ -150,8 +153,26 @@
 .scout-report-rating-item,
 .public-home-scout-preview
 .scout-report-value-item {
-    grid-template-rows: auto 2px auto;
-    row-gap: 2px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    row-gap: 4px;
+    column-gap: 8px;
+    align-content: center;
+    align-items: center;
+}
+
+.public-home-scout-preview
+.scout-report-rating-item {
+    grid-template-areas:
+        "title title"
+        "value dots";
+}
+
+.public-home-scout-preview
+.scout-report-value-item {
+    grid-template-areas:
+        "title title"
+        "value icon";
 }
 
 .public-home-scout-preview
@@ -159,6 +180,15 @@
 .public-home-scout-preview
 .scout-report-value-content > span {
     font-size: .74rem;
+    line-height: 1.1;
+}
+
+.public-home-scout-preview
+.scout-rating-content > strong,
+.public-home-scout-preview
+.scout-report-value-content > strong {
+    align-self: center;
+    line-height: 1;
 }
 
 .public-home-scout-preview
@@ -177,9 +207,17 @@
 }
 
 .public-home-scout-preview
+.scout-report-rating-item > .scout-rating-dots {
+    align-self: center;
+}
+
+.public-home-scout-preview
 .scout-report-value-icon {
     width: 20px;
     height: 20px;
+
+    align-self: center;
+
     font-size: .9rem;
 }
 
@@ -875,13 +913,12 @@
         left: 16px;
         bottom: 16px;
         width: min(220px, calc(100% - 32px));
-        grid-template-columns: 1fr;
         gap: 8px;
     }
 
     .public-home-scout-preview .scout-report-item {
-        height: 54px;
-        min-height: 54px;
+        height: 58px;
+        min-height: 58px;
         padding: 6px 9px;
     }
 
@@ -949,22 +986,13 @@
         left: 12px;
         bottom: 12px;
         width: min(155px, calc(100% - 24px));
-        grid-template-columns: 1fr;
         gap: 8px;
     }
 
     .public-home-scout-preview .scout-report-item {
-        height: 50px;
-        min-height: 50px;
+        height: 56px;
+        min-height: 56px;
         padding: 5px 8px;
-    }
-
-    .public-home-scout-preview
-    .scout-report-rating-item,
-    .public-home-scout-preview
-    .scout-report-value-item {
-        grid-template-rows: auto 1px auto;
-        row-gap: 1px;
     }
 
     .public-home-scout-preview
