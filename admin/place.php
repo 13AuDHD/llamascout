@@ -444,6 +444,44 @@ function admin_place_photo_url(
 }
 
 
+function admin_place_background_save_requested(): bool
+{
+    return strtolower(
+        trim(
+            (string) (
+                $_SERVER['HTTP_X_LLAMA_ADMIN_SAVE']
+                ?? ''
+            )
+        )
+    ) === 'place-report';
+}
+
+function admin_place_background_save_respond(
+    int $status,
+    array $payload
+): never {
+    http_response_code($status);
+    header(
+        'Content-Type: application/json; charset=utf-8'
+    );
+    header(
+        'Cache-Control: no-store, no-cache, must-revalidate, max-age=0'
+    );
+
+    echo json_encode(
+        $payload,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+    );
+
+    exit;
+}
+
+
+$backgroundPlaceSave =
+    admin_place_background_save_requested();
+
+
 $notice = '';
 $error = '';
 $action = '';
@@ -476,6 +514,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action === 'save-report'
                 ? 'Your session token expired. Your Place Report changes are preserved below. Try Save Place Report again.'
                 : 'Your session token expired. Reload and try again.';
+
+        if (
+            $backgroundPlaceSave
+            && $action === 'save-report'
+        ) {
+            admin_place_background_save_respond(
+                403,
+                [
+                    'success' => false,
+                    'message' => $error,
+                    'photos_added' => 0,
+                ]
+            );
+        }
     } else {
         try {
             if ($action === 'save-report') {
@@ -529,6 +581,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
+                $photosAdded = 0;
+
                 $photoToken =
                     trim(
                         (string) (
@@ -550,12 +604,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
 
-                    admin_place_add_photos(
-                        $db,
-                        $actorUserId,
-                        $placeId,
-                        $photoToken,
-                        $newPhotos
+                    /*
+                     * Verify every submitted staged path still exists
+                     * in the active manifest before moving anything.
+                     * This prevents a false green "Saved" when Safari
+                     * has already discarded a staging folder.
+                     */
+                    $manifest =
+                        llama_photo_read_manifest(
+                            'add-place',
+                            $actorUserId,
+                            $photoToken
+                        );
+
+                    $manifestPaths = [];
+
+                    foreach ($manifest as $photo) {
+                        $path =
+                            trim(
+                                (string) (
+                                    $photo['path']
+                                    ?? ''
+                                )
+                            );
+
+                        if ($path !== '') {
+                            $manifestPaths[$path] = true;
+                        }
+                    }
+
+                    $submittedPaths = [];
+
+                    foreach ($newPhotos as $photo) {
+                        $path =
+                            trim(
+                                (string) (
+                                    $photo['path']
+                                    ?? ''
+                                )
+                            );
+
+                        if ($path !== '') {
+                            $submittedPaths[$path] = true;
+                        }
+                    }
+
+                    $missingPaths =
+                        array_diff_key(
+                            $submittedPaths,
+                            $manifestPaths
+                        );
+
+                    if ($missingPaths) {
+                        throw new RuntimeException(
+                            'One or more staged photos are no longer available. Upload those photos again before saving.'
+                        );
+                    }
+
+                    $photosAdded =
+                        admin_place_add_photos(
+                            $db,
+                            $actorUserId,
+                            $placeId,
+                            $photoToken,
+                            $newPhotos
+                        );
+
+                    if (
+                        $photosAdded
+                        !== count($newPhotos)
+                    ) {
+                        throw new RuntimeException(
+                            'The Place Report saved, but one or more photos did not attach. Upload those photos again before leaving this page.'
+                        );
+                    }
+                }
+
+                if ($backgroundPlaceSave) {
+                    admin_place_background_save_respond(
+                        200,
+                        [
+                            'success' => true,
+                            'message' => 'Place Report saved.',
+                            'photos_added' => $photosAdded,
+                            'photo_total' => count(
+                                admin_place_images(
+                                    $db,
+                                    $placeId
+                                )
+                            ),
+                            'csrf_token' =>
+                                moderation_csrf_token(),
+                        ]
                     );
                 }
 
@@ -702,6 +842,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $exception) {
             $error =
                 $exception->getMessage();
+
+            if (
+                $backgroundPlaceSave
+                && $action === 'save-report'
+            ) {
+                $status =
+                    $exception instanceof PDOException
+                        ? 500
+                        : 422;
+
+                $payload = [
+                    'success' => false,
+                    'message' => $error !== ''
+                        ? $error
+                        : 'The Place Report could not be saved.',
+                    'photos_added' => 0,
+                ];
+
+                if (
+                    $status === 500
+                    && function_exists(
+                        'llama_log_exception'
+                    )
+                ) {
+                    $payload['reference'] =
+                        llama_log_exception(
+                            $exception,
+                            'admin.place_report_save',
+                            [
+                                'place_id' =>
+                                    $placeId,
+                                'actor_user_id' =>
+                                    $actorUserId,
+                            ]
+                        );
+                }
+
+                admin_place_background_save_respond(
+                    $status,
+                    $payload
+                );
+            }
         }
     }
 }
