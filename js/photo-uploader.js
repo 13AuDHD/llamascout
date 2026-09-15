@@ -117,7 +117,7 @@
                     <span class="llama-photo-drop-content">
                         <i
                             class="llama-icon-mask"
-                            style="--llama-icon-mask:url('/assets/icons/photo.svg')"
+                            style="--llama-icon-mask:url('https://llamascout.com/assets/icons/photo.svg')"
                             aria-hidden="true"
                         ></i>
 
@@ -141,13 +141,13 @@
                     >
                         <i
                             class="llama-icon-mask is-spinning"
-                            style="--llama-icon-mask:url('/assets/icons/loader-2.svg')"
+                            style="--llama-icon-mask:url('https://llamascout.com/assets/icons/loader-2.svg')"
                         ></i>
                     </span>
 
                     <div class="llama-photo-working-copy">
                         <strong data-photo-working-title>
-                            Working on your photo…
+                            Working on your photoâ¦
                         </strong>
 
                         <span data-photo-working-detail>
@@ -301,7 +301,7 @@
 
             workingTitle.textContent =
                 titleText ||
-                'Working on your photo…';
+                'Working on your photoâ¦';
 
             workingDetail.textContent =
                 detailText ||
@@ -506,8 +506,8 @@
                             setWorking(
                                 true,
                                 selectedFiles.length === 1
-                                    ? 'Uploading photo…'
-                                    : `Uploading ${selectedFiles.length} photos…`,
+                                    ? 'Uploading photoâ¦'
+                                    : `Uploading ${selectedFiles.length} photosâ¦`,
                                 'Sending your photo to Llama Scout. Please keep this page open.'
                             );
 
@@ -531,8 +531,8 @@
                         setWorking(
                             true,
                             selectedFiles.length === 1
-                                ? `Uploading photo… ${percent}%`
-                                : `Uploading photos… ${percent}%`,
+                                ? `Uploading photoâ¦ ${percent}%`
+                                : `Uploading photosâ¦ ${percent}%`,
                             'Sending your photo to Llama Scout. Please keep this page open.'
                         );
 
@@ -554,8 +554,8 @@
                         setWorking(
                             true,
                             selectedFiles.length === 1
-                                ? 'Upload complete. Processing photo…'
-                                : 'Upload complete. Processing photos…',
+                                ? 'Upload complete. Processing photoâ¦'
+                                : 'Upload complete. Processing photosâ¦',
                             'Llama Scout is resizing the image and removing location metadata. This can take a moment.'
                         );
                     }
@@ -699,7 +699,7 @@
                             setBusy(true);
                             setWorking(
                                 true,
-                                'Removing photo…',
+                                'Removing photoâ¦',
                                 'Updating your temporary photo list.'
                             );
                             setStatus('');
@@ -874,8 +874,8 @@
             setWorking(
                 true,
                 selected.length === 1
-                    ? 'Preparing photo upload…'
-                    : `Preparing ${selected.length} photo uploads…`,
+                    ? 'Preparing photo uploadâ¦'
+                    : `Preparing ${selected.length} photo uploadsâ¦`,
                 'Please keep this page open while Llama Scout works on your request.'
             );
 
