@@ -352,7 +352,7 @@ function llama_place_update_sections(): array
                         'Additional Place information',
 
                     'icon' =>
-                        'fa-pen-to-square',
+                        'edit',
                 ];
 
             $sections[$sectionKey]['fields'] =
@@ -3243,7 +3243,7 @@ function llama_place_update_schema_icon(
 
 
     if (!$field) {
-        return 'fa-pen-to-square';
+        return 'edit';
     }
 
 
@@ -3267,33 +3267,33 @@ function llama_place_update_schema_icon(
         )
     ) {
         'location' =>
-            'fa-location-dot',
+            'current-location',
 
         'site_vehicle' =>
-            'fa-car-side',
+            'at-camper-vehicle',
 
         'road_access' =>
-            'fa-road',
+            'road',
 
         'amenities' =>
-            'fa-circle-info',
+            'picnic-table',
 
         'connectivity' =>
-            'fa-signal',
+            'antenna-bars-5',
 
         'sensory' =>
-            'fa-brain',
+            'at-brain',
 
         'environment_accessibility' =>
-            'fa-person-walking',
+            'accessible',
 
         'rules' =>
-            'fa-cloud-sun',
+            'calendar-event',
 
         'experience' =>
-            'fa-compass',
+            'compass',
 
         default =>
-            'fa-pen-to-square',
+            'edit',
     };
 }
