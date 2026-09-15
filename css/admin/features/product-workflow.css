@@ -159,12 +159,16 @@
 }
 
 .admin-commerce-collapse-summary::after {
-    content: "\f078";
+    content: "";
 
-    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
 
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
+    background: currentColor;
+
+    -webkit-mask: url('/assets/icons/chevron-down.svg') center / contain no-repeat;
+    mask: url('/assets/icons/chevron-down.svg') center / contain no-repeat;
 
     transition: transform .16s ease;
 }
