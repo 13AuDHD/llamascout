@@ -599,7 +599,7 @@ function admin_shell_nav_class(string $key, string $active): string
 
         <a
             class="<?= admin_shell_nav_class('errors', $adminActiveNav) ?>"
-            href="<?= moderation_e($adminUrl . '/errors.php?status=open') ?>"
+            href="<?= moderation_e($adminUrl . '/errors.php') ?>"
         >
             <i  aria-hidden="true"><?= llama_icon('bug') ?></i>
             <span>Error Log</span>
