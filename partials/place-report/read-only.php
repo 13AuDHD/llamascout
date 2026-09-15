@@ -355,6 +355,7 @@ foreach (
             [
                 'basic',
                 'location',
+                'amenities',
             ],
             true
         )
@@ -380,6 +381,39 @@ foreach (
 
     if (!$fields) {
         continue;
+    }
+
+    if (
+        $sectionKey === 'scout_notes'
+        && $placeReportReadMode === 'scout-report'
+    ) {
+        $fields = array_filter(
+            $fields,
+            static function (array $field) use ($placeReportData): bool {
+                $key = (string) ($field['key'] ?? '');
+
+                if (
+                    $key === ''
+                    || llama_place_report_answer_state(
+                        $placeReportData,
+                        $key
+                    ) !== 'answered'
+                ) {
+                    return false;
+                }
+
+                return trim(
+                    (string) llama_place_report_get_path(
+                        $placeReportData,
+                        (string) ($field['storage'] ?? '')
+                    )
+                ) !== '';
+            }
+        );
+
+        if (!$fields) {
+            continue;
+        }
     }
 ?>
     <?php
@@ -420,6 +454,29 @@ foreach (
                     </div>
                 </div>
             <?php endforeach; ?>
+
+        <?php elseif ($sectionKey === 'scout_notes'): ?>
+            <ul class="scout-report-notes-list">
+                <?php foreach ($fields as $key => $field): ?>
+                    <?php
+                    $note =
+                        llama_place_report_display_value(
+                            $placeReportData,
+                            (string) $key
+                        );
+
+                    if (
+                        $placeReportReadMode === 'scout-report'
+                        && ($note === null || trim((string) $note) === '')
+                    ) {
+                        continue;
+                    }
+                    ?>
+                    <li>
+                        <?= $e($note ?? 'Not provided') ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
 
         <?php elseif ($sectionKey === 'amenities'): ?>
             <div class="scout-report-grid">

@@ -678,6 +678,9 @@ $renderField =
                         $field['placeholder']
                         ?? ''
                     ) ?>"
+                    <?= !empty($field['maxlength'])
+                        ? 'maxlength="' . (int) $field['maxlength'] . '"'
+                        : '' ?>
                 ><?= $e(
                     $current
                 ) ?></textarea>

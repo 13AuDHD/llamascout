@@ -207,6 +207,9 @@ $unknownValue = '__NULL__';
                     name="<?= $e($inputName) ?>"
                     rows="<?= (int) ($shared['rows'] ?? 4) ?>"
                     placeholder="<?= $e($shared['placeholder'] ?? '') ?>"
+                    <?= !empty($shared['maxlength'])
+                        ? 'maxlength="' . (int) $shared['maxlength'] . '"'
+                        : '' ?>
                 ><?= $e($renderValue ?? '') ?></textarea>
 
             <?php else: ?>
