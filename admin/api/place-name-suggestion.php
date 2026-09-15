@@ -7,4 +7,4 @@ declare(strict_types=1);
  * admin.llamascout.com. The canonical implementation stays in /api.
  */
 require dirname(__DIR__, 2)
-    . '/api/location-lookup.php';
+    . '/api/place-name-suggestion.php';
