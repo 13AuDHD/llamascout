@@ -153,7 +153,7 @@ function llama_printful_system_health_card(): array
             'detail' =>
                 'The private Printful API token is missing. '
                 . 'Printful fulfillment and webhook verification cannot operate.',
-            'icon' => 'fa-shield-halved',
+            'icon' => 'shield',
         ];
     }
 
@@ -170,7 +170,7 @@ function llama_printful_system_health_card(): array
                 'detail' =>
                     'Printful is reachable and its configured webhook '
                     . 'matches the protected keyed Llama Scout callback.',
-                'icon' => 'fa-shield-halved',
+                'icon' => 'shield',
             ];
         }
 
@@ -183,7 +183,7 @@ function llama_printful_system_health_card(): array
                 'Printful is connected, but its configured webhook '
                 . 'does not match the protected Llama Scout callback. '
                 . 'Open Integrations > Printful Webhook and activate protection.',
-            'icon' => 'fa-shield-halved',
+            'icon' => 'shield',
         ];
     } catch (Throwable $exception) {
         if (
@@ -205,7 +205,7 @@ function llama_printful_system_health_card(): array
             'detail' =>
                 'Llama Scout could not verify the Printful webhook with Printful. '
                 . 'Check the Printful connection in Integrations.',
-            'icon' => 'fa-shield-halved',
+            'icon' => 'shield',
         ];
     }
 }
