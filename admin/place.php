@@ -1153,8 +1153,7 @@ $placeReportPhotoHelp =
 
             <span class="admin-place-summary-location">
                 <?= $e(
-                    $place['public_location_label']
-                    ?: implode(
+                    implode(
                         ', ',
                         array_filter(
                             [
@@ -1344,31 +1343,6 @@ $placeReportPhotoHelp =
                     </select>
                 </label>
 
-                <label class="admin-place-meta-wide">
-                    <span>Public summary / metadata note</span>
-
-                    <textarea
-                        name="admin_public_summary"
-                        rows="3"
-                    ><?= $e(
-                        $place['public_summary']
-                        ?? ''
-                    ) ?></textarea>
-                </label>
-
-                <label class="admin-place-meta-wide">
-                    <span>Public location label</span>
-
-                    <input
-                        type="text"
-                        name="admin_public_location_label"
-                        value="<?= $e(
-                            $place['public_location_label']
-                            ?? ''
-                        ) ?>"
-                        placeholder="Pagosa Springs, Colorado"
-                    >
-                </label>
             </div>
         </section>
 
@@ -2135,7 +2109,7 @@ $placeReportPhotoHelp =
                                 <strong>
                                     <?= $e(
                                         ($entry['old_status'] ?? 'New')
-                                        . ' â '
+                                        . ' Ã¢ÂÂ '
                                         . ($entry['new_status'] ?? '')
                                     ) ?>
                                 </strong>
