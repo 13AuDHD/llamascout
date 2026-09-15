@@ -448,6 +448,14 @@ $notice = '';
 $error = '';
 $action = '';
 
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+    && (string) ($_GET['saved'] ?? '') === 'report'
+) {
+    $notice =
+        'Place Report saved.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action =
@@ -551,8 +559,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                $notice =
-                    'Place Report updated.';
+                header(
+                    'Location: /place.php?id='
+                    . $placeId
+                    . '&saved=report',
+                    true,
+                    303
+                );
+
+                exit;
 
             } elseif ($action === 'change-status') {
 
