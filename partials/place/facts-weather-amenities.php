@@ -88,55 +88,31 @@ try {
 }
 ?>
 
-<?php if ($placeReportsNoAmenities): ?>
+<?php
+$hasAmenityRecord = !empty($place['amenities']);
+?>
 
+<?php if ($placeReportsNoAmenities || $hasAmenityRecord): ?>
     <section class="place-section">
         <h2>Amenities</h2>
 
         <div class="amenity-grid">
-            <div class="amenity-item is-unavailable">
-                <i aria-hidden="true">
-                    <?= llama_icon('xbox-x') ?>
-                </i>
+            <?php foreach ($amenityLabels as $key => [$icon, $label]): ?>
+                <?php
+                $available =
+                    !$placeReportsNoAmenities
+                    && !empty($place['amenities'][$key]);
+                ?>
 
-                <span>No amenities</span>
-                <strong>Reported</strong>
-            </div>
+                <div class="amenity-item <?= $available ? 'is-available' : 'is-unavailable' ?>">
+                    <i aria-hidden="true">
+                        <?= llama_icon($icon) ?>
+                    </i>
+
+                    <span><?= place_h($label) ?></span>
+                    <strong><?= $available ? 'Yes' : 'No' ?></strong>
+                </div>
+            <?php endforeach; ?>
         </div>
     </section>
-
-<?php elseif (!empty($place['amenities'])): ?>
-
-    <?php
-    $availableAmenities = [];
-
-    foreach ($amenityLabels as $key => [$icon, $label]) {
-        if (!empty($place['amenities'][$key])) {
-            $availableAmenities[$key] = [
-                $icon,
-                $label,
-            ];
-        }
-    }
-    ?>
-
-    <?php if ($availableAmenities): ?>
-        <section class="place-section">
-            <h2>Amenities</h2>
-
-            <div class="amenity-grid">
-                <?php foreach ($availableAmenities as $key => [$icon, $label]): ?>
-                    <div class="amenity-item is-available">
-                        <i aria-hidden="true">
-                            <?= llama_icon($icon) ?>
-                        </i>
-
-                        <span><?= place_h($label) ?></span>
-                        <strong>Yes</strong>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-    <?php endif; ?>
-
 <?php endif; ?>

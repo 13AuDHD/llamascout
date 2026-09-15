@@ -39,6 +39,7 @@ if ($hasMemberAccess):
                 [
                     'basic',
                     'location',
+                    'amenities',
                     'summaries',
                 ],
                 true
