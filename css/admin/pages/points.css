@@ -498,3 +498,18 @@
             auto;
     }
 }
+
+.admin-points-adjustment-panel {
+    position: relative;
+    z-index: 20;
+
+    overflow: visible;
+}
+
+.admin-points-member-results {
+    z-index: 100;
+}
+
+.admin-points-member-option[hidden] {
+    display: none !important;
+}
