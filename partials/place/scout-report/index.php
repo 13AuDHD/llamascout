@@ -53,24 +53,4 @@ $placeReportReadMode =
         . '/place-report/read-only.php';
     ?>
 
-    <?php if (!empty($place['notes'])): ?>
-        <section class="scout-report-section">
-            <h3>
-                <i aria-hidden="true">
-                    <?= llama_icon('clipboard-list') ?>
-                </i>
-                Scout notes
-            </h3>
-
-            <ul class="scout-report-notes-list">
-                <?php foreach ($place['notes'] as $note): ?>
-                    <?php if (!empty($note['note'])): ?>
-                        <li>
-                            <?= place_h($note['note']) ?>
-                        </li>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </ul>
-        </section>
-    <?php endif; ?>
 </section>
