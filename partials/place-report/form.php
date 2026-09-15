@@ -796,10 +796,7 @@ $renderField =
                             aria-label="Suggest another Place name"
                             title="Suggest another name"
                         >
-                            <i
-                                class="fa-solid fa-arrows-rotate"
-                                aria-hidden="true"
-                            ></i>
+                            <?= llama_icon('refresh') ?>
 
                             <span>
                                 Another name
@@ -866,13 +863,12 @@ foreach (
 
             <span>
 
-                <i
-                    class="fa-solid <?= $e(
+                <?= llama_icon(
+                    (string) (
                         $section['icon']
-                        ?? 'fa-circle-info'
-                    ) ?>"
-                    aria-hidden="true"
-                ></i>
+                        ?? 'info-circle'
+                    )
+                ) ?>
 
                 <?= $e(
                     $section['label']
@@ -921,10 +917,7 @@ foreach (
                         data-locate-place
                     >
 
-                        <i
-                            class="fa-solid fa-crosshairs"
-                            aria-hidden="true"
-                        ></i>
+                        <?= llama_icon('current-location') ?>
 
                         Locate me
 
@@ -1086,10 +1079,7 @@ foreach (
 
             <span>
 
-                <i
-                    class="fa-solid fa-camera"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon('camera') ?>
 
                 Photos
 

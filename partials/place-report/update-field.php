@@ -54,10 +54,7 @@ $unknownValue = '__NULL__';
     <div class="place-update-field-main">
         <header class="place-update-field-heading">
             <div>
-                <i
-                    class="fa-solid <?= $e($icon) ?>"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon($icon) ?>
 
                 <strong><?= $e($label) ?></strong>
             </div>
