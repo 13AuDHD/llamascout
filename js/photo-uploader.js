@@ -296,6 +296,19 @@
             );
         };
 
+        /*
+         * Larger forms such as Admin Place Report save in the
+         * background. Give them an explicit way to force the
+         * current staged-photo state into the hidden form fields
+         * immediately before FormData is created.
+         */
+        form.addEventListener(
+            'llama:photo-uploader-sync',
+            () => {
+                syncHidden();
+            }
+        );
+
         const updateSubmitControls = () => {
             submitControls.forEach((control) => {
                 control.disabled =
@@ -855,6 +868,54 @@
             updateSubmitControls();
         };
 
+        /*
+         * A successful background save moves staged files into
+         * permanent storage. Start a fresh staging batch afterward
+         * so a second upload cannot reuse the already-committed
+         * token or make the previous photo appear to vanish.
+         */
+        form.addEventListener(
+            'llama:photo-uploader-committed',
+            (event) => {
+                const detail =
+                    event?.detail
+                    && typeof event.detail
+                        === 'object'
+                        ? event.detail
+                        : {};
+
+                if (
+                    detail.context
+                    && detail.context
+                        !== context
+                ) {
+                    return;
+                }
+
+                const savedCount =
+                    Math.max(
+                        0,
+                        Number(
+                            detail.count
+                            || 0
+                        )
+                    );
+
+                tokenField.value = '';
+                photos = [];
+                syncHidden();
+                submitting = false;
+
+                render();
+
+                if (savedCount > 0) {
+                    setStatus(
+                        `${savedCount} photo${savedCount === 1 ? '' : 's'} saved to this Place. You can add another batch now.`
+                    );
+                }
+            }
+        );
+
         const uploadFiles = async (
             fileList
         ) => {
@@ -1033,50 +1094,18 @@
             }
         );
 
-        const abandon = () => {
-            if (
-                submitting ||
-                !tokenField.value ||
-                !photos.length
-            ) {
-                return;
-            }
-
-            const body =
-                new FormData();
-
-            body.append(
-                'action',
-                'abandon'
-            );
-
-            body.append(
-                'context',
-                context
-            );
-
-            body.append(
-                'csrf_token',
-                csrfToken
-            );
-
-            body.append(
-                'token',
-                tokenField.value
-            );
-
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon(
-                    endpoint,
-                    body
-                );
-            }
-        };
-
-        window.addEventListener(
-            'pagehide',
-            abandon
-        );
+        /*
+         * Do not automatically abandon staged photos on pagehide.
+         *
+         * iPad/Safari can fire page lifecycle events while handing
+         * control to native pickers or while tabs are backgrounded.
+         * Automatic abandonment can therefore delete a perfectly
+         * valid staging batch while the editor still appears open.
+         *
+         * Abandoned staging is already cleaned safely by the server
+         * after its retention window, so keeping it here is the
+         * safer data-preserving behavior.
+         */
 
         const loadExistingStage =
             async () => {
