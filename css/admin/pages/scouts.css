@@ -6,7 +6,12 @@
 /* Invite panel */
 
 .admin-scout-invite-panel {
+    position: relative;
+    z-index: 20;
+
     margin-bottom: var(--admin-panel-gap);
+
+    overflow: visible;
 }
 
 .admin-scout-invite-form {
@@ -20,19 +25,29 @@
     padding: 15px var(--admin-panel-padding);
 }
 
-.admin-scout-invite-form label {
+.admin-scout-member-picker {
+    position: relative;
+
+    min-width: 0;
+
     display: grid;
     gap: 6px;
 }
 
-.admin-scout-invite-form label > span {
+.admin-scout-member-picker > label {
     color: var(--text-muted);
 
     font-size: .7rem;
     font-weight: 850;
 }
 
-.admin-scout-invite-form select {
+.admin-scout-member-search-wrap {
+    position: relative;
+    min-width: 0;
+}
+
+.admin-scout-invite-form select,
+.admin-scout-member-search {
     width: 100%;
     min-height: 42px;
 
@@ -47,6 +62,109 @@
     color: var(--text);
 
     font: inherit;
+}
+
+.admin-scout-member-search::-webkit-search-cancel-button {
+    cursor: pointer;
+}
+
+.admin-scout-member-results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+
+    z-index: 60;
+
+    max-height: min(360px, 55vh);
+    overflow-y: auto;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+
+    box-shadow:
+        0 14px 34px
+        rgba(0, 0, 0, .22);
+}
+
+.admin-scout-member-result {
+    width: 100%;
+
+    display: grid;
+    gap: 3px;
+
+    padding: 11px 13px;
+
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+
+    background: transparent;
+    color: var(--text);
+
+    text-align: left;
+
+    cursor: pointer;
+}
+
+.admin-scout-member-result:last-child {
+    border-bottom: 0;
+}
+
+.admin-scout-member-result:hover,
+.admin-scout-member-result:focus-visible,
+.admin-scout-member-result.is-active {
+    background: var(--surface);
+}
+
+.admin-scout-member-result strong {
+    overflow-wrap: anywhere;
+
+    font-size: .76rem;
+    line-height: 1.25;
+}
+
+.admin-scout-member-result span {
+    overflow-wrap: anywhere;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.35;
+}
+
+.admin-scout-member-result small {
+    width: fit-content;
+
+    margin-top: 2px;
+    padding: 3px 6px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+
+    font-size: .58rem;
+    font-weight: 800;
+}
+
+.admin-scout-member-no-results {
+    padding: 14px;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+}
+
+.admin-scout-member-help {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.35;
 }
 
 .admin-scout-invite-form > .admin-button {
