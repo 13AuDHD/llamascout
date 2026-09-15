@@ -261,34 +261,13 @@ $renderValue =
     };
 
 /*
- * Quick warnings are derived from the same field definitions.
+ * Quick warnings are calculated only from the canonical Place Report answers.
+ * There are no separate manual warning switches.
  */
-$warnings = [];
-
-foreach ($placeReportFields as $key => $field) {
-    if (empty($field['warning'])) {
-        continue;
-    }
-
-    $state =
-        llama_place_report_answer_state(
-            $placeReportData,
-            $key
-        );
-
-    $raw =
-        llama_place_report_get_path(
-            $placeReportData,
-            (string) $field['storage']
-        );
-
-    if (
-        $state === 'answered'
-        && (bool) $raw
-    ) {
-        $warnings[$key] = $field;
-    }
-}
+$warnings =
+    llama_place_report_quick_warnings(
+        $placeReportData
+    );
 
 if ($warnings):
 ?>
@@ -307,10 +286,7 @@ if ($warnings):
                 <?php
                 $warningIcon =
                     $localIcon(
-                        llama_place_report_field_icon(
-                            $key,
-                            $field
-                        ),
+                        (string) ($field['icon'] ?? 'info-circle'),
                         $key
                     );
                 ?>
