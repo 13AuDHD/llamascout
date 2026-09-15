@@ -81,10 +81,13 @@ $isVerified =
         <span
             class="admin-user-email-verification-status <?= $isVerified ? 'is-verified' : 'is-unverified' ?>"
         >
-            <i
-                class="fa-solid <?= $isVerified ? 'fa-circle-check' : 'fa-circle-exclamation' ?>"
-                aria-hidden="true"
-            ></i>
+            <i aria-hidden="true">
+                <?= llama_icon(
+                    $isVerified
+                        ? 'circle-check'
+                        : 'mail-exclamation'
+                ) ?>
+            </i>
 
             <?= $isVerified
                 ? 'Verified'
@@ -175,10 +178,9 @@ $isVerified =
                     class="admin-button <?= $isVerified ? 'is-secondary' : '' ?>"
                     type="submit"
                 >
-                    <i
-                        class="fa-solid fa-envelope-circle-check"
-                        aria-hidden="true"
-                    ></i>
+                    <i aria-hidden="true">
+                        <?= llama_icon('mail-check') ?>
+                    </i>
 
                     <?= $isVerified
                         ? 'Unverify + Send Verification'

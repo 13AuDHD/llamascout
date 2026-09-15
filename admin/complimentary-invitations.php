@@ -668,10 +668,9 @@ require __DIR__ . '/_header.php';
                 class="admin-button"
                 type="submit"
             >
-                <i
-                    class="fa-solid fa-paper-plane"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon('send') ?>
+                </i>
 
                 Create + Send Invitation
             </button>
@@ -833,10 +832,9 @@ require __DIR__ . '/_header.php';
                                         class="admin-button is-secondary"
                                         type="submit"
                                     >
-                                        <i
-                                            class="fa-solid fa-rotate"
-                                            aria-hidden="true"
-                                        ></i>
+                                        <i aria-hidden="true">
+                                            <?= llama_icon('refresh') ?>
+                                        </i>
 
                                         Send Fresh Invitation
                                     </button>
