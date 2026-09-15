@@ -72,18 +72,10 @@ if ($hasMemberAccess):
             'title' =>
                 (string) $section['label'],
             'icon' =>
-                match ($sectionKey) {
-                    'site_vehicle' => 'camper',
-                    'road_access' => 'road',
-                    'amenities' => 'list-check',
-                    'connectivity' => 'antenna-bars-5',
-                    'sensory' => 'brain',
-                    'environment_accessibility' => 'trees',
-                    'safety' => 'shield',
-                    'rules' => 'calendar-event',
-                    'experience' => 'star',
-                    default => 'info-circle',
-                },
+                (string) (
+                    $section['icon']
+                    ?? 'info-circle'
+                ),
             'fields' =>
                 $labels,
         ];
