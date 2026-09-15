@@ -61,10 +61,12 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
         </div>
 
         <?php if ($icon): ?>
-            <i
-                class="fa-solid <?= place_h($icon) ?> scout-report-value-icon"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon(
+                $icon,
+                [
+                    'class' => 'scout-report-value-icon',
+                ]
+            ) ?>
         <?php endif; ?>
     </div>
     <?php
@@ -75,16 +77,46 @@ function demo_weather_info(mixed $code, bool $isDay = true): array
     $code = (int) $code;
 
     return match (true) {
-        $code === 0 => ['Clear', $isDay ? 'fa-sun' : 'fa-moon'],
-        in_array($code, [1, 2], true) => ['Partly cloudy', $isDay ? 'fa-cloud-sun' : 'fa-cloud-moon'],
-        $code === 3 => ['Overcast', 'fa-cloud'],
-        in_array($code, [45, 48], true) => ['Fog', 'fa-smog'],
-        in_array($code, [51, 53, 55, 56, 57], true) => ['Drizzle', 'fa-cloud-rain'],
-        in_array($code, [61, 63, 65, 66, 67, 80, 81, 82], true) => ['Rain', 'fa-cloud-showers-heavy'],
-        in_array($code, [71, 73, 75, 77, 85, 86], true) => ['Snow', 'fa-snowflake'],
-        in_array($code, [95, 96, 99], true) => ['Thunderstorms', 'fa-cloud-bolt'],
-        default => ['Conditions unavailable', 'fa-cloud'],
+        $code === 0 => ['Clear', $isDay ? 'at-sunny' : 'at-moon'],
+        $code === 1 => ['Mainly clear', $isDay ? 'at-day-cloudy' : 'at-cloudy-night'],
+        $code === 2 => ['Partly cloudy', $isDay ? 'at-partly-cloudy' : 'at-cloudy-night'],
+        $code === 3 => ['Overcast', 'at-cloudy'],
+        in_array($code, [45, 48], true) => ['Fog', 'at-misty-cloud'],
+        in_array($code, [51, 53, 55], true) => ['Drizzle', $isDay ? 'at-rain-drop-sun' : 'at-rain-drop-moon'],
+        in_array($code, [56, 57], true) => ['Freezing drizzle', 'at-freeze'],
+        in_array($code, [61, 63], true) => ['Rain', $isDay ? 'at-raining-day' : 'at-raining-night'],
+        $code === 65 => ['Heavy rain', $isDay ? 'at-strong-raining-day' : 'at-strong-rain-night'],
+        in_array($code, [66, 67], true) => ['Freezing rain', 'at-freeze'],
+        $code === 80 => ['Rain showers', 'at-partly-cloudy-rain'],
+        $code === 81 => ['Rain showers', 'at-rain-storm'],
+        $code === 82 => ['Heavy rain showers', 'at-heavy-rain'],
+        in_array($code, [71, 73, 75], true) => ['Snow', 'at-snowing'],
+        $code === 77 => ['Snow grains', 'at-snowing-snowflakes'],
+        in_array($code, [85, 86], true) => ['Snow showers', 'at-snowing-snowflakes'],
+        $code === 95 => ['Thunderstorms', 'at-electric-storm'],
+        in_array($code, [96, 99], true) => ['Thunderstorms with hail', 'at-strong-wind-hail'],
+        default => ['Conditions unavailable', 'at-clouds'],
     };
+}
+
+function demo_forecast_time(mixed $value): string
+{
+    $value = trim((string) $value);
+
+    if (!preg_match('/T(\d{2}):(\d{2})/', $value, $matches)) {
+        return '';
+    }
+
+    $hour = (int) $matches[1];
+    $minute = $matches[2];
+    $suffix = $hour >= 12 ? 'PM' : 'AM';
+    $hour %= 12;
+
+    if ($hour === 0) {
+        $hour = 12;
+    }
+
+    return $hour . ':' . $minute . ' ' . $suffix;
 }
 
 function demo_round(mixed $value): ?int
@@ -285,14 +317,14 @@ $experience = [
 ];
 
 $amenityLabels = [
-    'toilets' => ['fa-restroom', 'Toilets'],
-    'potable_water' => ['fa-faucet-drip', 'Potable water'],
-    'trash' => ['fa-trash-can', 'Trash'],
-    'fire_ring' => ['fa-fire', 'Metal fire ring'],
-    'picnic_table' => ['fa-utensils', 'Picnic table'],
-    'bear_box' => ['fa-box', 'Bear box'],
-    'showers' => ['fa-shower', 'Showers'],
-    'electricity' => ['fa-bolt', 'Electricity'],
+    'toilets' => ['toilet-paper', 'Toilets'],
+    'potable_water' => ['droplet', 'Potable water'],
+    'trash' => ['trash', 'Trash'],
+    'fire_ring' => ['campfire', 'Metal fire ring'],
+    'picnic_table' => ['picnic-table', 'Picnic table'],
+    'bear_box' => ['package', 'Bear box'],
+    'showers' => ['shower', 'Showers'],
+    'electricity' => ['bolt', 'Electricity'],
 ];
 
 $demoAmenities = [
@@ -391,7 +423,7 @@ require __DIR__ . '/partials/header.php';
         <div class="place-detail-hero-inner">
 
             <a class="place-detail-back" href="/membership.php">
-                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
                 Membership
             </a>
 
@@ -402,7 +434,7 @@ require __DIR__ . '/partials/header.php';
                     <h1>Llama Scout Headquarters</h1>
 
                     <p class="place-detail-location">
-                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                         Durango, La Plata County, Colorado
                     </p>
 
@@ -413,17 +445,17 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-detail-actions">
                     <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
                         Save Place
                     </button>
 
                     <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('edit') ?></i>
                         Suggest Update
                     </button>
 
                     <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('share') ?></i>
                         Share
                     </button>
                 </div>
@@ -508,7 +540,7 @@ require __DIR__ . '/partials/header.php';
                         id="place-gallery-close"
                         aria-label="Close photo viewer"
                     >
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('x') ?></i>
                     </button>
                 </div>
 
@@ -519,7 +551,7 @@ require __DIR__ . '/partials/header.php';
                         id="place-gallery-previous"
                         aria-label="Previous photo"
                     >
-                        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
                     </button>
 
                     <img id="place-gallery-large-image" src="" alt="">
@@ -530,7 +562,7 @@ require __DIR__ . '/partials/header.php';
                         id="place-gallery-next"
                         aria-label="Next photo"
                     >
-                        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                        <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
                     </button>
                 </div>
 
@@ -560,19 +592,19 @@ require __DIR__ . '/partials/header.php';
 
     <section class="place-facts" aria-label="Demo Place details">
         <div class="place-fact">
-            <i class="fa-solid fa-mountain" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('mountain') ?></i>
             <span>Elevation</span>
             <strong><?= number_format((int) $headquarters['elevation_feet']) ?> ft</strong>
         </div>
 
         <div class="place-fact">
-            <i class="fa-solid fa-road" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('road') ?></i>
             <span>Road</span>
             <strong><?= place_h($place['road']) ?></strong>
         </div>
 
         <div class="place-fact">
-            <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
             <span>GPS coordinates</span>
             <strong>
                 <?= place_h($headquarters['latitude']) ?>,
@@ -588,10 +620,12 @@ require __DIR__ . '/partials/header.php';
                 <h2 id="weather-heading">Llama Scout Headquarters weather</h2>
             </div>
 
-            <i
-                class="fa-solid fa-cloud-sun place-weather-heading-icon"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon(
+                'temperature-sun',
+                [
+                    'class' => 'place-weather-heading-icon',
+                ]
+            ) ?>
         </div>
 
         <?php
@@ -610,7 +644,7 @@ require __DIR__ . '/partials/header.php';
 
         <?php if (!$forecast): ?>
             <div class="place-weather-unavailable">
-                <i class="fa-solid fa-cloud" aria-hidden="true"></i>
+                <?= llama_icon('at-clouds', ['class' => 'place-weather-svg-icon']) ?>
                 <p>Weather is temporarily unavailable.</p>
             </div>
         <?php else: ?>
@@ -625,14 +659,18 @@ require __DIR__ . '/partials/header.php';
             $humidity = demo_round($current['relative_humidity_2m'] ?? null);
             $wind = demo_round($current['wind_speed_10m'] ?? null);
             $windGusts = demo_round($current['wind_gusts_10m'] ?? null);
+            $sunrise = demo_forecast_time($daily['sunrise'][0] ?? null);
+            $sunset = demo_forecast_time($daily['sunset'][0] ?? null);
             ?>
 
             <div class="place-weather-current">
                 <div class="place-weather-condition-icon">
-                    <i
-                        class="fa-solid <?= place_h($currentIcon) ?>"
-                        aria-hidden="true"
-                    ></i>
+                    <?= llama_icon(
+                        $currentIcon,
+                        [
+                            'class' => 'place-weather-svg-icon',
+                        ]
+                    ) ?>
                 </div>
 
                 <div class="place-weather-current-main">
@@ -658,6 +696,26 @@ require __DIR__ . '/partials/header.php';
 
                     <?php if ($windGusts !== null): ?>
                         <div><span>Wind gusts</span><strong><?= $windGusts ?> mph</strong></div>
+                    <?php endif; ?>
+
+                    <?php if ($sunrise !== ''): ?>
+                        <div>
+                            <span class="place-weather-fact-label">
+                                <?= llama_icon('sunrise', ['class' => 'place-weather-svg-icon']) ?>
+                                Sunrise
+                            </span>
+                            <strong><?= place_h($sunrise) ?></strong>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($sunset !== ''): ?>
+                        <div>
+                            <span class="place-weather-fact-label">
+                                <?= llama_icon('sunset', ['class' => 'place-weather-svg-icon']) ?>
+                                Sunset
+                            </span>
+                            <strong><?= place_h($sunset) ?></strong>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -692,7 +750,12 @@ require __DIR__ . '/partials/header.php';
 
                             <article class="place-weather-day">
                                 <strong class="place-weather-day-name"><?= place_h($dayName) ?></strong>
-                                <i class="fa-solid <?= place_h($dayIcon) ?>" aria-hidden="true"></i>
+                                <?= llama_icon(
+                                    $dayIcon,
+                                    [
+                                        'class' => 'place-weather-svg-icon',
+                                    ]
+                                ) ?>
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
@@ -702,14 +765,14 @@ require __DIR__ . '/partials/header.php';
 
                                 <?php if ($rain !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <i class="fa-solid fa-droplet" aria-hidden="true"></i>
+                                        <?= llama_icon('at-rain-drops', ['class' => 'place-weather-svg-icon']) ?>
                                         <?= $rain ?>%
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if ($maxWind !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <i class="fa-solid fa-wind" aria-hidden="true"></i>
+                                        <?= llama_icon('at-wind-strength', ['class' => 'place-weather-svg-icon']) ?>
                                         <?= $maxWind ?> mph
                                     </span>
                                 <?php endif; ?>
@@ -735,7 +798,7 @@ require __DIR__ . '/partials/header.php';
                 <?php if ($value === null) continue; ?>
 
                 <div class="amenity-item <?= $value ? 'is-available' : 'is-unavailable' ?>">
-                    <i class="fa-solid <?= place_h($icon) ?>" aria-hidden="true"></i>
+                    <?= llama_icon($icon) ?>
                     <span><?= place_h($label) ?></span>
                     <strong><?= $value ? 'Yes' : 'No' ?></strong>
                 </div>
@@ -754,7 +817,7 @@ require __DIR__ . '/partials/header.php';
     <section class="place-report-section">
         <details class="place-report">
             <summary>
-                <i class="fa-regular fa-flag" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('flag') ?></i>
                 Report a problem with this place
             </summary>
 
@@ -766,7 +829,7 @@ require __DIR__ . '/partials/header.php';
                 </p>
 
                 <button type="button" class="place-report-submit" disabled>
-                    <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('lock') ?></i>
                     Demo only
                 </button>
             </div>
@@ -795,7 +858,7 @@ require __DIR__ . '/partials/header.php';
                 color:var(--text);
             "
         >
-            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
             View Membership
         </a>
     </section>
