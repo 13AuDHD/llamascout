@@ -173,7 +173,7 @@ require __DIR__ . '/_header.php';
                     <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
                     <input type="hidden" name="admin_action" value="retention">
                     <label class="admin-retention-field">
-                        <span class="sr-only">Retention days</span>
+                        <span class="visually-hidden">Retention days</span>
                         <input type="number" name="retention_days" min="30" max="3650" step="1" value="<?= (int) $retentionDays ?>" required>
                         <span>days</span>
                     </label>
