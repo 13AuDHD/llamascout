@@ -184,6 +184,7 @@ require __DIR__ . '/_header.php';
 <form
     class="admin-scout-invite-form"
     method="post"
+    data-scout-invite-form
 >
     <input
         type="hidden"
@@ -197,12 +198,52 @@ require __DIR__ . '/_header.php';
         value="invite"
     >
 
-    <label>
-        <span>Member</span>
+    <div
+        class="admin-scout-member-picker"
+        data-scout-member-picker
+    >
+        <label
+            for="scout-invite-member-search"
+        >
+            Member
+        </label>
+
+        <div class="admin-scout-member-search-wrap">
+            <input
+                id="scout-invite-member-search"
+                class="admin-scout-member-search"
+                type="search"
+                placeholder="Search username, email, or user ID"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="scout-invite-member-results"
+                aria-expanded="false"
+                data-scout-member-search
+                hidden
+            >
+
+            <input
+                type="hidden"
+                data-scout-member-id
+            >
+
+            <div
+                id="scout-invite-member-results"
+                class="admin-scout-member-results"
+                role="listbox"
+                data-scout-member-results
+                hidden
+            ></div>
+        </div>
 
         <select
             name="candidate_user_id"
             required
+            data-scout-member-fallback
+            aria-label="Member"
         >
             <option value="">
                 Choose an eligible member
@@ -211,6 +252,11 @@ require __DIR__ . '/_header.php';
             <?php foreach ($eligibleCandidates as $candidate): ?>
                 <option
                     value="<?= (int) $candidate['id'] ?>"
+                    data-user-id="<?= (int) $candidate['id'] ?>"
+                    data-username="<?= moderation_e((string) ($candidate['username'] ?? '')) ?>"
+                    data-email="<?= moderation_e((string) ($candidate['email'] ?? '')) ?>"
+                    data-display-name="<?= moderation_e((string) ($candidate['display_name'] ?? '')) ?>"
+                    data-status="<?= moderation_e((string) ($candidate['scout_status'] ?? '')) ?>"
                 >
                     <?= moderation_e(
                         (string) (
@@ -223,18 +269,27 @@ require __DIR__ . '/_header.php';
                         (@<?= moderation_e((string) $candidate['username']) ?>)
                     <?php endif; ?>
                     <?php if ((string) ($candidate['scout_status'] ?? '') === 'invited'): ?>
-                        Â· resend invitation
+                        &middot; resend invitation
                     <?php elseif ((string) ($candidate['scout_status'] ?? '') === 'declined'): ?>
-                        Â· previously declined
+                        &middot; previously declined
                     <?php endif; ?>
                 </option>
             <?php endforeach; ?>
         </select>
-    </label>
+
+        <p
+            class="admin-scout-member-help"
+            data-scout-member-help
+            hidden
+        >
+            Search eligible members by username, email, or user ID.
+        </p>
+    </div>
 
     <button
         class="admin-button"
         type="submit"
+        data-scout-invite-submit
     >
         <i aria-hidden="true">
             <?= llama_icon('send') ?>
@@ -352,5 +407,10 @@ require __DIR__ . '/_header.php';
         </div>
     <?php endif; ?>
 </section>
+
+<script
+    src="<?= moderation_e($siteUrl . '/js/admin/scouts.js') ?>"
+    defer
+></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
