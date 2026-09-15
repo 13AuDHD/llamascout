@@ -2185,6 +2185,19 @@ $placeReportPhotoHelp =
 <script src="https://llamascout.com/js/add-place-location.js"></script>
 <script src="https://llamascout.com/js/add-place-name.js"></script>
 <script src="https://llamascout.com/js/place-report-form.js"></script>
+
+<script
+    src="https://llamascout.com/js/admin/place-report-save.js?v=<?= rawurlencode(
+        (string) (
+            @filemtime(
+                dirname(__DIR__)
+                . '/js/admin/place-report-save.js'
+            )
+            ?: time()
+        )
+    ) ?>"
+></script>
+
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
 
 <?php
