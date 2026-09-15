@@ -63,7 +63,7 @@
                     );
 
                     button.innerHTML =
-                        '<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>'
+                        '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/alert-triangle.svg\')" aria-hidden="true"></i>'
                         + '<span>Click Again to Delete</span>';
 
                     resetTimer =
