@@ -446,8 +446,15 @@ function admin_place_photo_url(
 
 $notice = '';
 $error = '';
+$action = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $action =
+        (string) (
+            $_POST['place_admin_action']
+            ?? ''
+        );
 
     if (
         !moderation_verify_csrf(
@@ -458,15 +465,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         )
     ) {
         $error =
-            'Your session token expired. Reload and try again.';
+            $action === 'save-report'
+                ? 'Your session token expired. Your Place Report changes are preserved below. Try Save Place Report again.'
+                : 'Your session token expired. Reload and try again.';
     } else {
         try {
-            $action =
-                (string) (
-                    $_POST['place_admin_action']
-                    ?? ''
-                );
-
             if ($action === 'save-report') {
 
                 admin_place_save_shared_report(
@@ -1194,6 +1197,8 @@ $placeReportPhotoHelp =
             <button
                 class="admin-button"
                 type="submit"
+                formnovalidate
+                data-place-report-admin-save
             >
                 <i aria-hidden="true">
                     <?= llama_icon('device-floppy') ?>
@@ -1933,7 +1938,7 @@ $placeReportPhotoHelp =
                                 <strong>
                                     <?= $e(
                                         ($entry['old_status'] ?? 'New')
-                                        . ' â '
+                                        . ' Ã¢ÂÂ '
                                         . ($entry['new_status'] ?? '')
                                     ) ?>
                                 </strong>
