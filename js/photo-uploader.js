@@ -10,6 +10,38 @@
     const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
     const UPLOAD_TIMEOUT_MS = 180000;
 
+    const PHOTO_ICON = `
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M15 8h.01"></path>
+            <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6"></path>
+            <path d="m3 16 5-5c.928-.893 2.072-.893 3 0l5 5"></path>
+            <path d="m14 14 1-1c.928-.893 2.072-.893 3 0l3 3"></path>
+        </svg>
+    `;
+
+    const X_ICON = `
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+        >
+            <path d="m18 6-12 12"></path>
+            <path d="m6 6 12 12"></path>
+        </svg>
+    `;
+
     const htmlEscape = (value) => {
         const node = document.createElement('div');
         node.textContent = String(value ?? '');
@@ -115,11 +147,12 @@
                     >
 
                     <span class="llama-photo-drop-content">
-                        <i
-                            class="llama-icon-mask"
-                            style="--llama-icon-mask:url('https://llamascout.com/assets/icons/photo.svg')"
+                        <span
+                            class="llama-photo-drop-icon"
                             aria-hidden="true"
-                        ></i>
+                        >
+                            ${PHOTO_ICON}
+                        </span>
 
                         <strong>Choose photos</strong>
 
@@ -139,15 +172,12 @@
                         class="llama-photo-working-icon"
                         aria-hidden="true"
                     >
-                        <i
-                            class="llama-icon-mask is-spinning"
-                            style="--llama-icon-mask:url('https://llamascout.com/assets/icons/loader-2.svg')"
-                        ></i>
+                        <span class="llama-photo-spinner"></span>
                     </span>
 
                     <div class="llama-photo-working-copy">
                         <strong data-photo-working-title>
-                            Working on your photoâ¦
+                            Working on your photo...
                         </strong>
 
                         <span data-photo-working-detail>
@@ -301,7 +331,7 @@
 
             workingTitle.textContent =
                 titleText ||
-                'Working on your photoâ¦';
+                'Working on your photo...';
 
             workingDetail.textContent =
                 detailText ||
@@ -506,8 +536,8 @@
                             setWorking(
                                 true,
                                 selectedFiles.length === 1
-                                    ? 'Uploading photoâ¦'
-                                    : `Uploading ${selectedFiles.length} photosâ¦`,
+                                    ? 'Uploading photo...'
+                                    : `Uploading ${selectedFiles.length} photos...`,
                                 'Sending your photo to Llama Scout. Please keep this page open.'
                             );
 
@@ -531,8 +561,8 @@
                         setWorking(
                             true,
                             selectedFiles.length === 1
-                                ? `Uploading photoâ¦ ${percent}%`
-                                : `Uploading photosâ¦ ${percent}%`,
+                                ? `Uploading photo... ${percent}%`
+                                : `Uploading photos... ${percent}%`,
                             'Sending your photo to Llama Scout. Please keep this page open.'
                         );
 
@@ -554,8 +584,8 @@
                         setWorking(
                             true,
                             selectedFiles.length === 1
-                                ? 'Upload complete. Processing photoâ¦'
-                                : 'Upload complete. Processing photosâ¦',
+                                ? 'Upload complete. Processing photo...'
+                                : 'Upload complete. Processing photos...',
                             'Llama Scout is resizing the image and removing location metadata. This can take a moment.'
                         );
                     }
@@ -684,7 +714,7 @@
                     );
 
                     remove.innerHTML =
-                        '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/x.svg\')" aria-hidden="true"></i>';
+                        X_ICON;
 
                     remove.addEventListener(
                         'click',
@@ -699,7 +729,7 @@
                             setBusy(true);
                             setWorking(
                                 true,
-                                'Removing photoâ¦',
+                                'Removing photo...',
                                 'Updating your temporary photo list.'
                             );
                             setStatus('');
@@ -874,8 +904,8 @@
             setWorking(
                 true,
                 selected.length === 1
-                    ? 'Preparing photo uploadâ¦'
-                    : `Preparing ${selected.length} photo uploadsâ¦`,
+                    ? 'Preparing photo upload...'
+                    : `Preparing ${selected.length} photo uploads...`,
                 'Please keep this page open while Llama Scout works on your request.'
             );
 
