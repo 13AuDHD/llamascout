@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
+require_once __DIR__ . '/app/icons.php';
 
 $db = db();
 $currentUser = current_user();
@@ -14,11 +15,68 @@ function public_profile_e(mixed $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function public_profile_local_icon_name(
+    mixed $value,
+    string $fallback = 'award'
+): string {
+    $tokens = preg_split(
+        '/\s+/',
+        strtolower(trim((string) $value))
+    ) ?: [];
+
+    foreach ($tokens as $token) {
+        if (
+            !str_starts_with($token, 'fa-')
+            || in_array(
+                $token,
+                ['fa-solid', 'fa-regular', 'fa-brands'],
+                true
+            )
+        ) {
+            continue;
+        }
+
+        $candidate = substr($token, 3);
+
+        if (
+            $candidate !== ''
+            && is_file(
+                __DIR__
+                . '/assets/icons/'
+                . $candidate
+                . '.svg'
+            )
+        ) {
+            return $candidate;
+        }
+    }
+
+    $plain = strtolower(trim((string) $value));
+
+    if (
+        $plain !== ''
+        && preg_match(
+            '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+            $plain
+        )
+        && is_file(
+            __DIR__
+            . '/assets/icons/'
+            . $plain
+            . '.svg'
+        )
+    ) {
+        return $plain;
+    }
+
+    return $fallback;
+}
+
 if (!$profile) {
     http_response_code(404);
     $pageTitle = 'Profile Not Found | Llama Scout';
     require __DIR__ . '/partials/header.php';
-    echo '<section class="account-empty-state"><i class="fa-solid fa-user-slash" aria-hidden="true"></i><h1>Profile not found</h1><p>That Llama Scout profile does not exist or is no longer available.</p><a class="place-save-button" href="/map.php">Explore the map</a></section>';
+    echo '<section class="account-empty-state"><i aria-hidden="true">' . llama_icon('user-off') . '</i><h1>Profile not found</h1><p>That Llama Scout profile does not exist or is no longer available.</p><a class="place-save-button" href="/map.php">Explore the map</a></section>';
     require __DIR__ . '/partials/footer.php';
     exit;
 }
@@ -32,7 +90,7 @@ if (!$isPublic && !$isOwner && !$isSignedIn) {
     http_response_code(404);
     $pageTitle = 'Profile Not Found | Llama Scout';
     require __DIR__ . '/partials/header.php';
-    echo '<section class="account-empty-state"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><h1>This profile is not public</h1><p>Sign in to view this member\'s basic Llama Scout profile.</p></section>';
+    echo '<section class="account-empty-state"><i aria-hidden="true">' . llama_icon('user-shield') . '</i><h1>This profile is not public</h1><p>Sign in to view this member\'s basic Llama Scout profile.</p></section>';
     require __DIR__ . '/partials/footer.php';
     exit;
 }
@@ -163,15 +221,15 @@ $socials = [];
 if ($showFullProfile) {
     $website = trim((string) ($profile['website_url'] ?? ''));
     if ($website !== '') {
-        $socials[] = ['fa-solid fa-globe', 'Website', $website, parse_url($website, PHP_URL_HOST) ?: 'Website'];
+        $socials[] = ['world', 'Website', $website, parse_url($website, PHP_URL_HOST) ?: 'Website'];
     }
 
     foreach ([
-        ['instagram', 'fa-brands fa-instagram', 'Instagram', 'instagram_url'],
-        ['facebook', 'fa-brands fa-facebook', 'Facebook', 'facebook_url'],
-        ['bluesky', 'fa-solid fa-cloud', 'Bluesky', 'bluesky_url'],
-        ['youtube', 'fa-brands fa-youtube', 'YouTube', 'youtube_url'],
-        ['tiktok', 'fa-brands fa-tiktok', 'TikTok', 'tiktok_url'],
+        ['instagram', 'brand-instagram', 'Instagram', 'instagram_url'],
+        ['facebook', 'brand-facebook', 'Facebook', 'facebook_url'],
+        ['bluesky', 'brand-bluesky', 'Bluesky', 'bluesky_url'],
+        ['youtube', 'brand-youtube', 'YouTube', 'youtube_url'],
+        ['tiktok', 'brand-tiktok', 'TikTok', 'tiktok_url'],
     ] as [$network, $icon, $label, $field]) {
         $handle = trim((string) ($profile[$field] ?? ''));
         $url = llama_profile_social_url($network, $handle);
@@ -182,7 +240,7 @@ if ($showFullProfile) {
 
     $other = trim((string) ($profile['other_social_url'] ?? ''));
     if ($other !== '') {
-        $socials[] = ['fa-solid fa-link', 'Other', $other, parse_url($other, PHP_URL_HOST) ?: 'Link'];
+        $socials[] = ['link', 'Other', $other, parse_url($other, PHP_URL_HOST) ?: 'Link'];
     }
 }
 
@@ -235,10 +293,9 @@ require __DIR__ . '/partials/header.php';
                     <span
                         class="public-community-profile-scout-badge <?= $isMasterScout ? 'is-master' : '' ?>"
                     >
-                        <i
-                            class="fa-solid fa-binoculars"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('binoculars') ?>
+                        </i>
                         <?= public_profile_e(
                             $publicScoutLabel
                         ) ?>
@@ -250,14 +307,14 @@ require __DIR__ . '/partials/header.php';
 
             <?php if ($joinedAt !== ''): ?>
                 <p class="public-community-profile-location">
-                    <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('calendar') ?></i>
                     Joined <?= public_profile_e($joinedAt) ?>
                 </p>
             <?php endif; ?>
 
             <?php if ($showFullProfile && !empty($profile['location'])): ?>
                 <p class="public-community-profile-location">
-                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                     <?= public_profile_e($profile['location']) ?>
                 </p>
             <?php endif; ?>
@@ -269,10 +326,9 @@ require __DIR__ . '/partials/header.php';
                         class="place-save-button"
                         href="<?= public_profile_e($accountUrl . '/profile.php') ?>"
                     >
-                        <i
-                            class="fa-solid fa-pen"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('edit') ?>
+                        </i>
                         Edit profile
                     </a>
                 <?php endif; ?>
@@ -286,10 +342,9 @@ require __DIR__ . '/partials/header.php';
                         data-share-text="<?= public_profile_e('Check out ' . $displayName . ' on Llama Scout.') ?>"
                         data-share-url="<?= public_profile_e($canonicalUrl) ?>"
                     >
-                        <i
-                            class="fa-solid fa-arrow-up-from-bracket"
-                            aria-hidden="true"
-                        ></i>
+                        <i aria-hidden="true">
+                            <?= llama_icon('share') ?>
+                        </i>
                         <span data-share-label>Share</span>
                     </button>
                 <?php endif; ?>
@@ -308,22 +363,22 @@ require __DIR__ . '/partials/header.php';
 
         <div class="public-community-profile-facts profile-stat-grid">
             <div class="public-community-profile-fact">
-                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('star') ?></i>
                 <span>Points earned</span>
                 <strong><?= number_format((int) ($stats['points'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
-                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
                 <span>Places submitted</span>
                 <strong><?= number_format((int) ($stats['places_submitted'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
-                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('edit') ?></i>
                 <span>Places improved</span>
                 <strong><?= number_format((int) ($stats['places_improved'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
-                <i class="fa-solid fa-check" aria-hidden="true"></i>
+                <i aria-hidden="true"><?= llama_icon('check') ?></i>
                 <span>Approved contributions</span>
                 <strong><?= number_format((int) ($stats['approved_contributions'] ?? 0)) ?></strong>
             </div>
@@ -375,12 +430,14 @@ require __DIR__ . '/partials/header.php';
         <?php else: ?>
 
             <span class="profile-earned-badge-fallback">
-                <i
-                    class="fa-solid <?= public_profile_e(
-                        $badge['icon'] ?: 'fa-award'
-                    ) ?>"
-                    aria-hidden="true"
-                ></i>
+                <i aria-hidden="true">
+                    <?= llama_icon(
+                        public_profile_local_icon_name(
+                            $badge['icon'] ?? 'fa-award',
+                            'award'
+                        )
+                    ) ?>
+                </i>
             </span>
 
         <?php endif; ?>
@@ -395,7 +452,7 @@ require __DIR__ . '/partials/header.php';
 
     <?php if (!$showFullProfile): ?>
         <section class="public-community-profile-section profile-private-note">
-            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+            <i aria-hidden="true"><?= llama_icon('lock') ?></i>
             <div>
                 <strong>This member has not made a public profile.</strong>
                 <p>Members can still see the basic account information, badges, and contribution activity shown above.</p>
@@ -412,10 +469,10 @@ require __DIR__ . '/partials/header.php';
 
         <?php
         $facts = array_filter([
-            ['fa-solid fa-people-group', 'Squad / club', $profile['squad'] ?? null],
-            ['fa-solid fa-campground', 'Camping style', $profile['camping_style'] ?? null],
-            ['fa-solid fa-mountain-sun', 'Favorite kind of place', $profile['favorite_places'] ?? null],
-            ['fa-solid fa-music', 'Camping soundtrack', $profile['favorite_camping_music'] ?? null],
+            ['users-group', 'Squad / club', $profile['squad'] ?? null],
+            ['tent', 'Camping style', $profile['camping_style'] ?? null],
+            ['mountain', 'Favorite kind of place', $profile['favorite_places'] ?? null],
+            ['music', 'Camping soundtrack', $profile['favorite_camping_music'] ?? null],
         ], static fn (array $item): bool => is_string($item[2]) && trim($item[2]) !== '');
         ?>
         <?php if ($facts): ?>
@@ -424,7 +481,7 @@ require __DIR__ . '/partials/header.php';
                 <div class="public-community-profile-facts">
                     <?php foreach ($facts as [$icon, $label, $value]): ?>
                         <div class="public-community-profile-fact">
-                            <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon($icon) ?></i>
                             <span><?= public_profile_e($label) ?></span>
                             <strong><?= public_profile_e($value) ?></strong>
                         </div>
@@ -459,7 +516,7 @@ require __DIR__ . '/partials/header.php';
                 <div class="public-community-profile-links">
                     <?php foreach ($socials as [$icon, $label, $url, $text]): ?>
                         <a href="<?= public_profile_e($url) ?>" target="_blank" rel="noopener noreferrer">
-                            <i class="<?= public_profile_e($icon) ?>" aria-hidden="true"></i>
+                            <i aria-hidden="true"><?= llama_icon($icon) ?></i>
                             <span>
                                 <strong><?= public_profile_e($label) ?></strong>
                                 <small><?= public_profile_e($text) ?></small>
