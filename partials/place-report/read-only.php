@@ -32,6 +32,104 @@ $e = static fn (mixed $value): string =>
         'UTF-8'
     );
 
+
+$iconRoot = dirname(__DIR__, 2) . '/assets/icons/';
+
+$localIcon =
+    static function (
+        string $legacyIcon,
+        string $key = ''
+    ) use (
+        $iconRoot
+    ): string {
+        if ($key === 'warning_no_cell_service') {
+            return 'antenna-bars-off';
+        }
+
+        $prefix = 'fa' . '-';
+        $name = trim($legacyIcon);
+
+        if (str_starts_with($name, $prefix)) {
+            $name = substr($name, strlen($prefix));
+        }
+
+        $aliases = [
+            'align-left' => 'file-text',
+            'arrows-left-right' => 'arrows-diff',
+            'arrows-rotate' => 'refresh',
+            'box' => 'package',
+            'box-archive' => 'packages',
+            'building-columns' => 'building-factory',
+            'calendar-day' => 'calendar',
+            'calendar-xmark' => 'calendar-event',
+            'campground' => 'tent',
+            'car' => 'camper',
+            'car-burst' => 'alert-triangle',
+            'car-side' => 'camper',
+            'cart-shopping' => 'shopping-cart',
+            'circle-info' => 'info-circle',
+            'circle-xmark' => 'xbox-x',
+            'city' => 'building-store',
+            'cloud-sun' => 'temperature-sun',
+            'dollar-sign' => 'receipt',
+            'ear-listen' => 'ear',
+            'faucet-drip' => 'droplet',
+            'file-signature' => 'signature',
+            'fire' => 'campfire',
+            'fire-flame-curved' => 'flame',
+            'gas-pump' => 'gas-station',
+            'hill-rockslide' => 'mountain',
+            'hospital' => 'medical-cross',
+            'house-circle-xmark' => 'door-off',
+            'location-crosshairs' => 'current-location',
+            'location-dot' => 'map-pin',
+            'map-location-dot' => 'map-pin',
+            'moon' => 'moon-stars',
+            'motorcycle' => 'motorbike',
+            'mountain-sun' => 'mountain',
+            'note-sticky' => 'file-text',
+            'pen' => 'edit',
+            'person-falling' => 'cliff-jumping',
+            'person-walking' => 'walk',
+            'person-walking-arrow-right' => 'walk',
+            'restroom' => 'toilet-paper',
+            'rotate' => 'refresh',
+            'ruler-horizontal' => 'scale',
+            'satellite-dish' => 'satellite',
+            'scale-balanced' => 'scale',
+            'shield-halved' => 'shield',
+            'signal' => 'antenna-bars-5',
+            'signs-post' => 'sign-right',
+            'smog' => 'at-misty-cloud',
+            'snowflake' => 'at-snowing',
+            'square-parking' => 'parking',
+            'table-picnic' => 'picnic-table',
+            'tent-arrow-turn-left' => 'tent-off',
+            'trailer' => 'caravan',
+            'trash-arrow-up' => 'trash',
+            'trash-can' => 'trash',
+            'triangle-exclamation' => 'alert-triangle',
+            'truck-droplet' => 'caravan',
+            'truck-medical' => 'medical-cross',
+            'truck-monster' => 'camper',
+            'truck-pickup' => 'camper',
+            'utensils' => 'picnic-table',
+            'water' => 'droplet',
+            'tree' => 'trees',
+        ];
+
+        $candidate = $aliases[$name] ?? $name;
+
+        if (
+            $candidate !== ''
+            && is_file($iconRoot . $candidate . '.svg')
+        ) {
+            return $candidate;
+        }
+
+        return 'info-circle';
+    };
+
 $renderValue =
     static function (
         string $key,
@@ -39,7 +137,8 @@ $renderValue =
     ) use (
         $placeReportData,
         $placeReportReadMode,
-        $e
+        $e,
+        $localIcon
     ): void {
         $state =
             llama_place_report_answer_state(
@@ -69,7 +168,7 @@ $renderValue =
                 ],
                 true
             )
-                ? 'fa-utensils'
+                ? 'picnic-table'
                 : llama_place_report_field_icon(
                     $key,
                     $field
@@ -142,9 +241,12 @@ $renderValue =
             <?php else: ?>
                 <?php
                 $icon =
-                    llama_place_report_field_icon(
-                        $key,
-                        $field
+                    $localIcon(
+                        llama_place_report_field_icon(
+                            $key,
+                            $field
+                        ),
+                        $key
                     );
                 ?>
 
@@ -161,10 +263,12 @@ $renderValue =
                     <strong><?= $e($value) ?></strong>
                 </div>
 
-                <i
-                    class="fa-solid <?= $e($icon) ?> scout-report-value-icon"
-                    aria-hidden="true"
-                ></i>
+                <?= llama_icon(
+                    $icon,
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
             <?php endif; ?>
         </div>
         <?php
@@ -204,10 +308,7 @@ if ($warnings):
 ?>
     <section class="scout-report-section scout-report-warning-section">
         <h3>
-            <i
-                class="fa-solid fa-triangle-exclamation"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon('alert-triangle') ?>
             Quick warnings
         </h3>
 
@@ -219,9 +320,12 @@ if ($warnings):
             <?php foreach ($warnings as $key => $field): ?>
                 <?php
                 $warningIcon =
-                    llama_place_report_field_icon(
-                        $key,
-                        $field
+                    $localIcon(
+                        llama_place_report_field_icon(
+                            $key,
+                            $field
+                        ),
+                        $key
                     );
                 ?>
 
@@ -241,10 +345,12 @@ if ($warnings):
                         <strong>Warning</strong>
                     </div>
 
-                    <i
-                        class="fa-solid <?= $e($warningIcon) ?> scout-report-value-icon"
-                        aria-hidden="true"
-                    ></i>
+                    <?= llama_icon(
+                        $warningIcon,
+                        [
+                            'class' => 'scout-report-value-icon',
+                        ]
+                    ) ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -290,12 +396,16 @@ foreach (
         continue;
     }
 ?>
+    <?php
+    $sectionIcon =
+        $localIcon(
+            (string) ($section['icon'] ?? ''),
+            'section:' . (string) $sectionKey
+        );
+    ?>
     <section class="scout-report-section">
         <h3>
-            <i
-                class="fa-solid <?= $e($section['icon']) ?>"
-                aria-hidden="true"
-            ></i>
+            <?= llama_icon($sectionIcon) ?>
 
             <?= $e($section['label']) ?>
         </h3>
@@ -345,12 +455,15 @@ foreach (
                             : 'No';
 
                     $amenityIcon =
-                        $key === 'amenity_picnic_table'
-                            ? 'fa-utensils'
-                            : llama_place_report_field_icon(
-                                $key,
-                                $field
-                            );
+                        $localIcon(
+                            $key === 'amenity_picnic_table'
+                                ? 'utensils'
+                                : llama_place_report_field_icon(
+                                    $key,
+                                    $field
+                                ),
+                            $key
+                        );
 
                     $amenityLabel =
                         $key === 'amenity_fire_ring'
@@ -364,10 +477,12 @@ foreach (
                             <strong><?= $amenityValue ?></strong>
                         </div>
 
-                        <i
-                            class="fa-solid <?= $e($amenityIcon) ?> scout-report-value-icon"
-                            aria-hidden="true"
-                        ></i>
+                        <?= llama_icon(
+                            $amenityIcon,
+                            [
+                                'class' => 'scout-report-value-icon',
+                            ]
+                        ) ?>
                     </div>
                 <?php endforeach; ?>
             </div>
