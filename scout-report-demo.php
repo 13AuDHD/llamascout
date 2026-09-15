@@ -185,11 +185,6 @@ $place = [
         'Demo information: the site is calm after sunset, has moderate '
         . 'daytime activity, low artificial light, and enough natural sound to feel '
         . 'remote without being completely isolated.',
-    'notes' => [
-        ['note' => 'Demo Scout note: the view opens dramatically just before sunset.'],
-        ['note' => 'Demo Scout note: arriving before dark would make the final approach easier to inspect.'],
-        ['note' => 'There is no camping at the real Llama Scout Headquarters... sorry.'],
-    ],
 ];
 
 $details = [
@@ -333,10 +328,15 @@ $experience = [
     'forest_view' => 4, 'night_sky' => 5, 'stargazing' => 5,
     'quiet_evening' => 5, 'overnight_comfort' => 4, 'extended_stay_comfort' => 4,
     'sensory_retreat' => 5, 'remote_work' => 4, 'overall_scenery' => 5,
-    'recommended_overnight_stop' => 5, 'recommended_quiet_evening' => 5,
-    'recommended_extended_stay' => 4, 'recommended_sensory_retreat' => 5,
-    'recommended_stargazing' => 5, 'recommended_remote_work' => 4,
+    'recommended_overnight_stop' => 1, 'recommended_quiet_evening' => 1,
+    'recommended_extended_stay' => 1, 'recommended_sensory_retreat' => 1,
+    'recommended_stargazing' => 1, 'recommended_remote_work' => 1,
     'recommended_solo_travel' => 1,
+    'recommended_families' => 1,
+    'recommended_large_groups' => 0,
+    'scout_note_1' => 'The view opens dramatically just before sunset.',
+    'scout_note_2' => 'Arriving before dark makes the final approach easier to inspect.',
+    'scout_note_3' => 'There is no camping at the real Llama Scout Headquarters... sorry.',
 ];
 
 $amenityLabels = [
