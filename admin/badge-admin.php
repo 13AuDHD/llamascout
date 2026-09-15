@@ -258,10 +258,9 @@ require __DIR__ .
 
 <div class="admin-page-back">
     <a href="/badges.php">
-        <i
-            class="fa-solid fa-arrow-left"
-            aria-hidden="true"
-        ></i>
+        <i aria-hidden="true">
+            <?= llama_icon('arrow-left') ?>
+        </i>
         All badges
     </a>
 </div>
@@ -297,15 +296,13 @@ require __DIR__ .
             alt=""
         >
     <?php else: ?>
-        <i
-            class="fa-solid <?= moderation_e(
-                (string) (
-                    $badge['icon']
-                    ?: 'fa-award'
+        <i aria-hidden="true">
+            <?= llama_icon(
+                admin_badges_icon_name(
+                    $badge['icon'] ?? null
                 )
-            ) ?>"
-            aria-hidden="true"
-        ></i>
+            ) ?>
+        </i>
     <?php endif; ?>
 </div>
 
@@ -514,19 +511,28 @@ require __DIR__ .
         </label>
 
         <label>
-            <span>Font Awesome icon</span>
+            <span>Local SVG icon</span>
             <input
                 type="text"
                 name="icon"
                 maxlength="100"
                 value="<?= moderation_e(
-                    (string) (
-                        $badge['icon']
-                        ?? ''
+                    admin_badges_icon_name(
+                        $badge['icon'] ?? null
                     )
                 ) ?>"
+                list="badge-icon-options"
             >
+            <small>
+                Filename from /assets/icons, without .svg.
+            </small>
         </label>
+
+        <datalist id="badge-icon-options">
+            <?php foreach (admin_badges_icon_options() as $iconOption): ?>
+                <option value="<?= moderation_e($iconOption) ?>"></option>
+            <?php endforeach; ?>
+        </datalist>
 
         <label>
             <span>Source organization</span>
@@ -570,7 +576,7 @@ require __DIR__ .
                 </div>
             <?php else: ?>
                 <div class="admin-badge-current-image is-missing">
-                    <i class="fa-regular fa-image" aria-hidden="true"></i>
+                    <i aria-hidden="true"><?= llama_icon('photo') ?></i>
                     <div>
                         <strong>No badge image found</strong>
                         <small>

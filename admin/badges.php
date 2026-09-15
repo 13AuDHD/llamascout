@@ -364,7 +364,7 @@ require __DIR__ .
 
 <?php if (!$selectedUserBadges): ?>
     <div class="admin-empty-state">
-        <i class="fa-solid fa-award" aria-hidden="true"></i>
+        <i aria-hidden="true"><?= llama_icon('award') ?></i>
         <h3>No badges assigned yet.</h3>
     </div>
 <?php else: ?>
@@ -394,15 +394,13 @@ require __DIR__ .
                 alt=""
             >
         <?php else: ?>
-            <i
-                class="fa-solid <?= moderation_e(
-                    (string) (
-                        $userBadge['icon']
-                        ?: 'fa-award'
+            <i aria-hidden="true">
+                <?= llama_icon(
+                    admin_badges_icon_name(
+                        $userBadge['icon'] ?? null
                     )
-                ) ?>"
-                aria-hidden="true"
-            ></i>
+                ) ?>
+            </i>
         <?php endif; ?>
     </div>
 
@@ -671,15 +669,13 @@ require __DIR__ .
             alt=""
         >
     <?php else: ?>
-        <i
-            class="fa-solid <?= moderation_e(
-                (string) (
-                    $badge['icon']
-                    ?: 'fa-award'
+        <i aria-hidden="true">
+            <?= llama_icon(
+                admin_badges_icon_name(
+                    $badge['icon'] ?? null
                 )
-            ) ?>"
-            aria-hidden="true"
-        ></i>
+            ) ?>
+        </i>
     <?php endif; ?>
 </div>
 
@@ -845,14 +841,24 @@ require __DIR__ .
         </label>
 
         <label>
-            <span>Font Awesome icon</span>
+            <span>Local SVG icon</span>
             <input
                 type="text"
                 name="icon"
                 maxlength="100"
-                placeholder="fa-award"
+                placeholder="award"
+                list="badge-icon-options"
             >
+            <small>
+                Filename from /assets/icons, without .svg.
+            </small>
         </label>
+
+        <datalist id="badge-icon-options">
+            <?php foreach (admin_badges_icon_options() as $iconOption): ?>
+                <option value="<?= moderation_e($iconOption) ?>"></option>
+            <?php endforeach; ?>
+        </datalist>
 
         <label>
             <span>Source organization</span>
