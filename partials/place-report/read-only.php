@@ -92,7 +92,7 @@ $localIcon =
             'person-falling' => 'cliff-jumping',
             'person-walking' => 'walk',
             'person-walking-arrow-right' => 'walk',
-            'restroom' => 'toilet-paper',
+            'restroom' => 'at-toilet',
             'rotate' => 'refresh',
             'ruler-horizontal' => 'scale',
             'satellite-dish' => 'satellite',
@@ -101,7 +101,7 @@ $localIcon =
             'signal' => 'antenna-bars-5',
             'signs-post' => 'sign-right',
             'smog' => 'at-misty-cloud',
-            'snowflake' => 'at-snowing',
+            'snowflake' => 'snowflake',
             'square-parking' => 'parking',
             'table-picnic' => 'picnic-table',
             'tent-arrow-turn-left' => 'tent-off',
@@ -111,10 +111,10 @@ $localIcon =
             'triangle-exclamation' => 'alert-triangle',
             'truck-droplet' => 'caravan',
             'truck-medical' => 'medical-cross',
-            'truck-monster' => 'camper',
-            'truck-pickup' => 'camper',
+            'truck-monster' => 'car-4wd',
+            'truck-pickup' => 'car-suv',
             'utensils' => 'picnic-table',
-            'water' => 'droplet',
+            'water' => 'ripple',
             'tree' => 'trees',
         ];
 
@@ -159,29 +159,13 @@ $renderValue =
         $type =
             (string) $field['type'];
 
-        $icon =
-            in_array(
-                $key,
-                [
-                    'amenity_picnic_table',
-                    'accessible_picnic_table',
-                ],
-                true
-            )
-                ? 'picnic-table'
-                : llama_place_report_field_icon(
-                    $key,
-                    $field
-                );
-
-        $isAnsweredRating =
-            $type === 'rating'
-            && $state === 'answered';
+        $isRating =
+            $type === 'rating';
 
         $class =
             'scout-report-item '
             . (
-                $isAnsweredRating
+                $isRating
                     ? 'scout-report-rating-item'
                     : 'scout-report-value-item'
             )
@@ -204,7 +188,7 @@ $renderValue =
 
         <div class="<?= $e($class) ?>">
 
-            <?php if ($isAnsweredRating): ?>
+            <?php if ($isRating): ?>
                 <div class="scout-rating-content">
                     <span>
                         <?= $e(
@@ -220,15 +204,17 @@ $renderValue =
 
                 <?php
                 $rating =
-                    (int) llama_place_report_get_path(
-                        $placeReportData,
-                        (string) $field['storage']
-                    );
+                    $state === 'answered'
+                        ? (int) llama_place_report_get_path(
+                            $placeReportData,
+                            (string) $field['storage']
+                        )
+                        : 0;
                 ?>
 
                 <div
                     class="scout-rating-dots"
-                    aria-label="<?= $rating ?> out of 5"
+                    aria-label="<?= $state === 'answered' ? $rating . ' out of 5' : $e((string) $value) ?>"
                 >
                     <?php for ($i = 1; $i <= 5; $i++): ?>
                         <span
@@ -456,12 +442,10 @@ foreach (
 
                     $amenityIcon =
                         $localIcon(
-                            $key === 'amenity_picnic_table'
-                                ? 'utensils'
-                                : llama_place_report_field_icon(
-                                    $key,
-                                    $field
-                                ),
+                            llama_place_report_field_icon(
+                                $key,
+                                $field
+                            ),
                             $key
                         );
 
