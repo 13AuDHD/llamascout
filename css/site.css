@@ -181,6 +181,48 @@ form {
     vertical-align: -.125em;
 }
 
+/*
+ * Local SVGs inserted by JavaScript cannot inherit currentColor through an
+ * external <img>. Render them as masks instead so the same files follow the
+ * surrounding text color in both light and dark themes.
+ */
+.llama-icon-mask {
+    width: 1em;
+    height: 1em;
+
+    display: inline-block;
+    flex: 0 0 auto;
+
+    background: currentColor;
+
+    -webkit-mask-image: var(--llama-icon-mask);
+    mask-image: var(--llama-icon-mask);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+
+    vertical-align: -.125em;
+}
+
+.llama-icon-mask.is-spinning {
+    animation: llama-icon-mask-spin .85s linear infinite;
+}
+
+@keyframes llama-icon-mask-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-icon-mask.is-spinning {
+        animation: none;
+    }
+}
+
 .eyebrow {
     margin: 0 0 8px;
 
