@@ -314,13 +314,15 @@ $rules = [
     'campfire_allowed' => 1,
     'pack_it_in_pack_it_out' => 1,
     'existing_sites_encouraged' => 1,
-    'nearest_town' => 'Durango, CO',
+    'residential_use_prohibited' => 1,
+    'nearest_town' => 'About 1 mile',
     'nearest_fuel' => 'About 3 miles',
     'nearest_grocery' => 'About 2 miles',
     'nearest_water' => 'About 2 miles',
     'nearest_toilet' => 'About 1 mile',
     'nearest_hospital' => 'About 5 miles',
-    'current_fire_restrictions_url' => '',
+    'current_fire_restrictions_url' =>
+        'https://www.lpcgov.org/departments/emergency_management/fire_restrictions.php',
 ];
 
 $experience = [
