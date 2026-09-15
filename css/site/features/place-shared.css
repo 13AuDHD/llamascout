@@ -323,7 +323,7 @@
     background: var(--surface);
 }
 
-.place-weather-day > i {
+.place-weather-day > .place-weather-svg-icon {
     margin: 4px 0;
 
     font-size: 1.6rem;
@@ -350,6 +350,45 @@
 
 .place-weather-day-detail {
     display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.place-weather-svg-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    background-color: currentColor;
+    -webkit-mask-image: var(--place-weather-icon);
+    mask-image: var(--place-weather-icon);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    vertical-align: -0.125em;
+}
+
+.place-weather-condition-icon .place-weather-svg-icon {
+    width: 1em;
+    height: 1em;
+}
+
+.place-weather-day > .place-weather-svg-icon {
+    width: 1.6rem;
+    height: 1.6rem;
+}
+
+.place-weather-day-detail .place-weather-svg-icon,
+.place-weather-fact-label .place-weather-svg-icon {
+    width: 1em;
+    height: 1em;
+}
+
+.place-weather-fact-label {
+    display: inline-flex;
     align-items: center;
     gap: 5px;
 }
