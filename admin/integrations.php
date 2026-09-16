@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/printful.php';
 require_once dirname(__DIR__) . '/app/printful-mapping.php';
+require_once dirname(__DIR__) . '/app/printful-webhook-security.php';
 require_once dirname(__DIR__) . '/app/printify.php';
 require_once dirname(__DIR__) . '/app/printify-mapping.php';
 require_once dirname(__DIR__) . '/app/printify-webhook-security.php';
@@ -111,6 +112,8 @@ $printfulCatalog = [
     'variants_by_sku' => [],
 ];
 $printfulDiagnostics = [];
+$printfulWebhookActive = false;
+$printfulWebhookError = null;
 
 if ($printfulConfigured) {
     try {
@@ -138,6 +141,23 @@ if ($printfulConfigured) {
                 $exception,
                 'admin.printful_integration'
             );
+        }
+    }
+
+    if ($printfulError === null) {
+        try {
+            $printfulWebhookActive =
+                llama_printful_secure_webhook_active();
+        } catch (Throwable $exception) {
+            $printfulWebhookError =
+                $exception->getMessage();
+
+            if (function_exists('llama_log_caught_exception')) {
+                llama_log_caught_exception(
+                    $exception,
+                    'admin.printful_webhook_status'
+                );
+            }
         }
     }
 }
@@ -425,7 +445,7 @@ require __DIR__ . '/_header.php';
 
 <section class="admin-integration-grid">
 
-<section class="admin-panel admin-integration-card">
+<section class="admin-panel admin-integration-card admin-integration-card--provider">
 
 <header class="admin-panel-header">
     <div>
@@ -574,8 +594,24 @@ require __DIR__ . '/_header.php';
     && !$printfulError
 ): ?>
 
-<div class="admin-integration-catalog-action">
+<div class="admin-integration-health">
+    <div>
+        <span>Mapped</span>
+        <strong><?= number_format($mappedCount) ?></strong>
+    </div>
 
+    <div>
+        <span>Exact SKU matches</span>
+        <strong><?= number_format($suggestedCount) ?></strong>
+    </div>
+
+    <div>
+        <span>Needs attention</span>
+        <strong><?= number_format($problemCount) ?></strong>
+    </div>
+</div>
+
+<div class="admin-integration-catalog-action">
     <a
         class="admin-button"
         href="/printful.php"
@@ -583,10 +619,61 @@ require __DIR__ . '/_header.php';
         <i aria-hidden="true">
             <?= llama_icon('package') ?>
         </i>
-
         Open Printful Catalog
     </a>
 
+    <a
+        class="admin-button"
+        href="/printful-webhook.php"
+    >
+        <i aria-hidden="true">
+            <?= llama_icon('shield') ?>
+        </i>
+        <?= $printfulWebhookActive
+            ? 'Webhook installed'
+            : ($printfulWebhookError ? 'Webhook needs access' : 'Configure webhook') ?>
+    </a>
+
+    <a
+        class="admin-button"
+        href="/printful-orders.php"
+    >
+        <i aria-hidden="true">
+            <?= llama_icon('truck-delivery') ?>
+        </i>
+        Printful Orders
+    </a>
+</div>
+
+<?php if ($printfulWebhookError): ?>
+<div class="admin-user-notice is-warning admin-integration-inline-notice">
+    <strong>Webhook access is not ready.</strong>
+    <p><?= moderation_e($printfulWebhookError) ?></p>
+</div>
+<?php endif; ?>
+
+<?php if ($suggestedCount > 0): ?>
+<form class="admin-integration-mapping-action" method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="integration_action" value="apply-printful-exact-mappings">
+    <div>
+        <strong>Safe exact Printful matches available</strong>
+        <span>
+            One and only one Printful variant has the same SKU for
+            <?= number_format($suggestedCount) ?> assigned local variant<?= $suggestedCount === 1 ? '' : 's' ?>.
+        </span>
+    </div>
+    <button class="admin-button" type="submit">Apply exact Printful mappings</button>
+</form>
+<?php endif; ?>
+
+<div class="admin-user-notice is-warning admin-integration-inline-notice">
+    <strong>Testing safeguard</strong>
+    <p>
+        <?= llama_printful_auto_confirm()
+            ? 'Auto confirm is enabled. New Printful orders can be submitted to production automatically.'
+            : 'Auto confirm is disabled. New Printful orders stay in Draft until you explicitly confirm them.' ?>
+    </p>
 </div>
 
 <?php endif; ?>
@@ -594,37 +681,7 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<section class="admin-panel admin-integration-card">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Shipping</p>
-        <h2>EasyPost</h2>
-    </div>
-
-    <span class="admin-status-pill">
-        Pending
-    </span>
-</header>
-
-<div class="admin-empty-state">
-    <i aria-hidden="true">
-        <?= llama_icon('truck-delivery') ?>
-    </i>
-
-    <h3>Approval pending.</h3>
-
-    <p>
-        Llama Scout Fulfillment is ready for
-        rate shopping and label purchasing once
-        EasyPost access is available.
-    </p>
-</div>
-
-</section>
-
-
-<section class="admin-panel admin-integration-card">
+<section class="admin-panel admin-integration-card admin-integration-card--provider">
 
 <header class="admin-panel-header">
     <div>
@@ -713,7 +770,7 @@ require __DIR__ . '/_header.php';
 </div>
 
 <?php if ($printifyWebhookError): ?>
-<div class="admin-user-notice is-warning">
+<div class="admin-user-notice is-warning admin-integration-inline-notice">
     <strong>Webhook access is not ready.</strong>
     <p><?= moderation_e($printifyWebhookError) ?></p>
 </div>
@@ -734,7 +791,7 @@ require __DIR__ . '/_header.php';
 </form>
 <?php endif; ?>
 
-<div class="admin-user-notice is-warning">
+<div class="admin-user-notice is-warning admin-integration-inline-notice">
     <strong>Testing safeguard</strong>
     <p>
         Keep Printify Order approval set to Manual until live fulfillment is ready.
@@ -744,6 +801,36 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 </section>
+
+<section class="admin-panel admin-integration-card admin-integration-card--shipping">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Shipping</p>
+        <h2>EasyPost</h2>
+    </div>
+
+    <span class="admin-status-pill">
+        Pending
+    </span>
+</header>
+
+<div class="admin-empty-state">
+    <i aria-hidden="true">
+        <?= llama_icon('truck-delivery') ?>
+    </i>
+
+    <h3>Approval pending.</h3>
+
+    <p>
+        Llama Scout Fulfillment is ready for
+        rate shopping and label purchasing once
+        EasyPost access is available.
+    </p>
+</div>
+
+</section>
+
 
 </section>
 
