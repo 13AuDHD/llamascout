@@ -75,6 +75,50 @@ function username_policy_leet(
 }
 
 
+/*
+ * Preserve underscores for terms that are unsafe to match as arbitrary
+ * substrings. This lets the policy distinguish a real component such as
+ * "go_to_hell" from harmless words such as "shellfish".
+ */
+function username_policy_component_form(
+    string $username,
+    bool $leet = false
+): string {
+
+    $value =
+        strtolower(
+            trim($username)
+        );
+
+    $value =
+        preg_replace(
+            '/[^a-z0-9_]/',
+            '',
+            $value
+        );
+
+    if (!is_string($value)) {
+        return '';
+    }
+
+    if (!$leet) {
+        return $value;
+    }
+
+    return strtr(
+        $value,
+        [
+            '0' => 'o',
+            '1' => 'i',
+            '3' => 'e',
+            '4' => 'a',
+            '5' => 's',
+            '7' => 't',
+        ]
+    );
+}
+
+
 /* =========================================================
    RESERVED EXACT NAMES
    ========================================================= */
@@ -190,12 +234,9 @@ function username_policy_brand_terms(): array
 function username_policy_blocked_terms(): array
 {
     /*
-     * These are checked against a normalized username.
-     *
-     * Avoid very short fragments that commonly appear
-     * inside harmless words. The goal is to catch obvious
-     * abusive usernames without creating tons of false
-     * positives.
+     * Strong terms that are uncommon inside innocent words.
+     * These may safely be checked as substrings after separator
+     * removal and leetspeak normalization.
      */
 
     return [
@@ -218,11 +259,70 @@ function username_policy_blocked_terms(): array
         'nazi',
         'hitler',
         'kkk',
-        'hell',
         'lgbqt',
+    ];
+}
+
+
+function username_policy_ambiguous_terms(): array
+{
+    /*
+     * These strings regularly appear inside harmless words:
+     *
+     *   shellfish / seashell
+     *   Essex / Sussex
+     *   analysis / analyst / canal
+     *
+     * Match them only when they form a distinct username component
+     * or are separated from surrounding letters by digits/underscores.
+     */
+
+    return [
+        'hell',
         'anal',
         'sex',
     ];
+}
+
+
+function username_policy_contains_ambiguous_term(
+    string $username,
+    string $term
+): bool {
+
+    $pattern =
+        '/(?<![a-z])'
+        . preg_quote(
+            $term,
+            '/'
+        )
+        . '(?![a-z])/';
+
+    foreach (
+        [
+            username_policy_component_form(
+                $username,
+                false
+            ),
+            username_policy_component_form(
+                $username,
+                true
+            ),
+        ]
+        as $form
+    ) {
+        if (
+            $form !== ''
+            && preg_match(
+                $pattern,
+                $form
+            ) === 1
+        ) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -379,7 +479,7 @@ function username_policy_check(
 
 
     /*
-     * Block obvious inappropriate terms.
+     * Block strong inappropriate fragments.
      */
 
     foreach (
@@ -395,6 +495,34 @@ function username_policy_check(
             ||
             str_contains(
                 $leet,
+                $term
+            )
+        ) {
+
+            return [
+                'allowed' => false,
+                'reason' =>
+                    'That username is not available. Please choose another username.',
+                'code' => 'inappropriate',
+            ];
+        }
+    }
+
+
+    /*
+     * Block ambiguous terms only when they stand apart from surrounding
+     * letters. This prevents false positives in ordinary words while still
+     * catching forms such as go_to_hell, sex_69, h3ll_666, and 4nal_lover.
+     */
+
+    foreach (
+        username_policy_ambiguous_terms()
+        as $term
+    ) {
+
+        if (
+            username_policy_contains_ambiguous_term(
+                $username,
                 $term
             )
         ) {
