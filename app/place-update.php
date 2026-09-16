@@ -2681,7 +2681,8 @@ function llama_place_update_approve(
     PDO $db,
     int $updateId,
     int $reviewedBy,
-    string $reviewNotes
+    string $reviewNotes,
+    array &$copiedPhotoPaths = []
 ): int {
     if (
         !$db->inTransaction()
@@ -2956,14 +2957,15 @@ function llama_place_update_approve(
     );
 
 
-    moderation_attach_place_photos(
+    moderation_attach_place_photos_transactional(
         $db,
         $placeId,
         (int) $update['user_id'],
         $photos,
         '/uploads/place-updates/'
         . $updateId
-        . '/'
+        . '/',
+        $copiedPhotoPaths
     );
 
 
@@ -3056,11 +3058,13 @@ function llama_place_update_approve(
     ]);
 
 
-    moderation_remove_tree(
-        dirname(__DIR__)
-        . '/uploads/place-updates/'
-        . $updateId
-    );
+    /*
+     * Do not remove the contributor's update photo folder here.
+     *
+     * The caller still has moderation history and Admin audit work
+     * to complete before the outer transaction is committed.
+     * Source files are removed only after that commit succeeds.
+     */
 
 
     return $contributionId;
