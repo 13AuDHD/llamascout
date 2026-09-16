@@ -1,5 +1,5 @@
 <?php
- 
+
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/icons.php';
@@ -574,7 +574,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('printful-orders', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/printful-orders.php') ?>"
         >
-            <i  aria-hidden="true"><?= llama_icon('truck-delivery') ?></i>
+            <i  aria-hidden="true"><?= llama_icon('brand-printful') ?></i>
             <span>Printful Orders</span>
         </a>
 
@@ -582,7 +582,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('printify-orders', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/printify-orders.php') ?>"
         >
-            <i aria-hidden="true"><?= llama_icon('packages') ?></i>
+            <i aria-hidden="true"><?= llama_icon('brand-printify') ?></i>
             <span>Printify Orders</span>
         </a>
 
