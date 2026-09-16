@@ -652,7 +652,7 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="scout-basecamp-period-actions">
     <a
         class="scout-basecamp-button"
-        href="/add-place.php"
+        href="https://llamascout.com/add-place.php"
     >
         <i
             aria-hidden="true"
@@ -1002,7 +1002,7 @@ require dirname(__DIR__) . '/partials/header.php';
 </header>
 
 <nav class="scout-basecamp-links">
-    <a href="/add-place.php">
+    <a href="https://llamascout.com/add-place.php">
         <i aria-hidden="true"><?= llama_icon('plus') ?></i>
         Add a Place
     </a>
@@ -1012,12 +1012,12 @@ require dirname(__DIR__) . '/partials/header.php';
         My account
     </a>
 
-    <a href="/points.php">
+    <a href="/#account-overview-heading">
         <i aria-hidden="true"><?= llama_icon('star') ?></i>
-        Points history
+        Contribution points
     </a>
 
-    <a href="/badges.php">
+    <a href="/#badges-heading">
         <i aria-hidden="true"><?= llama_icon('award') ?></i>
         My badges
     </a>
