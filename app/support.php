@@ -20,6 +20,118 @@ function llama_support_categories(): array
 }
 
 
+function llama_support_contact_methods(): array
+{
+    return [
+        'email' => 'Email',
+        'text' => 'Text',
+        'phone' => 'Phone Call',
+    ];
+}
+
+
+function llama_support_normalize_phone(
+    string $phone
+): ?string {
+    $phone = trim($phone);
+
+    if ($phone === '') {
+        return null;
+    }
+
+    $digits =
+        preg_replace(
+            '/\D+/',
+            '',
+            $phone
+        )
+        ?? '';
+
+    if (strlen($digits) === 10) {
+        return '+1' . $digits;
+    }
+
+    if (
+        strlen($digits) === 11
+        && str_starts_with(
+            $digits,
+            '1'
+        )
+    ) {
+        return '+' . $digits;
+    }
+
+    if (
+        str_starts_with(
+            $phone,
+            '+'
+        )
+        && strlen($digits) >= 7
+        && strlen($digits) <= 15
+    ) {
+        return '+' . $digits;
+    }
+
+    throw new InvalidArgumentException(
+        'Enter a complete phone number. US numbers may be entered with or without +1. International numbers must include the country code.'
+    );
+}
+
+
+function llama_support_format_phone(
+    ?string $phone
+): string {
+    $phone =
+        trim(
+            (string) $phone
+        );
+
+    if ($phone === '') {
+        return '';
+    }
+
+    $digits =
+        preg_replace(
+            '/\D+/',
+            '',
+            $phone
+        )
+        ?? '';
+
+    if (
+        strlen($digits) === 11
+        && str_starts_with(
+            $digits,
+            '1'
+        )
+    ) {
+        return sprintf(
+            '(%s) %s-%s',
+            substr($digits, 1, 3),
+            substr($digits, 4, 3),
+            substr($digits, 7, 4)
+        );
+    }
+
+    return $phone;
+}
+
+
+function llama_support_contact_method_label(
+    ?string $method
+): string {
+    $method =
+        trim(
+            (string) $method
+        );
+
+    return llama_support_contact_methods()[
+        $method
+    ]
+        ?? 'Email';
+}
+
+
 function llama_support_csrf_token(): string
 {
     if (
@@ -165,6 +277,8 @@ function llama_support_create(
     ?array $user = null
 ): int {
     $categories = llama_support_categories();
+    $contactMethods =
+        llama_support_contact_methods();
 
     $name = trim(
         (string) ($data['name'] ?? '')
@@ -175,6 +289,22 @@ function llama_support_create(
             (string) ($data['email'] ?? '')
         )
     );
+
+    $phoneNumber =
+        llama_support_normalize_phone(
+            (string) (
+                $data['phone_number']
+                ?? ''
+            )
+        );
+
+    $preferredContact =
+        trim(
+            (string) (
+                $data['preferred_contact']
+                ?? 'email'
+            )
+        );
 
     $category = trim(
         (string) ($data['category'] ?? 'general')
@@ -212,6 +342,34 @@ function llama_support_create(
     ) {
         throw new InvalidArgumentException(
             'Enter a valid email address.'
+        );
+    }
+
+    if (
+        !isset(
+            $contactMethods[
+                $preferredContact
+            ]
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid preferred contact method.'
+        );
+    }
+
+    if (
+        in_array(
+            $preferredContact,
+            [
+                'text',
+                'phone',
+            ],
+            true
+        )
+        && $phoneNumber === null
+    ) {
+        throw new InvalidArgumentException(
+            'Enter a phone number if you prefer a text or phone call.'
         );
     }
 
@@ -295,6 +453,8 @@ function llama_support_create(
                     user_id,
                     name,
                     email,
+                    phone_number,
+                    preferred_contact,
                     category,
                     subject,
                     message,
@@ -307,7 +467,7 @@ function llama_support_create(
                  )
                  VALUES
                  (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     "open", ?,
                     UTC_TIMESTAMP(),
                     UTC_TIMESTAMP()
@@ -319,6 +479,8 @@ function llama_support_create(
                 $userId,
                 $name,
                 $email,
+                $phoneNumber,
+                $preferredContact,
                 $category,
                 $subject,
                 $message,
@@ -461,6 +623,14 @@ function llama_support_send_notifications(
         ]
         ?? 'Support';
 
+    $preferredContactLabel =
+        llama_support_contact_method_label(
+            (string) (
+                $request['preferred_contact']
+                ?? 'email'
+            )
+        );
+
     $adminEmail =
         llama_support_admin_email();
 
@@ -477,7 +647,17 @@ function llama_support_send_notifications(
             . "Ticket: #" . $ticketNumber . "\n"
             . "Category: " . $categoryLabel . "\n"
             . "Name: " . (string) $request['name'] . "\n"
-            . "Email: " . (string) $request['email'] . "\n";
+            . "Email: " . (string) $request['email'] . "\n"
+            . "Preferred contact: " . $preferredContactLabel . "\n";
+
+        if (!empty($request['phone_number'])) {
+            $adminText .=
+                "Phone: "
+                . llama_support_format_phone(
+                    (string) $request['phone_number']
+                )
+                . "\n";
+        }
 
         if (!empty($request['order_number'])) {
             $adminText .=
@@ -566,6 +746,9 @@ function llama_support_send_notifications(
             . "\n"
             . "Subject: "
             . (string) $request['subject']
+            . "\n"
+            . "Preferred contact: "
+            . $preferredContactLabel
             . "\n";
 
         if (!empty($request['error_reference'])) {
