@@ -2518,7 +2518,7 @@ $placeReportPhotoHelp =
                                 <strong>
                                     <?= $e(
                                         ($entry['old_status'] ?? 'New')
-                                        . ' Ã¢ÂÂ '
+                                        . ' -> '
                                         . ($entry['new_status'] ?? '')
                                     ) ?>
                                 </strong>
