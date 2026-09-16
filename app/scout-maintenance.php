@@ -60,7 +60,7 @@ function llama_ensure_scout_extensions_table(PDO $db): void {
 function llama_scout_maintenance_is_due(PDO $db): bool {
     llama_ensure_maintenance_table($db);
     llama_ensure_scout_extensions_table($db);
-    llama_ensure_scout_policy_table($db);
+    llama_require_scout_policy_table($db);
 
     $interval = llama_scout_policy_int(
         $db,
