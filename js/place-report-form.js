@@ -969,14 +969,12 @@
 
         /*
          * =====================================================
-         * ADMIN BACKGROUND SAVE
+         * SAVE / RECOVERY COORDINATION
          * =====================================================
          *
-         * Admin Place Reports save through fetch() so the editor
-         * never leaves or reloads the page. The existing server
-         * POST path remains authoritative. A successful server
-         * redirect to ?saved=report is treated as confirmation
-         * that the database transaction completed.
+         * js/admin/place-report-save.js is the only live Admin
+         * AJAX save implementation. This shared script owns only
+         * browser recovery and the save-success handshake.
          */
 
         const isAdminReport =
@@ -984,127 +982,6 @@
             && form.querySelector(
                 '[name="place_admin_action"][value="save-report"]'
             );
-
-        const adminSaveButton =
-            isAdminReport
-                ? form.querySelector(
-                    '[data-place-report-admin-save]'
-                )
-                : null;
-
-        let adminSaveButtonHtml = '';
-        let adminSaveButtonStyle = '';
-        let adminStateTimer = 0;
-
-        const setAdminButtonState = (
-            state,
-            label = ''
-        ) => {
-            if (!adminSaveButton) {
-                return;
-            }
-
-            window.clearTimeout(
-                adminStateTimer
-            );
-
-            adminSaveButton.disabled =
-                state === 'saving';
-
-            adminSaveButton.style.cssText =
-                adminSaveButtonStyle;
-
-            if (state === 'saving') {
-                adminSaveButton.style.borderColor =
-                    '#c94a4a';
-
-                adminSaveButton.style.background =
-                    'rgba(201, 74, 74, 0.18)';
-
-                adminSaveButton.style.color =
-                    '#e26a6a';
-
-                adminSaveButton.innerHTML = `
-                    <span
-                        aria-hidden="true"
-                        style="
-                            width:14px;
-                            height:14px;
-                            display:inline-block;
-                            box-sizing:border-box;
-                            border:2px solid currentColor;
-                            border-right-color:transparent;
-                            border-radius:50%;
-                            animation:llama-place-report-save-spin .75s linear infinite;
-                        "
-                    ></span>
-                    Saving...
-                `;
-
-                return;
-            }
-
-            if (state === 'saved') {
-                adminSaveButton.style.borderColor =
-                    '#2e9d58';
-
-                adminSaveButton.style.background =
-                    'rgba(46, 157, 88, 0.18)';
-
-                adminSaveButton.style.color =
-                    '#55b978';
-
-                adminSaveButton.innerHTML =
-                    'Saved';
-
-                adminStateTimer =
-                    window.setTimeout(
-                        () => {
-                            setAdminButtonState(
-                                'idle'
-                            );
-                        },
-                        2200
-                    );
-
-                return;
-            }
-
-            if (state === 'error') {
-                adminSaveButton.style.borderColor =
-                    '#d2a62d';
-
-                adminSaveButton.style.background =
-                    'rgba(210, 166, 45, 0.18)';
-
-                adminSaveButton.style.color =
-                    '#dfb94f';
-
-                adminSaveButton.innerHTML =
-                    label || 'Not saved';
-
-                adminStateTimer =
-                    window.setTimeout(
-                        () => {
-                            setAdminButtonState(
-                                'idle'
-                            );
-                        },
-                        5000
-                    );
-
-                return;
-            }
-
-            adminSaveButton.disabled =
-                false;
-
-            adminSaveButton.style.cssText =
-                adminSaveButtonStyle;
-
-            adminSaveButton.innerHTML =
-                adminSaveButtonHtml;
-        };
 
         const saveRecoveryImmediately = () => {
             const data =
@@ -1146,277 +1023,20 @@
             return current;
         };
 
-        const extractAdminSaveError = (
-            html
-        ) => {
-            if (
-                typeof html !== 'string'
-                || html.trim() === ''
-            ) {
-                return '';
-            }
-
-            try {
-                const documentCopy =
-                    new DOMParser()
-                        .parseFromString(
-                            html,
-                            'text/html'
-                        );
-
-                const errorNode =
-                    documentCopy.querySelector(
-                        '.admin-user-notice.is-error'
-                    );
-
-                if (errorNode) {
-                    return String(
-                        errorNode.textContent
-                        || ''
-                    ).trim();
-                }
-            } catch (_) {
-            }
-
-            return '';
-        };
-
-        const updateAdminCsrfFromResponse = (
-            html
-        ) => {
-            if (
-                typeof html !== 'string'
-                || html.trim() === ''
-            ) {
-                return;
-            }
-
-            try {
-                const documentCopy =
-                    new DOMParser()
-                        .parseFromString(
-                            html,
-                            'text/html'
-                        );
-
-                const freshToken =
-                    documentCopy.querySelector(
-                        '#place-report input[name="csrf_token"]'
-                    )?.value;
-
-                const currentToken =
-                    form.querySelector(
-                        'input[name="csrf_token"]'
-                    );
-
-                if (
-                    currentToken
-                    && typeof freshToken
-                        === 'string'
-                    && freshToken !== ''
-                ) {
-                    currentToken.value =
-                        freshToken;
-                }
-            } catch (_) {
-            }
-        };
-
-        const saveAdminReport = async () => {
-            if (
-                !isAdminReport
-                || !adminSaveButton
-                || submitting
-            ) {
-                return;
-            }
-
-            submitting = true;
-
-            window.clearTimeout(
-                savingTimer
-            );
-
-            const submittedState =
-                saveRecoveryImmediately();
-
-            setAdminButtonState(
-                'saving'
-            );
-
-            setStatus(
-                'Saving Place Report to the database...'
-            );
-
-            const body =
-                new FormData(form);
-
-            const controller =
-                new AbortController();
-
-            const timeout =
-                window.setTimeout(
-                    () => {
-                        controller.abort();
-                    },
-                    45000
-                );
-
-            try {
-                const response =
-                    await fetch(
-                        form.action
-                        || window.location.href,
-                        {
-                            method: 'POST',
-                            body,
-                            credentials:
-                                'same-origin',
-                            cache:
-                                'no-store',
-                            redirect:
-                                'follow',
-                            headers: {
-                                Accept:
-                                    'text/html',
-                                'X-Llama-Background-Save':
-                                    'place-report',
-                            },
-                            signal:
-                                controller.signal,
-                        }
-                    );
-
-                const html =
-                    await response.text();
-
-                updateAdminCsrfFromResponse(
-                    html
-                );
-
-                const responseUrl =
-                    new URL(
-                        response.url,
-                        window.location.href
-                    );
-
-                const serverConfirmed =
-                    response.ok
-                    && (
-                        responseUrl
-                            .searchParams
-                            .get('saved')
-                            === 'report'
-                        || html.includes(
-                            'Place Report saved.'
-                        )
-                    );
-
-                if (!serverConfirmed) {
-                    const serverMessage =
-                        extractAdminSaveError(
-                            html
-                        );
-
-                    throw new Error(
-                        serverMessage
-                        || (
-                            response.ok
-                                ? 'The server did not confirm that the Place Report was saved.'
-                                : `The server returned HTTP ${response.status}.`
-                        )
-                    );
-                }
-
-                /*
-                 * The server has confirmed the save. The exact
-                 * submitted form state is now our new clean
-                 * baseline. Future browser recovery backups only
-                 * track edits made after this point.
-                 */
-                baseline =
-                    submittedState;
-
-                dirty = false;
-
-                removeRecovery();
-
-                setAdminButtonState(
-                    'saved'
-                );
-
-                setStatus(
-                    'Saved to the database at '
-                    + new Date()
-                        .toLocaleTimeString(
-                            [],
-                            {
-                                hour:
-                                    'numeric',
-                                minute:
-                                    '2-digit',
-                            }
-                        )
-                    + '.'
-                );
-
-            } catch (error) {
-                const message =
-                    error?.name
-                        === 'AbortError'
-                        ? 'The save request took too long. Your unsaved changes are still backed up on this device.'
-                        : (
-                            error?.message
-                            || 'The Place Report was not saved. Your unsaved changes are still backed up on this device.'
-                        );
-
-                dirty = true;
-
-                setAdminButtonState(
-                    'error',
-                    'Not saved'
-                );
-
-                setStatus(
-                    message,
-                    true
-                );
-
-            } finally {
-                window.clearTimeout(
-                    timeout
-                );
-
-                submitting = false;
-            }
-        };
-
-        if (
-            isAdminReport
-            && adminSaveButton
-        ) {
+        if (isAdminReport) {
             /*
-             * Native validation on a very long form can prevent a
-             * submit because of an off-screen field. Server-side
-             * validation remains authoritative for background saves.
+             * The dedicated Admin saver emits this immediately
+             * before it builds FormData. Force the latest browser
+             * recovery copy to disk first, including photo staging.
              */
-            form.noValidate = true;
-
-            adminSaveButtonHtml =
-                adminSaveButton.innerHTML;
-
-            adminSaveButtonStyle =
-                adminSaveButton.getAttribute(
-                    'style'
-                )
-                || '';
-
             form.addEventListener(
-                'submit',
-                (event) => {
-                    event.preventDefault();
+                'llama:admin-place-report-save-starting',
+                () => {
+                    window.clearTimeout(
+                        savingTimer
+                    );
 
-                    saveAdminReport();
+                    saveRecoveryImmediately();
                 }
             );
         } else {
@@ -1494,28 +1114,6 @@
         );
 
 
-        /*
-         * Back-forward cache can restore the page after Safari
-         * navigates away. Never leave the save button stuck.
-         */
-        window.addEventListener(
-            'pageshow',
-            (event) => {
-                if (
-                    !event.persisted
-                    || !isAdminReport
-                    || !adminSaveButton
-                ) {
-                    return;
-                }
-
-                submitting = false;
-
-                setAdminButtonState(
-                    'idle'
-                );
-            }
-        );
 
         window.addEventListener(
             'beforeunload',
@@ -1532,30 +1130,4 @@
             }
         );
     });
-
-    if (
-        !document.getElementById(
-            'llama-place-report-save-animation'
-        )
-    ) {
-        const style =
-            document.createElement(
-                'style'
-            );
-
-        style.id =
-            'llama-place-report-save-animation';
-
-        style.textContent = `
-            @keyframes llama-place-report-save-spin {
-                to {
-                    transform: rotate(360deg);
-                }
-            }
-        `;
-
-        document.head.appendChild(
-            style
-        );
-    }
 })();
