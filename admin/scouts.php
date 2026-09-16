@@ -277,13 +277,6 @@ require __DIR__ . '/_header.php';
             <?php endforeach; ?>
         </select>
 
-        <p
-            class="admin-scout-member-help"
-            data-scout-member-help
-            hidden
-        >
-            Search eligible members by username, email, or user ID.
-        </p>
     </div>
 
     <button
