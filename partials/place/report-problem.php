@@ -46,6 +46,11 @@
                     <textarea id="report-details" name="report_details" rows="5" maxlength="4000" required><?= place_h($reportDetails ?? '') ?></textarea>
 
                     <div class="place-report-photo-section">
+                        <p>
+                            <strong>Closure or status reports require at least one current photo.</strong>
+                            Photos are optional for the other report types.
+                        </p>
+
                         <div
                             data-photo-uploader
                             data-photo-context="place-report"
