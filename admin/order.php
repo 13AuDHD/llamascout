@@ -11,6 +11,8 @@ require_once dirname(__DIR__) . '/app/shop-returns.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
 require_once dirname(__DIR__) . '/app/printful-orders.php';
 require_once dirname(__DIR__) . '/app/printful-sync.php';
+require_once dirname(__DIR__) . '/app/printify-orders.php';
+require_once dirname(__DIR__) . '/app/printify-sync.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -170,6 +172,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice = llama_printful_auto_confirm()
                     ? 'Printful order submitted for fulfillment.'
                     : 'Printful draft order created. No Printful charge was authorized.';
+            } elseif ($action === 'create-printify-order') {
+                $printifyOrder = llama_printify_create_fulfillment_order(
+                    $db,
+                    $actorUserId,
+                    (int) ($_POST['fulfillment_id'] ?? 0)
+                );
+
+                $notice = llama_printify_auto_submit()
+                    ? 'Printify order created and sent to production.'
+                    : 'Printify order created. Llama Scout did not send it to production.';
+            } elseif ($action === 'send-printify-production') {
+                $printifyOrder = llama_printify_send_to_production(
+                    $db,
+                    $actorUserId,
+                    (int) ($_POST['fulfillment_id'] ?? 0)
+                );
+
+                $notice =
+                    'Printify order sent to production. Current status: ' .
+                    ucwords(
+                        str_replace(
+                            ['-', '_'],
+                            ' ',
+                            llama_printify_remote_status($printifyOrder)
+                        )
+                    ) .
+                    '.';
+            } elseif ($action === 'refresh-printify') {
+                $sync = llama_printify_sync_fulfillment(
+                    $db,
+                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    $actorUserId
+                );
+
+                $notice =
+                    'Printify fulfillment refreshed. Current status: ' .
+                    ucfirst((string) $sync['local_status']) .
+                    '.';
             }
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
@@ -836,6 +876,97 @@ if ($printfulProviderOrderId !== '') {
 
 <?php if ($printfulRemoteError !== ''): ?>
 <p class="admin-commerce-provider-error"><?= moderation_e($printfulRemoteError) ?></p>
+<?php endif; ?>
+<?php endif; ?>
+
+<?php if ($providerKey === 'printify'): ?>
+<?php
+$printifyRemoteOrder = [];
+$printifyRemoteError = '';
+$printifyProviderOrderId = trim((string) ($fulfillment['provider_order_id'] ?? ''));
+
+if ($printifyProviderOrderId !== '') {
+    try {
+        $printifyRemoteOrder = llama_printify_get_order($printifyProviderOrderId);
+    } catch (Throwable $exception) {
+        $printifyRemoteError = $exception->getMessage();
+    }
+}
+
+$printifyRemoteStatus = llama_printify_remote_status($printifyRemoteOrder);
+$printifyConnectUrl = trim((string) ($printifyRemoteOrder['printify_connect']['url'] ?? ''));
+$printifyCanSend = in_array(
+    $printifyRemoteStatus,
+    ['on-hold'],
+    true
+);
+?>
+<div class="admin-commerce-provider-box">
+<div>
+    <i aria-hidden="true"><?= llama_icon('packages') ?></i>
+    <div>
+        <strong>Printify Fulfillment</strong>
+        <?php if ($printifyProviderOrderId === ''): ?>
+        <span>This fulfillment has not been created in Printify yet.</span>
+        <?php elseif ($printifyRemoteError !== ''): ?>
+        <span>Printify order #<?= moderation_e($printifyProviderOrderId) ?> could not be refreshed.</span>
+        <?php else: ?>
+        <span>
+            Printify order #<?= moderation_e($printifyProviderOrderId) ?>
+            | <?= moderation_e(ucwords(str_replace(['-', '_'], ' ', $printifyRemoteStatus !== '' ? $printifyRemoteStatus : 'Unknown'))) ?>
+        </span>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if ($printifyProviderOrderId === ''): ?>
+<div class="admin-user-notice is-warning">
+    <strong>Before creating a test order</strong>
+    <p>Set Printify Order approval to Manual so Printify does not auto-send the order to production on its own.</p>
+</div>
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="create-printify-order">
+    <button class="admin-button" type="submit">
+        <?= llama_printify_auto_submit() ? 'Create and send to Printify' : 'Create Printify order' ?>
+    </button>
+</form>
+<?php else: ?>
+<div class="admin-user-form-actions">
+<form method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="refresh-printify">
+    <button class="admin-button" type="submit">
+        <i aria-hidden="true"><?= llama_icon('refresh') ?></i>
+        Refresh from Printify
+    </button>
+</form>
+
+<?php if ($printifyCanSend): ?>
+<form method="post" onsubmit="return confirm('Send this Printify order to production now? This can authorize production charges.');">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="send-printify-production">
+    <button class="admin-button" type="submit">Send to production</button>
+</form>
+<?php endif; ?>
+
+<?php if ($printifyConnectUrl !== ''): ?>
+<a class="admin-button" href="<?= moderation_e($printifyConnectUrl) ?>" target="_blank" rel="noopener">
+    Open in Printify
+</a>
+<?php endif; ?>
+</div>
+<?php endif; ?>
+</div>
+
+<?php if ($printifyRemoteError !== ''): ?>
+<p class="admin-commerce-provider-error"><?= moderation_e($printifyRemoteError) ?></p>
 <?php endif; ?>
 <?php endif; ?>
 

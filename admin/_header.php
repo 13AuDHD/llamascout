@@ -290,6 +290,18 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['printful-orders.css'],
             'features' => [],
         ],
+        'printify.php' => [
+            'pages' => ['printify.css'],
+            'features' => [],
+        ],
+        'printify-orders.php' => [
+            'pages' => ['printify-orders.css'],
+            'features' => [],
+        ],
+        'printify-webhook.php' => [
+            'pages' => ['printify-webhook.css'],
+            'features' => [],
+        ],
         'integrations.php' => [
             'pages' => ['integrations.css'],
             'features' => [],
@@ -564,6 +576,14 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i  aria-hidden="true"><?= llama_icon('truck-delivery') ?></i>
             <span>Printful Orders</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('printify-orders', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/printify-orders.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('packages') ?></i>
+            <span>Printify Orders</span>
         </a>
 
         <p class="admin-nav-label">Configuration</p>

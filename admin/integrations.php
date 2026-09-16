@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/printful.php';
 require_once dirname(__DIR__) . '/app/printful-mapping.php';
+require_once dirname(__DIR__) . '/app/printify.php';
+require_once dirname(__DIR__) . '/app/printify-mapping.php';
+require_once dirname(__DIR__) . '/app/printify-webhook-security.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser =
@@ -44,19 +47,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ($applied === 1 ? '' : 's') .
                         ' applied.'
                     : 'No new exact Printful mappings were available.';
+            } elseif ($action === 'apply-printify-exact-mappings') {
+                $catalogForMapping = llama_printify_catalog();
+
+                $applied = llama_printify_apply_exact_mappings(
+                    $db,
+                    $actorUserId,
+                    $catalogForMapping
+                );
+
+                $notice = $applied > 0
+                    ? number_format($applied) .
+                        ' exact Printify mapping' .
+                        ($applied === 1 ? '' : 's') .
+                        ' applied.'
+                    : 'No new exact Printify mappings were available.';
             }
         } catch (Throwable $exception) {
             $reference = llama_log_caught_exception(
                 $exception,
-                'admin.printful_mapping',
-                [],
+                'admin.integration_action',
+                [
+                    'action' => $action ?? '',
+                ],
                 [InvalidArgumentException::class]
             );
 
             $error = $reference === null
                 ? $exception->getMessage()
                 : llama_error_message_with_reference(
-                    'Printful mappings could not be updated.',
+                    'The integration update could not be completed.',
                     $reference
                 );
         }
@@ -121,6 +141,96 @@ if ($printfulConfigured) {
         }
     }
 }
+
+$printifyConfigured =
+    llama_printify_configured();
+
+$printifyError = null;
+$printifyShop = [];
+$printifyCatalog = [
+    'products' => [],
+    'variants' => [],
+    'variants_by_sku' => [],
+];
+$printifyDiagnostics = [];
+$printifyWebhookActive = false;
+$printifyWebhookError = null;
+
+if ($printifyConfigured) {
+    try {
+        $printifyShop =
+            llama_printify_shop();
+
+        $printifyCatalog =
+            llama_printify_catalog();
+
+        $printifyDiagnostics =
+            llama_printify_mapping_diagnostics(
+                $db,
+                $printifyCatalog
+            );
+    } catch (Throwable $exception) {
+        $printifyError =
+            $exception->getMessage();
+
+        if (function_exists('llama_log_caught_exception')) {
+            llama_log_caught_exception(
+                $exception,
+                'admin.printify_integration'
+            );
+        }
+    }
+
+    if ($printifyError === null) {
+        try {
+            $printifyWebhookActive =
+                llama_printify_secure_webhooks_active();
+        } catch (Throwable $exception) {
+            $printifyWebhookError =
+                $exception->getMessage();
+
+            if (function_exists('llama_log_caught_exception')) {
+                llama_log_caught_exception(
+                    $exception,
+                    'admin.printify_webhook_status'
+                );
+            }
+        }
+    }
+}
+
+$printifyMappedCount = count(
+    array_filter(
+        $printifyDiagnostics,
+        static fn(array $row): bool =>
+            ($row['status'] ?? '') === 'mapped'
+    )
+);
+
+$printifySuggestedCount = count(
+    array_filter(
+        $printifyDiagnostics,
+        static fn(array $row): bool =>
+            ($row['status'] ?? '') === 'suggested'
+    )
+);
+
+$printifyProblemCount = count(
+    array_filter(
+        $printifyDiagnostics,
+        static fn(array $row): bool =>
+            in_array(
+                $row['status'] ?? '',
+                [
+                    'invalid',
+                    'ambiguous',
+                    'missing_sku',
+                    'unmapped',
+                ],
+                true
+            )
+    )
+);
 
 $mappedCount =
     count(
@@ -522,23 +632,116 @@ require __DIR__ . '/_header.php';
         <h2>Printify</h2>
     </div>
 
-    <span class="admin-status-pill">
-        Next
-    </span>
+    <?php if (!$printifyConfigured): ?>
+        <span class="admin-status-pill">Not configured</span>
+    <?php elseif ($printifyError): ?>
+        <span class="admin-status-pill">Connection problem</span>
+    <?php else: ?>
+        <span class="admin-status-pill">Connected</span>
+    <?php endif; ?>
 </header>
 
+<div class="admin-integration-summary">
+    <div>
+        <span>Private token</span>
+        <strong><?= $printifyConfigured ? 'Configured' : 'Missing' ?></strong>
+    </div>
+
+    <div>
+        <span>Shop ID</span>
+        <strong>
+            <?= $printifyShop
+                ? moderation_e((string) ($printifyShop['id'] ?? 'Unknown'))
+                : 'Auto-detect' ?>
+        </strong>
+    </div>
+
+    <div>
+        <span>Auto submit</span>
+        <strong><?= llama_printify_auto_submit() ? 'Enabled' : 'Disabled' ?></strong>
+    </div>
+
+    <div>
+        <span>API products</span>
+        <strong><?= number_format(count($printifyCatalog['products'])) ?></strong>
+    </div>
+</div>
+
+<?php if (!$printifyConfigured): ?>
 <div class="admin-empty-state">
-    <i aria-hidden="true">
-        <?= llama_icon('packages') ?>
-    </i>
+    <i aria-hidden="true"><?= llama_icon('plug') ?></i>
+    <h3>Printify token missing.</h3>
+    <p>Add the private API token to /private/printify.php.</p>
+</div>
+<?php elseif ($printifyError): ?>
+<div class="admin-integration-error">
+    <strong>Printify could not be reached.</strong>
+    <p><?= moderation_e($printifyError) ?></p>
+</div>
+<?php else: ?>
+<div class="admin-integration-store">
+    <span>Authorized store</span>
+    <div>
+        <strong><?= moderation_e((string) ($printifyShop['title'] ?? $printifyShop['name'] ?? 'Printify API Store')) ?></strong>
+        <span>Store ID <?= moderation_e((string) ($printifyShop['id'] ?? 'Unknown')) ?></span>
+    </div>
+</div>
 
-    <h3>Integration queued.</h3>
+<div class="admin-integration-health">
+    <div><span>Mapped</span><strong><?= number_format($printifyMappedCount) ?></strong></div>
+    <div><span>Exact SKU matches</span><strong><?= number_format($printifySuggestedCount) ?></strong></div>
+    <div><span>Needs attention</span><strong><?= number_format($printifyProblemCount) ?></strong></div>
+</div>
 
+<div class="admin-integration-catalog-action">
+    <a class="admin-button" href="/printify.php">
+        <i aria-hidden="true"><?= llama_icon('package') ?></i>
+        Open Printify Catalog
+    </a>
+
+    <a class="admin-button" href="/printify-webhook.php">
+        <i aria-hidden="true"><?= llama_icon('shield') ?></i>
+        <?= $printifyWebhookActive
+            ? 'Webhook installed'
+            : ($printifyWebhookError ? 'Webhook needs access' : 'Configure webhook') ?>
+    </a>
+
+    <a class="admin-button" href="/printify-orders.php">
+        <i aria-hidden="true"><?= llama_icon('truck-delivery') ?></i>
+        Printify Orders
+    </a>
+</div>
+
+<?php if ($printifyWebhookError): ?>
+<div class="admin-user-notice is-warning">
+    <strong>Webhook access is not ready.</strong>
+    <p><?= moderation_e($printifyWebhookError) ?></p>
+</div>
+<?php endif; ?>
+
+<?php if ($printifySuggestedCount > 0): ?>
+<form class="admin-integration-mapping-action" method="post">
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="integration_action" value="apply-printify-exact-mappings">
+    <div>
+        <strong>Safe exact Printify matches available</strong>
+        <span>
+            One and only one Printify variant has the same SKU for
+            <?= number_format($printifySuggestedCount) ?> assigned local variant<?= $printifySuggestedCount === 1 ? '' : 's' ?>.
+        </span>
+    </div>
+    <button class="admin-button" type="submit">Apply exact Printify mappings</button>
+</form>
+<?php endif; ?>
+
+<div class="admin-user-notice is-warning">
+    <strong>Testing safeguard</strong>
     <p>
-        Printify will use the same provider-routing
-        architecture after Printful is verified.
+        Keep Printify Order approval set to Manual until live fulfillment is ready.
+        Printify can auto-approve created orders independently of Llama Scout.
     </p>
 </div>
+<?php endif; ?>
 
 </section>
 
