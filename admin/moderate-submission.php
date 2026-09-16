@@ -98,6 +98,9 @@ if (
     $_SERVER['REQUEST_METHOD']
     === 'POST'
 ) {
+    $approvalPhotoCopies =
+        [];
+
     try {
         if (
             !moderation_verify_csrf(
@@ -224,6 +227,9 @@ if (
                 $notes
             );
 
+            $approvalPhotoCopies =
+                [];
+
             $placeId =
                 moderation_approve_new_place(
                     $db,
@@ -231,7 +237,8 @@ if (
                     (int) $adminUser['id'],
                     $status,
                     $notes,
-                    $points
+                    $points,
+                    $approvalPhotoCopies
                 );
 
             /*
@@ -266,6 +273,14 @@ if (
             );
 
             $db->commit();
+
+            /*
+             * The approval is now durable in the database.
+             * It is finally safe to remove the original submission files.
+             */
+            llama_place_submission_remove_files(
+                $submissionId
+            );
 
             header(
                 'Location: /submissions.php?approved='
@@ -363,6 +378,15 @@ if (
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();
+        }
+
+        if ($approvalPhotoCopies) {
+            moderation_cleanup_copied_place_photos(
+                $approvalPhotoCopies
+            );
+
+            $approvalPhotoCopies =
+                [];
         }
 
         $reference =
