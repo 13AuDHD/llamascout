@@ -39,11 +39,19 @@ require_once __DIR__ . '/shop-order-mail-maintenance.php';
 require_once __DIR__ . '/promotion-code-maintenance.php';
 require_once __DIR__ . '/membership-email-maintenance.php';
 require_once __DIR__ . '/email-verification-guard.php';
+require_once __DIR__ . '/external-lookup-protection.php';
 
 start_llama_session();
 
 llama_enforce_session_invalidation(db());
 llama_enforce_verified_email_session(db());
+
+/*
+ * LS-020 / LS-021:
+ * Expensive server-side lookup proxies are authenticated and throttled
+ * before they can contact third-party services.
+ */
+llama_protect_external_lookup_request();
 
 $runMaintenance = static function (
     string $worker,
