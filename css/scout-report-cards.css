@@ -65,7 +65,7 @@
 .scout-report-grid {
     display: grid;
     grid-template-columns:
-        repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+        repeat(auto-fit, minmax(min(140px, 100%), 1fr));
     gap: 12px;
     align-items: stretch;
 }
@@ -512,10 +512,6 @@
         padding: 18px;
     }
 
-    .scout-report-grid {
-        grid-template-columns: 1fr;
-    }
-
    .scout-report-item {
        min-height: 68px;
        padding: 10px 12px;
@@ -534,5 +530,21 @@
     .locked-scout-card {
         min-height: 82px;
         grid-template-rows: auto 6px auto;
+    }
+}
+
+@media (max-width: 430px) {
+    .scout-report-rating-item {
+        column-gap: 8px;
+    }
+
+    .scout-report-rating-item > .scout-rating-dots {
+        gap: 4px;
+    }
+}
+
+@media (max-width: 360px) {
+    .scout-report-grid {
+        grid-template-columns: 1fr;
     }
 }
