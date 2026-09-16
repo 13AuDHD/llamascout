@@ -75,45 +75,68 @@ function llama_presence_touch(
     }
 
 
-    $stmt =
-        $db->prepare(
-            '
-            UPDATE users
+    try {
+        $stmt =
+            $db->prepare(
+                '
+                UPDATE users
 
-            SET last_seen_at =
-                UTC_TIMESTAMP()
+                SET last_seen_at =
+                    UTC_TIMESTAMP()
 
-            WHERE id = ?
-              AND status = \'active\'
-              AND (
-                    last_seen_at IS NULL
-                    OR last_seen_at <
-                        DATE_SUB(
-                            UTC_TIMESTAMP(),
-                            INTERVAL 2 MINUTE
-                        )
-                  )
-            '
-        );
-
-
-    $stmt->execute([
-        $userId
-    ]);
+                WHERE id = ?
+                  AND status = \'active\'
+                  AND (
+                        last_seen_at IS NULL
+                        OR last_seen_at <
+                            DATE_SUB(
+                                UTC_TIMESTAMP(),
+                                INTERVAL 2 MINUTE
+                            )
+                      )
+                '
+            );
 
 
-    /*
-     * Record the attempted touch even if another browser tab
-     * already updated the DB inside the two-minute window.
-     */
-    $_SESSION[
-        'llama_presence_user_id'
-    ] =
-        $userId;
+        $stmt->execute([
+            $userId
+        ]);
 
 
-    $_SESSION[
-        'llama_presence_touch_at'
-    ] =
-        $now;
+        /*
+         * Record the attempted touch even if another browser tab
+         * already updated the DB inside the two-minute window.
+         */
+        $_SESSION[
+            'llama_presence_user_id'
+        ] =
+            $userId;
+
+
+        $_SESSION[
+            'llama_presence_touch_at'
+        ] =
+            $now;
+
+    } catch (Throwable $exception) {
+        if (
+            function_exists(
+                'llama_log_caught_exception'
+            )
+        ) {
+            llama_log_caught_exception(
+                $exception,
+                'presence.touch',
+                [
+                    'user_id' =>
+                        $userId,
+                ]
+            );
+        } else {
+            error_log(
+                'Llama Scout presence update error: '
+                . $exception->getMessage()
+            );
+        }
+    }
 }
