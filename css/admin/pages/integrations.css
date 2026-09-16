@@ -8,7 +8,7 @@
 .admin-integration-grid {
     display: grid;
     grid-template-columns:
-        repeat(3, minmax(0, 1fr));
+        repeat(2, minmax(0, 1fr));
     gap: var(--admin-panel-gap);
 
     margin-bottom: var(--admin-panel-gap);
@@ -21,6 +21,10 @@
 
 .admin-integration-card {
     min-width: 0;
+}
+
+.admin-integration-card--shipping {
+    grid-column: 1 / -1;
 }
 
 .admin-integration-summary {
@@ -152,7 +156,19 @@
 }
 
 .admin-integration-catalog-action {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
     padding: 0 16px 16px;
+}
+
+.admin-integration-catalog-action .admin-button {
+    flex: 0 1 auto;
+}
+
+.admin-integration-inline-notice {
+    margin: 0 16px 16px;
 }
 
 
@@ -400,19 +416,6 @@ span + span {
 
 /* Responsive */
 
-@media (max-width: 1050px) {
-
-    .admin-integration-grid {
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-    }
-
-    .admin-integration-grid
-    > .admin-integration-card:first-child {
-        grid-column: 1 / -1;
-    }
-}
-
 @media (max-width: 760px) {
 
     .admin-integration-grid,
@@ -420,8 +423,7 @@ span + span {
         grid-template-columns: 1fr;
     }
 
-    .admin-integration-grid
-    > .admin-integration-card:first-child {
+    .admin-integration-card--shipping {
         grid-column: auto;
     }
 
