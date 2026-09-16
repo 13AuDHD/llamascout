@@ -601,11 +601,6 @@ require __DIR__ . '/_header.php';
     </div>
 
     <div>
-        <span>Exact SKU matches</span>
-        <strong><?= number_format($suggestedCount) ?></strong>
-    </div>
-
-    <div>
         <span>Needs attention</span>
         <strong><?= number_format($problemCount) ?></strong>
     </div>
@@ -746,7 +741,6 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-integration-health">
     <div><span>Mapped</span><strong><?= number_format($printifyMappedCount) ?></strong></div>
-    <div><span>Exact SKU matches</span><strong><?= number_format($printifySuggestedCount) ?></strong></div>
     <div><span>Needs attention</span><strong><?= number_format($printifyProblemCount) ?></strong></div>
 </div>
 
