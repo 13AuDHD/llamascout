@@ -19,6 +19,14 @@
         return;
     }
 
+    /*
+     * This file is the single owner of Admin Place Report saving.
+     * The report is intentionally allowed to submit without browser
+     * constraint validation because server-side validation is authoritative
+     * and hidden/off-screen fields must not block an Admin background save.
+     */
+    form.noValidate = true;
+
     let busy = false;
     let resetTimer = 0;
 
@@ -207,81 +215,6 @@
         }
     };
 
-    const extractError = (
-        html
-    ) => {
-        if (
-            typeof html !== 'string'
-            || html.trim() === ''
-        ) {
-            return '';
-        }
-
-        try {
-            const parsed =
-                new DOMParser()
-                    .parseFromString(
-                        html,
-                        'text/html'
-                    );
-
-            const node =
-                parsed.querySelector(
-                    '.admin-user-notice.is-error'
-                );
-
-            if (node) {
-                return String(
-                    node.textContent
-                    || ''
-                ).trim();
-            }
-        } catch (_) {
-        }
-
-        return '';
-    };
-
-    const refreshCsrf = (
-        html
-    ) => {
-        if (
-            typeof html !== 'string'
-            || html.trim() === ''
-        ) {
-            return;
-        }
-
-        try {
-            const parsed =
-                new DOMParser()
-                    .parseFromString(
-                        html,
-                        'text/html'
-                    );
-
-            const fresh =
-                parsed.querySelector(
-                    '#place-report input[name="csrf_token"]'
-                )?.value;
-
-            const current =
-                form.querySelector(
-                    'input[name="csrf_token"]'
-                );
-
-            if (
-                current
-                && typeof fresh === 'string'
-                && fresh !== ''
-            ) {
-                current.value =
-                    fresh;
-            }
-        } catch (_) {
-        }
-    };
-
     const clearRecoveryCopies = () => {
         const placeId =
             String(
@@ -364,6 +297,12 @@
         busy = true;
 
         syncPhotoUploader();
+
+        form.dispatchEvent(
+            new CustomEvent(
+                'llama:admin-place-report-save-starting'
+            )
+        );
 
         const expectedPhotos =
             stagedPhotoCount();
@@ -569,10 +508,9 @@
     };
 
     /*
-     * Capture phase is intentional. Older cached versions of the
-     * shared Place Report script may also have attached handlers
-     * to this button. This handler owns the Admin save action and
-     * stops those older handlers before they can interfere.
+     * This is the only live Admin save handler. Capture phase remains
+     * intentional so a stale cached copy of an older shared script
+     * cannot compete with the authoritative save path.
      */
     button.addEventListener(
         'click',
@@ -597,6 +535,22 @@
             save();
         },
         true
+    );
+
+    /*
+     * Safari can restore the page from its back-forward cache while the
+     * button still looks busy. The dedicated saver owns that UI state too.
+     */
+    window.addEventListener(
+        'pageshow',
+        (event) => {
+            if (!event.persisted) {
+                return;
+            }
+
+            busy = false;
+            resetButton();
+        }
     );
 
     if (
