@@ -63,7 +63,7 @@
                     );
 
                     button.innerHTML =
-                        '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/alert-triangle.svg\')" aria-hidden="true"></i>'
+                        '<i class="llama-icon-mask" style="--llama-icon-mask:url(\'https://llamascout.com/assets/icons/alert-triangle.svg\')" aria-hidden="true"></i>'
                         + '<span>Click Again to Delete</span>';
 
                     resetTimer =
