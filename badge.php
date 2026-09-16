@@ -108,27 +108,46 @@ $badgeImage = llama_badge_image_url(
     (string) ($badge['image_src'] ?? '')
 );
 
+/*
+ * LS-023:
+ * Badge rarity is based on active Llama Scout member accounts, not
+ * community_profiles. Community profile rows are created lazily and
+ * therefore do not represent the actual member population.
+ *
+ * The earned count uses that same active-member population so both sides
+ * of the percentage describe the same group.
+ */
 $earnedStmt = $db->prepare(
-    'SELECT COUNT(DISTINCT user_id)
-     FROM user_badges
-     WHERE badge_id = ?
-       AND review_status = ?'
+    'SELECT COUNT(DISTINCT ub.user_id)
+     FROM user_badges ub
+     INNER JOIN users u
+        ON u.id = ub.user_id
+     WHERE ub.badge_id = ?
+       AND ub.review_status = ?
+       AND u.status = ?'
 );
+
 $earnedStmt->execute([
     (int) $badge['id'],
     'earned',
+    'active',
 ]);
-$earnedCount = (int) $earnedStmt->fetchColumn();
+
+$earnedCount =
+    (int) $earnedStmt->fetchColumn();
 
 $totalMembers = 0;
 
 try {
     $totalStmt = $db->query(
         'SELECT COUNT(*)
-         FROM community_profiles'
+         FROM users
+         WHERE status = "active"'
     );
+
     $totalMembers =
         (int) $totalStmt->fetchColumn();
+
 } catch (Throwable $exception) {
     error_log(
         'Llama Scout badge member-count error: ' .
