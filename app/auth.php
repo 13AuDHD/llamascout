@@ -278,9 +278,9 @@ function clear_remember_cookie(): void {
 
         $cookie =
             (string)
-            $_COOKIE[
-                LLAMA_REMEMBER_COOKIE
-            ];
+        $_COOKIE[
+            LLAMA_REMEMBER_COOKIE
+        ];
 
 
         $parts =
@@ -784,46 +784,13 @@ if (
     }
 
 
-    /*
-     * Run throttled application maintenance only after the
-     * authenticated account has passed status and MFA checks.
-     *
-     * Scout maintenance has its own database-backed interval,
-     * so normal requests only do meaningful work when due.
-     * A maintenance failure must never lock a member out.
-     */
-    static $maintenanceAttempted =
-        false;
-
-    if (!$maintenanceAttempted) {
-        $maintenanceAttempted =
-            true;
-
-        try {
-            require_once
-                __DIR__
-                . '/scout-maintenance.php';
-
-            llama_run_scout_renewal_maintenance(
-                db()
-            );
-        } catch (Throwable $exception) {
-            error_log(
-                'Llama Scout authenticated maintenance error: '
-                .
-                $exception->getMessage()
-            );
-        }
-    }
-
-
     return $user;
 }
 
 
 /* =========================================================
    LOGIN STATUS
-   ========================================================= */
+   ============================================================ */
 
 
 function is_logged_in(): bool {
@@ -1171,7 +1138,7 @@ function llama_safe_return_url(
                     'scheme'
                 ]
                 ?? ''
-            )
+           )
         );
 
 
@@ -1201,49 +1168,6 @@ function llama_safe_return_url(
         &&
         !str_ends_with(
             $host,
-            '.llamascout.com'
-        )
-    ) {
-
-        return null;
-    }
-
-
-    return
-        $url;
-}
-
-
-function llama_current_request_url(): string {
-
-    $host =
-        trim(
-            (string) (
-                $_SERVER[
-                    'HTTP_HOST'
-                ]
-                ?? 'llamascout.com'
-            )
-        );
-
-
-    /*
-     * Prevent a malicious Host header from influencing an
-     * authentication redirect.
-     */
-
-    $hostLower =
-        strtolower(
-            $host
-        );
-
-
-    if (
-        $hostLower !==
-        'llamascout.com'
-        &&
-        !str_ends_with(
-            $hostLower,
             '.llamascout.com'
         )
     ) {
@@ -1303,7 +1227,7 @@ function require_login(): void {
 }
 
 
-/* =========================================================
+/* ========================================================
    EMAIL VERIFICATION
    ========================================================= */
 
@@ -1438,9 +1362,7 @@ function user_roles(
 }
 
 
-/* =========================================================
-   ROLE CHECK
-   ========================================================= */
+/* ========================================================= */
 
 
 function user_has_role(
