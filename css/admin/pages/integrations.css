@@ -185,6 +185,11 @@
     border-bottom: 1px solid var(--border);
 }
 
+.admin-integration-health--mapping {
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+}
+
 .admin-integration-health > div {
     padding: 12px;
 
@@ -383,6 +388,16 @@ span + span {
     margin-top: 3px;
 }
 
+.admin-integration-id-line {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.admin-integration-id-line +
+.admin-integration-id-line {
+    margin-top: 3px;
+}
+
 
 /* Mapping status */
 
@@ -418,8 +433,12 @@ span + span {
 
 @media (max-width: 760px) {
 
-    .admin-integration-grid,{
+    .admin-integration-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-integration-health--mapping {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .admin-integration-card--shipping {
