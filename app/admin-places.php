@@ -921,6 +921,44 @@ function admin_place_save_core(
         return (string) $value;
     };
 
+    /*
+     * LS-009: public map coordinates are derived data.
+     *
+     * Admins edit only the exact latitude/longitude. The approximate public
+     * coordinates must always be recalculated from that exact pair so an old
+     * browser value can never leave the public map marker at a stale location.
+     */
+    $latitude =
+        $nullableDecimal(
+            $data['latitude']
+            ?? ''
+        );
+
+    $longitude =
+        $nullableDecimal(
+            $data['longitude']
+            ?? ''
+        );
+
+    if (
+        ($latitude === null)
+        !== ($longitude === null)
+    ) {
+        throw new RuntimeException(
+            'Latitude and longitude must both be present or both be blank.'
+        );
+    }
+
+    $publicLatitude =
+        $latitude !== null
+            ? round((float) $latitude, 1)
+            : null;
+
+    $publicLongitude =
+        $longitude !== null
+            ? round((float) $longitude, 1)
+            : null;
+
     $elevation =
         trim((string) ($data['elevation_feet'] ?? ''));
 
@@ -968,10 +1006,10 @@ function admin_place_save_core(
         $nullableText($data['description'] ?? ''),
         $nullableText($data['public_summary'] ?? ''),
         $nullableText($data['public_location_label'] ?? ''),
-        $nullableDecimal($data['latitude'] ?? ''),
-        $nullableDecimal($data['longitude'] ?? ''),
-        $nullableDecimal($data['public_latitude'] ?? ''),
-        $nullableDecimal($data['public_longitude'] ?? ''),
+        $latitude,
+        $longitude,
+        $publicLatitude,
+        $publicLongitude,
         $elevation !== '' ? (int) $elevation : null,
         $nullableText($data['road'] ?? ''),
         $nullableText($data['city'] ?? ''),
