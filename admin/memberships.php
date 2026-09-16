@@ -106,14 +106,6 @@ function membership_admin_require_schema(PDO $db): void
         'show_countdown',
         'banner_text',
         'landing_url',
-        'email_enabled',
-        'email_send_at',
-        'email_subject',
-        'email_body_text',
-        'reminder_enabled',
-        'reminder_send_at',
-        'reminder_subject',
-        'reminder_body_text',
     ];
 
     foreach ($requiredColumns as $column) {
@@ -135,20 +127,274 @@ function membership_admin_require_schema(PDO $db): void
     }
 }
 
-function membership_admin_selected_plan_ids(array $source): array
-{
-    $ids = array_values(array_unique(array_map('intval', $source)));
-
-    return array_values(array_filter(
-        $ids,
-        static fn(int $id): bool => $id > 0
-    ));
-}
-
 function membership_admin_checkbox(string $key): int
 {
     return isset($_POST[$key]) ? 1 : 0;
 }
+
+function membership_admin_sale_rules_from_post(
+    PDO $db,
+    array $input
+): array {
+    $source =
+        is_array($input['sale_rules'] ?? null)
+            ? $input['sale_rules']
+            : [];
+
+    $rules = [];
+
+    $planStmt = $db->prepare(
+        'SELECT
+            p.id,
+            p.name,
+            p.interval_slug,
+            p.currency,
+            p.stripe_product_id,
+            cp.id AS current_price_id,
+            cp.amount_cents,
+            cp.currency AS current_currency
+         FROM membership_plans p
+         INNER JOIN membership_plan_prices cp
+            ON cp.plan_id = p.id
+           AND cp.is_current = 1
+         WHERE p.id = ?
+           AND p.is_active = 1
+         LIMIT 1'
+    );
+
+    foreach ($source as $planIdRaw => $ruleInput) {
+        $planId = (int) $planIdRaw;
+
+        if (
+            $planId < 1
+            || !is_array($ruleInput)
+            || empty($ruleInput['enabled'])
+        ) {
+            continue;
+        }
+
+        $planStmt->execute([$planId]);
+        $plan = $planStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$plan) {
+            throw new InvalidArgumentException(
+                'One selected membership plan is unavailable.'
+            );
+        }
+
+        $interval = (string) ($plan['interval_slug'] ?? '');
+
+        if (!in_array(
+            $interval,
+            [
+                LLAMA_MEMBERSHIP_INTERVAL_MONTHLY,
+                LLAMA_MEMBERSHIP_INTERVAL_ANNUAL,
+            ],
+            true
+        )) {
+            throw new InvalidArgumentException(
+                'Only monthly and annual membership plans can be added to a sale.'
+            );
+        }
+
+        $discountType =
+            trim(
+                (string) (
+                    $ruleInput['discount_type']
+                    ?? LLAMA_PROMOTION_DISCOUNT_PERCENT
+                )
+            );
+
+        if (!in_array(
+            $discountType,
+            [
+                LLAMA_PROMOTION_DISCOUNT_PERCENT,
+                LLAMA_PROMOTION_DISCOUNT_AMOUNT,
+            ],
+            true
+        )) {
+            throw new InvalidArgumentException(
+                'Choose a valid discount type for ' . ucfirst($interval) . '.'
+            );
+        }
+
+        $discountRaw =
+            trim(
+                (string) (
+                    $ruleInput['discount_value']
+                    ?? ''
+                )
+            );
+
+        if (!is_numeric($discountRaw)) {
+            throw new InvalidArgumentException(
+                'Enter a valid ' . $interval . ' discount.'
+            );
+        }
+
+        $discountValue =
+            $discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT
+                ? (int) round((float) $discountRaw)
+                : (int) round(((float) $discountRaw) * 100);
+
+        if ($discountValue < 1) {
+            throw new InvalidArgumentException(
+                ucfirst($interval) . ' discount must be greater than zero.'
+            );
+        }
+
+        if (
+            $discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT
+            && $discountValue > 100
+        ) {
+            throw new InvalidArgumentException(
+                ucfirst($interval) . ' percentage discount cannot exceed 100%.'
+            );
+        }
+
+        $rules[$planId] = [
+            'plan' => $plan,
+            'discount_type' => $discountType,
+            'discount_value' => $discountValue,
+        ];
+    }
+
+    if (!$rules) {
+        throw new InvalidArgumentException(
+            'Put at least one membership plan on sale.'
+        );
+    }
+
+    $hasAnnual = false;
+
+    foreach ($rules as $rule) {
+        if (
+            (string) ($rule['plan']['interval_slug'] ?? '')
+            === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL
+        ) {
+            $hasAnnual = true;
+            break;
+        }
+    }
+
+    if (!$hasAnnual) {
+        throw new InvalidArgumentException(
+            'Every promotion needs an Annual sale. Monthly can be added separately.'
+        );
+    }
+
+    return $rules;
+}
+
+function membership_admin_create_sale_coupon(
+    object $stripe,
+    int $promotionId,
+    string $promotionName,
+    array $rule
+): array {
+    $plan = $rule['plan'];
+    $planId = (int) $plan['id'];
+    $interval = (string) $plan['interval_slug'];
+    $discountType = (string) $rule['discount_type'];
+    $discountValue = (int) $rule['discount_value'];
+
+    $couponData = [
+        'name' =>
+            $promotionName
+            . ' - '
+            . ucfirst($interval),
+        'metadata' => [
+            'llama_membership_promotion_id' =>
+                (string) $promotionId,
+            'llama_membership_plan_id' =>
+                (string) $planId,
+            'llama_membership_interval' =>
+                $interval,
+            'llama_discount_policy' =>
+                'first_year_only',
+        ],
+    ];
+
+    if ($discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT) {
+        $couponData['percent_off'] = $discountValue;
+    } else {
+        $couponData['amount_off'] = $discountValue;
+        $couponData['currency'] =
+            strtolower(
+                trim(
+                    (string) (
+                        $plan['current_currency']
+                        ?? $plan['currency']
+                        ?? 'usd'
+                    )
+                )
+            ) ?: 'usd';
+    }
+
+    $productId =
+        trim(
+            (string) (
+                $plan['stripe_product_id']
+                ?? ''
+            )
+        );
+
+    if ($productId !== '') {
+        $couponData['applies_to'] = [
+            'products' => [$productId],
+        ];
+    }
+
+    if ($interval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY) {
+        $couponData['duration'] = 'repeating';
+        $couponData['duration_in_months'] = 12;
+        $duration = LLAMA_PROMOTION_DURATION_REPEATING;
+        $durationCount = 12;
+    } else {
+        $couponData['duration'] = 'once';
+        $duration = LLAMA_PROMOTION_DURATION_ONCE;
+        $durationCount = 1;
+    }
+
+    $coupon = $stripe->coupons->create($couponData);
+    $couponId = trim((string) ($coupon->id ?? ''));
+
+    if ($couponId === '') {
+        throw new RuntimeException(
+            'Stripe did not return a Coupon ID for ' . ucfirst($interval) . '.'
+        );
+    }
+
+    return [
+        'coupon_id' => $couponId,
+        'duration' => $duration,
+        'duration_count' => $durationCount,
+    ];
+}
+
+function membership_admin_discount_label(array $rule): string
+{
+    if (
+        (string) ($rule['discount_type'] ?? '')
+        === LLAMA_PROMOTION_DISCOUNT_PERCENT
+    ) {
+        return ((int) ($rule['discount_value'] ?? 0)) . '% off';
+    }
+
+    return membership_admin_money(
+        (int) ($rule['discount_value'] ?? 0)
+    ) . ' off';
+}
+
+function membership_admin_rule_sale_price(array $rule): int
+{
+    return llama_membership_discounted_price_cents(
+        (int) ($rule['base_price_cents'] ?? 0),
+        (string) ($rule['discount_type'] ?? ''),
+        (int) ($rule['discount_value'] ?? 0)
+    );
+}
+
 
 function membership_admin_status_label(array $promotion): string
 {
@@ -323,7 +569,6 @@ if (
                 $landingUrl = trim((string) ($_POST['landing_url'] ?? ''));
                 $startsAt = membership_admin_local_to_utc((string) ($_POST['starts_at'] ?? ''));
                 $endsAt = membership_admin_local_to_utc((string) ($_POST['ends_at'] ?? ''));
-                $discountType = trim((string) ($_POST['discount_type'] ?? 'percent'));
 
                 if ($name === '') {
                     throw new InvalidArgumentException('Promotion name is required.');
@@ -333,87 +578,28 @@ if (
                     throw new InvalidArgumentException('Promotion end must be after its start.');
                 }
 
-                if (!in_array(
-                    $discountType,
-                    [LLAMA_PROMOTION_DISCOUNT_PERCENT, LLAMA_PROMOTION_DISCOUNT_AMOUNT],
-                    true
-                )) {
-                    throw new InvalidArgumentException('Choose a valid discount type.');
-                }
+                $saleRules =
+                    membership_admin_sale_rules_from_post(
+                        $db,
+                        $_POST
+                    );
 
-                $selectedPlanIds = membership_admin_selected_plan_ids(
-                    (array) ($_POST['plan_ids'] ?? [])
-                );
-
-                if (!$selectedPlanIds) {
-                    throw new InvalidArgumentException('Choose at least one membership plan.');
-                }
-
-                $discountRaw = trim((string) ($_POST['discount_value'] ?? ''));
-
-                if (!is_numeric($discountRaw)) {
-                    throw new InvalidArgumentException('Enter a valid discount.');
-                }
-
-                $discountValue = $discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT
-                    ? (int) round((float) $discountRaw)
-                    : (int) round(((float) $discountRaw) * 100);
-
-                if ($discountValue < 1) {
-                    throw new InvalidArgumentException('Discount must be greater than zero.');
-                }
-
-                if (
-                    $discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT
-                    && $discountValue > 100
-                ) {
-                    throw new InvalidArgumentException('Percentage discount cannot exceed 100%.');
-                }
-
-                foreach ($selectedPlanIds as $planId) {
+                foreach ($saleRules as $planId => $rule) {
                     if (llama_membership_promotion_conflicts(
                         $db,
-                        $planId,
+                        (int) $planId,
                         $startsAt,
                         $endsAt
                     )) {
                         throw new InvalidArgumentException(
-                            'This promotion overlaps another enabled automatic promotion for one of the selected plans.'
+                            ucfirst((string) $rule['plan']['interval_slug'])
+                            . ' overlaps another enabled automatic promotion.'
                         );
                     }
                 }
 
                 $showBanner = membership_admin_checkbox('show_site_banner');
                 $showCountdown = membership_admin_checkbox('show_countdown');
-                $emailEnabled = membership_admin_checkbox('email_enabled');
-                $reminderEnabled = membership_admin_checkbox('reminder_enabled');
-
-                $emailSendAt = membership_admin_local_to_utc(
-                    (string) ($_POST['email_send_at'] ?? ''),
-                    true
-                );
-                $emailSubject = trim((string) ($_POST['email_subject'] ?? ''));
-                $emailPreheader = trim((string) ($_POST['email_preheader'] ?? ''));
-                $emailBody = trim((string) ($_POST['email_body_text'] ?? ''));
-
-                $reminderSendAt = membership_admin_local_to_utc(
-                    (string) ($_POST['reminder_send_at'] ?? ''),
-                    true
-                );
-                $reminderSubject = trim((string) ($_POST['reminder_subject'] ?? ''));
-                $reminderBody = trim((string) ($_POST['reminder_body_text'] ?? ''));
-
-                if ($emailEnabled && (!$emailSendAt || $emailSubject === '' || $emailBody === '')) {
-                    throw new InvalidArgumentException(
-                        'Campaign email requires a send time, subject, and message.'
-                    );
-                }
-
-                if ($reminderEnabled && (!$reminderSendAt || $reminderSubject === '' || $reminderBody === '')) {
-                    throw new InvalidArgumentException(
-                        'Final reminder requires a send time, subject, and message.'
-                    );
-                }
 
                 $db->beginTransaction();
 
@@ -434,19 +620,11 @@ if (
                         is_enabled,
                         email_enabled,
                         email_audience,
-                        email_send_at,
-                        email_subject,
-                        email_preheader,
-                        email_body_text,
                         reminder_enabled,
-                        reminder_send_at,
-                        reminder_subject,
-                        reminder_body_text,
                         created_by
                      )
                      VALUES
-                     (?, ?, ?, "automatic", 1, ?, ?, ?, ?, ?, ?, 1, ?, "free_members",
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     (?, ?, ?, "automatic", 1, ?, ?, ?, ?, ?, ?, 1, 0, "free_members", 0, ?)'
                 );
 
                 $insertPromotion->execute([
@@ -459,37 +637,11 @@ if (
                     $landingUrl !== '' ? $landingUrl : null,
                     $startsAt,
                     $endsAt,
-                    $emailEnabled,
-                    $emailSendAt,
-                    $emailSubject !== '' ? $emailSubject : null,
-                    $emailPreheader !== '' ? $emailPreheader : null,
-                    $emailBody !== '' ? $emailBody : null,
-                    $reminderEnabled,
-                    $reminderSendAt,
-                    $reminderSubject !== '' ? $reminderSubject : null,
-                    $reminderBody !== '' ? $reminderBody : null,
                     $actorUserId > 0 ? $actorUserId : null,
                 ]);
 
                 $promotionId = (int) $db->lastInsertId();
-
-                $planStmt = $db->prepare(
-                    'SELECT
-                        p.id,
-                        p.interval_slug,
-                        p.currency,
-                        p.stripe_product_id,
-                        cp.id AS current_price_id,
-                        cp.amount_cents,
-                        cp.currency AS current_currency
-                     FROM membership_plans p
-                     INNER JOIN membership_plan_prices cp
-                        ON cp.plan_id = p.id
-                       AND cp.is_current = 1
-                     WHERE p.id = ?
-                       AND p.is_active = 1
-                     LIMIT 1'
-                );
+                $stripe = llama_stripe_client();
 
                 $insertRule = $db->prepare(
                     'INSERT INTO membership_promotion_plans
@@ -507,77 +659,30 @@ if (
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)'
                 );
 
-                $stripe = llama_stripe_client();
-
-                foreach ($selectedPlanIds as $planId) {
-                    $planStmt->execute([$planId]);
-                    $plan = $planStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if (!$plan) {
-                        throw new RuntimeException('One selected membership plan is unavailable.');
-                    }
-
-                    $couponData = [
-                        'name' => $name . ' - ' . ucfirst((string) $plan['interval_slug']),
-                        'metadata' => [
-                            'llama_membership_promotion_id' => (string) $promotionId,
-                            'llama_membership_plan_id' => (string) $planId,
-                            'llama_membership_interval' => (string) $plan['interval_slug'],
-                            'llama_discount_policy' => 'first_year_only',
-                        ],
-                    ];
-
-                    if ($discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT) {
-                        $couponData['percent_off'] = $discountValue;
-                    } else {
-                        $couponData['amount_off'] = $discountValue;
-                        $couponData['currency'] = strtolower(
-                            trim((string) ($plan['current_currency'] ?? $plan['currency'] ?? 'usd'))
-                        ) ?: 'usd';
-                    }
-
-                    $productId = trim((string) ($plan['stripe_product_id'] ?? ''));
-
-                    if ($productId !== '') {
-                        $couponData['applies_to'] = [
-                            'products' => [$productId],
-                        ];
-                    }
-
-                    if ((string) $plan['interval_slug'] === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY) {
-                        $couponData['duration'] = 'repeating';
-                        $couponData['duration_in_months'] = 12;
-                        $duration = LLAMA_PROMOTION_DURATION_REPEATING;
-                        $durationCount = 12;
-                    } else {
-                        $couponData['duration'] = 'once';
-                        $duration = LLAMA_PROMOTION_DURATION_ONCE;
-                        $durationCount = 1;
-                    }
-
-                    $coupon = $stripe->coupons->create($couponData);
-                    $couponId = trim((string) ($coupon->id ?? ''));
-
-                    if ($couponId === '') {
-                        throw new RuntimeException('Stripe did not return a Coupon ID.');
-                    }
+                foreach ($saleRules as $planId => $rule) {
+                    $coupon = membership_admin_create_sale_coupon(
+                        $stripe,
+                        $promotionId,
+                        $name,
+                        $rule
+                    );
 
                     $insertRule->execute([
                         $promotionId,
-                        $planId,
-                        (int) $plan['current_price_id'],
-                        $discountType,
-                        $discountValue,
-                        $couponId,
-                        $duration,
-                        $durationCount,
+                        (int) $planId,
+                        (int) $rule['plan']['current_price_id'],
+                        (string) $rule['discount_type'],
+                        (int) $rule['discount_value'],
+                        (string) $coupon['coupon_id'],
+                        (string) $coupon['duration'],
+                        (int) $coupon['duration_count'],
                     ]);
                 }
 
                 $db->commit();
 
                 $notice =
-                    'Promotion created and connected to Stripe. Campaign times are shown in your profile timezone.';
+                    'Promotion created and connected to Stripe. Configure its messages under Communications > Email Campaigns.';
             }
 
             if ($action === 'update-campaign') {
@@ -616,37 +721,45 @@ if (
                     throw new InvalidArgumentException('Promotion end must be after its start.');
                 }
 
+                $saleRules =
+                    membership_admin_sale_rules_from_post(
+                        $db,
+                        $_POST
+                    );
+
+                foreach ($saleRules as $planId => $rule) {
+                    if (llama_membership_promotion_conflicts(
+                        $db,
+                        (int) $planId,
+                        $startsAt,
+                        $endsAt,
+                        $promotionId
+                    )) {
+                        throw new InvalidArgumentException(
+                            ucfirst((string) $rule['plan']['interval_slug'])
+                            . ' overlaps another enabled automatic promotion.'
+                        );
+                    }
+                }
+
+                $existingRulesStmt = $db->prepare(
+                    'SELECT *
+                     FROM membership_promotion_plans
+                     WHERE promotion_id = ?'
+                );
+                $existingRulesStmt->execute([$promotionId]);
+
+                $existingRules = [];
+
+                foreach ($existingRulesStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $existingRules[(int) $row['plan_id']] = $row;
+                }
+
                 $showBanner = membership_admin_checkbox('show_site_banner');
                 $showCountdown = membership_admin_checkbox('show_countdown');
-                $emailEnabled = membership_admin_checkbox('email_enabled');
-                $reminderEnabled = membership_admin_checkbox('reminder_enabled');
+                $stripe = llama_stripe_client();
 
-                $emailSendAt = membership_admin_local_to_utc(
-                    (string) ($_POST['email_send_at'] ?? ''),
-                    true
-                );
-                $emailSubject = trim((string) ($_POST['email_subject'] ?? ''));
-                $emailPreheader = trim((string) ($_POST['email_preheader'] ?? ''));
-                $emailBody = trim((string) ($_POST['email_body_text'] ?? ''));
-
-                $reminderSendAt = membership_admin_local_to_utc(
-                    (string) ($_POST['reminder_send_at'] ?? ''),
-                    true
-                );
-                $reminderSubject = trim((string) ($_POST['reminder_subject'] ?? ''));
-                $reminderBody = trim((string) ($_POST['reminder_body_text'] ?? ''));
-
-                if ($emailEnabled && (!$emailSendAt || $emailSubject === '' || $emailBody === '')) {
-                    throw new InvalidArgumentException(
-                        'Campaign email requires a send time, subject, and message.'
-                    );
-                }
-
-                if ($reminderEnabled && (!$reminderSendAt || $reminderSubject === '' || $reminderBody === '')) {
-                    throw new InvalidArgumentException(
-                        'Final reminder requires a send time, subject, and message.'
-                    );
-                }
+                $db->beginTransaction();
 
                 $stmt = $db->prepare(
                     'UPDATE membership_promotions
@@ -659,16 +772,7 @@ if (
                         banner_text = ?,
                         landing_url = ?,
                         starts_at = ?,
-                        ends_at = ?,
-                        email_enabled = ?,
-                        email_send_at = ?,
-                        email_subject = ?,
-                        email_preheader = ?,
-                        email_body_text = ?,
-                        reminder_enabled = ?,
-                        reminder_send_at = ?,
-                        reminder_subject = ?,
-                        reminder_body_text = ?
+                        ends_at = ?
                      WHERE id = ?'
                 );
 
@@ -682,19 +786,120 @@ if (
                     $landingUrl !== '' ? $landingUrl : null,
                     $startsAt,
                     $endsAt,
-                    $emailEnabled,
-                    $emailSendAt,
-                    $emailSubject !== '' ? $emailSubject : null,
-                    $emailPreheader !== '' ? $emailPreheader : null,
-                    $emailBody !== '' ? $emailBody : null,
-                    $reminderEnabled,
-                    $reminderSendAt,
-                    $reminderSubject !== '' ? $reminderSubject : null,
-                    $reminderBody !== '' ? $reminderBody : null,
                     $promotionId,
                 ]);
 
-                $notice = 'Campaign details updated. Stripe discount rules were not changed.';
+                $insertRule = $db->prepare(
+                    'INSERT INTO membership_promotion_plans
+                     (
+                        promotion_id,
+                        plan_id,
+                        plan_price_id,
+                        discount_type,
+                        discount_value,
+                        stripe_coupon_id,
+                        discount_duration,
+                        duration_count,
+                        allow_manual_promotion_codes
+                     )
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)'
+                );
+
+                $updateRule = $db->prepare(
+                    'UPDATE membership_promotion_plans
+                     SET
+                        plan_price_id = ?,
+                        discount_type = ?,
+                        discount_value = ?,
+                        stripe_coupon_id = ?,
+                        discount_duration = ?,
+                        duration_count = ?,
+                        allow_manual_promotion_codes = 0
+                     WHERE promotion_id = ?
+                       AND plan_id = ?'
+                );
+
+                foreach ($saleRules as $planId => $rule) {
+                    $planId = (int) $planId;
+                    $oldRule = $existingRules[$planId] ?? null;
+
+                    $ruleChanged =
+                        !$oldRule
+                        || (int) ($oldRule['plan_price_id'] ?? 0)
+                            !== (int) $rule['plan']['current_price_id']
+                        || (string) ($oldRule['discount_type'] ?? '')
+                            !== (string) $rule['discount_type']
+                        || (int) ($oldRule['discount_value'] ?? 0)
+                            !== (int) $rule['discount_value'];
+
+                    if (!$ruleChanged) {
+                        continue;
+                    }
+
+                    $coupon = membership_admin_create_sale_coupon(
+                        $stripe,
+                        $promotionId,
+                        $name,
+                        $rule
+                    );
+
+                    if ($oldRule) {
+                        $updateRule->execute([
+                            (int) $rule['plan']['current_price_id'],
+                            (string) $rule['discount_type'],
+                            (int) $rule['discount_value'],
+                            (string) $coupon['coupon_id'],
+                            (string) $coupon['duration'],
+                            (int) $coupon['duration_count'],
+                            $promotionId,
+                            $planId,
+                        ]);
+                    } else {
+                        $insertRule->execute([
+                            $promotionId,
+                            $planId,
+                            (int) $rule['plan']['current_price_id'],
+                            (string) $rule['discount_type'],
+                            (int) $rule['discount_value'],
+                            (string) $coupon['coupon_id'],
+                            (string) $coupon['duration'],
+                            (int) $coupon['duration_count'],
+                        ]);
+                    }
+                }
+
+                $selectedPlanIds = array_map(
+                    'intval',
+                    array_keys($saleRules)
+                );
+
+                $placeholders =
+                    implode(
+                        ',',
+                        array_fill(
+                            0,
+                            count($selectedPlanIds),
+                            '?'
+                        )
+                    );
+
+                $deleteStmt = $db->prepare(
+                    'DELETE FROM membership_promotion_plans
+                     WHERE promotion_id = ?
+                       AND plan_id NOT IN (' . $placeholders . ')'
+                );
+
+                $deleteStmt->execute(
+                    array_merge(
+                        [$promotionId],
+                        $selectedPlanIds
+                    )
+                );
+
+                $db->commit();
+
+                $notice =
+                    'Promotion updated. Any changed discounts received new Stripe coupons for new checkouts.';
             }
 
             if ($action === 'toggle-promotion') {
@@ -775,41 +980,64 @@ $adminPageEyebrow = 'Commerce';
 $adminActiveNav = 'memberships';
 
 $plans = [];
+$plansById = [];
 $promotions = [];
+$promotionRulesByPromotionId = [];
+$editingPromotionRulesByPlanId = [];
 $manualCodesEnabled = false;
 $editingPromotion = null;
-$promotionStats = [];
 $promotionEventStats = [];
 
 if ($error === '') {
     $plans = llama_membership_plans($db, false);
 
+    foreach ($plans as $plan) {
+        $plansById[(int) $plan['id']] = $plan;
+    }
+
     $promotions = $db->query(
-        'SELECT
-            mp.*,
-            GROUP_CONCAT(
-                CONCAT(
-                    p.name,
-                    ":",
-                    mpp.discount_type,
-                    ":",
-                    mpp.discount_value,
-                    ":",
-                    mpp.discount_duration,
-                    ":",
-                    COALESCE(mpp.duration_count, 0)
-                )
-                ORDER BY p.sort_order, p.id
-                SEPARATOR "|"
-            ) AS plan_rules
-         FROM membership_promotions mp
-         LEFT JOIN membership_promotion_plans mpp
-           ON mpp.promotion_id = mp.id
-         LEFT JOIN membership_plans p
-           ON p.id = mpp.plan_id
-         GROUP BY mp.id
-         ORDER BY mp.starts_at ASC, mp.id ASC'
+        'SELECT *
+         FROM membership_promotions
+         ORDER BY starts_at ASC, id ASC'
     )->fetchAll(PDO::FETCH_ASSOC);
+
+    $rulesStmt = $db->query(
+        'SELECT
+            mpp.*,
+            p.name AS plan_name,
+            p.interval_slug,
+            COALESCE(
+                pp.amount_cents,
+                cp.amount_cents,
+                p.base_price_cents
+            ) AS base_price_cents,
+            COALESCE(
+                pp.currency,
+                cp.currency,
+                p.currency,
+                "usd"
+            ) AS price_currency
+         FROM membership_promotion_plans mpp
+         INNER JOIN membership_plans p
+            ON p.id = mpp.plan_id
+         LEFT JOIN membership_plan_prices pp
+            ON pp.id = mpp.plan_price_id
+         LEFT JOIN membership_plan_prices cp
+            ON cp.plan_id = p.id
+           AND cp.is_current = 1
+         ORDER BY
+            mpp.promotion_id ASC,
+            p.sort_order ASC,
+            p.id ASC'
+    );
+
+    if ($rulesStmt) {
+        foreach ($rulesStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $promotionRulesByPromotionId[
+                (int) $row['promotion_id']
+            ][] = $row;
+        }
+    }
 
     $setting = $db->query(
         'SELECT manual_promotion_codes_enabled
@@ -819,21 +1047,6 @@ if ($error === '') {
     )->fetchColumn();
 
     $manualCodesEnabled = (bool) $setting;
-
-    $statsStmt = $db->query(
-        'SELECT
-            promotion_id,
-            SUM(status = "sent") AS sent_count,
-            SUM(status = "failed") AS failed_count
-         FROM membership_promotion_deliveries
-         GROUP BY promotion_id'
-    );
-
-    if ($statsStmt) {
-        foreach ($statsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $promotionStats[(int) $row['promotion_id']] = $row;
-        }
-    }
 
     $eventStatsStmt = $db->query(
         'SELECT
@@ -868,6 +1081,16 @@ if ($error === '') {
                 $editingPromotion = $candidate;
                 break;
             }
+        }
+
+        foreach (
+            $promotionRulesByPromotionId[$editId]
+            ?? []
+            as $rule
+        ) {
+            $editingPromotionRulesByPlanId[
+                (int) $rule['plan_id']
+            ] = $rule;
         }
     }
 }
@@ -1017,7 +1240,7 @@ foreach ($promotions as $promotion) {
             <div class="admin-campaign-edit-banner">
                 <span>
                     Editing <strong><?= moderation_e((string) $editingPromotion['name']) ?></strong>.
-                    Discount amount and Stripe coupon rules stay locked.
+                    Monthly and annual discounts can be changed independently. A changed rule creates a new Stripe coupon for new checkouts.
                 </span>
                 <a class="admin-button" href="/memberships.php">New promotion</a>
             </div>
@@ -1082,47 +1305,306 @@ foreach ($promotions as $promotion) {
                     >
                 </label>
 
-                <?php if (!$editingPromotion): ?>
-                    <label>
-                        Discount type
-                        <select name="discount_type">
-                            <option value="percent">Percent off</option>
-                            <option value="amount">Dollar amount off</option>
-                        </select>
-                    </label>
-
-                    <label>
-                        Discount value
-                        <input
-                            type="number"
-                            name="discount_value"
-                            min="0.01"
-                            step="0.01"
-                            inputmode="decimal"
-                            placeholder="25"
-                            required
-                        >
-                    </label>
-                <?php endif; ?>
             </div>
 
-            <?php if (!$editingPromotion): ?>
-                <fieldset class="admin-membership-plan-choice">
-                    <legend>Applies to</legend>
+            <div class="admin-campaign-form-section admin-sale-builder">
+                <div class="admin-sale-builder-heading">
+                    <div>
+                        <h3>Plan discounts</h3>
+                        <p>
+                            Monthly and annual are separate Stripe offers under the same campaign dates.
+                            Enable either or both and set each discount independently.
+                        </p>
+                    </div>
+                </div>
 
+                <div class="admin-sale-plan-grid">
                     <?php foreach ($plans as $plan): ?>
-                        <?php if (empty($plan['is_active'])) continue; ?>
-                        <label>
-                            <input
-                                type="checkbox"
-                                name="plan_ids[]"
-                                value="<?= (int) $plan['id'] ?>"
-                            >
-                            <?= moderation_e(ucfirst((string) $plan['interval_slug'])) ?>
-                        </label>
+                        <?php
+                        if (empty($plan['is_active'])) {
+                            continue;
+                        }
+
+                        $planId = (int) $plan['id'];
+                        $interval = (string) $plan['interval_slug'];
+
+                        if (!in_array(
+                            $interval,
+                            [
+                                LLAMA_MEMBERSHIP_INTERVAL_MONTHLY,
+                                LLAMA_MEMBERSHIP_INTERVAL_ANNUAL,
+                            ],
+                            true
+                        )) {
+                            continue;
+                        }
+
+                        $existingRule =
+                            $editingPromotionRulesByPlanId[$planId]
+                            ?? null;
+
+                        $enabledByDefault =
+                            $editingPromotion
+                                ? (bool) $existingRule
+                                : $interval === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL;
+
+                        $discountTypeValue =
+                            $existingRule
+                                ? (string) $existingRule['discount_type']
+                                : (
+                                    $interval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+                                        ? LLAMA_PROMOTION_DISCOUNT_AMOUNT
+                                        : LLAMA_PROMOTION_DISCOUNT_PERCENT
+                                );
+
+                        $discountValueRaw =
+                            $existingRule
+                                ? (
+                                    $discountTypeValue === LLAMA_PROMOTION_DISCOUNT_AMOUNT
+                                        ? number_format(
+                                            (int) $existingRule['discount_value'] / 100,
+                                            2,
+                                            '.',
+                                            ''
+                                        )
+                                        : (string) (int) $existingRule['discount_value']
+                                )
+                                : (
+                                    $interval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+                                        ? '1.00'
+                                        : '25'
+                                );
+                        ?>
+
+                        <section
+                            class="admin-sale-plan-card"
+                            data-sale-plan="<?= moderation_e($interval) ?>"
+                            data-base-cents="<?= (int) $plan['base_price_cents'] ?>"
+                        >
+                            <label class="admin-sale-plan-enable">
+                                <?php if ($interval === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL): ?>
+                                    <input
+                                        type="hidden"
+                                        name="sale_rules[<?= $planId ?>][enabled]"
+                                        value="1"
+                                    >
+                                    <input
+                                        type="checkbox"
+                                        checked
+                                        disabled
+                                        data-sale-enabled
+                                    >
+                                <?php else: ?>
+                                    <input
+                                        type="checkbox"
+                                        name="sale_rules[<?= $planId ?>][enabled]"
+                                        value="1"
+                                        <?= $enabledByDefault ? 'checked' : '' ?>
+                                        data-sale-enabled
+                                    >
+                                <?php endif; ?>
+                                <span>
+                                    <strong>
+                                        <?= moderation_e(ucfirst($interval)) ?> sale
+                                        <?= $interval === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL ? ' · Required' : ' · Optional' ?>
+                                    </strong>
+                                    <small>
+                                        Regular <?= moderation_e(
+                                            membership_admin_money(
+                                                (int) $plan['base_price_cents']
+                                            )
+                                        ) ?>
+                                        / <?= $interval === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL ? 'year' : 'month' ?>
+                                    </small>
+                                </span>
+                            </label>
+
+                            <div class="admin-sale-plan-fields">
+                                <label>
+                                    Discount type
+                                    <select
+                                        name="sale_rules[<?= $planId ?>][discount_type]"
+                                        data-sale-type
+                                    >
+                                        <option
+                                            value="percent"
+                                            <?= $discountTypeValue === LLAMA_PROMOTION_DISCOUNT_PERCENT ? 'selected' : '' ?>
+                                        >Percent off</option>
+                                        <option
+                                            value="amount"
+                                            <?= $discountTypeValue === LLAMA_PROMOTION_DISCOUNT_AMOUNT ? 'selected' : '' ?>
+                                        >Dollar amount off</option>
+                                    </select>
+                                </label>
+
+                                <label>
+                                    Discount value
+                                    <input
+                                        type="number"
+                                        name="sale_rules[<?= $planId ?>][discount_value]"
+                                        min="0.01"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                        value="<?= moderation_e($discountValueRaw) ?>"
+                                        data-sale-value
+                                    >
+                                </label>
+                            </div>
+                        </section>
                     <?php endforeach; ?>
-                </fieldset>
-            <?php endif; ?>
+                </div>
+
+                <?php
+                $initialSalePreview = [];
+
+                foreach ($plans as $previewPlan) {
+                    if (empty($previewPlan['is_active'])) {
+                        continue;
+                    }
+
+                    $previewInterval =
+                        (string) ($previewPlan['interval_slug'] ?? '');
+
+                    if (!in_array(
+                        $previewInterval,
+                        [
+                            LLAMA_MEMBERSHIP_INTERVAL_MONTHLY,
+                            LLAMA_MEMBERSHIP_INTERVAL_ANNUAL,
+                        ],
+                        true
+                    )) {
+                        continue;
+                    }
+
+                    $previewPlanId = (int) $previewPlan['id'];
+                    $previewRule =
+                        $editingPromotionRulesByPlanId[$previewPlanId]
+                        ?? null;
+
+                    $previewEnabled =
+                        $previewInterval === LLAMA_MEMBERSHIP_INTERVAL_ANNUAL
+                        || (
+                            $editingPromotion
+                                ? (bool) $previewRule
+                                : false
+                        );
+
+                    $previewType =
+                        $previewRule
+                            ? (string) $previewRule['discount_type']
+                            : (
+                                $previewInterval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+                                    ? LLAMA_PROMOTION_DISCOUNT_AMOUNT
+                                    : LLAMA_PROMOTION_DISCOUNT_PERCENT
+                            );
+
+                    $previewValue =
+                        $previewRule
+                            ? (int) $previewRule['discount_value']
+                            : (
+                                $previewInterval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+                                    ? 100
+                                    : 25
+                            );
+
+                    $previewBase =
+                        (int) $previewPlan['base_price_cents'];
+
+                    $previewSale = $previewEnabled
+                        ? llama_membership_discounted_price_cents(
+                            $previewBase,
+                            $previewType,
+                            $previewValue
+                        )
+                        : $previewBase;
+
+                    $initialSalePreview[$previewInterval] = [
+                        'enabled' => $previewEnabled,
+                        'base' => $previewBase,
+                        'sale' => $previewSale,
+                    ];
+                }
+                ?>
+
+                <section class="admin-sale-calculator" aria-live="polite">
+                    <header>
+                        <div>
+                            <span>Price check</span>
+                            <h4>Sale price comparison</h4>
+                        </div>
+                        <small>Monthly × 12 · Annual ÷ 12</small>
+                    </header>
+
+                    <div class="admin-sale-calculator-grid">
+                        <?php
+                        $monthlyPreview = $initialSalePreview['monthly'] ?? [
+                            'enabled' => false,
+                            'base' => 0,
+                            'sale' => 0,
+                        ];
+                        $annualPreview = $initialSalePreview['annual'] ?? [
+                            'enabled' => false,
+                            'base' => 0,
+                            'sale' => 0,
+                        ];
+                        ?>
+
+                        <div
+                            class="admin-sale-calculator-row<?= $monthlyPreview['enabled'] ? '' : ' is-disabled' ?>"
+                            data-sale-summary="monthly"
+                        >
+                            <strong>Monthly</strong>
+                            <span data-sale-regular>
+                                <?= moderation_e(membership_admin_money((int) $monthlyPreview['base'])) ?> / month regular
+                            </span>
+                            <span data-sale-price>
+                                <?= $monthlyPreview['enabled']
+                                    ? moderation_e(membership_admin_money((int) $monthlyPreview['sale'])) . ' / month sale'
+                                    : 'Not included in sale' ?>
+                            </span>
+                            <span data-sale-equivalent>
+                                <?= moderation_e(
+                                    membership_admin_money(
+                                        (int) (
+                                            ($monthlyPreview['enabled']
+                                                ? $monthlyPreview['sale']
+                                                : $monthlyPreview['base']) * 12
+                                        )
+                                    )
+                                ) ?> / year<?= $monthlyPreview['enabled'] ? '' : ' at regular price' ?>
+                            </span>
+                        </div>
+
+                        <div
+                            class="admin-sale-calculator-row<?= $annualPreview['enabled'] ? '' : ' is-disabled' ?>"
+                            data-sale-summary="annual"
+                        >
+                            <strong>Annual</strong>
+                            <span data-sale-regular>
+                                <?= moderation_e(membership_admin_money((int) $annualPreview['base'])) ?> / year regular
+                            </span>
+                            <span data-sale-price>
+                                <?= $annualPreview['enabled']
+                                    ? moderation_e(membership_admin_money((int) $annualPreview['sale'])) . ' / year sale'
+                                    : 'Not included in sale' ?>
+                            </span>
+                            <span data-sale-equivalent>
+                                <?= moderation_e(
+                                    membership_admin_money(
+                                        (int) round(
+                                            (
+                                                $annualPreview['enabled']
+                                                    ? $annualPreview['sale']
+                                                    : $annualPreview['base']
+                                            ) / 12
+                                        )
+                                    )
+                                ) ?> / month<?= $annualPreview['enabled'] ? '' : ' at regular price' ?>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
             <label>
                 Customer description
@@ -1189,118 +1671,8 @@ foreach ($promotions as $promotion) {
                 </div>
             </div>
 
-            <div class="admin-campaign-form-section">
-                <h3>Campaign email</h3>
-
-                <label class="admin-campaign-toggle">
-                    <input
-                        type="checkbox"
-                        name="email_enabled"
-                        value="1"
-                        <?= !empty($editingPromotion['email_enabled']) ? 'checked' : '' ?>
-                    >
-                    <span>
-                        <strong>Send campaign announcement</strong>
-                    </span>
-                </label>
-
-                <div class="admin-membership-form-grid">
-                    <label>
-                        Send at, <?= moderation_e($viewerTimezoneLabel) ?>
-                        <input
-                            type="datetime-local"
-                            name="email_send_at"
-                            value="<?= moderation_e(
-                                membership_admin_utc_to_input($editingPromotion['email_send_at'] ?? null)
-                            ) ?>"
-                        >
-                    </label>
-
-                    <label>
-                        Subject
-                        <input
-                            type="text"
-                            name="email_subject"
-                            maxlength="255"
-                            placeholder="Black Friday at Llama Scout"
-                            value="<?= moderation_e((string) ($editingPromotion['email_subject'] ?? '')) ?>"
-                        >
-                    </label>
-
-                    <label>
-                        Preheader
-                        <input
-                            type="text"
-                            name="email_preheader"
-                            maxlength="255"
-                            placeholder="Save 25% when you upgrade this weekend."
-                            value="<?= moderation_e((string) ($editingPromotion['email_preheader'] ?? '')) ?>"
-                        >
-                    </label>
-                </div>
-
-                <label>
-                    Email message
-                    <textarea
-                        name="email_body_text"
-                        rows="5"
-                        placeholder="Our Black Friday membership sale is live..."
-                    ><?= moderation_e((string) ($editingPromotion['email_body_text'] ?? '')) ?></textarea>
-                </label>
-            </div>
-
-            <div class="admin-campaign-form-section">
-                <h3>Final reminder</h3>
-
-                <label class="admin-campaign-toggle">
-                    <input
-                        type="checkbox"
-                        name="reminder_enabled"
-                        value="1"
-                        <?= !empty($editingPromotion['reminder_enabled']) ? 'checked' : '' ?>
-                    >
-                    <span>
-                        <strong>Send final reminder</strong>
-                    </span>
-                </label>
-
-                <div class="admin-membership-form-grid">
-                    <label>
-                        Reminder at, <?= moderation_e($viewerTimezoneLabel) ?>
-                        <input
-                            type="datetime-local"
-                            name="reminder_send_at"
-                            value="<?= moderation_e(
-                                membership_admin_utc_to_input($editingPromotion['reminder_send_at'] ?? null)
-                            ) ?>"
-                        >
-                    </label>
-
-                    <label>
-                        Reminder subject
-                        <input
-                            type="text"
-                            name="reminder_subject"
-                            maxlength="255"
-                            placeholder="Last chance: Black Friday ends tonight"
-                            value="<?= moderation_e((string) ($editingPromotion['reminder_subject'] ?? '')) ?>"
-                        >
-                    </label>
-                </div>
-
-                <label>
-                    Reminder message
-                    <textarea
-                        name="reminder_body_text"
-                        rows="4"
-                        placeholder="The Llama Scout sale ends tonight..."
-                    ><?= moderation_e((string) ($editingPromotion['reminder_body_text'] ?? '')) ?></textarea>
-                </label>
-            </div>
-
-
             <button class="admin-button" type="submit">
-                <?= $editingPromotion ? 'Save campaign details' : 'Create promotion in Stripe' ?>
+                <?= $editingPromotion ? 'Save promotion' : 'Create sale in Stripe' ?>
             </button>
         </form>
     </section>
@@ -1331,11 +1703,10 @@ foreach ($promotions as $promotion) {
                     <?php foreach ($monthPromotions as $promotion): ?>
                         <?php
                         $status = membership_admin_status_label($promotion);
-                        $rules = array_filter(explode('|', (string) ($promotion['plan_rules'] ?? '')));
-                        $delivery = $promotionStats[(int) $promotion['id']] ?? [];
+                        $rules =
+                            $promotionRulesByPromotionId[(int) $promotion['id']]
+                            ?? [];
                         $events = $promotionEventStats[(int) $promotion['id']] ?? [];
-
-                        $emailSent = (int) ($delivery['sent_count'] ?? 0);
                         $checkoutStarts = (int) ($events['checkout_started'] ?? 0);
                         $membershipsPurchased = (int) ($events['membership_purchased'] ?? 0);
                         $campaignRevenueCents = (int) ($events['revenue_cents'] ?? 0);
@@ -1361,6 +1732,13 @@ foreach ($promotions as $promotion) {
                                         href="/memberships.php?edit=<?= (int) $promotion['id'] ?>"
                                     >
                                         Edit
+                                    </a>
+
+                                    <a
+                                        class="admin-button"
+                                        href="/email-campaigns.php?id=<?= (int) $promotion['id'] ?>"
+                                    >
+                                        Campaign emails
                                     </a>
 
                                     <form method="post">
@@ -1412,41 +1790,48 @@ foreach ($promotions as $promotion) {
                             <div class="admin-membership-rule-list">
                                 <?php foreach ($rules as $rule): ?>
                                     <?php
-                                    [$planName, $discountType, $discountValue, $duration, $durationCount] =
-                                        array_pad(explode(':', $rule), 5, '');
+                                    $interval =
+                                        (string) ($rule['interval_slug'] ?? '');
+                                    $basePrice =
+                                        (int) ($rule['base_price_cents'] ?? 0);
+                                    $salePrice =
+                                        membership_admin_rule_sale_price($rule);
 
-                                    $displayValue = $discountType === LLAMA_PROMOTION_DISCOUNT_PERCENT
-                                        ? ((int) $discountValue) . '% off'
-                                        : membership_admin_money((int) $discountValue) . ' off';
+                                    $equivalent =
+                                        $interval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+                                            ? membership_admin_money($salePrice * 12) . ' / year'
+                                            : membership_admin_money((int) round($salePrice / 12)) . ' / month';
                                     ?>
-                                    <span>
-                                        <strong><?= moderation_e($planName) ?></strong>
-                                        <?= moderation_e($displayValue) ?>
-                                        &middot; first year
-                                    </span>
+                                    <div class="admin-membership-rule-card">
+                                        <span>
+                                            <?= moderation_e(ucfirst($interval)) ?>
+                                            · <?= moderation_e(membership_admin_discount_label($rule)) ?>
+                                        </span>
+                                        <strong>
+                                            <?= moderation_e(membership_admin_money($salePrice)) ?>
+                                            / <?= $interval === LLAMA_MEMBERSHIP_INTERVAL_MONTHLY ? 'month' : 'year' ?>
+                                        </strong>
+                                        <small><?= moderation_e($equivalent) ?></small>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
 
                             <div class="admin-campaign-results">
-                                <div class="admin-campaign-result">
-                                    <span>Emails sent</span>
-                                    <strong><?= number_format($emailSent) ?></strong>
-                                </div>
-                                <div class="admin-campaign-result">
-                                    <span>Checkout starts</span>
-                                    <strong><?= number_format($checkoutStarts) ?></strong>
+                                <div class="admin-campaign-result is-revenue">
+                                    <span>Revenue</span>
+                                    <strong><?= moderation_e(membership_admin_money($campaignRevenueCents)) ?></strong>
                                 </div>
                                 <div class="admin-campaign-result">
                                     <span>Memberships</span>
                                     <strong><?= number_format($membershipsPurchased) ?></strong>
                                 </div>
                                 <div class="admin-campaign-result">
-                                    <span>Conversion</span>
-                                    <strong><?= moderation_e(number_format($conversionRate, 1)) ?>%</strong>
+                                    <span>Checkout starts</span>
+                                    <strong><?= number_format($checkoutStarts) ?></strong>
                                 </div>
                                 <div class="admin-campaign-result">
-                                    <span>Revenue</span>
-                                    <strong><?= moderation_e(membership_admin_money($campaignRevenueCents)) ?></strong>
+                                    <span>Conversion</span>
+                                    <strong><?= moderation_e(number_format($conversionRate, 1)) ?>%</strong>
                                 </div>
                             </div>
 
@@ -1465,25 +1850,6 @@ foreach ($promotions as $promotion) {
                                     </span>
                                 <?php endif; ?>
 
-                                <?php if (!empty($promotion['email_enabled'])): ?>
-                                    <span class="admin-campaign-badge">
-                                        <i aria-hidden="true"><?= llama_icon('mail') ?></i>
-                                        Email scheduled
-                                    </span>
-                                <?php endif; ?>
-
-                                <?php if (!empty($promotion['reminder_enabled'])): ?>
-                                    <span class="admin-campaign-badge">
-                                        <i aria-hidden="true"><?= llama_icon('bell-ringing') ?></i>
-                                        Reminder scheduled
-                                    </span>
-                                <?php endif; ?>
-
-                                <?php if ((int) ($delivery['failed_count'] ?? 0) > 0): ?>
-                                    <span class="admin-campaign-badge">
-                                        <?= number_format((int) $delivery['failed_count']) ?> failed
-                                    </span>
-                                <?php endif; ?>
                             </div>
 
                             <?php if (!empty($promotion['banner_text'])): ?>
@@ -1537,5 +1903,7 @@ foreach ($promotions as $promotion) {
 </section>
 
 <?php endif; ?>
+
+<script src="https://llamascout.com/js/admin/membership-promotions.js"></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
