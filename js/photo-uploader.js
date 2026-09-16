@@ -106,6 +106,7 @@
         let photos = [];
         let busy = false;
         let submitting = false;
+        let recoverySignature = '';
 
         try {
             const initial = JSON.parse(
@@ -294,6 +295,30 @@
             photosField.value = JSON.stringify(
                 photos
             );
+
+            const nextRecoverySignature =
+                `${tokenField.value}\n${photosField.value}`;
+
+            if (
+                nextRecoverySignature
+                !== recoverySignature
+            ) {
+                recoverySignature =
+                    nextRecoverySignature;
+
+                form.dispatchEvent(
+                    new CustomEvent(
+                        'llama:photo-staging-changed',
+                        {
+                            detail: {
+                                context,
+                                count:
+                                    photos.length,
+                            },
+                        }
+                    )
+                );
+            }
         };
 
         /*
@@ -1107,6 +1132,13 @@
          * safer data-preserving behavior.
          */
 
+        /*
+         * Browser recovery can recreate the hidden stage token and manifest
+         * before this uploader initializes. Always verify that recovered
+         * token against the server-side staging manifest before displaying
+         * the photos. A missing/expired stage is cleared rather than showing
+         * broken recovery cards.
+         */
         const loadExistingStage =
             async () => {
                 if (!tokenField.value) {
@@ -1115,7 +1147,17 @@
                 }
 
                 try {
-                    await request('list');
+                    if (photos.length > 0) {
+                        await request(
+                            'sync',
+                            {
+                                photos_json:
+                                    photosField.value,
+                            }
+                        );
+                    } else {
+                        await request('list');
+                    }
                 } catch (_) {
                     tokenField.value = '';
                     photos = [];

@@ -401,6 +401,151 @@
         );
     };
 
+    /*
+     * Staged photos live outside the ordinary form controls. The shared
+     * uploader creates these hidden fields after this script loads, so they
+     * need an explicit recovery snapshot rather than going through
+     * serializeForm().
+     */
+    const photoRecoveryState = (form) => {
+        const token =
+            String(
+                form.querySelector(
+                    '[name="photo_stage_token"]'
+                )?.value
+                || ''
+            )
+                .trim()
+                .toLowerCase();
+
+        if (!/^[a-f0-9]{32}$/.test(token)) {
+            return null;
+        }
+
+        const raw =
+            String(
+                form.querySelector(
+                    '[name="photos_json"]'
+                )?.value
+                || '[]'
+            );
+
+        let photos = [];
+
+        try {
+            const parsed = JSON.parse(raw);
+
+            if (Array.isArray(parsed)) {
+                photos = parsed.filter(
+                    (photo) =>
+                        photo
+                        && typeof photo === 'object'
+                        && String(
+                            photo.path
+                            || ''
+                        ).trim() !== ''
+                );
+            }
+        } catch (_) {
+            photos = [];
+        }
+
+        if (!photos.length) {
+            return null;
+        }
+
+        return {
+            token,
+            photos,
+        };
+    };
+
+    const restorePhotoRecoveryState = (
+        form,
+        storedState
+    ) => {
+        if (
+            !storedState
+            || typeof storedState !== 'object'
+        ) {
+            return false;
+        }
+
+        const token =
+            String(
+                storedState.token
+                || ''
+            )
+                .trim()
+                .toLowerCase();
+
+        const photos =
+            Array.isArray(storedState.photos)
+                ? storedState.photos.filter(
+                    (photo) =>
+                        photo
+                        && typeof photo === 'object'
+                        && String(
+                            photo.path
+                            || ''
+                        ).trim() !== ''
+                )
+                : [];
+
+        if (
+            !/^[a-f0-9]{32}$/.test(token)
+            || !photos.length
+        ) {
+            return false;
+        }
+
+        let tokenField =
+            form.querySelector(
+                '[name="photo_stage_token"]'
+            );
+
+        if (!tokenField) {
+            tokenField =
+                document.createElement(
+                    'input'
+                );
+
+            tokenField.type = 'hidden';
+            tokenField.name =
+                'photo_stage_token';
+
+            form.appendChild(
+                tokenField
+            );
+        }
+
+        let photosField =
+            form.querySelector(
+                '[name="photos_json"]'
+            );
+
+        if (!photosField) {
+            photosField =
+                document.createElement(
+                    'input'
+                );
+
+            photosField.type = 'hidden';
+            photosField.name =
+                'photos_json';
+
+            form.appendChild(
+                photosField
+            );
+        }
+
+        tokenField.value = token;
+        photosField.value =
+            JSON.stringify(photos);
+
+        return true;
+    };
+
     const recoveryStatus = (form) => {
         let status =
             form.querySelector(
@@ -623,7 +768,13 @@
             const current =
                 JSON.stringify(data);
 
-            if (current === baseline) {
+            const photoStage =
+                photoRecoveryState(form);
+
+            if (
+                current === baseline
+                && photoStage === null
+            ) {
                 dirty = false;
                 removeRecovery();
                 setStatus('');
@@ -631,10 +782,11 @@
             }
 
             const payload = {
-                version: 1,
+                version: 2,
                 savedAt: Date.now(),
                 baseline,
                 data,
+                photoStage,
             };
 
             try {
@@ -697,7 +849,10 @@
                     );
 
                 if (
-                    payload?.version === 1
+                    (
+                        payload?.version === 1
+                        || payload?.version === 2
+                    )
                     && age >= 0
                     && age
                         <= RECOVERY_MAX_AGE
@@ -712,9 +867,16 @@
                             payload.data
                         );
 
+                    const hasRecoveredPhotos =
+                        payload?.version === 2
+                        && payload.photoStage
+                        && typeof payload.photoStage
+                            === 'object';
+
                     if (
                         recovered
                         !== initialBaseline
+                        || hasRecoveredPhotos
                     ) {
                         restoring = true;
 
@@ -723,7 +885,27 @@
                             payload.data
                         );
 
+                        const photosRecovered =
+                            hasRecoveredPhotos
+                                ? restorePhotoRecoveryState(
+                                    form,
+                                    payload.photoStage
+                                )
+                                : false;
+
                         restoring = false;
+
+                        if (
+                            recovered
+                                === initialBaseline
+                            && !photosRecovered
+                        ) {
+                            removeRecovery();
+                            dirty = false;
+                            setStatus('');
+                            return;
+                        }
+
                         dirty = true;
 
                         const recoveredAt =
@@ -770,6 +952,17 @@
 
         form.addEventListener(
             'change',
+            queueRecovery
+        );
+
+        /*
+         * Programmatic photo uploads/removals do not emit ordinary input or
+         * change events. The shared uploader sends this event whenever its
+         * staged batch changes so photo-only edits receive the same crash
+         * recovery protection as the rest of the report.
+         */
+        form.addEventListener(
+            'llama:photo-staging-changed',
             queueRecovery
         );
 
@@ -920,7 +1113,13 @@
             const current =
                 JSON.stringify(data);
 
-            if (current === baseline) {
+            const photoStage =
+                photoRecoveryState(form);
+
+            if (
+                current === baseline
+                && photoStage === null
+            ) {
                 return current;
             }
 
@@ -929,11 +1128,12 @@
                     key,
                     JSON.stringify(
                         {
-                            version: 1,
+                            version: 2,
                             savedAt:
                                 Date.now(),
                             baseline,
                             data,
+                            photoStage,
                         }
                     )
                 );
