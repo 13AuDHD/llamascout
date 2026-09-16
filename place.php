@@ -286,10 +286,15 @@ $canonicalUrl =
         (string) $place['slug']
     );
 
+/*
+ * LS-018 / LS-019:
+ * Use the current editable Place Description for SEO and social metadata.
+ * Legacy public_summary values no longer override current Place content.
+ */
 $pageDescription =
     trim(
         (string) (
-            $place['public_summary']
+            $place['description']
             ?? ''
         )
     );
