@@ -234,15 +234,20 @@ function username_policy_brand_terms(): array
 function username_policy_blocked_terms(): array
 {
     /*
-     * Strong terms that are uncommon inside innocent words.
-     * These may safely be checked as substrings after separator
-     * removal and leetspeak normalization.
+     * Strong fragments.
+     *
+     * These are uncommon enough inside innocent words that they can be
+     * checked anywhere in the compact username. That also catches obvious
+     * concatenation and separator / leetspeak evasion.
      */
 
     return [
+
+        /*
+         * Profanity / abusive insults.
+         */
+
         'fuck',
-        'fucker',
-        'fucking',
         'motherfucker',
         'shit',
         'bullshit',
@@ -254,12 +259,56 @@ function username_policy_blocked_terms(): array
         'bastard',
         'slut',
         'whore',
+        'douchebag',
+        'jackass',
+
+        /*
+         * Explicit sexual-content terms.
+         */
+
         'porn',
         'porno',
+        'blowjob',
+        'handjob',
+        'rimjob',
+        'gangbang',
+        'dildo',
+        'boobs',
+        'tits',
+        'rapist',
+        'incest',
+        'bestiality',
+        'necrophilia',
+
+        /*
+         * Common slurs that are sufficiently distinctive for
+         * substring matching. Identity words themselves are not
+         * blocked simply for naming an identity.
+         */
+
+        'nigger',
+        'nigga',
+        'faggot',
+        'tranny',
+        'kike',
+        'wetback',
+        'beaner',
+        'gook',
+        'raghead',
+        'sandnigger',
+
+        /*
+         * Extremist / hate identifiers and slogans.
+         */
+
         'nazi',
+        'neonazi',
         'hitler',
         'kkk',
-        'lgbqt',
+        'whitepower',
+        'heilhitler',
+        'siegheil',
+        'swastika',
     ];
 }
 
@@ -267,20 +316,43 @@ function username_policy_blocked_terms(): array
 function username_policy_ambiguous_terms(): array
 {
     /*
-     * These strings regularly appear inside harmless words:
+     * These can occur inside ordinary words, names, technical terms,
+     * geographic names, or surnames.
      *
-     *   shellfish / seashell
-     *   Essex / Sussex
+     * Examples:
+     *   shellfish
      *   analysis / analyst / canal
+     *   sexton
+     *   classy
+     *   dickinson
+     *   cocktail / peacock
+     *   cumberland
+     *   raccoon
+     *   spice
+     *   grape
+     *   pedometer
+     *   fire_retardant
      *
-     * Match them only when they form a distinct username component
-     * or are separated from surrounding letters by digits/underscores.
+     * They are therefore NOT safe for unconditional substring blocking.
      */
 
     return [
         'hell',
         'anal',
         'sex',
+        'ass',
+        'dick',
+        'cock',
+        'pussy',
+        'cum',
+        'fag',
+        'spic',
+        'coon',
+        'chink',
+        'dyke',
+        'retard',
+        'pedo',
+        'rape',
     ];
 }
 
@@ -289,6 +361,23 @@ function username_policy_contains_ambiguous_term(
     string $username,
     string $term
 ): bool {
+
+    /*
+     * A term is explicit when letters do not immediately surround it.
+     * Digits and underscores count as boundaries.
+     *
+     * Examples blocked:
+     *   go_to_hell
+     *   sex_69
+     *   4nal_lover
+     *   rape123
+     *
+     * Examples allowed:
+     *   shellfish
+     *   analysis
+     *   sexton
+     *   grapevine
+     */
 
     $pattern =
         '/(?<![a-z])'
@@ -323,6 +412,53 @@ function username_policy_contains_ambiguous_term(
     }
 
     return false;
+}
+
+
+function username_policy_ambiguous_hit_count(
+    string $username
+): int {
+
+    /*
+     * One ambiguous fragment may simply be part of an innocent word.
+     * Multiple ambiguous fragments in the same compact username are a
+     * strong signal that the username is intentionally combining them.
+     *
+     * This closes concatenation such as:
+     *   hellsexanal
+     *   h3lls3x4nal
+     *   sexsex
+     *
+     * without rejecting a single ordinary occurrence such as analysis.
+     */
+
+    $scan =
+        username_policy_leet(
+            $username
+        );
+
+    if ($scan === '') {
+        return 0;
+    }
+
+    $hits = 0;
+
+    foreach (
+        username_policy_ambiguous_terms()
+        as $term
+    ) {
+        $hits +=
+            substr_count(
+                $scan,
+                $term
+            );
+
+        if ($hits >= 2) {
+            return $hits;
+        }
+    }
+
+    return $hits;
 }
 
 
@@ -479,7 +615,7 @@ function username_policy_check(
 
 
     /*
-     * Block strong inappropriate fragments.
+     * Block strong inappropriate fragments anywhere in the username.
      */
 
     foreach (
@@ -510,9 +646,8 @@ function username_policy_check(
 
 
     /*
-     * Block ambiguous terms only when they stand apart from surrounding
-     * letters. This prevents false positives in ordinary words while still
-     * catching forms such as go_to_hell, sex_69, h3ll_666, and 4nal_lover.
+     * Block explicit uses of ambiguous terms while allowing a single
+     * occurrence inside an ordinary larger word.
      */
 
     foreach (
@@ -534,6 +669,26 @@ function username_policy_check(
                 'code' => 'inappropriate',
             ];
         }
+    }
+
+
+    /*
+     * A deliberately concatenated username may hide the boundaries above.
+     * Two or more ambiguous hits are blocked even when letters touch.
+     */
+
+    if (
+        username_policy_ambiguous_hit_count(
+            $username
+        ) >= 2
+    ) {
+
+        return [
+            'allowed' => false,
+            'reason' =>
+                'That username is not available. Please choose another username.',
+            'code' => 'inappropriate',
+        ];
     }
 
 
