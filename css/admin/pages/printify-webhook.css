@@ -1,0 +1,101 @@
+/* =========================================================
+   ADMIN PAGE: PRINTIFY WEBHOOK
+   Only admin/printify-webhook.php belongs here.
+   ========================================================= */
+
+.admin-panel
+> .admin-user-action-box {
+    margin: 16px;
+}
+
+.admin-panel
+> form.admin-user-action-box {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-panel
+> .admin-user-action-box p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.5;
+}
+
+.admin-panel
+> form.admin-user-action-box
+> .admin-button {
+    justify-self: start;
+}
+
+.admin-integration-error {
+    margin: 16px;
+    padding: 13px 14px;
+
+    border: 1px solid color-mix(
+        in srgb,
+        #c95a52 60%,
+        var(--border)
+    );
+    border-radius: 10px;
+
+    background: color-mix(
+        in srgb,
+        #c95a52 5%,
+        var(--surface)
+    );
+}
+
+.admin-integration-error strong {
+    display: block;
+
+    font-size: .72rem;
+}
+
+.admin-integration-error p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 520px) {
+
+    .admin-panel
+    > form.admin-user-action-box
+    > .admin-button {
+        width: 100%;
+    }
+}
+
+
+.admin-printify-webhook-topics {
+    margin: 18px;
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-printify-webhook-topics > strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: .72rem;
+}
+
+.admin-printify-webhook-topics ul {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-left: 20px;
+}
+
+.admin-printify-webhook-topics code {
+    font-size: .65rem;
+}
