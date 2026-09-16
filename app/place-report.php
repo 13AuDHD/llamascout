@@ -713,7 +713,7 @@ function llama_place_report_fields(): array
         'daytime_traffic' => ['Traffic', 'None', 'Heavy', 'sensory.daytime.traffic', 'Daytime'],
         'daytime_crowds' => ['Crowds', 'Empty', 'Crowded', 'sensory.daytime.crowds', 'Daytime'],
         'daytime_privacy' => ['Privacy', 'None', 'Excellent', 'sensory.daytime.privacy', 'Daytime'],
-        'daytime_light_pollution' => ['Artificial light', 'None', 'Heavy', 'sensory.daytime.light_pollution', 'Daytime'],
+        'daytime_light_pollution' => ['Natural light', 'Low', 'Full sun', 'sensory.daytime.light_pollution', 'Daytime'],
         'daytime_sensory_comfort' => ['Sensory comfort', 'Difficult', 'Excellent', 'sensory.daytime.sensory_comfort', 'Daytime'],
         'daytime_social_interaction' => ['Chance of social interaction', 'Very low', 'Very high', 'sensory.daytime.social_interaction_likelihood', 'Daytime'],
         'nighttime_noise' => ['Noise', 'Very quiet', 'Very loud', 'sensory.nighttime.noise', 'Nighttime'],
