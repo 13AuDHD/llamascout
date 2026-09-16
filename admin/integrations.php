@@ -878,7 +878,7 @@ require __DIR__ . '/_header.php';
 
 <?php else: ?>
 
-<div class="admin-integration-health">
+<div class="admin-integration-health admin-integration-health--mapping">
 
 <div>
     <span>Mapped</span>
@@ -1064,11 +1064,17 @@ $firstMatch =
         ) ?>
     </span>
 
-    <small>
-        <?= moderation_e(
-            (string) $diagnostic['message']
-        ) ?>
-    </small>
+    <?php if (!in_array(
+        (string) $diagnostic['status'],
+        ['mapped', 'unmapped'],
+        true
+    )): ?>
+        <small>
+            <?= moderation_e(
+                (string) $diagnostic['message']
+            ) ?>
+        </small>
+    <?php endif; ?>
 </td>
 
 <td data-label="IDs">
@@ -1077,34 +1083,22 @@ $firstMatch =
     $diagnostic['configured_variant_id'] !== ''
 ): ?>
 
-<span>
-    Product:
-    <?= moderation_e(
-        $diagnostic['configured_product_id']
-        !== ''
-            ? $diagnostic['configured_product_id']
-            : 'Unknown'
-    ) ?>
-</span>
+<span class="admin-integration-id-line">Product: <?= moderation_e(
+    $diagnostic['configured_product_id']
+    !== ''
+        ? $diagnostic['configured_product_id']
+        : 'Unknown'
+) ?></span>
 
-<span>
-    Variant:
-    <?= moderation_e(
-        $diagnostic['configured_variant_id']
-    ) ?>
-</span>
+<span class="admin-integration-id-line">Variant: <?= moderation_e(
+    $diagnostic['configured_variant_id']
+) ?></span>
 
 <?php elseif ($firstMatch): ?>
 
-<span>
-    Product:
-    <?= (int) $firstMatch['sync_product_id'] ?>
-</span>
+<span class="admin-integration-id-line">Product: <?= (int) $firstMatch['sync_product_id'] ?></span>
 
-<span>
-    Variant:
-    <?= (int) $firstMatch['sync_variant_id'] ?>
-</span>
+<span class="admin-integration-id-line">Variant: <?= (int) $firstMatch['sync_variant_id'] ?></span>
 
 <?php else: ?>
 
