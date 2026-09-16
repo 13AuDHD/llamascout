@@ -2649,13 +2649,10 @@ function admin_shop_update_fulfillment(
     }
 
     /*
-     * A Printful fulfillment with a provider order ID represents a
-     * real remote provider order. The generic order editor must not
-     * be able to sever that relationship or claim the order was
-     * cancelled locally without cancelling it at Printful first.
-     *
-     * Provider cancellation belongs to:
-     * Admin > Commerce > Printful Orders
+     * A submitted provider fulfillment represents a real remote order.
+     * The generic order editor must not sever that relationship, move it
+     * to a different provider, alter the provider order ID, or claim it
+     * was cancelled locally without cancelling it at the provider first.
      */
     $existingProvider =
         admin_shop_normalize_provider(
@@ -2674,18 +2671,40 @@ function admin_shop_update_fulfillment(
         );
 
     if (
-        $existingProvider === 'printful'
+        in_array(
+            $existingProvider,
+            ['printful', 'printify'],
+            true
+        )
         && $existingProviderOrderId !== ''
     ) {
+        $providerLabel =
+            $existingProvider === 'printify'
+                ? 'Printify'
+                : 'Printful';
+
+        $ordersPage =
+            $existingProvider === 'printify'
+                ? 'Printify Orders'
+                : 'Printful Orders';
+
         if ($status === 'cancelled') {
             throw new InvalidArgumentException(
-                'This fulfillment has a live Printful order. Cancel it from Commerce > Printful Orders so the provider is cancelled before the local fulfillment is updated.'
+                'This fulfillment has a live ' .
+                $providerLabel .
+                ' order. Cancel it from Commerce > ' .
+                $ordersPage .
+                ' so the provider is cancelled before the local fulfillment is updated.'
             );
         }
 
-        if ($provider !== 'printful') {
+        if ($provider !== $existingProvider) {
             throw new InvalidArgumentException(
-                'A submitted Printful fulfillment cannot be moved to another provider. Manage the Printful order from Commerce > Printful Orders.'
+                'A submitted ' .
+                $providerLabel .
+                ' fulfillment cannot be moved to another provider. Manage the provider order from Commerce > ' .
+                $ordersPage .
+                '.'
             );
         }
 
@@ -2697,7 +2716,11 @@ function admin_shop_update_fulfillment(
             )
         ) {
             throw new InvalidArgumentException(
-                'The Printful order ID for a submitted fulfillment cannot be changed here. Manage the provider order from Commerce > Printful Orders.'
+                'The ' .
+                $providerLabel .
+                ' order ID for a submitted fulfillment cannot be changed here. Manage the provider order from Commerce > ' .
+                $ordersPage .
+                '.'
             );
         }
     }
