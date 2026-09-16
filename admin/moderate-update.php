@@ -110,6 +110,13 @@ if (
 ) {
     $action = '';
 
+    /*
+     * Permanent Place-photo copies created during an approval are
+     * tracked here until the surrounding database transaction commits.
+     */
+    $approvalPhotoCopies =
+        [];
+
     try {
 
         if (
@@ -251,12 +258,16 @@ if (
 
         if ($action === 'approve') {
 
+            $approvalPhotoCopies =
+                [];
+
             $contributionId =
                 llama_place_update_approve(
                     $db,
                     $updateId,
                     (int) $adminUser['id'],
-                    $notes
+                    $notes,
+                    $approvalPhotoCopies
                 );
 
 
@@ -305,6 +316,16 @@ if (
 
 
             $db->commit();
+
+
+            /*
+             * The approved update, contribution, points, history, and
+             * audit record are now durable. It is finally safe to
+             * remove the contributor's source update photos.
+             */
+            llama_place_update_remove_files(
+                $updateId
+            );
 
 
             header(
@@ -410,6 +431,16 @@ if (
             $db->inTransaction()
         ) {
             $db->rollBack();
+        }
+
+
+        if ($approvalPhotoCopies) {
+            moderation_cleanup_copied_place_photos(
+                $approvalPhotoCopies
+            );
+
+            $approvalPhotoCopies =
+                [];
         }
 
 
@@ -1368,7 +1399,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                →
+                                                â
 
                                                 <?= $e(
                                                     $afterText
@@ -1409,7 +1440,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                →
+                                â
 
                                 <?= (int) (
                                     $event['photo_count_after']
