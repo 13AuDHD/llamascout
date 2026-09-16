@@ -59,6 +59,21 @@ function submit_place_report(
         throw new InvalidArgumentException('Report details are too long.');
     }
 
+    /*
+     * LS-017: a closure/status claim must include current photo evidence.
+     *
+     * This is enforced on the server so bypassing JavaScript cannot submit
+     * an unverified closure report.
+     */
+    if (
+        $problemType === 'closure-status'
+        && !$submittedPhotos
+    ) {
+        throw new InvalidArgumentException(
+            'Closure or status reports require at least one current photo showing the closure, sign, gate, or changed condition.'
+        );
+    }
+
     if ($submittedPhotos && trim($photoToken) === '') {
         throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
     }
@@ -84,6 +99,7 @@ function submit_place_report(
         ]);
 
         $reportId = (int) $db->lastInsertId();
+        $photos = [];
 
         if (trim($photoToken) !== '') {
             $photos = llama_photo_commit_stage(
@@ -93,6 +109,20 @@ function submit_place_report(
                 $submittedPhotos,
                 '/uploads/place-reports/' . $reportId
             );
+
+            /*
+             * Do not let a stale or mismatched staging batch satisfy the
+             * closure evidence requirement. At least one photo must actually
+             * survive staging and be ready to attach to the report.
+             */
+            if (
+                $problemType === 'closure-status'
+                && !$photos
+            ) {
+                throw new InvalidArgumentException(
+                    'The closure photo could not be attached. Please upload at least one current photo again before submitting this report.'
+                );
+            }
 
             if ($photos) {
                 $imageStmt = $db->prepare(
