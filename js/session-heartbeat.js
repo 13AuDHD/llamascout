@@ -2,7 +2,8 @@
     'use strict';
 
     const endpoint =
-        'https://llamascout.com/session-heartbeat.php';
+        window.location.origin
+        + '/session-heartbeat.php';
 
     const intervalMs =
         60 * 1000;
@@ -24,7 +25,7 @@
                     endpoint,
                     {
                         method: 'GET',
-                        credentials: 'include',
+                        credentials: 'same-origin',
                         cache: 'no-store',
                         headers: {
                             'Accept': 'application/json',
@@ -40,13 +41,14 @@
                 await response.json();
 
             /*
-             * Account pages should never continue presenting a
-             * signed-in dashboard after an admin has invalidated
-             * the session.
+             * A heartbeat is presence/session monitoring, not the
+             * authority that destroys a browsing session. Only an
+             * explicit server-side revocation may force Account back
+             * to the sign-in page.
              */
             if (
                 payload
-                && payload.authenticated === false
+                && payload.revoked === true
                 && window.location.hostname
                     === 'account.llamascout.com'
                 && !window.location.pathname.endsWith('/login.php')
@@ -58,8 +60,8 @@
             }
         } catch (error) {
             /*
-             * Presence is intentionally non-critical. A temporary
-             * network problem should not interrupt the page.
+             * Temporary network, browser-sleep, or tab-resume failures
+             * are intentionally non-critical and must not sign anyone out.
              */
         } finally {
             requestInFlight = false;
@@ -91,11 +93,5 @@
                 checkSession();
             }
         }
-    );
-
-
-    window.addEventListener(
-        'focus',
-        checkSession
     );
 })();
