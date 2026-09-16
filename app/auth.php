@@ -1138,7 +1138,7 @@ function llama_safe_return_url(
                     'scheme'
                 ]
                 ?? ''
-           )
+            )
         );
 
 
@@ -1168,6 +1168,49 @@ function llama_safe_return_url(
         &&
         !str_ends_with(
             $host,
+            '.llamascout.com'
+        )
+    ) {
+
+        return null;
+    }
+
+
+    return
+        $url;
+}
+
+
+function llama_current_request_url(): string {
+
+    $host =
+        trim(
+            (string) (
+                $_SERVER[
+                    'HTTP_HOST'
+                ]
+                ?? 'llamascout.com'
+            )
+        );
+
+
+    /*
+     * Prevent a malicious Host header from influencing an
+     * authentication redirect.
+     */
+
+    $hostLower =
+        strtolower(
+            $host
+        );
+
+
+    if (
+        $hostLower !==
+        'llamascout.com'
+        &&
+        !str_ends_with(
+            $hostLower,
             '.llamascout.com'
         )
     ) {
