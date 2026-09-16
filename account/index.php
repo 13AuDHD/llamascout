@@ -361,6 +361,20 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php foreach ($earnedBadges as $badge): ?>
 
                     <?php
+                    $badgeSlug =
+                        trim(
+                            (string) (
+                                $badge['slug']
+                                ?? ''
+                            )
+                        );
+
+                    $badgeName =
+                        (string) (
+                            $badge['name']
+                            ?? 'Badge'
+                        );
+
                     $badgeImage =
                         trim(
                             (string) (
@@ -409,58 +423,67 @@ require dirname(__DIR__) . '/partials/header.php';
                         $badgeIcon = 'award';
                     }
 
-                    $badgeIconMarkup = llama_icon($badgeIcon);
+                    $badgeIconMarkup =
+                        llama_icon(
+                            $badgeIcon
+                        );
 
                     if ($badgeIconMarkup === '') {
-                        $badgeIconMarkup = llama_icon('award');
+                        $badgeIconMarkup =
+                            llama_icon(
+                                'award'
+                            );
                     }
                     ?>
 
-                    <article class="account-badge-card">
+                    <a
+                        class="account-earned-badge"
+                        href="<?= htmlspecialchars(
+                            $siteUrl
+                            . '/badges/'
+                            . rawurlencode($badgeSlug),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                        aria-label="View <?= htmlspecialchars(
+                            $badgeName,
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?> badge"
+                        title="<?= htmlspecialchars(
+                            $badgeName,
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
 
-                        <div class="account-badge-mark">
+                        <?php if ($badgeImage !== ''): ?>
 
-                            <?php if ($badgeImage !== ''): ?>
-
-                                <img
-                                    src="<?= htmlspecialchars(
-                                        $badgeImage,
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>"
-                                    alt=""
-                                    loading="lazy"
-                                >
-
-                            <?php else: ?>
-
-                                <i aria-hidden="true"><?= $badgeIconMarkup ?></i>
-
-                            <?php endif; ?>
-
-                        </div>
-
-                        <div class="account-badge-copy">
-                            <strong>
-                                <?= htmlspecialchars(
-                                    (string) $badge['name'],
+                            <img
+                                src="<?= htmlspecialchars(
+                                    $badgeImage,
                                     ENT_QUOTES,
                                     'UTF-8'
-                                ) ?>
-                            </strong>
+                                ) ?>"
+                                alt="<?= htmlspecialchars(
+                                    $badgeName,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                                loading="lazy"
+                            >
 
-                            <?php if (!empty($badge['description'])): ?>
-                                <span>
-                                    <?= htmlspecialchars(
-                                        (string) $badge['description'],
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>
-                                </span>
-                            <?php endif; ?>
-                        </div>
+                        <?php else: ?>
 
-                    </article>
+                            <span class="account-earned-badge-fallback">
+                                <i
+                                    aria-hidden="true"
+                                ><?= $badgeIconMarkup ?></i>
+                            </span>
+
+                        <?php endif; ?>
+
+                    </a>
 
                 <?php endforeach; ?>
 
