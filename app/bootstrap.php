@@ -45,30 +45,81 @@ start_llama_session();
 llama_enforce_session_invalidation(db());
 llama_enforce_verified_email_session(db());
 
-try {
-    require_once __DIR__ . '/promotion-campaigns.php';
-    llama_run_promotion_email_maintenance(db(), 2);
+$runMaintenance = static function (
+    string $worker,
+    callable $callback
+): void {
+    try {
+        $callback();
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout opportunistic maintenance error [' .
+            $worker .
+            ']: ' .
+            $exception->getMessage()
+        );
+    }
+};
 
-    require_once __DIR__ . '/newsletters.php';
-    llama_run_newsletter_maintenance(db(), 2);
+$runMaintenance(
+    'promotion_email',
+    static function (): void {
+        require_once __DIR__ . '/promotion-campaigns.php';
+        llama_run_promotion_email_maintenance(db(), 2);
+    }
+);
 
-    require_once __DIR__ . '/support.php';
-    llama_run_support_email_maintenance(db(), 10);
+$runMaintenance(
+    'newsletter',
+    static function (): void {
+        require_once __DIR__ . '/newsletters.php';
+        llama_run_newsletter_maintenance(db(), 2);
+    }
+);
 
-    llama_run_membership_email_maintenance(db(), 10);
-    llama_run_promotion_code_maintenance(db(), 300);
-    shop_run_shipment_email_maintenance(db(), 5);
+$runMaintenance(
+    'support_email',
+    static function (): void {
+        require_once __DIR__ . '/support.php';
+        llama_run_support_email_maintenance(db(), 10);
+    }
+);
 
-    require_once __DIR__ . '/shop-maintenance.php';
-    shop_run_checkout_cleanup_maintenance(db(), 50, 300);
+$runMaintenance(
+    'membership_email',
+    static function (): void {
+        llama_run_membership_email_maintenance(db(), 10);
+    }
+);
 
-    require_once __DIR__ . '/scout-maintenance.php';
-    llama_run_scout_renewal_maintenance(db());
-} catch (Throwable $exception) {
-    error_log(
-        'Llama Scout opportunistic maintenance error: '
-        . $exception->getMessage()
-    );
-}
+$runMaintenance(
+    'promotion_code',
+    static function (): void {
+        llama_run_promotion_code_maintenance(db(), 300);
+    }
+);
+
+$runMaintenance(
+    'shipment_email',
+    static function (): void {
+        shop_run_shipment_email_maintenance(db(), 5);
+    }
+);
+
+$runMaintenance(
+    'shop_cleanup',
+    static function (): void {
+        require_once __DIR__ . '/shop-maintenance.php';
+        shop_run_checkout_cleanup_maintenance(db(), 50, 300);
+    }
+);
+
+$runMaintenance(
+    'scout_renewal',
+    static function (): void {
+        require_once __DIR__ . '/scout-maintenance.php';
+        llama_run_scout_renewal_maintenance(db());
+    }
+);
 
 llama_enforce_maintenance(db());
