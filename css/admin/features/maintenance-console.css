@@ -1,0 +1,391 @@
+/* =========================================================
+   ADMIN FEATURE: EMERGENCY MAINTENANCE CONSOLE
+   Loaded by admin/system.php.
+   ========================================================= */
+
+.admin-maintenance-console {
+    grid-column: 1 / -1;
+}
+
+.admin-maintenance-console-intro {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+
+    padding: 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-maintenance-console-intro > div:first-child {
+    max-width: 760px;
+}
+
+.admin-maintenance-console-intro strong {
+    display: block;
+
+    font-size: .82rem;
+}
+
+.admin-maintenance-console-intro p {
+    margin: 5px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .7rem;
+    line-height: 1.55;
+}
+
+.admin-maintenance-console-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.admin-maintenance-console-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.admin-maintenance-console-legend i,
+.admin-maintenance-worker-light {
+    width: 9px;
+    height: 9px;
+
+    display: inline-block;
+    flex: 0 0 9px;
+
+    border-radius: 50%;
+}
+
+.admin-maintenance-console-legend .is-good i,
+.admin-maintenance-worker.is-good
+.admin-maintenance-worker-light {
+    background: #58a66a;
+}
+
+.admin-maintenance-console-legend .is-attention i,
+.admin-maintenance-worker.is-attention
+.admin-maintenance-worker-light {
+    background: #d3a842;
+}
+
+.admin-maintenance-console-legend .is-down i,
+.admin-maintenance-worker.is-down
+.admin-maintenance-worker-light {
+    background: #c95a52;
+}
+
+.admin-maintenance-console-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    padding: 16px;
+}
+
+.admin-maintenance-worker {
+    position: relative;
+
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-maintenance-worker.is-attention {
+    border-color:
+        color-mix(
+            in srgb,
+            #d3a842 55%,
+            var(--border)
+        );
+}
+
+.admin-maintenance-worker.is-down {
+    border-color:
+        color-mix(
+            in srgb,
+            #c95a52 62%,
+            var(--border)
+        );
+}
+
+.admin-maintenance-worker-light {
+    position: absolute;
+    top: 13px;
+    right: 13px;
+}
+
+.admin-maintenance-worker-heading {
+    display: grid;
+    grid-template-columns:
+        38px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+
+    padding-right: 12px;
+}
+
+.admin-maintenance-worker-icon {
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text-muted);
+}
+
+.admin-maintenance-worker-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.admin-maintenance-worker-status {
+    display: block;
+
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.admin-maintenance-worker h3 {
+    margin: 2px 0 0;
+
+    font-size: .85rem;
+    line-height: 1.25;
+}
+
+.admin-maintenance-worker-description {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.5;
+}
+
+.admin-maintenance-worker-meta {
+    display: grid;
+    gap: 8px;
+
+    margin: 0;
+}
+
+.admin-maintenance-worker-meta > div {
+    display: grid;
+    grid-template-columns:
+        minmax(88px, .75fr)
+        minmax(0, 1.25fr);
+    gap: 10px;
+
+    padding-top: 8px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-maintenance-worker-meta dt,
+.admin-maintenance-worker-meta dd {
+    margin: 0;
+}
+
+.admin-maintenance-worker-meta dt {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 850;
+}
+
+.admin-maintenance-worker-meta dd {
+    min-width: 0;
+
+    font-size: .67rem;
+}
+
+.admin-maintenance-worker-meta dd strong,
+.admin-maintenance-worker-meta dd small {
+    display: block;
+}
+
+.admin-maintenance-worker-meta dd small {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .59rem;
+    line-height: 1.35;
+}
+
+.admin-maintenance-worker-actions {
+    margin-top: auto;
+    padding-top: 2px;
+}
+
+.admin-maintenance-worker-actions form {
+    margin: 0;
+}
+
+.admin-maintenance-worker-actions .admin-button {
+    width: 100%;
+    justify-content: center;
+}
+
+.admin-maintenance-owner-note {
+    display: block;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+
+.admin-maintenance-event-driven {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin: 0 16px 12px;
+    padding: 11px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-maintenance-event-driven > div {
+    min-width: 0;
+}
+
+.admin-maintenance-event-driven strong,
+.admin-maintenance-event-driven span {
+    display: block;
+}
+
+.admin-maintenance-event-driven strong {
+    font-size: .7rem;
+}
+
+.admin-maintenance-event-driven > div > span,
+.admin-maintenance-event-driven > span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.45;
+}
+
+.admin-maintenance-event-driven > span {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.admin-maintenance-console-note {
+    display: grid;
+    grid-template-columns:
+        28px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    margin: 0 16px 16px;
+    padding: 12px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface);
+}
+
+.admin-maintenance-console-note > i {
+    width: 28px;
+    height: 28px;
+
+    display: grid;
+    place-items: center;
+
+    color: var(--text-muted);
+}
+
+.admin-maintenance-console-note svg {
+    width: 17px;
+    height: 17px;
+}
+
+.admin-maintenance-console-note p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 1000px) {
+
+    .admin-maintenance-console-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+
+    .admin-maintenance-console-intro {
+        flex-direction: column;
+    }
+
+    .admin-maintenance-console-legend {
+        justify-content: flex-start;
+    }
+
+    .admin-maintenance-console-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-maintenance-event-driven {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-maintenance-event-driven > span {
+        text-align: left;
+    }
+}
