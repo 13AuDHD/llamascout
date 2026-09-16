@@ -8,6 +8,12 @@ require_once __DIR__ . '/app/support.php';
 $db = db();
 $user = current_user();
 
+$userId =
+    (int) (
+        $user['id']
+        ?? 0
+    );
+
 $pageTitle = 'Contact & Support | Llama Scout';
 $pageDescription = 'Contact Llama Scout for account, membership, Shop order, place information, accessibility, privacy, technical problems, or general support.';
 $canonicalUrl = 'https://llamascout.com/contact.php';
@@ -136,6 +142,49 @@ $email = trim(
     )
 );
 
+$accountPhone =
+    $userId > 0
+        ? llama_support_phone_number(
+            $db,
+            $userId
+        )
+        : null;
+
+$phoneNumber =
+    llama_support_format_phone(
+        (string) (
+            $_POST['phone_number']
+            ?? $accountPhone
+            ?? ''
+        )
+    );
+
+$preferredContact =
+    trim(
+        (string) (
+            $_POST['preferred_contact']
+            ?? 'email'
+        )
+    );
+
+if (
+    !isset(
+        llama_support_contact_methods()[
+            $preferredContact
+        ]
+    )
+) {
+    $preferredContact = 'email';
+}
+
+$supportPinSet =
+    $userId > 0
+        ? llama_support_pin_is_set(
+            $db,
+            $userId
+        )
+        : false;
+
 $defaultCategory =
     $errorReference !== null
         ? 'technical'
@@ -246,48 +295,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $user
                     );
 
-            $ticketNumber =
-                llama_support_ticket_number(
-                    $db,
-                    $requestId
-                );
+                $ticketNumber =
+                    llama_support_ticket_number(
+                        $db,
+                        $requestId
+                    );
 
-            $success =
-                'Your support ticket was sent. Ticket #'
-                . $ticketNumber
-                . '.';
+                $success =
+                    'Your support ticket was sent. Ticket #'
+                    . $ticketNumber
+                    . '.';
 
-            $subject = '';
-            $orderNumber = '';
-            $message = '';
-            $errorReference = null;
-            $category = 'general';
+                $subject = '';
+                $orderNumber = '';
+                $message = '';
+                $errorReference = null;
+                $category = 'general';
+                $preferredContact = 'email';
+                $phoneNumber =
+                    llama_support_format_phone(
+                        $accountPhone
+                    );
 
-        } catch (InvalidArgumentException $exception) {
-            $error = $exception->getMessage();
+            } catch (InvalidArgumentException $exception) {
+                $error = $exception->getMessage();
 
-        } catch (Throwable $exception) {
-            $reference =
-                function_exists(
-                    'llama_log_caught_exception'
-                )
-                    ? llama_log_caught_exception(
-                        $exception,
-                        'support.public_submit'
+            } catch (Throwable $exception) {
+                $reference =
+                    function_exists(
+                        'llama_log_caught_exception'
                     )
-                    : null;
+                        ? llama_log_caught_exception(
+                            $exception,
+                            'support.public_submit'
+                        )
+                        : null;
 
-            $error = $reference
-                ? 'Your request could not be submitted. Error reference '
-                    . $reference
-                    . '.'
-                : 'Your request could not be submitted.';
+                $error = $reference
+                    ? 'Your request could not be submitted. Error reference '
+                        . $reference
+                        . '.'
+                    : 'Your request could not be submitted.';
             }
         }
     }
 }
 
 $categories = llama_support_categories();
+$contactMethods =
+    llama_support_contact_methods();
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -300,6 +356,15 @@ require __DIR__ . '/partials/header.php';
         'UTF-8'
     ) ?>"
 >
+
+<script
+    src="<?= htmlspecialchars(
+        $siteUrl . '/js/contact-support.js',
+        ENT_QUOTES,
+        'UTF-8'
+    ) ?>"
+    defer
+></script>
 
 <?php if ($turnstileSiteKey !== ''): ?>
 <script
@@ -445,6 +510,106 @@ require __DIR__ . '/partials/header.php';
 </label>
 
 <label>
+    <span>Phone number</span>
+    <input
+        type="tel"
+        name="phone_number"
+        maxlength="32"
+        autocomplete="tel"
+        inputmode="tel"
+        placeholder="(970) 555-1212"
+        value="<?= htmlspecialchars(
+            $phoneNumber,
+            ENT_QUOTES,
+            'UTF-8'
+        ) ?>"
+        data-support-phone
+        aria-describedby="support-phone-help"
+    >
+    <small id="support-phone-help" data-support-phone-help>
+        Optional for email replies. Required if you prefer a text or phone call.
+    </small>
+</label>
+
+<label>
+    <span>Preferred Contact</span>
+    <select
+        name="preferred_contact"
+        required
+        data-support-preferred-contact
+    >
+        <?php foreach (
+            $contactMethods
+            as $key => $label
+        ): ?>
+            <option
+                value="<?= htmlspecialchars(
+                    $key,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
+                <?= $preferredContact === $key
+                    ? 'selected'
+                    : '' ?>
+            >
+                <?= htmlspecialchars(
+                    $label,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <small>
+        Choosing Text or Phone Call gives Llama Scout permission
+        to contact you about this support request at the number above.
+    </small>
+</label>
+
+<div class="support-pin-note">
+    <i aria-hidden="true">
+        <?= llama_icon('shield') ?>
+    </i>
+
+    <div>
+        <?php if ($userId > 0): ?>
+            <strong>
+                Support PIN:
+                <?= $supportPinSet
+                    ? 'Configured'
+                    : 'Not configured' ?>
+            </strong>
+
+            <?php if ($supportPinSet): ?>
+                <p>
+                    If phone verification is needed, Support may ask for
+                    your private 8-digit Support PIN during the call.
+                    Never enter your Support PIN in this form.
+                    <a
+                        href="https://account.llamascout.com/account-information.php#support-pin"
+                    >Manage Support PIN</a>.
+                </p>
+            <?php else: ?>
+                <p>
+                    A Support PIN lets Support verify your identity during
+                    a phone call. Never enter a Support PIN in this form.
+                    <a
+                        href="https://account.llamascout.com/account-information.php#support-pin"
+                    >Create a Support PIN in Account Information</a>.
+                </p>
+            <?php endif; ?>
+        <?php else: ?>
+            <strong>Support PIN</strong>
+            <p>
+                Signed-in members can create a private 8-digit Support PIN
+                for identity verification during phone support. Never enter
+                a Support PIN in this form.
+            </p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<label>
     <span>What do you need help with?</span>
     <select name="category" required>
         <?php foreach (
@@ -518,7 +683,7 @@ require __DIR__ . '/partials/header.php';
 </label>
 
 <p class="support-form-note">
-    Do not send passwords, MFA codes, complete payment-card
+    Do not send passwords, MFA codes, Support PINs, complete payment-card
     numbers, or other secret login credentials.
 </p>
 
@@ -579,8 +744,9 @@ require __DIR__ . '/partials/header.php';
 
 <p>
     Llama Scout will never ask you to send your password,
-    MFA authentication code, recovery code, complete payment
-    card number, or card security code through this form.
+    MFA authentication code, recovery code, Support PIN,
+    complete payment card number, or card security code
+    through this form.
 </p>
 
 </section>
