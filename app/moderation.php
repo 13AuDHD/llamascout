@@ -1409,9 +1409,13 @@ function moderation_set_submission_status(
         throw new RuntimeException('The Place submission could not be updated.');
     }
 
-    if ($status === 'rejected') {
-        moderation_remove_tree(dirname(__DIR__) . '/uploads/place-submissions/' . $submissionId);
-    }
+    /*
+     * File cleanup is intentionally deferred to the controller.
+     *
+     * Rejection runs inside a larger moderation transaction. Deleting
+     * contributor files here would be irreversible if a later audit or
+     * history write failed and the database transaction rolled back.
+     */
 }
 
 function moderation_place_update_definitions(): array
@@ -1927,9 +1931,12 @@ function moderation_set_update_status(
         throw new RuntimeException('The Place update could not be updated.');
     }
 
-    if ($status === 'rejected') {
-        moderation_remove_tree(dirname(__DIR__) . '/uploads/place-updates/' . $updateId);
-    }
+    /*
+     * File cleanup is intentionally deferred to the controller.
+     *
+     * The contributor's update files are removed only after the
+     * surrounding rejection transaction has committed successfully.
+     */
 }
 
 function moderation_set_report_status(
