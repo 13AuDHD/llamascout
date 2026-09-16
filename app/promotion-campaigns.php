@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/mail.php';
+require_once __DIR__ . '/email/templates.php';
 
 
 function llama_marketing_user_token(PDO $db, int $userId): string
@@ -144,6 +145,373 @@ function llama_promotion_email_text(
         . "\n\nUnsubscribe from Llama Scout promotional email:\n"
         . $unsubscribeUrl
         . "\n";
+}
+
+
+function llama_promotion_money(int $cents): string
+{
+    return '$' . number_format(max(0, $cents) / 100, 2);
+}
+
+
+function llama_promotion_email_variable_names(): array
+{
+    return [
+        'display_name',
+        'username',
+        'campaign_name',
+        'campaign_label',
+        'campaign_description',
+        'promotion_url',
+        'starts_at',
+        'ends_at',
+        'monthly_regular_price',
+        'monthly_sale_price',
+        'monthly_year_total',
+        'monthly_discount',
+        'monthly_offer',
+        'annual_regular_price',
+        'annual_sale_price',
+        'annual_month_equivalent',
+        'annual_discount',
+        'annual_offer',
+        'unsubscribe_url',
+    ];
+}
+
+
+function llama_promotion_email_url(array $promotion): string
+{
+    $url = trim((string) ($promotion['landing_url'] ?? ''));
+
+    if ($url === '') {
+        return 'https://llamascout.com/membership.php';
+    }
+
+    if (str_starts_with($url, '/')) {
+        return 'https://llamascout.com' . $url;
+    }
+
+    return $url;
+}
+
+
+function llama_promotion_email_datetime(?string $value): string
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    try {
+        return (new DateTimeImmutable(
+            $value,
+            new DateTimeZone('UTC')
+        ))
+            ->setTimezone(new DateTimeZone('America/Denver'))
+            ->format('F j, Y g:i A T');
+    } catch (Throwable) {
+        return $value;
+    }
+}
+
+
+function llama_promotion_email_plan_context(
+    PDO $db,
+    int $promotionId
+): array {
+    $stmt = $db->prepare(
+        'SELECT
+            p.id,
+            p.interval_slug,
+            COALESCE(pp.amount_cents, cp.amount_cents, p.base_price_cents) AS amount_cents,
+            mpp.discount_type,
+            mpp.discount_value
+         FROM membership_plans p
+         LEFT JOIN membership_plan_prices cp
+           ON cp.plan_id = p.id
+          AND cp.is_current = 1
+         LEFT JOIN membership_promotion_plans mpp
+           ON mpp.plan_id = p.id
+          AND mpp.promotion_id = ?
+         LEFT JOIN membership_plan_prices pp
+           ON pp.id = mpp.plan_price_id
+         WHERE p.interval_slug IN ("monthly", "annual")
+           AND p.is_active = 1
+         ORDER BY p.sort_order, p.id'
+    );
+    $stmt->execute([$promotionId]);
+
+    $context = [
+        'monthly_regular_price' => 'Not available',
+        'monthly_sale_price' => 'Not included in this sale',
+        'monthly_year_total' => '',
+        'monthly_discount' => 'No sale',
+        'monthly_offer' => 'Not included in this sale',
+        'annual_regular_price' => 'Not available',
+        'annual_sale_price' => 'Not included in this sale',
+        'annual_month_equivalent' => '',
+        'annual_discount' => 'No sale',
+        'annual_offer' => 'Not included in this sale',
+    ];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $interval = (string) ($row['interval_slug'] ?? '');
+
+        if (!in_array($interval, ['monthly', 'annual'], true)) {
+            continue;
+        }
+
+        $base = max(0, (int) ($row['amount_cents'] ?? 0));
+        $context[$interval . '_regular_price'] =
+            llama_promotion_money($base)
+            . ($interval === 'monthly' ? ' / month' : ' / year');
+
+        $discountType = trim((string) ($row['discount_type'] ?? ''));
+        $discountValue = (int) ($row['discount_value'] ?? 0);
+
+        if ($discountType === '' || $discountValue < 1) {
+            continue;
+        }
+
+        if ($discountType === 'percent') {
+            $percent = min(100, $discountValue);
+            $discount = (int) round($base * ($percent / 100));
+            $sale = max(0, $base - $discount);
+            $discountLabel = $percent . '% off';
+        } else {
+            $sale = max(0, $base - $discountValue);
+            $discountLabel = llama_promotion_money($discountValue) . ' off';
+        }
+
+        if ($interval === 'monthly') {
+            $yearTotal = $sale * 12;
+            $context['monthly_sale_price'] =
+                llama_promotion_money($sale) . ' / month';
+            $context['monthly_year_total'] =
+                llama_promotion_money($yearTotal) . ' for 12 months';
+            $context['monthly_discount'] = $discountLabel;
+            $context['monthly_offer'] =
+                llama_promotion_money($sale)
+                . ' / month ('
+                . llama_promotion_money($yearTotal)
+                . ' for 12 months, '
+                . $discountLabel
+                . ')';
+        } else {
+            $monthlyEquivalent = (int) round($sale / 12);
+            $context['annual_sale_price'] =
+                llama_promotion_money($sale) . ' / year';
+            $context['annual_month_equivalent'] =
+                llama_promotion_money($monthlyEquivalent) . ' / month equivalent';
+            $context['annual_discount'] = $discountLabel;
+            $context['annual_offer'] =
+                llama_promotion_money($sale)
+                . ' / year ('
+                . llama_promotion_money($monthlyEquivalent)
+                . ' / month equivalent, '
+                . $discountLabel
+                . ')';
+        }
+    }
+
+    return $context;
+}
+
+
+function llama_promotion_email_context(
+    PDO $db,
+    array $promotion,
+    array $user = [],
+    ?string $unsubscribeUrl = null
+): array {
+    $displayName = trim((string) ($user['display_name'] ?? ''));
+    $username = trim((string) ($user['username'] ?? ''));
+
+    if ($displayName === '') {
+        $displayName = $username !== '' ? $username : 'Trail Tester';
+    }
+
+    if ($username === '') {
+        $username = 'trailtester';
+    }
+
+    $promotionId = (int) ($promotion['id'] ?? 0);
+
+    return array_merge(
+        [
+            'display_name' => $displayName,
+            'username' => $username,
+            'campaign_name' => (string) ($promotion['name'] ?? 'Membership promotion'),
+            'campaign_label' => (string) (
+                $promotion['public_label']
+                ?? $promotion['name']
+                ?? 'Membership promotion'
+            ),
+            'campaign_description' => (string) ($promotion['public_description'] ?? ''),
+            'promotion_url' => llama_promotion_email_url($promotion),
+            'starts_at' => llama_promotion_email_datetime($promotion['starts_at'] ?? null),
+            'ends_at' => llama_promotion_email_datetime($promotion['ends_at'] ?? null),
+            'unsubscribe_url' =>
+                $unsubscribeUrl
+                ?? 'https://account.llamascout.com/email-preferences.php?token=TEST',
+        ],
+        $promotionId > 0
+            ? llama_promotion_email_plan_context($db, $promotionId)
+            : []
+    );
+}
+
+
+function llama_promotion_email_sample_context(
+    PDO $db,
+    array $promotion
+): array {
+    return llama_promotion_email_context(
+        $db,
+        $promotion,
+        [
+            'display_name' => 'Trail Tester',
+            'username' => 'trailtester',
+        ],
+        'https://account.llamascout.com/email-preferences.php?token=TEST'
+    );
+}
+
+
+function llama_promotion_plain_text_to_html(string $text): string
+{
+    $paragraphs = preg_split('/\\R{2,}/', trim($text)) ?: [];
+    $html = '';
+
+    foreach ($paragraphs as $paragraph) {
+        $paragraph = trim($paragraph);
+
+        if ($paragraph === '') {
+            continue;
+        }
+
+        $html .= '<p style="margin:0 0 18px;line-height:1.65;">'
+            . nl2br(
+                htmlspecialchars(
+                    $paragraph,
+                    ENT_QUOTES | ENT_SUBSTITUTE,
+                    'UTF-8'
+                )
+            )
+            . '</p>';
+    }
+
+    return $html;
+}
+
+
+function llama_promotion_render_email(
+    PDO $db,
+    array $promotion,
+    string $deliveryType,
+    array $context,
+    ?array $override = null
+): array {
+    $record = $override !== null
+        ? array_merge($promotion, $override)
+        : $promotion;
+
+    $isReminder = $deliveryType === 'reminder';
+
+    $subject = trim((string) (
+        $isReminder
+            ? ($record['reminder_subject'] ?? '')
+            : ($record['email_subject'] ?? '')
+    ));
+
+    $preheader = trim((string) (
+        $isReminder
+            ? ($record['reminder_preheader'] ?? '')
+            : ($record['email_preheader'] ?? '')
+    ));
+
+    $textBody = trim((string) (
+        $isReminder
+            ? ($record['reminder_body_text'] ?? '')
+            : ($record['email_body_text'] ?? '')
+    ));
+
+    $htmlBody = trim((string) (
+        $isReminder
+            ? ($record['reminder_body_html'] ?? '')
+            : ($record['email_body_html'] ?? '')
+    ));
+
+    if ($subject === '' || $textBody === '') {
+        throw new InvalidArgumentException(
+            'Campaign email requires a subject and plain-text fallback.'
+        );
+    }
+
+    $renderedSubject = trim(
+        preg_replace(
+            '/[\\r\\n]+/',
+            ' ',
+            llama_email_replace_variables(
+                $subject,
+                $context,
+                false
+            )
+        ) ?? $subject
+    );
+
+    $renderedPreheader = llama_email_replace_variables(
+        $preheader,
+        $context,
+        false
+    );
+
+    $renderedText = llama_email_replace_variables(
+        $textBody,
+        $context,
+        false
+    );
+
+    if ($htmlBody === '') {
+        $htmlBody = llama_promotion_plain_text_to_html($textBody);
+    }
+
+    $renderedBody = llama_email_replace_variables(
+        $htmlBody,
+        $context,
+        true
+    );
+
+    $safeUnsubscribe = htmlspecialchars(
+        (string) ($context['unsubscribe_url'] ?? ''),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+
+    $footer = <<<HTML
+<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 20px;">
+<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
+You received this promotional email because your Llama Scout account is eligible for membership offers.
+<a href="{$safeUnsubscribe}" style="color:#445c52;">Unsubscribe from promotional email</a>.
+</p>
+HTML;
+
+    $renderedText = rtrim($renderedText)
+        . "\n\nUnsubscribe from Llama Scout promotional email:\n"
+        . (string) ($context['unsubscribe_url'] ?? '')
+        . "\n";
+
+    return [
+        'subject' => $renderedSubject,
+        'preheader' => $renderedPreheader,
+        'text' => $renderedText,
+        'html' => llama_email_html_shell(
+            $renderedPreheader,
+            $renderedBody . $footer
+        ),
+    ];
 }
 
 
@@ -300,30 +668,29 @@ function llama_promotion_send_batch(
         throw new InvalidArgumentException('Promotion is missing an ID.');
     }
 
-    if ($deliveryType === 'reminder') {
-        $subject = trim((string) ($promotion['reminder_subject'] ?? ''));
-        $body = trim((string) ($promotion['reminder_body_text'] ?? ''));
-    } else {
-        $subject = trim((string) ($promotion['email_subject'] ?? ''));
-        $body = trim((string) ($promotion['email_body_text'] ?? ''));
-        $deliveryType = 'announcement';
-    }
+    $deliveryType = $deliveryType === 'reminder'
+        ? 'reminder'
+        : 'announcement';
 
-    if ($subject === '' || $body === '') {
+    $subject = trim((string) (
+        $deliveryType === 'reminder'
+            ? ($promotion['reminder_subject'] ?? '')
+            : ($promotion['email_subject'] ?? '')
+    ));
+
+    $textBody = trim((string) (
+        $deliveryType === 'reminder'
+            ? ($promotion['reminder_body_text'] ?? '')
+            : ($promotion['email_body_text'] ?? '')
+    ));
+
+    if ($subject === '' || $textBody === '') {
         return [
             'attempted' => 0,
             'sent' => 0,
             'failed' => 0,
             'remaining' => 0,
         ];
-    }
-
-    $promotionUrl = trim((string) ($promotion['landing_url'] ?? ''));
-
-    if ($promotionUrl === '') {
-        $promotionUrl = 'https://llamascout.com/membership';
-    } elseif (str_starts_with($promotionUrl, '/')) {
-        $promotionUrl = 'https://llamascout.com' . $promotionUrl;
     }
 
     $recipients = llama_promotion_email_recipients(
@@ -349,34 +716,25 @@ function llama_promotion_send_batch(
                 (int) $user['id']
             );
 
-            $name = trim((string) ($user['display_name'] ?? ''));
-
-            if ($name === '') {
-                $name = trim((string) ($user['username'] ?? ''));
-            }
-
-            if ($name === '') {
-                $name = 'there';
-            }
-
-            $text = llama_promotion_email_text(
-                $body,
-                $promotionUrl,
+            $context = llama_promotion_email_context(
+                $db,
+                $promotion,
+                $user,
                 $unsubscribeUrl
             );
 
-            $html = llama_promotion_email_html(
-                $name,
-                $body,
-                $promotionUrl,
-                $unsubscribeUrl
+            $rendered = llama_promotion_render_email(
+                $db,
+                $promotion,
+                $deliveryType,
+                $context
             );
 
             $sent = send_llama_mail(
                 (string) $user['email'],
-                $subject,
-                $text,
-                $html
+                $rendered['subject'],
+                $rendered['text'],
+                $rendered['html']
             );
 
             if (!$sent) {
