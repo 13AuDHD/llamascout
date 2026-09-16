@@ -554,12 +554,12 @@ if (
 
 
             /*
-             * Privileged Remember Me tokens are deliberately
-             * not created. auth.php rejects them for Owner and
-             * Admin accounts.
+             * Clear any stale Remember Me tokens that may predate
+             * MFA enrollment or the account's privileged role.
              *
-             * Clear any stale tokens that may predate the
-             * account's privileged role.
+             * If Remember Me was selected, a fresh trusted token
+             * is created below only after this session has been
+             * marked MFA-verified.
              */
 
             llama_mfa_invalidate_remember_tokens(
@@ -573,9 +573,9 @@ if (
             ) {
 
                 /*
-                 * Kept intentionally as documentation of the
-                 * user's login choice. create_remember_token()
-                 * itself refuses privileged accounts.
+                 * create_remember_token() can now issue the
+                 * trusted MFA form because strong authentication
+                 * for this browser session has completed.
                  */
 
                 create_remember_token(

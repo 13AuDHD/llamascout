@@ -861,6 +861,11 @@ $passkeyLoginAvailable =
             JSON_UNESCAPED_SLASHES
         ) ?>;
 
+    const rememberInput =
+        document.getElementById(
+            'remember'
+        );
+
     const showMessage = (
         text,
         isError = false
@@ -1118,16 +1123,38 @@ $passkeyLoginAvailable =
                 button.textContent =
                     'Signing in...';
 
+                const verifyParams =
+                    new URLSearchParams();
+
+                if (returnUrl) {
+                    verifyParams.set(
+                        'return',
+                        returnUrl
+                    );
+                }
+
+                if (
+                    rememberInput
+                    &&
+                    rememberInput.checked
+                ) {
+                    verifyParams.set(
+                        'remember',
+                        '1'
+                    );
+                }
+
                 let verifyUrl =
                     '/passkey-login-verify.php';
 
-                if (returnUrl) {
+                const verifyQuery =
+                    verifyParams.toString();
+
+                if (verifyQuery !== '') {
                     verifyUrl +=
-                        '?return='
+                        '?'
                         +
-                        encodeURIComponent(
-                            returnUrl
-                        );
+                        verifyQuery;
                 }
 
                 const verifyResponse =

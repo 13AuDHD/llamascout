@@ -81,6 +81,13 @@ try {
     $db =
         db();
 
+    $remember =
+        (string) (
+            $_GET['remember']
+            ?? ''
+        ) ===
+        '1';
+
     $flow =
         llama_passkey_flow(
             $db
@@ -206,6 +213,12 @@ try {
     llama_mfa_mark_session_verified(
         $userId
     );
+
+    if ($remember) {
+        create_remember_token(
+            $userId
+        );
+    }
 
     $loginStmt =
         $db->prepare(
