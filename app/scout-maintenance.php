@@ -678,9 +678,17 @@ function llama_run_scout_renewal_maintenance(PDO $db): array {
             }
 
             $summary['errors']++;
-            error_log(
-                'Llama Scout maintenance error for Scout profile ' .
-                $scoutProfileId . ': ' . $exception->getMessage()
+
+            llama_log_caught_exception(
+                $exception,
+                'maintenance.scout_renewal_profile',
+                [
+                    'scout_profile_id' =>
+                        $scoutProfileId,
+
+                    'user_id' =>
+                        $userId,
+                ]
             );
         }
     }
