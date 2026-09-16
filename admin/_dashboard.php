@@ -41,11 +41,25 @@ function admin_presence_count(
             $stmt->fetchColumn();
 
     } catch (Throwable $exception) {
-        error_log(
-            'Llama Scout admin presence count error: '
-            .
-            $exception->getMessage()
-        );
+        if (
+            function_exists(
+                'llama_log_caught_exception'
+            )
+        ) {
+            llama_log_caught_exception(
+                $exception,
+                'admin.dashboard.presence_count',
+                [
+                    'cutoff_utc' =>
+                        $cutoffUtc,
+                ]
+            );
+        } else {
+            error_log(
+                'Llama Scout admin presence count error: '
+                . $exception->getMessage()
+            );
+        }
 
         return 0;
     }
