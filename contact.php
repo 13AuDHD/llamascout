@@ -553,7 +553,11 @@ require __DIR__ . '/partials/header.php';
                     : '' ?>
             >
                 <?= htmlspecialchars(
-                    $label,
+                    match ($key) {
+                        'email' => 'Email (Fastest)',
+                        'phone' => 'Phone Call (Slowest)',
+                        default => $label,
+                    },
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?>
