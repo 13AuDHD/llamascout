@@ -126,6 +126,266 @@ function llama_address_geoapify_request(
 }
 
 
+/*
+ * =========================================================
+ * AUTOMATIC ADDRESS SEARCH BIAS
+ * =========================================================
+ *
+ * Priority:
+ * 1. Explicit coordinates supplied by the browser, such as the
+ *    "Use my location" control.
+ * 2. Cloudflare's visitor-location latitude/longitude headers.
+ * 3. A short, session-cached IP geolocation lookup.
+ * 4. No bias if none of those are available.
+ *
+ * IP-derived location is intentionally only a search-ranking hint.
+ * It is never saved as the user's mailing address.
+ */
+
+
+function llama_address_valid_bias(
+    mixed $latitude,
+    mixed $longitude
+): ?array {
+    if (
+        !is_numeric($latitude)
+        || !is_numeric($longitude)
+    ) {
+        return null;
+    }
+
+    $latitude =
+        (float) $latitude;
+
+    $longitude =
+        (float) $longitude;
+
+    if (
+        $latitude < -90
+        || $latitude > 90
+        || $longitude < -180
+        || $longitude > 180
+    ) {
+        return null;
+    }
+
+    return [
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+    ];
+}
+
+
+function llama_address_cloudflare_bias(): ?array
+{
+    return llama_address_valid_bias(
+        $_SERVER['HTTP_CF_IPLATITUDE']
+            ?? null,
+        $_SERVER['HTTP_CF_IPLONGITUDE']
+            ?? null
+    );
+}
+
+
+function llama_address_client_ip(): ?string
+{
+    $candidates = [
+        $_SERVER['HTTP_CF_CONNECTING_IP']
+            ?? '',
+        $_SERVER['REMOTE_ADDR']
+            ?? '',
+    ];
+
+    foreach ($candidates as $candidate) {
+        $candidate =
+            trim(
+                (string) $candidate
+            );
+
+        if ($candidate === '') {
+            continue;
+        }
+
+        if (
+            filter_var(
+                $candidate,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE
+                | FILTER_FLAG_NO_RES_RANGE
+            ) !== false
+        ) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
+
+function llama_address_cached_ip_bias(): ?array
+{
+    $cacheKey =
+        'llama_address_ip_bias_v1';
+
+    $cached =
+        $_SESSION[$cacheKey]
+        ?? null;
+
+    if (
+        is_array($cached)
+        && (int) (
+            $cached['expires_at']
+            ?? 0
+        ) > time()
+    ) {
+        return llama_address_valid_bias(
+            $cached['latitude']
+                ?? null,
+            $cached['longitude']
+                ?? null
+        );
+    }
+
+    $ip =
+        llama_address_client_ip();
+
+    if ($ip === null) {
+        $_SESSION[$cacheKey] = [
+            'expires_at' =>
+                time() + 900,
+            'latitude' => null,
+            'longitude' => null,
+        ];
+
+        return null;
+    }
+
+    $curl =
+        curl_init(
+            'https://ipwho.is/'
+            . rawurlencode($ip)
+        );
+
+    if ($curl === false) {
+        return null;
+    }
+
+    curl_setopt_array(
+        $curl,
+        [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 4,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'User-Agent: LlamaScout/1.0 (https://llamascout.com)',
+            ],
+        ]
+    );
+
+    $body =
+        curl_exec($curl);
+
+    $status =
+        (int) curl_getinfo(
+            $curl,
+            CURLINFO_RESPONSE_CODE
+        );
+
+    curl_close($curl);
+
+    $bias = null;
+
+    if (
+        is_string($body)
+        && $body !== ''
+        && $status >= 200
+        && $status < 300
+    ) {
+        $decoded =
+            json_decode(
+                $body,
+                true
+            );
+
+        if (
+            is_array($decoded)
+            && (
+                !array_key_exists(
+                    'success',
+                    $decoded
+                )
+                || $decoded['success'] === true
+            )
+        ) {
+            $bias =
+                llama_address_valid_bias(
+                    $decoded['latitude']
+                        ?? null,
+                    $decoded['longitude']
+                        ?? null
+                );
+        }
+    }
+
+    if ($bias === null) {
+        /*
+         * Cache failures briefly so an unavailable IP service does
+         * not delay every autocomplete keystroke.
+         */
+        $_SESSION[$cacheKey] = [
+            'expires_at' =>
+                time() + 900,
+            'latitude' => null,
+            'longitude' => null,
+        ];
+
+        return null;
+    }
+
+    /*
+     * IP location changes slowly and is approximate. A 12-hour
+     * session cache keeps third-party IP lookups very low.
+     */
+    $_SESSION[$cacheKey] = [
+        'expires_at' =>
+            time() + 43200,
+        'latitude' =>
+            $bias['latitude'],
+        'longitude' =>
+            $bias['longitude'],
+    ];
+
+    return $bias;
+}
+
+
+function llama_address_search_bias(
+    ?float $latitude = null,
+    ?float $longitude = null
+): ?array {
+    $explicit =
+        llama_address_valid_bias(
+            $latitude,
+            $longitude
+        );
+
+    if ($explicit !== null) {
+        return $explicit;
+    }
+
+    $cloudflare =
+        llama_address_cloudflare_bias();
+
+    if ($cloudflare !== null) {
+        return $cloudflare;
+    }
+
+    return llama_address_cached_ip_bias();
+}
+
+
 function llama_address_result_from_row(
     array $row
 ): ?array {
@@ -314,25 +574,23 @@ function llama_address_autocomplete_query(
             )
         );
 
-    $hasBias =
-        $latitude !== null
-        && $longitude !== null
-        && $latitude >= -90
-        && $latitude <= 90
-        && $longitude >= -180
-        && $longitude <= 180;
+    $bias =
+        llama_address_search_bias(
+            $latitude,
+            $longitude
+        );
 
     $params = [
         'text' => $query,
         'limit' => $limit,
     ];
 
-    if ($hasBias) {
+    if ($bias !== null) {
         $params['bias'] =
             'proximity:'
-            . $longitude
+            . $bias['longitude']
             . ','
-            . $latitude;
+            . $bias['latitude'];
     }
 
     $decoded =
