@@ -22,7 +22,6 @@ $featuredStmt = $db->query(
         p.elevation_feet,
         p.land_manager,
         p.land_type,
-        p.public_location_label,
         (
             SELECT pi.src
             FROM place_images pi
@@ -264,15 +263,11 @@ require __DIR__ . '/partials/header.php';
                     <?php foreach ($featuredPlaces as $place): ?>
                         <?php
                         $image = home_image_url($place['featured_image'] ?? null);
-                        $location = trim((string) ($place['public_location_label'] ?? ''));
-
-                        if ($location === '') {
-                            $parts = array_filter([
-                                $place['city'] ?? null,
-                                $place['state'] ?? null,
-                            ]);
-                            $location = implode(', ', $parts);
-                        }
+                        $parts = array_filter([
+                            $place['city'] ?? null,
+                            $place['state'] ?? null,
+                        ]);
+                        $location = implode(', ', $parts);
                         ?>
                         <article class="public-home-place-card">
                             <a class="public-home-place-image" href="/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>">
