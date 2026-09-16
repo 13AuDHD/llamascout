@@ -13,6 +13,23 @@
     margin-bottom: 24px;
 }
 
+.account-security-back-link {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 20px;
+    color: var(--text-muted, #667069);
+    font-size: .78rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.account-security-back-link:hover,
+.account-security-back-link:focus-visible {
+    text-decoration: underline;
+}
+
 .account-security-header h1 {
     margin: 6px 0 10px;
 }
@@ -23,7 +40,7 @@
 
 .account-security-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
 }
 
@@ -214,15 +231,7 @@
     background: rgba(140, 35, 35, .1);
 }
 
-.account-security-back {
-    margin-top: 24px;
-}
-
 @media (max-width: 760px) {
-    .account-security-grid {
-        grid-template-columns: 1fr;
-    }
-
     .account-security-recovery-grid {
         grid-template-columns: 1fr;
     }
