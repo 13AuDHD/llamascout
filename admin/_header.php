@@ -169,7 +169,10 @@ function admin_shell_nav_class(string $key, string $active): string
         ],
         'system.php' => [
             'pages' => ['system.css'],
-            'features' => ['testing.css'],
+            'features' => [
+                'testing.css',
+                'maintenance-console.css',
+            ],
         ],
         'support.php' => [
             'pages' => ['support.css'],

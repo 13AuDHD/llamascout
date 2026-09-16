@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-system.php';
+require_once dirname(__DIR__) . '/app/admin-maintenance-console.php';
 require_once dirname(__DIR__) . '/app/printful-webhook-security.php';
 require_once dirname(__DIR__) . '/app/admin-testing.php';
 require_once __DIR__ . '/_dashboard.php';
@@ -106,7 +107,26 @@ if (
                 )
             );
 
-            if ($action === 'cleanup_staging') {
+            if ($action === 'run_maintenance_worker') {
+                $run =
+                    admin_maintenance_console_run_worker(
+                        $db,
+                        $actorUserId,
+                        trim(
+                            (string) (
+                                $_POST['worker']
+                                ?? ''
+                            )
+                        )
+                    );
+
+                $notice =
+                    (string) (
+                        $run['message']
+                        ?? 'Maintenance worker completed.'
+                    );
+
+            } elseif ($action === 'cleanup_staging') {
                 $cleanup =
                     admin_system_cleanup_staging(
                         $db,
@@ -288,74 +308,10 @@ function admin_system_run_time_label(
 }
 
 
-$maintenanceWorkers = [
-    [
-        'label' =>
-            'Scout renewal maintenance',
-        'key' =>
-            'scout_renewals',
-        'description' =>
-            'Keeps Scout periods, renewals, and expiration state current.',
-    ],
-    [
-        'label' =>
-            'Promotion campaign emails',
-        'key' =>
-            'membership_promotion_email',
-        'description' =>
-            'Sends scheduled membership campaign announcements and reminders.',
-    ],
-    [
-        'label' =>
-            'Newsletter delivery',
-        'key' =>
-            'newsletter_delivery',
-        'description' =>
-            'Advances Llama Scout Monthly and Member Dispatch email queues.',
-    ],
-    [
-        'label' =>
-            'Support email notifications',
-        'key' =>
-            'support_email_notifications',
-        'description' =>
-            'Retries unsent support ticket confirmations and Admin notices.',
-    ],
-    [
-        'label' =>
-            'Promotion Code sync',
-        'key' =>
-            'promotion_code_sync',
-        'description' =>
-            'Keeps Stripe Promotion Code active states aligned with their schedules.',
-    ],
-    [
-        'label' =>
-            'Shop notification email',
-        'key' =>
-            'shop_notification_email',
-        'description' =>
-            'Sends and retries shipment, delivery, and refund confirmations.',
-    ],
-    [
-        'label' =>
-            'Expired Shop checkouts',
-        'key' =>
-            'shop_expired_checkouts',
-        'description' =>
-            'Cancels abandoned pending checkouts and releases inventory reservations.',
-    ],
-];
-
-foreach ($maintenanceWorkers as &$worker) {
-    $worker['last_run'] =
-        admin_system_worker_last_run(
-            $db,
-            (string) $worker['key']
-        );
-}
-
-unset($worker);
+$maintenanceWorkers =
+    admin_maintenance_console_statuses(
+        $db
+    );
 
 $lastErrorCleanup =
     admin_system_setting_last_run(
@@ -445,6 +401,7 @@ $adminPageStyles = [
 
 $adminFeatureStyles = [
     'testing.css',
+    'maintenance-console.css',
 ];
 
 require __DIR__ . '/_header.php';
@@ -1103,85 +1060,7 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-system-operations-grid">
 
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Automation</p>
-        <h2>Automated Maintenance</h2>
-    </div>
-</header>
-
-<div class="admin-system-operation-body">
-
-<dl class="admin-user-definition-list">
-
-<?php foreach (
-    $maintenanceWorkers
-    as $worker
-): ?>
-
-<div>
-    <dt>
-        <?= moderation_e(
-            (string) $worker['label']
-        ) ?>
-    </dt>
-
-    <dd>
-        <strong>
-            <?= moderation_e(
-                admin_system_run_time_label(
-                    $worker['last_run']
-                )
-            ) ?>
-        </strong>
-
-        <small>
-            <?= moderation_e(
-                (string) $worker[
-                    'description'
-                ]
-            ) ?>
-        </small>
-    </dd>
-</div>
-
-<?php endforeach; ?>
-
-
-<div>
-    <dt>Error log cleanup</dt>
-
-    <dd>
-        <strong>
-            <?= moderation_e(
-                admin_system_run_time_label(
-                    $lastErrorCleanup
-                )
-            ) ?>
-        </strong>
-
-        <small>
-            Removes application-error records
-            according to the configured retention
-            policy.
-        </small>
-    </dd>
-</div>
-
-</dl>
-
-<p>
-    These jobs run during ordinary authenticated
-    activity because this hosting plan does not
-    provide cron. The timestamps above come from
-    the exact maintenance keys used by each worker.
-</p>
-
-</div>
-
-</section>
+<?php require __DIR__ . '/_maintenance-console.php'; ?>
 
 
 <section class="admin-panel">
