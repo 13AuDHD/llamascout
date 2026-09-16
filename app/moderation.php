@@ -488,12 +488,27 @@ function moderation_attach_place_photos_transactional(
         ((int) $existingStmt->fetchColumn())
         > 0;
 
+    $expectedCount =
+        count(
+            $photos
+        );
+
     $added =
         0;
 
     foreach ($photos as $photo) {
+        /*
+         * Approval must be all-or-nothing.
+         *
+         * Never silently skip a submitted photo. If even one photo
+         * record is malformed, missing, outside the expected source
+         * folder, or cannot be copied, the caller's transaction must
+         * fail so the contributor's complete submission remains intact.
+         */
         if (!is_array($photo)) {
-            continue;
+            throw new RuntimeException(
+                'One of the submitted photo records is invalid. The approval was not completed.'
+            );
         }
 
         $source =
@@ -501,14 +516,21 @@ function moderation_attach_place_photos_transactional(
                 $photo
             );
 
+        if ($source === '') {
+            throw new RuntimeException(
+                'One of the submitted photos has no stored file path. The approval was not completed.'
+            );
+        }
+
         if (
-            $source === ''
-            || !str_starts_with(
+            !str_starts_with(
                 $source,
                 $allowedSourcePrefix
             )
         ) {
-            continue;
+            throw new RuntimeException(
+                'One of the submitted photos is outside the expected submission folder. The approval was not completed.'
+            );
         }
 
         $copied =
@@ -523,7 +545,9 @@ function moderation_attach_place_photos_transactional(
             );
 
         if ($copied === null) {
-            continue;
+            throw new RuntimeException(
+                'One of the submitted photo files is missing. The approval was not completed.'
+            );
         }
 
         $copiedPaths[] =
@@ -553,6 +577,15 @@ function moderation_attach_place_photos_transactional(
 
         $sortOrder++;
         $added++;
+    }
+
+    if (
+        $added
+        !== $expectedCount
+    ) {
+        throw new RuntimeException(
+            'Not every submitted photo could be attached. The approval was not completed.'
+        );
     }
 
     return
