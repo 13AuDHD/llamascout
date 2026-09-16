@@ -19,6 +19,12 @@
     font-weight: 800;
 }
 
+.support-form-grid label small {
+    color: var(--text-muted);
+    font-size: .76rem;
+    line-height: 1.45;
+}
+
 .support-form-grid {
     display: grid;
     grid-template-columns:
@@ -66,6 +72,62 @@
         transparent
     );
     outline-offset: 2px;
+}
+
+.support-pin-note {
+    grid-column: 1 / -1;
+
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+
+    padding: 14px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 92%,
+            var(--text) 8%
+        );
+}
+
+.support-pin-note > i {
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background:
+        color-mix(
+            in srgb,
+            var(--text) 9%,
+            transparent
+        );
+}
+
+.support-pin-note strong {
+    display: block;
+    margin: 1px 0 4px;
+}
+
+.support-pin-note p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .8rem;
+    line-height: 1.55;
+}
+
+.support-pin-note a {
+    font-weight: 750;
 }
 
 .support-form-note {
@@ -166,6 +228,10 @@
 
     .support-form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .support-pin-note {
+        grid-column: auto;
     }
 
     .support-form > .button,
