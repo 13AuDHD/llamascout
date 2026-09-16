@@ -60,11 +60,13 @@ $runMaintenance = static function (
     try {
         $callback();
     } catch (Throwable $exception) {
-        error_log(
-            'Llama Scout opportunistic maintenance error [' .
-            $worker .
-            ']: ' .
-            $exception->getMessage()
+        llama_log_caught_exception(
+            $exception,
+            'maintenance.opportunistic.' . $worker,
+            [
+                'worker' =>
+                    $worker,
+            ]
         );
     }
 };
