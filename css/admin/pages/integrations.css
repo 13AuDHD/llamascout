@@ -177,7 +177,7 @@
 .admin-integration-health {
     display: grid;
     grid-template-columns:
-        repeat(3, minmax(0, 1fr));
+        repeat(2, minmax(0, 1fr));
     gap: 10px;
 
     padding: 16px;
@@ -418,8 +418,7 @@ span + span {
 
 @media (max-width: 760px) {
 
-    .admin-integration-grid,
-    .admin-integration-health {
+    .admin-integration-grid,{
         grid-template-columns: 1fr;
     }
 
