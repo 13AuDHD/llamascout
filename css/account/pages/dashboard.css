@@ -297,136 +297,102 @@
 
 /* =========================================================
    EARNED BADGES
+   Round, artwork-only clickable badges
    ========================================================= */
 
 .account-badge-grid {
-    display: grid;
-    grid-template-columns:
-        repeat(
-            4,
-            minmax(0, 1fr)
-        );
-    gap: 10px;
-}
-
-.account-badge-card {
-    min-width: 0;
-
-    display: grid;
-    grid-template-columns:
-        46px
-        minmax(0, 1fr);
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
     align-items: center;
-
-    padding: 11px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: var(--surface);
 }
 
-.account-badge-mark {
-    width: 44px;
-    height: 44px;
+.account-earned-badge {
+    width: 92px;
+    height: 92px;
+
+    flex: 0 0 92px;
+
+    display: block;
+
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    color: inherit;
+
+    text-decoration: none;
+
+    transition:
+        transform .15s ease,
+        opacity .15s ease;
+}
+
+.account-earned-badge img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    border-radius: 50%;
+}
+
+.account-earned-badge:hover,
+.account-earned-badge:focus-visible {
+    transform: translateY(-3px) scale(1.03);
+}
+
+.account-earned-badge:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 4px;
+}
+
+.account-earned-badge-fallback {
+    width: 100%;
+    height: 100%;
 
     display: grid;
     place-items: center;
 
-    overflow: hidden;
+    box-sizing: border-box;
 
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 50%;
 
-    background: var(--background);
-    color: var(--text-muted);
+    background: var(--surface);
 
-    font-size: 1rem;
-}
-
-.account-badge-mark img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.account-badge-copy {
-    min-width: 0;
-}
-
-.account-badge-copy strong,
-.account-badge-copy span {
-    display: block;
-}
-
-.account-badge-copy strong {
-    font-size: .76rem;
-    line-height: 1.25;
-}
-
-.account-badge-copy span {
-    margin-top: 3px;
-
-    color: var(--text-muted);
-
-    font-size: .62rem;
-    line-height: 1.35;
+    font-size: 2rem;
 }
 
 .account-badges-empty {
     min-height: 150px;
 }
 
-
-@media (max-width: 900px) {
-
-    .account-badge-grid {
-        grid-template-columns:
-            repeat(
-                3,
-                minmax(0, 1fr)
-            );
-    }
-}
-
-
-@media (max-width: 700px) {
-
-    .account-glance-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-
 @media (max-width: 600px) {
 
     .account-badge-grid {
-        grid-template-columns:
-            repeat(
-                2,
-                minmax(0, 1fr)
-            );
+        gap: 10px;
     }
 
-    .account-badge-card {
-        grid-template-columns: 38px minmax(0, 1fr);
-        gap: 8px;
+    .account-earned-badge {
+        width: 76px;
+        height: 76px;
 
-        padding: 9px;
+        flex-basis: 76px;
     }
+}
 
-    .account-badge-mark {
-        width: 36px;
-        height: 36px;
-    }
+html[data-reduced-motion="true"]
+.account-earned-badge {
+    transition: none;
+}
 
-    .account-badge-copy strong {
-        font-size: .7rem;
-    }
+@media (prefers-reduced-motion: reduce) {
 
-    .account-badge-copy span {
-        display: none;
+    .account-earned-badge {
+        transition: none;
     }
 }
 
