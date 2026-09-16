@@ -284,6 +284,17 @@ require
 <section class="account-security-page">
 
     <header class="account-security-header">
+        <a
+            class="account-security-back-link"
+            href="/"
+        >
+            <i
+                aria-hidden="true">
+                <?= llama_icon('arrow-left') ?>
+            </i>
+            Return to My Account
+        </a>
+
         <p class="eyebrow">
             Account security
         </p>
@@ -651,17 +662,6 @@ require
         </section>
 
     </div>
-
-
-    <p class="account-security-back">
-        <a href="/">
-            <i
-                aria-hidden="true">
-                <?= llama_icon('arrow-left') ?>
-            </i>
-            Return to My Account
-        </a>
-    </p>
 
 </section>
 
