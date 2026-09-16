@@ -364,6 +364,17 @@ if (
 
             $db->commit();
 
+            if ($action === 'rejected') {
+                /*
+                 * The rejected status, review history, and Admin audit
+                 * are now durable. It is finally safe to remove the
+                 * contributor's source submission files.
+                 */
+                llama_place_submission_remove_files(
+                    $submissionId
+                );
+            }
+
             header(
                 'Location: /submissions.php?updated=1'
             );

@@ -413,6 +413,19 @@ if (
             $db->commit();
 
 
+            if ($action === 'rejected') {
+
+                /*
+                 * The rejected status, moderation history, and Admin
+                 * audit are now durable. Only now may the contributor's
+                 * source update files be removed.
+                 */
+                llama_place_update_remove_files(
+                    $updateId
+                );
+            }
+
+
             header(
                 'Location: /updates.php?updated=1'
             );
@@ -1399,7 +1412,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                â
+                                                →
 
                                                 <?= $e(
                                                     $afterText
@@ -1440,7 +1453,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                â
+                                →
 
                                 <?= (int) (
                                     $event['photo_count_after']
