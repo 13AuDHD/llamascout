@@ -12,10 +12,10 @@ declare(strict_types=1);
    - Member / Scout accounts may use normal session and
      Remember Me authentication.
    - Owner / Admin accounts require MFA.
-   - Privileged Remember Me tokens never restore a session.
-   - A role promotion immediately invalidates any ordinary
-     session on the next authenticated request unless MFA
-     has been completed for that session.
+   - MFA-protected accounts may use a 30-day Remember Me
+     token only after successful MFA or passkey verification.
+   - A role promotion never turns an ordinary Remember Me
+     token into an MFA bypass.
    ========================================================= */
 
 
@@ -43,6 +43,21 @@ const LLAMA_REMEMBER_DAYS =
 
 const LLAMA_REMEMBER_COOKIE =
     'llamascout_remember';
+
+
+/*
+ * Trusted MFA Remember Me selectors are deliberately marked.
+ *
+ * The selector itself is not authentication. The random validator
+ * must still match the password hash stored in the database. The
+ * prefix only prevents an older password-only token from ever being
+ * interpreted as proof that MFA was completed.
+ *
+ * Prefix + 14 random bytes in hex stays at 32 characters, matching
+ * the length of the existing ordinary selectors.
+ */
+const LLAMA_REMEMBER_TRUSTED_MFA_PREFIX =
+    'mfa_';
 
 
 /* =========================================================
@@ -109,34 +124,55 @@ function create_remember_token(
     }
 
 
+    $mfaProtected =
+        llama_mfa_role_requires_mfa(
+            $userId
+        )
+        ||
+        llama_mfa_is_enabled(
+            $userId
+        );
+
+
     /*
-     * Privileged accounts must complete MFA whenever a new
-     * authenticated browser session is established.
+     * MFA-protected accounts may be remembered only after this
+     * exact browser session has completed strong authentication.
      *
-     * We therefore do not create long-lived Remember Me
-     * authentication for Owner/Admin accounts.
+     * A password-only session can therefore never mint a token
+     * that later bypasses MFA.
      */
+    if (
+        $mfaProtected
+        &&
+        (
+            !llama_mfa_is_enabled(
+                $userId
+            )
+            ||
+            !llama_mfa_session_is_verified(
+                $userId
+            )
+        )
+    ) {
 
-if (
-    llama_mfa_role_requires_mfa(
-        $userId
-    )
-    ||
-    llama_mfa_is_enabled(
-        $userId
-    )
-) {
-
-    return;
-}
+        return;
+    }
 
 
     $selector =
-        bin2hex(
-            random_bytes(
-                16
-            )
-        );
+        $mfaProtected
+            ? LLAMA_REMEMBER_TRUSTED_MFA_PREFIX
+                .
+                bin2hex(
+                    random_bytes(
+                        14
+                    )
+                )
+            : bin2hex(
+                random_bytes(
+                    16
+                )
+            );
 
 
     $validator =
@@ -536,30 +572,56 @@ function attempt_remembered_login(): bool {
     }
 
 
+    $trustedMfaToken =
+        str_starts_with(
+            $selector,
+            LLAMA_REMEMBER_TRUSTED_MFA_PREFIX
+        );
+
+
+    $mfaProtected =
+        llama_mfa_role_requires_mfa(
+            $userId
+        )
+        ||
+        llama_mfa_is_enabled(
+            $userId
+        );
+
+
     /*
-     * A token created while an account was still an ordinary
-     * member must never become an MFA bypass after the account
-     * is promoted to Admin or Owner.
+     * Ordinary Remember Me tokens were created after password
+     * authentication only. They must never become an MFA bypass
+     * if the account later enables MFA or gains Admin/Owner access.
+     *
+     * Conversely, if MFA has since been removed, an old trusted MFA
+     * token is no longer accepted as an ordinary password-only token.
      */
-
     if (
-    llama_mfa_role_requires_mfa(
-        $userId
-    )
-    ||
-    llama_mfa_is_enabled(
-        $userId
-    )
-) {
+        (
+            $mfaProtected
+            &&
+            (
+                !$trustedMfaToken
+                ||
+                !llama_mfa_is_enabled(
+                    $userId
+                )
+            )
+        )
+        ||
+        (
+            !$mfaProtected
+            &&
+            $trustedMfaToken
+        )
+    ) {
 
-    llama_mfa_invalidate_remember_tokens(
-        $userId
-    );
+        clear_remember_cookie();
 
-    clear_remember_cookie();
+        return false;
+    }
 
-    return false;
-}
 
     start_llama_session();
 
@@ -579,6 +641,18 @@ function attempt_remembered_login(): bool {
         'logged_in_at'
     ] =
         time();
+
+
+    if (
+        $mfaProtected
+        &&
+        $trustedMfaToken
+    ) {
+
+        llama_mfa_mark_session_verified(
+            $userId
+        );
+    }
 
 
     $update =
