@@ -541,7 +541,7 @@ require __DIR__ . '/_header.php';
                     empty($user['anonymized_at']) &&
                     !empty($user['username'])
                 ): ?>
-                    Â· @<?= moderation_e($user['username']) ?>
+                    · @<?= moderation_e($user['username']) ?>
                 <?php endif; ?>
             </p>
 
@@ -1460,7 +1460,7 @@ require __DIR__ . '/_header.php';
                     <strong><?= moderation_e((string) $entry['summary']) ?></strong>
                     <span>
                         <?= moderation_e((string) $entry['actor_name']) ?>
-                        Â·
+                        | 
                         <?= moderation_e(
                             llama_format_viewer_datetime(
                                 (string) $entry['created_at']
