@@ -73,9 +73,17 @@
 
 .place-fact {
     display: grid;
-    gap: 6px;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+    grid-template-areas:
+        "icon label"
+        "icon value";
+    column-gap: 13px;
+    row-gap: 3px;
+    align-items: center;
 
-    padding: 18px;
+    padding: 14px 16px;
 
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -84,13 +92,26 @@
 }
 
 .place-fact i {
-    font-size: 1.25rem;
+    grid-area: icon;
+    align-self: center;
+
+    font-size: 1.35rem;
 }
 
 .place-fact span {
+    grid-area: label;
+
     color: var(--text-muted);
 
     font-size: .9rem;
+}
+
+.place-fact strong {
+    grid-area: value;
+
+    min-width: 0;
+
+    overflow-wrap: anywhere;
 }
 
 .amenity-grid {
@@ -253,7 +274,7 @@
 }
 
 .place-weather-condition-icon {
-    font-size: 2.5rem;
+    font-size: 3.125rem;
 }
 
 .place-weather-current-main {
@@ -631,11 +652,15 @@
 
 @media (max-width: 520px) {
     .place-weather-current {
-        grid-template-columns: 1fr;
+        grid-template-columns:
+            auto
+            minmax(0, 1fr);
+
+        column-gap: 16px;
     }
 
     .place-weather-condition-icon {
-        font-size: 2rem;
+        font-size: 3.125rem;
     }
 
     .place-weather-facts {
