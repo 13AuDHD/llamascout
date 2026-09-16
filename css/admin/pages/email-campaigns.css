@@ -1,5 +1,6 @@
 /* =========================================================
    ADMIN PAGE: EMAIL CAMPAIGNS
+   Per-sale Campaign Email + Final Reminder
    ========================================================= */
 
 .email-campaign-layout {
@@ -11,7 +12,8 @@
     align-items: start;
 }
 
-.email-campaign-editor-column {
+.email-campaign-editor-column,
+.email-campaign-form {
     min-width: 0;
 
     display: grid;
@@ -99,19 +101,19 @@
     font-weight: 900;
 }
 
-.email-campaign-row-status.is-scheduled {
+.email-campaign-row-status.is-scheduled,
+.email-campaign-row-status.is-sent {
     color: var(--text);
 }
 
 .email-campaign-row-status.is-sent {
     background: var(--background);
-    color: var(--text);
 }
 
 .email-campaign-overview-grid {
     display: grid;
     grid-template-columns:
-        repeat(4, minmax(0, 1fr));
+        repeat(2, minmax(0, 1fr));
     gap: 0;
 
     border-top: 1px solid var(--border);
@@ -126,13 +128,15 @@
     padding: 13px 15px;
 
     border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
 }
 
-.email-campaign-overview-grid > div:last-child {
+.email-campaign-overview-grid > div:nth-child(2n) {
     border-right: 0;
 }
 
-.email-campaign-overview-grid span {
+.email-campaign-overview-grid span,
+.email-campaign-link-row > span {
     color: var(--text-muted);
 
     font-size: .58rem;
@@ -143,11 +147,65 @@
     overflow-wrap: anywhere;
 
     font-size: .68rem;
+    line-height: 1.45;
 }
 
-.email-campaign-form {
+.email-campaign-link-row {
     display: grid;
-    gap: var(--admin-panel-gap);
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+
+    padding: 12px 15px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.email-campaign-link-row a {
+    min-width: 0;
+
+    overflow-wrap: anywhere;
+
+    color: var(--text);
+
+    font-size: .65rem;
+}
+
+.email-campaign-variable-box {
+    display: grid;
+    gap: 8px;
+
+    padding: 14px 15px;
+}
+
+.email-campaign-variable-box > strong {
+    font-size: .7rem;
+}
+
+.email-campaign-variable-box > p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    line-height: 1.45;
+}
+
+.email-campaign-variable-box > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.email-campaign-variable-box code {
+    padding: 5px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    background: var(--background);
+
+    font-size: .58rem;
 }
 
 .email-campaign-form-body {
@@ -164,8 +222,7 @@
     gap: 6px;
 }
 
-.email-campaign-form-body > label > span,
-.email-campaign-field-grid label > span {
+.email-campaign-form-body > label > span {
     color: var(--text-muted);
 
     font-size: .63rem;
@@ -191,10 +248,6 @@
     font: inherit;
 }
 
-/*
- * Match the site-wide correction for browser-native date/time
- * controls, which render materially wider than normal inputs.
- */
 .email-campaign-form input[type="datetime-local"] {
     width: calc(100% - 20px);
     max-width: calc(100% - 20px);
@@ -203,28 +256,28 @@
 .email-campaign-form textarea {
     resize: vertical;
 
-    min-height: 180px;
-
     line-height: 1.55;
 }
 
-.email-campaign-field-grid {
-    display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        minmax(0, 1fr);
-    gap: 12px;
+.email-campaign-form textarea[name$="body_html"] {
+    min-height: 280px;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+    font-size: .68rem;
 }
 
-.email-campaign-field-grid label {
-    min-width: 0;
-
-    display: grid;
-    gap: 6px;
+.email-campaign-form textarea[name$="body_text"] {
+    min-height: 180px;
 }
 
 .email-campaign-date-field {
-    max-width: 520px;
+    max-width: 540px;
 }
 
 .email-campaign-toggle {
@@ -289,6 +342,20 @@
 
     font-size: .62rem;
     line-height: 1.45;
+}
+
+.email-campaign-preview-frame {
+    display: block;
+
+    width: 100%;
+    min-height: 640px;
+
+    box-sizing: border-box;
+
+    border: 0;
+    border-top: 1px solid var(--border);
+
+    background: #f2eee6;
 }
 
 .email-campaign-save-bar {
@@ -360,31 +427,14 @@
     line-height: 1.5;
 }
 
-
 @media (max-width: 1150px) {
+
     .email-campaign-layout {
         grid-template-columns: 1fr;
     }
-
-    .email-campaign-overview-grid {
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-    }
-
-    .email-campaign-overview-grid > div:nth-child(2) {
-        border-right: 0;
-    }
-
-    .email-campaign-overview-grid > div:nth-child(-n + 2) {
-        border-bottom: 1px solid var(--border);
-    }
 }
 
-
 @media (max-width: 700px) {
-    .email-campaign-field-grid {
-        grid-template-columns: 1fr;
-    }
 
     .email-campaign-overview-grid {
         grid-template-columns: 1fr;
@@ -392,11 +442,10 @@
 
     .email-campaign-overview-grid > div {
         border-right: 0;
-        border-bottom: 1px solid var(--border);
     }
 
-    .email-campaign-overview-grid > div:last-child {
-        border-bottom: 0;
+    .email-campaign-link-row {
+        grid-template-columns: 1fr;
     }
 
     .email-campaign-save-bar {
@@ -411,5 +460,9 @@
 
     .email-campaign-message-actions {
         display: grid;
+    }
+
+    .email-campaign-preview-frame {
+        min-height: 520px;
     }
 }
