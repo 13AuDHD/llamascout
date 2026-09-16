@@ -339,7 +339,6 @@
 
 
     const locationLabel = (place) =>
-        String(place.public_location_label || '').trim() ||
         [place.city, place.state].filter(Boolean).join(', ');
 
 
@@ -497,8 +496,7 @@
             place.state,
             place.region,
             place.land_manager,
-            place.land_type,
-            place.public_location_label
+            place.land_type
         ]
             .filter(Boolean)
             .join(' ')

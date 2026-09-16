@@ -70,7 +70,6 @@
                 marker.bindPopup(`
                     <strong>${escapeHtml(place.name)}</strong><br>
                     ${escapeHtml(
-                        place.public_location_label ||
                         [place.city, place.state]
                             .filter(Boolean)
                             .join(', ')
