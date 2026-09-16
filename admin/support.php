@@ -175,6 +175,37 @@ $replySubject =
     . ' [Ticket #'
     . $selectedTicket
     . ']';
+
+$selectedPhone =
+    trim(
+        (string) (
+            $selected['phone_number']
+            ?? ''
+        )
+    );
+
+$selectedPreferredContact =
+    trim(
+        (string) (
+            $selected['preferred_contact']
+            ?? 'email'
+        )
+    );
+
+$selectedPreferredLabel =
+    llama_support_contact_method_label(
+        $selectedPreferredContact
+    );
+
+$selectedSupportPinSet =
+    !empty(
+        $selected['user_id']
+    )
+        ? llama_support_pin_is_set(
+            $db,
+            (int) $selected['user_id']
+        )
+        : null;
 ?>
 
 <section class="admin-panel admin-support-ticket-panel">
@@ -226,6 +257,37 @@ $replySubject =
         ) ?>
     </a>
 </p>
+
+<p>
+    <strong>Phone:</strong>
+    <?php if ($selectedPhone !== ''): ?>
+        <a href="tel:<?= moderation_e($selectedPhone) ?>">
+            <?= moderation_e(
+                llama_support_format_phone(
+                    $selectedPhone
+                )
+            ) ?>
+        </a>
+    <?php else: ?>
+        Not provided
+    <?php endif; ?>
+</p>
+
+<p>
+    <strong>Preferred contact:</strong>
+    <?= moderation_e(
+        $selectedPreferredLabel
+    ) ?>
+</p>
+
+<?php if ($selectedSupportPinSet !== null): ?>
+<p>
+    <strong>Support PIN:</strong>
+    <?= $selectedSupportPinSet
+        ? 'Configured'
+        : 'Not configured' ?>
+</p>
+<?php endif; ?>
 
 <p>
     <strong>Category:</strong>
@@ -360,6 +422,32 @@ $replySubject =
 
 <div class="admin-user-form-actions">
 
+<?php if (
+    $selectedPhone !== ''
+    && $selectedPreferredContact === 'text'
+): ?>
+<a
+    class="admin-button"
+    href="sms:<?= moderation_e(
+        $selectedPhone
+    ) ?>"
+>
+    Text
+</a>
+<?php elseif (
+    $selectedPhone !== ''
+    && $selectedPreferredContact === 'phone'
+): ?>
+<a
+    class="admin-button"
+    href="tel:<?= moderation_e(
+        $selectedPhone
+    ) ?>"
+>
+    Call
+</a>
+<?php endif; ?>
+
 <a
     class="admin-button"
     href="mailto:<?= moderation_e(
@@ -423,6 +511,14 @@ $requestTicket = trim(
         ?? $request['id']
     )
 );
+
+$requestPreferredLabel =
+    llama_support_contact_method_label(
+        (string) (
+            $request['preferred_contact']
+            ?? 'email'
+        )
+    );
 ?>
 
 <article class="admin-inbox-item">
@@ -446,6 +542,10 @@ $requestTicket = trim(
         ]
         ?? 'Support'
     ) ?>
+    |
+    <?= moderation_e(
+        $requestPreferredLabel
+    ) ?>
 </span>
 
 <strong>
@@ -462,6 +562,17 @@ $requestTicket = trim(
     <?= moderation_e(
         (string) $request['email']
     ) ?>
+
+    <?php if (
+        !empty($request['phone_number'])
+    ): ?>
+        |
+        <?= moderation_e(
+            llama_support_format_phone(
+                (string) $request['phone_number']
+            )
+        ) ?>
+    <?php endif; ?>
 
     <?php if (
         !empty($request['error_reference'])
