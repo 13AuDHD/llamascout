@@ -24,87 +24,88 @@
         <?php endif; ?>
     </div>
 
-    <form
+    <div
         class="compare-report-place-form"
-        method="get"
-        action="/compare.php"
+        data-report-place-search-wrap
+        data-place-search-endpoint="/api/compare-place-search.php"
     >
-        <input
-            type="hidden"
-            name="mode"
-            value="reports"
-        >
+        <?php if ($reportPlace): ?>
+            <?php
+            $currentLocation =
+                implode(
+                    ', ',
+                    array_filter(
+                        [
+                            (string) (
+                                $reportPlace['city']
+                                ?? ''
+                            ),
+                            (string) (
+                                $reportPlace['state']
+                                ?? ''
+                            ),
+                        ]
+                    )
+                );
+            ?>
 
-        <label for="compare-report-place">
-            Place
+            <div class="compare-report-current-place">
+                <span>
+                    Selected Place
+                </span>
+
+                <strong>
+                    <?= llama_compare_h(
+                        (string) (
+                            $reportPlace['name']
+                            ?? 'Place'
+                        )
+                    ) ?>
+                </strong>
+
+                <?php if ($currentLocation !== ''): ?>
+                    <small>
+                        <?= llama_compare_h($currentLocation) ?>
+                    </small>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <label for="compare-report-place-search">
+            <?= $reportPlace
+                ? 'Search for a different Place'
+                : 'Search Places' ?>
         </label>
 
-        <div class="compare-report-place-row">
-            <select
-                id="compare-report-place"
-                name="place"
-                required
+        <div class="compare-picker-search">
+            <i aria-hidden="true"><?= llama_icon('search') ?></i>
+
+            <input
+                id="compare-report-place-search"
+                type="search"
+                placeholder="Start typing a Place, town, or type..."
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="compare-report-place-results"
+                aria-expanded="false"
+                data-report-place-search
             >
-                <option value="">
-                    Choose a Place...
-                </option>
-
-                <?php foreach ($placeOptions as $option): ?>
-                    <?php
-                    $optionSlug =
-                        (string) (
-                            $option['slug']
-                            ?? ''
-                        );
-
-                    $location =
-                        implode(
-                            ', ',
-                            array_filter(
-                                [
-                                    (string) (
-                                        $option['city']
-                                        ?? ''
-                                    ),
-                                    (string) (
-                                        $option['state']
-                                        ?? ''
-                                    ),
-                                ]
-                            )
-                        );
-                    ?>
-
-                    <option
-                        value="<?= llama_compare_h($optionSlug) ?>"
-                        <?= $optionSlug === $reportPlaceSlug
-                            ? 'selected'
-                            : '' ?>
-                    >
-                        <?= llama_compare_h(
-                            (string) (
-                                $option['name']
-                                ?? 'Unnamed Place'
-                            )
-                            . (
-                                $location !== ''
-                                    ? ' · ' . $location
-                                    : ''
-                            )
-                        ) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-
-            <button
-                class="compare-button is-secondary"
-                type="submit"
-            >
-                <i aria-hidden="true"><?= llama_icon('history') ?></i>
-                Load History
-            </button>
         </div>
-    </form>
+
+        <p class="compare-add-help">
+            Results narrow as you type. Choose a Place to load its approved report history.
+        </p>
+
+        <div
+            id="compare-report-place-results"
+            class="compare-place-options compare-report-place-results"
+            role="listbox"
+            data-report-place-results
+        ></div>
+    </div>
 
     <?php if (
         $reportPlaceSlug !== ''

@@ -28,7 +28,77 @@
         data-compare-picker
         data-max-places="<?= LLAMA_COMPARE_MAX_PLACES ?>"
         data-min-places="<?= LLAMA_COMPARE_MIN_PLACES ?>"
+        data-place-search-endpoint="/api/compare-place-search.php"
     >
+        <div
+            data-compare-hidden-inputs
+        >
+            <?php foreach ($comparePlaces as $place): ?>
+                <?php
+                $slug =
+                    (string) (
+                        $place['slug']
+                        ?? ''
+                    );
+
+                $location =
+                    implode(
+                        ', ',
+                        array_filter(
+                            [
+                                (string) (
+                                    $place['city']
+                                    ?? ''
+                                ),
+                                (string) (
+                                    $place['state']
+                                    ?? ''
+                                ),
+                            ]
+                        )
+                    );
+
+                $meta =
+                    trim(
+                        implode(
+                            ' · ',
+                            array_filter(
+                                [
+                                    llama_compare_label(
+                                        $place['type']
+                                        ?? ''
+                                    ),
+                                    $location,
+                                    is_numeric(
+                                        $place['elevation_feet']
+                                        ?? null
+                                    )
+                                        ? number_format(
+                                            (float) $place['elevation_feet']
+                                        ) . ' ft'
+                                        : '',
+                                ]
+                            )
+                        )
+                    );
+                ?>
+
+                <input
+                    type="hidden"
+                    name="places[]"
+                    value="<?= llama_compare_h($slug) ?>"
+                    data-compare-selected-input
+                    data-place-name="<?= llama_compare_h(
+                        (string) (
+                            $place['name']
+                            ?? 'Place'
+                        )
+                    ) ?>"
+                    data-place-meta="<?= llama_compare_h($meta) ?>"
+                >
+            <?php endforeach; ?>
+        </div>
+
         <div
             class="compare-selected"
             data-compare-selected
@@ -44,64 +114,7 @@
             <div
                 class="compare-selected-list"
                 data-compare-selected-list
-            >
-                <?php foreach ($placeOptions as $option): ?>
-                    <?php
-                    $optionSlug =
-                        (string) $option['slug'];
-
-                    if (
-                        !in_array(
-                            $optionSlug,
-                            $compareSlugs,
-                            true
-                        )
-                    ) {
-                        continue;
-                    }
-
-                    $optionLocation =
-                        implode(
-                            ', ',
-                            array_filter(
-                                [
-                                    (string) (
-                                        $option['city']
-                                        ?? ''
-                                    ),
-                                    (string) (
-                                        $option['state']
-                                        ?? ''
-                                    ),
-                                ]
-                            )
-                        );
-                    ?>
-
-                    <button
-                        type="button"
-                        class="compare-selected-chip"
-                        data-remove-compare-place="<?= llama_compare_h($optionSlug) ?>"
-                        aria-label="Remove <?= llama_compare_h((string) $option['name']) ?> from comparison"
-                    >
-                        <span>
-                            <strong>
-                                <?= llama_compare_h(
-                                    (string) $option['name']
-                                ) ?>
-                            </strong>
-
-                            <?php if ($optionLocation !== ''): ?>
-                                <small>
-                                    <?= llama_compare_h($optionLocation) ?>
-                                </small>
-                            <?php endif; ?>
-                        </span>
-
-                        <i aria-hidden="true"><?= llama_icon('x') ?></i>
-                    </button>
-                <?php endforeach; ?>
-            </div>
+            ></div>
         </div>
 
         <div class="compare-add-place">
@@ -117,135 +130,28 @@
                     type="search"
                     placeholder="Start typing a Place, town, or type..."
                     autocomplete="off"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="compare-place-search-results"
+                    aria-expanded="false"
                     data-compare-search
                 >
             </div>
 
             <p class="compare-add-help">
-                Search, then tap a Place to add it. You can compare up to
+                Results narrow as you type. You can compare up to
                 <?= LLAMA_COMPARE_MAX_PLACES ?> Places at once.
             </p>
         </div>
 
         <div
+            id="compare-place-search-results"
             class="compare-place-options"
+            role="listbox"
             data-compare-options
-        >
-            <?php foreach ($placeOptions as $option): ?>
-                <?php
-                $optionSlug =
-                    (string) $option['slug'];
-
-                $isSelected =
-                    in_array(
-                        $optionSlug,
-                        $compareSlugs,
-                        true
-                    );
-
-                $optionLocation =
-                    implode(
-                        ', ',
-                        array_filter(
-                            [
-                                (string) (
-                                    $option['city']
-                                    ?? ''
-                                ),
-                                (string) (
-                                    $option['state']
-                                    ?? ''
-                                ),
-                            ]
-                        )
-                    );
-
-                $optionMeta =
-                    trim(
-                        implode(
-                            ' · ',
-                            array_filter(
-                                [
-                                    llama_compare_label(
-                                        $option['type']
-                                        ?? ''
-                                    ),
-                                    $optionLocation,
-                                    is_numeric(
-                                        $option['elevation_feet']
-                                        ?? null
-                                    )
-                                        ? number_format(
-                                            (float) $option['elevation_feet']
-                                        ) . ' ft'
-                                        : '',
-                                ]
-                            )
-                        )
-                    );
-
-                $searchText =
-                    strtolower(
-                        implode(
-                            ' ',
-                            [
-                                (string) (
-                                    $option['name']
-                                    ?? ''
-                                ),
-                                (string) (
-                                    $option['type']
-                                    ?? ''
-                                ),
-                                $optionLocation,
-                            ]
-                        )
-                    );
-                ?>
-
-                <label
-                    class="compare-place-option <?= $isSelected ? 'is-selected' : '' ?>"
-                    data-compare-option
-                    data-place-slug="<?= llama_compare_h($optionSlug) ?>"
-                    data-place-name="<?= llama_compare_h((string) $option['name']) ?>"
-                    data-place-meta="<?= llama_compare_h($optionMeta) ?>"
-                    data-search-text="<?= llama_compare_h($searchText) ?>"
-                >
-                    <input
-                        type="checkbox"
-                        name="places[]"
-                        value="<?= llama_compare_h($optionSlug) ?>"
-                        <?= $isSelected ? 'checked' : '' ?>
-                    >
-
-                    <span class="compare-place-option-check">
-                        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
-                    </span>
-
-                    <span class="compare-place-option-copy">
-                        <strong>
-                            <?= llama_compare_h(
-                                (string) $option['name']
-                            ) ?>
-                        </strong>
-
-                        <?php if ($optionMeta !== ''): ?>
-                            <small>
-                                <?= llama_compare_h($optionMeta) ?>
-                            </small>
-                        <?php endif; ?>
-                    </span>
-                </label>
-            <?php endforeach; ?>
-
-            <div
-                class="compare-search-empty"
-                data-compare-search-empty
-                hidden
-            >
-                No matching Places.
-            </div>
-        </div>
+        ></div>
 
         <div class="compare-picker-footer">
             <span data-compare-count>
