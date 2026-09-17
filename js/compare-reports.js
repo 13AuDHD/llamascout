@@ -1,6 +1,63 @@
 (() => {
     'use strict';
 
+    const placeSearchWrap =
+        document.querySelector(
+            '[data-report-place-search-wrap]'
+        );
+
+    if (placeSearchWrap) {
+        const input =
+            placeSearchWrap.querySelector(
+                '[data-report-place-search]'
+            );
+
+        const results =
+            placeSearchWrap.querySelector(
+                '[data-report-place-results]'
+            );
+
+        window.LlamaPlaceSearch?.attach({
+            input,
+            results,
+            endpoint:
+                placeSearchWrap.dataset.placeSearchEndpoint
+                || '/api/compare-place-search.php',
+            onSelect(place) {
+                const slug =
+                    String(
+                        place.slug
+                        || ''
+                    );
+
+                if (!slug) {
+                    return;
+                }
+
+                const url =
+                    new URL(
+                        '/compare.php',
+                        window.location.origin
+                    );
+
+                url.searchParams.set(
+                    'mode',
+                    'reports'
+                );
+
+                url.searchParams.set(
+                    'place',
+                    slug
+                );
+
+                window.location.assign(
+                    url.toString()
+                );
+            },
+            resultIcon: 'history',
+        });
+    }
+
     const picker =
         document.querySelector(
             '[data-compare-report-picker]'

@@ -6,47 +6,47 @@
             '[data-compare-picker]'
         );
 
-    const search =
-        document.querySelector(
-            '[data-compare-search]'
-        );
-
-    const countLabel =
-        document.querySelector(
-            '[data-compare-count]'
-        );
-
-    const headingCount =
-        document.querySelector(
-            '[data-compare-heading-count]'
-        );
-
-    const selectedPanel =
-        document.querySelector(
-            '[data-compare-selected]'
-        );
-
-    const selectedList =
-        document.querySelector(
-            '[data-compare-selected-list]'
-        );
-
-    const optionsPanel =
-        document.querySelector(
-            '[data-compare-options]'
-        );
-
-    const emptySearch =
-        document.querySelector(
-            '[data-compare-search-empty]'
-        );
-
-    const submitButton =
-        document.querySelector(
-            '[data-compare-submit]'
-        );
-
     if (picker) {
+        const search =
+            picker.querySelector(
+                '[data-compare-search]'
+            );
+
+        const countLabel =
+            picker.querySelector(
+                '[data-compare-count]'
+            );
+
+        const headingCount =
+            picker.querySelector(
+                '[data-compare-heading-count]'
+            );
+
+        const selectedPanel =
+            picker.querySelector(
+                '[data-compare-selected]'
+            );
+
+        const selectedList =
+            picker.querySelector(
+                '[data-compare-selected-list]'
+            );
+
+        const hiddenInputs =
+            picker.querySelector(
+                '[data-compare-hidden-inputs]'
+            );
+
+        const optionsPanel =
+            picker.querySelector(
+                '[data-compare-options]'
+            );
+
+        const submitButton =
+            picker.querySelector(
+                '[data-compare-submit]'
+            );
+
         const maxPlaces =
             Number(
                 picker.dataset.maxPlaces
@@ -59,41 +59,19 @@
                 || 2
             );
 
-        const checkboxes = [
+        const selectedInputs = () => [
             ...picker.querySelectorAll(
-                'input[type="checkbox"][name="places[]"]'
+                '[data-compare-selected-input]'
             )
         ];
 
-        const escapeHtml = (value) => {
-            const div =
-                document.createElement(
-                    'div'
-                );
+        const renderSelected = () => {
+            const selected =
+                selectedInputs();
 
-            div.textContent =
-                String(
-                    value
-                    ?? ''
-                );
-
-            return div.innerHTML;
-        };
-
-        const optionForCheckbox = (
-            checkbox
-        ) =>
-            checkbox.closest(
-                '[data-compare-option]'
-            );
-
-        const renderSelected = (
-            selected
-        ) => {
             if (
                 !selectedPanel
-                ||
-                !selectedList
+                || !selectedList
             ) {
                 return;
             }
@@ -101,145 +79,97 @@
             selectedPanel.hidden =
                 selected.length === 0;
 
-            selectedList.innerHTML =
-                selected.map(
-                    (checkbox) => {
-                        const option =
-                            optionForCheckbox(
-                                checkbox
-                            );
+            selectedList.innerHTML = '';
 
-                        const slug =
-                            String(
-                                option?.dataset.placeSlug
-                                || checkbox.value
-                            );
-
-                        const name =
-                            String(
-                                option?.dataset.placeName
-                                || 'Place'
-                            );
-
-                        const meta =
-                            String(
-                                option?.dataset.placeMeta
-                                || ''
-                            );
-
-                        return `
-                            <button
-                                type="button"
-                                class="compare-selected-chip"
-                                data-remove-compare-place="${escapeHtml(slug)}"
-                                aria-label="Remove ${escapeHtml(name)} from comparison"
-                            >
-                                <span>
-                                    <strong>${escapeHtml(name)}</strong>
-                                    ${meta ? `<small>${escapeHtml(meta)}</small>` : ''}
-                                </span>
-
-                                <i
-                                    class="llama-icon-mask"
-                                    style="--llama-icon-mask:url('/assets/icons/x.svg')"
-                                    aria-hidden="true"
-                                ></i>
-                            </button>
-                        `;
-                    }
-                ).join('');
-        };
-
-        const updateSearchResults = () => {
-            if (
-                !search
-                ||
-                !optionsPanel
-            ) {
-                return;
-            }
-
-            const query =
-                search.value
-                    .trim()
-                    .toLowerCase();
-
-            let visibleCount = 0;
-
-            checkboxes.forEach(
-                (checkbox) => {
-                    const option =
-                        optionForCheckbox(
-                            checkbox
-                        );
-
-                    if (!option) {
-                        return;
-                    }
-
-                    const haystack =
+            selected.forEach(
+                (input) => {
+                    const slug =
                         String(
-                            option.dataset.searchText
+                            input.value
                             || ''
                         );
 
-                    const show =
-                        query !== ''
-                        &&
-                        !checkbox.checked
-                        &&
-                        haystack.includes(
-                            query
+                    const name =
+                        String(
+                            input.dataset.placeName
+                            || 'Place'
                         );
 
-                    option.hidden =
-                        !show;
+                    const meta =
+                        String(
+                            input.dataset.placeMeta
+                            || ''
+                        );
 
-                    if (show) {
-                        visibleCount++;
+                    const button =
+                        document.createElement(
+                            'button'
+                        );
+
+                    button.type = 'button';
+                    button.className =
+                        'compare-selected-chip';
+                    button.dataset.removeComparePlace =
+                        slug;
+                    button.setAttribute(
+                        'aria-label',
+                        `Remove ${name} from comparison`
+                    );
+
+                    const copy =
+                        document.createElement(
+                            'span'
+                        );
+
+                    const strong =
+                        document.createElement(
+                            'strong'
+                        );
+
+                    strong.textContent = name;
+                    copy.appendChild(strong);
+
+                    if (meta) {
+                        const small =
+                            document.createElement(
+                                'small'
+                            );
+
+                        small.textContent = meta;
+                        copy.appendChild(small);
                     }
+
+                    const icon =
+                        document.createElement(
+                            'i'
+                        );
+
+                    icon.className =
+                        'llama-icon-mask';
+                    icon.style.setProperty(
+                        '--llama-icon-mask',
+                        "url('/assets/icons/x.svg')"
+                    );
+                    icon.setAttribute(
+                        'aria-hidden',
+                        'true'
+                    );
+
+                    button.append(
+                        copy,
+                        icon
+                    );
+
+                    selectedList.appendChild(
+                        button
+                    );
                 }
             );
-
-            optionsPanel.classList.toggle(
-                'has-query',
-                query !== ''
-            );
-
-            if (emptySearch) {
-                emptySearch.hidden =
-                    query === ''
-                    ||
-                    visibleCount > 0;
-            }
         };
 
         const syncSelection = () => {
             const selected =
-                checkboxes.filter(
-                    (checkbox) =>
-                        checkbox.checked
-                );
-
-            checkboxes.forEach(
-                (checkbox) => {
-                    const option =
-                        optionForCheckbox(
-                            checkbox
-                        );
-
-                    option?.classList.toggle(
-                        'is-selected',
-                        checkbox.checked
-                    );
-
-                    checkbox.disabled =
-                        !checkbox.checked
-                        &&
-                        selected.length
-                            >= maxPlaces;
-                }
-            );
+                selectedInputs();
 
             if (countLabel) {
                 countLabel.textContent =
@@ -258,35 +188,78 @@
                     minPlaces;
             }
 
-            renderSelected(
-                selected
-            );
+            if (search) {
+                search.disabled =
+                    selected.length
+                    >=
+                    maxPlaces;
 
-            updateSearchResults();
+                search.placeholder =
+                    selected.length >= maxPlaces
+                        ? 'Maximum of four Places selected'
+                        : 'Start typing a Place, town, or type...';
+            }
+
+            renderSelected();
         };
 
-        picker.addEventListener(
-            'change',
-            (event) => {
-                const checkbox =
-                    event.target.closest(
-                        'input[type="checkbox"][name="places[]"]'
-                    );
-
-                if (!checkbox) {
-                    return;
-                }
-
-                if (checkbox.checked) {
-                    if (search) {
-                        search.value = '';
-                        search.focus();
-                    }
-                }
-
-                syncSelection();
+        const addPlace = (place) => {
+            if (!hiddenInputs) {
+                return;
             }
-        );
+
+            const selected =
+                selectedInputs();
+
+            if (
+                selected.length >= maxPlaces
+                || selected.some(
+                    (input) =>
+                        input.value
+                        ===
+                        String(place.slug || '')
+                )
+            ) {
+                return;
+            }
+
+            const input =
+                document.createElement(
+                    'input'
+                );
+
+            input.type = 'hidden';
+            input.name = 'places[]';
+            input.value = String(place.slug || '');
+            input.dataset.compareSelectedInput = '';
+            input.dataset.placeName =
+                String(place.name || 'Place');
+            input.dataset.placeMeta =
+                String(place.meta || '');
+
+            hiddenInputs.appendChild(
+                input
+            );
+
+            syncSelection();
+            searchController?.clear();
+            search?.focus();
+        };
+
+        const searchController =
+            window.LlamaPlaceSearch?.attach({
+                input: search,
+                results: optionsPanel,
+                endpoint:
+                    picker.dataset.placeSearchEndpoint
+                    || '/api/compare-place-search.php',
+                excludeSlugs: () =>
+                    selectedInputs().map(
+                        (input) => input.value
+                    ),
+                onSelect: addPlace,
+                resultIcon: 'plus',
+            });
 
         picker.addEventListener(
             'click',
@@ -306,31 +279,17 @@
                         || ''
                     );
 
-                const checkbox =
-                    checkboxes.find(
+                const input =
+                    selectedInputs().find(
                         (item) =>
-                            item.value
-                            ===
-                            slug
+                            item.value === slug
                     );
 
-                if (!checkbox) {
-                    return;
-                }
-
-                checkbox.checked =
-                    false;
-
+                input?.remove();
                 syncSelection();
+                searchController?.refresh();
             }
         );
-
-        if (search) {
-            search.addEventListener(
-                'input',
-                updateSearchResults
-            );
-        }
 
         syncSelection();
     }
