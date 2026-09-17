@@ -220,6 +220,39 @@
     font-weight: 750;
 }
 
+.scout-report-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: end;
+}
+
+.scout-report-history-link {
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 7px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font-size: .68rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.scout-report-history-link:hover,
+.scout-report-history-link:focus-visible {
+    border-color: var(--text);
+}
+
 .scout-report-item.is-explicit-unknown {
     opacity: .88;
 }
@@ -260,6 +293,15 @@
 
     .place-report-form .add-place-existing-photo-grid {
         grid-template-columns: 1fr;
+    }
+
+    .scout-report-header {
+        display: grid;
+        align-items: start;
+    }
+
+    .scout-report-history-link {
+        width: fit-content;
     }
 }
 
