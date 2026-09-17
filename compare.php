@@ -78,7 +78,6 @@ if (
    ========================================================= */
 
 $requestedSlugs = [];
-$placeOptions = [];
 $comparePlaces = [];
 $compareSlugs = [];
 $compareUrl =
@@ -91,8 +90,6 @@ if ($compareMode === 'places') {
             ?? []
         );
 
-    $placeOptions =
-        llama_compare_place_options();
 
     $comparePlaces =
         $hasMemberAccess
@@ -134,8 +131,6 @@ $compareReports = [];
 $compareReportKeys = [];
 
 if ($compareMode === 'reports') {
-    $placeOptions =
-        llama_compare_place_options();
 
     $reportPlaceSlug =
         llama_compare_report_slug(
@@ -439,6 +434,7 @@ require __DIR__ . '/partials/header.php';
     </div>
 </main>
 
+<script src="/js/place-search.js"></script>
 <script src="/js/compare.js"></script>
 
 <?php if ($compareMode === 'reports'): ?>
