@@ -24,6 +24,16 @@ function llama_printful_local_physical_variants(
          INNER JOIN shop_products p
             ON p.id = v.product_id
          WHERE p.requires_shipping = 1
+           AND LOWER(
+                COALESCE(
+                    v.fulfillment_provider,
+                    ""
+                )
+           ) IN (
+                "",
+                "llama_scout",
+                "printful"
+           )
          ORDER BY
             p.name ASC,
             v.sort_order ASC,
@@ -44,10 +54,6 @@ function llama_printful_mapping_diagnostics(
     $result = [];
 
     foreach ($rows as $row) {
-        $sku = trim(
-            (string) ($row['sku'] ?? '')
-        );
-
         $provider = strtolower(
             trim(
                 (string) (
@@ -55,6 +61,19 @@ function llama_printful_mapping_diagnostics(
                     ?? ''
                 )
             )
+        );
+
+        /*
+         * Printful health is only about variants actually assigned
+         * to Printful. Printify and other provider mappings must
+         * never appear as missing or suggested Printful mappings.
+         */
+        if ($provider !== 'printful') {
+            continue;
+        }
+
+        $sku = trim(
+            (string) ($row['sku'] ?? '')
         );
 
         $matches = $sku !== ''
@@ -84,8 +103,7 @@ function llama_printful_mapping_diagnostics(
         $message = 'No Printful mapping is saved.';
 
         if (
-            $provider === 'printful'
-            && $configuredVariantId !== ''
+            $configuredVariantId !== ''
             && isset(
                 $catalog['variants'][
                     (int) $configuredVariantId
@@ -114,10 +132,7 @@ function llama_printful_mapping_diagnostics(
                 $message =
                     'Saved Printful Sync Variant is valid.';
             }
-        } elseif (
-            $provider === 'printful'
-            && $configuredVariantId !== ''
-        ) {
+        } elseif ($configuredVariantId !== '') {
             $status = 'invalid';
             $message =
                 'Saved Printful Sync Variant was not found in this store.';
@@ -204,6 +219,49 @@ function llama_printful_save_manual_mapping(
     ) {
         throw new InvalidArgumentException(
             'Only physical Shop variants can be mapped to Printful.'
+        );
+    }
+
+    $localProvider = strtolower(
+        trim(
+            (string) (
+                $local['fulfillment_provider']
+                ?? ''
+            )
+        )
+    );
+
+    $hasExistingRemoteMapping =
+        trim(
+            (string) (
+                $local['fulfillment_product_id']
+                ?? ''
+            )
+        ) !== ''
+        || trim(
+            (string) (
+                $local['fulfillment_variant_id']
+                ?? ''
+            )
+        ) !== '';
+
+    if (
+        !in_array(
+            $localProvider,
+            [
+                '',
+                'llama_scout',
+                'printful',
+            ],
+            true
+        )
+        || (
+            $hasExistingRemoteMapping
+            && $localProvider !== 'printful'
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'That Llama Scout variant is already assigned to another fulfillment provider. Remove its existing provider mapping first.'
         );
     }
 
