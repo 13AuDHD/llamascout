@@ -272,7 +272,20 @@
             repeat(2, minmax(0, 1fr));
     }
 
-    .complimentary-invite-form-grid,
+    /*
+     * Duration + Expires deliberately remain a two-column row on mobile.
+     * These are short numeric controls and do not need vertical stacking.
+     */
+    .complimentary-invite-form-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .complimentary-number-field {
+        gap: 5px;
+    }
+
     .complimentary-invite-row dl {
         grid-template-columns: 1fr;
     }
