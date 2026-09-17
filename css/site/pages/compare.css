@@ -1141,3 +1141,79 @@
             rgba(0, 0, 0, .04);
     }
 }
+
+
+/* =========================================================
+   SERVER-BACKED LIVE PLACE SEARCH
+   ========================================================= */
+
+.compare-place-option[type="button"] {
+    width: 100%;
+    box-sizing: border-box;
+
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+}
+
+.compare-place-options.has-query {
+    display: grid;
+}
+
+.compare-report-place-results {
+    padding-top: 0;
+}
+
+.compare-report-current-place {
+    display: grid;
+    gap: 3px;
+
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.compare-report-current-place > span {
+    color: var(--text-muted);
+
+    font-size: .56rem;
+    font-weight: 850;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.compare-report-current-place > strong {
+    color: var(--text);
+
+    font-size: .75rem;
+}
+
+.compare-report-current-place > small {
+    color: var(--text-muted);
+
+    font-size: .6rem;
+}
+
+.compare-report-place-form .compare-picker-search input {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 11px 12px 11px 38px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+}
+
+.compare-picker-search input:disabled {
+    opacity: .58;
+    cursor: not-allowed;
+}
