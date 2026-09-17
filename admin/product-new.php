@@ -15,6 +15,19 @@ $actorUserId =
 
 $error = '';
 
+$productTypes = [
+    'T-Shirt',
+    'Hat',
+    'Socks',
+    'Outerwear',
+    'Camping Gear',
+    'Trail Gear',
+    'Drinkware',
+    'Accessories',
+    'Stickers',
+    'Other',
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
         !moderation_verify_csrf(
@@ -48,7 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error = $reference === null
                 ? $exception->getMessage()
-                : llama_error_message_with_reference('The product could not be created.', $reference);
+                : llama_error_message_with_reference(
+                    'The product could not be created.',
+                    $reference
+                );
         }
     }
 }
@@ -68,6 +84,14 @@ $adminPageEyebrow = 'Commerce';
 $adminActiveNav = 'products';
 
 require __DIR__ . '/_header.php';
+
+$selectedProductType =
+    trim(
+        (string) (
+            $_POST['product_type']
+            ?? ''
+        )
+    );
 ?>
 
 <?php if ($error !== ''): ?>
@@ -116,14 +140,22 @@ require __DIR__ . '/_header.php';
 
 <label>
     <span>Product type</span>
-    <input
-        type="text"
-        name="product_type"
-        value="<?= moderation_e(
-            (string) ($_POST['product_type'] ?? '')
-        ) ?>"
-        placeholder="T-shirt, hat, sticker, etc."
-    >
+    <select name="product_type">
+        <option value="">
+            Select type
+        </option>
+
+        <?php foreach ($productTypes as $productType): ?>
+            <option
+                value="<?= moderation_e($productType) ?>"
+                <?= $selectedProductType === $productType
+                    ? 'selected'
+                    : '' ?>
+            >
+                <?= moderation_e($productType) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 </label>
 
 <div class="admin-commerce-checks">
@@ -142,13 +174,6 @@ require __DIR__ . '/_header.php';
 </div>
 
 </div>
-
-<p class="admin-commerce-new-product-note">
-    The product starts as a draft. Its URL slug is created
-    automatically from the product name. After creating it,
-    you can add descriptions, pricing, variants, inventory,
-    fulfillment details, and product images.
-</p>
 
 <div class="admin-user-form-actions">
     <a
