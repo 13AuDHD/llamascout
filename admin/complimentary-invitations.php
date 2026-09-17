@@ -609,7 +609,7 @@ require __DIR__ . '/_header.php';
             <div class="complimentary-invite-form-grid">
 
                 <label>
-                    <span>Complete Access duration</span>
+                    <span>Duration</span>
 
                     <div class="complimentary-number-field">
                         <input
@@ -625,7 +625,7 @@ require __DIR__ . '/_header.php';
                 </label>
 
                 <label>
-                    <span>Invitation expires</span>
+                    <span>Expires</span>
 
                     <div class="complimentary-number-field">
                         <input
