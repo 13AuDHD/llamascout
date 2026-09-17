@@ -218,6 +218,63 @@
 }
 
 
+/* Mapping provider switch */
+
+.admin-integration-mapping-header {
+    align-items: center;
+}
+
+.admin-integration-mapping-header-tools {
+    display: grid;
+    justify-items: end;
+    gap: 7px;
+}
+
+.admin-integration-mapping-header-tools
+> span {
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    font-weight: 800;
+}
+
+.admin-integration-provider-switch {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    padding: 3px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.admin-integration-provider-switch a {
+    min-width: 82px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 7px 10px;
+
+    border-radius: 7px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.admin-integration-provider-switch a.is-active {
+    background: var(--text);
+    color: var(--background);
+}
+
+
 /* Sort */
 
 .admin-integration-sort {
@@ -438,11 +495,37 @@ span + span {
     }
 
     .admin-integration-health--mapping {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
     }
 
     .admin-integration-card--shipping {
         grid-column: auto;
+    }
+
+    .admin-integration-mapping-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-integration-mapping-header-tools {
+        width: 100%;
+
+        justify-items: stretch;
+    }
+
+    .admin-integration-mapping-header-tools
+    > span {
+        text-align: right;
+    }
+
+    .admin-integration-provider-switch {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .admin-integration-provider-switch a {
+        min-width: 0;
     }
 
     .admin-integration-mapping-action {
@@ -509,7 +592,8 @@ span + span {
 @media (max-width: 520px) {
 
     .admin-integration-summary {
-        grid-template-columns: 1fr;
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
     }
 
     .admin-integration-catalog-action
