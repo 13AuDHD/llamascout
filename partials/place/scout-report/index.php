@@ -32,6 +32,15 @@ $placeReportData =
 
 $placeReportReadMode =
     'scout-report';
+
+$compareReportHistoryUrl =
+    !empty($isDemoScoutReport)
+    || empty($place['slug'])
+        ? ''
+        : '/compare.php?mode=reports&place='
+            . rawurlencode(
+                (string) $place['slug']
+            );
 ?>
 
 <link
@@ -44,8 +53,24 @@ $placeReportReadMode =
     aria-labelledby="scout-report-heading"
 >
     <header class="scout-report-header">
-        <p class="eyebrow">Member details</p>
-        <h2 id="scout-report-heading">Scout Report</h2>
+        <div>
+            <p class="eyebrow">Member details</p>
+            <h2 id="scout-report-heading">Scout Report</h2>
+        </div>
+
+        <?php if ($compareReportHistoryUrl !== ''): ?>
+            <a
+                class="scout-report-history-link"
+                href="<?= htmlspecialchars(
+                    $compareReportHistoryUrl,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
+            >
+                <i aria-hidden="true"><?= llama_icon('history') ?></i>
+                Compare Reports
+            </a>
+        <?php endif; ?>
     </header>
 
     <?php
