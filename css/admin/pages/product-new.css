@@ -8,16 +8,36 @@
     padding: var(--admin-panel-padding);
 }
 
-.admin-commerce-new-product-note {
-    margin: 14px 0 0;
-    padding: 11px 12px;
+/*
+ * Product name and type stay on one row.
+ */
+.admin-commerce-new-product
+.admin-user-form-grid {
+    grid-template-columns:
+        minmax(0, 1.6fr)
+        minmax(180px, .8fr);
+    gap: 12px;
+}
 
-    border: 1px solid var(--border);
-    border-radius: 9px;
+.admin-commerce-new-product
+.admin-user-form-grid
+> .admin-commerce-checks {
+    grid-column: 1 / -1;
+}
 
-    background: var(--background);
-    color: var(--text-muted);
+.admin-commerce-new-product
+.admin-user-form-grid
+select {
+    width: 100%;
+    min-width: 0;
+}
 
-    font-size: .68rem;
-    line-height: 1.5;
+@media (max-width: 620px) {
+    .admin-commerce-new-product
+    .admin-user-form-grid {
+        grid-template-columns:
+            minmax(0, 1.35fr)
+            minmax(120px, .85fr);
+        gap: 8px;
+    }
 }
