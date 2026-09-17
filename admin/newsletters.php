@@ -333,75 +333,45 @@ $selectedType =
 <?php endif; ?>
 
 
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Audience</p>
-        <h2>Newsletter subscriptions</h2>
-    </div>
-</header>
-
-<div class="admin-newsletter-audience-grid">
+<section class="admin-newsletter-audience-grid">
 
     <?php
     $audienceCards = [
-        'monthly' => [
-            'news',
-            'Llama Scout Monthly',
-            'Optional newsletter subscribers',
-        ],
-        'member_dispatch' => [
-            'compass',
-            'Member Dispatch',
-            'Members with Dispatch enabled',
-        ],
-        'policy_updates' => [
-            'signature',
-            'Policy Updates',
-            'All active verified accounts',
-        ],
-        'important_news' => [
-            'speakerphone',
-            'Important News',
-            'All active verified accounts',
-        ],
+        'monthly' =>
+            'LS Monthly',
+
+        'member_dispatch' =>
+            'Dispatch',
+
+        'policy_updates' =>
+            'Updates',
+
+        'important_news' =>
+            'News',
     ];
     ?>
 
     <?php foreach (
         $audienceCards
-        as $type => [$icon, $label, $description]
+        as $type => $label
     ): ?>
 
         <article>
-            <i aria-hidden="true">
-                <?= llama_icon($icon) ?>
-            </i>
+            <span>
+                <?= moderation_e($label) ?>
+            </span>
 
-            <div>
-                <strong>
-                    <?= number_format(
-                        (int) (
-                            $audienceCounts[$type]
-                            ?? 0
-                        )
-                    ) ?>
-                </strong>
-
-                <span>
-                    <?= moderation_e($label) ?>
-                </span>
-
-                <small>
-                    <?= moderation_e($description) ?>
-                </small>
-            </div>
+            <strong>
+                <?= number_format(
+                    (int) (
+                        $audienceCounts[$type]
+                        ?? 0
+                    )
+                ) ?>
+            </strong>
         </article>
 
     <?php endforeach; ?>
-
-</div>
 
 </section>
 
