@@ -61,10 +61,10 @@ $localIcon =
             'box-archive' => 'packages',
             'building-columns' => 'building-factory',
             'calendar-day' => 'calendar',
-            'calendar-xmark' => 'calendar-event',
+            'calendar-xmark' => 'calendar-off',
             'campground' => 'tent',
             'car-burst' => 'alert-triangle',
-            'car-side' => 'camper',
+            'car-side' => 'car',
             'cart-shopping' => 'shopping-cart',
             'circle-info' => 'info-circle',
             'circle-xmark' => 'xbox-x',
@@ -296,34 +296,13 @@ $renderValue =
     };
 
 /*
- * Quick warnings are derived from the same field definitions.
+ * Quick warnings are calculated from the canonical Place Report answers.
+ * Do not maintain a second set of warning flags here.
  */
-$warnings = [];
-
-foreach ($placeReportFields as $key => $field) {
-    if (empty($field['warning'])) {
-        continue;
-    }
-
-    $state =
-        llama_place_report_answer_state(
-            $placeReportData,
-            $key
-        );
-
-    $raw =
-        llama_place_report_get_path(
-            $placeReportData,
-            (string) $field['storage']
-        );
-
-    if (
-        $state === 'answered'
-        && (bool) $raw
-    ) {
-        $warnings[$key] = $field;
-    }
-}
+$warnings =
+    llama_place_report_quick_warnings(
+        $placeReportData
+    );
 
 if ($warnings):
 ?>
@@ -338,13 +317,13 @@ if ($warnings):
         </p>
 
         <div class="scout-report-grid">
-            <?php foreach ($warnings as $key => $field): ?>
+            <?php foreach ($warnings as $key => $warning): ?>
                 <?php
                 $warningIcon =
                     $localIcon(
-                        llama_place_report_field_icon(
-                            $key,
-                            $field
+                        (string) (
+                            $warning['icon']
+                            ?? 'alert-triangle'
                         ),
                         $key
                     );
@@ -356,9 +335,9 @@ if ($warnings):
                     <div class="scout-report-value-content">
                         <span>
                             <?= $e(
-                                rtrim(
-                                    (string) $field['label'],
-                                    '?'
+                                (string) (
+                                    $warning['label']
+                                    ?? 'Warning'
                                 )
                             ) ?>
                         </span>
