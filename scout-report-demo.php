@@ -310,6 +310,7 @@ $rules = [
     'dispersed_camping_allowed' => 1,
     'stay_limit_days' => 14,
     'permit_required' => 0,
+    'drone_use_legal' => 1,
     'fee' => 0,
     'campfire_allowed' => 1,
     'pack_it_in_pack_it_out' => 1,
