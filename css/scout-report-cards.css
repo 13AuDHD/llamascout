@@ -217,6 +217,35 @@
     text-align: center;
 }
 
+/* Long-form answers are prose, not headline values. */
+.scout-report-long-text {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 6px auto;
+    grid-template-areas:
+        "title"
+        "."
+        "value";
+    padding-bottom: 46px;
+}
+
+.scout-report-long-text
+> .scout-report-value-content
+> strong {
+    grid-area: value;
+    align-self: start;
+    font-size: .94rem;
+    font-weight: 450;
+    line-height: 1.48;
+}
+
+.scout-report-long-text
+> .scout-report-value-icon {
+    position: absolute;
+    right: 13px;
+    bottom: 11px;
+}
+
 
 /* =========================================================
    NOTES
