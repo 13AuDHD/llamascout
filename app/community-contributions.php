@@ -692,14 +692,14 @@ function community_place_update_field_definitions(): array
         'rules.overnight_camping_allowed' => [
             'label' => 'Overnight camping allowed?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
             'column' => 'overnight_camping_allowed',
         ],
         'rules.dispersed_camping_allowed' => [
             'label' => 'Dispersed camping allowed?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
             'column' => 'dispersed_camping_allowed',
         ],
@@ -710,12 +710,12 @@ function community_place_update_field_definitions(): array
             'table' => 'place_rules',
             'column' => 'stay_limit_days',
         ],
-        'rules.permit_required' => [
-            'label' => 'Permit required?',
+        'rules.collecting_firewood' => [
+            'label' => 'Collecting firewood?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
-            'column' => 'permit_required',
+            'column' => 'collecting_firewood',
         ],
         'rules.fee' => [
             'label' => 'Fee',
@@ -727,21 +727,21 @@ function community_place_update_field_definitions(): array
         'rules.campfire_allowed' => [
             'label' => 'Campfire allowed?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
             'column' => 'campfire_allowed',
         ],
         'rules.drone_use_legal' => [
-            'label' => 'Drone use legal?',
+            'label' => 'Drone use allowed?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
             'column' => 'drone_use_legal',
         ],
         'rules.target_shooting_allowed' => [
             'label' => 'Target shooting allowed?',
             'group' => 'Rules and seasons',
-            'type' => 'bool',
+            'type' => 'permission',
             'table' => 'place_rules',
             'column' => 'target_shooting_allowed',
         ],
@@ -979,6 +979,14 @@ function community_parse_update_value(
         }
 
         return null;
+    }
+
+    if ($type === 'permission') {
+        $value = (int) $raw;
+
+        return in_array($value, [0, 1, 2], true)
+            ? $value
+            : null;
     }
 
     if ($type === 'rating') {

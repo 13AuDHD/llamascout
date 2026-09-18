@@ -375,7 +375,7 @@ function llama_place_report_field_icon(
         'overnight_camping_allowed' => 'moon-stars',
         'dispersed_camping_allowed' => 'tent',
         'stay_limit_days' => 'calendar',
-        'permit_required' => 'license',
+        'collecting_firewood' => 'wood',
         'fee' => 'receipt',
         'campfire_allowed' => 'campfire',
         'drone_use_legal' => 'at-drone-tech',
@@ -873,10 +873,17 @@ function llama_place_report_fields(): array
     foreach ([
         'overnight_camping_allowed' => 'Overnight camping allowed?',
         'dispersed_camping_allowed' => 'Dispersed camping allowed?',
-        'permit_required' => 'Permit required?',
+        'collecting_firewood' => 'Collecting firewood?',
         'campfire_allowed' => 'Campfire allowed?',
-        'drone_use_legal' => 'Drone use legal?',
+        'drone_use_legal' => 'Drone use allowed?',
         'target_shooting_allowed' => 'Target shooting allowed?',
+    ] as $key => $label) {
+        $add($key, $label, 'rules', 'permission', 'rules.' . $key, [
+            'allow_unknown' => true,
+            'points_categories' => ['seasons_rules_services'],
+        ]);
+    }
+    foreach ([
         'dogs_required_to_be_leashed' => 'Dogs required to be leashed?',
         'existing_sites_encouraged' => 'Existing sites encouraged?',
         'pack_it_in_pack_it_out' => 'Pack it in / pack it out?',
@@ -1312,7 +1319,7 @@ function llama_place_report_form_value_from_data(array $data, string $fieldKey):
     if (
         in_array(
             (string) $field['type'],
-            ['tri', 'rating'],
+            ['tri', 'permission', 'rating'],
             true
         )
         && $value === null
@@ -1384,6 +1391,18 @@ function llama_place_report_parse_field(
         }
 
         return (string) $raw === '1';
+    }
+
+    if ($type === 'permission') {
+        if ($raw === '' || $raw === null) {
+            return null;
+        }
+
+        $value = (int) $raw;
+
+        return in_array($value, [0, 1, 2], true)
+            ? $value
+            : null;
     }
 
     if ($type === 'rating') {
@@ -1654,6 +1673,14 @@ function llama_place_report_display_value(
 
     if ($type === 'tri') {
         return $value ? 'Yes' : 'No';
+    }
+
+    if ($type === 'permission') {
+        return match ((int) $value) {
+            1 => 'Yes',
+            2 => 'With Permit',
+            default => 'No',
+        };
     }
 
     if ($type === 'rating') {

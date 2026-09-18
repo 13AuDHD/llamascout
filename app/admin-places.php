@@ -1789,6 +1789,18 @@ function admin_place_normalize_value(
         return $value;
     }
 
+    if ($type === 'permission') {
+        $value = (int) $raw;
+
+        if (!in_array($value, [0, 1, 2], true)) {
+            throw new RuntimeException(
+                'Permission values must be Yes, No, or With Permit.'
+            );
+        }
+
+        return $value;
+    }
+
     if ($type === 'rating') {
         $value = (int) $raw;
 
@@ -2146,16 +2158,16 @@ function admin_place_save_rules(
         'monsoon_risk' => 'rating',
         'recommended_travel_season' => 'text',
         'seasonal_access_note' => 'text',
-        'overnight_camping_allowed' => 'bool',
-        'dispersed_camping_allowed' => 'bool',
+        'overnight_camping_allowed' => 'permission',
+        'dispersed_camping_allowed' => 'permission',
+        'collecting_firewood' => 'permission',
         'stay_limit_days' => 'int',
         'maximum_days_per_60_day_period' => 'int',
         'move_distance_after_stay_miles' => 'decimal',
-        'permit_required' => 'bool',
         'fee' => 'decimal',
-        'campfire_allowed' => 'bool',
-        'drone_use_legal' => 'bool',
-        'target_shooting_allowed' => 'bool',
+        'campfire_allowed' => 'permission',
+        'drone_use_legal' => 'permission',
+        'target_shooting_allowed' => 'permission',
         'dogs_required_to_be_leashed' => 'bool',
         'current_fire_restrictions_url' => 'text',
         'vehicle_distance_from_road_max_feet' => 'int',

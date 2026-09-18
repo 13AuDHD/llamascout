@@ -195,6 +195,14 @@ function llama_place_submission_display_value(
         return $value ? 'Yes' : 'No';
     }
 
+    if ($type === 'permission') {
+        return match ((int) $value) {
+            1 => 'Yes',
+            2 => 'With Permit',
+            default => 'No',
+        };
+    }
+
     if ($type === 'rating') {
         return (int) $value . '/5';
     }

@@ -3190,6 +3190,14 @@ function llama_place_update_display_value(
     }
 
 
+    if ($type === 'permission') {
+        return match ((int) $value) {
+            1 => 'Yes',
+            2 => 'With Permit',
+            default => 'No',
+        };
+    }
+
     if ($type === 'rating') {
         return
             (int) $value
