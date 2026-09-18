@@ -218,7 +218,7 @@ function admin_moderation_age_label(
     ?string $dateTime
 ): string {
     if (!$dateTime) {
-        return 'Unknown age';
+        return 'Unknown';
     }
 
     try {
@@ -264,6 +264,6 @@ function admin_moderation_age_label(
         return $days . ' day' .
             ($days === 1 ? '' : 's');
     } catch (Throwable) {
-        return 'Unknown age';
+        return 'Unknown';
     }
 }
