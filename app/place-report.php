@@ -917,15 +917,15 @@ function llama_place_report_fields(): array
         'points_categories' => ['seasons_rules_services'],
     ]);
     foreach ([
-        'nearest_town' => 'Distance to nearest town',
-        'nearest_fuel' => 'Distance to nearest fuel',
-        'nearest_ev_charging' => 'Distance to nearest EV charging',
-        'nearest_alcohol_sales' => 'Distance to nearest alcohol sales',
-        'nearest_propane' => 'Distance to nearest propane',
-        'nearest_grocery' => 'Distance to nearest grocery',
-        'nearest_water' => 'Distance to nearest potable water',
-        'nearest_toilet' => 'Distance to nearest public toilet',
-        'nearest_hospital' => 'Distance to nearest hospital / emergency care',
+        'nearest_town' => 'Nearest town',
+        'nearest_fuel' => 'Nearest fuel',
+        'nearest_ev_charging' => 'Nearest EV charging',
+        'nearest_alcohol_sales' => 'Nearest alcohol sales',
+        'nearest_propane' => 'Nearest propane',
+        'nearest_grocery' => 'Nearest grocery',
+        'nearest_water' => 'Nearest potable water',
+        'nearest_toilet' => 'Nearest public toilet',
+        'nearest_hospital' => 'Nearest hospital / emergency care',
     ] as $key => $label) {
         $add($key, $label, 'rules', 'select', 'rules.' . $key, [
             'allow_unknown' => true,
@@ -2215,4 +2215,3 @@ function llama_place_report_published_answer_state(
         )
     );
 }
-
