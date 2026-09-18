@@ -717,6 +717,13 @@ function community_place_update_field_definitions(): array
             'table' => 'place_rules',
             'column' => 'permit_required',
         ],
+        'rules.drone_use_legal' => [
+            'label' => 'Drone use legal?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'drone_use_legal',
+        ],
         'rules.fee' => [
             'label' => 'Fee',
             'group' => 'Rules and seasons',

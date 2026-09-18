@@ -2152,6 +2152,7 @@ function admin_place_save_rules(
         'maximum_days_per_60_day_period' => 'int',
         'move_distance_after_stay_miles' => 'decimal',
         'permit_required' => 'bool',
+        'drone_use_legal' => 'bool',
         'fee' => 'decimal',
         'campfire_allowed' => 'bool',
         'current_fire_restrictions_url' => 'text',
