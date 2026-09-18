@@ -3282,7 +3282,7 @@ function llama_place_update_schema_icon(
             'current-location',
 
         'site_vehicle' =>
-            'at-camper-vehicle',
+            'camper',
 
         'road_access' =>
             'road',

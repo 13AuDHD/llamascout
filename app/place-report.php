@@ -97,7 +97,7 @@ function llama_place_report_sections(): array
         'site_vehicle' => [
             'label' => 'Site and vehicle fit',
             'description' => 'Size, parking, tents, RVs, trailers, and leveling',
-            'icon' => 'at-camper-vehicle',
+            'icon' => 'camper',
         ],
         'road_access' => [
             'label' => 'Road access',
@@ -268,7 +268,7 @@ function llama_place_report_field_icon(
         'land_manager' => 'building-community',
         'land_type' => 'trees',
 
-        'vehicle_capacity' => 'at-camper-vehicle',
+        'vehicle_capacity' => 'camper',
         'max_vehicle_length_feet' => 'ruler-measure',
         'max_trailer_length_feet' => 'ruler-measure',
         'parking_surface' => 'parking',
@@ -2215,3 +2215,4 @@ function llama_place_report_published_answer_state(
         )
     );
 }
+
