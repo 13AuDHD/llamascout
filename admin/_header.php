@@ -167,6 +167,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['dashboard.css'],
             'features' => [],
         ],
+        'analytics.php' => [
+            'pages' => ['analytics.css'],
+            'features' => [],
+        ],
         'system.php' => [
             'pages' => ['system.css'],
             'features' => [
@@ -422,6 +426,18 @@ function admin_shell_nav_class(string $key, string $active): string
             <i  aria-hidden="true"><?= llama_icon('gauge') ?></i>
             <span>Dashboard</span>
         </a>
+
+        <?php if (user_has_role('owner', $adminUserId)): ?>
+
+        <a
+            class="<?= admin_shell_nav_class('analytics', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/analytics.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('chart-bar') ?></i>
+            <span>Analytics</span>
+        </a>
+        
+        <?php endif; ?>
 
         <a
             class="<?= admin_shell_nav_class('support', $adminActiveNav) ?>"
