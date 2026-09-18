@@ -357,6 +357,8 @@ $amenityLabels = [
     'showers' => ['at-shower-facilities', 'Showers'],
     'electricity' => ['at-electricity-socket', 'Electricity'],
     'dump_station' => ['caravan', 'Dump station'],
+    'wifi' => ['at-wifi', 'WiFi'],
+    'laundry' => ['wash-machine', 'Laundry'],
     'food_storage_required' => ['bear-paw', 'Food storage required'],
 ];
 
@@ -370,6 +372,8 @@ $demoAmenities = [
     'showers' => false,
     'electricity' => false,
     'dump_station' => false,
+    'wifi' => true,
+    'laundry' => false,
     'food_storage_required' => false,
 ];
 
