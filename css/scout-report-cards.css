@@ -217,26 +217,38 @@
     text-align: center;
 }
 
-/* Long-form answers are prose, not headline values. */
+/* Long-form answers are normal document flow so the card always grows
+   with the full paragraph, regardless of viewport or column width. */
 .scout-report-long-text {
     position: relative;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 6px auto;
-    grid-template-areas:
-        "title"
-        "."
-        "value";
+    display: block;
+    min-height: 0;
     padding-bottom: 46px;
+}
+
+.scout-report-long-text
+> .scout-report-value-content {
+    display: block;
+    min-width: 0;
+}
+
+.scout-report-long-text
+> .scout-report-value-content
+> span {
+    display: block;
+    margin: 0;
 }
 
 .scout-report-long-text
 > .scout-report-value-content
 > strong {
-    grid-area: value;
-    align-self: start;
+    display: block;
+    margin: 8px 0 0;
+    min-width: 0;
     font-size: .94rem;
     font-weight: 450;
     line-height: 1.48;
+    overflow-wrap: anywhere;
 }
 
 .scout-report-long-text
