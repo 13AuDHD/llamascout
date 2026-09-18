@@ -520,7 +520,7 @@ require __DIR__ . '/_header.php';
                         </div>
                     </td>
 
-                    <td>
+                    <td data-label="Roles">
                         <div class="admin-role-chips">
 
                             <?php if (!$roles): ?>
@@ -543,7 +543,7 @@ require __DIR__ . '/_header.php';
                         </div>
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                         <?php if (
                             !empty($user['anonymized_at'])
                         ): ?>
@@ -563,7 +563,7 @@ require __DIR__ . '/_header.php';
                         <?php endif; ?>
                     </td>
 
-                    <td>
+                    <td data-label="Membership">
                         <?php if (
                             $userMembershipKind
                             === 'paid'
@@ -604,7 +604,7 @@ require __DIR__ . '/_header.php';
                         <?php endif; ?>
                     </td>
 
-                    <td>
+                    <td data-label="Contributions">
                         <?= number_format(
                             (int) $user[
                                 'contribution_count'
@@ -612,7 +612,7 @@ require __DIR__ . '/_header.php';
                         ) ?>
                     </td>
 
-                    <td>
+                    <td data-label="Last login">
                         <span class="admin-table-muted">
                             <?= !empty($user['last_login_at'])
                                 ? moderation_e(
