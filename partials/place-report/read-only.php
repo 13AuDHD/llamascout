@@ -174,6 +174,11 @@ $renderValue =
                     : ''
             )
             . (
+                $type === 'textarea'
+                    ? ' scout-report-long-text'
+                    : ''
+            )
+            . (
                 $state === 'unknown'
                     ? ' is-explicit-unknown'
                     : ''
@@ -441,7 +446,12 @@ foreach (
         <h3>
             <?= llama_icon($sectionIcon) ?>
 
-            <?= $e($section['label']) ?>
+            <?= $e(
+                $sectionKey === 'summaries'
+                && $placeReportReadMode === 'scout-report'
+                    ? 'Summaries'
+                    : (string) $section['label']
+            ) ?>
         </h3>
 
         <?php if ($sectionKey === 'sensory'): ?>
