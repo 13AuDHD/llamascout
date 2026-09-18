@@ -140,7 +140,32 @@ function admin_shell_nav_class(string $key, string $active): string
         })();
     </script>
 
-    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
+    <?php
+    /*
+     * Version local CSS URLs with each file's modification time.
+     * This prevents Safari / CDN caches from serving an older stylesheet
+     * after an Admin CSS file is replaced in production.
+     */
+    $adminCssUrl =
+        static function (string $relativePath) use ($siteUrl): string {
+            $relativePath = '/' . ltrim($relativePath, '/');
+            $absolutePath = dirname(__DIR__) . $relativePath;
+
+            $version =
+                is_file($absolutePath)
+                    ? @filemtime($absolutePath)
+                    : false;
+
+            return
+                $siteUrl
+                . $relativePath
+                . ($version !== false
+                    ? '?v=' . (string) $version
+                    : '');
+        };
+    ?>
+
+    <link rel="stylesheet" href="<?= moderation_e($adminCssUrl('/css/site.css')) ?>">
 
     <?php
     /*
@@ -348,7 +373,7 @@ function admin_shell_nav_class(string $key, string $active): string
 
     <link
         rel="stylesheet"
-        href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
+        href="<?= moderation_e($adminCssUrl('/css/admin/core.css')) ?>"
     >
 
 <?php foreach ($adminPageStyles as $adminStyle): ?>
@@ -358,9 +383,10 @@ function admin_shell_nav_class(string $key, string $active): string
         <link
             rel="stylesheet"
             href="<?= moderation_e(
-                $siteUrl
-                . '/css/admin/pages/'
-                . $adminStyle
+                $adminCssUrl(
+                    '/css/admin/pages/'
+                    . $adminStyle
+                )
             ) ?>"
         >
     <?php endforeach; ?>
@@ -372,16 +398,17 @@ function admin_shell_nav_class(string $key, string $active): string
         <link
             rel="stylesheet"
             href="<?= moderation_e(
-                $siteUrl
-                . '/css/admin/features/'
-                . $adminStyle
+                $adminCssUrl(
+                    '/css/admin/features/'
+                    . $adminStyle
+                )
             ) ?>"
         >
     <?php endforeach; ?>
 
 
     <?php if (!empty($adminNeedsPhotoUploader)): ?>
-        <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>">
+        <link rel="stylesheet" href="<?= moderation_e($adminCssUrl('/css/photo-uploader.css')) ?>">
     <?php endif; ?>
 </head>
 
