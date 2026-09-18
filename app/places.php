@@ -37,6 +37,8 @@ function places_public(): array
             pa.showers,
             pa.electricity,
             pa.dump_station,
+            pa.wifi,
+            pa.laundry,
             pa.food_storage_required
 
         FROM places p
@@ -72,6 +74,8 @@ function places_public(): array
             'showers' => isset($row['showers']) ? (int) $row['showers'] : 0,
             'electricity' => isset($row['electricity']) ? (int) $row['electricity'] : 0,
             'dump_station' => isset($row['dump_station']) ? (int) $row['dump_station'] : 0,
+            'wifi' => isset($row['wifi']) ? (int) $row['wifi'] : 0,
+            'laundry' => isset($row['laundry']) ? (int) $row['laundry'] : 0,
             'food_storage_required' => isset($row['food_storage_required']) ? (int) $row['food_storage_required'] : 0,
         ];
 
@@ -85,6 +89,8 @@ function places_public(): array
             $row['showers'],
             $row['electricity'],
             $row['dump_station'],
+            $row['wifi'],
+            $row['laundry'],
             $row['food_storage_required']
         );
     }
@@ -252,6 +258,8 @@ function place_public_amenities(int $placeId): array
             showers,
             electricity,
             dump_station,
+            wifi,
+            laundry,
             food_storage_required
 
         FROM place_amenities

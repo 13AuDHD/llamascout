@@ -1161,6 +1161,8 @@ function admin_place_save_amenities(
         'showers',
         'electricity',
         'dump_station',
+        'wifi',
+        'laundry',
         'food_storage_required',
     ];
 

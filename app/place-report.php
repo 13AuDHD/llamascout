@@ -171,7 +171,9 @@ function llama_place_report_states(): array
 
 function llama_place_report_distance_options(): array
 {
-    $options = [];
+    $options = [
+        'On site' => 'On site',
+    ];
 
     for ($i = 1; $i <= 20; $i++) {
         $label = $i . ' mile' . ($i === 1 ? '' : 's');
@@ -313,6 +315,8 @@ function llama_place_report_field_icon(
         'amenity_showers' => 'at-shower-facilities',
         'amenity_electricity' => 'at-electricity-socket',
         'amenity_dump_station' => 'caravan',
+        'amenity_wifi' => 'at-wifi',
+        'amenity_laundry' => 'wash-machine',
         'amenity_food_storage_required' => 'bear-paw',
 
         'connectivity_overall' => 'antenna-bars-5',
@@ -474,6 +478,15 @@ function llama_place_report_fields(): array
                 : [
                     'dispersed-camping' => 'Dispersed camping',
                     'developed-campground' => 'Developed campground',
+                    'camping-area' => 'Camping area',
+                    'rv-park-resort' => 'RV park / resort',
+                    'rest-area' => 'Rest area',
+                    'travel-center' => 'Travel center',
+                    'truck-stop' => 'Truck stop',
+                    'retail-parking' => 'Retail parking',
+                    'street-parking' => 'Street parking',
+                    'other-parking' => 'Other parking',
+                    'private-property' => 'Private property',
                     'vehicle-pulloff' => 'Vehicle pull-off',
                     'trailhead' => 'Trailhead',
                     'day-use' => 'Day-use area',
@@ -678,6 +691,8 @@ function llama_place_report_fields(): array
         'showers' => 'Showers',
         'electricity' => 'Electricity',
         'dump_station' => 'Dump station',
+        'wifi' => 'WiFi',
+        'laundry' => 'Laundry',
         'food_storage_required' => 'Food storage required',
     ] as $suffix => $label) {
         $add('amenity_' . $suffix, $label, 'amenities', 'checkbox', 'amenities.' . $suffix, [

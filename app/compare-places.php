@@ -1183,6 +1183,16 @@ function llama_compare_sections(): array
                 ),
 
                 llama_compare_yes_no_row(
+                    'WiFi',
+                    'wifi'
+                ),
+
+                llama_compare_yes_no_row(
+                    'Laundry',
+                    'laundry'
+                ),
+
+                llama_compare_yes_no_row(
                     'Food storage required',
                     'food_storage_required'
                 ),

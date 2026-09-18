@@ -714,6 +714,8 @@ function admin_report_place_snapshot(
             'showers' => 'Showers',
             'electricity' => 'Electricity',
             'dump_station' => 'Dump station',
+            'wifi' => 'WiFi',
+            'laundry' => 'Laundry',
         ];
 
         foreach ($labels as $key => $label) {

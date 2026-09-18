@@ -83,6 +83,15 @@ function community_place_types(): array
     return [
         'dispersed-camping' => 'Dispersed camping',
         'developed-campground' => 'Developed campground',
+        'camping-area' => 'Camping area',
+        'rv-park-resort' => 'RV park / resort',
+        'rest-area' => 'Rest area',
+        'travel-center' => 'Travel center',
+        'truck-stop' => 'Truck stop',
+        'retail-parking' => 'Retail parking',
+        'street-parking' => 'Street parking',
+        'other-parking' => 'Other parking',
+        'private-property' => 'Private property',
         'vehicle-pulloff' => 'Vehicle pull-off',
         'trailhead' => 'Trailhead',
         'day-use' => 'Day-use area',
@@ -518,6 +527,20 @@ function community_place_update_field_definitions(): array
             'type' => 'bool',
             'table' => 'place_amenities',
             'column' => 'dump_station',
+        ],
+        'amenities.wifi' => [
+            'label' => 'WiFi',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'wifi',
+        ],
+        'amenities.laundry' => [
+            'label' => 'Laundry',
+            'group' => 'Amenities',
+            'type' => 'bool',
+            'table' => 'place_amenities',
+            'column' => 'laundry',
         ],
 
         // Connectivity.
