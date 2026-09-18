@@ -4,10 +4,6 @@
         <div class="place-history-heading">
             <p class="place-detail-eyebrow">Place history</p>
             <h2>Who helped document this Place</h2>
-            <p>
-                Scout status, provenance, and recent approved activity live at
-                the bottom so the main page stays focused on planning.
-            </p>
         </div>
 
         <?php if ($historyProvenance): ?>
