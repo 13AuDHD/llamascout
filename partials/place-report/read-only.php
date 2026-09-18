@@ -63,7 +63,6 @@ $localIcon =
             'calendar-day' => 'calendar',
             'calendar-xmark' => 'calendar-event',
             'campground' => 'tent',
-            'car' => 'camper',
             'car-burst' => 'alert-triangle',
             'car-side' => 'camper',
             'cart-shopping' => 'shopping-cart',
