@@ -117,6 +117,63 @@ $unknownValue = '__NULL__';
                     </div>
                 </div>
 
+            <?php elseif ($type === 'permission'): ?>
+
+                <div
+                    class="add-place-radio-control"
+                    data-radio-type="permission"
+                >
+                    <div class="add-place-radio-row">
+                        <div class="add-place-radio-options">
+
+                            <label class="add-place-radio-option is-unknown">
+                                <input
+                                    type="radio"
+                                    name="<?= $e($inputName) ?>"
+                                    value="<?= $e($unknownValue) ?>"
+                                    <?= $renderValue === null ? 'checked' : '' ?>
+                                >
+                                <span>?</span>
+                            </label>
+
+                            <label class="add-place-radio-option">
+                                <input
+                                    type="radio"
+                                    name="<?= $e($inputName) ?>"
+                                    value="1"
+                                    <?= (string) $renderValue === '1' ? 'checked' : '' ?>
+                                >
+                                <span>Yes</span>
+                            </label>
+
+                            <label class="add-place-radio-option">
+                                <input
+                                    type="radio"
+                                    name="<?= $e($inputName) ?>"
+                                    value="0"
+                                    <?= (string) $renderValue === '0' ? 'checked' : '' ?>
+                                >
+                                <span>No</span>
+                            </label>
+
+                            <label class="add-place-radio-option">
+                                <input
+                                    type="radio"
+                                    name="<?= $e($inputName) ?>"
+                                    value="2"
+                                    <?= (string) $renderValue === '2' ? 'checked' : '' ?>
+                                >
+                                <span>With Permit</span>
+                            </label>
+
+                        </div>
+                    </div>
+
+                    <div class="add-place-radio-help is-simple">
+                        ? = Unknown / could not confidently determine
+                    </div>
+                </div>
+
             <?php elseif ($type === 'rating'): ?>
 
                 <div

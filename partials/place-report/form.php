@@ -459,6 +459,7 @@ $renderField =
                     $type,
                     [
                         'tri',
+                        'permission',
                         'rating',
                     ],
                     true
@@ -482,7 +483,11 @@ $renderField =
                     class="add-place-radio-control"
                     data-radio-type="<?= $type === 'tri'
                         ? 'yes-no'
-                        : 'rating' ?>"
+                        : (
+                            $type === 'permission'
+                                ? 'permission'
+                                : 'rating'
+                        ) ?>"
                 >
 
                     <div class="add-place-radio-row">
@@ -513,7 +518,11 @@ $renderField =
 
 
                             <?php if (
-                                $type === 'tri'
+                                in_array(
+                                    $type,
+                                    ['tri', 'permission'],
+                                    true
+                                )
                             ): ?>
 
 
@@ -555,6 +564,30 @@ $renderField =
                                     <span>No</span>
 
                                 </label>
+
+
+                                <?php if ($type === 'permission'): ?>
+
+                                    <label
+                                        class="add-place-radio-option"
+                                    >
+
+                                        <input
+                                            type="radio"
+                                            name="<?= $e(
+                                                $key
+                                            ) ?>"
+                                            value="2"
+                                            <?= $current === '2'
+                                                ? 'checked'
+                                                : '' ?>
+                                        >
+
+                                        <span>With Permit</span>
+
+                                    </label>
+
+                                <?php endif; ?>
 
 
                             <?php else: ?>
@@ -610,13 +643,21 @@ $renderField =
 
 
                     <div
-                        class="add-place-radio-help<?= $type === 'tri'
+                        class="add-place-radio-help<?= in_array(
+                            $type,
+                            ['tri', 'permission'],
+                            true
+                        )
                             ? ' is-simple'
                             : '' ?>"
                     >
 
                         <?php if (
-                            $type === 'tri'
+                            in_array(
+                                $type,
+                                ['tri', 'permission'],
+                                true
+                            )
                         ): ?>
 
                             ? = Unknown / could not confidently determine
