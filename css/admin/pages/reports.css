@@ -371,6 +371,12 @@
 
 @media (max-width: 760px) {
 
+   .admin-report-stat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
     .admin-report-filters,
     .admin-report-place-group-header,
     .admin-report-queue-card {
