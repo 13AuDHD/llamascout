@@ -1,0 +1,516 @@
+/* =========================================================
+   ADMIN PAGE: ANALYTICS
+   Owner-only performance dashboard.
+   Dense by design: more columns, less scrolling.
+   ========================================================= */
+
+.admin-analytics-warning {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text-muted);
+
+    font-size: .65rem;
+    line-height: 1.35;
+}
+
+
+/* Global range */
+
+.admin-analytics-range {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 5px;
+
+    margin-bottom: 10px;
+}
+
+.admin-analytics-range a {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 7px 5px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--surface);
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.admin-analytics-range a.is-active {
+    background: var(--text);
+    color: var(--background);
+}
+
+
+/* Section spacing */
+
+.admin-analytics-section {
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.admin-analytics-section
+.admin-panel-header {
+    min-height: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.admin-analytics-section
+.admin-panel-header p {
+    margin-bottom: 2px;
+}
+
+.admin-analytics-section
+.admin-panel-header h2 {
+    font-size: .86rem;
+}
+
+
+/* Dense metric cards */
+
+.admin-analytics-metrics {
+    display: grid;
+    gap: 1px;
+
+    background: var(--border);
+    border-top: 1px solid var(--border);
+}
+
+.admin-analytics-metrics.is-four {
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+}
+
+.admin-analytics-metrics.is-six {
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+}
+
+.admin-analytics-metrics > div {
+    min-width: 0;
+
+    padding: 10px 9px;
+
+    background: var(--surface);
+    text-align: center;
+}
+
+.admin-analytics-metrics span,
+.admin-analytics-metrics strong {
+    display: block;
+}
+
+.admin-analytics-metrics span {
+    overflow: hidden;
+
+    color: var(--text-muted);
+
+    font-size: .58rem;
+    font-weight: 850;
+    letter-spacing: .02em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-analytics-metrics strong {
+    margin-top: 3px;
+
+    overflow: hidden;
+
+    font-size: 1.08rem;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-analytics-submetrics {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+
+    padding: 7px 10px;
+
+    border-top: 1px solid var(--border);
+
+    color: var(--text-muted);
+    font-size: .61rem;
+}
+
+.admin-analytics-submetrics strong {
+    margin-left: 4px;
+    color: var(--text);
+}
+
+
+/* Charts */
+
+.admin-analytics-chart-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: 10px;
+}
+
+.admin-analytics-chart-card {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.admin-analytics-chart-card
+.admin-panel-header {
+    min-height: 0;
+    padding-top: 9px;
+    padding-bottom: 8px;
+}
+
+.admin-analytics-chart-card
+.admin-panel-header h2 {
+    font-size: .78rem;
+}
+
+.admin-analytics-chart-card
+.admin-panel-header > strong {
+    font-size: .84rem;
+}
+
+.admin-analytics-chart {
+    padding: 8px 10px 7px;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-analytics-bars {
+    width: 100%;
+    height: 88px;
+
+    display: block;
+
+    color: var(--text-muted);
+}
+
+.admin-analytics-bars rect {
+    fill: currentColor;
+}
+
+.admin-analytics-chart-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-top: 4px;
+
+    color: var(--text-muted);
+    font-size: .55rem;
+}
+
+
+/* Two-up detail panels */
+
+.admin-analytics-detail-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    margin-bottom: 10px;
+}
+
+.admin-analytics-detail-grid
+> .admin-panel {
+    min-width: 0;
+    margin: 0;
+}
+
+
+/* Acquisition sources */
+
+.admin-analytics-source-list {
+    display: grid;
+
+    padding: 6px 10px 8px;
+}
+
+.admin-analytics-source-row {
+    display: grid;
+    grid-template-columns:
+        minmax(90px, .8fr)
+        minmax(60px, 1.2fr)
+        auto;
+    gap: 8px;
+    align-items: center;
+
+    min-width: 0;
+
+    padding: 5px 0;
+}
+
+.admin-analytics-source-row > span {
+    overflow: hidden;
+
+    font-size: .62rem;
+    font-weight: 760;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-analytics-source-row > strong {
+    font-size: .62rem;
+}
+
+.admin-analytics-source-row progress {
+    width: 100%;
+    height: 6px;
+
+    border: 0;
+    border-radius: 999px;
+
+    overflow: hidden;
+
+    background: var(--background);
+}
+
+.admin-analytics-source-row
+progress::-webkit-progress-bar {
+    border-radius: 999px;
+    background: var(--background);
+}
+
+.admin-analytics-source-row
+progress::-webkit-progress-value {
+    border-radius: 999px;
+    background: var(--text-muted);
+}
+
+.admin-analytics-source-row
+progress::-moz-progress-bar {
+    border-radius: 999px;
+    background: var(--text-muted);
+}
+
+
+/* Tables stay tables on mobile.
+   Horizontal scrolling is preferable to turning four columns
+   into four vertical rows per record. */
+
+.admin-analytics-table-scroll {
+    max-height: 270px;
+    overflow: auto;
+
+    border-top: 1px solid var(--border);
+}
+
+.admin-analytics-table-scroll.is-campaigns {
+    max-height: 320px;
+}
+
+.admin-analytics-table {
+    width: 100%;
+    min-width: 410px;
+
+    border-collapse: collapse;
+}
+
+.admin-analytics-table th,
+.admin-analytics-table td {
+    padding: 7px 9px;
+
+    border-bottom: 1px solid var(--border);
+
+    text-align: left;
+    vertical-align: middle;
+}
+
+.admin-analytics-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    background: var(--surface);
+    color: var(--text-muted);
+
+    font-size: .55rem;
+    font-weight: 850;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-analytics-table td {
+    font-size: .62rem;
+    white-space: nowrap;
+}
+
+.admin-analytics-table td:first-child {
+    max-width: 180px;
+    white-space: normal;
+}
+
+.admin-analytics-table td strong,
+.admin-analytics-table td small {
+    display: block;
+}
+
+.admin-analytics-table td strong {
+    font-size: .63rem;
+}
+
+.admin-analytics-table td small {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+
+    font-size: .54rem;
+    line-height: 1.2;
+}
+
+.admin-analytics-table
+tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-analytics-mini-link {
+    color: var(--text-muted);
+
+    font-size: .6rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-analytics-mini-link:hover,
+.admin-analytics-mini-link:focus-visible {
+    color: var(--text);
+}
+
+.admin-analytics-empty {
+    padding: 18px 12px;
+
+    color: var(--text-muted);
+
+    font-size: .64rem;
+    text-align: center;
+}
+
+
+/* Mobile */
+
+@media (max-width: 760px) {
+
+    .admin-analytics-metrics.is-four {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-analytics-metrics.is-six {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-analytics-chart-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .admin-analytics-bars {
+        height: 72px;
+    }
+
+    .admin-analytics-chart {
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
+    .admin-analytics-chart-card
+    .admin-panel-header {
+        padding-right: 9px;
+        padding-left: 9px;
+    }
+
+    .admin-analytics-detail-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 520px) {
+
+    .admin-analytics-range {
+        gap: 4px;
+    }
+
+    .admin-analytics-range a {
+        padding-right: 2px;
+        padding-left: 2px;
+
+        font-size: .58rem;
+    }
+
+    .admin-analytics-metrics > div {
+        padding: 9px 5px;
+    }
+
+    .admin-analytics-metrics span {
+        font-size: .52rem;
+    }
+
+    .admin-analytics-metrics strong {
+        font-size: .94rem;
+    }
+
+    .admin-analytics-chart-grid {
+        /*
+         * Keep both charts side by side even on phones.
+         * This follows the Basecamp compact/mobile standard.
+         */
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-analytics-chart-card
+    .admin-panel-header h2 {
+        font-size: .7rem;
+    }
+
+    .admin-analytics-chart-card
+    .admin-panel-header > strong {
+        font-size: .7rem;
+    }
+
+    .admin-analytics-chart-foot {
+        font-size: .49rem;
+    }
+
+    .admin-analytics-source-row {
+        grid-template-columns:
+            minmax(82px, .85fr)
+            minmax(50px, 1.15fr)
+            auto;
+        gap: 6px;
+    }
+
+    .admin-analytics-submetrics {
+        justify-content: space-between;
+    }
+}
