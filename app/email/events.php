@@ -1032,3 +1032,69 @@ function send_membership_lifecycle_email(
         $userId
     );
 }
+
+
+/* =========================================================
+   PROMOTION CAMPAIGNS
+   ========================================================= */
+
+function llama_promotion_campaign_template_key(
+    string $deliveryType
+): string {
+    return $deliveryType === 'reminder'
+        ? 'promotion_campaign_reminder'
+        : 'promotion_campaign_announcement';
+}
+
+
+function llama_promotion_campaign_email_enabled(
+    PDO $db,
+    string $deliveryType
+): bool {
+    $template = llama_email_template(
+        $db,
+        llama_promotion_campaign_template_key(
+            $deliveryType
+        )
+    );
+
+    return
+        $template !== null
+        && !empty($template['enabled']);
+}
+
+
+function send_promotion_campaign_email(
+    PDO $db,
+    array $user,
+    string $deliveryType,
+    array $context
+): bool {
+    $email = trim(
+        (string) ($user['email'] ?? '')
+    );
+
+    $userId = (int) ($user['id'] ?? 0);
+
+    if (
+        $userId < 1
+        || $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    return llama_email_send_template(
+        $db,
+        llama_promotion_campaign_template_key(
+            $deliveryType
+        ),
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
