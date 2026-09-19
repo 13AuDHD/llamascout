@@ -66,6 +66,80 @@ TEXT,
 HTML,
         ],
 
+                'email_change_verification' => [
+            'template_key' => 'email_change_verification',
+            'category' => 'Account',
+            'name' => 'Verify Email Change',
+            'description' =>
+                'Sent to a new email address when a member requests to change the email on their account.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'username',
+                'new_email',
+                'verification_url',
+            ],
+            'subject' => 'Verify your new Llama Scout email address',
+            'preheader' =>
+                'Confirm this email address to finish changing your Llama Scout login email.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+You requested to change the email address on your Llama Scout account to:
+
+{{new_email}}
+
+Verify this new email address to complete the change:
+
+{{verification_url}}
+
+This verification link expires in 24 hours.
+
+Your current email address will remain on the account until the new address is verified.
+
+If you did not request this change, do not verify the new address.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Verify your new email address
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  You requested to change the email address on your Llama Scout account to:
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>{{new_email}}</strong>
+</div>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Verify this address to complete the change. Your current email address
+  will remain on the account until verification is complete.
+</p>
+
+<p style="margin:28px 0;">
+  <a
+    href="{{verification_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Verify New Email</a>
+</p>
+
+<p style="margin:0 0 10px;color:#667069;font-size:14px;line-height:1.6;">
+  This verification link expires in 24 hours.
+</p>
+
+<p style="margin:0;color:#667069;font-size:14px;line-height:1.6;">
+  If you did not request this change, do not verify the new address.
+</p>
+HTML,
+        ],
 
         'welcome' => [
             'template_key' => 'welcome',
