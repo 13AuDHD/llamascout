@@ -799,3 +799,182 @@ function send_newsletter_issue_email(
         $userId
     );
 }
+
+/* =========================================================
+   SUPPORT
+   ========================================================= */
+
+function send_support_admin_new_ticket_email(
+    PDO $db,
+    string $adminEmail,
+    array $request,
+    int $requestId,
+    string $ticketNumber,
+    string $categoryLabel,
+    string $preferredContactLabel,
+    string $requestDetailsText
+): bool {
+    $adminEmail = trim($adminEmail);
+
+    if (
+        $adminEmail === ''
+        || !filter_var(
+            $adminEmail,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $context = [
+        'ticket_number' =>
+            trim($ticketNumber),
+        'support_category' =>
+            trim($categoryLabel) !== ''
+                ? trim($categoryLabel)
+                : 'Support',
+        'requester_name' =>
+            (string) ($request['name'] ?? ''),
+        'requester_email' =>
+            (string) ($request['email'] ?? ''),
+        'preferred_contact' =>
+            trim($preferredContactLabel) !== ''
+                ? trim($preferredContactLabel)
+                : 'Email',
+        'request_details' =>
+            trim($requestDetailsText),
+        'ticket_subject' =>
+            (string) ($request['subject'] ?? ''),
+        'ticket_message' =>
+            (string) ($request['message'] ?? ''),
+        'admin_ticket_url' =>
+            'https://admin.llamascout.com/support.php?id='
+            . max(0, $requestId),
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'support_admin_new_ticket',
+        $adminEmail,
+        $context,
+        false,
+        null
+    );
+}
+
+
+function send_support_ticket_received_email(
+    PDO $db,
+    array $request,
+    string $ticketNumber,
+    string $preferredContactLabel,
+    string $ticketExtraDetails = ''
+): bool {
+    $email = trim(
+        (string) ($request['email'] ?? '')
+    );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $requesterName = trim(
+        (string) ($request['name'] ?? '')
+    );
+
+    $context = [
+        'requester_name' =>
+            $requesterName !== ''
+                ? $requesterName
+                : 'there',
+        'ticket_number' =>
+            trim($ticketNumber),
+        'ticket_subject' =>
+            (string) ($request['subject'] ?? ''),
+        'preferred_contact' =>
+            trim($preferredContactLabel) !== ''
+                ? trim($preferredContactLabel)
+                : 'Email',
+        'ticket_extra_details' =>
+            trim($ticketExtraDetails),
+        'support_url' =>
+            'https://llamascout.com/contact.php',
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'support_ticket_received',
+        $email,
+        $context,
+        false,
+        !empty($request['user_id'])
+            ? (int) $request['user_id']
+            : null
+    );
+}
+
+
+function send_support_status_email(
+    PDO $db,
+    array $request,
+    string $newStatus,
+    string $ticketNumber
+): bool {
+    $email = trim(
+        (string) ($request['email'] ?? '')
+    );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $templateKey = match ($newStatus) {
+        'waiting' =>
+            'support_ticket_waiting',
+        'resolved' =>
+            'support_ticket_resolved',
+        default =>
+            'support_ticket_reopened',
+    };
+
+    $requesterName = trim(
+        (string) ($request['name'] ?? '')
+    );
+
+    $context = [
+        'requester_name' =>
+            $requesterName !== ''
+                ? $requesterName
+                : 'there',
+        'ticket_number' =>
+            trim($ticketNumber),
+        'ticket_subject' =>
+            (string) ($request['subject'] ?? ''),
+        'support_url' =>
+            'https://llamascout.com/contact.php',
+    ];
+
+    return llama_email_send_template(
+        $db,
+        $templateKey,
+        $email,
+        $context,
+        false,
+        !empty($request['user_id'])
+            ? (int) $request['user_id']
+            : null
+    );
+}
+
