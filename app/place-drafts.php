@@ -434,7 +434,17 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
                 );
 
             if ($existingDraftId > 0) {
-                return $existingDraftId;
+                /*
+                 * The browser can legitimately POST an older Add Place page
+                 * without draft_id after this save token has already created a
+                 * draft. That is especially common after Save for Later + Back.
+                 *
+                 * Returning here used to skip the entire update/photo snapshot
+                 * path. The visible form looked saved, but newly staged photos
+                 * stayed orphaned in /uploads/staging and the draft kept zero
+                 * photos. Reattach this save to the existing draft instead.
+                 */
+                $draftId = $existingDraftId;
             }
         }
 
@@ -461,17 +471,55 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
 
         $stageToken = trim((string) ($input['photo_stage_token'] ?? ''));
         $submittedPhotos = llama_photo_decode_form_photos($input['photos_json'] ?? '[]');
-        $savedPhotos = llama_place_draft_snapshot_photos(
-        $userId,
-        $draftId,
-        $stageToken,
-        $submittedPhotos
-    );
+
+        /*
+         * A duplicate/stale POST can arrive after an earlier successful save
+         * already consumed the staging token. In that case, keep the photos
+         * already attached to the draft instead of replacing them with an
+         * empty list or throwing a misleading upload-session error.
+         *
+         * When a live stage still exists, always snapshot it. That is the path
+         * that recovers photos added from a browser page which no longer has a
+         * draft_id but does still have the original draft_save_token.
+         */
+        $currentDraft = llama_place_draft_for_user($db, $userId, $draftId);
+        $currentDraftPhotos =
+            is_array($currentDraft['photos'] ?? null)
+                ? $currentDraft['photos']
+                : [];
+
+        $stageHasManifest = false;
+        if ($stageToken !== '') {
+            try {
+                $stageToken = llama_photo_stage_token($stageToken);
+                $stageHasManifest =
+                    is_file(
+                        llama_photo_manifest_path(
+                            'add-place',
+                            $userId,
+                            $stageToken
+                        )
+                    );
+            } catch (Throwable) {
+                $stageHasManifest = false;
+            }
+        }
+
+        if ($submittedPhotos && !$stageHasManifest && $currentDraftPhotos) {
+            $savedPhotos = $currentDraftPhotos;
+        } else {
+            $savedPhotos = llama_place_draft_snapshot_photos(
+                $userId,
+                $draftId,
+                $stageToken,
+                $submittedPhotos
+            );
+        }
 
         $photosJson = json_encode(
             $savedPhotos,
-        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-    );
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+        );
 
         $stmt = $db->prepare(
             'UPDATE place_drafts
