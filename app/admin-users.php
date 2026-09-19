@@ -69,7 +69,8 @@ function admin_users_list(
     string $search = '',
     string $status = '',
     string $role = '',
-    string $membership = ''
+    string $membership = '',
+    string $sort = ''
 ): array {
     $where = ['1 = 1'];
     $params = [];
@@ -78,6 +79,7 @@ function admin_users_list(
     $status = trim($status);
     $role = trim($role);
     $membership = trim($membership);
+    $sort = trim($sort);
 
     if ($search !== '') {
         $where[] = '(
@@ -115,6 +117,28 @@ function admin_users_list(
         $params[] = $role;
     }
 
+    /*
+     * Sort options are deliberately whitelisted here instead of putting
+     * request values directly into ORDER BY. This keeps sorting flexible
+     * without making the query injectable.
+     */
+    $orderBy = match ($sort) {
+        'login_newest' =>
+            '(u.last_login_at IS NULL) ASC, u.last_login_at DESC, u.id DESC',
+        'login_oldest' =>
+            '(u.last_login_at IS NULL) ASC, u.last_login_at ASC, u.id ASC',
+        'contributions_most' =>
+            'contribution_count DESC, u.id DESC',
+        'contributions_least' =>
+            'contribution_count ASC, u.id ASC',
+        'id_asc' =>
+            'u.id ASC',
+        'id_desc' =>
+            'u.id DESC',
+        default =>
+            '(u.anonymized_at IS NOT NULL) ASC, u.created_at DESC',
+    };
+
     $sql =
         'SELECT
             u.id,
@@ -148,9 +172,7 @@ function admin_users_list(
             ON r.id = ur.role_id
          WHERE ' . implode(' AND ', $where) . '
          GROUP BY u.id
-         ORDER BY
-            (u.anonymized_at IS NOT NULL) ASC,
-            u.created_at DESC
+         ORDER BY ' . $orderBy . '
          LIMIT 250';
 
     $stmt = $db->prepare($sql);
