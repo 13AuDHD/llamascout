@@ -4,7 +4,30 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/admin-users.php';
 require_once __DIR__ . '/automatic-badges.php';
-require_once __DIR__ . '/badge-credentials.php';
+
+function admin_badges_definitions(PDO $db): array {
+    return $db->query(
+        'SELECT
+            bd.*,
+            (
+                SELECT COUNT(*)
+                FROM user_badges ub
+                WHERE ub.badge_id = bd.id
+                  AND ub.review_status = "earned"
+            ) AS earned_count,
+            (
+                SELECT COUNT(*)
+                FROM user_badges ub
+                WHERE ub.badge_id = bd.id
+                  AND ub.review_status <> "earned"
+            ) AS review_count
+         FROM badge_definitions bd
+         ORDER BY
+            bd.sort_order ASC,
+            bd.name ASC,
+            bd.id ASC'
+    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
 
 function admin_badges_definition(PDO $db, int $badgeId): ?array {
     $stmt = $db->prepare(
@@ -21,27 +44,14 @@ function admin_badges_definition(PDO $db, int $badgeId): ?array {
                 FROM user_badges ub
                 WHERE ub.badge_id = bd.id
                   AND ub.review_status <> "earned"
-            ) AS legacy_review_count
+            ) AS review_count
          FROM badge_definitions bd
          WHERE bd.id = ?
          LIMIT 1'
     );
     $stmt->execute([$badgeId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        return null;
-    }
-
-    $credentialCounts =
-        llama_badge_credential_pending_counts_by_badge($db);
-
-    $row['review_count'] =
-        (int) ($row['legacy_review_count'] ?? 0)
-        + (int) ($credentialCounts[$badgeId] ?? 0);
-    unset($row['legacy_review_count']);
-
-    return $row;
+    return $row ?: null;
 }
 
 function admin_badges_recipients(PDO $db, int $badgeId): array {
@@ -171,16 +181,14 @@ function admin_badges_stats(PDO $db): array {
                 SELECT COUNT(*)
                 FROM user_badges
                 WHERE review_status <> "earned"
-            ) AS legacy_pending_review'
+            ) AS pending_review'
     )->fetch(PDO::FETCH_ASSOC) ?: [];
 
     return [
         'active_badges' => (int) ($row['active_badges'] ?? 0),
         'inactive_badges' => (int) ($row['inactive_badges'] ?? 0),
         'earned_awards' => (int) ($row['earned_awards'] ?? 0),
-        'pending_review' =>
-            (int) ($row['legacy_pending_review'] ?? 0)
-            + llama_badge_credential_pending_count($db),
+        'pending_review' => (int) ($row['pending_review'] ?? 0),
     ];
 }
 
@@ -216,15 +224,6 @@ function admin_badges_icon_name(
     string $fallback = 'award'
 ): string {
     $raw = strtolower(trim((string) $value));
-
-    if ($raw !== '') {
-        $tokens = preg_split('/\s+/', $raw) ?: [];
-        $raw = (string) end($tokens);
-
-        if (str_starts_with($raw, 'fa-')) {
-            $raw = substr($raw, 3);
-        }
-    }
 
     if (
         $raw === ''
@@ -654,24 +653,6 @@ function admin_badges_revoke(
     }
 
     $db->prepare('DELETE FROM user_badges WHERE id = ?')->execute([$userBadgeId]);
-
-    $credentialSubmissionId =
-        (int) ($row['credential_submission_id'] ?? 0);
-
-    if ($credentialSubmissionId > 0) {
-        llama_badge_credential_add_event(
-            $db,
-            $credentialSubmissionId,
-            $actorUserId,
-            'badge_revoked',
-            mb_substr($reason, 0, 1000),
-            [
-                'user_badge_id' => $userBadgeId,
-                'badge_id' => (int) $row['badge_id'],
-                'user_id' => (int) $row['user_id'],
-            ]
-        );
-    }
 
     admin_users_audit(
         $db,
