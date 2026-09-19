@@ -39,6 +39,12 @@ $placeReportShowNameSuggestion =
         ?? false
     );
 
+$placeReportShowFieldHelp =
+    (bool) (
+        $placeReportShowFieldHelp
+        ?? false
+    );
+
 $placeReportShowPhotos =
     (bool) (
         $placeReportShowPhotos
@@ -357,7 +363,8 @@ $renderField =
         $valueFor,
         $renderSelect,
         $placeReportMode,
-        $placeReportShowNameSuggestion
+        $placeReportShowNameSuggestion,
+        $placeReportShowFieldHelp
     ): void {
         $key =
             (string) $field['key'];
@@ -381,6 +388,24 @@ $renderField =
 
         $unanswered =
             llama_place_report_unanswered_token();
+
+        $helpText =
+            $placeReportShowFieldHelp
+                ? trim(
+                    (string) (
+                        $field['help']
+                        ?? ''
+                    )
+                )
+                : '';
+
+        $helpId =
+            'place-report-help-'
+            . preg_replace(
+                '/[^a-z0-9_-]+/i',
+                '-',
+                $key
+            );
 
 
         /*
@@ -447,10 +472,40 @@ $renderField =
             $class
         ) ?>">
 
-            <span>
-                <?= $e(
-                    $field['label']
-                ) ?>
+            <span class="place-report-field-label">
+                <span>
+                    <?= $e(
+                        $field['label']
+                    ) ?>
+                </span>
+
+                <?php if ($helpText !== ''): ?>
+                    <span class="place-report-field-help">
+                        <span
+                            class="place-report-field-help-toggle"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Help for <?= $e($field['label']) ?>"
+                            aria-controls="<?= $e($helpId) ?>"
+                            aria-expanded="false"
+                            data-place-report-help-toggle="<?= $e($helpId) ?>"
+                            title="What does this mean?"
+                        >
+                            <?= llama_icon('info-circle') ?>
+                        </span>
+
+                        <span
+                            id="<?= $e($helpId) ?>"
+                            class="place-report-field-help-panel"
+                            role="dialog"
+                            aria-label="<?= $e($field['label']) ?> help"
+                            data-place-report-help-panel
+                            popover="auto"
+                        >
+                            <?= $e($helpText) ?>
+                        </span>
+                    </span>
+                <?php endif; ?>
             </span>
 
 
