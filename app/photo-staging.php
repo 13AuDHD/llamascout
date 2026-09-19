@@ -152,6 +152,20 @@ function llama_photo_manifest_path(
         . '/manifest.json';
 }
 
+function llama_photo_stage_manifest_exists(
+    string $context,
+    int $userId,
+    string $token
+): bool {
+    return is_file(
+        llama_photo_manifest_path(
+            $context,
+            $userId,
+            $token
+        )
+    );
+}
+
 function llama_photo_read_manifest(
     string $context,
     int $userId,
@@ -527,6 +541,25 @@ function llama_photo_stage_update_metadata(
     string $token,
     array $submittedPhotos
 ): array {
+    /*
+     * Metadata updates are only valid for an existing staging batch.
+     * Previously a stale/consumed token could reach this function, read as an
+     * empty manifest, and then llama_photo_write_manifest() would create a new
+     * empty stage. That phantom stage could later be mistaken for an explicit
+     * "remove every photo" action and wipe a saved draft's real photos.
+     */
+    if (
+        !llama_photo_stage_manifest_exists(
+            $context,
+            $userId,
+            $token
+        )
+    ) {
+        throw new RuntimeException(
+            'This photo upload session is no longer available. Reload the page to restore the saved photos.'
+        );
+    }
+
     $manifest = llama_photo_read_manifest($context, $userId, $token);
     $byPath = [];
 

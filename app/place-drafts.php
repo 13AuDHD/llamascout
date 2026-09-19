@@ -679,20 +679,33 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
             try {
                 $stageToken = llama_photo_stage_token($stageToken);
                 $stageHasManifest =
-                    is_file(
-                        llama_photo_manifest_path(
-                            'add-place',
-                            $userId,
-                            $stageToken
-                        )
+                    llama_photo_stage_manifest_exists(
+                        'add-place',
+                        $userId,
+                        $stageToken
                     );
             } catch (Throwable) {
                 $stageHasManifest = false;
             }
         }
 
-        if ($submittedPhotos && !$stageHasManifest && $currentDraftPhotos) {
+        /*
+         * A saved draft's permanent photo snapshot is authoritative whenever
+         * there is no live staging manifest. Missing client state, an expired
+         * token, a stale browser recovery token, or JavaScript failing to
+         * initialize must never mean "delete all saved photos".
+         *
+         * An intentional remove-all is still supported: the uploader leaves an
+         * existing staging manifest containing zero photos. In that case
+         * $stageHasManifest is true and snapshot_photos() deliberately clears
+         * the permanent draft photo directory.
+         */
+        if (!$stageHasManifest && $currentDraftPhotos) {
             $savedPhotos = $currentDraftPhotos;
+        } elseif (!$stageHasManifest && $submittedPhotos) {
+            throw new RuntimeException(
+                'The photo upload session is no longer available. Reload the Place and try saving again.'
+            );
         } else {
             $savedPhotos = llama_place_draft_snapshot_photos(
                 $userId,

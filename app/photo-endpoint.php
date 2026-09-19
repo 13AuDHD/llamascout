@@ -54,6 +54,18 @@ function llama_photo_run_endpoint(): never
         $token = llama_photo_stage_token((string) ($_POST['token'] ?? ''));
 
         if ($action === 'list') {
+            if (
+                !llama_photo_stage_manifest_exists(
+                    $context,
+                    $userId,
+                    $token
+                )
+            ) {
+                throw new RuntimeException(
+                    'This photo upload session is no longer available. Reload the page to restore the saved photos.'
+                );
+            }
+
             $photos = llama_photo_read_manifest($context, $userId, $token);
 
             llama_photo_endpoint_respond(200, [
