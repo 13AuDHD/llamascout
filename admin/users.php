@@ -13,6 +13,7 @@ $search = trim((string) ($_GET['q'] ?? ''));
 $status = trim((string) ($_GET['status'] ?? ''));
 $role = trim((string) ($_GET['role'] ?? ''));
 $membership = trim((string) ($_GET['membership'] ?? ''));
+$sort = trim((string) ($_GET['sort'] ?? ''));
 
 /*
  * Paid can still use the existing database-level filter.
@@ -31,7 +32,8 @@ $users = admin_users_list(
     $search,
     $status,
     $role,
-    $listMembershipFilter
+    $listMembershipFilter,
+    $sort
 );
 
 
@@ -337,6 +339,20 @@ require __DIR__ . '/_header.php';
                 <option value="paid" <?= $membership === 'paid' ? 'selected' : '' ?>>Paid</option>
                 <option value="complimentary" <?= $membership === 'complimentary' ? 'selected' : '' ?>>Complimentary</option>
                 <option value="free" <?= $membership === 'free' ? 'selected' : '' ?>>Free</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Sort</span>
+
+            <select name="sort">
+                <option value="" <?= $sort === '' ? 'selected' : '' ?>>Default</option>
+                <option value="login_newest" <?= $sort === 'login_newest' ? 'selected' : '' ?>>Last login: newest</option>
+                <option value="login_oldest" <?= $sort === 'login_oldest' ? 'selected' : '' ?>>Last login: oldest</option>
+                <option value="contributions_most" <?= $sort === 'contributions_most' ? 'selected' : '' ?>>Contributions: most</option>
+                <option value="contributions_least" <?= $sort === 'contributions_least' ? 'selected' : '' ?>>Contributions: least</option>
+                <option value="id_asc" <?= $sort === 'id_asc' ? 'selected' : '' ?>>User ID: increasing</option>
+                <option value="id_desc" <?= $sort === 'id_desc' ? 'selected' : '' ?>>User ID: decreasing</option>
             </select>
         </label>
 
