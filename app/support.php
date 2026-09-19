@@ -662,6 +662,10 @@ function llama_support_send_notifications(
     if (
         $adminEmail !== ''
         && empty($request['admin_notified_at'])
+        && llama_support_email_enabled(
+            $db,
+            'admin_new_ticket'
+        )
     ) {
         try {
             $sent = send_support_admin_new_ticket_email(
@@ -713,6 +717,10 @@ function llama_support_send_notifications(
             FILTER_VALIDATE_EMAIL
         )
         && empty($request['customer_confirmed_at'])
+        && llama_support_email_enabled(
+            $db,
+            'ticket_received'
+        )
     ) {
         $customerExtraDetails = [];
 
@@ -838,6 +846,15 @@ function llama_support_send_status_notification(
         || !filter_var(
             $email,
             FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return;
+    }
+
+    if (
+        !llama_support_email_enabled(
+            $db,
+            $newStatus
         )
     ) {
         return;
@@ -1084,6 +1101,26 @@ function llama_run_support_email_maintenance(
         return $summary;
     }
 
+    $adminNotificationEnabled =
+        llama_support_admin_email() !== ''
+        && llama_support_email_enabled(
+            $db,
+            'admin_new_ticket'
+        );
+
+    $customerConfirmationEnabled =
+        llama_support_email_enabled(
+            $db,
+            'ticket_received'
+        );
+
+    if (
+        !$adminNotificationEnabled
+        && !$customerConfirmationEnabled
+    ) {
+        return $summary;
+    }
+
     if (
         !llama_support_email_maintenance_is_due(
             $db
@@ -1119,14 +1156,28 @@ function llama_run_support_email_maintenance(
             min(50, $limit)
         );
 
+        $pendingConditions = [];
+
+        if ($adminNotificationEnabled) {
+            $pendingConditions[] =
+                'admin_notified_at IS NULL';
+        }
+
+        if ($customerConfirmationEnabled) {
+            $pendingConditions[] =
+                'customer_confirmed_at IS NULL';
+        }
+
         $stmt = $db->query(
             'SELECT id
              FROM support_requests
              WHERE
-                (
-                    admin_notified_at IS NULL
-                    OR customer_confirmed_at IS NULL
+                ('
+                . implode(
+                    ' OR ',
+                    $pendingConditions
                 )
+                . ')
                AND created_at <= DATE_SUB(
                     UTC_TIMESTAMP(),
                     INTERVAL 2 MINUTE
