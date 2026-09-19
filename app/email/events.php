@@ -1098,3 +1098,109 @@ function send_promotion_campaign_email(
         $userId
     );
 }
+
+
+/* =========================================================
+   SHOP ORDER EMAIL
+   ========================================================= */
+
+function send_shop_order_confirmation_email(
+    PDO $db,
+    string $email,
+    array $context,
+    ?int $userId = null
+): bool {
+    $email = trim($email);
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    return llama_email_send_template(
+        $db,
+        'order_confirmation',
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
+
+
+function send_shop_fulfillment_notification_email(
+    PDO $db,
+    string $event,
+    string $email,
+    array $context,
+    ?int $userId = null
+): bool {
+    $event = strtolower(trim($event));
+
+    $templateKey = match ($event) {
+        'delivered' => 'order_delivered',
+        'shipped' => 'order_shipped',
+        default => '',
+    };
+
+    if ($templateKey === '') {
+        throw new InvalidArgumentException(
+            'Unknown Shop fulfillment email event.'
+        );
+    }
+
+    $email = trim($email);
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    return llama_email_send_template(
+        $db,
+        $templateKey,
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
+
+
+function send_shop_refund_confirmation_email(
+    PDO $db,
+    string $email,
+    array $context,
+    ?int $userId = null
+): bool {
+    $email = trim($email);
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    return llama_email_send_template(
+        $db,
+        'refund_confirmation',
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
