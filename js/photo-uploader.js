@@ -107,6 +107,8 @@
         let busy = false;
         let submitting = false;
         let recoverySignature = '';
+        let metadataSyncTimer = 0;
+        let metadataSyncChain = Promise.resolve();
 
         try {
             const initial = JSON.parse(
@@ -331,6 +333,16 @@
             'llama:photo-uploader-sync',
             () => {
                 syncHidden();
+
+                /*
+                 * The parent save is about to submit photos_json directly.
+                 * Cancel a delayed metadata-only request so it cannot race the
+                 * server while that save consumes the staging batch.
+                 */
+                window.clearTimeout(
+                    metadataSyncTimer
+                );
+                metadataSyncTimer = 0;
             }
         );
 
@@ -415,7 +427,8 @@
 
         const parseResponsePayload = (
             raw,
-            httpStatus
+            httpStatus,
+            applyPhotos = true
         ) => {
             let payload;
 
@@ -450,7 +463,10 @@
                     String(payload.token);
             }
 
-            if (Array.isArray(payload.photos)) {
+            if (
+                applyPhotos
+                && Array.isArray(payload.photos)
+            ) {
                 photos = payload.photos.map(
                     normalizePhoto
                 );
@@ -463,7 +479,8 @@
 
         const request = async (
             action,
-            extra = {}
+            extra = {},
+            options = {}
         ) => {
             const body = new FormData();
 
@@ -515,7 +532,8 @@
 
                 return parseResponsePayload(
                     raw,
-                    response.status
+                    response.status,
+                    options.applyPhotos !== false
                 );
             } catch (error) {
                 if (
@@ -533,6 +551,74 @@
                     timeoutId
                 );
             }
+        };
+
+        /*
+         * Photo descriptions are editable metadata on a staged batch. They
+         * used to exist only in the browser's hidden photos_json field until
+         * the parent form was submitted. Any later upload/delete response
+         * reloaded the server manifest, whose captions were still blank, and
+         * silently replaced the text the user had just entered.
+         *
+         * Keep the staging manifest current as captions change. Background
+         * metadata syncs deliberately do not replace the live browser array,
+         * so a slower response can never roll back newer keystrokes.
+         */
+        const flushPhotoMetadata = () => {
+            window.clearTimeout(
+                metadataSyncTimer
+            );
+
+            metadataSyncTimer = 0;
+
+            if (
+                !tokenField.value
+                || photos.length === 0
+            ) {
+                return metadataSyncChain;
+            }
+
+            const photosJson =
+                photosField.value;
+
+            metadataSyncChain =
+                metadataSyncChain
+                    .catch(() => {})
+                    .then(
+                        () => request(
+                            'sync',
+                            {
+                                photos_json:
+                                    photosJson,
+                            },
+                            {
+                                applyPhotos: false,
+                            }
+                        )
+                    );
+
+            return metadataSyncChain;
+        };
+
+        const schedulePhotoMetadataSync = () => {
+            window.clearTimeout(
+                metadataSyncTimer
+            );
+
+            metadataSyncTimer =
+                window.setTimeout(
+                    () => {
+                        flushPhotoMetadata()
+                            .catch(() => {
+                                /*
+                                 * Keep the local text intact. The parent form
+                                 * still submits photos_json directly, and a
+                                 * later retry can persist the manifest.
+                                 */
+                            });
+                    },
+                    400
+                );
         };
 
         const uploadRequest = (
@@ -792,6 +878,8 @@
                             setStatus('');
 
                             try {
+                                await flushPhotoMetadata();
+
                                 await request(
                                     'delete',
                                     {
@@ -870,6 +958,7 @@
                                 `Photo ${index + 1}`;
 
                             syncHidden();
+                            schedulePhotoMetadataSync();
                         }
                     );
 
@@ -925,6 +1014,13 @@
                             || 0
                         )
                     );
+
+                window.clearTimeout(
+                    metadataSyncTimer
+                );
+                metadataSyncTimer = 0;
+                metadataSyncChain =
+                    Promise.resolve();
 
                 tokenField.value = '';
                 photos = [];
@@ -1015,6 +1111,8 @@
             );
 
             try {
+                await flushPhotoMetadata();
+
                 await uploadRequest(
                     selected
                 );
@@ -1116,6 +1214,10 @@
 
                 submitting = true;
                 syncHidden();
+                window.clearTimeout(
+                    metadataSyncTimer
+                );
+                metadataSyncTimer = 0;
             }
         );
 

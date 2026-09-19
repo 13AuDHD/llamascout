@@ -11,263 +11,6 @@
         return;
     }
 
-    /*
-     * Optional field-help popovers used by Add Place.
-     * The helper trigger is a non-labelable span so it can safely live inside
-     * the existing wrapped <label> without toggling the form control.
-     */
-    const helpTriggers = [
-        ...document.querySelectorAll(
-            '[data-place-report-help-toggle]'
-        ),
-    ];
-
-    const helpPanels = [
-        ...document.querySelectorAll(
-            '[data-place-report-help-panel]'
-        ),
-    ];
-
-    const helpTriggerFor = (panel) =>
-        document.querySelector(
-            '[data-place-report-help-toggle="'
-            + CSS.escape(panel.id)
-            + '"]'
-        );
-
-    const helpIsOpen = (panel) => {
-        try {
-            return panel.matches(':popover-open');
-        } catch (_) {
-            return panel.classList.contains('is-open');
-        }
-    };
-
-    const positionHelpPanel = (trigger, panel) => {
-        if (
-            window.matchMedia('(max-width: 700px)').matches
-        ) {
-            panel.style.removeProperty('left');
-            panel.style.removeProperty('right');
-            panel.style.removeProperty('top');
-            panel.style.removeProperty('bottom');
-            return;
-        }
-
-        const rect =
-            trigger.getBoundingClientRect();
-
-        const panelWidth =
-            panel.offsetWidth || 340;
-
-        const panelHeight =
-            panel.offsetHeight || 120;
-
-        const left =
-            Math.max(
-                16,
-                Math.min(
-                    rect.left,
-                    window.innerWidth
-                        - panelWidth
-                        - 16
-                )
-            );
-
-        let top =
-            rect.bottom + 8;
-
-        if (
-            top + panelHeight
-            > window.innerHeight - 16
-        ) {
-            top =
-                Math.max(
-                    16,
-                    rect.top
-                        - panelHeight
-                        - 8
-                );
-        }
-
-        panel.style.left = left + 'px';
-        panel.style.right = 'auto';
-        panel.style.top = top + 'px';
-        panel.style.bottom = 'auto';
-    };
-
-    const closeHelpPanel = (panel) => {
-        if (!helpIsOpen(panel)) {
-            return;
-        }
-
-        if (
-            typeof panel.hidePopover
-                === 'function'
-        ) {
-            try {
-                panel.hidePopover();
-            } catch (_) {
-                panel.classList.remove('is-open');
-            }
-        } else {
-            panel.classList.remove('is-open');
-        }
-
-        helpTriggerFor(panel)?.setAttribute(
-            'aria-expanded',
-            'false'
-        );
-    };
-
-    const closeOtherHelpPanels = (exceptPanel) => {
-        helpPanels.forEach((panel) => {
-            if (panel !== exceptPanel) {
-                closeHelpPanel(panel);
-            }
-        });
-    };
-
-    const toggleHelpPanel = (trigger) => {
-        const panelId =
-            trigger.getAttribute(
-                'data-place-report-help-toggle'
-            );
-
-        const panel =
-            panelId
-                ? document.getElementById(panelId)
-                : null;
-
-        if (!panel) {
-            return;
-        }
-
-        if (helpIsOpen(panel)) {
-            closeHelpPanel(panel);
-            return;
-        }
-
-        closeOtherHelpPanels(panel);
-
-        if (
-            typeof panel.showPopover
-                === 'function'
-        ) {
-            try {
-                panel.showPopover();
-            } catch (_) {
-                panel.classList.add('is-open');
-            }
-        } else {
-            panel.classList.add('is-open');
-        }
-
-        trigger.setAttribute(
-            'aria-expanded',
-            'true'
-        );
-
-        window.requestAnimationFrame(
-            () => positionHelpPanel(
-                trigger,
-                panel
-            )
-        );
-    };
-
-    helpTriggers.forEach((trigger) => {
-        trigger.addEventListener(
-            'click',
-            (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                toggleHelpPanel(trigger);
-            }
-        );
-
-        trigger.addEventListener(
-            'keydown',
-            (event) => {
-                if (
-                    event.key !== 'Enter'
-                    && event.key !== ' '
-                ) {
-                    return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-                toggleHelpPanel(trigger);
-            }
-        );
-    });
-
-    helpPanels.forEach((panel) => {
-        panel.addEventListener(
-            'toggle',
-            () => {
-                helpTriggerFor(panel)?.setAttribute(
-                    'aria-expanded',
-                    helpIsOpen(panel)
-                        ? 'true'
-                        : 'false'
-                );
-            }
-        );
-    });
-
-    document.addEventListener(
-        'click',
-        (event) => {
-            if (
-                event.target.closest(
-                    '[data-place-report-help-toggle], [data-place-report-help-panel]'
-                )
-            ) {
-                return;
-            }
-
-            helpPanels.forEach(
-                closeHelpPanel
-            );
-        }
-    );
-
-    document.addEventListener(
-        'keydown',
-        (event) => {
-            if (event.key !== 'Escape') {
-                return;
-            }
-
-            helpPanels.forEach(
-                closeHelpPanel
-            );
-        }
-    );
-
-    window.addEventListener(
-        'resize',
-        () => {
-            helpPanels.forEach((panel) => {
-                if (!helpIsOpen(panel)) {
-                    return;
-                }
-
-                const trigger =
-                    helpTriggerFor(panel);
-
-                if (trigger) {
-                    positionHelpPanel(
-                        trigger,
-                        panel
-                    );
-                }
-            });
-        }
-    );
-
     const RECOVERY_MAX_AGE =
         48 * 60 * 60 * 1000;
 
@@ -1039,7 +782,7 @@
             }
 
             const payload = {
-                version: 2,
+                version: 3,
                 savedAt: Date.now(),
                 baseline,
                 data,
@@ -1109,6 +852,7 @@
                     (
                         payload?.version === 1
                         || payload?.version === 2
+                        || payload?.version === 3
                     )
                     && age >= 0
                     && age
@@ -1124,8 +868,17 @@
                             payload.data
                         );
 
+                    /*
+                     * Photo recovery version 2 could outlive a successful
+                     * Save for Later because that save bypassed the normal
+                     * form submit event. Those stale tokens had already been
+                     * consumed on the server and were the reason a draft could
+                     * open with no photos until the next refresh. Keep the
+                     * ordinary form-field recovery from v1/v2, but only trust
+                     * photo-stage recovery written by the coordinated v3 flow.
+                     */
                     const hasRecoveredPhotos =
-                        payload?.version === 2
+                        payload?.version === 3
                         && payload.photoStage
                         && typeof payload.photoStage
                             === 'object';
@@ -1262,7 +1015,7 @@
                     key,
                     JSON.stringify(
                         {
-                            version: 2,
+                            version: 3,
                             savedAt:
                                 Date.now(),
                             baseline,
@@ -1314,6 +1067,51 @@
                 }
             );
         }
+
+
+        /*
+         * Save for Later is an AJAX action and therefore does not fire the
+         * form's submit event. Coordinate that path explicitly so the local
+         * crash-recovery layer cannot keep a staging token after the server has
+         * consumed it.
+         */
+        form.addEventListener(
+            'llama:place-draft-save-starting',
+            () => {
+                window.clearTimeout(
+                    savingTimer
+                );
+
+                saveRecoveryImmediately();
+                submitting = true;
+            }
+        );
+
+        form.addEventListener(
+            'llama:place-draft-save-failed',
+            () => {
+                submitting = false;
+                queueRecovery();
+            }
+        );
+
+        form.addEventListener(
+            'llama:place-draft-saved',
+            () => {
+                window.clearTimeout(
+                    savingTimer
+                );
+
+                baseline =
+                    stateJson(form);
+
+                dirty = false;
+                submitting = true;
+
+                removeRecovery();
+                setStatus('');
+            }
+        );
 
 
         /*

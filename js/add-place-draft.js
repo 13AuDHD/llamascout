@@ -225,6 +225,20 @@
                 return;
             }
 
+            /*
+             * The shared report-recovery script normally learns about saves
+             * through the form submit event. Save for Later bypasses that event
+             * entirely, so explicitly tell it that a real server save is
+             * starting. This prevents its local crash-recovery copy from racing
+             * the draft save and later resurrecting a staging token that the
+             * server has already consumed.
+             */
+            form.dispatchEvent(
+                new CustomEvent(
+                    'llama:place-draft-save-starting'
+                )
+            );
+
             const body =
                 new FormData(form);
 
@@ -320,6 +334,25 @@
                     'Saved. Opening Saved for Later...'
                 );
 
+                /*
+                 * Clear the local crash-recovery snapshot before navigation.
+                 * The saved draft in the database is now authoritative.
+                 */
+                form.dispatchEvent(
+                    new CustomEvent(
+                        'llama:place-draft-saved',
+                        {
+                            detail: {
+                                draftId:
+                                    Number(
+                                        payload.draft_id
+                                        || 0
+                                    ),
+                            },
+                        }
+                    )
+                );
+
                 window.location.assign(
                     redirect
                 );
@@ -333,6 +366,12 @@
                             error?.message
                             || 'The Place could not be saved for later.'
                         );
+
+                form.dispatchEvent(
+                    new CustomEvent(
+                        'llama:place-draft-save-failed'
+                    )
+                );
 
                 setStatus(
                     message,
@@ -350,10 +389,6 @@
     );
 
 
-    /*
-     * Safari and Chrome can restore pages from the
-     * back-forward cache.
-     */
     window.addEventListener(
         'pageshow',
         () => {
@@ -362,4 +397,5 @@
             }
         }
     );
+
 })();
