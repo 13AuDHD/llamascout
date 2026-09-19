@@ -130,6 +130,67 @@ function send_verification_email(
 
 
 /* =========================================================
+   VERIFY EMAIL CHANGE
+   ========================================================= */
+
+function send_email_change_verification_email(
+    PDO $db,
+    array $user,
+    string $newEmail,
+    string $token
+): bool {
+    $newEmail =
+        strtolower(
+            trim($newEmail)
+        );
+
+    if (
+        $newEmail === ''
+        || !filter_var(
+            $newEmail,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $token = trim($token);
+
+    if (
+        !preg_match(
+            '/^[a-f0-9]{64}$/i',
+            $token
+        )
+    ) {
+        return false;
+    }
+
+    $context = [
+        'display_name' =>
+            llama_email_display_name($user),
+        'username' =>
+            (string) ($user['username'] ?? ''),
+        'new_email' =>
+            $newEmail,
+        'verification_url' =>
+            'https://account.llamascout.com/verify-email-change.php?token='
+            . rawurlencode($token),
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'email_change_verification',
+        $newEmail,
+        $context,
+        false,
+        isset($user['id'])
+            ? (int) $user['id']
+            : null
+    );
+}
+
+
+/* =========================================================
    WELCOME
    ========================================================= */
 
