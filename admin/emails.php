@@ -223,11 +223,138 @@ if (
 $emailTemplates =
     llama_email_templates($db);
 
+$templatesByCategory = [];
+$templateCategoryByKey = [];
+
+foreach ($emailTemplates as $emailTemplate) {
+    $category =
+        trim(
+            (string) (
+                $emailTemplate['category']
+                ?? 'Other'
+            )
+        );
+
+    if ($category === '') {
+        $category = 'Other';
+    }
+
+    $templateKey =
+        trim(
+            (string) (
+                $emailTemplate['template_key']
+                ?? ''
+            )
+        );
+
+    if ($templateKey === '') {
+        continue;
+    }
+
+    $templatesByCategory[$category][] =
+        $emailTemplate;
+
+    $templateCategoryByKey[$templateKey] =
+        $category;
+}
+
+$selectedCategory = '';
+
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '')
+    === 'POST'
+) {
+    $selectedCategory =
+        $templateCategoryByKey[
+            $selectedTemplateKey
+        ]
+        ?? '';
+} else {
+    $requestedCategory =
+        trim(
+            (string) (
+                $_GET['category']
+                ?? ''
+            )
+        );
+
+    if (
+        $requestedCategory !== ''
+        && isset(
+            $templatesByCategory[
+                $requestedCategory
+            ]
+        )
+    ) {
+        $selectedCategory =
+            $requestedCategory;
+
+        if (
+            !isset(
+                $templateCategoryByKey[
+                    $selectedTemplateKey
+                ]
+            )
+            || $templateCategoryByKey[
+                $selectedTemplateKey
+            ] !== $selectedCategory
+        ) {
+            $selectedTemplateKey =
+                (string) (
+                    $templatesByCategory[
+                        $selectedCategory
+                    ][0]['template_key']
+                    ?? ''
+                );
+        }
+    } elseif (
+        isset(
+            $templateCategoryByKey[
+                $selectedTemplateKey
+            ]
+        )
+    ) {
+        $selectedCategory =
+            $templateCategoryByKey[
+                $selectedTemplateKey
+            ];
+    }
+}
+
+if ($selectedCategory === '') {
+    $selectedCategory =
+        (string) (
+            array_key_first(
+                $templatesByCategory
+            )
+            ?? ''
+        );
+}
+
+if (
+    !isset(
+        $templateCategoryByKey[
+            $selectedTemplateKey
+        ]
+    )
+    && $selectedCategory !== ''
+) {
+    $selectedTemplateKey =
+        (string) (
+            $templatesByCategory[
+                $selectedCategory
+            ][0]['template_key']
+            ?? ''
+        );
+}
+
 $selectedTemplate =
-    llama_email_template(
-        $db,
-        $selectedTemplateKey
-    );
+    $selectedTemplateKey !== ''
+        ? llama_email_template(
+            $db,
+            $selectedTemplateKey
+        )
+        : null;
 
 require __DIR__ . '/_header.php';
 ?>
