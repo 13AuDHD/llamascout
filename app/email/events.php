@@ -360,13 +360,22 @@ function send_goodbye_email(
         ]
     );
 
+    /*
+     * Goodbye is intentionally sent after self-service account
+     * anonymization commits. At that point the former account is
+     * disabled, unverified, and no longer owns the original email.
+     *
+     * Do not attach the former user ID to recipient eligibility or
+     * the send log. Otherwise the central suppression rules correctly
+     * reject the message because the now-anonymized account is disabled.
+     */
     return llama_email_send_template(
         $db,
         'goodbye',
         $email,
         $context,
         false,
-        $formerUserId
+        null
     );
 }
 /* =========================================================
