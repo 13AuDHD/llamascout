@@ -804,6 +804,41 @@ function send_newsletter_issue_email(
    SUPPORT
    ========================================================= */
 
+function llama_support_email_template_key(
+    string $event
+): string {
+    return match (strtolower(trim($event))) {
+        'admin_new_ticket' =>
+            'support_admin_new_ticket',
+        'ticket_received' =>
+            'support_ticket_received',
+        'waiting' =>
+            'support_ticket_waiting',
+        'resolved' =>
+            'support_ticket_resolved',
+        'open', 'reopened' =>
+            'support_ticket_reopened',
+        default =>
+            throw new InvalidArgumentException(
+                'Unknown support email event.'
+            ),
+    };
+}
+
+
+function llama_support_email_enabled(
+    PDO $db,
+    string $event
+): bool {
+    return llama_email_template_is_enabled(
+        $db,
+        llama_support_email_template_key(
+            $event
+        )
+    );
+}
+
+
 function send_support_admin_new_ticket_email(
     PDO $db,
     string $adminEmail,
@@ -854,7 +889,9 @@ function send_support_admin_new_ticket_email(
 
     return llama_email_send_template(
         $db,
-        'support_admin_new_ticket',
+        llama_support_email_template_key(
+            'admin_new_ticket'
+        ),
         $adminEmail,
         $context,
         false,
@@ -909,7 +946,9 @@ function send_support_ticket_received_email(
 
     return llama_email_send_template(
         $db,
-        'support_ticket_received',
+        llama_support_email_template_key(
+            'ticket_received'
+        ),
         $email,
         $context,
         false,
@@ -940,14 +979,10 @@ function send_support_status_email(
         return false;
     }
 
-    $templateKey = match ($newStatus) {
-        'waiting' =>
-            'support_ticket_waiting',
-        'resolved' =>
-            'support_ticket_resolved',
-        default =>
-            'support_ticket_reopened',
-    };
+    $templateKey =
+        llama_support_email_template_key(
+            $newStatus
+        );
 
     $requesterName = trim(
         (string) ($request['name'] ?? '')
@@ -983,6 +1018,33 @@ function send_support_status_email(
 /* =========================================================
    MEMBERSHIP LIFECYCLE
    ========================================================= */
+
+function llama_membership_lifecycle_email_enabled(
+    PDO $db,
+    string $templateKey
+): bool {
+    $allowedTemplates = [
+        'llamaversary',
+        'membership_started',
+        'membership_cancel_scheduled',
+        'membership_payment_failed',
+        'membership_ended',
+        'complimentary_started',
+        'complimentary_ending',
+    ];
+
+    if (!in_array($templateKey, $allowedTemplates, true)) {
+        throw new InvalidArgumentException(
+            'Unknown membership lifecycle email template.'
+        );
+    }
+
+    return llama_email_template_is_enabled(
+        $db,
+        $templateKey
+    );
+}
+
 
 function send_membership_lifecycle_email(
     PDO $db,
