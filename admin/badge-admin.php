@@ -151,6 +151,9 @@ $badge =
         $badgeId
     );
 
+$badgeThresholdMetricLabels =
+    llama_badge_threshold_metric_labels();
+
 if (!$badge) {
     http_response_code(404);
 
@@ -317,7 +320,7 @@ require __DIR__ .
                 )
             )
         ) ?>
-        ·
+        Â·
         <?= moderation_e(
             ucwords(
                 str_replace(
@@ -466,7 +469,10 @@ require __DIR__ .
 
         <label>
             <span>Award type</span>
-            <select name="award_type">
+            <select
+                name="award_type"
+                data-badge-award-type
+            >
                 <?php foreach (
                     [
                         'automatic' => 'Automatic',
@@ -488,7 +494,55 @@ require __DIR__ .
             </select>
         </label>
 
-        <label>
+        <label
+            data-badge-threshold-field
+            <?= (string) $badge['award_type'] === 'automatic'
+                ? ''
+                : 'hidden' ?>
+        >
+            <span>Threshold type</span>
+            <select name="threshold_metric">
+                <option
+                    value=""
+                    <?= empty($badge['threshold_metric'])
+                        ? 'selected'
+                        : '' ?>
+                >
+                    Special / legacy automatic logic
+                </option>
+                <?php foreach (
+                    $badgeThresholdMetricLabels
+                    as
+                    $metricValue => $metricLabel
+                ): ?>
+                    <option
+                        value="<?= moderation_e(
+                            $metricValue
+                        ) ?>"
+                        <?= (string) (
+                            $badge['threshold_metric']
+                            ?? ''
+                        ) === $metricValue
+                            ? 'selected'
+                            : '' ?>
+                    >
+                        <?= moderation_e(
+                            $metricLabel
+                        ) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                Choose what this automatic badge counts.
+            </small>
+        </label>
+
+        <label
+            data-badge-threshold-field
+            <?= (string) $badge['award_type'] === 'automatic'
+                ? ''
+                : 'hidden' ?>
+        >
             <span>Threshold</span>
             <input
                 type="number"
@@ -705,13 +759,13 @@ require __DIR__ .
         <?= moderation_e(
             (string) $recipient['review_status']
         ) ?>
-        ·
+        Â·
         <?= moderation_e(
             llama_format_viewer_datetime(
                 (string) $recipient['awarded_at']
             )
         ) ?>
-        ·
+        Â·
         <?= moderation_e(
             (string) $recipient['awarded_by_name']
         ) ?>
@@ -926,6 +980,8 @@ require __DIR__ .
 
 </div>
 
+
+<script src="https://llamascout.com/js/admin/badges.js"></script>
 
 <script>
 (() => {
