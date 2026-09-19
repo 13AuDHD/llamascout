@@ -572,3 +572,9 @@ html[data-reduced-motion="true"]
         grid-template-columns: 1fr;
     }
 }
+
+/* Credential badge entry point */
+.account-badge-actions-grid {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 14px;
+}
