@@ -286,13 +286,30 @@
             width: Number(photo?.width || 0),
             height: Number(photo?.height || 0),
             size: Number(photo?.size || 0),
-            alt: String(photo?.alt || '').trim(),
+            alt: String(photo?.alt || ''),
         });
 
         const syncHidden = () => {
-            photos = photos
-                .map(normalizePhoto)
-                .filter((photo) => photo.path);
+            /*
+             * Keep each live photo object's identity stable while a caption
+             * input is being edited. Replacing every object here meant the
+             * input handler kept a reference to the old object after the first
+             * keystroke. The first character made it into photos_json, then
+             * every later character was written to an object that was no
+             * longer in the photos array.
+             */
+            photos = photos.filter(
+                (photo) =>
+                    photo
+                    && String(photo.path || '').trim() !== ''
+            );
+
+            photos.forEach((photo) => {
+                Object.assign(
+                    photo,
+                    normalizePhoto(photo)
+                );
+            });
 
             photosField.value = JSON.stringify(
                 photos
@@ -950,7 +967,13 @@
                     caption.addEventListener(
                         'input',
                         () => {
-                            photo.alt =
+                            const livePhoto =
+                                photos.find(
+                                    (candidate) =>
+                                        candidate.path === photo.path
+                                ) || photo;
+
+                            livePhoto.alt =
                                 caption.value;
 
                             image.alt =
