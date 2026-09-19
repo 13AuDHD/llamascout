@@ -457,7 +457,7 @@ require __DIR__ . '/partials/header.php';
                         class="place-weather-unit-label"
                         data-weather-unit-label="F"
                         aria-hidden="true"
-                    >Â°F</span>
+                    &deg;F</span>
 
                     <button
                         type="button"
@@ -477,7 +477,7 @@ require __DIR__ . '/partials/header.php';
                         class="place-weather-unit-label"
                         data-weather-unit-label="C"
                         aria-hidden="true"
-                    >Â°C</span>
+                    &deg;C</span>
                 </div>
 
                 <i
@@ -544,7 +544,7 @@ require __DIR__ . '/partials/header.php';
                             <strong
                                 data-weather-temp-f="<?= (int) $feels ?>"
                                 data-weather-temp-show-unit="1"
-                            ><?= $feels ?>Â°F</strong>
+                            ><?= $feels ?>&deg;F</strong>
                         </div>
                     <?php endif; ?>
 
@@ -593,10 +593,10 @@ require __DIR__ . '/partials/header.php';
                                 <div class="place-weather-day-temperatures">
                                     <strong
                                         <?= $high === null ? '' : 'data-weather-temp-f="' . (int) $high . '"' ?>
-                                    ><?= $high === null ? 'â' : $high . 'Â°' ?></strong>
+                                    ><?= $high === null ? ' ' : $high . '°' ?></strong>
                                     <span
                                         <?= $low === null ? '' : 'data-weather-temp-f="' . (int) $low . '"' ?>
-                                    ><?= $low === null ? 'â' : $low . 'Â°' ?></span>
+                                    ><?= $low === null ? '  ' : $low . '°' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
@@ -618,10 +618,6 @@ require __DIR__ . '/partials/header.php';
                 </div>
             <?php endif; ?>
 
-            <p class="place-weather-note">
-                This weather is real and calculated for the Headquarters coordinate anchor.
-                The campsite shown elsewhere on this page is fictional.
-            </p>
         <?php endif; ?>
     </section>
 
@@ -682,7 +678,7 @@ require __DIR__ . '/partials/header.php';
 
                 const showUnit = node.dataset.weatherTempShowUnit === '1';
 
-                node.textContent = `${value}Â°${showUnit ? unit : ''}`;
+                node.textContent = `${value}&deg;${showUnit ? unit : ''}`;
             });
 
             windNodes.forEach((node) => {
