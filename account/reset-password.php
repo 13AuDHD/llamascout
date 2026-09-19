@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/auth.php';
+require_once dirname(__DIR__) . '/app/mail.php';
 
 start_llama_session();
 
@@ -447,6 +448,18 @@ if (
              * server-side by deleting their token rows.
              */
             clear_remember_cookie();
+
+            try {
+                send_password_changed_email(
+                    $db,
+                    (int) $lockedReset['user_id']
+                );
+            } catch (Throwable $emailException) {
+                error_log(
+                    'Llama Scout password-changed email error: '
+                    . $emailException->getMessage()
+                );
+            }
 
             $success = true;
             $resetRecord = [];
