@@ -280,16 +280,6 @@ function llama_scout_onboarding_verify_csrf(
 }
 
 
-function llama_scout_send_invitation_email(
-    array $candidate
-): bool {
-    return send_scout_invitation_email(
-        db(),
-        $candidate
-    );
-}
-
-
 function llama_scout_admin_eligible_candidates(
     PDO $db
 ): array {
@@ -540,7 +530,8 @@ function llama_scout_admin_invite(
     }
 
     $sent =
-        llama_scout_send_invitation_email(
+        send_scout_invitation_email(
+            $db,
             $candidate
         );
 
