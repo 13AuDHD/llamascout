@@ -446,3 +446,67 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+/* Combined coordinate entry on Add Place. */
+.place-report-form .add-place-coordinate-field {
+    display: grid;
+    gap: 6px;
+
+    margin-top: 16px;
+}
+
+.place-report-form .add-place-coordinate-field > label {
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+.place-report-form .add-place-coordinate-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.place-report-form .add-place-coordinate-row input {
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.place-report-form .add-place-coordinate-search {
+    min-height: 42px;
+
+    padding: 8px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--text);
+    color: var(--background);
+
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 850;
+
+    cursor: pointer;
+}
+
+.place-report-form .add-place-coordinate-search:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.place-report-form .add-place-coordinate-field > small {
+    color: var(--text-muted);
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 450px) {
+    .place-report-form .add-place-coordinate-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .place-report-form .add-place-coordinate-search {
+        padding-inline: 12px;
+    }
+}
