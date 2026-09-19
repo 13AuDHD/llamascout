@@ -716,35 +716,12 @@ function llama_account_info_request_email_change(
         throw $exception;
     }
 
-    $context = [
-        'display_name' =>
-            trim(
-                (string) (
-                    $user['display_name']
-                    ?: $user['username']
-                    ?: 'Scout'
-                )
-            ),
-        'username' =>
-            (string) (
-                $user['username']
-                ?? ''
-            ),
-        'new_email' =>
-            $newEmail,
-        'verification_url' =>
-            'https://account.llamascout.com/verify-email-change.php?token='
-            . rawurlencode($token),
-    ];
-
     $sent =
-        llama_email_send_template(
+        send_email_change_verification_email(
             $db,
-            'email_change_verification',
+            $user,
             $newEmail,
-            $context,
-            false,
-            $userId
+            $token
         );
 
     return [
