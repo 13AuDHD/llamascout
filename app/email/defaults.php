@@ -266,6 +266,76 @@ HTML,
         ],
 
 
+        'password_changed' => [
+            'template_key' => 'password_changed',
+            'category' => 'Account',
+            'name' => 'Password Changed',
+            'description' =>
+                'Sent after a member successfully changes their Llama Scout password.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'username',
+                'account_url',
+                'support_url',
+            ],
+            'subject' => 'Your Llama Scout password was changed',
+            'preheader' =>
+                'Your account password was changed successfully.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your Llama Scout password was changed successfully.
+
+If you made this change, no further action is needed.
+
+If you did not change your password, contact Llama Scout support right away:
+{{support_url}}
+
+Your account:
+{{account_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your password was changed.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Your Llama Scout password was changed successfully.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  If you made this change, no further action is needed.
+</div>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  If you did not change your password, contact Llama Scout support right away.
+</p>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{support_url}}"
+    style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;"
+  >Contact Support</a>
+</p>
+
+<p style="margin:10px 0 0;">
+  <a
+    href="{{account_url}}"
+    style="display:block;padding:13px 18px;border:1px solid #172822;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
+  >Open Your Account</a>
+</p>
+HTML,
+        ],
+
+
         'goodbye' => [
             'template_key' => 'goodbye',
             'category' => 'Account',
@@ -1206,6 +1276,496 @@ TEXT,
     style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;"
   >Accept Complimentary Access</a>
 </p>
+HTML,
+        ],
+
+
+        'scout_invitation' => [
+            'template_key' => 'scout_invitation',
+            'category' => 'Scout',
+            'name' => 'Scout Invitation',
+            'description' =>
+                'Sent when an eligible member is invited to begin Scout onboarding.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'username',
+                'scout_invite_url',
+            ],
+            'subject' => 'You are invited to become a Llama Scout',
+            'preheader' =>
+                'You have been invited to join the Llama Scout team as a Scout.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+You have been invited to join the Llama Scout team as a Scout.
+
+Active Scouts receive Scout tools and complimentary Complete Access while their Scout status remains active.
+
+Review your invitation and Scout expectations:
+{{scout_invite_url}}
+
+Becoming a Scout is optional. This invitation expires 30 days after it was sent.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llama Scout Invitation
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  You're invited to become a Scout.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{display_name}},
+</p>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  You've been invited to join the Llama Scout team as a Scout.
+</p>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  Active Scouts receive Scout tools and complimentary Complete Access while their Scout status remains active.
+</p>
+
+<p style="margin:0 0 22px;">
+  <a
+    href="{{scout_invite_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Review Scout Invitation</a>
+</p>
+
+<p style="margin:0;color:#667069;font-size:14px;line-height:1.6;">
+  Becoming a Scout is optional. Review the invitation and Scout expectations before deciding.
+  This invitation expires 30 days after it was sent.
+</p>
+HTML,
+        ],
+
+
+        'support_admin_new_ticket' => [
+            'template_key' => 'support_admin_new_ticket',
+            'category' => 'Support',
+            'name' => 'New Ticket Admin Alert',
+            'description' =>
+                'Sent internally when a new support ticket is created.',
+            'enabled' => 1,
+            'variables' => [
+                'ticket_number',
+                'support_category',
+                'requester_name',
+                'requester_email',
+                'preferred_contact',
+                'request_details',
+                'ticket_subject',
+                'ticket_message',
+                'admin_ticket_url',
+            ],
+            'subject' => '[Ticket #{{ticket_number}}] {{ticket_subject}}',
+            'preheader' =>
+                'A new Llama Scout support ticket needs review.',
+            'text_body' => <<<'TEXT'
+New Llama Scout support ticket
+
+Ticket: #{{ticket_number}}
+Category: {{support_category}}
+Name: {{requester_name}}
+Email: {{requester_email}}
+Preferred contact: {{preferred_contact}}
+{{request_details}}
+
+Subject: {{ticket_subject}}
+
+{{ticket_message}}
+
+Open in Basecamp:
+{{admin_ticket_url}}
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Support
+</p>
+
+<h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;color:#172822;">
+  New support ticket #{{ticket_number}}
+</h1>
+
+<div style="margin:0 0 20px;padding:16px;border:1px solid #dcded8;border-radius:12px;line-height:1.7;">
+  <strong>Category:</strong> {{support_category}}<br>
+  <strong>Name:</strong> {{requester_name}}<br>
+  <strong>Email:</strong> {{requester_email}}<br>
+  <strong>Preferred contact:</strong> {{preferred_contact}}
+</div>
+
+<pre style="margin:0 0 20px;padding:14px;border-radius:10px;background:#f7f8f4;color:#33443d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{request_details}}</pre>
+
+<h2 style="margin:0 0 8px;font-size:18px;color:#172822;">
+  {{ticket_subject}}
+</h2>
+
+<pre style="margin:0 0 22px;color:#263b33;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;white-space:pre-wrap;">{{ticket_message}}</pre>
+
+<p style="margin:0;">
+  <a
+    href="{{admin_ticket_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Open Ticket in Basecamp</a>
+</p>
+HTML,
+        ],
+
+
+        'support_ticket_received' => [
+            'template_key' => 'support_ticket_received',
+            'category' => 'Support',
+            'name' => 'Ticket Received',
+            'description' =>
+                'Sent to the requester after Llama Scout receives a support ticket.',
+            'enabled' => 1,
+            'variables' => [
+                'requester_name',
+                'ticket_number',
+                'ticket_subject',
+                'preferred_contact',
+                'ticket_extra_details',
+                'support_url',
+            ],
+            'subject' => 'Ticket #{{ticket_number}} received by Llama Scout',
+            'preheader' =>
+                'We received your Llama Scout support ticket.',
+            'text_body' => <<<'TEXT'
+Hi {{requester_name}},
+
+We received your Llama Scout support ticket.
+
+Ticket: #{{ticket_number}}
+Subject: {{ticket_subject}}
+Preferred contact: {{preferred_contact}}
+{{ticket_extra_details}}
+
+Keep the ticket number above if you need to follow up.
+
+Support:
+{{support_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  We received your ticket.
+</h1>
+
+<p style="margin:0 0 16px;line-height:1.65;">
+  Hi {{requester_name}},
+</p>
+
+<div style="margin:0 0 20px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>Ticket:</strong> #{{ticket_number}}<br>
+  <strong>Subject:</strong> {{ticket_subject}}<br>
+  <strong>Preferred contact:</strong> {{preferred_contact}}
+</div>
+
+<pre style="margin:0 0 20px;color:#52605a;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{ticket_extra_details}}</pre>
+
+<p style="margin:0 0 22px;line-height:1.65;">
+  Keep your ticket number if you need to follow up.
+</p>
+
+<p style="margin:0;">
+  <a
+    href="{{support_url}}"
+    style="display:inline-block;border:1px solid #172822;color:#172822;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Contact Support</a>
+</p>
+HTML,
+        ],
+
+
+        'support_ticket_waiting' => [
+            'template_key' => 'support_ticket_waiting',
+            'category' => 'Support',
+            'name' => 'Ticket Waiting',
+            'description' =>
+                'Sent when a support ticket moves to Waiting status.',
+            'enabled' => 1,
+            'variables' => [
+                'requester_name',
+                'ticket_number',
+                'ticket_subject',
+                'support_url',
+            ],
+            'subject' => 'Ticket #{{ticket_number}} is now Waiting',
+            'preheader' =>
+                'Your support ticket is waiting for the next step.',
+            'text_body' => <<<'TEXT'
+Hi {{requester_name}},
+
+Your support ticket is currently waiting. If Llama Scout requested additional information, reply to the most recent support email or contact support so we can continue.
+
+Ticket: #{{ticket_number}}
+Subject: {{ticket_subject}}
+Status: Waiting
+
+{{support_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your ticket is waiting.
+</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{requester_name}},</p>
+<p style="margin:0 0 20px;line-height:1.65;">
+  If Llama Scout requested additional information, reply to the most recent support email or contact support so we can continue.
+</p>
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>Ticket:</strong> #{{ticket_number}}<br>
+  <strong>Subject:</strong> {{ticket_subject}}<br>
+  <strong>Status:</strong> Waiting
+</div>
+<p style="margin:0;"><a href="{{support_url}}" style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;">Contact Support</a></p>
+HTML,
+        ],
+
+
+        'support_ticket_resolved' => [
+            'template_key' => 'support_ticket_resolved',
+            'category' => 'Support',
+            'name' => 'Ticket Resolved',
+            'description' =>
+                'Sent when a support ticket is marked Resolved.',
+            'enabled' => 1,
+            'variables' => [
+                'requester_name',
+                'ticket_number',
+                'ticket_subject',
+                'support_url',
+            ],
+            'subject' => 'Ticket #{{ticket_number}} is now Resolved',
+            'preheader' =>
+                'Your Llama Scout support ticket has been marked resolved.',
+            'text_body' => <<<'TEXT'
+Hi {{requester_name}},
+
+Your support ticket has been marked resolved.
+
+Ticket: #{{ticket_number}}
+Subject: {{ticket_subject}}
+Status: Resolved
+
+If the problem returns or you still need help, you can create another support ticket:
+{{support_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your ticket is resolved.
+</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{requester_name}},</p>
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>Ticket:</strong> #{{ticket_number}}<br>
+  <strong>Subject:</strong> {{ticket_subject}}<br>
+  <strong>Status:</strong> Resolved
+</div>
+<p style="margin:0 0 22px;line-height:1.65;">If the problem returns or you still need help, you can create another support ticket.</p>
+<p style="margin:0;"><a href="{{support_url}}" style="display:inline-block;border:1px solid #172822;color:#172822;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:700;">Open Support</a></p>
+HTML,
+        ],
+
+
+        'support_ticket_reopened' => [
+            'template_key' => 'support_ticket_reopened',
+            'category' => 'Support',
+            'name' => 'Ticket Reopened',
+            'description' =>
+                'Sent when a resolved or waiting support ticket is reopened.',
+            'enabled' => 1,
+            'variables' => [
+                'requester_name',
+                'ticket_number',
+                'ticket_subject',
+                'support_url',
+            ],
+            'subject' => 'Ticket #{{ticket_number}} is open again',
+            'preheader' =>
+                'Your Llama Scout support ticket is active again.',
+            'text_body' => <<<'TEXT'
+Hi {{requester_name}},
+
+Your support ticket has been reopened and is active again.
+
+Ticket: #{{ticket_number}}
+Subject: {{ticket_subject}}
+Status: Open
+
+{{support_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Your ticket is open again.
+</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{requester_name}},</p>
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>Ticket:</strong> #{{ticket_number}}<br>
+  <strong>Subject:</strong> {{ticket_subject}}<br>
+  <strong>Status:</strong> Open
+</div>
+<p style="margin:0;"><a href="{{support_url}}" style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;">Open Support</a></p>
+HTML,
+        ],
+
+
+        'contribution_approved' => [
+            'template_key' => 'contribution_approved',
+            'category' => 'Contributions',
+            'name' => 'Contribution Approved',
+            'description' =>
+                'Sent when a new Place or Place update is approved.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'contribution_type',
+                'contribution_id',
+                'place_name',
+                'review_notes',
+                'points_awarded',
+                'contribution_url',
+                'place_url',
+            ],
+            'subject' => '{{contribution_type}} approved: {{place_name}}',
+            'preheader' =>
+                'Your Llama Scout contribution was approved.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your {{contribution_type}} for {{place_name}} was approved.
+
+Contribution: #{{contribution_id}}
+Points awarded: {{points_awarded}}
+
+Review notes:
+{{review_notes}}
+
+View your contribution:
+{{contribution_url}}
+
+View the Place:
+{{place_url}}
+
+Thanks for helping make Llama Scout more useful for the herd.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Contribution Review</p>
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">Approved.</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{display_name}},</p>
+<p style="margin:0 0 20px;line-height:1.65;">Your {{contribution_type}} for <strong>{{place_name}}</strong> was approved.</p>
+<div style="margin:0 0 20px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;"><strong>Contribution:</strong> #{{contribution_id}}<br><strong>Points awarded:</strong> {{points_awarded}}</div>
+<pre style="margin:0 0 22px;padding:14px;border:1px solid #dcded8;border-radius:10px;color:#33443d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{review_notes}}</pre>
+<p style="margin:10px 0;"><a href="{{contribution_url}}" style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;">View Your Contribution</a></p>
+<p style="margin:10px 0 0;"><a href="{{place_url}}" style="display:block;padding:13px 18px;border:1px solid #172822;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;">View the Place</a></p>
+HTML,
+        ],
+
+
+        'contribution_changes_requested' => [
+            'template_key' => 'contribution_changes_requested',
+            'category' => 'Contributions',
+            'name' => 'Changes Requested',
+            'description' =>
+                'Sent when a new Place or Place update needs changes before approval.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'contribution_type',
+                'contribution_id',
+                'place_name',
+                'review_notes',
+                'contribution_url',
+            ],
+            'subject' => 'Changes requested for {{place_name}}',
+            'preheader' =>
+                'Your Llama Scout contribution needs a few changes.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your {{contribution_type}} for {{place_name}} needs a few changes before it can be approved.
+
+Contribution: #{{contribution_id}}
+
+Review notes:
+{{review_notes}}
+
+Open your contribution to make the requested changes:
+{{contribution_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Contribution Review</p>
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">A few changes are needed.</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{display_name}},</p>
+<p style="margin:0 0 20px;line-height:1.65;">Your {{contribution_type}} for <strong>{{place_name}}</strong> needs a few changes before it can be approved.</p>
+<pre style="margin:0 0 22px;padding:14px;border:1px solid #dcded8;border-radius:10px;color:#33443d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{review_notes}}</pre>
+<p style="margin:0;"><a href="{{contribution_url}}" style="display:inline-block;background:#172822;color:#ffffff;padding:13px 20px;border-radius:9px;text-decoration:none;font-weight:700;">Edit and Resubmit</a></p>
+HTML,
+        ],
+
+
+        'contribution_not_approved' => [
+            'template_key' => 'contribution_not_approved',
+            'category' => 'Contributions',
+            'name' => 'Contribution Not Approved',
+            'description' =>
+                'Sent when a new Place or Place update is not approved.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'contribution_type',
+                'contribution_id',
+                'place_name',
+                'review_notes',
+                'contribution_url',
+            ],
+            'subject' => 'Update on your {{contribution_type}} for {{place_name}}',
+            'preheader' =>
+                'Your Llama Scout contribution was not approved.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Your {{contribution_type}} for {{place_name}} was not approved.
+
+Contribution: #{{contribution_id}}
+
+Review notes:
+{{review_notes}}
+
+View your contribution:
+{{contribution_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Contribution Review</p>
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">This contribution was not approved.</h1>
+<p style="margin:0 0 16px;line-height:1.65;">Hi {{display_name}},</p>
+<p style="margin:0 0 20px;line-height:1.65;">Your {{contribution_type}} for <strong>{{place_name}}</strong> was not approved.</p>
+<pre style="margin:0 0 22px;padding:14px;border:1px solid #dcded8;border-radius:10px;color:#33443d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{review_notes}}</pre>
+<p style="margin:0;"><a href="{{contribution_url}}" style="display:inline-block;border:1px solid #172822;color:#172822;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:700;">View Contribution</a></p>
 HTML,
         ],
 

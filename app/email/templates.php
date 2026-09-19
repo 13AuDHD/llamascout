@@ -701,6 +701,36 @@ function llama_email_sample_context(
             'https://llamascout.com/map.php',
         'site_url' =>
             'https://llamascout.com',
+        'support_url' =>
+            'https://llamascout.com/contact.php',
+        'scout_invite_url' =>
+            'https://account.llamascout.com/scout-invite.php',
+
+        'ticket_number' => 'LS-260919-001',
+        'support_category' => 'Technical problem or site error',
+        'requester_name' => 'Trail Tester',
+        'requester_email' => 'trailtester@example.com',
+        'preferred_contact' => 'Email',
+        'request_details' =>
+            "Phone: (970) 555-0123\nError: LS-TEST-123",
+        'ticket_subject' => 'Map page will not load',
+        'ticket_message' =>
+            'The map stopped loading after I signed in.',
+        'admin_ticket_url' =>
+            'https://admin.llamascout.com/support.php?id=123',
+        'ticket_extra_details' =>
+            'Error reference: LS-TEST-123',
+
+        'contribution_type' => 'new Place submission',
+        'contribution_id' => '123',
+        'place_name' => 'Alpine Hollow',
+        'review_notes' =>
+            'Everything looks good. Thanks for the detailed access notes.',
+        'points_awarded' => '100',
+        'contribution_url' =>
+            'https://account.llamascout.com/submissions.php',
+        'place_url' =>
+            'https://llamascout.com/place.php?place=alpine-hollow',
 
         'customer_name' => 'Trail Tester',
         'order_number' => 'LS-12345',

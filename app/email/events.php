@@ -463,3 +463,189 @@ function send_complimentary_invitation_email(
         null
     );
 }
+
+
+/* =========================================================
+   CENTRAL EVENT HELPERS
+   ========================================================= */
+
+function llama_email_user_by_id(
+    PDO $db,
+    int $userId
+): ?array {
+    if ($userId < 1) {
+        return null;
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            id,
+            email,
+            username,
+            display_name,
+            email_verified_at,
+            status,
+            anonymized_at
+         FROM users
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$userId]);
+
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $user ?: null;
+}
+
+
+function send_password_changed_email(
+    PDO $db,
+    int $userId
+): bool {
+    $user = llama_email_user_by_id(
+        $db,
+        $userId
+    );
+
+    if (!$user) {
+        return false;
+    }
+
+    $context = [
+        'display_name' =>
+            llama_email_display_name($user),
+        'username' =>
+            (string) ($user['username'] ?? ''),
+        'account_url' =>
+            'https://account.llamascout.com/',
+        'support_url' =>
+            'https://llamascout.com/contact.php',
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'password_changed',
+        (string) $user['email'],
+        $context,
+        false,
+        $userId
+    );
+}
+
+
+function send_scout_invitation_email(
+    PDO $db,
+    array $candidate
+): bool {
+    $email = trim(
+        (string) (
+            $candidate['email']
+            ?? ''
+        )
+    );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $context = [
+        'display_name' =>
+            llama_email_display_name($candidate),
+        'username' =>
+            (string) ($candidate['username'] ?? ''),
+        'scout_invite_url' =>
+            'https://account.llamascout.com/scout-invite.php',
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'scout_invitation',
+        $email,
+        $context,
+        false,
+        isset($candidate['id'])
+            ? (int) $candidate['id']
+            : null
+    );
+}
+
+
+function send_contribution_review_email(
+    PDO $db,
+    int $userId,
+    string $reviewStatus,
+    string $contributionType,
+    int $contributionId,
+    string $placeName,
+    string $reviewNotes = '',
+    int $pointsAwarded = 0,
+    string $contributionUrl = '',
+    string $placeUrl = ''
+): bool {
+    $user = llama_email_user_by_id(
+        $db,
+        $userId
+    );
+
+    if (!$user) {
+        return false;
+    }
+
+    $templateKey = match ($reviewStatus) {
+        'approved' =>
+            'contribution_approved',
+        'needs-changes', 'changes-requested' =>
+            'contribution_changes_requested',
+        'rejected', 'not-approved' =>
+            'contribution_not_approved',
+        default =>
+            '',
+    };
+
+    if ($templateKey === '') {
+        throw new InvalidArgumentException(
+            'Unknown contribution review email status.'
+        );
+    }
+
+    $context = [
+        'display_name' =>
+            llama_email_display_name($user),
+        'contribution_type' =>
+            trim($contributionType) !== ''
+                ? trim($contributionType)
+                : 'contribution',
+        'contribution_id' =>
+            (string) max(0, $contributionId),
+        'place_name' =>
+            trim($placeName) !== ''
+                ? trim($placeName)
+                : 'this Place',
+        'review_notes' =>
+            trim($reviewNotes) !== ''
+                ? trim($reviewNotes)
+                : 'No additional review notes were added.',
+        'points_awarded' =>
+            number_format(max(0, $pointsAwarded)),
+        'contribution_url' =>
+            trim($contributionUrl),
+        'place_url' =>
+            trim($placeUrl),
+    ];
+
+    return llama_email_send_template(
+        $db,
+        $templateKey,
+        (string) $user['email'],
+        $context,
+        false,
+        $userId
+    );
+}
