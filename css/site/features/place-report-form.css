@@ -32,6 +32,12 @@
 }
 
 .place-report-form
+.add-place-radio-control[data-radio-type="permission"]
+.add-place-radio-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.place-report-form
 .add-place-radio-control[data-radio-type="rating"]
 .add-place-radio-options {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -428,5 +434,15 @@
         top: auto !important;
         bottom: 16px !important;
         width: auto !important;
+    }
+}
+
+
+/* Permission answers stay in one row until a genuinely narrow phone. */
+@media (max-width: 450px) {
+    .place-report-form
+    .add-place-radio-control[data-radio-type="permission"]
+    .add-place-radio-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
