@@ -45,7 +45,7 @@ TEXT,
 </p>
 
 <p style="margin:0 0 20px;line-height:1.65;">
-  Youâre almost in. Verify your email address to finish setting up your
+  You're almost in. Verify your email address to finish setting up your
   Llama Scout account.
 </p>
 
@@ -61,7 +61,7 @@ TEXT,
 </p>
 
 <p style="margin:0;color:#667069;font-size:14px;line-height:1.6;">
-  If you didnât create a Llama Scout account, you can ignore this email.
+  If you didn't create a Llama Scout account, you can ignore this email.
 </p>
 HTML,
         ],
@@ -163,27 +163,27 @@ HTML,
             ],
             'subject' => 'Welcome to Llama Scout',
             'preheader' =>
-                'Youâre officially part of the herd. Hereâs what your account can do.',
+                'You\'re officially part of the herd. Here\'s what your account can do.',
             'text_body' => <<<'TEXT'
 Hi {{display_name}},
 
-Youâre officially part of the herd.
+You're officially part of the herd.
 
 Your free Llama Scout account is ready. You can save Places, contribute new Places and updates, report problems, and build your Scout profile.
 
 Want the complete Place report?
 
 Paid membership unlocks:
-â¢ Exact coordinates and exact Place locations
-â¢ Exact road and location details
-â¢ Complete Place photo galleries
-â¢ Full descriptions and Scout Notes
-â¢ Road and vehicle access
-â¢ Sensory conditions
-â¢ Connectivity
-â¢ Exact-location weather plus a 5-day forecast
-â¢ Member map layers: Street, Terrain, Topo, Dark, and Satellite
-â¢ The monthly member-only Llama Scout newsletter
+* Exact coordinates and exact Place locations
+* Exact road and location details
+* Complete Place photo galleries
+* Full descriptions and Scout Notes
+* Road and vehicle access
+* Sensory conditions
+* Connectivity
+* Exact-location weather plus a 5-day forecast
+* Member map layers: Street, Terrain, Topo, Dark, and Satellite
+* The monthly member-only Llama Scout newsletter
 
 See a complete Scout Report:
 {{demo_report_url}}
@@ -205,7 +205,7 @@ Know the place before you go.
 TEXT,
             'html_body' => <<<'HTML'
 <h1 style="margin:0 0 10px;font-size:30px;line-height:1.1;color:#172822;">
-  Youâre officially part of the herd.
+  You're officially part of the herd.
 </h1>
 
 <p style="margin:0 0 22px;color:#667069;font-size:16px;line-height:1.65;">
@@ -254,7 +254,7 @@ TEXT,
     Monthly member-only newsletter
   </strong>
   <span style="color:#4f5b55;line-height:1.65;">
-    Paid membership also includes Llama Scoutâs monthly member-only email
+    Paid membership also includes Llama Scout's monthly member-only email
     publication with Place discoveries, site updates, field notes, and useful
     planning information.
   </span>
@@ -271,14 +271,14 @@ TEXT,
   <a
     href="{{monthly_url}}"
     style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;"
-  >Choose Monthly Â· {{monthly_price}}</a>
+  >Choose Monthly | {{monthly_price}}</a>
 </p>
 
 <p style="margin:10px 0 0;">
   <a
     href="{{annual_url}}"
     style="display:block;padding:13px 18px;border:1px solid #172822;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
-  >Choose Annual Â· {{annual_price}}</a>
+  >Choose Annual | {{annual_price}}</a>
 </p>
 HTML,
         ],
@@ -336,7 +336,7 @@ TEXT,
 
 <p style="margin:0;color:#667069;font-size:14px;line-height:1.6;">
   This link expires in 60 minutes and can only be used once.
-  If you didnât request it, you can ignore this email.
+  If you didn't request it, you can ignore this email.
 </p>
 HTML,
         ],
@@ -424,7 +424,7 @@ HTML,
                 'username',
                 'site_url',
             ],
-            'subject' => 'Weâll miss you',
+            'subject' => 'We\'ll miss you',
             'preheader' =>
                 'Your Llama Scout account has been deleted.',
             'text_body' => <<<'TEXT'
@@ -432,7 +432,7 @@ Hi {{display_name}},
 
 Your Llama Scout account has been deleted and your personal account identity has been anonymized.
 
-Weâll miss having you around the herd.
+We'll miss having you around the herd.
 
 If your travels bring you back someday, Llama Scout will still be here:
 
@@ -445,7 +445,7 @@ Know the place before you go.
 TEXT,
             'html_body' => <<<'HTML'
 <h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
-  Weâll miss you.
+  We'll miss you.
 </h1>
 
 <p style="margin:0 0 16px;line-height:1.65;">
@@ -458,7 +458,7 @@ TEXT,
 </p>
 
 <p style="margin:0 0 24px;line-height:1.65;">
-  Weâll miss having you around the herd. If your travels bring you back someday,
+  We'll miss having you around the herd. If your travels bring you back someday,
   Llama Scout will still be here.
 </p>
 
@@ -513,7 +513,7 @@ Tax: {{tax}}
 {{discount_line}}
 Total: {{total}}
 
-Weâll send another update when shipping information is available.
+We'll send another update when shipping information is available.
 
 {{order_action_label}}:
 {{order_action_url}}
@@ -555,7 +555,7 @@ Tax: {{tax}}
 </div>
 
 <p style="margin:0 0 22px;color:#52605a;line-height:1.65;">
-  Weâll send another update when shipping information is available.
+  We'll send another update when shipping information is available.
 </p>
 
 <p style="margin:0;">
@@ -922,7 +922,7 @@ HTML,
                 'membership_ends_at',
                 'account_url',
             ],
-            'subject' => 'Thereâs a problem with your Llama Scout membership payment',
+            'subject' => 'There\'s a problem with your Llama Scout membership payment',
             'preheader' =>
                 'Your membership is past due. Update billing details to avoid losing Complete Access.',
             'text_body' => <<<'TEXT'
@@ -947,7 +947,7 @@ TEXT,
 </p>
 
 <h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
-  Thereâs a problem with your payment.
+  There's a problem with your payment.
 </h1>
 
 <p style="margin:0 0 16px;line-height:1.65;">
@@ -1290,13 +1290,13 @@ HTML,
                 'invite_reason',
                 'invite_url',
             ],
-            'subject' => 'Youâve been invited to Llama Scout Complete Access',
+            'subject' => 'You\'ve been invited to Llama Scout Complete Access',
             'preheader' =>
                 'Complimentary Complete Access has been reserved for you.',
             'text_body' => <<<'TEXT'
 Hi {{recipient_name}},
 
-Youâve been invited to receive {{complimentary_days}} days of complimentary Llama Scout Complete Access.
+You've been invited to receive {{complimentary_days}} days of complimentary Llama Scout Complete Access.
 
 {{invite_reason}}
 
@@ -1319,7 +1319,7 @@ TEXT,
 </p>
 
 <h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
-  Youâve been invited.
+  You've been invited.
 </h1>
 
 <p style="margin:0 0 16px;line-height:1.65;">
@@ -1941,7 +1941,7 @@ HTML,
                 'unsubscribe_url',
             ],
             'subject' => '{{campaign_label}} at Llama Scout',
-            'preheader' => '{{annual_offer}} Â· {{monthly_offer}}',
+            'preheader' => '{{annual_offer}} | {{monthly_offer}}',
             'text_body' => <<<'TEXT'
 Hi {{display_name}},
 
