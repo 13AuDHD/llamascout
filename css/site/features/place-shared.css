@@ -147,6 +147,36 @@
 }
 
 
+@media (max-width: 520px) {
+    .place-weather-heading {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .place-weather-heading-actions {
+        gap: 10px;
+    }
+
+    .place-weather-heading-icon {
+        font-size: 1.65rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .place-weather-unit-label,
+    .place-weather-unit-toggle-thumb {
+        transition: none;
+    }
+}
+
+:root[data-reduced-motion="true"]
+.place-weather-unit-label,
+:root[data-reduced-motion="true"]
+.place-weather-unit-toggle-thumb {
+    transition: none;
+}
+
+
 /* =========================================================
    MEMBER PREVIEW
    ========================================================= */
@@ -238,6 +268,82 @@
 
 .place-weather-heading-icon {
     font-size: 2rem;
+}
+
+.place-weather-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 0 0 auto;
+}
+
+.place-weather-unit-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.place-weather-unit-label {
+    min-width: 1.35rem;
+
+    transition: color .15s ease;
+}
+
+.place-weather-unit-label:first-child {
+    text-align: right;
+}
+
+.place-weather-unit-label.is-active {
+    color: var(--text);
+}
+
+.place-weather-unit-toggle {
+    position: relative;
+
+    width: 38px;
+    height: 22px;
+    flex: 0 0 38px;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: inherit;
+
+    cursor: pointer;
+}
+
+.place-weather-unit-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+
+    width: 14px;
+    height: 14px;
+
+    border-radius: 50%;
+
+    background: var(--text);
+
+    transition: transform .15s ease;
+}
+
+.place-weather-unit-toggle[aria-checked="true"]
+.place-weather-unit-toggle-thumb {
+    transform: translateX(16px);
+}
+
+.place-weather-unit-toggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
 }
 
 .place-weather-loading,
