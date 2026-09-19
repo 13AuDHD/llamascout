@@ -199,6 +199,32 @@
                 'Saving this Place for later...'
             );
 
+            /*
+             * Save for Later is intercepted on click, so the form's normal
+             * submit event never fires. Force the shared photo uploader to
+             * flush its current token/photo list into the hidden fields before
+             * FormData is captured.
+             */
+            form.dispatchEvent(
+                new CustomEvent(
+                    'llama:photo-uploader-sync'
+                )
+            );
+
+            const busyUploader =
+                form.querySelector(
+                    '[data-photo-uploader][aria-busy="true"]'
+                );
+
+            if (busyUploader) {
+                setStatus(
+                    'Please wait for the current photo upload to finish before saving.',
+                    true
+                );
+                resetButton();
+                return;
+            }
+
             const body =
                 new FormData(form);
 
