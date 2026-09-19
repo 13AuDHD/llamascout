@@ -32,6 +32,107 @@ function llama_email_schema_ready(PDO $db): bool
 }
 
 
+function llama_email_encoding_replacements(): array
+{
+    static $replacements = null;
+
+    if (is_array($replacements)) {
+        return $replacements;
+    }
+
+    /*
+     * Keep this PHP source ASCII-only.
+     *
+     * Each hex value represents normal UTF-8 punctuation. We also generate
+     * several common mojibake generations at runtime so old Email Center
+     * rows remain readable without rewriting the database.
+     */
+    $punctuation = [
+        'e28098' => "'",   // left single quote
+        'e28099' => "'",   // right single quote / apostrophe
+        'e2809c' => '"',   // left double quote
+        'e2809d' => '"',   // right double quote
+        'e280a2' => '*',   // bullet
+        'c2b7' => '|',     // middle dot
+        'e28093' => '-',   // en dash
+        'e28094' => '-',   // em dash
+        'e280a6' => '...', // ellipsis
+        'c2a0' => ' ',     // non-breaking space
+    ];
+
+    $replacements = [];
+
+    foreach (
+        $punctuation
+        as $hex => $ascii
+    ) {
+        $value = hex2bin($hex);
+
+        if ($value === false) {
+            continue;
+        }
+
+        for ($generation = 0; $generation < 4; $generation++) {
+            $replacements[$value] = $ascii;
+
+            $value = mb_convert_encoding(
+                $value,
+                'UTF-8',
+                'ISO-8859-1'
+            );
+        }
+    }
+
+    uksort(
+        $replacements,
+        static fn(string $a, string $b): int =>
+            strlen($b) <=> strlen($a)
+    );
+
+    return $replacements;
+}
+
+
+function llama_email_repair_text_encoding(
+    string $value
+): string {
+    return strtr(
+        $value,
+        llama_email_encoding_replacements()
+    );
+}
+
+
+function llama_email_repair_template_encoding(
+    array $template
+): array {
+    foreach (
+        [
+            'category',
+            'name',
+            'description',
+            'subject',
+            'preheader',
+            'text_body',
+            'html_body',
+        ]
+        as $field
+    ) {
+        if (
+            isset($template[$field])
+            && is_string($template[$field])
+        ) {
+            $template[$field] =
+                llama_email_repair_text_encoding(
+                    $template[$field]
+                );
+        }
+    }
+
+    return $template;
+}
+
+
 function llama_email_seed_defaults(PDO $db): void
 {
     if (!llama_email_table_exists($db, 'email_templates')) {
@@ -86,7 +187,10 @@ function llama_email_template(
         return null;
     }
 
-    $template = $defaults[$templateKey];
+    $template =
+        llama_email_repair_template_encoding(
+            $defaults[$templateKey]
+        );
 
     if (!llama_email_table_exists($db, 'email_templates')) {
         return $template;
@@ -118,20 +222,22 @@ function llama_email_template(
         return $template;
     }
 
-    return array_merge(
-        $template,
-        [
-            'category' => (string) $stored['category'],
-            'name' => (string) $stored['name'],
-            'description' => (string) $stored['description'],
-            'subject' => (string) $stored['subject'],
-            'preheader' => (string) $stored['preheader'],
-            'text_body' => (string) $stored['text_body'],
-            'html_body' => (string) $stored['html_body'],
-            'enabled' => (int) $stored['is_enabled'],
-            'updated_at' => $stored['updated_at'],
-            'updated_by' => $stored['updated_by'],
-        ]
+    return llama_email_repair_template_encoding(
+        array_merge(
+            $template,
+            [
+                'category' => (string) $stored['category'],
+                'name' => (string) $stored['name'],
+                'description' => (string) $stored['description'],
+                'subject' => (string) $stored['subject'],
+                'preheader' => (string) $stored['preheader'],
+                'text_body' => (string) $stored['text_body'],
+                'html_body' => (string) $stored['html_body'],
+                'enabled' => (int) $stored['is_enabled'],
+                'updated_at' => $stored['updated_at'],
+                'updated_by' => $stored['updated_by'],
+            ]
+        )
     );
 }
 
@@ -193,10 +299,29 @@ function llama_email_save_template(
         );
     }
 
-    $subject = trim((string) ($input['subject'] ?? ''));
-    $preheader = trim((string) ($input['preheader'] ?? ''));
-    $textBody = trim((string) ($input['text_body'] ?? ''));
-    $htmlBody = trim((string) ($input['html_body'] ?? ''));
+    $subject = trim(
+        llama_email_repair_text_encoding(
+            (string) ($input['subject'] ?? '')
+        )
+    );
+
+    $preheader = trim(
+        llama_email_repair_text_encoding(
+            (string) ($input['preheader'] ?? '')
+        )
+    );
+
+    $textBody = trim(
+        llama_email_repair_text_encoding(
+            (string) ($input['text_body'] ?? '')
+        )
+    );
+
+    $htmlBody = trim(
+        llama_email_repair_text_encoding(
+            (string) ($input['html_body'] ?? '')
+        )
+    );
     $enabled = !empty($input['is_enabled']) ? 1 : 0;
 
     if ($subject === '') {
@@ -1006,7 +1131,7 @@ function llama_email_sample_context(
         'complimentary_days' => '90',
         'invite_expires' => 'September 23, 2026',
         'invite_reason' =>
-            'WeÃÂ¢ÃÂÃÂd like you to explore the complete Llama Scout experience.',
+            "We'd like you to explore the complete Llama Scout experience.",
         'invite_url' =>
             'https://account.llamascout.com/complimentary-invite.php?token=TEST',
 
