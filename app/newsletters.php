@@ -1348,31 +1348,31 @@ function llama_newsletter_send_batch(
                     (int) $user['id']
                 );
 
-        $bodyHtml =
-            llama_newsletter_body_html(
-                $body
-            );
-        
-        $bodyText =
-            llama_newsletter_body_text(
-                $body
-            );
-        
-        $sent =
-            send_newsletter_issue_email(
-                $db,
-                $user,
-                $subject,
-                $title,
-                llama_newsletter_type_label(
-                    $type
-                ),
-                $bodyText,
-                $bodyHtml,
-                $preferencesUrl,
-                $accountNotice
-            );
-            
+            $bodyHtml =
+                llama_newsletter_body_html(
+                    $body
+                );
+
+            $bodyText =
+                llama_newsletter_body_text(
+                    $body
+                );
+
+            $sent =
+                send_newsletter_issue_email(
+                    $db,
+                    $user,
+                    $subject,
+                    $title,
+                    llama_newsletter_type_label(
+                        $type
+                    ),
+                    $bodyText,
+                    $bodyHtml,
+                    $preferencesUrl,
+                    $accountNotice
+                );
+
             if (!$sent) {
                 throw new RuntimeException(
                     'Mail server rejected the message.'
