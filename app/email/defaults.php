@@ -895,6 +895,106 @@ HTML,
         ],
 
 
+        'llamaversary' => [
+            'template_key' => 'llamaversary',
+            'category' => 'Membership',
+            'name' => 'Llamaversary / Cake Day',
+            'description' =>
+                'Sent once each year on the anniversary of the member joining Llama Scout.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'years_with_us',
+                'anniversary_number',
+                'member_since',
+                'account_url',
+                'map_url',
+            ],
+            'subject' => 'Happy Llamaversary, {{display_name}}!',
+            'preheader' =>
+                'You have officially been part of the herd for {{years_with_us}}.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+Happy Llamaversary!
+
+Today marks your {{anniversary_number}} Llamaversary and {{years_with_us}} since you joined Llama Scout.
+
+Whether you have been scouting Places, planning trips, collecting badges, contributing information, or just seeing where the map takes you, thank you for being part of the herd.
+
+There should probably be cake.
+
+There is not.
+
+The cake is completely fictional.
+
+But your Llamaversary is real, and we are glad you are here.
+
+Member since: {{member_since}}
+
+Explore the map:
+{{map_url}}
+
+Visit your account:
+{{account_url}}
+
+Here is to another year of knowing the place before you go.
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  Llamaversary
+</p>
+
+<h1 style="margin:0 0 18px;font-size:30px;line-height:1.1;color:#172822;">
+  Happy Llamaversary, {{display_name}}!
+</h1>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Today marks your <strong>{{anniversary_number}} Llamaversary</strong> and
+  <strong>{{years_with_us}}</strong> since you joined Llama Scout.
+</p>
+
+<p style="margin:0 0 20px;line-height:1.65;">
+  Whether you have been scouting Places, planning trips, collecting badges,
+  contributing information, or just seeing where the map takes you, thank you
+  for being part of the herd.
+</p>
+
+<div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
+  <strong>There should probably be cake.</strong><br>
+  There is not.<br>
+  The cake is completely fictional.<br><br>
+  But your Llamaversary is real, and we are glad you are here.
+</div>
+
+<p style="margin:0 0 22px;color:#52605a;line-height:1.65;">
+  Member since <strong>{{member_since}}</strong>.
+</p>
+
+<p style="margin:10px 0;">
+  <a
+    href="{{map_url}}"
+    style="display:block;padding:14px 18px;border-radius:9px;background:#172822;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;"
+  >Explore the Map</a>
+</p>
+
+<p style="margin:10px 0 0;">
+  <a
+    href="{{account_url}}"
+    style="display:block;padding:13px 18px;border:1px solid #d7d9d5;border-radius:9px;color:#172822;text-align:center;text-decoration:none;font-weight:700;"
+  >Visit Your Account</a>
+</p>
+
+<p style="margin:22px 0 0;line-height:1.65;">
+  Here is to another year of knowing the place before you go.
+</p>
+HTML,
+        ],
+
+
         'complimentary_started' => [
             'template_key' => 'complimentary_started',
             'category' => 'Membership',

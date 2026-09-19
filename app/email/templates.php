@@ -678,6 +678,11 @@ function llama_email_sample_context(
     return [
         'display_name' => 'Trail Tester',
         'username' => 'trailtester',
+        'years_with_us' => '3 years',
+        'anniversary_number' => '3rd',
+        'member_since' => 'September 19, 2023',
+        'account_url' =>
+            'https://account.llamascout.com/',
         'verification_url' =>
             'https://account.llamascout.com/verify-email.php?token=TEST',
         'reset_url' =>
