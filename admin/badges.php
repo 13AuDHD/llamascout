@@ -23,7 +23,10 @@ $actorIsOwner =
         $actorUserId
     );
 
-$notice = '';
+$notice =
+    isset($_GET['credential_reviewed'])
+        ? 'Credential review saved.'
+        : '';
 $error = '';
 
 $selectedUserId =
@@ -146,6 +149,31 @@ if (
                 );
                 exit;
 
+            } elseif ($action === 'review-credential') {
+                $result = llama_badge_credential_review(
+                    $db,
+                    $actorUserId,
+                    (int) (
+                        $_POST['submission_id']
+                        ?? 0
+                    ),
+                    (string) (
+                        $_POST['review_decision']
+                        ?? ''
+                    ),
+                    (string) (
+                        $_POST['review_note']
+                        ?? ''
+                    )
+                );
+
+                header(
+                    'Location: /badges.php?credential_reviewed=1',
+                    true,
+                    303
+                );
+                exit;
+
             } elseif ($action === 'revoke-user-badge') {
                 if ($selectedUserId < 1) {
                     throw new RuntimeException(
@@ -199,6 +227,13 @@ if (
 $definitions =
     admin_badges_definitions(
         $db
+    );
+
+$pendingCredentialReviews =
+    llama_badge_credential_pending_reviews(
+        $db,
+        null,
+        100
     );
 
 $badgeThresholdMetricLabels =
@@ -418,7 +453,7 @@ require __DIR__ .
                     )
                 )
             ) ?>
-            Â·
+            ·
             <?= moderation_e(
                 ucwords(
                     str_replace(
@@ -441,7 +476,7 @@ require __DIR__ .
                     (string) $userBadge['awarded_at']
                 )
             ) ?>
-            Â·
+            ·
             <?= moderation_e((string) $userBadge['awarded_by_name']) ?>
         </small>
 
@@ -630,6 +665,154 @@ require __DIR__ .
 </section>
 
 
+<?php if ($pendingCredentialReviews): ?>
+<section class="admin-panel admin-credential-review-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Credential Review</p>
+        <h2>Waiting for Approval</h2>
+    </div>
+
+    <span><?= number_format(count($pendingCredentialReviews)) ?></span>
+</header>
+
+<div class="admin-credential-review-list">
+
+<?php foreach ($pendingCredentialReviews as $submission): ?>
+<article class="admin-credential-review-card">
+
+    <div class="admin-credential-review-copy">
+        <span>
+            <?= moderation_e((string) $submission['badge_name']) ?>
+            · Submission #<?= (int) $submission['id'] ?>
+        </span>
+
+        <strong>
+            <a href="/user.php?id=<?= (int) $submission['user_id'] ?>">
+                <?= moderation_e((string) $submission['member_name']) ?>
+            </a>
+        </strong>
+
+        <small>
+            Submitted
+            <?= moderation_e(
+                llama_format_viewer_datetime(
+                    (string) $submission['submitted_at']
+                )
+            ) ?>
+            · <?= moderation_e(
+                llama_badge_credential_format_bytes(
+                    (int) $submission['file_size']
+                )
+            ) ?>
+        </small>
+
+        <?php if (!empty($submission['credential_identifier'])): ?>
+            <p>
+                <strong>Credential:</strong>
+                <?= moderation_e((string) $submission['credential_identifier']) ?>
+            </p>
+        <?php endif; ?>
+
+        <?php if (!empty($submission['issued_on']) || !empty($submission['expires_on'])): ?>
+            <p>
+                <?php if (!empty($submission['issued_on'])): ?>
+                    Issued <?= moderation_e((string) $submission['issued_on']) ?>
+                <?php endif; ?>
+                <?php if (!empty($submission['expires_on'])): ?>
+                    <?= !empty($submission['issued_on']) ? ' · ' : '' ?>
+                    Expires <?= moderation_e((string) $submission['expires_on']) ?>
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
+
+        <?php if (!empty($submission['member_note'])): ?>
+            <p><?= moderation_e((string) $submission['member_note']) ?></p>
+        <?php endif; ?>
+
+        <a
+            class="admin-button is-muted admin-credential-file-link"
+            href="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>"
+        >
+            Download private evidence
+        </a>
+    </div>
+
+    <?php if (str_starts_with((string) $submission['mime_type'], 'image/')): ?>
+        <a
+            class="admin-credential-preview"
+            href="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>"
+            aria-label="Download credential evidence"
+        >
+            <img
+                src="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>&amp;inline=1"
+                alt="Private credential evidence preview"
+                loading="lazy"
+            >
+        </a>
+    <?php endif; ?>
+
+    <div class="admin-credential-review-actions">
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(moderation_csrf_token()) ?>"
+            >
+            <input type="hidden" name="badge_admin_action" value="review-credential">
+            <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
+            <input type="hidden" name="review_decision" value="approve">
+
+            <label>
+                <span>Approval note</span>
+                <textarea
+                    name="review_note"
+                    rows="2"
+                    maxlength="1000"
+                    placeholder="Optional"
+                ></textarea>
+            </label>
+
+            <button class="admin-button" type="submit">
+                Approve
+            </button>
+        </form>
+
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(moderation_csrf_token()) ?>"
+            >
+            <input type="hidden" name="badge_admin_action" value="review-credential">
+            <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
+            <input type="hidden" name="review_decision" value="decline">
+
+            <label>
+                <span>Decline reason</span>
+                <textarea
+                    name="review_note"
+                    rows="2"
+                    maxlength="1000"
+                    required
+                ></textarea>
+            </label>
+
+            <button class="admin-button is-danger" type="submit">
+                Decline
+            </button>
+        </form>
+    </div>
+
+</article>
+<?php endforeach; ?>
+
+</div>
+</section>
+<?php endif; ?>
+
+
 <section class="admin-panel">
 
 <header class="admin-panel-header">
@@ -693,7 +876,7 @@ require __DIR__ .
                 )
             )
         ) ?>
-        Â·
+        ·
         <?= moderation_e(
             ucwords(
                 str_replace(
@@ -729,6 +912,13 @@ require __DIR__ .
         earned
     </span>
 
+    <?php if ((int) ($badge['review_count'] ?? 0) > 0): ?>
+        <span class="has-attention">
+            <?= number_format((int) $badge['review_count']) ?>
+            review<?= (int) $badge['review_count'] === 1 ? '' : 's' ?>
+        </span>
+    <?php endif; ?>
+
     <?php if ((int) $badge['threshold_value'] > 0): ?>
         <?php
         $thresholdMetric =
@@ -745,7 +935,7 @@ require __DIR__ .
         ?>
         <span>
             <?= moderation_e($thresholdLabel) ?>
-            Â·
+            ·
             <?= number_format(
                 (int) $badge['threshold_value']
             ) ?>
