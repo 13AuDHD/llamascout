@@ -100,6 +100,10 @@ function shop_run_shipment_email_maintenance(
         'failed' => 0,
     ];
 
+    if (!llama_mail_delivery_enabled()) {
+        return $summary;
+    }
+
     if (
         !shop_order_notification_table_exists(
             $db

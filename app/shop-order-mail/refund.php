@@ -11,6 +11,10 @@ function shop_send_refund_confirmation(
         return false;
     }
 
+    if (!llama_mail_delivery_enabled()) {
+        return false;
+    }
+
     $notificationType =
         'refund_confirmation';
 
