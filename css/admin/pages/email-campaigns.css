@@ -466,3 +466,83 @@
         min-height: 520px;
     }
 }
+
+/* Campaign copy now lives in the central Email Center. */
+.email-campaign-template-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+
+    padding: 14px 15px;
+}
+
+.email-campaign-template-note > i {
+    margin-top: 2px;
+
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.email-campaign-template-note > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.email-campaign-template-note strong {
+    font-size: .7rem;
+}
+
+.email-campaign-template-note span {
+    color: var(--text-muted);
+
+    font-size: .61rem;
+    line-height: 1.5;
+}
+
+.email-campaign-template-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.email-campaign-template-summary > div {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.email-campaign-template-summary span,
+.email-campaign-template-summary small {
+    color: var(--text-muted);
+
+    font-size: .58rem;
+}
+
+.email-campaign-template-summary strong {
+    overflow-wrap: anywhere;
+
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 560px) {
+    .email-campaign-template-summary {
+        display: grid;
+    }
+
+    .email-campaign-template-summary .admin-button {
+        width: 100%;
+    }
+}
