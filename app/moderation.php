@@ -1200,7 +1200,7 @@ function moderation_approve_new_place(
 $data = $submission['data'];
 
 $pointInput =
-    community_new_place_form_input(
+    llama_place_report_scoring_input_from_data(
         $data
     );
 
