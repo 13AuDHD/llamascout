@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
+require_once dirname(__DIR__) . '/app/badge-credentials.php';
 require_once dirname(__DIR__) . '/app/mail.php';
 
 
@@ -500,6 +501,123 @@ function delete_account_remove_profile_files(
             );
         }
     }
+}
+
+
+function delete_account_remove_badge_credentials(
+    PDO $db,
+    int $userId
+): void {
+
+    if (
+        !llama_badge_credentials_storage_ready(
+            $db
+        )
+    ) {
+
+        return;
+    }
+
+
+    $stmt =
+        $db->prepare(
+            '
+            SELECT *
+
+            FROM badge_credential_submissions
+
+            WHERE user_id = ?
+            '
+        );
+
+
+    $stmt->execute([
+        $userId
+    ]);
+
+
+    foreach (
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        ) ?: []
+        as
+        $submission
+    ) {
+
+        try {
+            $path =
+                llama_badge_credential_absolute_path(
+                    $submission
+                );
+
+            @unlink(
+                $path
+            );
+        } catch (Throwable) {
+            // A missing file should not block account deletion.
+        }
+    }
+
+
+    $credentialUserDirectory =
+        llama_badge_credential_storage_root(
+            false
+        )
+        .
+        '/'
+        .
+        $userId;
+
+
+    if (
+        is_dir(
+            $credentialUserDirectory
+        )
+        &&
+        !is_link(
+            $credentialUserDirectory
+        )
+    ) {
+
+        @rmdir(
+            $credentialUserDirectory
+        );
+    }
+
+
+    $events =
+        $db->prepare(
+            '
+            DELETE e
+
+            FROM badge_credential_events e
+
+            INNER JOIN badge_credential_submissions s
+                ON s.id = e.submission_id
+
+            WHERE s.user_id = ?
+            '
+        );
+
+
+    $events->execute([
+        $userId
+    ]);
+
+
+    $submissions =
+        $db->prepare(
+            '
+            DELETE FROM badge_credential_submissions
+
+            WHERE user_id = ?
+            '
+        );
+
+
+    $submissions->execute([
+        $userId
+    ]);
 }
 
 
@@ -1221,6 +1339,12 @@ if (
         delete_account_delete_user_rows(
             $db,
             'saved_places',
+            $userId
+        );
+
+
+        delete_account_remove_badge_credentials(
+            $db,
             $userId
         );
 

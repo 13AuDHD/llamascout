@@ -491,6 +491,16 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <?php endif; ?>
 
+        <div class="account-action-grid account-badge-actions-grid">
+            <a class="account-action-card" href="/badge-credentials.php">
+                <i aria-hidden="true"><?= llama_icon('certificate') ?></i>
+                <span>
+                    <strong>Credential badges</strong>
+                    <small>Submit private certificate evidence and check review status.</small>
+                </span>
+            </a>
+        </div>
+
     </section>
 
 
