@@ -6,6 +6,9 @@ require_once dirname(__DIR__)
     . '/app/bootstrap.php';
 
 require_once dirname(__DIR__)
+    . '/app/mail.php';
+
+require_once dirname(__DIR__)
     . '/app/admin-users.php';
 
 require_once dirname(__DIR__)
@@ -282,6 +285,68 @@ if (
                 $submissionId
             );
 
+            try {
+                $publishedPlaceStmt =
+                    $db->prepare(
+                        'SELECT name, slug
+                         FROM places
+                         WHERE id = ?
+                         LIMIT 1'
+                    );
+
+                $publishedPlaceStmt->execute([
+                    $placeId,
+                ]);
+
+                $publishedPlace =
+                    $publishedPlaceStmt->fetch(
+                        PDO::FETCH_ASSOC
+                    )
+                    ?: [];
+
+                $placeName = trim(
+                    (string) (
+                        $publishedPlace['name']
+                        ?? $currentData['name']
+                        ?? 'this Place'
+                    )
+                );
+
+                $placeSlug = trim(
+                    (string) (
+                        $publishedPlace['slug']
+                        ?? ''
+                    )
+                );
+
+                send_contribution_review_email(
+                    $db,
+                    (int) $item['user_id'],
+                    'approved',
+                    'new Place submission',
+                    $submissionId,
+                    $placeName,
+                    $notes,
+                    $points,
+                    'https://account.llamascout.com/submissions.php',
+                    $placeSlug !== ''
+                        ? 'https://llamascout.com/place.php?place='
+                            . rawurlencode($placeSlug)
+                        : 'https://llamascout.com/map.php'
+                );
+            } catch (Throwable $emailException) {
+                llama_log_caught_exception(
+                    $emailException,
+                    'email.contribution_review',
+                    [
+                        'submission_id' =>
+                            $submissionId,
+                        'review_status' =>
+                            'approved',
+                    ]
+                );
+            }
+
             header(
                 'Location: /submissions.php?approved='
                 . $placeId
@@ -372,6 +437,37 @@ if (
                  */
                 llama_place_submission_remove_files(
                     $submissionId
+                );
+            }
+
+            try {
+                send_contribution_review_email(
+                    $db,
+                    (int) $item['user_id'],
+                    $action,
+                    'new Place submission',
+                    $submissionId,
+                    trim(
+                        (string) (
+                            $currentData['name']
+                            ?? 'this Place'
+                        )
+                    ),
+                    $notes,
+                    0,
+                    'https://account.llamascout.com/submissions.php',
+                    ''
+                );
+            } catch (Throwable $emailException) {
+                llama_log_caught_exception(
+                    $emailException,
+                    'email.contribution_review',
+                    [
+                        'submission_id' =>
+                            $submissionId,
+                        'review_status' =>
+                            $action,
+                    ]
                 );
             }
 

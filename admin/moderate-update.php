@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/mail.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
 
@@ -328,6 +329,46 @@ if (
             );
 
 
+            try {
+                $placeSlug = trim(
+                    (string) (
+                        $item['place_slug']
+                        ?? ''
+                    )
+                );
+
+                send_contribution_review_email(
+                    $db,
+                    (int) $item['user_id'],
+                    'approved',
+                    'Place update',
+                    $updateId,
+                    (string) (
+                        $item['place_name']
+                        ?? 'this Place'
+                    ),
+                    $notes,
+                    $points,
+                    'https://account.llamascout.com/my-place-updates.php',
+                    $placeSlug !== ''
+                        ? 'https://llamascout.com/place.php?place='
+                            . rawurlencode($placeSlug)
+                        : 'https://llamascout.com/map.php'
+                );
+            } catch (Throwable $emailException) {
+                llama_log_caught_exception(
+                    $emailException,
+                    'email.contribution_review',
+                    [
+                        'update_id' =>
+                            $updateId,
+                        'review_status' =>
+                            'approved',
+                    ]
+                );
+            }
+
+
             header(
                 'Location: /updates.php?approved=1'
             );
@@ -422,6 +463,36 @@ if (
                  */
                 llama_place_update_remove_files(
                     $updateId
+                );
+            }
+
+
+            try {
+                send_contribution_review_email(
+                    $db,
+                    (int) $item['user_id'],
+                    $action,
+                    'Place update',
+                    $updateId,
+                    (string) (
+                        $item['place_name']
+                        ?? 'this Place'
+                    ),
+                    $notes,
+                    0,
+                    'https://account.llamascout.com/my-place-updates.php',
+                    ''
+                );
+            } catch (Throwable $emailException) {
+                llama_log_caught_exception(
+                    $emailException,
+                    'email.contribution_review',
+                    [
+                        'update_id' =>
+                            $updateId,
+                        'review_status' =>
+                            $action,
+                    ]
                 );
             }
 
