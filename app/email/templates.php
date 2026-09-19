@@ -554,19 +554,22 @@ function llama_email_recipient_account(
 }
 
 
-function llama_email_account_can_receive(
+function llama_email_account_delivery_result(
     PDO $db,
     string $templateKey,
     string $recipient,
     bool $isTest,
     ?int $userId = null
-): bool {
+): array {
     /*
      * Admin tests must remain testable even if the dev mailbox is attached
      * to an account whose verification state is being changed.
      */
     if ($isTest) {
-        return true;
+        return [
+            'allowed' => true,
+            'reason' => 'test_message',
+        ];
     }
 
     /*
@@ -584,7 +587,10 @@ function llama_email_account_can_receive(
             true
         )
     ) {
-        return true;
+        return [
+            'allowed' => true,
+            'reason' => 'verification_message',
+        ];
     }
 
     /*
@@ -600,23 +606,32 @@ function llama_email_account_can_receive(
         );
 
     if (!$account) {
-        return true;
+        return [
+            'allowed' => true,
+            'reason' => 'no_account_restriction',
+        ];
     }
 
     if (!empty($account['anonymized_at'])) {
-        return false;
+        return [
+            'allowed' => false,
+            'reason' => 'account_anonymized',
+        ];
     }
+
+    $accountStatus =
+        strtolower(
+            trim(
+                (string) (
+                    $account['status']
+                    ?? ''
+                )
+            )
+        );
 
     if (
         in_array(
-            strtolower(
-                trim(
-                    (string) (
-                        $account['status']
-                        ?? ''
-                    )
-                )
-            ),
+            $accountStatus,
             [
                 'suspended',
                 'disabled',
@@ -624,17 +639,81 @@ function llama_email_account_can_receive(
             true
         )
     ) {
-        return false;
+        return [
+            'allowed' => false,
+            'reason' =>
+                'account_' . $accountStatus,
+        ];
     }
 
-    return
-        !empty(
-            $account['email_verified_at']
-        );
+    if (empty($account['email_verified_at'])) {
+        return [
+            'allowed' => false,
+            'reason' => 'email_unverified',
+        ];
+    }
+
+    return [
+        'allowed' => true,
+        'reason' => 'eligible',
+    ];
 }
 
 
-function llama_email_send_template(
+function llama_email_account_can_receive(
+    PDO $db,
+    string $templateKey,
+    string $recipient,
+    bool $isTest,
+    ?int $userId = null
+): bool {
+    $result =
+        llama_email_account_delivery_result(
+            $db,
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId
+        );
+
+    return !empty($result['allowed']);
+}
+
+
+function llama_email_send_result(
+    string $status,
+    string $templateKey,
+    string $recipient,
+    bool $isTest,
+    ?int $userId,
+    string $reason,
+    string $message,
+    bool $retryable = false
+): array {
+    return [
+        'sent' =>
+            $status === 'sent',
+        'status' =>
+            $status,
+        'reason' =>
+            $reason,
+        'message' =>
+            $message,
+        'retryable' =>
+            $retryable,
+        'template_key' =>
+            $templateKey,
+        'recipient' =>
+            strtolower(trim($recipient)),
+        'user_id' =>
+            $userId,
+        'is_test' =>
+            $isTest,
+    ];
+}
+
+
+function llama_email_send_template_result(
     PDO $db,
     string $templateKey,
     string $recipient,
@@ -642,7 +721,7 @@ function llama_email_send_template(
     bool $isTest = false,
     ?int $userId = null,
     ?array $templateOverride = null
-): bool {
+): array {
     $template =
         $templateOverride
         ?? llama_email_template($db, $templateKey);
@@ -654,23 +733,63 @@ function llama_email_send_template(
     }
 
     if (!$isTest && empty($template['enabled'])) {
-        return false;
+        return llama_email_send_result(
+            'template_disabled',
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId,
+            'template_disabled',
+            'Email template is disabled.'
+        );
     }
 
-    if (
-        !llama_email_account_can_receive(
+    $accountResult =
+        llama_email_account_delivery_result(
             $db,
             $templateKey,
             $recipient,
             $isTest,
             $userId
-        )
-    ) {
+        );
+
+    if (empty($accountResult['allowed'])) {
         /*
          * This is an intentional suppression, not a failed SMTP delivery.
          * Do not add a failed email_send_log row, because nothing was sent.
          */
-        return false;
+        $reason =
+            (string) (
+                $accountResult['reason']
+                ?? 'recipient_suppressed'
+            );
+
+        return llama_email_send_result(
+            'recipient_suppressed',
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId,
+            $reason,
+            'Email delivery was suppressed for this recipient.'
+        );
+    }
+
+    if (
+        function_exists(
+            'llama_mail_delivery_enabled'
+        )
+        && !llama_mail_delivery_enabled()
+    ) {
+        return llama_email_send_result(
+            'delivery_disabled',
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId,
+            'delivery_disabled',
+            'Email delivery is disabled by the mail configuration.'
+        );
     }
 
     $rendered =
@@ -700,7 +819,52 @@ function llama_email_send_template(
         $userId
     );
 
-    return $success;
+    if ($success) {
+        return llama_email_send_result(
+            'sent',
+            $templateKey,
+            $recipient,
+            $isTest,
+            $userId,
+            'delivered',
+            'Email sent successfully.'
+        );
+    }
+
+    return llama_email_send_result(
+        'failed',
+        $templateKey,
+        $recipient,
+        $isTest,
+        $userId,
+        'transport_failed',
+        'The mail transport rejected or could not deliver the message.',
+        true
+    );
+}
+
+
+function llama_email_send_template(
+    PDO $db,
+    string $templateKey,
+    string $recipient,
+    array $context,
+    bool $isTest = false,
+    ?int $userId = null,
+    ?array $templateOverride = null
+): bool {
+    $result =
+        llama_email_send_template_result(
+            $db,
+            $templateKey,
+            $recipient,
+            $context,
+            $isTest,
+            $userId,
+            $templateOverride
+        );
+
+    return !empty($result['sent']);
 }
 
 
@@ -792,7 +956,7 @@ function llama_email_sample_context(
         'complimentary_days' => '90',
         'invite_expires' => 'September 23, 2026',
         'invite_reason' =>
-            'Weâd like you to explore the complete Llama Scout experience.',
+            'WeÃ¢ÂÂd like you to explore the complete Llama Scout experience.',
         'invite_url' =>
             'https://account.llamascout.com/complimentary-invite.php?token=TEST',
 
