@@ -685,32 +685,203 @@ function llama_membership_email_paid_candidates(
             )
         );
 
+    /*
+     * Build the candidate conditions only from lifecycle templates that
+     * are currently enabled. A disabled template must pause its event,
+     * not leave the same members sitting at the front of every batch.
+     */
+    $workConditions = [];
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'membership_started'
+        )
+    ) {
+        $workConditions[] =
+            '(
+                u.membership_status IN
+                (
+                    "active",
+                    "trialing"
+                )
+                AND u.membership_started_at IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM email_event_deliveries e
+                    WHERE e.user_id = u.id
+                      AND e.event_key = CONCAT(
+                          "membership_started:",
+                          LEFT(
+                              SHA2(
+                                  u.stripe_subscription_id,
+                                  256
+                              ),
+                              24
+                          )
+                      )
+                )
+            )';
+    }
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'membership_cancel_scheduled'
+        )
+    ) {
+        $workConditions[] =
+            '(
+                u.stripe_cancel_at_period_end = 1
+                AND u.membership_status IN
+                (
+                    "active",
+                    "trialing",
+                    "past_due"
+                )
+                AND u.membership_ends_at IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM email_event_deliveries e
+                    WHERE e.user_id = u.id
+                      AND e.event_key = CONCAT(
+                          "membership_cancel:",
+                          LEFT(
+                              SHA2(
+                                  CONCAT(
+                                      u.stripe_subscription_id,
+                                      "|",
+                                      u.membership_ends_at
+                                  ),
+                                  256
+                              ),
+                              24
+                          )
+                      )
+                )
+            )';
+    }
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'membership_payment_failed'
+        )
+    ) {
+        $workConditions[] =
+            '(
+                u.membership_status = "past_due"
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM email_event_deliveries e
+                    WHERE e.user_id = u.id
+                      AND e.event_key = CONCAT(
+                          "membership_payment_failed:",
+                          LEFT(
+                              SHA2(
+                                  CONCAT(
+                                      u.stripe_subscription_id,
+                                      "|",
+                                      COALESCE(
+                                          u.membership_ends_at,
+                                          ""
+                                      )
+                                  ),
+                                  256
+                              ),
+                              24
+                          )
+                      )
+                )
+            )';
+    }
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'membership_ended'
+        )
+    ) {
+        $workConditions[] =
+            '(
+                u.membership_status = "canceled"
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM email_event_deliveries e
+                    WHERE e.user_id = u.id
+                      AND e.event_key = CONCAT(
+                          "membership_ended:",
+                          LEFT(
+                              SHA2(
+                                  CONCAT(
+                                      u.stripe_subscription_id,
+                                      "|",
+                                      COALESCE(
+                                          u.membership_started_at,
+                                          ""
+                                      )
+                                  ),
+                                  256
+                              ),
+                              24
+                          )
+                      )
+                )
+            )';
+    }
+
+    if (!$workConditions) {
+        return [];
+    }
+
+    /*
+     * Only return members who still have enabled lifecycle email work
+     * to do. The previous query applied LIMIT before checking
+     * email_event_deliveries. Once the first N members had already
+     * received their applicable messages, they could occupy every
+     * future batch forever and prevent later members from being seen.
+     */
     $stmt =
         $db->query(
             'SELECT
-                id,
-                email,
-                username,
-                display_name,
-                timezone,
-                membership_status,
-                membership_interval,
-                membership_started_at,
-                membership_ends_at,
-                stripe_subscription_id,
-                stripe_cancel_at_period_end
-             FROM users
-             WHERE email_verified_at IS NOT NULL
-               AND stripe_subscription_id IS NOT NULL
-               AND stripe_subscription_id <> ""
-               AND membership_status IN
+                u.id,
+                u.email,
+                u.username,
+                u.display_name,
+                u.timezone,
+                u.membership_status,
+                u.membership_interval,
+                u.membership_started_at,
+                u.membership_ends_at,
+                u.stripe_subscription_id,
+                u.stripe_cancel_at_period_end
+             FROM users u
+             WHERE u.email_verified_at IS NOT NULL
+               AND u.anonymized_at IS NULL
+               AND (
+                    u.status IS NULL
+                    OR u.status NOT IN
+                    (
+                        "suspended",
+                        "disabled"
+                    )
+               )
+               AND u.stripe_subscription_id IS NOT NULL
+               AND u.stripe_subscription_id <> ""
+               AND u.membership_status IN
                (
                     "active",
                     "trialing",
                     "past_due",
                     "canceled"
                )
-             ORDER BY id ASC
+               AND ('
+               . implode(
+                   ' OR ',
+                   $workConditions
+               )
+               . ')
+             ORDER BY u.id ASC
              LIMIT '
              . $limit
         );
@@ -749,6 +920,59 @@ function llama_membership_email_complimentary_candidates(
             )
         );
 
+    $workConditions = [];
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'complimentary_started'
+        )
+    ) {
+        $workConditions[] =
+            'NOT EXISTS (
+                SELECT 1
+                FROM email_event_deliveries e
+                WHERE e.user_id = u.id
+                  AND e.event_key = CONCAT(
+                      "complimentary_started:",
+                      g.id
+                  )
+            )';
+    }
+
+    if (
+        llama_membership_lifecycle_email_enabled(
+            $db,
+            'complimentary_ending'
+        )
+    ) {
+        $workConditions[] =
+            '(
+                g.ends_at <= DATE_ADD(
+                    UTC_TIMESTAMP(),
+                    INTERVAL 7 DAY
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM email_event_deliveries e
+                    WHERE e.user_id = u.id
+                      AND e.event_key = CONCAT(
+                          "complimentary_ending:",
+                          g.id
+                      )
+                )
+            )';
+    }
+
+    if (!$workConditions) {
+        return [];
+    }
+
+    /*
+     * Filter completed and disabled grant events before LIMIT is applied.
+     * Old grants can no longer permanently crowd newer grants out of the
+     * maintenance queue.
+     */
     $stmt =
         $db->query(
             'SELECT
@@ -769,6 +993,21 @@ function llama_membership_email_complimentary_candidates(
                AND g.starts_at <= UTC_TIMESTAMP()
                AND g.ends_at > UTC_TIMESTAMP()
                AND u.email_verified_at IS NOT NULL
+               AND u.anonymized_at IS NULL
+               AND (
+                    u.status IS NULL
+                    OR u.status NOT IN
+                    (
+                        "suspended",
+                        "disabled"
+                    )
+               )
+               AND ('
+               . implode(
+                   ' OR ',
+                   $workConditions
+               )
+               . ')
              ORDER BY g.ends_at ASC, g.id ASC
              LIMIT '
              . $limit
