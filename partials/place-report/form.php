@@ -945,6 +945,71 @@ foreach (
                 ) === $sectionKey
         );
 
+    $combinedCoordinates = '';
+    $combinedLatitude = '';
+    $combinedLongitude = '';
+
+    if (
+        $sectionKey === 'location'
+        && $placeReportShowLocate
+    ) {
+        $combinedLatitude =
+            trim(
+                (string) (
+                    $placeReportValues['latitude']
+                    ?? ''
+                )
+            );
+
+        $combinedLongitude =
+            trim(
+                (string) (
+                    $placeReportValues['longitude']
+                    ?? ''
+                )
+            );
+
+        $combinedCoordinates =
+            trim(
+                (string) (
+                    $placeReportValues['coordinates']
+                    ?? ''
+                )
+            );
+
+        if (
+            $combinedCoordinates === ''
+            && is_numeric($combinedLatitude)
+            && is_numeric($combinedLongitude)
+        ) {
+            $combinedCoordinates =
+                number_format(
+                    (float) $combinedLatitude,
+                    7,
+                    '.',
+                    ''
+                )
+                . ', '
+                . number_format(
+                    (float) $combinedLongitude,
+                    7,
+                    '.',
+                    ''
+                );
+        }
+
+        $sectionFields =
+            array_filter(
+                $sectionFields,
+                static fn (array $field): bool =>
+                    !in_array(
+                        (string) ($field['key'] ?? ''),
+                        ['latitude', 'longitude'],
+                        true
+                    )
+            );
+    }
+
     if (!$sectionFields) {
         continue;
     }
@@ -995,6 +1060,59 @@ foreach (
                 && $placeReportShowLocate
             ): ?>
 
+                <div class="add-place-coordinate-field">
+
+                    <label for="add-place-coordinates">
+                        Coordinates
+                    </label>
+
+                    <div class="add-place-coordinate-row">
+
+                        <input
+                            id="add-place-coordinates"
+                            type="text"
+                            name="coordinates"
+                            value="<?= $e($combinedCoordinates) ?>"
+                            placeholder="37.2522200, -107.2192000"
+                            inputmode="decimal"
+                            autocomplete="off"
+                            spellcheck="false"
+                            data-coordinate-input
+                        >
+
+                        <button
+                            class="add-place-coordinate-search"
+                            type="button"
+                            data-search-coordinates
+                        >
+                            Search
+                        </button>
+
+                    </div>
+
+                    <small>
+                        Paste latitude, longitude in decimal degrees. Use at
+                        least 5 decimal places for each coordinate. Llama Scout
+                        standardizes both values to 7 decimal places.
+                    </small>
+
+                    <input
+                        type="hidden"
+                        name="latitude"
+                        value="<?= $e($combinedLatitude) ?>"
+                        data-location-field="latitude"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="longitude"
+                        value="<?= $e($combinedLongitude) ?>"
+                        data-location-field="longitude"
+                    >
+
+                </div>
+
+
                 <div class="add-place-locate-panel">
 
                     <div>
@@ -1004,7 +1122,7 @@ foreach (
                         </strong>
 
                         <span>
-                            Use your device location to fill GPS coordinates,
+                            Use your device location to fill coordinates,
                             elevation, road, city, county, and state.
                         </span>
 
