@@ -1308,6 +1308,29 @@ function llama_newsletter_send_batch(
         );
     }
 
+    $stats = [
+        'attempted' => 0,
+        'sent' => 0,
+        'failed' => 0,
+    ];
+
+    /*
+     * A disabled Email Center template means delivery is intentionally
+     * paused. Do not move a scheduled issue into "sending" and do not
+     * create per-recipient failure rows for something we chose not to send.
+     *
+     * If an issue had already entered "sending" before the template was
+     * disabled, leave it there so it can safely resume when re-enabled.
+     */
+    if (
+        !llama_email_template_is_enabled(
+            $db,
+            'newsletter_issue'
+        )
+    ) {
+        return $stats;
+    }
+
     $db->prepare(
         'UPDATE newsletter_issues
          SET
@@ -1326,12 +1349,6 @@ function llama_newsletter_send_batch(
             $type,
             $limit
         );
-
-    $stats = [
-        'attempted' => 0,
-        'sent' => 0,
-        'failed' => 0,
-    ];
 
     $accountNotice =
         llama_newsletter_is_account_notice(
