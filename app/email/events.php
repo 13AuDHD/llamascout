@@ -1035,6 +1035,25 @@ function send_membership_lifecycle_email(
 
 
 /* =========================================================
+   TEMPLATE AVAILABILITY
+   ========================================================= */
+
+function llama_email_template_is_enabled(
+    PDO $db,
+    string $templateKey
+): bool {
+    $template = llama_email_template(
+        $db,
+        trim($templateKey)
+    );
+
+    return
+        $template !== null
+        && !empty($template['enabled']);
+}
+
+
+/* =========================================================
    PROMOTION CAMPAIGNS
    ========================================================= */
 
@@ -1051,16 +1070,12 @@ function llama_promotion_campaign_email_enabled(
     PDO $db,
     string $deliveryType
 ): bool {
-    $template = llama_email_template(
+    return llama_email_template_is_enabled(
         $db,
         llama_promotion_campaign_template_key(
             $deliveryType
         )
     );
-
-    return
-        $template !== null
-        && !empty($template['enabled']);
 }
 
 
@@ -1104,6 +1119,39 @@ function send_promotion_campaign_email(
    SHOP ORDER EMAIL
    ========================================================= */
 
+function llama_shop_order_email_template_key(
+    string $event
+): string {
+    return match (strtolower(trim($event))) {
+        'order_confirmation' =>
+            'order_confirmation',
+        'shipped' =>
+            'order_shipped',
+        'delivered' =>
+            'order_delivered',
+        'refund_confirmation' =>
+            'refund_confirmation',
+        default =>
+            throw new InvalidArgumentException(
+                'Unknown Shop order email event.'
+            ),
+    };
+}
+
+
+function llama_shop_order_email_enabled(
+    PDO $db,
+    string $event
+): bool {
+    return llama_email_template_is_enabled(
+        $db,
+        llama_shop_order_email_template_key(
+            $event
+        )
+    );
+}
+
+
 function send_shop_order_confirmation_email(
     PDO $db,
     string $email,
@@ -1124,7 +1172,9 @@ function send_shop_order_confirmation_email(
 
     return llama_email_send_template(
         $db,
-        'order_confirmation',
+        llama_shop_order_email_template_key(
+            'order_confirmation'
+        ),
         $email,
         $context,
         false,
@@ -1142,17 +1192,25 @@ function send_shop_fulfillment_notification_email(
 ): bool {
     $event = strtolower(trim($event));
 
-    $templateKey = match ($event) {
-        'delivered' => 'order_delivered',
-        'shipped' => 'order_shipped',
-        default => '',
-    };
-
-    if ($templateKey === '') {
+    if (
+        !in_array(
+            $event,
+            [
+                'shipped',
+                'delivered',
+            ],
+            true
+        )
+    ) {
         throw new InvalidArgumentException(
             'Unknown Shop fulfillment email event.'
         );
     }
+
+    $templateKey =
+        llama_shop_order_email_template_key(
+            $event
+        );
 
     $email = trim($email);
 
@@ -1197,7 +1255,9 @@ function send_shop_refund_confirmation_email(
 
     return llama_email_send_template(
         $db,
-        'refund_confirmation',
+        llama_shop_order_email_template_key(
+            'refund_confirmation'
+        ),
         $email,
         $context,
         false,
