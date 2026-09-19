@@ -35,6 +35,7 @@ require_once __DIR__ . '/shop-images.php';
 require_once __DIR__ . '/place-reports.php';
 require_once __DIR__ . '/community-contributions.php';
 require_once __DIR__ . '/moderation.php';
+require_once __DIR__ . '/automatic-badges.php';
 require_once __DIR__ . '/shop-order-mail-maintenance.php';
 require_once __DIR__ . '/promotion-code-maintenance.php';
 require_once __DIR__ . '/membership-email-maintenance.php';
@@ -70,6 +71,17 @@ $runMaintenance = static function (
         );
     }
 };
+
+$runMaintenance(
+    'automatic_badges',
+    static function (): void {
+        llama_run_automatic_badge_maintenance(
+            db(),
+            50,
+            300
+        );
+    }
+);
 
 $runMaintenance(
     'promotion_email',
