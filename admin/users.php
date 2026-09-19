@@ -349,8 +349,8 @@ require __DIR__ . '/_header.php';
                 <option value="" <?= $sort === '' ? 'selected' : '' ?>>Default</option>
                 <option value="login_newest" <?= $sort === 'login_newest' ? 'selected' : '' ?>>Last login: newest</option>
                 <option value="login_oldest" <?= $sort === 'login_oldest' ? 'selected' : '' ?>>Last login: oldest</option>
-                <option value="contributions_most" <?= $sort === 'contributions_most' ? 'selected' : '' ?>>Contributions: most</option>
-                <option value="contributions_least" <?= $sort === 'contributions_least' ? 'selected' : '' ?>>Contributions: least</option>
+                <option value="points_most" <?= $sort === 'points_most' ? 'selected' : '' ?>>Points: most</option>
+                <option value="points_least" <?= $sort === 'points_least' ? 'selected' : '' ?>>Points: least</option>
                 <option value="id_asc" <?= $sort === 'id_asc' ? 'selected' : '' ?>>User ID: increasing</option>
                 <option value="id_desc" <?= $sort === 'id_desc' ? 'selected' : '' ?>>User ID: decreasing</option>
             </select>
@@ -415,7 +415,7 @@ require __DIR__ . '/_header.php';
                         <th>Roles</th>
                         <th>Status</th>
                         <th>Membership</th>
-                        <th>Contributions</th>
+                        <th>Points</th>
                         <th>Last login</th>
                     </tr>
                 </thead>
@@ -508,28 +508,6 @@ require __DIR__ . '/_header.php';
                                         ) ?>
                                     </span>
 
-                                    <span class="admin-user-mobile-login">
-                                        Last login:
-                                        <?= !empty($user['last_login_at'])
-                                            ? moderation_e(
-                                                llama_format_viewer_datetime(
-                                                    (string) $user['last_login_at']
-                                                )
-                                            )
-                                            : 'Never' ?>
-                                    </span>
-
-                                    <span class="admin-user-mobile-contributions">
-                                        <?= number_format(
-                                            (int) $user[
-                                                'contribution_count'
-                                            ]
-                                        ) ?>
-                                        contribution<?= (int) $user[
-                                            'contribution_count'
-                                        ] === 1 ? '' : 's' ?>
-                                    </span>
-
                                 <?php endif; ?>
 
                             </div>
@@ -620,11 +598,9 @@ require __DIR__ . '/_header.php';
                         <?php endif; ?>
                     </td>
 
-                    <td data-label="Contributions">
+                    <td data-label="Points">
                         <?= number_format(
-                            (int) $user[
-                                'contribution_count'
-                            ]
+                            (int) ($user['points_total'] ?? 0)
                         ) ?>
                     </td>
 
