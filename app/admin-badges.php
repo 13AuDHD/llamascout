@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/admin-users.php';
+require_once __DIR__ . '/automatic-badges.php';
 
 function admin_badges_definitions(PDO $db): array {
     return $db->query(
@@ -103,6 +104,7 @@ function admin_badges_user_badges(PDO $db, int $userId): array {
             bd.icon,
             bd.image_src,
             bd.award_type,
+            bd.threshold_metric,
             bd.threshold_value,
             bd.is_active,
             COALESCE(
@@ -355,8 +357,68 @@ function admin_badges_save_definition(
         throw new RuntimeException('Choose a valid award type.');
     }
 
-    $thresholdRaw = trim((string) ($data['threshold_value'] ?? ''));
-    $threshold = $thresholdRaw === '' ? null : max(0, (int) $thresholdRaw);
+    $thresholdRaw =
+        trim(
+            (string) (
+                $data['threshold_value']
+                ?? ''
+            )
+        );
+
+    $threshold =
+        $thresholdRaw === ''
+            ? null
+            : max(
+                0,
+                (int) $thresholdRaw
+            );
+
+    $thresholdMetric =
+        strtolower(
+            trim(
+                (string) (
+                    $data['threshold_metric']
+                    ?? ''
+                )
+            )
+        );
+
+    if ($awardType !== 'automatic') {
+        $thresholdMetric = '';
+        $threshold = null;
+    } elseif ($thresholdMetric !== '') {
+        if (
+            !llama_badge_threshold_metric_is_valid(
+                $thresholdMetric
+            )
+        ) {
+            throw new RuntimeException(
+                'Choose a valid automatic badge threshold type.'
+            );
+        }
+
+        if (
+            $threshold === null
+            || $threshold < 1
+        ) {
+            throw new RuntimeException(
+                'Automatic threshold badges need a threshold of at least 1.'
+            );
+        }
+    } elseif (
+        $threshold !== null
+        && $threshold > 0
+    ) {
+        throw new RuntimeException(
+            'Choose what the automatic badge threshold measures.'
+        );
+    }
+
+    $thresholdMetricForStorage =
+        $thresholdMetric !== ''
+            ? $thresholdMetric
+            : null;
+
     $sourceOrganization = trim((string) ($data['source_organization'] ?? ''));
     $icon = admin_badges_validate_icon($data['icon'] ?? '');
     $imageSrc = trim((string) ($data['image_src'] ?? ''));
@@ -375,6 +437,7 @@ function admin_badges_save_definition(
                 icon = ?,
                 image_src = ?,
                 award_type = ?,
+                threshold_metric = ?,
                 threshold_value = ?,
                 is_active = ?,
                 sort_order = ?
@@ -389,6 +452,7 @@ function admin_badges_save_definition(
             $icon,
             $imageSrc !== '' ? $imageSrc : null,
             $awardType,
+            $thresholdMetricForStorage,
             $threshold,
             $active,
             $sortOrder,
@@ -410,6 +474,8 @@ function admin_badges_save_definition(
                     : null,
                 'after_active' => $active,
                 'award_type' => $awardType,
+                'threshold_metric' =>
+                    $thresholdMetricForStorage,
                 'threshold_value' => $threshold,
             ]
         );
@@ -427,10 +493,11 @@ function admin_badges_save_definition(
             icon,
             image_src,
             award_type,
+            threshold_metric,
             threshold_value,
             is_active,
             sort_order
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $slug,
@@ -441,6 +508,7 @@ function admin_badges_save_definition(
         $icon,
         $imageSrc !== '' ? $imageSrc : null,
         $awardType,
+        $thresholdMetricForStorage,
         $threshold,
         $active,
         $sortOrder,
@@ -458,6 +526,8 @@ function admin_badges_save_definition(
             'badge_id' => $newId,
             'slug' => $slug,
             'award_type' => $awardType,
+            'threshold_metric' =>
+                $thresholdMetricForStorage,
             'threshold_value' => $threshold,
         ]
     );
