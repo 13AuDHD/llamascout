@@ -1047,6 +1047,75 @@ function llama_place_report_fields(): array
         'hide_public' => true,
     ]);
 
+    /*
+     * Optional contributor helper text.
+     *
+     * These explanations are deliberately kept on the canonical field
+     * definitions so Add Place can show an info popup without duplicating
+     * question-specific guidance in the template. Other consumers may choose
+     * whether or not to display it.
+     */
+    $fieldHelp = [
+        'type' =>
+            'Choose the kind of place someone would recognize when planning a stay. For example: dispersed camping for an undeveloped public-land site, retail parking for an overnight store lot, or travel center for a Love’s-style stop.',
+        'region' =>
+            'Use the local administrative area when one exists. Examples include Pagosa Ranger District, Moab Field Office, a national park district, or a named city neighborhood. For an urban place with no useful region, leave this blank.',
+        'land_manager' =>
+            'Who manages or controls the land? Examples include BLM, U.S. Forest Service, National Park Service, state, county, city, tribal land, or private property.',
+        'land_type' =>
+            'Describe what kind of land or facility the Place is on, rather than the agency that manages it. The land manager and land type may be different.',
+        'vehicle_capacity' =>
+            'Estimate how many normal vehicles can fit without blocking the road, entrance, turnaround, or neighboring sites. Do not count sketchy edge parking just because a vehicle could technically squeeze there.',
+        'max_vehicle_length_feet' =>
+            'Estimate the longest single vehicle that could reasonably enter, park, and maneuver here. Think about the entire approach and parking area, not just whether a long vehicle physically fits in one spot.',
+        'max_trailer_length_feet' =>
+            'Estimate the longest trailer that could reasonably reach the Place and maneuver into position. Consider tight turns, backing room, turnaround space, and the approach road.',
+        'ground_condition' =>
+            'Describe the ground where someone would actually park or camp, not the access road. Examples include firm and level, rocky, sandy, grassy, soft, mud-prone, or mixed.',
+        'leveling_required' =>
+            'Choose Yes when most campers would probably need leveling blocks, ramps, or careful positioning to get reasonably level. This is different from simply noticing that the ground is not perfectly flat.',
+        'site_open_sky' =>
+            'Rate how open the sky is directly over and around the site. Heavy tree canopy, canyon walls, buildings, or other obstructions reduce open sky and may affect solar or satellite use.',
+        'site_access_difficulty' =>
+            'Rate the final entry into the actual parking or camping spot. A road can be easy while the last turn, slope, rut, or entrance into the site itself is difficult.',
+        'road_overall_difficulty' =>
+            'Rate the access road as a whole. Consider surface, rocks, ruts, grades, width, water crossings, and other obstacles from the normal road network to the Place.',
+        'road_stress' =>
+            'This is about how stressful the drive feels, not just technical difficulty. Narrow roads, exposure, blind corners, drop-offs, traffic, or nowhere to pass can make an otherwise easy road stressful.',
+        'daytime_sensory_comfort' =>
+            'Give an overall daytime sensory rating using what you observed: noise, traffic, crowds, light, smells, movement, and unpredictability. This is broader than any one sensory question.',
+        'nighttime_sensory_comfort' =>
+            'Give an overall nighttime sensory rating using what you observed: noise, traffic, crowds, lighting, smells, movement, and unpredictability. Day and night can be very different.',
+        'sensory_visual_exposure' =>
+            'How visually exposed does the site feel to roads, neighboring campers, pedestrians, homes, or businesses? A high rating means people can easily see into or through the site.',
+        'sensory_predictability' =>
+            'Rate how consistent the environment is. Low means sudden or irregular traffic, people, noises, lights, or other surprises are common. High means the environment is steady and easy to anticipate.',
+        'mobility_device_friendly' =>
+            'Think about mobility aids such as a cane, walker, rollator, crutches, or mobility scooter. Wheelchair access has its own question. Consider rocks, roots, mud, slopes, and other obstacles around the site.',
+        'road_exposure' =>
+            'How exposed is the campsite itself to the nearby road and passing traffic? Consider how close vehicles pass, how visible the site is from the road, and whether traffic feels intrusive.',
+        'designated_sites_only' =>
+            'Choose Yes when camping is legally limited to marked, numbered, or otherwise designated sites. This is stricter than merely encouraging people to reuse existing disturbed campsites.',
+        'food_storage_required' =>
+            'Choose Yes when food, trash, coolers, toiletries, or other scented items must be stored in a specific way, such as a bear box, approved bear-resistant container, or hard-sided vehicle.',
+        'generator_restrictions' =>
+            'Choose Yes when generator use has any special restriction, such as quiet hours, limited operating hours, generator-free loops, seasonal limits, or a complete prohibition. Put the exact rule in Seasonal access notes or Scout Notes.',
+        'existing_sites_encouraged' =>
+            'Choose Yes when the land manager asks campers to use already-disturbed or established sites when possible, but does not strictly require camping in marked designated sites.',
+        'residential_use_prohibited' =>
+            'This refers to rules against using the Place as a residence or long-term living location. Temporary overnight camping may still be allowed even when residential use is prohibited.',
+        'stay_limit_days' =>
+            'Choose the normal stay limit that applies here. Use Permit Limit when the permit itself controls how long someone may remain, or Varies by season when the limit changes during the year.',
+        'fee' =>
+            'Enter the fee required to stay or camp at this Place. Do not include an unrelated entrance fee unless paying it is required in order to stay here.',
+    ];
+
+    foreach ($fieldHelp as $fieldKey => $helpText) {
+        if (isset($f[$fieldKey])) {
+            $f[$fieldKey]['help'] = $helpText;
+        }
+    }
+
     return $f;
 }
 
