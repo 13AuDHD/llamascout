@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/mail.php';
-require_once __DIR__ . '/email/templates.php';
 
 
 function llama_marketing_user_token(PDO $db, int $userId): string
@@ -457,19 +456,11 @@ function llama_promotion_send_batch(
         ? 'reminder'
         : 'announcement';
 
-    $templateKey =
-        $deliveryType === 'reminder'
-            ? 'promotion_campaign_reminder'
-            : 'promotion_campaign_announcement';
-
-    $template = llama_email_template(
-        $db,
-        $templateKey
-    );
-
     if (
-        !$template
-        || empty($template['enabled'])
+        !llama_promotion_campaign_email_enabled(
+            $db,
+            $deliveryType
+        )
     ) {
         return [
             'attempted' => 0,
@@ -509,14 +500,11 @@ function llama_promotion_send_batch(
                 $unsubscribeUrl
             );
 
-            $sent = llama_email_send_template(
+            $sent = send_promotion_campaign_email(
                 $db,
-                $templateKey,
-                (string) $user['email'],
-                $context,
-                false,
-                (int) $user['id'],
-                $template
+                $user,
+                $deliveryType,
+                $context
             );
 
             if (!$sent) {
