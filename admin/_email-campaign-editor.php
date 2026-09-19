@@ -4,7 +4,7 @@
         <i aria-hidden="true"><?= llama_icon('speakerphone') ?></i>
         <h2>Select a promotion</h2>
         <p>
-            Choose a membership promotion to edit its Campaign Email
+            Choose a membership promotion to schedule its Campaign Email
             and Final Reminder.
         </p>
     </section>
@@ -28,114 +28,6 @@
         ? !empty($_POST['reminder_enabled'])
         : !empty($selectedCampaign['reminder_enabled']);
 
-    $emailSubjectValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['email_subject'] ?? '')
-            : ($selectedCampaign['email_subject'] ?? '')
-    ));
-
-    if ($emailSubjectValue === '') {
-        $emailSubjectValue =
-            (string) (
-                $selectedCampaign['public_label']
-                ?? $selectedCampaign['name']
-                ?? 'Membership sale'
-            )
-            . ' at Llama Scout';
-    }
-
-    $emailPreheaderValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['email_preheader'] ?? '')
-            : ($selectedCampaign['email_preheader'] ?? '')
-    ));
-
-    if ($emailPreheaderValue === '') {
-        $emailPreheaderValue =
-            '{{annual_offer}} · {{monthly_offer}}';
-    }
-
-    $emailTextValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['email_body_text'] ?? '')
-            : ($selectedCampaign['email_body_text'] ?? '')
-    ));
-
-    if ($emailTextValue === '') {
-        $emailTextValue = email_campaign_default_text('campaign');
-    }
-
-    $emailHtmlValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['email_body_html'] ?? '')
-            : ($selectedCampaign['email_body_html'] ?? '')
-    ));
-
-    if ($emailHtmlValue === '') {
-        $storedEmailText = trim((string) (
-            $selectedCampaign['email_body_text']
-            ?? ''
-        ));
-
-        $emailHtmlValue = $storedEmailText !== ''
-            ? llama_promotion_plain_text_to_html($emailTextValue)
-            : email_campaign_default_html('campaign');
-    }
-
-    $reminderSubjectValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['reminder_subject'] ?? '')
-            : ($selectedCampaign['reminder_subject'] ?? '')
-    ));
-
-    if ($reminderSubjectValue === '') {
-        $reminderSubjectValue =
-            'Last chance: '
-            . (string) (
-                $selectedCampaign['public_label']
-                ?? $selectedCampaign['name']
-                ?? 'Llama Scout membership sale'
-            );
-    }
-
-    $reminderPreheaderValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['reminder_preheader'] ?? '')
-            : ($selectedCampaign['reminder_preheader'] ?? '')
-    ));
-
-    if ($reminderPreheaderValue === '') {
-        $reminderPreheaderValue =
-            'The sale ends {{ends_at}}.';
-    }
-
-    $reminderTextValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['reminder_body_text'] ?? '')
-            : ($selectedCampaign['reminder_body_text'] ?? '')
-    ));
-
-    if ($reminderTextValue === '') {
-        $reminderTextValue = email_campaign_default_text('reminder');
-    }
-
-    $reminderHtmlValue = trim((string) (
-        $isPostForCampaign
-            ? ($_POST['reminder_body_html'] ?? '')
-            : ($selectedCampaign['reminder_body_html'] ?? '')
-    ));
-
-    if ($reminderHtmlValue === '') {
-        $storedReminderText = trim((string) (
-            $selectedCampaign['reminder_body_text']
-            ?? ''
-        ));
-
-        $reminderHtmlValue = $storedReminderText !== ''
-            ? llama_promotion_plain_text_to_html($reminderTextValue)
-            : email_campaign_default_html('reminder');
-    }
-
     $emailSendAtValue = $isPostForCampaign
         ? (string) ($_POST['email_send_at'] ?? '')
         : email_campaign_utc_to_input(
@@ -153,42 +45,23 @@
         $selectedCampaign
     );
 
-    $previewCampaign = array_merge(
-        $selectedCampaign,
-        [
-            'email_subject' => $emailSubjectValue,
-            'email_preheader' => $emailPreheaderValue,
-            'email_body_html' => $emailHtmlValue,
-            'email_body_text' => $emailTextValue,
-            'reminder_subject' => $reminderSubjectValue,
-            'reminder_preheader' => $reminderPreheaderValue,
-            'reminder_body_html' => $reminderHtmlValue,
-            'reminder_body_text' => $reminderTextValue,
-        ]
+    $campaignTemplate = llama_email_template(
+        $db,
+        'promotion_campaign_announcement'
     );
 
-    $campaignPreview = llama_promotion_render_email(
+    $reminderTemplate = llama_email_template(
         $db,
-        $previewCampaign,
-        'announcement',
-        $sampleContext
-    );
-
-    $reminderPreview = llama_promotion_render_email(
-        $db,
-        $previewCampaign,
-        'reminder',
-        $sampleContext
+        'promotion_campaign_reminder'
     );
 
     $promotionUrl = llama_promotion_email_url($selectedCampaign);
-    $variables = llama_promotion_email_variable_names();
     ?>
 
     <section class="admin-panel email-campaign-context">
         <header class="admin-panel-header">
             <div>
-                <p>Sale variables</p>
+                <p>Campaign schedule</p>
                 <h2><?= moderation_e((string) $selectedCampaign['name']) ?></h2>
             </div>
 
@@ -226,16 +99,14 @@
             </a>
         </div>
 
-        <div class="email-campaign-variable-box">
-            <strong>Available variables</strong>
-            <p>
-                Values come from this sale automatically, so the saved email
-                stays connected to its current prices and dates.
-            </p>
+        <div class="email-campaign-template-note">
+            <i aria-hidden="true"><?= llama_icon('mail') ?></i>
             <div>
-                <?php foreach ($variables as $variable): ?>
-                    <code>{{<?= moderation_e((string) $variable) ?>}}</code>
-                <?php endforeach; ?>
+                <strong>Email content is managed in Communications &gt; Emails.</strong>
+                <span>
+                    This page only controls whether each message is scheduled and when it sends.
+                    Sale prices, dates, labels, and links are filled into the email variables automatically.
+                </span>
             </div>
         </div>
     </section>
@@ -276,6 +147,37 @@
             </header>
 
             <div class="email-campaign-form-body">
+                <div class="email-campaign-template-summary">
+                    <div>
+                        <span>Email template</span>
+                        <strong>
+                            <?= moderation_e(
+                                (string) (
+                                    $campaignTemplate['subject']
+                                    ?? 'Campaign Email'
+                                )
+                            ) ?>
+                        </strong>
+                        <small>
+                            <?= !empty($campaignTemplate['enabled']) ? 'Enabled' : 'Disabled' ?>
+                        </small>
+                    </div>
+
+                    <a
+                        class="admin-button is-secondary"
+                        href="/emails.php?template=promotion_campaign_announcement"
+                    >
+                        Edit Email
+                    </a>
+                </div>
+
+                <?php if (empty($campaignTemplate['enabled'])): ?>
+                    <p class="email-campaign-sent-note">
+                        Campaign Email is currently disabled in the Email Center.
+                        Enable it there before scheduling this message.
+                    </p>
+                <?php endif; ?>
+
                 <label class="email-campaign-toggle">
                     <input
                         type="checkbox"
@@ -286,8 +188,9 @@
                     <span>
                         <strong>Schedule Campaign Email</strong>
                         <small>
-                            Sends to eligible verified free members who allow
-                            promotional email and do not already have member access.
+                            Sends the Campaign Email template to eligible verified
+                            free members who allow promotional email and do not already
+                            have member access.
                         </small>
                     </span>
                 </label>
@@ -301,80 +204,13 @@
                     >
                 </label>
 
-                <label>
-                    <span>Subject</span>
-                    <input
-                        type="text"
-                        name="email_subject"
-                        maxlength="190"
-                        value="<?= moderation_e($emailSubjectValue) ?>"
-                    >
-                </label>
-
-                <label>
-                    <span>Preview text</span>
-                    <input
-                        type="text"
-                        name="email_preheader"
-                        maxlength="255"
-                        value="<?= moderation_e($emailPreheaderValue) ?>"
-                    >
-                </label>
-
-                <label>
-                    <span>HTML body</span>
-                    <textarea
-                        name="email_body_html"
-                        rows="18"
-                        spellcheck="false"
-                    ><?= moderation_e($emailHtmlValue) ?></textarea>
-                </label>
-
-                <label>
-                    <span>Plain-text fallback</span>
-                    <textarea
-                        name="email_body_text"
-                        rows="10"
-                    ><?= moderation_e($emailTextValue) ?></textarea>
-                </label>
-
-                <div class="email-campaign-message-actions">
-                    <button
-                        class="admin-button"
-                        type="submit"
-                        name="campaign_email_action"
-                        value="test-campaign"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('send') ?></i>
-                        Test Campaign Email
-                    </button>
-                    <span>Sends only to dev@llamascout.com</span>
-                </div>
-
                 <?php if ($announcementSent): ?>
                     <p class="email-campaign-sent-note">
-                        This Campaign Email has already been sent. Editing it does
-                        not automatically send it again.
+                        This Campaign Email has already been sent. Changing its schedule
+                        does not automatically send it again.
                     </p>
                 <?php endif; ?>
             </div>
-        </section>
-
-        <section class="admin-panel email-campaign-preview-panel">
-            <header class="admin-panel-header">
-                <div>
-                    <p>Campaign Email preview</p>
-                    <h2><?= moderation_e($campaignPreview['subject']) ?></h2>
-                </div>
-                <span>Sample member data</span>
-            </header>
-
-            <iframe
-                class="email-campaign-preview-frame"
-                title="Campaign Email preview"
-                sandbox
-                srcdoc="<?= moderation_e($campaignPreview['html']) ?>"
-            ></iframe>
         </section>
 
         <section class="admin-panel">
@@ -401,6 +237,37 @@
             </header>
 
             <div class="email-campaign-form-body">
+                <div class="email-campaign-template-summary">
+                    <div>
+                        <span>Email template</span>
+                        <strong>
+                            <?= moderation_e(
+                                (string) (
+                                    $reminderTemplate['subject']
+                                    ?? 'Final Reminder'
+                                )
+                            ) ?>
+                        </strong>
+                        <small>
+                            <?= !empty($reminderTemplate['enabled']) ? 'Enabled' : 'Disabled' ?>
+                        </small>
+                    </div>
+
+                    <a
+                        class="admin-button is-secondary"
+                        href="/emails.php?template=promotion_campaign_reminder"
+                    >
+                        Edit Email
+                    </a>
+                </div>
+
+                <?php if (empty($reminderTemplate['enabled'])): ?>
+                    <p class="email-campaign-sent-note">
+                        Final Reminder is currently disabled in the Email Center.
+                        Enable it there before scheduling this message.
+                    </p>
+                <?php endif; ?>
+
                 <label class="email-campaign-toggle">
                     <input
                         type="checkbox"
@@ -411,8 +278,8 @@
                     <span>
                         <strong>Schedule Final Reminder</strong>
                         <small>
-                            Uses the same promotional audience and tracks
-                            reminder delivery separately.
+                            Uses the same promotional audience and records reminder
+                            delivery separately in campaign history and Email Activity.
                         </small>
                     </span>
                 </label>
@@ -426,88 +293,20 @@
                     >
                 </label>
 
-                <label>
-                    <span>Subject</span>
-                    <input
-                        type="text"
-                        name="reminder_subject"
-                        maxlength="190"
-                        value="<?= moderation_e($reminderSubjectValue) ?>"
-                    >
-                </label>
-
-                <label>
-                    <span>Preview text</span>
-                    <input
-                        type="text"
-                        name="reminder_preheader"
-                        maxlength="255"
-                        value="<?= moderation_e($reminderPreheaderValue) ?>"
-                    >
-                </label>
-
-                <label>
-                    <span>HTML body</span>
-                    <textarea
-                        name="reminder_body_html"
-                        rows="18"
-                        spellcheck="false"
-                    ><?= moderation_e($reminderHtmlValue) ?></textarea>
-                </label>
-
-                <label>
-                    <span>Plain-text fallback</span>
-                    <textarea
-                        name="reminder_body_text"
-                        rows="10"
-                    ><?= moderation_e($reminderTextValue) ?></textarea>
-                </label>
-
-                <div class="email-campaign-message-actions">
-                    <button
-                        class="admin-button"
-                        type="submit"
-                        name="campaign_email_action"
-                        value="test-reminder"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('send') ?></i>
-                        Test Final Reminder
-                    </button>
-                    <span>Sends only to dev@llamascout.com</span>
-                </div>
-
                 <?php if ($reminderSent): ?>
                     <p class="email-campaign-sent-note">
-                        This Final Reminder has already been sent. Editing it does
-                        not automatically send it again.
+                        This Final Reminder has already been sent. Changing its schedule
+                        does not automatically send it again.
                     </p>
                 <?php endif; ?>
             </div>
         </section>
 
-        <section class="admin-panel email-campaign-preview-panel">
-            <header class="admin-panel-header">
-                <div>
-                    <p>Final Reminder preview</p>
-                    <h2><?= moderation_e($reminderPreview['subject']) ?></h2>
-                </div>
-                <span>Sample member data</span>
-            </header>
-
-            <iframe
-                class="email-campaign-preview-frame"
-                title="Final Reminder preview"
-                sandbox
-                srcdoc="<?= moderation_e($reminderPreview['html']) ?>"
-            ></iframe>
-        </section>
-
         <div class="email-campaign-save-bar">
             <div>
-                <strong>Campaign messages</strong>
+                <strong>Campaign schedule</strong>
                 <span>
-                    Sale pricing and website promotion settings remain under
-                    Pricing &amp; Promotions.
+                    Message content lives under Communications &gt; Emails.
                 </span>
             </div>
 
@@ -518,7 +317,7 @@
                 value="save"
             >
                 <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
-                Save Campaign Emails
+                Save Schedule
             </button>
         </div>
     </form>

@@ -3,7 +3,7 @@
     <header class="admin-panel-header">
         <div>
             <p>Membership Promotions</p>
-            <h2>Email Campaigns</h2>
+            <h2>Campaign Scheduling</h2>
         </div>
 
         <span>

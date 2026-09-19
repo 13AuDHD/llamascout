@@ -95,7 +95,11 @@
                     <span>
                         <strong>Enabled</strong>
                         <small>
-                            Disabled lifecycle templates will not send automatically.
+                            <?php if ((string) $selectedTemplate['category'] === 'Campaigns'): ?>
+                                Disabled campaign templates will not send when a campaign is scheduled.
+                            <?php else: ?>
+                                Disabled lifecycle templates will not send automatically.
+                            <?php endif; ?>
                             Test messages can still be sent.
                         </small>
                     </span>

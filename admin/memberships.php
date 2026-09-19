@@ -682,7 +682,7 @@ if (
                 $db->commit();
 
                 $notice =
-                    'Promotion created and connected to Stripe. Configure its messages under Communications > Email Campaigns.';
+                    'Promotion created and connected to Stripe. Edit campaign messages under Communications > Emails, then schedule them under Email Campaigns.';
             }
 
             if ($action === 'update-campaign') {

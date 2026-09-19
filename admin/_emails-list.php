@@ -28,6 +28,8 @@ $emailTemplateIcons = [
     'complimentary_started' => 'gift-card',
     'complimentary_ending' => 'hourglass-empty',
     'complimentary_invitation' => 'mail-check',
+    'promotion_campaign_announcement' => 'speakerphone',
+    'promotion_campaign_reminder' => 'hourglass-empty',
 ];
 ?>
 
