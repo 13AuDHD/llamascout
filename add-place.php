@@ -279,6 +279,7 @@ $placeReportMode = 'contributor';
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
+$placeReportShowFieldHelp = true;
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoTitle = 'Photos of this Place';
 $placeReportPhotoHelp =
