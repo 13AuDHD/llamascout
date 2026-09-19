@@ -561,6 +561,10 @@ function llama_run_membership_email_maintenance(
         'failed' => 0,
     ];
 
+    if (!llama_mail_delivery_enabled()) {
+        return $summary;
+    }
+
     if (
         !llama_membership_email_storage_ready(
             $db

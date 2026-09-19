@@ -44,6 +44,57 @@ function llama_mail_config(): array
 }
 
 
+/*
+ * Master delivery switch.
+ *
+ * Add `'enabled' => false` to private/mail.php when SMTP is
+ * intentionally unavailable. Mail workers will pause without
+ * consuming queued work or filling the application error log.
+ *
+ * Existing installations that do not define the key remain enabled.
+ */
+function llama_mail_delivery_enabled(
+    ?array $config = null
+): bool {
+    $config =
+        $config
+        ?? llama_mail_config();
+
+    if (!array_key_exists('enabled', $config)) {
+        return true;
+    }
+
+    $value = $config['enabled'];
+
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return (int) $value !== 0;
+    }
+
+    $normalized =
+        strtolower(
+            trim((string) $value)
+        );
+
+    return !in_array(
+        $normalized,
+        [
+            '',
+            '0',
+            'false',
+            'off',
+            'no',
+            'disabled',
+            'paused',
+        ],
+        true
+    );
+}
+
+
 /* =========================================================
    SMTP TRANSPORT
    ========================================================= */
@@ -55,6 +106,10 @@ function send_llama_mail(
     ?string $html = null
 ): bool {
     $config = llama_mail_config();
+
+    if (!llama_mail_delivery_enabled($config)) {
+        return false;
+    }
 
     $mail = new PHPMailer(true);
 

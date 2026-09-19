@@ -1171,6 +1171,10 @@ function llama_run_support_email_maintenance(
         'tickets' => 0,
     ];
 
+    if (!llama_mail_delivery_enabled()) {
+        return $summary;
+    }
+
     if (
         !llama_support_email_maintenance_is_due(
             $db

@@ -1646,6 +1646,10 @@ function llama_run_newsletter_maintenance(
         'failed' => 0,
     ];
 
+    if (!llama_mail_delivery_enabled()) {
+        return $summary;
+    }
+
     if (
         !llama_newsletter_maintenance_is_due(
             $db

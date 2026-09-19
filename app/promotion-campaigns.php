@@ -407,15 +407,6 @@ function llama_promotion_plain_text_to_html(string $text): string
 }
 
 
-function llama_promotion_email_template_key(
-    string $deliveryType
-): string {
-    return $deliveryType === 'reminder'
-        ? 'promotion_campaign_reminder'
-        : 'promotion_campaign_announcement';
-}
-
-
 function llama_promotion_render_email(
     PDO $db,
     array $promotion,
@@ -423,35 +414,106 @@ function llama_promotion_render_email(
     array $context,
     ?array $override = null
 ): array {
-    $templateKey =
-        llama_promotion_email_template_key(
-            $deliveryType
-        );
+    $record = $override !== null
+        ? array_merge($promotion, $override)
+        : $promotion;
 
-    $template =
-        llama_email_template(
-            $db,
-            $templateKey
-        );
+    $isReminder = $deliveryType === 'reminder';
 
-    if (!$template) {
-        throw new RuntimeException(
-            'Campaign email template not found.'
+    $subject = trim((string) (
+        $isReminder
+            ? ($record['reminder_subject'] ?? '')
+            : ($record['email_subject'] ?? '')
+    ));
+
+    $preheader = trim((string) (
+        $isReminder
+            ? ($record['reminder_preheader'] ?? '')
+            : ($record['email_preheader'] ?? '')
+    ));
+
+    $textBody = trim((string) (
+        $isReminder
+            ? ($record['reminder_body_text'] ?? '')
+            : ($record['email_body_text'] ?? '')
+    ));
+
+    $htmlBody = trim((string) (
+        $isReminder
+            ? ($record['reminder_body_html'] ?? '')
+            : ($record['email_body_html'] ?? '')
+    ));
+
+    if ($subject === '' || $textBody === '') {
+        throw new InvalidArgumentException(
+            'Campaign email requires a subject and plain-text fallback.'
         );
     }
 
-    if ($override !== null) {
-        $template = array_merge(
-            $template,
-            $override
-        );
-    }
-
-    return llama_email_render_record(
-        $template,
-        $context
+    $renderedSubject = trim(
+        preg_replace(
+            '/[\\r\\n]+/',
+            ' ',
+            llama_email_replace_variables(
+                $subject,
+                $context,
+                false
+            )
+        ) ?? $subject
     );
+
+    $renderedPreheader = llama_email_replace_variables(
+        $preheader,
+        $context,
+        false
+    );
+
+    $renderedText = llama_email_replace_variables(
+        $textBody,
+        $context,
+        false
+    );
+
+    if ($htmlBody === '') {
+        $htmlBody = llama_promotion_plain_text_to_html($textBody);
+    }
+
+    $renderedBody = llama_email_replace_variables(
+        $htmlBody,
+        $context,
+        true
+    );
+
+    $safeUnsubscribe = htmlspecialchars(
+        (string) ($context['unsubscribe_url'] ?? ''),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+
+    $footer = <<<HTML
+<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 20px;">
+<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
+You received this promotional email because your Llama Scout account is eligible for membership offers.
+<a href="{$safeUnsubscribe}" style="color:#445c52;">Unsubscribe from promotional email</a>.
+</p>
+HTML;
+
+    $renderedText = rtrim($renderedText)
+        . "\n\nUnsubscribe from Llama Scout promotional email:\n"
+        . (string) ($context['unsubscribe_url'] ?? '')
+        . "\n";
+
+    return [
+        'subject' => $renderedSubject,
+        'preheader' => $renderedPreheader,
+        'text' => $renderedText,
+        'html' => llama_email_html_shell(
+            $renderedPreheader,
+            $renderedBody . $footer
+        ),
+    ];
 }
+
 
 function llama_promotion_email_recipients(
     PDO $db,
@@ -610,20 +672,20 @@ function llama_promotion_send_batch(
         ? 'reminder'
         : 'announcement';
 
-    $templateKey =
-        llama_promotion_email_template_key(
-            $deliveryType
-        );
+    $subject = trim((string) (
+        $deliveryType === 'reminder'
+            ? ($promotion['reminder_subject'] ?? '')
+            : ($promotion['email_subject'] ?? '')
+    ));
 
-    $template =
-        llama_email_template(
-            $db,
-            $templateKey
-        );
+    $textBody = trim((string) (
+        $deliveryType === 'reminder'
+            ? ($promotion['reminder_body_text'] ?? '')
+            : ($promotion['email_body_text'] ?? '')
+    ));
 
-    if (!$template || empty($template['enabled'])) {
+    if ($subject === '' || $textBody === '') {
         return [
-            'ready' => false,
             'attempted' => 0,
             'sent' => 0,
             'failed' => 0,
@@ -639,7 +701,6 @@ function llama_promotion_send_batch(
     );
 
     $stats = [
-        'ready' => true,
         'attempted' => 0,
         'sent' => 0,
         'failed' => 0,
@@ -662,19 +723,22 @@ function llama_promotion_send_batch(
                 $unsubscribeUrl
             );
 
-            $sent = llama_email_send_template(
+            $rendered = llama_promotion_render_email(
                 $db,
-                $templateKey,
+                $promotion,
+                $deliveryType,
+                $context
+            );
+
+            $sent = send_llama_mail(
                 (string) $user['email'],
-                $context,
-                false,
-                (int) $user['id']
+                $rendered['subject'],
+                $rendered['text'],
+                $rendered['html']
             );
 
             if (!$sent) {
-                throw new RuntimeException(
-                    'Email Center suppressed or failed the campaign message.'
-                );
+                throw new RuntimeException('Mail server rejected the message.');
             }
 
             llama_promotion_record_delivery(
@@ -947,6 +1011,10 @@ function llama_run_promotion_email_maintenance(
         'failed' => 0,
     ];
 
+    if (!llama_mail_delivery_enabled()) {
+        return $summary;
+    }
+
     if (!llama_promotion_email_maintenance_is_due($db)) {
         return $summary;
     }
@@ -1007,13 +1075,11 @@ function llama_run_promotion_email_maintenance(
                     $batchSize
                 );
 
-                if (!empty($stats['ready'])) {
-                    llama_promotion_finish_delivery_if_complete(
-                        $db,
-                        $promotionId,
-                        'announcement'
-                    );
-                }
+                llama_promotion_finish_delivery_if_complete(
+                    $db,
+                    $promotionId,
+                    'announcement'
+                );
 
                 $summary['campaigns']++;
                 $summary['attempted'] += (int) $stats['attempted'];
@@ -1042,13 +1108,11 @@ function llama_run_promotion_email_maintenance(
                     $batchSize
                 );
 
-                if (!empty($stats['ready'])) {
-                    llama_promotion_finish_delivery_if_complete(
-                        $db,
-                        $promotionId,
-                        'reminder'
-                    );
-                }
+                llama_promotion_finish_delivery_if_complete(
+                    $db,
+                    $promotionId,
+                    'reminder'
+                );
 
                 $summary['campaigns']++;
                 $summary['attempted'] += (int) $stats['attempted'];
