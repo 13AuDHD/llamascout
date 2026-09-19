@@ -126,13 +126,6 @@
 }
 
 
-/* Mobile-only account facts */
-
-.admin-user-mobile-login,
-.admin-user-mobile-contributions {
-    display: none;
-}
-
 
 /* Responsive */
 
@@ -220,11 +213,6 @@
         letter-spacing: .06em;
         line-height: 1.2;
         text-transform: uppercase;
-    }
-
-    .admin-user-mobile-login,
-    .admin-user-mobile-contributions {
-        display: none;
     }
 
     .admin-user-email,
