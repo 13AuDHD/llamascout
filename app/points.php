@@ -154,6 +154,28 @@ function llama_points_record(
    still loaded from Admin Points / points_policy.
    ========================================================= */
 
+function llama_points_optional_new_place_fields(): array
+{
+    /*
+     * These are genuinely optional/conditional narrative fields. Leaving one
+     * blank must not make an otherwise complete Place less than 100% or reduce
+     * the contributor's maximum point award.
+     *
+     * Examples: a Starlink note is unnecessary when the structured Starlink
+     * answers already say what happened; "Not recommended for" can honestly
+     * have no answer; Scout notes are explicitly "up to" three observations.
+     */
+    return [
+        'connectivity_starlink_note' => true,
+        'seasonal_access_note' => true,
+        'not_recommended_for' => true,
+        'scout_note_1' => true,
+        'scout_note_2' => true,
+        'scout_note_3' => true,
+        'contributor_notes' => true,
+    ];
+}
+
 function llama_points_new_place_categories(): array
 {
     $categories =
@@ -166,6 +188,16 @@ function llama_points_new_place_categories(): array
         $category['fields'] = [];
 
         foreach ($fields as $fieldKey => $field) {
+            if (
+                isset(
+                    llama_points_optional_new_place_fields()[
+                        (string) $fieldKey
+                    ]
+                )
+            ) {
+                continue;
+            }
+
             if (
                 in_array(
                     $slug,
@@ -190,6 +222,50 @@ function llama_points_has_answer(
     array $data,
     string $key
 ): bool {
+    $fields =
+        llama_place_report_fields();
+
+    $field =
+        $fields[$key]
+        ?? null;
+
+    /*
+     * Amenity checkboxes are one observed yes/no set. The Add Place form says
+     * explicitly that an unchecked amenity means it was not present. Raw HTML
+     * submits only checked boxes, however, so the old estimator interpreted
+     * every unchecked amenity as "unanswered" even after the contributor had
+     * completed the section.
+     *
+     * Once any checkbox in that same section is present, the section has been
+     * answered and the other unchecked boxes are legitimate No answers. This
+     * also fixes amenity_none inside Safety + Warnings, which was silently
+     * costing a fully completed report a point whenever actual amenities were
+     * present.
+     */
+    if (
+        is_array($field)
+        && (string) ($field['type'] ?? '') === 'checkbox'
+        && !array_key_exists($key, $data)
+    ) {
+        $section =
+            (string) ($field['section'] ?? '');
+
+        foreach ($fields as $otherKey => $otherField) {
+            if (
+                (string) ($otherField['type'] ?? '') !== 'checkbox'
+                || (string) ($otherField['section'] ?? '') !== $section
+            ) {
+                continue;
+            }
+
+            if (array_key_exists((string) $otherKey, $data)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     return llama_place_report_is_answered_input(
         $data,
         $key
@@ -338,6 +414,16 @@ function llama_points_estimate_new_place(
         if (
             isset(
                 $pointFieldLookup[$fieldKey]
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            isset(
+                llama_points_optional_new_place_fields()[
+                    (string) $fieldKey
+                ]
             )
         ) {
             continue;
