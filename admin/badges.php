@@ -201,6 +201,9 @@ $definitions =
         $db
     );
 
+$badgeThresholdMetricLabels =
+    llama_badge_threshold_metric_labels();
+
 $selectedUserBadges =
     $selectedUserId > 0
         ? admin_badges_user_badges(
@@ -415,7 +418,7 @@ require __DIR__ .
                     )
                 )
             ) ?>
-            ·
+            Â·
             <?= moderation_e(
                 ucwords(
                     str_replace(
@@ -438,7 +441,7 @@ require __DIR__ .
                     (string) $userBadge['awarded_at']
                 )
             ) ?>
-            ·
+            Â·
             <?= moderation_e((string) $userBadge['awarded_by_name']) ?>
         </small>
 
@@ -690,7 +693,7 @@ require __DIR__ .
                 )
             )
         ) ?>
-        ·
+        Â·
         <?= moderation_e(
             ucwords(
                 str_replace(
@@ -727,8 +730,22 @@ require __DIR__ .
     </span>
 
     <?php if ((int) $badge['threshold_value'] > 0): ?>
+        <?php
+        $thresholdMetric =
+            (string) (
+                $badge['threshold_metric']
+                ?? ''
+            );
+
+        $thresholdLabel =
+            $badgeThresholdMetricLabels[
+                $thresholdMetric
+            ]
+            ?? 'Threshold';
+        ?>
         <span>
-            threshold
+            <?= moderation_e($thresholdLabel) ?>
+            Â·
             <?= number_format(
                 (int) $badge['threshold_value']
             ) ?>
@@ -813,14 +830,44 @@ require __DIR__ .
 
         <label>
             <span>Award type</span>
-            <select name="award_type">
+            <select
+                name="award_type"
+                data-badge-award-type
+            >
                 <option value="automatic">Automatic</option>
                 <option value="manual">Manual</option>
                 <option value="credential">Credential</option>
             </select>
         </label>
 
-        <label>
+        <label data-badge-threshold-field>
+            <span>Threshold type</span>
+            <select name="threshold_metric">
+                <option value="">
+                    Special / legacy automatic logic
+                </option>
+                <?php foreach (
+                    $badgeThresholdMetricLabels
+                    as
+                    $metricValue => $metricLabel
+                ): ?>
+                    <option
+                        value="<?= moderation_e(
+                            $metricValue
+                        ) ?>"
+                    >
+                        <?= moderation_e(
+                            $metricLabel
+                        ) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                Choose what this automatic badge counts.
+            </small>
+        </label>
+
+        <label data-badge-threshold-field>
             <span>Threshold</span>
             <input
                 type="number"
@@ -931,6 +978,8 @@ require __DIR__ .
 
 <?php endif; ?>
 
+
+<script src="https://llamascout.com/js/admin/badges.js"></script>
 
 <?php
 require __DIR__ .
