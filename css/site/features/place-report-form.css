@@ -32,12 +32,6 @@
 }
 
 .place-report-form
-.add-place-radio-control[data-radio-type="permission"]
-.add-place-radio-options {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.place-report-form
 .add-place-radio-control[data-radio-type="rating"]
 .add-place-radio-options {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -273,12 +267,6 @@
 }
 
 @media (max-width: 700px) {
-    .place-report-form
-    .add-place-radio-control[data-radio-type="permission"]
-    .add-place-radio-options {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .place-report-form .add-place-radio-row {
         gap: 4px;
     }
@@ -346,5 +334,99 @@
 
     .place-report-form .add-place-radio-help {
         font-size: .54rem;
+    }
+}
+
+/* =========================================================
+   QUESTION HELP POPOVERS
+   Add Place can opt into these with $placeReportShowFieldHelp.
+   ========================================================= */
+
+.place-report-form .place-report-field-label {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.place-report-form .place-report-field-label > span:first-child {
+    min-width: 0;
+}
+
+.place-report-form .place-report-field-help {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+}
+
+.place-report-form .place-report-field-help-toggle {
+    width: 18px;
+    height: 18px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.place-report-form .place-report-field-help-toggle:hover,
+.place-report-form .place-report-field-help-toggle:focus-visible,
+.place-report-form .place-report-field-help-toggle[aria-expanded="true"] {
+    color: var(--text);
+}
+
+.place-report-form .place-report-field-help-toggle:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.place-report-form .place-report-field-help-toggle svg {
+    width: 16px;
+    height: 16px;
+}
+
+.place-report-field-help-panel {
+    position: fixed;
+    inset: auto;
+    z-index: 1000;
+
+    display: none;
+    width: min(340px, calc(100vw - 32px));
+    max-width: none;
+    margin: 0;
+    padding: 11px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .22);
+
+    font-size: .76rem;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: normal;
+}
+
+.place-report-field-help-panel:popover-open,
+.place-report-field-help-panel.is-open {
+    display: block;
+}
+
+@media (max-width: 700px) {
+    .place-report-field-help-panel {
+        left: 16px !important;
+        right: 16px !important;
+        top: auto !important;
+        bottom: 16px !important;
+        width: auto !important;
     }
 }
