@@ -44,7 +44,42 @@
                 <?= $hasMemberAccess ? 'Campsite weather' : 'Local weather' ?>
             </h2>
         </div>
-        <i aria-hidden="true"><?= llama_icon('temperature-sun', ['class' => 'place-weather-heading-icon']) ?></i>
+
+        <div class="place-weather-heading-actions">
+            <div
+                class="place-weather-unit-control"
+                data-weather-unit-control
+                aria-label="Weather units"
+            >
+                <span
+                    class="place-weather-unit-label"
+                    data-weather-unit-label="F"
+                    aria-hidden="true"
+                >°F</span>
+
+                <button
+                    type="button"
+                    class="place-weather-unit-toggle"
+                    data-weather-unit-toggle
+                    role="switch"
+                    aria-checked="false"
+                    aria-label="Use Celsius"
+                >
+                    <span
+                        class="place-weather-unit-toggle-thumb"
+                        aria-hidden="true"
+                    ></span>
+                </button>
+
+                <span
+                    class="place-weather-unit-label"
+                    data-weather-unit-label="C"
+                    aria-hidden="true"
+                >°C</span>
+            </div>
+
+            <i aria-hidden="true"><?= llama_icon('temperature-sun', ['class' => 'place-weather-heading-icon']) ?></i>
+        </div>
     </div>
 
     <div class="place-weather-content" data-place-weather-content aria-live="polite">
