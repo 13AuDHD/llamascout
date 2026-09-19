@@ -15,6 +15,15 @@ function shop_send_refund_confirmation(
         return false;
     }
 
+    if (
+        !llama_shop_order_email_enabled(
+            $db,
+            'refund_confirmation'
+        )
+    ) {
+        return false;
+    }
+
     $notificationType =
         'refund_confirmation';
 

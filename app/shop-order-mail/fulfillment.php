@@ -58,6 +58,15 @@ function shop_send_fulfillment_status_email(
         );
     }
 
+    if (
+        !llama_shop_order_email_enabled(
+            $db,
+            $event
+        )
+    ) {
+        return false;
+    }
+
     $stmt = $db->prepare(
         'SELECT
             f.id,

@@ -19,6 +19,15 @@ function shop_send_order_confirmation(
         );
     }
 
+    if (
+        !llama_shop_order_email_enabled(
+            $db,
+            'order_confirmation'
+        )
+    ) {
+        return false;
+    }
+
     $lockName =
         'llamascout_shop_order_mail_'
         . $orderId;
