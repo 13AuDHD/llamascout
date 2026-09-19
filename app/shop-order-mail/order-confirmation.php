@@ -333,12 +333,10 @@ function shop_send_order_confirmation(
 
         try {
             $sent =
-                llama_email_send_template(
+                send_shop_order_confirmation_email(
                     $db,
-                    'order_confirmation',
                     $email,
                     $context,
-                    false,
                     (int) (
                         $order['user_id']
                         ?? 0
