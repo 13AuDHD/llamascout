@@ -347,7 +347,6 @@ function llama_membership_email_user_context(
             $user['timezone']
             ?? null
         );
-
     $anniversaryYears =
         max(
             0,
@@ -434,22 +433,7 @@ function llama_membership_email_send_once(
             ?? 0
         );
 
-    $email =
-        trim(
-            (string) (
-                $user['email']
-                ?? ''
-            )
-        );
-
-    if (
-        $userId < 1
-        || $email === ''
-        || !filter_var(
-            $email,
-            FILTER_VALIDATE_EMAIL
-        )
-    ) {
+    if ($userId < 1) {
         return false;
     }
 
@@ -463,31 +447,14 @@ function llama_membership_email_send_once(
         return false;
     }
 
-    $template =
-        llama_email_template(
-            $db,
-            $templateKey
-        );
-
-    if (
-        !$template
-        || empty(
-            $template['enabled']
-        )
-    ) {
-        return false;
-    }
-
     $sent =
-        llama_email_send_template(
+        send_membership_lifecycle_email(
             $db,
+            $user,
             $templateKey,
-            $email,
             llama_membership_email_user_context(
                 $user
-            ),
-            false,
-            $userId
+            )
         );
 
     if (!$sent) {
