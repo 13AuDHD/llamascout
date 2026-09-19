@@ -649,3 +649,92 @@ function send_contribution_review_email(
         $userId
     );
 }
+
+/* =========================================================
+   NEWSLETTER DELIVERY
+   ========================================================= */
+
+function send_newsletter_issue_email(
+    PDO $db,
+    array $user,
+    string $subject,
+    string $title,
+    string $typeLabel,
+    string $bodyText,
+    string $bodyHtml,
+    string $preferencesUrl,
+    bool $accountNotice = false
+): bool {
+    $email =
+        trim(
+            (string) (
+                $user['email']
+                ?? ''
+            )
+        );
+
+    if (
+        $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    $userId =
+        isset($user['id'])
+            ? (int) $user['id']
+            : null;
+
+    $footerCopy =
+        $accountNotice
+            ? 'This is an account-wide Llama Scout notice. Manage optional email preferences'
+            : 'Manage which optional Llama Scout emails you receive';
+
+    $context = [
+        'newsletter_subject' =>
+            trim($subject),
+
+        'newsletter_type' =>
+            trim($typeLabel),
+
+        'newsletter_title' =>
+            trim($title),
+
+        /*
+         * Plain-text rendering uses this value.
+         */
+        'newsletter_content' =>
+            trim($bodyText),
+
+        'site_url' =>
+            'https://llamascout.com/',
+
+        'email_preferences_url' =>
+            trim($preferencesUrl),
+
+        'newsletter_footer_copy' =>
+            $footerCopy,
+
+        /*
+         * HTML rendering may use only explicitly approved raw HTML.
+         * The newsletter sender sanitizes this content before it
+         * reaches this helper.
+         */
+        '_raw_html' => [
+            'newsletter_content' =>
+                $bodyHtml,
+        ],
+    ];
+
+    return llama_email_send_template(
+        $db,
+        'newsletter_issue',
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
