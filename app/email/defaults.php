@@ -1109,5 +1109,115 @@ TEXT,
 HTML,
         ],
 
+
+        'promotion_campaign_announcement' => [
+            'template_key' => 'promotion_campaign_announcement',
+            'category' => 'Campaigns',
+            'name' => 'Campaign Email',
+            'description' =>
+                'Primary promotional email used by scheduled membership campaigns.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'username',
+                'campaign_name',
+                'campaign_label',
+                'campaign_description',
+                'promotion_url',
+                'starts_at',
+                'ends_at',
+                'monthly_regular_price',
+                'monthly_sale_price',
+                'monthly_year_total',
+                'monthly_discount',
+                'monthly_offer',
+                'annual_regular_price',
+                'annual_sale_price',
+                'annual_month_equivalent',
+                'annual_discount',
+                'annual_offer',
+                'unsubscribe_url',
+            ],
+            'subject' => '{{campaign_label}} at Llama Scout',
+            'preheader' => '{{annual_offer}} · {{monthly_offer}}',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+{{campaign_description}}
+
+Annual: {{annual_offer}}
+Monthly: {{monthly_offer}}
+
+View the membership offer:
+{{promotion_url}}
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;color:#172822;">{{campaign_label}}</h1>
+<p style="margin:0 0 18px;line-height:1.65;">Hi {{display_name}},</p>
+<p style="margin:0 0 18px;line-height:1.65;">{{campaign_description}}</p>
+<p style="margin:0 0 10px;line-height:1.65;"><strong>Annual:</strong> {{annual_offer}}</p>
+<p style="margin:0 0 22px;line-height:1.65;"><strong>Monthly:</strong> {{monthly_offer}}</p>
+<p style="margin:0;">
+  <a href="{{promotion_url}}" style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;">View membership offer</a>
+</p>
+HTML,
+        ],
+
+
+        'promotion_campaign_reminder' => [
+            'template_key' => 'promotion_campaign_reminder',
+            'category' => 'Campaigns',
+            'name' => 'Final Reminder',
+            'description' =>
+                'Final promotional reminder used by scheduled membership campaigns.',
+            'enabled' => 1,
+            'variables' => [
+                'display_name',
+                'username',
+                'campaign_name',
+                'campaign_label',
+                'campaign_description',
+                'promotion_url',
+                'starts_at',
+                'ends_at',
+                'monthly_regular_price',
+                'monthly_sale_price',
+                'monthly_year_total',
+                'monthly_discount',
+                'monthly_offer',
+                'annual_regular_price',
+                'annual_sale_price',
+                'annual_month_equivalent',
+                'annual_discount',
+                'annual_offer',
+                'unsubscribe_url',
+            ],
+            'subject' => 'Last chance: {{campaign_label}}',
+            'preheader' => 'The sale ends {{ends_at}}.',
+            'text_body' => <<<'TEXT'
+Hi {{display_name}},
+
+This is your final reminder for {{campaign_label}}.
+
+{{campaign_description}}
+
+Annual: {{annual_offer}}
+Monthly: {{monthly_offer}}
+
+View the membership offer:
+{{promotion_url}}
+TEXT,
+            'html_body' => <<<'HTML'
+<h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;color:#172822;">Last chance: {{campaign_label}}</h1>
+<p style="margin:0 0 18px;line-height:1.65;">Hi {{display_name}},</p>
+<p style="margin:0 0 18px;line-height:1.65;">{{campaign_description}}</p>
+<p style="margin:0 0 10px;line-height:1.65;"><strong>Annual:</strong> {{annual_offer}}</p>
+<p style="margin:0 0 22px;line-height:1.65;"><strong>Monthly:</strong> {{monthly_offer}}</p>
+<p style="margin:0;">
+  <a href="{{promotion_url}}" style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;">View membership offer</a>
+</p>
+HTML,
+        ],
+
     ];
 }

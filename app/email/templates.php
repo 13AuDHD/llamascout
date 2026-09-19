@@ -376,6 +376,48 @@ function llama_email_render_record(
         true
     );
 
+    $templateKey =
+        (string) (
+            $template['template_key']
+            ?? ''
+        );
+
+    if (
+        in_array(
+            $templateKey,
+            [
+                'promotion_campaign_announcement',
+                'promotion_campaign_reminder',
+            ],
+            true
+        )
+    ) {
+        $unsubscribeUrl =
+            (string) (
+                $context['unsubscribe_url']
+                ?? ''
+            );
+
+        $safeUnsubscribe = htmlspecialchars(
+            $unsubscribeUrl,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
+
+        $bodyHtml .= <<<HTML
+<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 20px;">
+<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
+You received this promotional email because your Llama Scout account is eligible for membership offers.
+<a href="{$safeUnsubscribe}" style="color:#445c52;">Unsubscribe from promotional email</a>.
+</p>
+HTML;
+
+        $text = rtrim($text)
+            . "\n\nUnsubscribe from Llama Scout promotional email:\n"
+            . $unsubscribeUrl
+            . "\n";
+    }
+
     return [
         'subject' => $subject,
         'preheader' => $preheader,
@@ -683,5 +725,28 @@ function llama_email_sample_context(
             'We’d like you to explore the complete Llama Scout experience.',
         'invite_url' =>
             'https://account.llamascout.com/complimentary-invite.php?token=TEST',
+
+        'campaign_name' => 'Flash Sale',
+        'campaign_label' => 'Flash Sale Today Only',
+        'campaign_description' =>
+            'Save on Llama Scout Complete Access for a limited time.',
+        'promotion_url' =>
+            'https://llamascout.com/membership.php?promotion=test-sale',
+        'starts_at' => 'September 18, 2026 9:00 AM MDT',
+        'ends_at' => 'September 18, 2026 11:59 PM MDT',
+        'monthly_regular_price' => '$6.99 / month',
+        'monthly_sale_price' => '$5.24 / month',
+        'monthly_year_total' => '$62.88 for 12 months',
+        'monthly_discount' => '25% off',
+        'monthly_offer' =>
+            '$5.24 / month ($62.88 for 12 months, 25% off)',
+        'annual_regular_price' => '$59.99 / year',
+        'annual_sale_price' => '$44.99 / year',
+        'annual_month_equivalent' => '$3.75 / month equivalent',
+        'annual_discount' => '25% off',
+        'annual_offer' =>
+            '$44.99 / year ($3.75 / month equivalent, 25% off)',
+        'unsubscribe_url' =>
+            'https://account.llamascout.com/email-preferences.php?token=TEST',
     ];
 }
