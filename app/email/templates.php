@@ -270,13 +270,33 @@ function llama_email_save_template(
 function llama_email_replace_variables(
     string $content,
     array $context,
-    bool $html = false
+    bool $html = false,
+    array $rawHtmlVariables = []
 ): string {
     return (string) preg_replace_callback(
         '/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/',
-        static function (array $match) use ($context, $html): string {
+        static function (array $match) use (
+            $context,
+            $html,
+            $rawHtmlVariables
+        ): string {
             $key = (string) ($match[1] ?? '');
-            $value = (string) ($context[$key] ?? '');
+
+            if (
+                $html
+                && array_key_exists(
+                    $key,
+                    $rawHtmlVariables
+                )
+            ) {
+                return (string) $rawHtmlVariables[$key];
+            }
+
+            $value =
+                (string) (
+                    $context[$key]
+                    ?? ''
+                );
 
             if (!$html) {
                 return $value;
@@ -291,7 +311,6 @@ function llama_email_replace_variables(
         $content
     );
 }
-
 
 function llama_email_html_shell(
     string $preheader,
@@ -370,12 +389,19 @@ function llama_email_render_record(
         false
     );
 
+    $rawHtmlVariables =
+        isset($context['_raw_html'])
+        && is_array($context['_raw_html'])
+            ? $context['_raw_html']
+            : [];
+    
     $bodyHtml = llama_email_replace_variables(
         (string) $template['html_body'],
         $context,
-        true
+        true,
+        $rawHtmlVariables
     );
-
+    
     $templateKey =
         (string) (
             $template['template_key']
