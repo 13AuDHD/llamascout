@@ -6,66 +6,6 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/place-drafts.php';
 require_once __DIR__ . '/app/place-report.php';
 
-function add_place_apply_combined_coordinates(array $input): array
-{
-    if (!array_key_exists('coordinates', $input)) {
-        return $input;
-    }
-
-    $raw = trim((string) ($input['coordinates'] ?? ''));
-
-    if ($raw === '') {
-        $input['latitude'] = '';
-        $input['longitude'] = '';
-        return $input;
-    }
-
-    $raw = str_replace("\u{2212}", '-', $raw);
-
-    if (
-        !preg_match(
-            '/^([+-]?\\d{1,2}\\.(\\d+))\\s*(?:,\\s*|\\s+)([+-]?\\d{1,3}\\.(\\d+))$/',
-            $raw,
-            $match
-        )
-    ) {
-        throw new InvalidArgumentException(
-            'Enter coordinates as latitude, longitude in decimal degrees, for example 37.2522200, -107.2192000.'
-        );
-    }
-
-    if (strlen($match[2]) < 5 || strlen($match[4]) < 5) {
-        throw new InvalidArgumentException(
-            'Use at least 5 decimal places for both latitude and longitude so the Place location is accurate enough.'
-        );
-    }
-
-    $latitude = (float) $match[1];
-    $longitude = (float) $match[3];
-
-    if ($latitude < -90 || $latitude > 90) {
-        throw new InvalidArgumentException(
-            'Latitude must be between -90 and 90.'
-        );
-    }
-
-    if ($longitude < -180 || $longitude > 180) {
-        throw new InvalidArgumentException(
-            'Longitude must be between -180 and 180.'
-        );
-    }
-
-    $latitudeFormatted = number_format($latitude, 7, '.', '');
-    $longitudeFormatted = number_format($longitude, 7, '.', '');
-
-    $input['latitude'] = $latitudeFormatted;
-    $input['longitude'] = $longitudeFormatted;
-    $input['coordinates'] =
-        $latitudeFormatted . ', ' . $longitudeFormatted;
-
-    return $input;
-}
-
 require_verified_email();
 
 $user = current_user();
@@ -203,6 +143,60 @@ if (
         );
 }
 
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['recover_staged_photos'])
+    && !$isNeedsChanges
+) {
+    if (
+        !community_verify_csrf(
+            (string) ($_POST['csrf_token'] ?? '')
+        )
+    ) {
+        $error = 'Your session expired. Refresh the page and try again.';
+    } else {
+        try {
+            $recoveredCount = llama_place_draft_recover_staged_photos(
+                db(),
+                $userId,
+                $draftId,
+                (string) ($_POST['recover_stage_token'] ?? '')
+            );
+
+            header(
+                'Location: /add-place.php?draft='
+                . $draftId
+                . '&photos_recovered='
+                . $recoveredCount,
+                true,
+                303
+            );
+            exit;
+        } catch (Throwable $exception) {
+            $reference = llama_log_caught_exception(
+                $exception,
+                'place.draft.photo_recovery',
+                [
+                    'user_id' => $userId,
+                    'draft_id' => $draftId,
+                ],
+                [
+                    InvalidArgumentException::class,
+                    RuntimeException::class,
+                ]
+            );
+
+            $error =
+                $reference === null
+                    ? $exception->getMessage()
+                    : llama_error_message_with_reference(
+                        'The staged photos could not be recovered.',
+                        $reference
+                    );
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
         !community_verify_csrf(
@@ -261,18 +255,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === null) {
             try {
-                $submissionInput =
-                    add_place_apply_combined_coordinates(
-                        $_POST
-                    );
-
-                $_POST = $submissionInput;
-
                 if ($isNeedsChanges) {
                     llama_place_report_resubmit_new_place(
                         $userId,
                         $editSubmissionId,
-                        $submissionInput
+                        $_POST
                     );
 
                     header(
@@ -283,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     llama_place_report_submit_new_place(
                         $userId,
-                        $submissionInput
+                        $_POST
                     );
 
                     if ($draftId > 0) {
@@ -330,6 +317,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$recoverablePhotoStages = [];
+if (
+    $draft
+    && !$isNeedsChanges
+    && $_SERVER['REQUEST_METHOD'] !== 'POST'
+    && empty($draft['photos'])
+) {
+    $recoverablePhotoStages = llama_place_draft_recoverable_stages(
+        $userId
+    );
+}
+
 $pageTitle =
     $isNeedsChanges
         ? 'Revise Place Submission | Llama Scout'
@@ -346,7 +345,6 @@ $placeReportMode = 'contributor';
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
-$placeReportShowFieldHelp = true;
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoTitle = 'Photos of this Place';
 $placeReportPhotoHelp =
@@ -407,6 +405,61 @@ $placeReportPhotoHelp =
                     </span>
                 <?php endif; ?>
             </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['photos_recovered'])): ?>
+        <div
+            class="contribution-message is-success"
+            role="status"
+        >
+            <?= max(0, (int) $_GET['photos_recovered']) ?> staged photos were recovered and attached to this saved Place.
+        </div>
+    <?php endif; ?>
+
+    <?php if ($recoverablePhotoStages): ?>
+        <div class="contribution-message" role="status">
+            <strong>Staged photos found</strong>
+            <p>
+                This saved Place has no attached photos, but Llama Scout found
+                a recent staged upload that was never connected to the draft.
+            </p>
+
+            <?php foreach ($recoverablePhotoStages as $batch): ?>
+                <form method="post" class="add-place-photo-recovery-form">
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= htmlspecialchars(
+                            community_csrf_token(),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="draft_id"
+                        value="<?= $draftId ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="recover_stage_token"
+                        value="<?= htmlspecialchars(
+                            (string) ($batch['token'] ?? ''),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
+                    <button
+                        type="submit"
+                        name="recover_staged_photos"
+                        value="1"
+                        class="contribution-submit"
+                    >
+                        Recover <?= (int) ($batch['count'] ?? 0) ?> staged photo<?= (int) ($batch['count'] ?? 0) === 1 ? '' : 's' ?>
+                    </button>
+                </form>
+            <?php endforeach; ?>
         </div>
     <?php endif; ?>
 
