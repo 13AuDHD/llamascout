@@ -638,7 +638,7 @@ $renderField =
                                                 : '' ?>
                                         >
 
-                                        <span>With Permit</span>
+                                        <span>Permit</span>
 
                                     </label>
 
