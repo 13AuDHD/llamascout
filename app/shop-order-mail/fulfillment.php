@@ -235,11 +235,6 @@ function shop_send_fulfillment_status_email(
                 : 'https://llamascout.com/shop.php';
     }
 
-    $templateKey =
-        $event === 'delivered'
-            ? 'order_delivered'
-            : 'order_shipped';
-
     $context = [
         'customer_name' =>
             shop_order_mail_customer_name(
@@ -274,12 +269,11 @@ function shop_send_fulfillment_status_email(
 
     try {
         $sent =
-            llama_email_send_template(
+            send_shop_fulfillment_notification_email(
                 $db,
-                $templateKey,
+                $event,
                 $email,
                 $context,
-                false,
                 (int) (
                     $row['user_id']
                     ?? 0
