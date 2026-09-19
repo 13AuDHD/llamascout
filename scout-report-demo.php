@@ -654,19 +654,53 @@ require __DIR__ . '/partials/header.php';
         </div>
     </section>
 
-    <section class="place-section place-weather" aria-labelledby="weather-heading">
+    <section class="place-section place-weather" aria-labelledby="weather-heading" data-demo-weather>
         <div class="place-weather-heading">
             <div>
                 <p class="eyebrow">Live weather</p>
                 <h2 id="weather-heading">Llama Scout Headquarters weather</h2>
             </div>
 
-            <?= llama_icon(
-                'temperature-sun',
-                [
-                    'class' => 'place-weather-heading-icon',
-                ]
-            ) ?>
+            <div class="place-weather-heading-actions">
+                <div
+                    class="place-weather-unit-control"
+                    data-weather-unit-control
+                    aria-label="Weather units"
+                >
+                    <span
+                        class="place-weather-unit-label"
+                        data-weather-unit-label="F"
+                        aria-hidden="true"
+                    >&deg;F</span>
+
+                    <button
+                        type="button"
+                        class="place-weather-unit-toggle"
+                        data-weather-unit-toggle
+                        role="switch"
+                        aria-checked="false"
+                        aria-label="Use Celsius"
+                    >
+                        <span
+                            class="place-weather-unit-toggle-thumb"
+                            aria-hidden="true"
+                        ></span>
+                    </button>
+
+                    <span
+                        class="place-weather-unit-label"
+                        data-weather-unit-label="C"
+                        aria-hidden="true"
+                    >&deg;C</span>
+                </div>
+
+                <?= llama_icon(
+                    'temperature-sun',
+                    [
+                        'class' => 'place-weather-heading-icon',
+                    ]
+                ) ?>
+            </div>
         </div>
 
         <?php
@@ -710,8 +744,13 @@ require __DIR__ . '/partials/header.php';
                 </div>
 
                 <div class="place-weather-current-main">
-                    <div class="place-weather-temperature">
-                        <?= $currentTemp === null ? '&mdash;' : $currentTemp . '&#176;F' ?>
+                    <div
+                        class="place-weather-temperature"
+                        <?= $currentTemp === null
+                            ? ''
+                            : 'data-weather-temp-f="' . (int) $currentTemp . '" data-weather-temp-style="unit"' ?>
+                    >
+                        <?= $currentTemp === null ? '&mdash;' : $currentTemp . '&deg;F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
                     <span>Headquarters, Durango</span>
@@ -719,7 +758,13 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="place-weather-facts">
                     <?php if ($feels !== null): ?>
-                        <div><span>Feels like</span><strong><?= $feels ?>&#176;F</strong></div>
+                        <div>
+                            <span>Feels like</span>
+                            <strong
+                                data-weather-temp-f="<?= (int) $feels ?>"
+                                data-weather-temp-style="unit"
+                            ><?= $feels ?>&deg;F</strong>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ($humidity !== null): ?>
@@ -727,11 +772,17 @@ require __DIR__ . '/partials/header.php';
                     <?php endif; ?>
 
                     <?php if ($wind !== null): ?>
-                        <div><span>Wind</span><strong><?= $wind ?> mph</strong></div>
+                        <div>
+                            <span>Wind</span>
+                            <strong data-weather-wind-mph="<?= (int) $wind ?>"><?= $wind ?> mph</strong>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ($windGusts !== null): ?>
-                        <div><span>Wind gusts</span><strong><?= $windGusts ?> mph</strong></div>
+                        <div>
+                            <span>Wind gusts</span>
+                            <strong data-weather-wind-mph="<?= (int) $windGusts ?>"><?= $windGusts ?> mph</strong>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ($sunrise !== ''): ?>
@@ -790,8 +841,16 @@ require __DIR__ . '/partials/header.php';
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
-                                    <strong><?= $high === null ? '&mdash;' : $high . '&#176;' ?></strong>
-                                    <span><?= $low === null ? '&mdash;' : $low . '&#176;' ?></span>
+                                    <strong
+                                        <?= $high === null
+                                            ? ''
+                                            : 'data-weather-temp-f="' . (int) $high . '" data-weather-temp-style="degree"' ?>
+                                    ><?= $high === null ? '&mdash;' : $high . '&deg;' ?></strong>
+                                    <span
+                                        <?= $low === null
+                                            ? ''
+                                            : 'data-weather-temp-f="' . (int) $low . '" data-weather-temp-style="degree"' ?>
+                                    ><?= $low === null ? '&mdash;' : $low . '&deg;' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
@@ -804,7 +863,7 @@ require __DIR__ . '/partials/header.php';
                                 <?php if ($maxWind !== null): ?>
                                     <span class="place-weather-day-detail">
                                         <?= demo_weather_icon('at-wind-strength') ?>
-                                        <?= $maxWind ?> mph
+                                        <span data-weather-wind-mph="<?= (int) $maxWind ?>"><?= $maxWind ?> mph</span>
                                     </span>
                                 <?php endif; ?>
                             </article>
@@ -895,6 +954,97 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 </article>
+
+<script>
+(() => {
+    'use strict';
+
+    const weather = document.querySelector('[data-demo-weather]');
+
+    if (!weather) {
+        return;
+    }
+
+    const toggle = weather.querySelector('[data-weather-unit-toggle]');
+    const labels = weather.querySelectorAll('[data-weather-unit-label]');
+    const temperatures = weather.querySelectorAll('[data-weather-temp-f]');
+    const winds = weather.querySelectorAll('[data-weather-wind-mph]');
+    const storageKey = 'llamaScoutWeatherUnit';
+
+    let unit = 'F';
+
+    try {
+        unit = window.localStorage.getItem(storageKey) === 'C' ? 'C' : 'F';
+    } catch (error) {
+        unit = 'F';
+    }
+
+    const render = () => {
+        const useCelsius = unit === 'C';
+
+        if (toggle) {
+            toggle.setAttribute('aria-checked', useCelsius ? 'true' : 'false');
+            toggle.setAttribute(
+                'aria-label',
+                useCelsius ? 'Use Fahrenheit' : 'Use Celsius'
+            );
+        }
+
+        labels.forEach((label) => {
+            label.classList.toggle(
+                'is-active',
+                label.dataset.weatherUnitLabel === unit
+            );
+        });
+
+        temperatures.forEach((element) => {
+            const fahrenheit = Number(element.dataset.weatherTempF);
+
+            if (!Number.isFinite(fahrenheit)) {
+                return;
+            }
+
+            const value = useCelsius
+                ? Math.round((fahrenheit - 32) * 5 / 9)
+                : Math.round(fahrenheit);
+
+            const suffix = element.dataset.weatherTempStyle === 'degree'
+                ? '&deg;'
+                : (useCelsius ? '&deg;C' : '&deg;F');
+
+            element.innerHTML = `${value}${suffix}`;
+        });
+
+        winds.forEach((element) => {
+            const mph = Number(element.dataset.weatherWindMph);
+
+            if (!Number.isFinite(mph)) {
+                return;
+            }
+
+            element.textContent = useCelsius
+                ? `${Math.round(mph * 1.609344)} km/h`
+                : `${Math.round(mph)} mph`;
+        });
+    };
+
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            unit = unit === 'C' ? 'F' : 'C';
+
+            try {
+                window.localStorage.setItem(storageKey, unit);
+            } catch (error) {
+                // The selection still works for this page.
+            }
+
+            render();
+        });
+    }
+
+    render();
+})();
+</script>
 
 <script src="/js/place-gallery.js"></script>
 
