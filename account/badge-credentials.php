@@ -155,6 +155,35 @@ require dirname(__DIR__) . '/partials/header.php';
             (string) ($badge['slug'] ?? ''),
             (string) ($badge['image_src'] ?? '')
         );
+
+        $badgeIcon = strtolower(
+            trim(
+                (string) (
+                    $badge['icon']
+                    ?? ''
+                )
+            )
+        );
+
+        if (
+            $badgeIcon === ''
+            || !preg_match(
+                '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                $badgeIcon
+            )
+        ) {
+            $badgeIcon = '';
+        }
+
+        $badgeIconMarkup =
+            $badgeIcon !== ''
+                ? llama_icon($badgeIcon)
+                : '';
+
+        if ($badgeIconMarkup === '') {
+            $badgeIconMarkup =
+                llama_icon('certificate');
+        }
         ?>
 
         <article class="badge-credential-card">
@@ -169,7 +198,7 @@ require dirname(__DIR__) . '/partials/header.php';
                             loading="lazy"
                         >
                     <?php else: ?>
-                        <i aria-hidden="true"><?= llama_icon('certificate') ?></i>
+                        <i aria-hidden="true"><?= $badgeIconMarkup ?></i>
                     <?php endif; ?>
                 </div>
 
