@@ -61,36 +61,13 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
         </div>
 
         <?php if ($icon): ?>
-            <?= llama_icon(
-                $icon,
-                [
-                    'class' => 'scout-report-value-icon',
-                ]
-            ) ?>
+            <i
+                class="fa-solid <?= place_h($icon) ?> scout-report-value-icon"
+                aria-hidden="true"
+            ></i>
         <?php endif; ?>
     </div>
     <?php
-}
-
-
-function demo_weather_icon(string $name): string
-{
-    $name = strtolower(trim($name));
-
-    if (
-        $name === ''
-        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)
-    ) {
-        return '';
-    }
-
-    return '<span'
-        . ' class="place-weather-svg-icon"'
-        . ' style="--place-weather-icon:url(\'/assets/icons/'
-        . htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-        . '.svg\')"'
-        . ' aria-hidden="true"'
-        . '></span>';
 }
 
 function demo_weather_info(mixed $code, bool $isDay = true): array
@@ -98,46 +75,16 @@ function demo_weather_info(mixed $code, bool $isDay = true): array
     $code = (int) $code;
 
     return match (true) {
-        $code === 0 => ['Clear', $isDay ? 'at-sunny' : 'at-moon'],
-        $code === 1 => ['Mainly clear', $isDay ? 'at-day-cloudy' : 'at-cloudy-night'],
-        $code === 2 => ['Partly cloudy', $isDay ? 'at-partly-cloudy' : 'at-cloudy-night'],
-        $code === 3 => ['Overcast', 'at-cloudy'],
-        in_array($code, [45, 48], true) => ['Fog', 'at-misty-cloud'],
-        in_array($code, [51, 53, 55], true) => ['Drizzle', $isDay ? 'at-rain-drop-sun' : 'at-rain-drop-moon'],
-        in_array($code, [56, 57], true) => ['Freezing drizzle', 'at-freeze'],
-        in_array($code, [61, 63], true) => ['Rain', $isDay ? 'at-raining-day' : 'at-raining-night'],
-        $code === 65 => ['Heavy rain', $isDay ? 'at-strong-raining-day' : 'at-strong-rain-night'],
-        in_array($code, [66, 67], true) => ['Freezing rain', 'at-freeze'],
-        $code === 80 => ['Rain showers', 'at-partly-cloudy-rain'],
-        $code === 81 => ['Rain showers', 'at-rain-storm'],
-        $code === 82 => ['Heavy rain showers', 'at-heavy-rain'],
-        in_array($code, [71, 73, 75], true) => ['Snow', 'at-snowing'],
-        $code === 77 => ['Snow grains', 'at-snowing-snowflakes'],
-        in_array($code, [85, 86], true) => ['Snow showers', 'at-snowing-snowflakes'],
-        $code === 95 => ['Thunderstorms', 'at-electric-storm'],
-        in_array($code, [96, 99], true) => ['Thunderstorms with hail', 'at-strong-wind-hail'],
-        default => ['Conditions unavailable', 'at-clouds'],
+        $code === 0 => ['Clear', $isDay ? 'fa-sun' : 'fa-moon'],
+        in_array($code, [1, 2], true) => ['Partly cloudy', $isDay ? 'fa-cloud-sun' : 'fa-cloud-moon'],
+        $code === 3 => ['Overcast', 'fa-cloud'],
+        in_array($code, [45, 48], true) => ['Fog', 'fa-smog'],
+        in_array($code, [51, 53, 55, 56, 57], true) => ['Drizzle', 'fa-cloud-rain'],
+        in_array($code, [61, 63, 65, 66, 67, 80, 81, 82], true) => ['Rain', 'fa-cloud-showers-heavy'],
+        in_array($code, [71, 73, 75, 77, 85, 86], true) => ['Snow', 'fa-snowflake'],
+        in_array($code, [95, 96, 99], true) => ['Thunderstorms', 'fa-cloud-bolt'],
+        default => ['Conditions unavailable', 'fa-cloud'],
     };
-}
-
-function demo_forecast_time(mixed $value): string
-{
-    $value = trim((string) $value);
-
-    if (!preg_match('/T(\d{2}):(\d{2})/', $value, $matches)) {
-        return '';
-    }
-
-    $hour = (int) $matches[1];
-    $minute = $matches[2];
-    $suffix = $hour >= 12 ? 'PM' : 'AM';
-    $hour %= 12;
-
-    if ($hour === 0) {
-        $hour = 12;
-    }
-
-    return $hour . ':' . $minute . ' ' . $suffix;
 }
 
 function demo_round(mixed $value): ?int
@@ -166,7 +113,7 @@ $place = [
     'county' => 'La Plata',
     'state' => 'Colorado',
     'land_manager' => 'Llama Scout Demo Department',
-    'land_type' => 'Private Owner',
+    'land_type' => 'Fictional Campsite',
     'road' => 'Demo Trail 13',
     'latitude' => $headquarters['latitude'],
     'longitude' => $headquarters['longitude'],
@@ -182,9 +129,14 @@ $place = [
         . 'site. These notes are fictional and demonstrate how a real Scout Report '
         . 'describes access instead of asking you to guess.',
     'sensory_summary' =>
-        'Demo information: the site is calm after sunset, has moderate '
+        'Demo information: the fictional site is calm after sunset, has moderate '
         . 'daytime activity, low artificial light, and enough natural sound to feel '
         . 'remote without being completely isolated.',
+    'notes' => [
+        ['note' => 'Demo Scout note: the fictional view opens dramatically just before sunset.'],
+        ['note' => 'Demo Scout note: arriving before dark would make the imaginary final approach easier to inspect.'],
+        ['note' => 'This sample does not describe camping conditions at the Durango Post Office.'],
+    ],
 ];
 
 $details = [
@@ -220,50 +172,6 @@ $details = [
     'water_crossings' => 0,
     'downed_tree_risk' => 1,
     'seasonal_closure' => 0,
-
-    /* Environment and accessibility */
-    'forest' => 1,
-    'mountains' => 1,
-    'desert' => 0,
-    'water_nearby' => 1,
-    'water_view' => 0,
-    'mountain_view' => 1,
-    'forest_view' => 1,
-    'desert_view' => 0,
-    'wildlife' => 1,
-    'bugs' => 1,
-
-    'wheelchair_friendly' => 0,
-    'mobility_device_friendly' => 0,
-    'flat_walking_surface' => 0,
-    'step_free_access' => 1,
-    'accessible_toilet' => 0,
-    'accessible_picnic_table' => 0,
-
-    'wind_exposure' => 3,
-    'sun_exposure' => 4,
-    'environment_shade' => 3,
-    'environment_open_sky' => 4,
-    'walking_distance_from_vehicle' => 'at-vehicle',
-
-    /* Safety and warnings */
-    'felt_safe_daytime' => 1,
-    'felt_safe_nighttime' => 1,
-    'flash_flood_risk' => 0,
-    'wildfire_risk' => 1,
-    'fall_hazard' => 0,
-    'cliff_exposure' => 0,
-    'rockfall_risk' => 0,
-    'wildlife_risk' => 1,
-    'traffic_hazard' => 0,
-    'emergency_access' => 1,
-
-    'warning_possible_downed_trees' => 1,
-    'warning_passing_vehicle_dust' => 1,
-    'warning_motorized_recreation_traffic' => 0,
-    'warning_blind_turn_traffic_nearby' => 0,
-
-    'road_exposure' => 2,
 ];
 
 $connectivity = [
@@ -274,7 +182,7 @@ $connectivity = [
     'other_cell' => 2,
     'starlink' => 5,
     'starlink_tested' => 1,
-    'starlink_note' => 'Demo information: the area has a broad southern sky with minimal obstruction.',
+    'starlink_note' => 'Demo information: the fictional parking area has a broad southern sky with minimal obstruction.',
 ];
 
 $sensory = [
@@ -297,7 +205,7 @@ $sensoryDetails = [
 
 $rules = [
     'seasonal_access_note' =>
-        'Demo information: this site is shown as most comfortable from '
+        'Demo information: this fictional site is shown as most comfortable from '
         . 'late spring through early fall. These values demonstrate how seasonal '
         . 'conditions, rules, and nearby services can be summarized.',
     'best_months' => 'May through October',
@@ -308,31 +216,19 @@ $rules = [
     'monsoon_risk' => 3,
     'overnight_camping_allowed' => 1,
     'dispersed_camping_allowed' => 1,
-    'collecting_firewood' => 2,
     'stay_limit_days' => 14,
+    'permit_required' => 0,
     'fee' => 0,
-    'campfire_allowed' => 2,
-    'drone_use_legal' => 1,
-    'target_shooting_allowed' => 0,
-    'designated_sites_only' => 0,
-    'pets_allowed' => 1,
-    'dogs_required_to_be_leashed' => 1,
-    'food_storage_required' => 1,
-    'generator_restrictions' => 1,
+    'campfire_allowed' => 1,
     'pack_it_in_pack_it_out' => 1,
     'existing_sites_encouraged' => 1,
-    'residential_use_prohibited' => 1,
-    'nearest_town' => 'About 1 mile',
+    'nearest_town' => 'Durango, CO',
     'nearest_fuel' => 'About 3 miles',
-    'nearest_ev_charging' => 'About 4 miles',
-    'nearest_alcohol_sales' => 'About 2 miles',
-    'nearest_propane' => 'About 3 miles',
     'nearest_grocery' => 'About 2 miles',
     'nearest_water' => 'About 2 miles',
     'nearest_toilet' => 'About 1 mile',
     'nearest_hospital' => 'About 5 miles',
-    'current_fire_restrictions_url' =>
-        'https://www.lpcgov.org/departments/emergency_management/fire_restrictions.php',
+    'current_fire_restrictions_url' => '',
 ];
 
 $experience = [
@@ -340,29 +236,21 @@ $experience = [
     'forest_view' => 4, 'night_sky' => 5, 'stargazing' => 5,
     'quiet_evening' => 5, 'overnight_comfort' => 4, 'extended_stay_comfort' => 4,
     'sensory_retreat' => 5, 'remote_work' => 4, 'overall_scenery' => 5,
-    'recommended_overnight_stop' => 1, 'recommended_quiet_evening' => 1,
-    'recommended_extended_stay' => 1, 'recommended_sensory_retreat' => 1,
-    'recommended_stargazing' => 1, 'recommended_remote_work' => 1,
+    'recommended_overnight_stop' => 5, 'recommended_quiet_evening' => 5,
+    'recommended_extended_stay' => 4, 'recommended_sensory_retreat' => 5,
+    'recommended_stargazing' => 5, 'recommended_remote_work' => 4,
     'recommended_solo_travel' => 1,
-    'recommended_families' => 1,
-    'recommended_large_groups' => 0,
-    'scout_note_1' => 'The view opens dramatically just before sunset.',
-    'scout_note_2' => 'Arriving before dark makes the final approach easier to inspect.',
-    'scout_note_3' => 'There is no camping at the real Llama Scout Headquarters... sorry.',
 ];
 
 $amenityLabels = [
-    'toilets' => ['at-toilet', 'Toilets'],
-    'potable_water' => ['at-water-tap', 'Potable water'],
-    'trash' => ['trash', 'Trash'],
-    'fire_ring' => ['campfire', 'Metal fire ring'],
-    'picnic_table' => ['picnic-table', 'Picnic table'],
-    'bear_box' => ['bear', 'Bear box'],
-    'showers' => ['at-shower-facilities', 'Showers'],
-    'electricity' => ['at-electricity-socket', 'Electricity'],
-    'dump_station' => ['caravan', 'Dump station'],
-    'wifi' => ['at-wifi', 'WiFi'],
-    'laundry' => ['wash-machine', 'Laundry'],
+    'toilets' => ['fa-restroom', 'Toilets'],
+    'potable_water' => ['fa-faucet-drip', 'Potable water'],
+    'trash' => ['fa-trash-can', 'Trash'],
+    'fire_ring' => ['fa-fire', 'Fire ring'],
+    'picnic_table' => ['fa-table-picnic', 'Picnic table'],
+    'bear_box' => ['fa-box', 'Bear box'],
+    'showers' => ['fa-shower', 'Showers'],
+    'electricity' => ['fa-bolt', 'Electricity'],
 ];
 
 $demoAmenities = [
@@ -374,38 +262,14 @@ $demoAmenities = [
     'bear_box' => false,
     'showers' => false,
     'electricity' => false,
-    'dump_station' => false,
-    'wifi' => true,
-    'laundry' => false,
 ];
 
-/*
- * Feed the fictional demo values into the same structure used by a
- * published member-access Place so the shared Scout Report renderer
- * can display the complete example.
- */
-
-$place['details'] = $details;
-$place['connectivity'] = $connectivity;
-$place['sensory'] = $sensory;
-$place['sensory_details'] = $sensoryDetails;
-$place['rules'] = $rules;
-$place['experience'] = $experience;
-
-$place['amenities'] = array_map(
-    static fn (bool $available): int =>
-        $available ? 1 : 0,
-    $demoAmenities
-);
-
-$isDemoScoutReport = true;
-
-/* Demo images are optional. */
+/* Demo images are optional. The page works before they exist. */
 $demoImageCandidates = [
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpeg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpeg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-2.jpeg', 'url' => '/images/demo/llama-scout-headquarters-2.jpeg', 'alt' => 'Fictional campsite view used for the Llama Scout demo'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-3.jpeg', 'url' => '/images/demo/llama-scout-headquarters-3.jpeg', 'alt' => 'Fictional forest campsite used for the Llama Scout demo'],
-    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpeg', 'url' => '/images/demo/llama-scout-headquarters-4.jpeg', 'alt' => 'Fictional campsite hazard photo used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-hero.jpg', 'url' => '/images/demo/llama-scout-headquarters-hero.jpg', 'alt' => 'Fictional Llama Scout Headquarters campsite'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-2.jpg', 'url' => '/images/demo/llama-scout-headquarters-2.jpg', 'alt' => 'Fictional campsite view used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-3.jpg', 'url' => '/images/demo/llama-scout-headquarters-3.jpg', 'alt' => 'Fictional forest campsite used for the Llama Scout demo'],
+    ['file' => __DIR__ . '/images/demo/llama-scout-headquarters-4.jpg', 'url' => '/images/demo/llama-scout-headquarters-4.jpg', 'alt' => 'Fictional campsite scenery used for the Llama Scout demo'],
 ];
 
 $demoImages = array_values(array_filter(
@@ -434,7 +298,6 @@ $pageDescription =
     'Explore a complete fictional Llama Scout Scout Report using Llama Scout '
     . 'Headquarters in Durango as a real weather and location anchor.';
 $pageRobots = 'noindex,follow';
-$canonicalUrl = 'https://llamascout.com/scout-report-demo.php';
 
 $pageStyles = [
     'place-detail.css',
@@ -449,8 +312,23 @@ require __DIR__ . '/partials/header.php';
 
 <article class="place-page">
 
-    <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
+    <section
+        class="place-section"
+        style="margin-top:28px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface);"
+    >
+        <p class="place-detail-eyebrow">Example Scout Report</p>
+        <h1 style="margin:0;font-size:clamp(1.6rem,4vw,2.3rem);">
+            This Place is intentionally fictional.
+        </h1>
+        <p style="margin:10px 0 0;line-height:1.65;">
+            Llama Scout Headquarters uses the real Durango Post Office as its
+            geographic anchor so this demo can show real location and weather
+            behavior. The campsite, photos, descriptions, ratings, access
+            conditions, amenities, and recommendations are fictional examples.
+        </p>
+    </section>
 
+    <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
         <?php if ($heroImage): ?>
             <img
                 class="place-detail-hero-image"
@@ -462,211 +340,151 @@ require __DIR__ . '/partials/header.php';
         <div class="place-detail-hero-shade" aria-hidden="true"></div>
 
         <div class="place-detail-hero-inner">
-
             <a class="place-detail-back" href="/membership.php">
-                <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 Membership
             </a>
 
             <div class="place-detail-hero-content">
-
                 <div class="place-detail-title-block">
                     <p class="place-detail-eyebrow">Demo Scout Report</p>
                     <h1>Llama Scout Headquarters</h1>
 
                     <p class="place-detail-location">
-                        <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
+                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
                         Durango, La Plata County, Colorado
                     </p>
 
                     <p class="place-detail-land">
-                        Llama Scout Demo Department / Private Owner
+                        Real location anchor / fictional campsite
                     </p>
                 </div>
 
                 <div class="place-detail-actions">
-                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
+                    <button class="place-detail-action-button" type="button" disabled>
+                        <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
                         Save Place
                     </button>
 
-                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i aria-hidden="true"><?= llama_icon('edit') ?></i>
+                    <button class="place-detail-action-button" type="button" disabled>
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
                         Suggest Update
                     </button>
 
-                    <button class="place-detail-action-button" type="button" disabled title="Demo only">
-                        <i aria-hidden="true"><?= llama_icon('share') ?></i>
+                    <button class="place-detail-action-button" type="button" disabled>
+                        <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
                         Share
                     </button>
                 </div>
-
             </div>
         </div>
     </header>
 
-    <section class="place-section" aria-labelledby="demo-notice-heading">
-        <p class="place-detail-eyebrow">Example only</p>
-
-        <h2 id="demo-notice-heading">
-            This Place is intentionally fictional.
-        </h2>
-
-        <p>
-            Llama Scout Headquarters uses a real Durango, CO location anchor so this
-            demo can show real coordinates and live weather. The campsite, photos,
-            descriptions, ratings, access conditions, amenities, sensory details,
-            and recommendations are fictional examples created to show what a
-            complete Scout Report can look like.
-        </p>
-    </section>
-
     <?php if ($demoImages): ?>
-        <section
-            class="place-photo-gallery-section"
-            aria-labelledby="place-photo-gallery-heading"
-        >
+        <section class="place-photo-gallery-section">
             <div class="place-detail-container">
                 <div class="place-photo-gallery-heading">
                     <div>
-                        <p class="place-detail-eyebrow">Photos</p>
-                        <h2 id="place-photo-gallery-heading">Fictional campsite gallery</h2>
+                        <p class="place-detail-eyebrow">Demo photos</p>
+                        <h2>Fictional campsite gallery</h2>
                     </div>
-
-                    <span>
-                        <?= count($demoImages) ?>
-                        <?= count($demoImages) === 1 ? 'photo' : 'photos' ?>
-                    </span>
+                    <span><?= count($demoImages) ?> photos</span>
                 </div>
 
-                <div class="place-photo-gallery" data-place-gallery>
-                    <?php foreach ($demoImages as $index => $image): ?>
-                        <button
-                            class="place-photo-thumb<?= $index === 0 ? ' is-featured' : '' ?>"
-                            type="button"
-                            data-place-gallery-open="<?= (int) $index ?>"
-                            aria-label="Open demo photo <?= (int) $index + 1 ?> of <?= count($demoImages) ?>"
-                        >
+                <div class="place-photo-gallery">
+                    <?php foreach ($demoImages as $image): ?>
+                        <div class="place-photo-thumb">
                             <img
                                 src="<?= place_h($image['url']) ?>"
                                 alt="<?= place_h($image['alt']) ?>"
-                                loading="<?= $index < 4 ? 'eager' : 'lazy' ?>"
+                                loading="lazy"
                             >
-                            <?php if ($index === 0): ?>
-                                <span class="place-photo-featured-label">Hero</span>
-                            <?php endif; ?>
-                        </button>
+                        </div>
                     <?php endforeach; ?>
                 </div>
 
                 <p class="place-photo-gallery-help">
-                    Tap any photo to view it larger. All campsite imagery on this
-                    page is fictional and created for this demonstration.
+                    These images depict a fictional campsite created for this demonstration.
                 </p>
             </div>
         </section>
-
-        <dialog
-            class="place-gallery-lightbox"
-            id="place-gallery-lightbox"
-            aria-label="Demo Place photo viewer"
-        >
-            <div class="place-gallery-lightbox-inner">
-                <div class="place-gallery-lightbox-top">
-                    <span id="place-gallery-counter"></span>
-
-                    <button
-                        type="button"
-                        class="place-gallery-close"
-                        id="place-gallery-close"
-                        aria-label="Close photo viewer"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('x') ?></i>
-                    </button>
-                </div>
-
-                <div class="place-gallery-stage">
-                    <button
-                        type="button"
-                        class="place-gallery-arrow is-previous"
-                        id="place-gallery-previous"
-                        aria-label="Previous photo"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
-                    </button>
-
-                    <img id="place-gallery-large-image" src="" alt="">
-
-                    <button
-                        type="button"
-                        class="place-gallery-arrow is-next"
-                        id="place-gallery-next"
-                        aria-label="Next photo"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
-                    </button>
-                </div>
-
-                <p class="place-gallery-caption" id="place-gallery-caption"></p>
-
-                <div
-                    class="place-gallery-lightbox-thumbs"
-                    id="place-gallery-lightbox-thumbs"
-                >
-                    <?php foreach ($demoImages as $index => $image): ?>
-                        <button
-                            type="button"
-                            data-place-gallery-jump="<?= (int) $index ?>"
-                            aria-label="View demo photo <?= (int) $index + 1 ?>"
-                        >
-                            <img
-                                src="<?= place_h($image['url']) ?>"
-                                alt=""
-                                loading="lazy"
-                            >
-                        </button>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </dialog>
     <?php endif; ?>
 
     <section class="place-facts" aria-label="Demo Place details">
         <div class="place-fact">
-            <i aria-hidden="true"><?= llama_icon('mountain') ?></i>
+            <i class="fa-solid fa-mountain" aria-hidden="true"></i>
             <span>Elevation</span>
             <strong><?= number_format((int) $headquarters['elevation_feet']) ?> ft</strong>
         </div>
 
         <div class="place-fact">
-            <i aria-hidden="true"><?= llama_icon('road') ?></i>
-            <span>Road</span>
-            <strong><?= place_h($place['road']) ?></strong>
-        </div>
-
-        <div class="place-fact">
-            <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
+            <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
             <span>GPS coordinates</span>
             <strong>
                 <?= place_h($headquarters['latitude']) ?>,
                 <?= place_h($headquarters['longitude']) ?>
             </strong>
         </div>
+
+        <div class="place-fact">
+            <i class="fa-solid fa-building" aria-hidden="true"></i>
+            <span>Real-world anchor</span>
+            <strong>
+                <?= place_h($headquarters['address']) ?>,
+                <?= place_h($headquarters['city']) ?>
+            </strong>
+        </div>
     </section>
 
-    <section class="place-section place-weather" aria-labelledby="weather-heading">
+    <section
+        class="place-section place-weather"
+        aria-labelledby="weather-heading"
+        data-demo-weather
+    >
         <div class="place-weather-heading">
             <div>
                 <p class="eyebrow">Live weather</p>
                 <h2 id="weather-heading">Llama Scout Headquarters weather</h2>
             </div>
 
-            <?= llama_icon(
-                'temperature-sun',
-                [
-                    'class' => 'place-weather-heading-icon',
-                ]
-            ) ?>
+            <div class="place-weather-heading-actions">
+                <div
+                    class="place-weather-unit-control"
+                    data-weather-unit-control
+                    aria-label="Weather units"
+                >
+                    <span
+                        class="place-weather-unit-label"
+                        data-weather-unit-label="F"
+                        aria-hidden="true"
+                    >Â°F</span>
+
+                    <button
+                        type="button"
+                        class="place-weather-unit-toggle"
+                        data-weather-unit-toggle
+                        role="switch"
+                        aria-checked="false"
+                        aria-label="Use Celsius"
+                    >
+                        <span
+                            class="place-weather-unit-toggle-thumb"
+                            aria-hidden="true"
+                        ></span>
+                    </button>
+
+                    <span
+                        class="place-weather-unit-label"
+                        data-weather-unit-label="C"
+                        aria-hidden="true"
+                    >Â°C</span>
+                </div>
+
+                <i
+                    class="fa-solid fa-cloud-sun place-weather-heading-icon"
+                    aria-hidden="true"
+                ></i>
+            </div>
         </div>
 
         <?php
@@ -685,7 +503,7 @@ require __DIR__ . '/partials/header.php';
 
         <?php if (!$forecast): ?>
             <div class="place-weather-unavailable">
-                <?= demo_weather_icon('at-clouds') ?>
+                <i class="fa-solid fa-cloud" aria-hidden="true"></i>
                 <p>Weather is temporarily unavailable.</p>
             </div>
         <?php else: ?>
@@ -699,27 +517,35 @@ require __DIR__ . '/partials/header.php';
             $feels = demo_round($current['apparent_temperature'] ?? null);
             $humidity = demo_round($current['relative_humidity_2m'] ?? null);
             $wind = demo_round($current['wind_speed_10m'] ?? null);
-            $windGusts = demo_round($current['wind_gusts_10m'] ?? null);
-            $sunrise = demo_forecast_time($daily['sunrise'][0] ?? null);
-            $sunset = demo_forecast_time($daily['sunset'][0] ?? null);
             ?>
 
             <div class="place-weather-current">
                 <div class="place-weather-condition-icon">
-                    <?= demo_weather_icon($currentIcon) ?>
+                    <i class="fa-solid <?= place_h($currentIcon) ?>" aria-hidden="true"></i>
                 </div>
 
                 <div class="place-weather-current-main">
-                    <div class="place-weather-temperature">
-                        <?= $currentTemp === null ? '&mdash;' : $currentTemp . '&#176;F' ?>
+                    <div
+                        class="place-weather-temperature"
+                        <?= $currentTemp === null
+                            ? ''
+                            : 'data-weather-temp-f="' . (int) $currentTemp . '" data-weather-temp-show-unit="1"' ?>
+                    >
+                        <?= $currentTemp === null ? 'â' : $currentTemp . 'Â°F' ?>
                     </div>
                     <strong><?= place_h($currentLabel) ?></strong>
-                    <span>Headquarters, Durango</span>
+                    <span>Headquarters anchor, Durango</span>
                 </div>
 
                 <div class="place-weather-facts">
                     <?php if ($feels !== null): ?>
-                        <div><span>Feels like</span><strong><?= $feels ?>&#176;F</strong></div>
+                        <div>
+                            <span>Feels like</span>
+                            <strong
+                                data-weather-temp-f="<?= (int) $feels ?>"
+                                data-weather-temp-show-unit="1"
+                            ><?= $feels ?>Â°F</strong>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ($humidity !== null): ?>
@@ -727,40 +553,15 @@ require __DIR__ . '/partials/header.php';
                     <?php endif; ?>
 
                     <?php if ($wind !== null): ?>
-                        <div><span>Wind</span><strong><?= $wind ?> mph</strong></div>
-                    <?php endif; ?>
-
-                    <?php if ($windGusts !== null): ?>
-                        <div><span>Wind gusts</span><strong><?= $windGusts ?> mph</strong></div>
-                    <?php endif; ?>
-
-                    <?php if ($sunrise !== ''): ?>
                         <div>
-                            <span class="place-weather-fact-label">
-                                <?= demo_weather_icon('sunrise') ?>
-                                Sunrise
-                            </span>
-                            <strong><?= place_h($sunrise) ?></strong>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($sunset !== ''): ?>
-                        <div>
-                            <span class="place-weather-fact-label">
-                                <?= demo_weather_icon('sunset') ?>
-                                Sunset
-                            </span>
-                            <strong><?= place_h($sunset) ?></strong>
+                            <span>Wind</span>
+                            <strong data-weather-wind-mph="<?= (int) $wind ?>"><?= $wind ?> mph</strong>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
 
-            <?php
-            $dates = is_array($daily['time'] ?? null)
-                ? array_slice($daily['time'], 0, 5)
-                : [];
-            ?>
+            <?php $dates = is_array($daily['time'] ?? null) ? array_slice($daily['time'], 0, 5) : []; ?>
 
             <?php if ($dates): ?>
                 <div class="place-weather-forecast">
@@ -786,25 +587,29 @@ require __DIR__ . '/partials/header.php';
 
                             <article class="place-weather-day">
                                 <strong class="place-weather-day-name"><?= place_h($dayName) ?></strong>
-                                <?= demo_weather_icon($dayIcon) ?>
+                                <i class="fa-solid <?= place_h($dayIcon) ?>" aria-hidden="true"></i>
                                 <span class="place-weather-day-condition"><?= place_h($dayLabel) ?></span>
 
                                 <div class="place-weather-day-temperatures">
-                                    <strong><?= $high === null ? '&mdash;' : $high . '&#176;' ?></strong>
-                                    <span><?= $low === null ? '&mdash;' : $low . '&#176;' ?></span>
+                                    <strong
+                                        <?= $high === null ? '' : 'data-weather-temp-f="' . (int) $high . '"' ?>
+                                    ><?= $high === null ? 'â' : $high . 'Â°' ?></strong>
+                                    <span
+                                        <?= $low === null ? '' : 'data-weather-temp-f="' . (int) $low . '"' ?>
+                                    ><?= $low === null ? 'â' : $low . 'Â°' ?></span>
                                 </div>
 
                                 <?php if ($rain !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <?= demo_weather_icon('at-rain-drops') ?>
+                                        <i class="fa-solid fa-droplet" aria-hidden="true"></i>
                                         <?= $rain ?>%
                                     </span>
                                 <?php endif; ?>
 
                                 <?php if ($maxWind !== null): ?>
                                     <span class="place-weather-day-detail">
-                                        <?= demo_weather_icon('at-wind-strength') ?>
-                                        <?= $maxWind ?> mph
+                                        <i class="fa-solid fa-wind" aria-hidden="true"></i>
+                                        <span data-weather-wind-mph="<?= (int) $maxWind ?>"><?= $maxWind ?> mph</span>
                                     </span>
                                 <?php endif; ?>
                             </article>
@@ -813,14 +618,110 @@ require __DIR__ . '/partials/header.php';
                 </div>
             <?php endif; ?>
 
+            <p class="place-weather-note">
+                This weather is real and calculated for the Headquarters coordinate anchor.
+                The campsite shown elsewhere on this page is fictional.
+            </p>
         <?php endif; ?>
     </section>
+
+    <script>
+    (() => {
+        'use strict';
+
+        const weather = document.querySelector('[data-demo-weather]');
+
+        if (!weather) {
+            return;
+        }
+
+        const toggle = weather.querySelector('[data-weather-unit-toggle]');
+        const labels = weather.querySelectorAll('[data-weather-unit-label]');
+        const temperatureNodes = weather.querySelectorAll('[data-weather-temp-f]');
+        const windNodes = weather.querySelectorAll('[data-weather-wind-mph]');
+        const storageKey = 'llamaScoutWeatherUnit';
+
+        let unit = 'F';
+
+        try {
+            unit = window.localStorage.getItem(storageKey) === 'C' ? 'C' : 'F';
+        } catch (error) {
+            unit = 'F';
+        }
+
+        const render = () => {
+            weather.dataset.weatherUnit = unit;
+
+            if (toggle) {
+                const useCelsius = unit === 'C';
+
+                toggle.setAttribute('aria-checked', useCelsius ? 'true' : 'false');
+                toggle.setAttribute(
+                    'aria-label',
+                    useCelsius ? 'Use Fahrenheit' : 'Use Celsius'
+                );
+            }
+
+            labels.forEach((label) => {
+                label.classList.toggle(
+                    'is-active',
+                    label.dataset.weatherUnitLabel === unit
+                );
+            });
+
+            temperatureNodes.forEach((node) => {
+                const fahrenheit = Number(node.dataset.weatherTempF);
+
+                if (!Number.isFinite(fahrenheit)) {
+                    return;
+                }
+
+                const value = unit === 'C'
+                    ? Math.round((fahrenheit - 32) * 5 / 9)
+                    : Math.round(fahrenheit);
+
+                const showUnit = node.dataset.weatherTempShowUnit === '1';
+
+                node.textContent = `${value}Â°${showUnit ? unit : ''}`;
+            });
+
+            windNodes.forEach((node) => {
+                const mph = Number(node.dataset.weatherWindMph);
+
+                if (!Number.isFinite(mph)) {
+                    return;
+                }
+
+                node.textContent = unit === 'C'
+                    ? `${Math.round(mph * 1.609344)} km/h`
+                    : `${Math.round(mph)} mph`;
+            });
+        };
+
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                unit = unit === 'C' ? 'F' : 'C';
+
+                try {
+                    window.localStorage.setItem(storageKey, unit);
+                } catch (error) {
+                    // Keep the selection for the current page if storage is unavailable.
+                }
+
+                render();
+            });
+        }
+
+        render();
+    })();
+    </script>
 
     <section class="place-section">
         <h2>Amenities</h2>
 
         <p class="scout-report-summary">
-            Demo information only. These amenities describe the fictional campsite.
+            Demo information only. These amenities describe the fictional campsite,
+            not the real Durango Post Office.
         </p>
 
         <div class="amenity-grid">
@@ -829,7 +730,7 @@ require __DIR__ . '/partials/header.php';
                 <?php if ($value === null) continue; ?>
 
                 <div class="amenity-item <?= $value ? 'is-available' : 'is-unavailable' ?>">
-                    <?= llama_icon($icon) ?>
+                    <i class="fa-solid <?= place_h($icon) ?>" aria-hidden="true"></i>
                     <span><?= place_h($label) ?></span>
                     <strong><?= $value ? 'Yes' : 'No' ?></strong>
                 </div>
@@ -848,7 +749,7 @@ require __DIR__ . '/partials/header.php';
     <section class="place-report-section">
         <details class="place-report">
             <summary>
-                <i aria-hidden="true"><?= llama_icon('flag') ?></i>
+                <i class="fa-regular fa-flag" aria-hidden="true"></i>
                 Report a problem with this place
             </summary>
 
@@ -860,18 +761,21 @@ require __DIR__ . '/partials/header.php';
                 </p>
 
                 <button type="button" class="place-report-submit" disabled>
-                    <i aria-hidden="true"><?= llama_icon('lock') ?></i>
+                    <i class="fa-solid fa-lock" aria-hidden="true"></i>
                     Demo only
                 </button>
             </div>
         </details>
     </section>
 
-    <section class="place-section">
+    <section
+        class="place-section"
+        style="margin-top:24px;margin-bottom:60px;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface);"
+    >
         <p class="place-detail-eyebrow">See this for real Places</p>
-        <h2>Know the place before you go.</h2>
+        <h2 style="margin-top:0;">Know the place before you go.</h2>
 
-        <p>
+        <p style="line-height:1.65;">
             This demo shows the kind of planning detail available inside a
             complete Scout Report. Membership unlocks the actual information
             collected for real Places, including exact locations, full photo
@@ -882,20 +786,13 @@ require __DIR__ . '/partials/header.php';
         <a
             class="place-detail-action-button"
             href="/membership.php"
-            style="
-                margin-top:8px;
-                border-color:var(--border);
-                background:var(--surface);
-                color:var(--text);
-            "
+            style="margin-top:8px;border-color:var(--border);background:var(--background);color:var(--text);"
         >
-            <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
+            <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
             View Membership
         </a>
     </section>
 
 </article>
-
-<script src="/js/place-gallery.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
