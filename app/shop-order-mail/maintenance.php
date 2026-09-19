@@ -147,6 +147,96 @@ function shop_run_shipment_email_maintenance(
             );
 
         /*
+         * Recover paid Shop orders whose initial confirmation was not sent.
+         *
+         * This covers orders that were committed while the Order
+         * Confirmation template was intentionally disabled, plus ordinary
+         * retryable send failures. Skip the recovery query while the
+         * template is disabled so old paid orders cannot clog the batch.
+         */
+        if (
+            llama_shop_order_email_enabled(
+                $db,
+                'order_confirmation'
+            )
+        ) {
+            $confirmationStmt = $db->query(
+                'SELECT o.id
+                 FROM shop_orders o
+                 LEFT JOIN shop_order_notifications confirmation_notice
+                    ON confirmation_notice.order_id = o.id
+                   AND confirmation_notice.notification_type =
+                        "order_confirmation"
+                 WHERE o.payment_status = "paid"
+                   AND o.order_status NOT IN (
+                        "problem",
+                        "cancelled",
+                        "canceled",
+                        "refunded"
+                   )
+                   AND (
+                        confirmation_notice.id IS NULL
+                        OR (
+                            confirmation_notice.status <> "sent"
+                            AND (
+                                confirmation_notice.failed_at IS NULL
+                                OR confirmation_notice.failed_at <=
+                                    DATE_SUB(
+                                        UTC_TIMESTAMP(),
+                                        INTERVAL 1 HOUR
+                                    )
+                            )
+                        )
+                   )
+                 ORDER BY o.updated_at ASC, o.id ASC
+                 LIMIT ' . $limit
+            );
+
+            $confirmationOrderIds =
+                $confirmationStmt
+                    ? (
+                        $confirmationStmt->fetchAll(
+                            PDO::FETCH_COLUMN
+                        )
+                        ?: []
+                    )
+                    : [];
+
+            foreach (
+                $confirmationOrderIds
+                as $orderId
+            ) {
+                try {
+                    if (
+                        shop_send_order_confirmation(
+                            $db,
+                            (int) $orderId
+                        )
+                    ) {
+                        $summary['sent']++;
+                    }
+                } catch (Throwable $exception) {
+                    $summary['failed']++;
+
+                    if (
+                        function_exists(
+                            'llama_log_caught_exception'
+                        )
+                    ) {
+                        llama_log_caught_exception(
+                            $exception,
+                            'shop.order_confirmation_maintenance',
+                            [
+                                'order_id' =>
+                                    (int) $orderId,
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+
+        /*
          * LIMIT applies only to fulfillments that still have
          * unsent or retryable notification work.
          */
