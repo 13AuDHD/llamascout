@@ -383,8 +383,11 @@ function llama_place_report_field_icon(
         'campfire_allowed' => 'campfire',
         'drone_use_legal' => 'at-drone-tech',
         'target_shooting_allowed' => 'bullseye',
+        'designated_sites_only' => 'sign-right',
+        'pets_allowed' => 'dog',
         'dogs_required_to_be_leashed' => 'dog-leash',
         'food_storage_required' => 'bear-paw',
+        'generator_restrictions' => 'generator',
         'pack_it_in_pack_it_out' => 'trash',
         'existing_sites_encouraged' => 'at-directions-post',
         'residential_use_prohibited' => 'home-off',
@@ -898,8 +901,11 @@ function llama_place_report_fields(): array
         ]);
     }
     foreach ([
+        'designated_sites_only' => 'Designated sites only?',
+        'pets_allowed' => 'Pets allowed?',
         'dogs_required_to_be_leashed' => 'Dogs required to be leashed?',
         'food_storage_required' => 'Food storage required?',
+        'generator_restrictions' => 'Generator restrictions?',
         'existing_sites_encouraged' => 'Existing sites encouraged?',
         'pack_it_in_pack_it_out' => 'Pack it in / pack it out?',
         'residential_use_prohibited' => 'Residential use prohibited?',

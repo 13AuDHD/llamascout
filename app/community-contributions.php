@@ -768,6 +768,20 @@ function community_place_update_field_definitions(): array
             'table' => 'place_rules',
             'column' => 'target_shooting_allowed',
         ],
+        'rules.designated_sites_only' => [
+            'label' => 'Designated sites only?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'designated_sites_only',
+        ],
+        'rules.pets_allowed' => [
+            'label' => 'Pets allowed?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'pets_allowed',
+        ],
         'rules.dogs_required_to_be_leashed' => [
             'label' => 'Dogs required to be leashed?',
             'group' => 'Rules and seasons',
@@ -781,6 +795,13 @@ function community_place_update_field_definitions(): array
             'type' => 'bool',
             'table' => 'place_rules',
             'column' => 'food_storage_required',
+        ],
+        'rules.generator_restrictions' => [
+            'label' => 'Generator restrictions?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'generator_restrictions',
         ],
         'rules.nearest_town' => [
             'label' => 'Nearest town',
