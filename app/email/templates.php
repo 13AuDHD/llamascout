@@ -394,14 +394,14 @@ function llama_email_render_record(
         && is_array($context['_raw_html'])
             ? $context['_raw_html']
             : [];
-    
+
     $bodyHtml = llama_email_replace_variables(
         (string) $template['html_body'],
         $context,
         true,
         $rawHtmlVariables
     );
-    
+
     $templateKey =
         (string) (
             $template['template_key']
@@ -570,14 +570,20 @@ function llama_email_account_can_receive(
     }
 
     /*
-     * Verification itself is the one account email that must be able to
-     * reach an unverified address.
-     *
-     * This also intentionally covers the safe pending-email-change workflow,
-     * which uses the Verify Email template to prove control of the new
-     * address before swapping the account login email.
+     * Verification messages must be able to reach an address before that
+     * address itself has been verified. This covers both new-account
+     * verification and the pending-email-change verification workflow.
      */
-    if ($templateKey === 'verify_email') {
+    if (
+        in_array(
+            $templateKey,
+            [
+                'verify_email',
+                'email_change_verification',
+            ],
+            true
+        )
+    ) {
         return true;
     }
 
@@ -704,13 +710,16 @@ function llama_email_sample_context(
     return [
         'display_name' => 'Trail Tester',
         'username' => 'trailtester',
+        'new_email' => 'new-address@example.com',
         'years_with_us' => '3 years',
         'anniversary_number' => '3rd',
         'member_since' => 'September 19, 2023',
         'account_url' =>
             'https://account.llamascout.com/',
         'verification_url' =>
-            'https://account.llamascout.com/verify-email.php?token=TEST',
+            $templateKey === 'email_change_verification'
+                ? 'https://account.llamascout.com/verify-email-change.php?token=TEST'
+                : 'https://account.llamascout.com/verify-email.php?token=TEST',
         'reset_url' =>
             'https://account.llamascout.com/reset-password.php?token=TEST',
         'membership_url' =>
@@ -783,7 +792,7 @@ function llama_email_sample_context(
         'complimentary_days' => '90',
         'invite_expires' => 'September 23, 2026',
         'invite_reason' =>
-            'We’d like you to explore the complete Llama Scout experience.',
+            'Weâd like you to explore the complete Llama Scout experience.',
         'invite_url' =>
             'https://account.llamascout.com/complimentary-invite.php?token=TEST',
 
