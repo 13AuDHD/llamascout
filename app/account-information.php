@@ -716,58 +716,36 @@ function llama_account_info_request_email_change(
         throw $exception;
     }
 
-    $mailUser = [
-        'email' => $newEmail,
+    $context = [
+        'display_name' =>
+            trim(
+                (string) (
+                    $user['display_name']
+                    ?: $user['username']
+                    ?: 'Scout'
+                )
+            ),
         'username' =>
             (string) (
                 $user['username']
                 ?? ''
             ),
-        'display_name' =>
-            (string) (
-                $user['display_name']
-                ?? ''
-            ),
-    ];
-
-    $verificationUrl =
-        'https://account.llamascout.com/verify-email-change.php?token='
-        . rawurlencode($token);
-
-    $context = [
-        'display_name' =>
-            trim(
-                (string) (
-                    $mailUser['display_name']
-                    ?: $mailUser['username']
-                    ?: 'Scout'
-                )
-            ),
-        'username' =>
-            (string) $mailUser['username'],
+        'new_email' =>
+            $newEmail,
         'verification_url' =>
-            $verificationUrl,
+            'https://account.llamascout.com/verify-email-change.php?token='
+            . rawurlencode($token),
     ];
 
-    $template =
-        llama_email_template(
+    $sent =
+        llama_email_send_template(
             $db,
-            'verify_email'
+            'email_change_verification',
+            $newEmail,
+            $context,
+            false,
+            $userId
         );
-
-    $sent = false;
-
-    if ($template) {
-        $sent =
-            llama_email_send_template(
-                $db,
-                'verify_email',
-                $newEmail,
-                $context,
-                false,
-                $userId
-            );
-    }
 
     return [
         'email' => $newEmail,
