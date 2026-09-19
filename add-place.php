@@ -6,6 +6,66 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/place-drafts.php';
 require_once __DIR__ . '/app/place-report.php';
 
+function add_place_apply_combined_coordinates(array $input): array
+{
+    if (!array_key_exists('coordinates', $input)) {
+        return $input;
+    }
+
+    $raw = trim((string) ($input['coordinates'] ?? ''));
+
+    if ($raw === '') {
+        $input['latitude'] = '';
+        $input['longitude'] = '';
+        return $input;
+    }
+
+    $raw = str_replace("\u{2212}", '-', $raw);
+
+    if (
+        !preg_match(
+            '/^([+-]?\\d{1,2}\\.(\\d+))\\s*(?:,\\s*|\\s+)([+-]?\\d{1,3}\\.(\\d+))$/',
+            $raw,
+            $match
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Enter coordinates as latitude, longitude in decimal degrees, for example 37.2522200, -107.2192000.'
+        );
+    }
+
+    if (strlen($match[2]) < 5 || strlen($match[4]) < 5) {
+        throw new InvalidArgumentException(
+            'Use at least 5 decimal places for both latitude and longitude so the Place location is accurate enough.'
+        );
+    }
+
+    $latitude = (float) $match[1];
+    $longitude = (float) $match[3];
+
+    if ($latitude < -90 || $latitude > 90) {
+        throw new InvalidArgumentException(
+            'Latitude must be between -90 and 90.'
+        );
+    }
+
+    if ($longitude < -180 || $longitude > 180) {
+        throw new InvalidArgumentException(
+            'Longitude must be between -180 and 180.'
+        );
+    }
+
+    $latitudeFormatted = number_format($latitude, 7, '.', '');
+    $longitudeFormatted = number_format($longitude, 7, '.', '');
+
+    $input['latitude'] = $latitudeFormatted;
+    $input['longitude'] = $longitudeFormatted;
+    $input['coordinates'] =
+        $latitudeFormatted . ', ' . $longitudeFormatted;
+
+    return $input;
+}
+
 require_verified_email();
 
 $user = current_user();
@@ -201,11 +261,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === null) {
             try {
+                $submissionInput =
+                    add_place_apply_combined_coordinates(
+                        $_POST
+                    );
+
+                $_POST = $submissionInput;
+
                 if ($isNeedsChanges) {
                     llama_place_report_resubmit_new_place(
                         $userId,
                         $editSubmissionId,
-                        $_POST
+                        $submissionInput
                     );
 
                     header(
@@ -216,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     llama_place_report_submit_new_place(
                         $userId,
-                        $_POST
+                        $submissionInput
                     );
 
                     if ($draftId > 0) {
