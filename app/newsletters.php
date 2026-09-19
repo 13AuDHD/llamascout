@@ -1249,110 +1249,6 @@ function llama_newsletter_record_delivery(
 }
 
 
-function llama_newsletter_html(
-    string $title,
-    string $body,
-    string $typeLabel,
-    string $unsubscribeUrl,
-    bool $accountNotice = false
-): string {
-    $safeTitle =
-        llama_newsletter_escape(
-            $title
-        );
-
-    $safeType =
-        llama_newsletter_escape(
-            $typeLabel
-        );
-
-    $safePreferencesUrl =
-        llama_newsletter_escape(
-            $unsubscribeUrl
-        );
-
-    $bodyHtml =
-        llama_newsletter_body_html(
-            $body
-        );
-
-    $footerCopy =
-        $accountNotice
-            ? 'This is an account-wide Llama Scout notice. You can still manage optional newsletter preferences in'
-            : 'Manage which optional Llama Scout emails you receive in';
-
-    $safeFooterCopy =
-        llama_newsletter_escape(
-            $footerCopy
-        );
-
-    return <<<HTML
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-</head>
-<body style="margin:0;padding:0;background:#f4efe6;font-family:Arial,Helvetica,sans-serif;color:#172822;">
-<div style="max-width:680px;margin:0 auto;padding:28px 16px;">
-    <div style="background:#ffffff;border-radius:16px;padding:28px;margin-bottom:14px;">
-        <p style="margin:0 0 8px;font-size:12px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase;color:#667069;">{$safeType}</p>
-        <h1 style="margin:0;font-size:28px;line-height:1.2;">{$safeTitle}</h1>
-    </div>
-
-    <div style="background:#ffffff;border-radius:16px;padding:28px;">
-        {$bodyHtml}
-
-        <p style="margin:30px 0;">
-            <a href="https://llamascout.com/" style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:bold;">
-                Open Llama Scout
-            </a>
-        </p>
-
-        <hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 22px;">
-
-        <p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
-            {$safeFooterCopy}
-            <a href="{$safePreferencesUrl}" style="color:#445c52;">Email Preferences</a>.
-            Account and service messages are not affected.
-        </p>
-    </div>
-</div>
-</body>
-</html>
-HTML;
-}
-
-
-function llama_newsletter_text(
-    string $title,
-    string $body,
-    string $unsubscribeUrl,
-    bool $accountNotice = false
-): string {
-    $bodyText =
-        llama_newsletter_body_text(
-            $body
-        );
-
-    $preferenceLabel =
-        $accountNotice
-            ? 'Manage optional email preferences'
-            : 'Manage optional email preferences';
-
-    return
-        $title
-        . "\n\n"
-        . $bodyText
-        . "\n\nOpen Llama Scout:\n"
-        . "https://llamascout.com/\n\n"
-        . $preferenceLabel
-        . ":\n"
-        . $unsubscribeUrl
-        . "\n";
-}
-
-
 function llama_newsletter_send_batch(
     PDO $db,
     array $issue,
@@ -1452,33 +1348,31 @@ function llama_newsletter_send_batch(
                     (int) $user['id']
                 );
 
-            $html =
-                llama_newsletter_html(
-                    $title,
-                    $body,
-                    llama_newsletter_type_label(
-                        $type
-                    ),
-                    $preferencesUrl,
-                    $accountNotice
-                );
-
-            $text =
-                llama_newsletter_text(
-                    $title,
-                    $body,
-                    $preferencesUrl,
-                    $accountNotice
-                );
-
-            $sent =
-                send_llama_mail(
-                    (string) $user['email'],
-                    $subject,
-                    $text,
-                    $html
-                );
-
+        $bodyHtml =
+            llama_newsletter_body_html(
+                $body
+            );
+        
+        $bodyText =
+            llama_newsletter_body_text(
+                $body
+            );
+        
+        $sent =
+            send_newsletter_issue_email(
+                $db,
+                $user,
+                $subject,
+                $title,
+                llama_newsletter_type_label(
+                    $type
+                ),
+                $bodyText,
+                $bodyHtml,
+                $preferencesUrl,
+                $accountNotice
+            );
+            
             if (!$sent) {
                 throw new RuntimeException(
                     'Mail server rejected the message.'
