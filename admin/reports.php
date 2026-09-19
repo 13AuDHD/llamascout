@@ -210,7 +210,7 @@ require __DIR__ . '/_header.php';
 </div>
 
 <div>
-    <span>Oldest unresolved</span>
+    <span>Oldest</span>
     <strong class="admin-report-age-stat">
         <?= moderation_e(
             admin_report_age_label(
@@ -251,7 +251,7 @@ require __DIR__ . '/_header.php';
 
     <select name="status">
         <option value="">
-            Open + investigating
+            Open + Investigating
         </option>
 
         <?php foreach (
