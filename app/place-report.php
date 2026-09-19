@@ -145,8 +145,8 @@ function llama_place_report_sections(): array
             'icon' => 'clipboard-list',
         ],
         'summaries' => [
-            'label' => 'Summaries and reviewer notes',
-            'description' => 'Useful context that does not fit into a dropdown',
+            'label' => 'Reviewer notes',
+            'description' => 'Anything uncertain, temporary, or useful for moderation',
             'icon' => 'file-text',
         ],
     ];
@@ -1013,14 +1013,22 @@ function llama_place_report_fields(): array
     }
 
     /* Summaries */
+    /*
+     * Summaries stay canonically grouped under `summaries` so moderation,
+     * history, and any scoring/grouping logic continue treating them as one
+     * summary group. `display_section` only controls where the questions are
+     * rendered in the form and Scout Report.
+     */
     $add('access_summary', 'Access summary', 'summaries', 'textarea', 'access_summary', [
         'wide' => true,
         'rows' => 4,
+        'display_section' => 'road_access',
         'placeholder' => 'Summarize the road, vehicle requirements, turnaround, leveling, and mobility access.',
     ]);
     $add('sensory_summary', 'Sensory summary', 'summaries', 'textarea', 'sensory_summary', [
         'wide' => true,
         'rows' => 4,
+        'display_section' => 'sensory',
         'placeholder' => 'Describe the overall sensory experience and any major day/night differences.',
     ]);
     $add('contributor_notes', 'Notes for the reviewer', 'summaries', 'textarea', 'contributor_notes', [
