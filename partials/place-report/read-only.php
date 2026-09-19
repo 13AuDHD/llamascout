@@ -391,7 +391,11 @@ foreach (
         array_filter(
             $placeReportFields,
             static fn (array $field): bool =>
-                (string) $field['section'] === $sectionKey
+                (string) (
+                    $field['display_section']
+                    ?? $field['section']
+                    ?? ''
+                ) === $sectionKey
                 && (
                     $placeReportReadMode === 'moderation'
                     || empty($field['hide_public'])
@@ -447,10 +451,7 @@ foreach (
             <?= llama_icon($sectionIcon) ?>
 
             <?= $e(
-                $sectionKey === 'summaries'
-                && $placeReportReadMode === 'scout-report'
-                    ? 'Summaries'
-                    : (string) $section['label']
+                (string) $section['label']
             ) ?>
         </h3>
 
@@ -478,6 +479,28 @@ foreach (
                     </div>
                 </div>
             <?php endforeach; ?>
+
+            <?php
+            $sensorySummaryFields =
+                array_filter(
+                    $fields,
+                    static fn (array $field): bool =>
+                        trim(
+                            (string) (
+                                $field['subsection']
+                                ?? ''
+                            )
+                        ) === ''
+                );
+            ?>
+
+            <?php if ($sensorySummaryFields): ?>
+                <div class="scout-report-grid">
+                    <?php foreach ($sensorySummaryFields as $key => $field): ?>
+                        <?php $renderValue($key, $field); ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
 
         <?php elseif ($sectionKey === 'scout_notes'): ?>
             <ul class="scout-report-notes-list">

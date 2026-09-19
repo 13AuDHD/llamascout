@@ -884,7 +884,8 @@ foreach (
             $placeReportFields,
             static fn (array $field): bool =>
                 (string) (
-                    $field['section']
+                    $field['display_section']
+                    ?? $field['section']
                     ?? ''
                 ) === $sectionKey
         );
@@ -1067,6 +1068,32 @@ foreach (
 
 
                 <?php endforeach; ?>
+
+
+                <?php
+                $sensorySummaryFields =
+                    array_filter(
+                        $sectionFields,
+                        static fn (array $field): bool =>
+                            trim(
+                                (string) (
+                                    $field['subsection']
+                                    ?? ''
+                                )
+                            ) === ''
+                    );
+                ?>
+
+                <?php if ($sensorySummaryFields): ?>
+                    <div class="contribution-grid">
+                        <?php foreach (
+                            $sensorySummaryFields
+                            as $field
+                        ): ?>
+                            <?php $renderField($field); ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
 
 
             <?php else: ?>
