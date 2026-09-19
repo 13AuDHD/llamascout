@@ -195,9 +195,20 @@
         padding-bottom: 2px;
     }
 
-    .admin-user-table td:nth-child(2),
     .admin-user-table td:nth-child(6) {
         grid-column: 1 / -1;
+    }
+
+    .admin-user-table td:nth-child(2),
+    .admin-user-table td:nth-child(3),
+    .admin-user-table td:nth-child(4),
+    .admin-user-table td:nth-child(5) {
+        align-self: start;
+    }
+
+    .admin-user-table td:nth-child(3) .admin-status-pill {
+        justify-self: start;
+        width: auto;
     }
 
     .admin-user-table td:not(:first-child)::before {
@@ -224,14 +235,13 @@
     }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 450px) {
 
     .admin-user-table tr {
         grid-template-columns: 1fr;
     }
 
     .admin-user-table td,
-    .admin-user-table td:nth-child(2),
     .admin-user-table td:nth-child(6) {
         grid-column: 1;
     }
