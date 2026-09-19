@@ -20,6 +20,91 @@
 
     }
 
+    const unitToggle =
+        weatherSection.querySelector(
+            '[data-weather-unit-toggle]'
+        );
+
+    const unitLabels =
+        weatherSection.querySelectorAll(
+            '[data-weather-unit-label]'
+        );
+
+    const weatherUnitStorageKey =
+        'llamaScoutWeatherUnit';
+
+    let weatherUnit = (() => {
+
+        try {
+
+            return window.localStorage.getItem(
+                weatherUnitStorageKey
+            ) === 'C'
+                ? 'C'
+                : 'F';
+
+        } catch (error) {
+
+            return 'F';
+
+        }
+
+    })();
+
+    let lastWeatherData = null;
+
+    const setWeatherUnitPreference = (unit) => {
+
+        weatherUnit = unit === 'C' ? 'C' : 'F';
+
+        try {
+
+            window.localStorage.setItem(
+                weatherUnitStorageKey,
+                weatherUnit
+            );
+
+        } catch (error) {
+
+            // The current page can still use the selected unit.
+
+        }
+
+    };
+
+    const syncWeatherUnitControl = () => {
+
+        weatherSection.dataset.weatherUnit = weatherUnit;
+
+        if (unitToggle) {
+
+            const useCelsius = weatherUnit === 'C';
+
+            unitToggle.setAttribute(
+                'aria-checked',
+                useCelsius ? 'true' : 'false'
+            );
+
+            unitToggle.setAttribute(
+                'aria-label',
+                useCelsius
+                    ? 'Use Fahrenheit'
+                    : 'Use Celsius'
+            );
+
+        }
+
+        unitLabels.forEach((label) => {
+
+            label.classList.toggle(
+                'is-active',
+                label.dataset.weatherUnitLabel === weatherUnit
+            );
+
+        });
+
+    };
+
     const escapeHtml = (value) => {
 
         const element = document.createElement('div');
@@ -103,6 +188,43 @@
         const parsed = number(value);
 
         return parsed === null ? null : Math.round(parsed);
+
+    };
+
+    const temperature = (fahrenheit) => {
+
+        const parsed = number(fahrenheit);
+
+        if (parsed === null) {
+
+            return null;
+
+        }
+
+        return weatherUnit === 'C'
+            ? Math.round((parsed - 32) * 5 / 9)
+            : Math.round(parsed);
+
+    };
+
+    const temperatureUnit = () =>
+        weatherUnit === 'C'
+            ? '&#176;C'
+            : '&#176;F';
+
+    const wind = (mph) => {
+
+        const parsed = number(mph);
+
+        if (parsed === null) {
+
+            return null;
+
+        }
+
+        return weatherUnit === 'C'
+            ? `${Math.round(parsed * 1.609344)} km/h`
+            : `${Math.round(parsed)} mph`;
 
     };
 
@@ -378,6 +500,8 @@
 
     const renderWeather = (data) => {
 
+        lastWeatherData = data;
+
         const weather = data.weather || {};
 
         const forecast = weather.forecast || {};
@@ -392,11 +516,11 @@
 
         const currentTemperature =
 
-            round(current.temperature_2m);
+            temperature(current.temperature_2m);
 
         const apparentTemperature =
 
-            round(current.apparent_temperature);
+            temperature(current.apparent_temperature);
 
         const humidity =
 
@@ -404,11 +528,11 @@
 
         const windSpeed =
 
-            round(current.wind_speed_10m);
+            wind(current.wind_speed_10m);
 
         const windGusts =
 
-            round(current.wind_gusts_10m);
+            wind(current.wind_gusts_10m);
 
         const currentWeather = weatherInfo(
 
@@ -472,7 +596,7 @@
 
                                 ? '&mdash;'
 
-                                : `${currentTemperature}&#176;F`
+                                : `${currentTemperature}${temperatureUnit()}`
 
                         }
 
@@ -508,7 +632,7 @@
 
                                     <strong>
 
-                                        ${apparentTemperature}&#176;F
+                                        ${apparentTemperature}${temperatureUnit()}
 
                                     </strong>
 
@@ -556,7 +680,7 @@
 
                                     <strong>
 
-                                        ${windSpeed} mph
+                                        ${escapeHtml(windSpeed)}
 
                                     </strong>
 
@@ -580,7 +704,7 @@
 
                                     <strong>
 
-                                        ${windGusts} mph
+                                        ${escapeHtml(windGusts)}
 
                                     </strong>
 
@@ -692,7 +816,7 @@
 
                 const high =
 
-                    round(
+                    temperature(
 
                         daily.temperature_2m_max?.[index]
 
@@ -700,7 +824,7 @@
 
                 const low =
 
-                    round(
+                    temperature(
 
                         daily.temperature_2m_min?.[index]
 
@@ -716,7 +840,7 @@
 
                 const maxWind =
 
-                    round(
+                    wind(
 
                         daily.wind_speed_10m_max?.[index]
 
@@ -754,7 +878,7 @@
 
                                         ? '&mdash;'
 
-                                        : `${high}&#176;`
+                                        : `${high}${temperatureUnit()}`
 
                                 }
 
@@ -768,7 +892,7 @@
 
                                         ? '&mdash;'
 
-                                        : `${low}&#176;`
+                                        : `${low}${temperatureUnit()}`
 
                                 }
 
@@ -808,7 +932,7 @@
 
                                         ${iconHtml('at-wind-strength')}
 
-                                        ${maxWind} mph
+                                        ${escapeHtml(maxWind)}
 
                                     </span>
 
@@ -929,6 +1053,31 @@
         }
 
     };
+
+    syncWeatherUnitControl();
+
+    if (unitToggle) {
+
+        unitToggle.addEventListener(
+            'click',
+            () => {
+
+                setWeatherUnitPreference(
+                    weatherUnit === 'C' ? 'F' : 'C'
+                );
+
+                syncWeatherUnitControl();
+
+                if (lastWeatherData) {
+
+                    renderWeather(lastWeatherData);
+
+                }
+
+            }
+        );
+
+    }
 
     loadWeather();
 
