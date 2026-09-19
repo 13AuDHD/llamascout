@@ -978,3 +978,57 @@ function send_support_status_email(
     );
 }
 
+
+
+/* =========================================================
+   MEMBERSHIP LIFECYCLE
+   ========================================================= */
+
+function send_membership_lifecycle_email(
+    PDO $db,
+    array $user,
+    string $templateKey,
+    array $context
+): bool {
+    $allowedTemplates = [
+        'llamaversary',
+        'membership_started',
+        'membership_cancel_scheduled',
+        'membership_payment_failed',
+        'membership_ended',
+        'complimentary_started',
+        'complimentary_ending',
+    ];
+
+    if (!in_array($templateKey, $allowedTemplates, true)) {
+        throw new InvalidArgumentException(
+            'Unknown membership lifecycle email template.'
+        );
+    }
+
+    $email = trim(
+        (string) ($user['email'] ?? '')
+    );
+
+    $userId = (int) ($user['id'] ?? 0);
+
+    if (
+        $userId < 1
+        || $email === ''
+        || !filter_var(
+            $email,
+            FILTER_VALIDATE_EMAIL
+        )
+    ) {
+        return false;
+    }
+
+    return llama_email_send_template(
+        $db,
+        $templateKey,
+        $email,
+        $context,
+        false,
+        $userId
+    );
+}
