@@ -1057,7 +1057,7 @@ function llama_place_report_fields(): array
      */
     $fieldHelp = [
         'type' =>
-            'Choose the kind of place someone would recognize when planning a stay. For example: dispersed camping for an undeveloped public-land site, retail parking for an overnight store lot, or travel center for a Love’s-style stop.',
+            'Choose the kind of place someone would recognize when planning a stay. For example: dispersed camping for an undeveloped public-land site, retail parking for an overnight store lot, or travel center for a Loveâs-style stop.',
         'region' =>
             'Use the local administrative area when one exists. Examples include Pagosa Ranger District, Moab Field Office, a national park district, or a named city neighborhood. For an urban place with no useful region, leave this blank.',
         'land_manager' =>
@@ -1082,6 +1082,10 @@ function llama_place_report_fields(): array
             'Rate the access road as a whole. Consider surface, rocks, ruts, grades, width, water crossings, and other obstacles from the normal road network to the Place.',
         'road_stress' =>
             'This is about how stressful the drive feels, not just technical difficulty. Narrow roads, exposure, blind corners, drop-offs, traffic, or nowhere to pass can make an otherwise easy road stressful.',
+        'sensory_smoke_risk' =>
+            'Rate the chance that smoke from nearby campsites or campfires will drift into this site. Closer neighboring campsites, frequent campfires, and normal wind direction can increase the risk; more separation generally lowers it.',
+        'sensory_strong_odors' =>
+            'Rate the likelihood or intensity of strong unpleasant odors at the site. Examples include animal waste, dumpsters, sewage, factories or industrial activity, livestock, or other persistent smells.',
         'daytime_sensory_comfort' =>
             'Give an overall daytime sensory rating using what you observed: noise, traffic, crowds, light, smells, movement, and unpredictability. This is broader than any one sensory question.',
         'nighttime_sensory_comfort' =>
@@ -1092,6 +1096,18 @@ function llama_place_report_fields(): array
             'Rate how consistent the environment is. Low means sudden or irregular traffic, people, noises, lights, or other surprises are common. High means the environment is steady and easy to anticipate.',
         'mobility_device_friendly' =>
             'Think about mobility aids such as a cane, walker, rollator, crutches, or mobility scooter. Wheelchair access has its own question. Consider rocks, roots, mud, slopes, and other obstacles around the site.',
+        'wildfire_risk' =>
+            'Consider the wildfire danger around the Place and, especially, whether dense trees, brush, or fire between the site and the exit could make leaving difficult or unsafe. This is about the setting and escape risk, not a current fire forecast.',
+        'wildlife_risk' =>
+            'Choose Yes when potentially dangerous wildlife is a realistic concern here. Examples include bears, mountain lions, bison, venomous snakes, or other animals that could seriously injure someone.',
+        'traffic_hazard' =>
+            'Choose Yes when the site is close enough to a road that passing vehicles could create a safety hazard, such as vehicles passing immediately beside the campsite, parking area, or people outside the vehicle.',
+        'emergency_access' =>
+            'Can an ambulance, fire engine, or other normal emergency vehicle reasonably reach this location? A Place may be drivable in your own vehicle but still be unsuitable for an ambulance or rescue vehicle. If evacuation would realistically require an airlift, answer No.',
+        'warning_motorized_recreation_traffic' =>
+            'Choose Yes when OHVs, side-by-sides, ATVs, dirt bikes, or similar recreational vehicles regularly travel through or immediately around the Place.',
+        'warning_blind_turn_traffic_nearby' =>
+            'Choose Yes when a nearby curve or blind turn limits visibility of the campsite, entrance, or parked vehicles, making it harder for approaching traffic to see the Place in time.',
         'road_exposure' =>
             'How exposed is the campsite itself to the nearby road and passing traffic? Consider how close vehicles pass, how visible the site is from the road, and whether traffic feels intrusive.',
         'designated_sites_only' =>
@@ -1104,6 +1120,8 @@ function llama_place_report_fields(): array
             'Choose Yes when the land manager asks campers to use already-disturbed or established sites when possible, but does not strictly require camping in marked designated sites.',
         'residential_use_prohibited' =>
             'This refers to rules against using the Place as a residence or long-term living location. Temporary overnight camping may still be allowed even when residential use is prohibited.',
+        'monsoon_risk' =>
+            'During monsoon season or other intense summer storms, consider whether heavy rain could flood the site or access road, create washes, turn the road to mud, or leave a vehicle stuck or unable to get out.',
         'stay_limit_days' =>
             'Choose the normal stay limit that applies here. Use Permit Limit when the permit itself controls how long someone may remain, or Varies by season when the limit changes during the year.',
         'fee' =>
