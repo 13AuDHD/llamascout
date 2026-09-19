@@ -93,20 +93,22 @@ function llama_place_draft_snapshot_photos(
     $destinationRelative = llama_place_draft_photo_relative_dir($userId, $draftId);
     $destinationAbsolute = llama_place_draft_photo_absolute_dir($userId, $draftId);
 
-    if (!$submittedPhotos) {
-        llama_photo_remove_tree($destinationAbsolute);
-
-        if ($stageToken !== '') {
-            try {
-                llama_photo_stage_abandon('add-place', $userId, $stageToken);
-            } catch (Throwable) {
-            }
+    /*
+     * The server-side staging manifest is the source of truth for a live
+     * uploader batch. The browser's photos_json field is useful for captions
+     * and ordering, but a stale/missed hidden-field sync must never turn a
+     * valid staged batch into "zero photos" and detach it from the draft.
+     *
+     * This matters especially for Save for Later, which uses a background
+     * fetch rather than the form's normal submit event. If JavaScript misses
+     * one sync, the files can still be safely recovered from their manifest.
+     */
+    if ($stageToken === '') {
+        if (!$submittedPhotos) {
+            llama_photo_remove_tree($destinationAbsolute);
+            return [];
         }
 
-        return [];
-    }
-
-    if ($stageToken === '') {
         throw new InvalidArgumentException(
             'The photo upload session is missing. Please upload the photos again.'
         );
@@ -125,6 +127,51 @@ function llama_place_draft_snapshot_photos(
         if ($path !== '') {
             $manifestByPath[$path] = $photo;
         }
+    }
+
+    /*
+     * If the stage itself is empty, the user really has removed every staged
+     * photo. Clear the draft snapshot and retire that empty stage.
+     */
+    if (!$manifestByPath) {
+        llama_photo_remove_tree($destinationAbsolute);
+
+        try {
+            llama_photo_stage_abandon('add-place', $userId, $stageToken);
+        } catch (Throwable) {
+        }
+
+        return [];
+    }
+
+    /*
+     * Merge browser metadata over the manifest, but never require the browser
+     * list to contain every photo. A valid manifest entry must survive even if
+     * photos_json arrived empty or stale.
+     */
+    $submittedByPath = [];
+
+    foreach ($submittedPhotos as $submitted) {
+        if (!is_array($submitted)) {
+            continue;
+        }
+
+        $path = trim((string) ($submitted['path'] ?? ''));
+        if ($path !== '') {
+            $submittedByPath[$path] = $submitted;
+        }
+    }
+
+    $submittedPhotos = [];
+
+    foreach ($manifestByPath as $path => $manifestPhoto) {
+        $submitted = $submittedByPath[$path] ?? [];
+
+        $submittedPhotos[] = array_merge(
+            $manifestPhoto,
+            is_array($submitted) ? $submitted : [],
+            ['path' => $path]
+        );
     }
 
     $expectedPrefix = llama_photo_stage_relative_dir('add-place', $userId, $stageToken) . '/';
