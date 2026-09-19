@@ -14,6 +14,7 @@ require_once __DIR__ . '/mail.php';
 
 
 const LLAMA_MEMBERSHIP_EMAIL_INTERVAL_SECONDS = 60;
+const LLAMA_LLAMAVERSARY_GRACE_DAYS = 7;
 
 
 function llama_membership_email_storage_ready(
@@ -184,6 +185,136 @@ function llama_membership_email_plan(
 }
 
 
+function llama_membership_email_ordinal(
+    int $number
+): string {
+    $number = max(1, $number);
+    $mod100 = $number % 100;
+
+    if ($mod100 >= 11 && $mod100 <= 13) {
+        $suffix = 'th';
+    } else {
+        $suffix = match ($number % 10) {
+            1 => 'st',
+            2 => 'nd',
+            3 => 'rd',
+            default => 'th',
+        };
+    }
+
+    return $number . $suffix;
+}
+
+
+function llama_membership_email_anniversary_date(
+    string $value,
+    ?string $timezone = null
+): string {
+    $value = trim($value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    $timezone = trim((string) $timezone);
+
+    try {
+        $viewerZone = new DateTimeZone(
+            $timezone !== ''
+                ? $timezone
+                : 'UTC'
+        );
+    } catch (Throwable) {
+        $viewerZone = new DateTimeZone('UTC');
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
+            )
+        )
+            ->setTimezone($viewerZone)
+            ->format('F j, Y');
+    } catch (Throwable) {
+        return $value;
+    }
+}
+
+
+function llama_membership_email_anniversary_window(): array
+{
+    $utc = new DateTimeZone('UTC');
+    $today = new DateTimeImmutable('today', $utc);
+    $window = [];
+
+    for (
+        $offset = 0;
+        $offset <= LLAMA_LLAMAVERSARY_GRACE_DAYS;
+        $offset++
+    ) {
+        $date = $today->modify('-' . $offset . ' days');
+        $monthDay = $date->format('m-d');
+
+        $window[$monthDay] = $date;
+
+        /*
+         * A Feb 29 signup celebrates on Feb 28 in non-leap years.
+         */
+        if (
+            $monthDay === '02-28'
+            && $date->format('L') !== '1'
+        ) {
+            $window['02-29'] = $date;
+        }
+    }
+
+    return $window;
+}
+
+
+function llama_membership_email_anniversary_match(
+    string $createdAt,
+    array $window
+): ?array {
+    $createdAt = trim($createdAt);
+
+    if ($createdAt === '') {
+        return null;
+    }
+
+    try {
+        $created = new DateTimeImmutable(
+            $createdAt,
+            new DateTimeZone('UTC')
+        );
+    } catch (Throwable) {
+        return null;
+    }
+
+    $monthDay = $created->format('m-d');
+
+    if (!isset($window[$monthDay])) {
+        return null;
+    }
+
+    $anniversaryDate = $window[$monthDay];
+    $years =
+        (int) $anniversaryDate->format('Y')
+        - (int) $created->format('Y');
+
+    if ($years < 1) {
+        return null;
+    }
+
+    return [
+        'years' => $years,
+        'date' => $anniversaryDate->format('Y-m-d'),
+    ];
+}
+
+
 function llama_membership_email_user_context(
     array $user
 ): array {
@@ -217,6 +348,30 @@ function llama_membership_email_user_context(
             ?? null
         );
 
+    $anniversaryYears =
+        max(
+            0,
+            (int) (
+                $user['anniversary_years']
+                ?? 0
+            )
+        );
+
+    $yearsWithUs =
+        $anniversaryYears === 1
+            ? '1 year'
+            : $anniversaryYears . ' years';
+
+    $memberSince =
+        llama_membership_email_anniversary_date(
+            (string) (
+                $user['created_at']
+                ?? ''
+            ),
+            $user['timezone']
+            ?? null
+        );
+
     return [
         'display_name' =>
             $displayName,
@@ -226,6 +381,19 @@ function llama_membership_email_user_context(
                 $user['username']
                 ?? ''
             ),
+
+        'years_with_us' =>
+            $yearsWithUs,
+
+        'anniversary_number' =>
+            $anniversaryYears > 0
+                ? llama_membership_email_ordinal(
+                    $anniversaryYears
+                )
+                : '',
+
+        'member_since' =>
+            $memberSince,
 
         'membership_plan' =>
             llama_membership_email_plan(
@@ -437,6 +605,97 @@ function llama_membership_email_mark_maintenance_run(
 }
 
 
+function llama_membership_email_anniversary_candidates(
+    PDO $db
+): array {
+    $window = llama_membership_email_anniversary_window();
+    $monthDays = array_keys($window);
+
+    if (!$monthDays) {
+        return [];
+    }
+
+    $placeholders =
+        implode(
+            ', ',
+            array_fill(
+                0,
+                count($monthDays),
+                '?'
+            )
+        );
+
+    $stmt = $db->prepare(
+        'SELECT
+            id,
+            email,
+            username,
+            display_name,
+            timezone,
+            membership_interval,
+            membership_ends_at,
+            created_at
+         FROM users
+         WHERE email_verified_at IS NOT NULL
+           AND anonymized_at IS NULL
+           AND (
+                status IS NULL
+                OR status NOT IN
+                (
+                    "suspended",
+                    "disabled"
+                )
+           )
+           AND created_at IS NOT NULL
+           AND created_at <= DATE_SUB(
+                UTC_TIMESTAMP(),
+                INTERVAL 1 YEAR
+           )
+           AND DATE_FORMAT(
+                created_at,
+                "%m-%d"
+           ) IN ('
+           . $placeholders
+           . ')
+         ORDER BY id ASC'
+    );
+
+    $stmt->execute($monthDays);
+
+    $rows =
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+
+    $candidates = [];
+
+    foreach ($rows as $row) {
+        $match =
+            llama_membership_email_anniversary_match(
+                (string) (
+                    $row['created_at']
+                    ?? ''
+                ),
+                $window
+            );
+
+        if (!$match) {
+            continue;
+        }
+
+        $row['anniversary_years'] =
+            (int) $match['years'];
+        $row['anniversary_date'] =
+            (string) $match['date'];
+
+        $candidates[] = $row;
+    }
+
+    return $candidates;
+}
+
+
 function llama_membership_email_paid_candidates(
     PDO $db,
     int $limit
@@ -611,6 +870,87 @@ function llama_run_membership_email_maintenance(
                     $limit
                 )
             );
+
+        $anniversaryProcessed = 0;
+
+        foreach (
+            llama_membership_email_anniversary_candidates(
+                $db
+            )
+            as $user
+        ) {
+            try {
+                if ($anniversaryProcessed >= $limit) {
+                    break;
+                }
+
+                $years =
+                    (int) (
+                        $user['anniversary_years']
+                        ?? 0
+                    );
+
+                if ($years < 1) {
+                    continue;
+                }
+
+                $eventKey =
+                    'llamaversary:'
+                    . $years;
+
+                if (
+                    llama_membership_email_event_sent(
+                        $db,
+                        (int) (
+                            $user['id']
+                            ?? 0
+                        ),
+                        $eventKey
+                    )
+                ) {
+                    continue;
+                }
+
+                $anniversaryProcessed++;
+
+                if (
+                    llama_membership_email_send_once(
+                        $db,
+                        $user,
+                        'llamaversary',
+                        $eventKey
+                    )
+                ) {
+                    $summary['sent']++;
+                }
+            } catch (Throwable $exception) {
+                $summary['failed']++;
+
+                if (
+                    function_exists(
+                        'llama_log_caught_exception'
+                    )
+                ) {
+                    llama_log_caught_exception(
+                        $exception,
+                        'membership.llamaversary_email',
+                        [
+                            'user_id' =>
+                                (int) (
+                                    $user['id']
+                                    ?? 0
+                                ),
+
+                            'anniversary_years' =>
+                                (int) (
+                                    $user['anniversary_years']
+                                    ?? 0
+                                ),
+                        ]
+                    );
+                }
+            }
+        }
 
         foreach (
             llama_membership_email_paid_candidates(
