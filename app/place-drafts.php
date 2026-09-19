@@ -387,6 +387,145 @@ function llama_place_draft_count(PDO $db, int $userId): int
     return (int) $stmt->fetchColumn();
 }
 
+
+function llama_place_draft_recoverable_stages(
+    int $userId,
+    int $maxAgeSeconds = 86400
+): array {
+    if ($userId < 1) {
+        return [];
+    }
+
+    $root = dirname(__DIR__)
+        . '/uploads/staging/add-place/user-'
+        . $userId;
+
+    if (!is_dir($root)) {
+        return [];
+    }
+
+    $now = time();
+    $batches = [];
+    $entries = @scandir($root);
+
+    if (!is_array($entries)) {
+        return [];
+    }
+
+    foreach ($entries as $token) {
+        if (!preg_match('/^[a-f0-9]{32}$/', (string) $token)) {
+            continue;
+        }
+
+        $directory = $root . '/' . $token;
+        $manifestPath = $directory . '/manifest.json';
+
+        if (!is_dir($directory) || !is_file($manifestPath)) {
+            continue;
+        }
+
+        $modifiedAt = (int) @filemtime($manifestPath);
+        if (
+            $modifiedAt < 1
+            || ($now - $modifiedAt) > $maxAgeSeconds
+        ) {
+            continue;
+        }
+
+        $manifest = llama_photo_read_manifest(
+            'add-place',
+            $userId,
+            (string) $token
+        );
+
+        $validPhotos = [];
+        foreach ($manifest as $photo) {
+            if (!is_array($photo)) {
+                continue;
+            }
+
+            $relative = trim((string) ($photo['path'] ?? ''));
+            if (
+                $relative === ''
+                || !is_file(dirname(__DIR__) . $relative)
+            ) {
+                continue;
+            }
+
+            $validPhotos[] = $photo;
+        }
+
+        if (!$validPhotos) {
+            continue;
+        }
+
+        $batches[] = [
+            'token' => (string) $token,
+            'count' => count($validPhotos),
+            'modified_at' => $modifiedAt,
+        ];
+    }
+
+    usort(
+        $batches,
+        static fn (array $a, array $b): int =>
+            ((int) ($b['modified_at'] ?? 0))
+            <=> ((int) ($a['modified_at'] ?? 0))
+    );
+
+    return $batches;
+}
+
+function llama_place_draft_recover_staged_photos(
+    PDO $db,
+    int $userId,
+    int $draftId,
+    string $stageToken
+): int {
+    if ($userId < 1 || $draftId < 1) {
+        throw new InvalidArgumentException('A saved Place is required.');
+    }
+
+    $draft = llama_place_draft_for_user($db, $userId, $draftId);
+    if (!$draft) {
+        throw new RuntimeException('That saved Place could not be found.');
+    }
+
+    if (!empty($draft['photos'])) {
+        throw new RuntimeException('This saved Place already has photos attached.');
+    }
+
+    $stageToken = llama_photo_stage_token($stageToken);
+    $manifest = llama_photo_read_manifest('add-place', $userId, $stageToken);
+
+    if (!$manifest) {
+        throw new RuntimeException('That staged photo batch is no longer available.');
+    }
+
+    $savedPhotos = llama_place_draft_snapshot_photos(
+        $userId,
+        $draftId,
+        $stageToken,
+        $manifest
+    );
+
+    $photosJson = json_encode(
+        $savedPhotos,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+        | JSON_THROW_ON_ERROR
+    );
+
+    $stmt = $db->prepare(
+        'UPDATE place_drafts
+         SET photos_json = ?, updated_at = UTC_TIMESTAMP()
+         WHERE id = ? AND user_id = ?'
+    );
+    $stmt->execute([$photosJson, $draftId, $userId]);
+
+    return count($savedPhotos);
+}
+
 function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input): int
 {
     if ($userId < 1) {
