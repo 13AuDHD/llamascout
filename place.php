@@ -216,7 +216,6 @@ $amenityLabels = [
     'dump_station' => ['caravan', 'Dump station'],
     'wifi' => ['at-wifi', 'WiFi'],
     'laundry' => ['wash-machine', 'Laundry'],
-    'food_storage_required' => ['bear-paw', 'Food storage required'],
 ];
 
 $details = $hasMemberAccess ? ($place['details'] ?? []) : [];

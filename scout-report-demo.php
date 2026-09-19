@@ -315,6 +315,7 @@ $rules = [
     'drone_use_legal' => 1,
     'target_shooting_allowed' => 0,
     'dogs_required_to_be_leashed' => 1,
+    'food_storage_required' => 1,
     'pack_it_in_pack_it_out' => 1,
     'existing_sites_encouraged' => 1,
     'residential_use_prohibited' => 1,
@@ -359,7 +360,6 @@ $amenityLabels = [
     'dump_station' => ['caravan', 'Dump station'],
     'wifi' => ['at-wifi', 'WiFi'],
     'laundry' => ['wash-machine', 'Laundry'],
-    'food_storage_required' => ['bear-paw', 'Food storage required'],
 ];
 
 $demoAmenities = [
@@ -374,7 +374,6 @@ $demoAmenities = [
     'dump_station' => false,
     'wifi' => true,
     'laundry' => false,
-    'food_storage_required' => false,
 ];
 
 /*
