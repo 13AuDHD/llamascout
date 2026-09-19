@@ -810,14 +810,56 @@ function llama_email_send_template_result(
         $rendered['html']
     );
 
-    llama_email_log_send(
-        $db,
-        $templateKey,
-        $recipient,
-        $success,
-        $isTest,
-        $userId
-    );
+    $logRecorded = true;
+
+    try {
+        llama_email_log_send(
+            $db,
+            $templateKey,
+            $recipient,
+            $success,
+            $isTest,
+            $userId
+        );
+    } catch (Throwable $logException) {
+        /*
+         * SMTP has already completed at this point. A database logging
+         * failure must never turn a successful delivery into a thrown
+         * exception, because retrying the caller could send the same email
+         * a second time.
+         */
+        $logRecorded = false;
+
+        if (
+            function_exists(
+                'llama_log_caught_exception'
+            )
+        ) {
+            llama_log_caught_exception(
+                $logException,
+                'email.send_log',
+                [
+                    'template_key' =>
+                        $templateKey,
+                    'recipient' =>
+                        strtolower(
+                            trim($recipient)
+                        ),
+                    'user_id' =>
+                        $userId,
+                    'is_test' =>
+                        $isTest,
+                    'transport_success' =>
+                        $success,
+                ]
+            );
+        } else {
+            error_log(
+                'Llama Scout email send-log error: '
+                . $logException->getMessage()
+            );
+        }
+    }
 
     if ($success) {
         return llama_email_send_result(
@@ -826,8 +868,12 @@ function llama_email_send_template_result(
             $recipient,
             $isTest,
             $userId,
-            'delivered',
-            'Email sent successfully.'
+            $logRecorded
+                ? 'delivered'
+                : 'delivered_log_failed',
+            $logRecorded
+                ? 'Email sent successfully.'
+                : 'Email sent successfully, but the send log could not be recorded.'
         );
     }
 
@@ -837,8 +883,12 @@ function llama_email_send_template_result(
         $recipient,
         $isTest,
         $userId,
-        'transport_failed',
-        'The mail transport rejected or could not deliver the message.',
+        $logRecorded
+            ? 'transport_failed'
+            : 'transport_failed_log_failed',
+        $logRecorded
+            ? 'The mail transport rejected or could not deliver the message.'
+            : 'The mail transport failed, and the send log could not be recorded.',
         true
     );
 }
@@ -956,7 +1006,7 @@ function llama_email_sample_context(
         'complimentary_days' => '90',
         'invite_expires' => 'September 23, 2026',
         'invite_reason' =>
-            'WeÃ¢ÂÂd like you to explore the complete Llama Scout experience.',
+            'WeÃÂ¢ÃÂÃÂd like you to explore the complete Llama Scout experience.',
         'invite_url' =>
             'https://account.llamascout.com/complimentary-invite.php?token=TEST',
 
