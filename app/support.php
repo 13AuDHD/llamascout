@@ -663,36 +663,16 @@ function llama_support_send_notifications(
         $adminEmail !== ''
         && empty($request['admin_notified_at'])
     ) {
-        $adminContext = [
-            'ticket_number' =>
-                $ticketNumber,
-            'support_category' =>
-                $categoryLabel,
-            'requester_name' =>
-                (string) $request['name'],
-            'requester_email' =>
-                (string) $request['email'],
-            'preferred_contact' =>
-                $preferredContactLabel,
-            'request_details' =>
-                $requestDetailsText,
-            'ticket_subject' =>
-                (string) $request['subject'],
-            'ticket_message' =>
-                (string) $request['message'],
-            'admin_ticket_url' =>
-                'https://admin.llamascout.com/support.php?id='
-                . $requestId,
-        ];
-
         try {
-            $sent = llama_email_send_template(
+            $sent = send_support_admin_new_ticket_email(
                 $db,
-                'support_admin_new_ticket',
                 $adminEmail,
-                $adminContext,
-                false,
-                null
+                $request,
+                $requestId,
+                $ticketNumber,
+                $categoryLabel,
+                $preferredContactLabel,
+                $requestDetailsText
             );
 
             if ($sent) {
@@ -742,33 +722,13 @@ function llama_support_send_notifications(
                 . (string) $request['error_reference'];
         }
 
-        $customerContext = [
-            'requester_name' =>
-                trim((string) $request['name']) !== ''
-                    ? trim((string) $request['name'])
-                    : 'there',
-            'ticket_number' =>
-                $ticketNumber,
-            'ticket_subject' =>
-                (string) $request['subject'],
-            'preferred_contact' =>
-                $preferredContactLabel,
-            'ticket_extra_details' =>
-                implode("\n", $customerExtraDetails),
-            'support_url' =>
-                'https://llamascout.com/contact.php',
-        ];
-
         try {
-            $sent = llama_email_send_template(
+            $sent = send_support_ticket_received_email(
                 $db,
-                'support_ticket_received',
-                $customerEmail,
-                $customerContext,
-                false,
-                !empty($request['user_id'])
-                    ? (int) $request['user_id']
-                    : null
+                $request,
+                $ticketNumber,
+                $preferredContactLabel,
+                implode("\n", $customerExtraDetails)
             );
 
             if ($sent) {
@@ -894,38 +854,12 @@ function llama_support_send_status_notification(
         $ticketNumber = (string) $requestId;
     }
 
-    $templateKey = match ($newStatus) {
-        'waiting' =>
-            'support_ticket_waiting',
-        'resolved' =>
-            'support_ticket_resolved',
-        default =>
-            'support_ticket_reopened',
-    };
-
-    $context = [
-        'requester_name' =>
-            trim((string) ($request['name'] ?? '')) !== ''
-                ? trim((string) $request['name'])
-                : 'there',
-        'ticket_number' =>
-            $ticketNumber,
-        'ticket_subject' =>
-            (string) ($request['subject'] ?? ''),
-        'support_url' =>
-            'https://llamascout.com/contact.php',
-    ];
-
     try {
-        llama_email_send_template(
+        send_support_status_email(
             $db,
-            $templateKey,
-            $email,
-            $context,
-            false,
-            !empty($request['user_id'])
-                ? (int) $request['user_id']
-                : null
+            $request,
+            $newStatus,
+            $ticketNumber
         );
     } catch (Throwable $exception) {
         if (
