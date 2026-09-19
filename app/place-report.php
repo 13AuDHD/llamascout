@@ -317,7 +317,6 @@ function llama_place_report_field_icon(
         'amenity_dump_station' => 'caravan',
         'amenity_wifi' => 'at-wifi',
         'amenity_laundry' => 'wash-machine',
-        'amenity_food_storage_required' => 'bear-paw',
 
         'connectivity_overall' => 'antenna-bars-5',
         'connectivity_t_mobile' => 'at-signal',
@@ -385,6 +384,7 @@ function llama_place_report_field_icon(
         'drone_use_legal' => 'at-drone-tech',
         'target_shooting_allowed' => 'bullseye',
         'dogs_required_to_be_leashed' => 'dog-leash',
+        'food_storage_required' => 'bear-paw',
         'pack_it_in_pack_it_out' => 'trash',
         'existing_sites_encouraged' => 'at-directions-post',
         'residential_use_prohibited' => 'home-off',
@@ -693,7 +693,6 @@ function llama_place_report_fields(): array
         'dump_station' => 'Dump station',
         'wifi' => 'WiFi',
         'laundry' => 'Laundry',
-        'food_storage_required' => 'Food storage required',
     ] as $suffix => $label) {
         $add('amenity_' . $suffix, $label, 'amenities', 'checkbox', 'amenities.' . $suffix, [
             'points_categories' => ['amenities'],
@@ -900,6 +899,7 @@ function llama_place_report_fields(): array
     }
     foreach ([
         'dogs_required_to_be_leashed' => 'Dogs required to be leashed?',
+        'food_storage_required' => 'Food storage required?',
         'existing_sites_encouraged' => 'Existing sites encouraged?',
         'pack_it_in_pack_it_out' => 'Pack it in / pack it out?',
         'residential_use_prohibited' => 'Residential use prohibited?',

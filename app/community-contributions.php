@@ -775,6 +775,13 @@ function community_place_update_field_definitions(): array
             'table' => 'place_rules',
             'column' => 'dogs_required_to_be_leashed',
         ],
+        'rules.food_storage_required' => [
+            'label' => 'Food storage required?',
+            'group' => 'Rules and seasons',
+            'type' => 'bool',
+            'table' => 'place_rules',
+            'column' => 'food_storage_required',
+        ],
         'rules.nearest_town' => [
             'label' => 'Nearest town',
             'group' => 'Rules and seasons',

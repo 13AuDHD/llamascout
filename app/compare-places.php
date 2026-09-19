@@ -1192,10 +1192,6 @@ function llama_compare_sections(): array
                     'laundry'
                 ),
 
-                llama_compare_yes_no_row(
-                    'Food storage required',
-                    'food_storage_required'
-                ),
             ],
         ],
     ];

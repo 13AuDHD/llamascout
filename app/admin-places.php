@@ -1163,7 +1163,6 @@ function admin_place_save_amenities(
         'dump_station',
         'wifi',
         'laundry',
-        'food_storage_required',
     ];
 
     admin_place_upsert_row(
@@ -2171,6 +2170,7 @@ function admin_place_save_rules(
         'drone_use_legal' => 'permission',
         'target_shooting_allowed' => 'permission',
         'dogs_required_to_be_leashed' => 'bool',
+        'food_storage_required' => 'bool',
         'current_fire_restrictions_url' => 'text',
         'vehicle_distance_from_road_max_feet' => 'int',
         'minimum_distance_from_water_feet' => 'int',
