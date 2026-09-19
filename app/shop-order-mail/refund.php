@@ -121,12 +121,10 @@ function shop_send_refund_confirmation(
 
     try {
         $sent =
-            llama_email_send_template(
+            send_shop_refund_confirmation_email(
                 $db,
-                'refund_confirmation',
                 $email,
                 $context,
-                false,
                 (int) (
                     $order['user_id']
                     ?? 0
