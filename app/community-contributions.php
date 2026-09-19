@@ -727,9 +727,9 @@ function community_place_update_field_definitions(): array
             'column' => 'dispersed_camping_allowed',
         ],
         'rules.stay_limit_days' => [
-            'label' => 'Stay limit (days)',
+            'label' => 'Stay limit',
             'group' => 'Rules and seasons',
-            'type' => 'int',
+            'type' => 'text',
             'table' => 'place_rules',
             'column' => 'stay_limit_days',
         ],

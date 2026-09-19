@@ -2163,7 +2163,7 @@ function admin_place_save_rules(
         'overnight_camping_allowed' => 'permission',
         'dispersed_camping_allowed' => 'permission',
         'collecting_firewood' => 'permission',
-        'stay_limit_days' => 'int',
+        'stay_limit_days' => 'text',
         'maximum_days_per_60_day_period' => 'int',
         'move_distance_after_stay_miles' => 'decimal',
         'fee' => 'decimal',

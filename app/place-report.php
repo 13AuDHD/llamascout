@@ -915,6 +915,9 @@ function llama_place_report_fields(): array
             '1' => '1 day', '3' => '3 days', '5' => '5 days',
             '7' => '7 days', '10' => '10 days', '14' => '14 days',
             '16' => '16 days', '21' => '21 days', '28' => '28 days',
+            '30' => '30 days',
+            'permit-limit' => 'Permit Limit',
+            'varies-by-season' => 'Varies by season',
         ],
         'points_categories' => ['seasons_rules_services'],
     ]);
