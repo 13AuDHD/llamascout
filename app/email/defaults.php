@@ -1769,6 +1769,70 @@ TEXT,
 HTML,
         ],
 
+                'newsletter_issue' => [
+            'template_key' => 'newsletter_issue',
+            'category' => 'Newsletters',
+            'name' => 'Newsletter Delivery',
+            'description' =>
+                'Shared Email Center template used when a scheduled Llama Scout newsletter is delivered.',
+            'enabled' => 1,
+            'variables' => [
+                'newsletter_subject',
+                'newsletter_type',
+                'newsletter_title',
+                'newsletter_content',
+                'site_url',
+                'email_preferences_url',
+                'newsletter_footer_copy',
+            ],
+            'subject' => '{{newsletter_subject}}',
+            'preheader' => '{{newsletter_title}}',
+            'text_body' => <<<'TEXT'
+{{newsletter_title}}
+
+{{newsletter_content}}
+
+Open Llama Scout:
+{{site_url}}
+
+{{newsletter_footer_copy}}:
+{{email_preferences_url}}
+
+Llama Scout
+Know the place before you go.
+TEXT,
+            'html_body' => <<<'HTML'
+<p style="margin:0 0 8px;color:#667069;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+  {{newsletter_type}}
+</p>
+
+<h1 style="margin:0 0 22px;font-size:30px;line-height:1.2;color:#172822;">
+  {{newsletter_title}}
+</h1>
+
+<div style="margin:0;line-height:1.65;color:#263b33;">
+{{newsletter_content}}
+</div>
+
+<p style="margin:30px 0;">
+  <a
+    href="{{site_url}}"
+    style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:700;"
+  >Open Llama Scout</a>
+</p>
+
+<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 22px;">
+
+<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
+  {{newsletter_footer_copy}}
+  <a
+    href="{{email_preferences_url}}"
+    style="color:#445c52;"
+  >Email Preferences</a>.
+  Account and service messages are not affected.
+</p>
+HTML,
+        ],
 
         'promotion_campaign_announcement' => [
             'template_key' => 'promotion_campaign_announcement',
