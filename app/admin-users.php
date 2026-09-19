@@ -127,10 +127,10 @@ function admin_users_list(
             '(u.last_login_at IS NULL) ASC, u.last_login_at DESC, u.id DESC',
         'login_oldest' =>
             '(u.last_login_at IS NULL) ASC, u.last_login_at ASC, u.id ASC',
-        'contributions_most' =>
-            'contribution_count DESC, u.id DESC',
-        'contributions_least' =>
-            'contribution_count ASC, u.id ASC',
+        'points_most' =>
+            'points_total DESC, u.id DESC',
+        'points_least' =>
+            'points_total ASC, u.id ASC',
         'id_asc' =>
             'u.id ASC',
         'id_desc' =>
@@ -159,17 +159,20 @@ function admin_users_list(
                 ORDER BY r.id
                 SEPARATOR ","
             ) AS role_slugs,
-            (
-                SELECT COUNT(*)
-                FROM place_contributions pc
-                WHERE pc.user_id = u.id
-                  AND pc.status = "approved"
-            ) AS contribution_count
+            COALESCE(point_totals.points_total, 0) AS points_total
          FROM users u
          LEFT JOIN user_roles ur
             ON ur.user_id = u.id
          LEFT JOIN roles r
             ON r.id = ur.role_id
+         LEFT JOIN (
+            SELECT
+                user_id,
+                SUM(points) AS points_total
+            FROM points_ledger
+            GROUP BY user_id
+         ) point_totals
+            ON point_totals.user_id = u.id
          WHERE ' . implode(' AND ', $where) . '
          GROUP BY u.id
          ORDER BY ' . $orderBy . '
