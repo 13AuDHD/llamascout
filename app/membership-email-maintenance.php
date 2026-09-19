@@ -438,6 +438,15 @@ function llama_membership_email_send_once(
     }
 
     if (
+        !llama_membership_lifecycle_email_enabled(
+            $db,
+            $templateKey
+        )
+    ) {
+        return false;
+    }
+
+    if (
         llama_membership_email_event_sent(
             $db,
             $userId,
