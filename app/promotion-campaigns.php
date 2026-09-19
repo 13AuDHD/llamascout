@@ -46,12 +46,6 @@ function llama_marketing_unsubscribe_url(PDO $db, int $userId): string
 }
 
 
-function llama_promotion_email_escape(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
-
 function llama_promotion_campaign_utc_timestamp(
     ?string $value
 ): ?int {
@@ -71,80 +65,6 @@ function llama_promotion_campaign_utc_timestamp(
     } catch (Throwable) {
         return null;
     }
-}
-
-
-function llama_promotion_email_html(
-    string $name,
-    string $body,
-    string $promotionUrl,
-    string $unsubscribeUrl
-): string {
-    $safeName = llama_promotion_email_escape($name);
-    $safeUrl = llama_promotion_email_escape($promotionUrl);
-    $safeUnsubscribe = llama_promotion_email_escape($unsubscribeUrl);
-
-    $paragraphs = preg_split('/\R{2,}/', trim($body)) ?: [];
-    $bodyHtml = '';
-
-    foreach ($paragraphs as $paragraph) {
-        $paragraph = trim($paragraph);
-
-        if ($paragraph === '') {
-            continue;
-        }
-
-        $bodyHtml .= '<p style="margin:0 0 18px;line-height:1.65;">'
-            . nl2br(llama_promotion_email_escape($paragraph))
-            . '</p>';
-    }
-
-    return <<<HTML
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-</head>
-<body style="margin:0;padding:0;background:#f4efe6;font-family:Arial,Helvetica,sans-serif;color:#172822;">
-<div style="max-width:620px;margin:0 auto;padding:32px 18px;">
-<div style="background:#ffffff;border-radius:16px;padding:32px;">
-<p style="margin:0 0 10px;font-size:13px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase;color:#667069;">Llama Scout</p>
-<h1 style="margin:0 0 22px;font-size:28px;line-height:1.2;">{$safeName}</h1>
-
-{$bodyHtml}
-
-<p style="margin:28px 0;">
-<a href="{$safeUrl}" style="display:inline-block;background:#172822;color:#ffffff;padding:14px 22px;border-radius:9px;text-decoration:none;font-weight:bold;">
-View membership offer
-</a>
-</p>
-
-<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 22px;">
-
-<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
-You received this promotional email because your Llama Scout account is eligible for membership offers.
-<a href="{$safeUnsubscribe}" style="color:#445c52;">Unsubscribe from promotional email</a>.
-</p>
-</div>
-</div>
-</body>
-</html>
-HTML;
-}
-
-
-function llama_promotion_email_text(
-    string $body,
-    string $promotionUrl,
-    string $unsubscribeUrl
-): string {
-    return trim($body)
-        . "\n\nView membership offer:\n"
-        . $promotionUrl
-        . "\n\nUnsubscribe from Llama Scout promotional email:\n"
-        . $unsubscribeUrl
-        . "\n";
 }
 
 
@@ -380,141 +300,6 @@ function llama_promotion_email_sample_context(
 }
 
 
-function llama_promotion_plain_text_to_html(string $text): string
-{
-    $paragraphs = preg_split('/\\R{2,}/', trim($text)) ?: [];
-    $html = '';
-
-    foreach ($paragraphs as $paragraph) {
-        $paragraph = trim($paragraph);
-
-        if ($paragraph === '') {
-            continue;
-        }
-
-        $html .= '<p style="margin:0 0 18px;line-height:1.65;">'
-            . nl2br(
-                htmlspecialchars(
-                    $paragraph,
-                    ENT_QUOTES | ENT_SUBSTITUTE,
-                    'UTF-8'
-                )
-            )
-            . '</p>';
-    }
-
-    return $html;
-}
-
-
-function llama_promotion_render_email(
-    PDO $db,
-    array $promotion,
-    string $deliveryType,
-    array $context,
-    ?array $override = null
-): array {
-    $record = $override !== null
-        ? array_merge($promotion, $override)
-        : $promotion;
-
-    $isReminder = $deliveryType === 'reminder';
-
-    $subject = trim((string) (
-        $isReminder
-            ? ($record['reminder_subject'] ?? '')
-            : ($record['email_subject'] ?? '')
-    ));
-
-    $preheader = trim((string) (
-        $isReminder
-            ? ($record['reminder_preheader'] ?? '')
-            : ($record['email_preheader'] ?? '')
-    ));
-
-    $textBody = trim((string) (
-        $isReminder
-            ? ($record['reminder_body_text'] ?? '')
-            : ($record['email_body_text'] ?? '')
-    ));
-
-    $htmlBody = trim((string) (
-        $isReminder
-            ? ($record['reminder_body_html'] ?? '')
-            : ($record['email_body_html'] ?? '')
-    ));
-
-    if ($subject === '' || $textBody === '') {
-        throw new InvalidArgumentException(
-            'Campaign email requires a subject and plain-text fallback.'
-        );
-    }
-
-    $renderedSubject = trim(
-        preg_replace(
-            '/[\\r\\n]+/',
-            ' ',
-            llama_email_replace_variables(
-                $subject,
-                $context,
-                false
-            )
-        ) ?? $subject
-    );
-
-    $renderedPreheader = llama_email_replace_variables(
-        $preheader,
-        $context,
-        false
-    );
-
-    $renderedText = llama_email_replace_variables(
-        $textBody,
-        $context,
-        false
-    );
-
-    if ($htmlBody === '') {
-        $htmlBody = llama_promotion_plain_text_to_html($textBody);
-    }
-
-    $renderedBody = llama_email_replace_variables(
-        $htmlBody,
-        $context,
-        true
-    );
-
-    $safeUnsubscribe = htmlspecialchars(
-        (string) ($context['unsubscribe_url'] ?? ''),
-        ENT_QUOTES | ENT_SUBSTITUTE,
-        'UTF-8'
-    );
-
-    $footer = <<<HTML
-<hr style="border:0;border-top:1px solid #e4e4e0;margin:30px 0 20px;">
-<p style="margin:0;color:#667069;font-size:12px;line-height:1.6;">
-You received this promotional email because your Llama Scout account is eligible for membership offers.
-<a href="{$safeUnsubscribe}" style="color:#445c52;">Unsubscribe from promotional email</a>.
-</p>
-HTML;
-
-    $renderedText = rtrim($renderedText)
-        . "\n\nUnsubscribe from Llama Scout promotional email:\n"
-        . (string) ($context['unsubscribe_url'] ?? '')
-        . "\n";
-
-    return [
-        'subject' => $renderedSubject,
-        'preheader' => $renderedPreheader,
-        'text' => $renderedText,
-        'html' => llama_email_html_shell(
-            $renderedPreheader,
-            $renderedBody . $footer
-        ),
-    ];
-}
-
-
 function llama_promotion_email_recipients(
     PDO $db,
     int $promotionId,
@@ -672,19 +457,20 @@ function llama_promotion_send_batch(
         ? 'reminder'
         : 'announcement';
 
-    $subject = trim((string) (
+    $templateKey =
         $deliveryType === 'reminder'
-            ? ($promotion['reminder_subject'] ?? '')
-            : ($promotion['email_subject'] ?? '')
-    ));
+            ? 'promotion_campaign_reminder'
+            : 'promotion_campaign_announcement';
 
-    $textBody = trim((string) (
-        $deliveryType === 'reminder'
-            ? ($promotion['reminder_body_text'] ?? '')
-            : ($promotion['email_body_text'] ?? '')
-    ));
+    $template = llama_email_template(
+        $db,
+        $templateKey
+    );
 
-    if ($subject === '' || $textBody === '') {
+    if (
+        !$template
+        || empty($template['enabled'])
+    ) {
         return [
             'attempted' => 0,
             'sent' => 0,
@@ -723,18 +509,14 @@ function llama_promotion_send_batch(
                 $unsubscribeUrl
             );
 
-            $rendered = llama_promotion_render_email(
+            $sent = llama_email_send_template(
                 $db,
-                $promotion,
-                $deliveryType,
-                $context
-            );
-
-            $sent = send_llama_mail(
+                $templateKey,
                 (string) $user['email'],
-                $rendered['subject'],
-                $rendered['text'],
-                $rendered['html']
+                $context,
+                false,
+                (int) $user['id'],
+                $template
             );
 
             if (!$sent) {

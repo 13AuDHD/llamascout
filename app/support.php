@@ -631,6 +631,31 @@ function llama_support_send_notifications(
             )
         );
 
+    $requestDetails = [];
+
+    if (!empty($request['phone_number'])) {
+        $requestDetails[] =
+            'Phone: '
+            . llama_support_format_phone(
+                (string) $request['phone_number']
+            );
+    }
+
+    if (!empty($request['order_number'])) {
+        $requestDetails[] =
+            'Order: '
+            . (string) $request['order_number'];
+    }
+
+    if (!empty($request['error_reference'])) {
+        $requestDetails[] =
+            'Error: '
+            . (string) $request['error_reference'];
+    }
+
+    $requestDetailsText =
+        implode("\n", $requestDetails);
+
     $adminEmail =
         llama_support_admin_email();
 
@@ -638,67 +663,45 @@ function llama_support_send_notifications(
         $adminEmail !== ''
         && empty($request['admin_notified_at'])
     ) {
-        $adminSubject =
-            '[Ticket #' . $ticketNumber . '] '
-            . (string) $request['subject'];
-
-        $adminText =
-            "New Llama Scout support ticket\n\n"
-            . "Ticket: #" . $ticketNumber . "\n"
-            . "Category: " . $categoryLabel . "\n"
-            . "Name: " . (string) $request['name'] . "\n"
-            . "Email: " . (string) $request['email'] . "\n"
-            . "Preferred contact: " . $preferredContactLabel . "\n";
-
-        if (!empty($request['phone_number'])) {
-            $adminText .=
-                "Phone: "
-                . llama_support_format_phone(
-                    (string) $request['phone_number']
-                )
-                . "\n";
-        }
-
-        if (!empty($request['order_number'])) {
-            $adminText .=
-                "Order: "
-                . (string) $request['order_number']
-                . "\n";
-        }
-
-        if (!empty($request['error_reference'])) {
-            $adminText .=
-                "Error: "
-                . (string) $request['error_reference']
-                . "\n";
-        }
-
-        $adminText .=
-            "\n"
-            . (string) $request['message']
-            . "\n\n"
-            . "Admin: https://admin.llamascout.com/support.php?id="
-            . $requestId
-            . "\n";
+        $adminContext = [
+            'ticket_number' =>
+                $ticketNumber,
+            'support_category' =>
+                $categoryLabel,
+            'requester_name' =>
+                (string) $request['name'],
+            'requester_email' =>
+                (string) $request['email'],
+            'preferred_contact' =>
+                $preferredContactLabel,
+            'request_details' =>
+                $requestDetailsText,
+            'ticket_subject' =>
+                (string) $request['subject'],
+            'ticket_message' =>
+                (string) $request['message'],
+            'admin_ticket_url' =>
+                'https://admin.llamascout.com/support.php?id='
+                . $requestId,
+        ];
 
         try {
-            $sent = send_llama_mail(
+            $sent = llama_email_send_template(
+                $db,
+                'support_admin_new_ticket',
                 $adminEmail,
-                $adminSubject,
-                $adminText
+                $adminContext,
+                false,
+                null
             );
 
-            if (!$sent) {
-                throw new RuntimeException(
-                    'Mail server rejected the support admin notification.'
-                );
+            if ($sent) {
+                $db->prepare(
+                    'UPDATE support_requests
+                     SET admin_notified_at = UTC_TIMESTAMP()
+                     WHERE id = ?'
+                )->execute([$requestId]);
             }
-
-            $db->prepare(
-                'UPDATE support_requests
-                 SET admin_notified_at = UTC_TIMESTAMP()
-                 WHERE id = ?'
-            )->execute([$requestId]);
 
         } catch (Throwable $exception) {
             if (
@@ -731,56 +734,50 @@ function llama_support_send_notifications(
         )
         && empty($request['customer_confirmed_at'])
     ) {
-        $customerSubject =
-            'Ticket #'
-            . $ticketNumber
-            . ' received by Llama Scout';
-
-        $customerText =
-            'Hi '
-            . (string) $request['name']
-            . ",\n\n"
-            . "We received your Llama Scout support ticket.\n\n"
-            . "Ticket: #"
-            . $ticketNumber
-            . "\n"
-            . "Subject: "
-            . (string) $request['subject']
-            . "\n"
-            . "Preferred contact: "
-            . $preferredContactLabel
-            . "\n";
+        $customerExtraDetails = [];
 
         if (!empty($request['error_reference'])) {
-            $customerText .=
-                "Error reference: "
-                . (string) $request['error_reference']
-                . "\n";
+            $customerExtraDetails[] =
+                'Error reference: '
+                . (string) $request['error_reference'];
         }
 
-        $customerText .=
-            "\nKeep the ticket number above if you need to follow up.\n\n"
-            . "Llama Scout\n"
-            . "Know the place before you go.\n";
+        $customerContext = [
+            'requester_name' =>
+                trim((string) $request['name']) !== ''
+                    ? trim((string) $request['name'])
+                    : 'there',
+            'ticket_number' =>
+                $ticketNumber,
+            'ticket_subject' =>
+                (string) $request['subject'],
+            'preferred_contact' =>
+                $preferredContactLabel,
+            'ticket_extra_details' =>
+                implode("\n", $customerExtraDetails),
+            'support_url' =>
+                'https://llamascout.com/contact.php',
+        ];
 
         try {
-            $sent = send_llama_mail(
+            $sent = llama_email_send_template(
+                $db,
+                'support_ticket_received',
                 $customerEmail,
-                $customerSubject,
-                $customerText
+                $customerContext,
+                false,
+                !empty($request['user_id'])
+                    ? (int) $request['user_id']
+                    : null
             );
 
-            if (!$sent) {
-                throw new RuntimeException(
-                    'Mail server rejected the support customer confirmation.'
-                );
+            if ($sent) {
+                $db->prepare(
+                    'UPDATE support_requests
+                     SET customer_confirmed_at = UTC_TIMESTAMP()
+                     WHERE id = ?'
+                )->execute([$requestId]);
             }
-
-            $db->prepare(
-                'UPDATE support_requests
-                 SET customer_confirmed_at = UTC_TIMESTAMP()
-                 WHERE id = ?'
-            )->execute([$requestId]);
 
         } catch (Throwable $exception) {
             if (
@@ -897,61 +894,39 @@ function llama_support_send_status_notification(
         $ticketNumber = (string) $requestId;
     }
 
-    $name = trim(
-        (string) ($request['name'] ?? '')
-    );
-
-    $greeting =
-        $name !== ''
-            ? 'Hi ' . $name . ','
-            : 'Hi,';
-
-    $statusLabel = match ($newStatus) {
-        'waiting' => 'Waiting',
-        'resolved' => 'Resolved',
-        default => 'Open',
-    };
-
-    $statusMessage = match ($newStatus) {
+    $templateKey = match ($newStatus) {
         'waiting' =>
-            'Your support ticket is currently waiting. If Llama Scout requested additional information, reply to the most recent support email so we can continue.',
+            'support_ticket_waiting',
         'resolved' =>
-            'Your support ticket has been marked resolved. If the problem returns or you still need help, you can create another support ticket.',
+            'support_ticket_resolved',
         default =>
-            'Your support ticket has been reopened and is active again.',
+            'support_ticket_reopened',
     };
 
-    $subject =
-        'Ticket #'
-        . $ticketNumber
-        . ' is now '
-        . $statusLabel;
-
-    $body =
-        $greeting
-        . "\n\n"
-        . $statusMessage
-        . "\n\nTicket: #"
-        . $ticketNumber
-        . "\nSubject: "
-        . (string) ($request['subject'] ?? '')
-        . "\nStatus: "
-        . $statusLabel
-        . "\n\nLlama Scout\n"
-        . "Know the place before you go.\n";
+    $context = [
+        'requester_name' =>
+            trim((string) ($request['name'] ?? '')) !== ''
+                ? trim((string) $request['name'])
+                : 'there',
+        'ticket_number' =>
+            $ticketNumber,
+        'ticket_subject' =>
+            (string) ($request['subject'] ?? ''),
+        'support_url' =>
+            'https://llamascout.com/contact.php',
+    ];
 
     try {
-        $sent = send_llama_mail(
+        llama_email_send_template(
+            $db,
+            $templateKey,
             $email,
-            $subject,
-            $body
+            $context,
+            false,
+            !empty($request['user_id'])
+                ? (int) $request['user_id']
+                : null
         );
-
-        if (!$sent) {
-            throw new RuntimeException(
-                'Mail server rejected the support status notification.'
-            );
-        }
     } catch (Throwable $exception) {
         if (
             function_exists(
