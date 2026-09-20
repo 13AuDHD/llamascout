@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/compare-reports.php';
+require_once __DIR__ . '/app/place-history-timeline.php';
 
 function place_h(mixed $value): string
 {
@@ -256,66 +257,20 @@ $canReportProblem =
         'report_problem'
     );
 
-$historyProvenance = [];
-$recentPlaceActivity = [];
-$documentationLevel =
-    llama_place_documentation_level(
-        $db,
-        (int) $place['id']
-    );
-
-$placeFreshness =
-    llama_place_freshness_summary(
-        $db,
-        (int) $place['id']
-    );
+$placeHistoryTimeline = [];
 
 try {
-    $stmt = $db->prepare(
-        'SELECT
-                pp.origin_type,
-                pp.established_at,
-                pp.original_contributor_id,
-                pp.original_submission_id,
-                u.username AS contributor_username,
-                u.display_name AS contributor_display_name,
-                original_pc.user_id AS original_activity_user_id,
-                original_pc.role_at_time AS original_role_at_time,
-                original_pc.visited_at AS original_visited_at
-         FROM place_provenance pp
-         LEFT JOIN users u
-            ON u.id = pp.original_contributor_id
-         LEFT JOIN place_contributions original_pc
-            ON original_pc.place_id = pp.place_id
-           AND original_pc.submission_id = pp.original_submission_id
-           AND original_pc.contribution_type = "new_place"
-           AND original_pc.status = "approved"
-         WHERE pp.place_id = ?
-         ORDER BY original_pc.id ASC
-         LIMIT 1'
-    );
-    $stmt->execute([(int) $place['id']]);
-    $historyProvenance = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-    $stmt = $db->prepare(
-        'SELECT pc.id, pc.user_id, pc.submission_id, pc.contribution_type,
-                pc.role_at_time, pc.points_awarded, pc.visited_at, pc.approved_at,
-                u.username, u.display_name,
-                pus.id AS update_submission_id
-         FROM place_contributions pc
-         LEFT JOIN users u ON u.id = pc.user_id
-         LEFT JOIN place_update_submissions pus
-            ON pus.contribution_id = pc.id
-           AND pus.status = "approved"
-         WHERE pc.place_id = ?
-           AND pc.status = ?
-         ORDER BY COALESCE(pc.approved_at, pc.created_at) DESC, pc.id DESC
-         LIMIT 8'
-    );
-    $stmt->execute([(int) $place['id'], 'approved']);
-    $recentPlaceActivity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $placeHistoryTimeline =
+        llama_place_history_timeline(
+            $db,
+            (int) $place['id'],
+            (string) $place['slug']
+        );
 } catch (Throwable $exception) {
-    error_log('Llama Scout public Place history error: ' . $exception->getMessage());
+    error_log(
+        'Llama Scout public Place history error: '
+        . $exception->getMessage()
+    );
 }
 
 $galleryImages = [];
