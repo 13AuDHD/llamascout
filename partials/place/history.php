@@ -4,29 +4,64 @@
         <div class="place-history-heading">
             <p class="place-detail-eyebrow">Place history</p>
             <h2>Who helped document this Place</h2>
+            <p>
+                Contribution labels show the level of the person who
+                actually documented the Place. Moderation alone does
+                not raise a Place's documentation level.
+            </p>
         </div>
 
         <?php if ($historyProvenance): ?>
             <?php
-            $originType = (string) ($historyProvenance['origin_type'] ?? '');
-            $originIsScout = in_array($originType, ['llama-scouted', 'scout', 'admin'], true);
             $originName = trim((string) (
                 $historyProvenance['contributor_display_name']
                 ?: $historyProvenance['contributor_username']
                 ?: ''
             ));
+
+            $originRecord = [
+                'user_id' => (int) (
+                    $historyProvenance['original_activity_user_id']
+                    ?? $historyProvenance['original_contributor_id']
+                    ?? 0
+                ),
+                'role_at_time' => (string) (
+                    $historyProvenance['original_role_at_time']
+                    ?? ''
+                ),
+            ];
+
+            if ($originRecord['role_at_time'] !== '') {
+                $originLevel = llama_contribution_level_for_record(
+                    $db,
+                    $originRecord
+                );
+            } else {
+                $originType = strtolower(trim((string) (
+                    $historyProvenance['origin_type']
+                    ?? ''
+                )));
+
+                $originLevel = in_array(
+                    $originType,
+                    ['llama-scouted', 'scout'],
+                    true
+                )
+                    ? LLAMA_CONTRIBUTION_LEVEL_SCOUT
+                    : (
+                        $originType === 'admin'
+                            ? LLAMA_CONTRIBUTION_LEVEL_ADMIN
+                            : LLAMA_CONTRIBUTION_LEVEL_COMMUNITY
+                    );
+            }
             ?>
+
             <div class="place-history-origin">
-                <div class="place-history-badge<?= $originIsScout ? ' is-scouted' : '' ?>">
-                    <i aria-hidden="true"><?= llama_icon($originIsScout ? 'binoculars' : 'users') ?></i>
+                <div class="place-history-badge">
+                    <i aria-hidden="true"><?= llama_icon(llama_contribution_level_icon($originLevel)) ?></i>
                     <div>
-                        <span><?= $originIsScout ? 'Llama Scouted' : 'Member contributed' ?></span>
-                        <strong>
-                            <?= $originIsScout
-                                ? 'This Place has been documented in the field.'
-                                : 'This Place began with a member contribution.'
-                            ?>
-                        </strong>
+                        <span><?= place_h(llama_contribution_level_label($originLevel)) ?></span>
+                        <strong>This Place began with this contribution.</strong>
                     </div>
                 </div>
 
@@ -59,26 +94,43 @@
                         ' ',
                         (string) $activity['contribution_type']
                     ));
+                    $activityLevel = llama_contribution_level_for_record(
+                        $db,
+                        $activity
+                    );
                     ?>
                     <article class="place-activity-item">
                         <div class="place-activity-icon">
                             <i aria-hidden="true"><?= llama_icon('check') ?></i>
                         </div>
 
-                        <div>
-                            <strong>
-                                <?php if (!empty($activity['username'])): ?>
-                                    <a href="/<?= rawurlencode((string) $activity['username']) ?>">
+                        <div class="place-activity-copy">
+                            <div class="place-activity-title-row">
+                                <strong>
+                                    <?php if (!empty($activity['username'])): ?>
+                                        <a href="/<?= rawurlencode((string) $activity['username']) ?>">
+                                            <?= place_h($activityName) ?>
+                                        </a>
+                                    <?php else: ?>
                                         <?= place_h($activityName) ?>
-                                    </a>
-                                <?php else: ?>
-                                    <?= place_h($activityName) ?>
-                                <?php endif; ?>
-                            </strong>
+                                    <?php endif; ?>
+                                </strong>
+
+                                <span class="place-activity-level">
+                                    <?= place_h(llama_contribution_level_short_label($activityLevel)) ?>
+                                </span>
+                            </div>
 
                             <span>
                                 <?= place_h($activityType) ?>
-                                <?php if (!empty($activity['approved_at'])): ?>
+                                <?php if (!empty($activity['visited_at'])): ?>
+                                    / visited <?= place_h(
+                                        llama_format_viewer_date(
+                                            (string) $activity['visited_at'],
+                                            'M j, Y'
+                                        )
+                                    ) ?>
+                                <?php elseif (!empty($activity['approved_at'])): ?>
                                     / <?= place_h(
                                         llama_format_viewer_date(
                                             (string) $activity['approved_at'],

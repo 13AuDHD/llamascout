@@ -41,6 +41,16 @@
                         <?php endif; ?>
                     </p>
                 <?php endif; ?>
+
+                <?php if (!empty($documentationLevel['label'])): ?>
+                    <div
+                        class="place-contribution-level is-<?= place_h((string) $documentationLevel['level']) ?>"
+                        title="<?= place_h((string) ($documentationLevel['description'] ?? '')) ?>"
+                    >
+                        <i aria-hidden="true"><?= llama_icon((string) ($documentationLevel['icon'] ?? 'users')) ?></i>
+                        <span><?= place_h((string) $documentationLevel['label']) ?></span>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <div class="place-detail-actions">
