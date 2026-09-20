@@ -397,7 +397,7 @@ div > div > span {
 
     .admin-verification-stat-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(4, minmax(0, 1fr));
     }
 
     .admin-verification-filters {
@@ -458,6 +458,10 @@ div > div > span {
 
 @media (max-width: 520px) {
 
+      .admin-verification-stat-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
 
     .admin-verification-attention-row {
         grid-template-columns: 1fr;
