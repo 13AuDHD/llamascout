@@ -223,21 +223,31 @@
     };
 
 
-    const syncMapAccess = (hasAccess) => {
+    let contributorPlaceAccess = false;
+
+    const syncMapAccess = (hasAccess, hasContributorAccess = false) => {
         memberMapAccess = hasAccess === true;
+        contributorPlaceAccess = hasContributorAccess === true;
+
+        const canUseExactZoom =
+            memberMapAccess || contributorPlaceAccess;
 
         map.setMaxZoom(
-            memberMapAccess ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM
+            canUseExactZoom ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM
         );
 
-        if (!memberMapAccess && map.getZoom() > PUBLIC_MAX_ZOOM) {
+        if (!canUseExactZoom && map.getZoom() > PUBLIC_MAX_ZOOM) {
             map.setZoom(PUBLIC_MAX_ZOOM);
         }
 
         if (controls.precision) {
             controls.precision.textContent = memberMapAccess
                 ? 'Exact Place locations'
-                : 'Approximate public locations';
+                : (
+                    contributorPlaceAccess
+                        ? 'Exact for your contributed Places, approximate elsewhere'
+                        : 'Approximate public locations'
+                );
         }
 
         if (controls.layerControl) {
@@ -347,7 +357,6 @@
         const exactLng = Number(place.longitude);
 
         if (
-            memberMapAccess &&
             Number.isFinite(exactLat) &&
             Number.isFinite(exactLng)
         ) {
@@ -793,7 +802,10 @@
                 throw new Error('Unexpected Places response.');
             }
 
-            syncMapAccess(data.member_map_access === true);
+            syncMapAccess(
+                data.member_map_access === true,
+                data.contributor_place_access === true
+            );
 
             if (
                 memberMapAccess &&
