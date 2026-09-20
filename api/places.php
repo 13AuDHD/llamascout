@@ -75,16 +75,55 @@ try {
      * Never send exact coordinates unless the current authenticated account
      * actually has member access. The browser is not trusted to enforce this.
      */
-    $hasMemberMapAccess = user_has_member_access();
-    $places = places_map($hasMemberMapAccess);
+    $viewer = current_user();
+    $viewerUserId =
+        is_array($viewer)
+            ? (int) ($viewer['id'] ?? 0)
+            : 0;
+
+    $hasMemberMapAccess =
+        user_has_member_access(
+            $viewerUserId > 0
+                ? $viewerUserId
+                : null
+        );
+
+    $contributedPlaceIds =
+        !$hasMemberMapAccess
+        && $viewerUserId > 0
+            ? user_original_contributed_place_ids(
+                $viewerUserId
+            )
+            : [];
+
+    $hasContributorPlaceAccess =
+        !empty($contributedPlaceIds);
+
+    $places = places_map(
+        $hasMemberMapAccess,
+        $viewerUserId > 0
+            ? $viewerUserId
+            : null
+    );
 
     echo json_encode(
         [
             'ok' => true,
             'count' => count($places),
             'member_map_access' => $hasMemberMapAccess,
-            'coordinate_precision' => $hasMemberMapAccess ? 'exact' : 'approximate',
-            'max_zoom' => $hasMemberMapAccess ? 20 : 11,
+            'contributor_place_access' => $hasContributorPlaceAccess,
+            'coordinate_precision' =>
+                $hasMemberMapAccess
+                    ? 'exact'
+                    : (
+                        $hasContributorPlaceAccess
+                            ? 'mixed'
+                            : 'approximate'
+                    ),
+            'max_zoom' =>
+                ($hasMemberMapAccess || $hasContributorPlaceAccess)
+                    ? 20
+                    : 11,
 
             /*
              * Tile URLs are only supplied to member sessions.

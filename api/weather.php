@@ -185,16 +185,19 @@ try {
        ===================================================== */
 
     $hasMemberAccess =
-        user_has_member_access();
+        user_has_place_complete_access(
+            (int) $place['id']
+        );
 
 
 
     /* =====================================================
        MEMBER WEATHER
 
-       Paid members, complimentary members, active Scouts,
-       Admins, and Owners receive weather for the exact
-       campsite coordinates and stored elevation.
+       Complete Access accounts receive exact campsite weather.
+       A Free Member also receives it for a Place they originally
+       contributed, because that Place carries a place-specific
+       Complete Access entitlement.
        ===================================================== */
 
     if (
