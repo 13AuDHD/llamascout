@@ -180,13 +180,32 @@ function llama_place_add_verification(
         $verificationId =
             (int) $db->lastInsertId();
 
-        $db->prepare(
-            'UPDATE places
-             SET last_verified_at = NOW()
-             WHERE id = ?'
-        )->execute([
-            $placeId,
-        ]);
+        if ($type === 'field-verified') {
+            $db->prepare(
+                'UPDATE places
+                 SET
+                    last_verified_at = NOW(),
+                    last_field_checked_on = CASE
+                        WHEN last_field_checked_on IS NULL
+                             OR last_field_checked_on < DATE(?)
+                            THEN DATE(?)
+                        ELSE last_field_checked_on
+                    END
+                 WHERE id = ?'
+            )->execute([
+                $visitedAt,
+                $visitedAt,
+                $placeId,
+            ]);
+        } else {
+            $db->prepare(
+                'UPDATE places
+                 SET last_verified_at = NOW()
+                 WHERE id = ?'
+            )->execute([
+                $placeId,
+            ]);
+        }
 
         admin_users_audit(
             $db,
@@ -266,6 +285,32 @@ function llama_place_delete_verification(
             );
         }
 
+        $checkinTable = $db->prepare(
+            'SELECT 1
+             FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+             LIMIT 1'
+        );
+        $checkinTable->execute(['place_checkins']);
+        $hasCheckinTable = $checkinTable->fetchColumn() !== false;
+
+        if ($hasCheckinTable) {
+            $linkedCheckin = $db->prepare(
+                'SELECT id
+                 FROM place_checkins
+                 WHERE verification_id = ?
+                 LIMIT 1'
+            );
+            $linkedCheckin->execute([$verificationId]);
+
+            if ((int) ($linkedCheckin->fetchColumn() ?: 0) > 0) {
+                throw new RuntimeException(
+                    'This verification belongs to a geofenced Place check-in and cannot be deleted as a standalone verification.'
+                );
+            }
+        }
+
         $db->prepare(
             'DELETE FROM place_verifications
              WHERE id = ?
@@ -289,14 +334,56 @@ function llama_place_delete_verification(
         $lastVerifiedAt =
             $latest->fetchColumn();
 
+        $fieldLatest = $db->prepare(
+            'SELECT MAX(
+                COALESCE(
+                    visited_at,
+                    DATE(verified_at)
+                )
+             )
+             FROM place_verifications
+             WHERE place_id = ?
+               AND verification_type = "field-verified"'
+        );
+        $fieldLatest->execute([$placeId]);
+        $lastFieldCheckedOn = $fieldLatest->fetchColumn();
+
+        if ($hasCheckinTable) {
+            $checkinLatest = $db->prepare(
+                'SELECT MAX(DATE(checked_in_at))
+                 FROM place_checkins
+                 WHERE place_id = ?'
+            );
+            $checkinLatest->execute([$placeId]);
+            $checkinFieldDate = $checkinLatest->fetchColumn();
+
+            if (
+                $checkinFieldDate !== false
+                && trim((string) $checkinFieldDate) !== ''
+                && (
+                    $lastFieldCheckedOn === false
+                    || trim((string) $lastFieldCheckedOn) === ''
+                    || (string) $checkinFieldDate > (string) $lastFieldCheckedOn
+                )
+            ) {
+                $lastFieldCheckedOn = $checkinFieldDate;
+            }
+        }
+
         $db->prepare(
             'UPDATE places
-             SET last_verified_at = ?
+             SET
+                last_verified_at = ?,
+                last_field_checked_on = ?
              WHERE id = ?'
         )->execute([
             $lastVerifiedAt !== false
                 ? $lastVerifiedAt
                 : null,
+            $lastFieldCheckedOn !== false
+                && trim((string) $lastFieldCheckedOn) !== ''
+                    ? $lastFieldCheckedOn
+                    : null,
             $placeId,
         ]);
 

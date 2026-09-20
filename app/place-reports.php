@@ -24,7 +24,11 @@ function place_report_problem_types(): array
 {
     return [
         'incorrect-information' => 'Incorrect information',
-        'location-access' => 'Location or access problem',
+        'road-closed' => 'Road or access is closed',
+        'place-inaccessible' => 'Place is inaccessible',
+        'coordinates-incorrect' => 'GPS coordinates are incorrect',
+        'place-not-found' => 'Place does not exist / could not be found',
+        'location-access' => 'Other location or access problem',
         'closure-status' => 'Closure or status changed',
         'amenities' => 'Amenities are incorrect',
         'sensory-information' => 'Sensory information is incorrect',
@@ -43,6 +47,19 @@ function submit_place_report(
     string $photoToken = '',
     array $submittedPhotos = []
 ): int {
+    if (
+        $userId < 1
+        || !llama_contributor_can(
+            db(),
+            $userId,
+            'report_problem'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit Place problem reports.'
+        );
+    }
+
     $problemTypes = place_report_problem_types();
 
     if (!isset($problemTypes[$problemType])) {
@@ -66,11 +83,15 @@ function submit_place_report(
      * an unverified closure report.
      */
     if (
-        $problemType === 'closure-status'
+        in_array(
+            $problemType,
+            ['closure-status', 'road-closed'],
+            true
+        )
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Closure or status reports require at least one current photo showing the closure, sign, gate, or changed condition.'
+            'Road closure and closure/status reports require at least one current photo showing the closure, sign, gate, or changed condition.'
         );
     }
 
@@ -116,7 +137,11 @@ function submit_place_report(
              * survive staging and be ready to attach to the report.
              */
             if (
-                $problemType === 'closure-status'
+                in_array(
+                    $problemType,
+                    ['closure-status', 'road-closed'],
+                    true
+                )
                 && !$photos
             ) {
                 throw new InvalidArgumentException(

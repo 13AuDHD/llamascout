@@ -23,6 +23,7 @@ function places_public(): array
             p.land_type,
             p.elevation_feet,
             p.last_verified_at,
+            p.last_field_checked_on,
             p.published_at,
 
             pi.src AS featured_image,
@@ -186,6 +187,7 @@ function place_public_by_slug(string $slug): ?array
             p.land_manager,
             p.land_type,
             p.last_verified_at,
+            p.last_field_checked_on,
             p.published_at
 
         FROM places p
@@ -302,6 +304,7 @@ function place_member_by_slug(string $slug): ?array
             p.access_summary,
 
             p.last_verified_at,
+            p.last_field_checked_on,
             p.published_at
 
         FROM places p

@@ -269,6 +269,7 @@ function llama_place_documentation_level(
     int $placeId
 ): array {
     $level = LLAMA_CONTRIBUTION_LEVEL_COMMUNITY;
+    $hasQualifyingActivity = false;
 
     if ($placeId < 1) {
         return [
@@ -281,6 +282,11 @@ function llama_place_documentation_level(
         ];
     }
 
+    /*
+     * Published contributions establish or raise documentation level only
+     * when the contributor actually created the Place or supplied an
+     * approved contribution tied to an in-person visit.
+     */
     try {
         $stmt = $db->prepare(
             'SELECT
@@ -303,6 +309,7 @@ function llama_place_documentation_level(
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         foreach ($rows as $row) {
+            $hasQualifyingActivity = true;
             $candidate = llama_contribution_level_for_record($db, $row);
 
             if (
@@ -312,8 +319,73 @@ function llama_place_documentation_level(
                 $level = $candidate;
             }
         }
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout contribution-level lookup failed for Place #'
+            . $placeId
+            . ': '
+            . $exception->getMessage()
+        );
+    }
 
-        if (!$rows) {
+    /*
+     * Geofenced check-ins are also real field participation. They can raise
+     * the public documentation level, but moderation alone cannot.
+     *
+     * The information_schema check keeps the Place page compatible while the
+     * one-time Check In migration is being installed.
+     */
+    try {
+        $tableStmt = $db->prepare(
+            'SELECT 1
+             FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+             LIMIT 1'
+        );
+        $tableStmt->execute(['place_checkins']);
+
+        if ($tableStmt->fetchColumn() !== false) {
+            $checkinStmt = $db->prepare(
+                'SELECT contribution_level
+                 FROM place_checkins
+                 WHERE place_id = ?
+                 ORDER BY id ASC'
+            );
+            $checkinStmt->execute([$placeId]);
+
+            foreach (
+                $checkinStmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+                as $checkin
+            ) {
+                $hasQualifyingActivity = true;
+                $candidate = llama_contribution_level_normalize(
+                    (string) ($checkin['contribution_level'] ?? '')
+                );
+
+                if (
+                    llama_contribution_level_rank($candidate)
+                    > llama_contribution_level_rank($level)
+                ) {
+                    $level = $candidate;
+                }
+            }
+        }
+    } catch (Throwable $exception) {
+        error_log(
+            'Llama Scout check-in documentation-level lookup failed for Place #'
+            . $placeId
+            . ': '
+            . $exception->getMessage()
+        );
+    }
+
+    /*
+     * Legacy provenance remains a fallback only when no qualifying modern
+     * contribution or check-in activity exists.
+     */
+    if (!$hasQualifyingActivity) {
+        try {
             $fallback = $db->prepare(
                 'SELECT origin_type
                  FROM place_provenance
@@ -328,14 +400,14 @@ function llama_place_documentation_level(
             } elseif ($origin === 'admin') {
                 $level = LLAMA_CONTRIBUTION_LEVEL_ADMIN;
             }
+        } catch (Throwable $exception) {
+            error_log(
+                'Llama Scout legacy documentation-level lookup failed for Place #'
+                . $placeId
+                . ': '
+                . $exception->getMessage()
+            );
         }
-    } catch (Throwable $exception) {
-        error_log(
-            'Llama Scout documentation level lookup failed for Place #'
-            . $placeId
-            . ': '
-            . $exception->getMessage()
-        );
     }
 
     return [

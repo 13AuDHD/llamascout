@@ -107,6 +107,12 @@ function admin_points_policy_definitions(): array
             'description' => 'Maximum points available from approved Experience + Recommendation changes.',
         ],
 
+        'place_checkin' => [
+            'group' => 'Other Contributions',
+            'label' => 'Place Check In',
+            'description' => 'Points awarded for a successful geofenced on-site Place check-in.',
+        ],
+
     ];
 }
 

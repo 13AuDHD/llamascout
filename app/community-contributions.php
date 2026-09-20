@@ -1069,6 +1069,19 @@ function community_resubmit_place_update(
     int $updateId,
     array $input
 ): int {
+    if (
+        $userId < 1
+        || !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_update'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit Place updates.'
+        );
+    }
+
     $placeId =
         (int) ($place['id'] ?? 0);
 
@@ -1396,6 +1409,19 @@ function submit_place_update(
     array $place,
     array $input
 ): int {
+    if (
+        $userId < 1
+        || !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_update'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit Place updates.'
+        );
+    }
+
     $placeId =
         (int) ($place['id'] ?? 0);
 

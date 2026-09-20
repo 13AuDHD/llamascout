@@ -60,14 +60,23 @@ function llama_photo_context_allowed(string $context, int $userId): bool
 
     llama_photo_context_config($context);
 
-    if (!in_array(
-        $context,
-        [
-            'shop-products',
-            'badges',
-        ],
-        true
-    )) {
+    $contributionCapability = match ($context) {
+        'add-place' => 'submit_place',
+        'update-place' => 'submit_update',
+        'place-report' => 'report_problem',
+        default => null,
+    };
+
+    if ($contributionCapability !== null) {
+        return function_exists('llama_contributor_can')
+            && llama_contributor_can(
+                db(),
+                $userId,
+                $contributionCapability
+            );
+    }
+
+    if ($context === 'profile-images') {
         return true;
     }
 

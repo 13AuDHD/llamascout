@@ -15,6 +15,42 @@ function admin_report_problem_meta(
             'place_action' => 'Review safety + access',
         ],
 
+        'road-closed' => [
+            'label' => 'Road or access is closed',
+            'priority' => 1,
+            'priority_label' => 'Urgent',
+            'icon' => 'barrier-block',
+            'place_anchor' => 'road-access',
+            'place_action' => 'Review road + access',
+        ],
+
+        'coordinates-incorrect' => [
+            'label' => 'GPS coordinates are incorrect',
+            'priority' => 1,
+            'priority_label' => 'Urgent',
+            'icon' => 'current-location',
+            'place_anchor' => 'identity',
+            'place_action' => 'Review coordinates',
+        ],
+
+        'place-inaccessible' => [
+            'label' => 'Place is inaccessible',
+            'priority' => 1,
+            'priority_label' => 'Urgent',
+            'icon' => 'road',
+            'place_anchor' => 'road-access',
+            'place_action' => 'Review access',
+        ],
+
+        'place-not-found' => [
+            'label' => 'Place does not exist / could not be found',
+            'priority' => 2,
+            'priority_label' => 'High',
+            'icon' => 'map-pin',
+            'place_anchor' => 'identity',
+            'place_action' => 'Review Place identity',
+        ],
+
         'closure-status' => [
             'label' => 'Closure or status changed',
             'priority' => 1,
@@ -295,7 +331,11 @@ function admin_reports_queue(
         ' ORDER BY
             CASE pr.problem_type
                 WHEN "safety" THEN 1
+                WHEN "road-closed" THEN 1
+                WHEN "coordinates-incorrect" THEN 1
+                WHEN "place-inaccessible" THEN 1
                 WHEN "closure-status" THEN 1
+                WHEN "place-not-found" THEN 2
                 WHEN "location-access" THEN 2
                 WHEN "amenities" THEN 3
                 WHEN "sensory-information" THEN 3
@@ -371,6 +411,9 @@ function admin_report_stats(
                         )
                         AND problem_type IN (
                             "safety",
+                            "road-closed",
+                            "coordinates-incorrect",
+                            "place-inaccessible",
                             "closure-status"
                         )
                             THEN 1
@@ -518,6 +561,10 @@ function admin_report_place_snapshot(
             $problemType,
             [
                 'location-access',
+                'road-closed',
+                'coordinates-incorrect',
+                'place-inaccessible',
+                'place-not-found',
                 'closure-status',
                 'safety',
                 'incorrect-information',
@@ -576,6 +623,9 @@ function admin_report_place_snapshot(
             $problemType,
             [
                 'location-access',
+                'road-closed',
+                'place-inaccessible',
+                'coordinates-incorrect',
                 'safety',
             ],
             true
@@ -787,7 +837,7 @@ function admin_report_place_snapshot(
         }
     }
 
-    if ($problemType === 'closure-status') {
+    if (in_array($problemType, ['closure-status', 'road-closed'], true)) {
         $stmt = $db->prepare(
             'SELECT *
              FROM place_rules
@@ -1120,7 +1170,11 @@ function admin_report_place_unresolved(
              ' ORDER BY
                 CASE pr.problem_type
                     WHEN "safety" THEN 1
+                    WHEN "road-closed" THEN 1
+                    WHEN "coordinates-incorrect" THEN 1
+                    WHEN "place-inaccessible" THEN 1
                     WHEN "closure-status" THEN 1
+                    WHEN "place-not-found" THEN 2
                     WHEN "location-access" THEN 2
                     ELSE 3
                 END,

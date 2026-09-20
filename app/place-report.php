@@ -1905,6 +1905,19 @@ function llama_place_report_submit_new_place(
     int $userId,
     array $input
 ): int {
+    if (
+        $userId < 1
+        || !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_place'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit new Places.'
+        );
+    }
+
     $data =
         llama_place_report_build_data(
             $input
@@ -2022,6 +2035,19 @@ function llama_place_report_resubmit_new_place(
     int $submissionId,
     array $input
 ): int {
+    if (
+        $userId < 1
+        || !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_place'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit new Places.'
+        );
+    }
+
     $existing =
         community_new_place_submission_for_user(
             $userId,

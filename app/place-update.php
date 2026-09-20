@@ -1497,6 +1497,18 @@ function llama_place_update_submit(
         );
     }
 
+    if (
+        !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_update'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit Place updates.'
+        );
+    }
+
 
     if (
         community_open_update_for_user(
@@ -1824,6 +1836,18 @@ function llama_place_update_resubmit(
     ) {
         throw new InvalidArgumentException(
             'Invalid Place update.'
+        );
+    }
+
+    if (
+        !llama_contributor_can(
+            db(),
+            $userId,
+            'submit_update'
+        )
+    ) {
+        throw new RuntimeException(
+            'Your account is not eligible to submit Place updates.'
         );
     }
 
