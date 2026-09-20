@@ -286,6 +286,8 @@ form {
     max-height: 92px;
 
     display: block;
+
+    transform: translateY(5px);
 }
 
 .site-nav {
