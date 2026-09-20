@@ -302,27 +302,30 @@
 
 .admin-badge-credential-history {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 14px;
 }
 
 .admin-badge-credential-record {
+    min-width: 0;
     display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        minmax(120px, 220px);
-    gap: 14px;
-    align-items: start;
-
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-content: start;
     padding: 16px;
-
-    border-bottom: 1px solid var(--border);
-}
-
-.admin-badge-credential-record:last-child {
-    border-bottom: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
 }
 
 .admin-badge-credential-record.is-pending {
-    background: color-mix(in srgb, #c89f42 4%, transparent);
+    border-color: color-mix(in srgb, #c89f42 46%, var(--border));
+    background: color-mix(in srgb, #c89f42 5%, var(--surface));
+}
+
+.admin-badge-credential-record.has-preview {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
 }
 
 .admin-badge-credential-record-main {
@@ -373,48 +376,6 @@
     object-fit: contain;
 }
 
-.admin-badge-credential-decision {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.admin-badge-credential-decision form {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: end;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--background);
-}
-
-.admin-badge-credential-decision label {
-    display: grid;
-    gap: 5px;
-}
-
-.admin-badge-credential-decision label > span {
-    color: var(--text-muted);
-    font-size: .64rem;
-    font-weight: 800;
-}
-
-.admin-badge-credential-decision textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px 9px;
-    border: 1px solid var(--border);
-    border-radius: var(--admin-control-radius);
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    font-size: .68rem;
-    resize: vertical;
-}
-
 .admin-badge-credential-provenance {
     margin-top: 10px;
     padding: 8px 10px;
@@ -458,26 +419,59 @@
     overflow-wrap: anywhere;
 }
 
+.admin-badge-credential-pending-action {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.admin-badge-credential-pending-action > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.admin-badge-credential-pending-action strong {
+    font-size: .72rem;
+}
+
+.admin-badge-credential-pending-action span {
+    color: var(--text-muted);
+    font-size: .64rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+    .admin-badge-credential-history {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 760px) {
     .admin-badge-detail-counts {
         grid-template-columns: repeat(2, minmax(90px, 1fr));
     }
 
-    .admin-badge-credential-record {
-        grid-template-columns: 1fr;
-    }
-
-    .admin-badge-credential-decision {
-        grid-template-columns: 1fr;
-    }
-
-    .admin-badge-credential-decision form {
+    .admin-badge-credential-record.has-preview {
         grid-template-columns: 1fr;
     }
 
     .admin-badge-credential-provenance dl > div {
         grid-template-columns: 1fr;
         gap: 2px;
+    }
+
+    .admin-badge-credential-pending-action {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-badge-credential-pending-action .admin-button {
+        width: 100%;
     }
 }
 
