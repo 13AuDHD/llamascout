@@ -67,7 +67,7 @@
 
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
 
     color: var(--text);
     text-decoration: none;
@@ -83,7 +83,7 @@
     object-fit: contain;
     object-position: left center;
 
-    transform: translateY(10px);
+    transform: translateY(5px);
 }
 
 .admin-brand span {
