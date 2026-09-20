@@ -277,3 +277,86 @@ function user_has_member_access(?int $userId = null): bool
 
     return (bool) $stmt->fetchColumn();
 }
+
+/* =========================================================
+   PLACE-SPECIFIC COMPLETE ACCESS
+
+   A Free Member who originally contributed a published Place
+   receives Complete Access to that Place. This entitlement is
+   derived from durable provenance/contribution records and does
+   not change their billing status or unlock other Places.
+   ========================================================= */
+
+function user_original_contributed_place_ids(
+    int $userId
+): array {
+    if ($userId < 1) {
+        return [];
+    }
+
+    $stmt = db()->prepare(
+        'SELECT DISTINCT place_id
+         FROM (
+            SELECT pp.place_id
+            FROM place_provenance pp
+            WHERE pp.original_contributor_id = ?
+
+            UNION
+
+            SELECT pc.place_id
+            FROM place_contributions pc
+            WHERE pc.user_id = ?
+              AND pc.status = "approved"
+              AND pc.contribution_type = "new_place"
+         ) contributed
+         WHERE place_id IS NOT NULL'
+    );
+
+    $stmt->execute([
+        $userId,
+        $userId,
+    ]);
+
+    return array_values(
+        array_unique(
+            array_map(
+                'intval',
+                $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []
+            )
+        )
+    );
+}
+
+function user_has_place_complete_access(
+    int $placeId,
+    ?int $userId = null
+): bool {
+    if ($placeId < 1) {
+        return false;
+    }
+
+    if ($userId === null) {
+        $user = current_user();
+
+        if (!$user || empty($user['id'])) {
+            return false;
+        }
+
+        $userId = (int) $user['id'];
+    }
+
+    if ($userId < 1) {
+        return false;
+    }
+
+    if (user_has_member_access($userId)) {
+        return true;
+    }
+
+    return in_array(
+        $placeId,
+        user_original_contributed_place_ids($userId),
+        true
+    );
+}
+

@@ -1901,6 +1901,39 @@ function llama_place_report_photo_path(mixed $photo): string
     );
 }
 
+function llama_place_report_validate_new_place_minimum(
+    array $data,
+    int $photoCount
+): void {
+    $missing = [];
+
+    if (trim((string) ($data['name'] ?? '')) === '') {
+        $missing[] = 'a Place name';
+    }
+
+    if (
+        !is_numeric($data['latitude'] ?? null)
+        || !is_numeric($data['longitude'] ?? null)
+    ) {
+        $missing[] = 'the exact map location';
+    }
+
+    if ($photoCount < 1) {
+        $missing[] = 'at least one current photo';
+    }
+
+    if (!$missing) {
+        return;
+    }
+
+    throw new InvalidArgumentException(
+        'Before submitting a new Place, add '
+        . implode(', ', $missing)
+        . '. Everything else may be left unanswered when you did not observe it.'
+    );
+}
+
+
 function llama_place_report_submit_new_place(
     int $userId,
     array $input
@@ -1942,6 +1975,11 @@ function llama_place_report_submit_new_place(
             'The photo upload session is missing. Please upload the photos again.'
         );
     }
+
+    llama_place_report_validate_new_place_minimum(
+        $data,
+        count($submittedPhotos)
+    );
 
     $db = db();
     $submissionId = 0;
@@ -2130,6 +2168,11 @@ function llama_place_report_resubmit_new_place(
             $input['photos_json']
             ?? '[]'
         );
+
+    llama_place_report_validate_new_place_minimum(
+        $data,
+        count($keptPhotos) + count($submittedPhotos)
+    );
 
     $newPhotos = [];
     $db = db();

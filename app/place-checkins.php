@@ -53,7 +53,8 @@ function llama_place_checkin_verify_csrf(
 
 function llama_place_checkin_user_access(
     PDO $db,
-    int $userId
+    int $userId,
+    int $placeId = 0
 ): array {
     if ($userId < 1) {
         return [
@@ -97,7 +98,12 @@ function llama_place_checkin_user_access(
         'short_label' =>
             llama_contribution_level_short_label($level),
         'complete_access' =>
-            user_has_member_access($userId),
+            $placeId > 0
+                ? user_has_place_complete_access(
+                    $placeId,
+                    $userId
+                )
+                : user_has_member_access($userId),
     ];
 }
 
@@ -481,7 +487,8 @@ function llama_place_checkin_preflight(
     $access =
         llama_place_checkin_user_access(
             $db,
-            $userId
+            $userId,
+            (int) ($place['id'] ?? 0)
         );
 
     if (empty($access['allowed'])) {
@@ -641,7 +648,8 @@ function llama_place_checkin_submit(
     $access =
         llama_place_checkin_user_access(
             $db,
-            $userId
+            $userId,
+            (int) ($place['id'] ?? 0)
         );
 
     if (empty($access['allowed'])) {

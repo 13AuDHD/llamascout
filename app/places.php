@@ -108,11 +108,34 @@ function places_public(): array
  * been confirmed by api/places.php. This keeps exact coordinates completely
  * out of free-user responses instead of merely hiding them in JavaScript.
  */
-function places_map(bool $includeExactCoordinates = false): array
-{
+function places_map(
+    bool $includeExactCoordinates = false,
+    ?int $viewerUserId = null
+): array {
     $places = places_public();
 
-    if (!$includeExactCoordinates || !$places) {
+    if (!$places) {
+        return $places;
+    }
+
+    $contributedPlaceLookup = [];
+
+    if (
+        !$includeExactCoordinates
+        && ($viewerUserId ?? 0) > 0
+    ) {
+        $contributedPlaceLookup = array_fill_keys(
+            user_original_contributed_place_ids(
+                (int) $viewerUserId
+            ),
+            true
+        );
+    }
+
+    if (
+        !$includeExactCoordinates
+        && !$contributedPlaceLookup
+    ) {
         return $places;
     }
 
@@ -140,6 +163,14 @@ function places_map(bool $includeExactCoordinates = false): array
 
     foreach ($places as &$place) {
         $placeId = (int) ($place['id'] ?? 0);
+
+        if (
+            !$includeExactCoordinates
+            && !isset($contributedPlaceLookup[$placeId])
+        ) {
+            continue;
+        }
+
         $exact = $exactById[$placeId] ?? null;
 
         if (!$exact) {

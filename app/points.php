@@ -291,6 +291,115 @@ function llama_points_new_place_max_points(
     return $total;
 }
 
+
+/* =========================================================
+   PLACE REPORT COMPLETENESS
+
+   This measures how much of the shared structured report has
+   actually been answered. Deliberate Unknown answers count as
+   completed observations. Photo presence counts once. Fields
+   excluded from new-Place scoring remain excluded here too so
+   the percentage matches the contribution system members see.
+   ========================================================= */
+
+function llama_place_report_completion_summary(
+    array $data,
+    int $photoCount = 0
+): array {
+    $answeredTotal = 0;
+    $fieldTotal = 0;
+    $pointFieldLookup = [];
+
+    foreach (
+        llama_points_new_place_categories()
+        as $category
+    ) {
+        foreach (
+            (array) $category['fields']
+            as $fieldKey
+        ) {
+            $fieldKey = (string) $fieldKey;
+            $pointFieldLookup[$fieldKey] = true;
+            $fieldTotal++;
+
+            if (
+                llama_points_has_answer(
+                    $data,
+                    $fieldKey
+                )
+            ) {
+                $answeredTotal++;
+            }
+        }
+    }
+
+    foreach (
+        llama_place_report_fields()
+        as $fieldKey => $field
+    ) {
+        if (isset($pointFieldLookup[$fieldKey])) {
+            continue;
+        }
+
+        if (
+            isset(
+                llama_points_optional_new_place_fields()[
+                    (string) $fieldKey
+                ]
+            )
+        ) {
+            continue;
+        }
+
+        $fieldTotal++;
+
+        if (
+            llama_points_has_answer(
+                $data,
+                (string) $fieldKey
+            )
+        ) {
+            $answeredTotal++;
+        }
+    }
+
+    $fieldTotal++;
+
+    if ($photoCount > 0) {
+        $answeredTotal++;
+    }
+
+    $missingMinimum = [];
+
+    if (!llama_points_has_answer($data, 'name')) {
+        $missingMinimum[] = 'Place name';
+    }
+
+    if (
+        !llama_points_has_answer($data, 'latitude')
+        || !llama_points_has_answer($data, 'longitude')
+    ) {
+        $missingMinimum[] = 'Exact location';
+    }
+
+    if ($photoCount < 1) {
+        $missingMinimum[] = '1 current photo';
+    }
+
+    return [
+        'answered' => $answeredTotal,
+        'total' => $fieldTotal,
+        'percent' =>
+            $fieldTotal > 0
+                ? (int) round(
+                    100 * ($answeredTotal / $fieldTotal)
+                )
+                : 0,
+        'missing_minimum' => $missingMinimum,
+        'minimum_met' => !$missingMinimum,
+    ];
+}
+
 function llama_points_estimate_new_place(
     PDO $db,
     array $data,
