@@ -783,3 +783,82 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
         grid-template-columns: 1fr;
     }
 }
+
+/* Phase 8: contribution maturity and contributor access */
+.place-documentation-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.place-documentation-meta .place-contribution-level {
+    margin-top: 0;
+}
+
+.place-report-completeness {
+    width: fit-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border: 1px solid rgba(255,255,255,.36);
+    border-radius: 999px;
+    background: rgba(0,0,0,.36);
+    color: #fff;
+    font-size: .76rem;
+    font-weight: 850;
+    line-height: 1.2;
+    backdrop-filter: blur(10px);
+}
+
+.place-report-completeness i,
+.place-report-completeness svg {
+    width: 16px;
+    height: 16px;
+}
+
+.place-detail-hero.no-image .place-report-completeness {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.place-contributor-access-note {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    margin-top: 30px;
+    padding: 15px 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 82%, var(--background));
+}
+
+.place-contributor-access-note > i {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--background);
+}
+
+.place-contributor-access-note > i svg {
+    width: 20px;
+    height: 20px;
+}
+
+.place-contributor-access-note strong {
+    display: block;
+    margin-bottom: 3px;
+}
+
+.place-contributor-access-note p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
