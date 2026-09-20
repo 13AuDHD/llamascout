@@ -200,98 +200,10 @@ function llama_contribution_role(
     PDO $db,
     int $userId
 ): string {
-
-    if (
-        $userId < 1
-    ) {
-
-        return 'user';
-
-    }
-
-
-    $stmt =
-        $db->prepare(
-            '
-            SELECT
-                r.slug
-
-            FROM user_roles ur
-
-            INNER JOIN roles r
-              ON r.id = ur.role_id
-
-            WHERE ur.user_id = ?
-
-            ORDER BY
-
-                CASE r.slug
-
-                    WHEN \'owner\'
-                        THEN 1
-
-                    WHEN \'admin\'
-                        THEN 2
-
-                    WHEN \'master-scout\'
-                        THEN 3
-
-                    WHEN \'master_scout\'
-                        THEN 3
-
-                    WHEN \'scout\'
-                        THEN 4
-
-                    WHEN \'member\'
-                        THEN 5
-
-                    ELSE 6
-
-                END ASC
-
-            LIMIT 1
-            '
-        );
-
-
-    $stmt->execute([
+    return llama_contribution_role_at_time(
+        $db,
         $userId
-    ]);
-
-
-    $role =
-        $stmt->fetchColumn();
-
-
-    if (
-        !$role
-    ) {
-
-        return 'user';
-
-    }
-
-
-    $role =
-        strtolower(
-            trim(
-                (string) $role
-            )
-        );
-
-
-    if (
-        $role ===
-        'master_scout'
-    ) {
-
-        return 'master-scout';
-
-    }
-
-
-    return $role;
-
+    );
 }
 
 

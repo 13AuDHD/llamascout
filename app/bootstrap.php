@@ -24,6 +24,7 @@ require_once __DIR__ . '/timezone.php';
 require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
+require_once __DIR__ . '/contribution-levels.php';
 require_once __DIR__ . '/weather.php';
 require_once __DIR__ . '/saved-places.php';
 require_once __DIR__ . '/photo-upload.php';

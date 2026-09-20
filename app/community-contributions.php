@@ -19,19 +19,10 @@ function community_verify_csrf(string $token): bool
 
 function community_role_at_submission(int $userId): string
 {
-    $roles = user_roles($userId);
-
-    foreach (['admin', 'master-scout', 'master_scout', 'scout'] as $role) {
-        if (in_array($role, $roles, true)) {
-            return str_replace('_', '-', $role);
-        }
-    }
-
-    if (function_exists('user_has_member_access') && user_has_member_access($userId)) {
-        return 'member';
-    }
-
-    return 'user';
+    return llama_contribution_role_at_time(
+        db(),
+        $userId
+    );
 }
 
 function community_clean_text(mixed $value, int $maxLength = 5000): ?string

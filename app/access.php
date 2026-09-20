@@ -23,6 +23,81 @@ function llama_access_utc_timestamp(
     }
 }
 
+/* =========================================================
+   PAID MEMBERSHIP CHECK
+
+   This deliberately answers a narrower question than
+   user_has_member_access(). Scouts, Admins, Owners, and
+   complimentary grants may have Complete Access without being
+   paid Members. Contribution labels must not confuse those.
+   ========================================================= */
+
+function user_has_paid_membership(?int $userId = null): bool
+{
+    if ($userId === null) {
+        $user = current_user();
+
+        if (!$user || empty($user['id'])) {
+            return false;
+        }
+
+        $userId = (int) $user['id'];
+    }
+
+    if ($userId < 1) {
+        return false;
+    }
+
+    $stmt = db()->prepare(
+        'SELECT
+            membership_status,
+            membership_ends_at,
+            stripe_subscription_id
+         FROM users
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$userId]);
+    $membership = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$membership) {
+        return false;
+    }
+
+    $status = strtolower(
+        trim((string) ($membership['membership_status'] ?? 'none'))
+    );
+
+    if (
+        !in_array(
+            $status,
+            ['active', 'trialing', 'past_due'],
+            true
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        trim((string) ($membership['stripe_subscription_id'] ?? ''))
+        === ''
+    ) {
+        return false;
+    }
+
+    $endsAt = $membership['membership_ends_at'] ?? null;
+
+    if ($endsAt === null) {
+        return true;
+    }
+
+    $endsTimestamp = llama_access_utc_timestamp((string) $endsAt);
+
+    return $endsTimestamp !== null && $endsTimestamp >= time();
+}
+
+
 function user_has_member_access(?int $userId = null): bool
 {
     if ($userId === null) {
