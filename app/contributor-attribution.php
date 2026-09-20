@@ -108,15 +108,6 @@ function llama_contributor_badge_icon(array $badge): string
 {
     $icon = strtolower(trim((string) ($badge['icon'] ?? '')));
 
-    if ($icon !== '') {
-        $tokens = preg_split('/\s+/', $icon) ?: [];
-        $icon = (string) end($tokens);
-
-        if (str_starts_with($icon, 'fa-')) {
-            $icon = substr($icon, 3);
-        }
-    }
-
     if (
         $icon === ''
         || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $icon)
