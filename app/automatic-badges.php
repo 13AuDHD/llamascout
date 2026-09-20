@@ -71,6 +71,161 @@ function llama_badge_threshold_column_ready(
 }
 
 
+function llama_badge_automatic_revocation_storage_ready(
+    PDO $db
+): bool {
+    $stmt = $db->prepare(
+        'SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+           AND table_name = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([
+        'badge_automatic_revocations',
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+
+function llama_badge_automatic_is_suppressed(
+    PDO $db,
+    int $userId,
+    int $badgeId,
+    bool $forUpdate = false
+): bool {
+    if (
+        $userId < 1
+        || $badgeId < 1
+        || !llama_badge_automatic_revocation_storage_ready($db)
+    ) {
+        return false;
+    }
+
+    $sql =
+        'SELECT id
+         FROM badge_automatic_revocations
+         WHERE user_id = ?
+           AND badge_id = ?
+           AND cleared_at IS NULL
+         LIMIT 1';
+
+    if ($forUpdate) {
+        $sql .= ' FOR UPDATE';
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        $userId,
+        $badgeId,
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+
+function llama_badge_suppress_automatic_award(
+    PDO $db,
+    int $userId,
+    int $badgeId,
+    ?int $revokedUserBadgeId,
+    int $revokedBy,
+    string $reason
+): void {
+    if ($userId < 1 || $badgeId < 1) {
+        throw new RuntimeException(
+            'A valid member and badge are required for automatic badge revocation.'
+        );
+    }
+
+    if (!llama_badge_automatic_revocation_storage_ready($db)) {
+        throw new RuntimeException(
+            'Automatic badge revocation storage is not installed yet.'
+        );
+    }
+
+    $reason = mb_substr(trim($reason), 0, 500);
+    if ($reason === '') {
+        throw new RuntimeException(
+            'A reason is required when suppressing an automatic badge.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO badge_automatic_revocations (
+            user_id,
+            badge_id,
+            revoked_user_badge_id,
+            revoked_by,
+            reason,
+            revoked_at,
+            cleared_at,
+            cleared_by,
+            clear_reason
+         ) VALUES (
+            ?, ?, ?, ?, ?, UTC_TIMESTAMP(), NULL, NULL, NULL
+         )
+         ON DUPLICATE KEY UPDATE
+            revoked_user_badge_id = VALUES(revoked_user_badge_id),
+            revoked_by = VALUES(revoked_by),
+            reason = VALUES(reason),
+            revoked_at = UTC_TIMESTAMP(),
+            cleared_at = NULL,
+            cleared_by = NULL,
+            clear_reason = NULL'
+    );
+
+    $stmt->execute([
+        $userId,
+        $badgeId,
+        $revokedUserBadgeId && $revokedUserBadgeId > 0
+            ? $revokedUserBadgeId
+            : null,
+        $revokedBy > 0 ? $revokedBy : null,
+        $reason,
+    ]);
+}
+
+
+function llama_badge_clear_automatic_suppression(
+    PDO $db,
+    int $userId,
+    int $badgeId,
+    int $clearedBy,
+    string $reason = 'Explicit manual award from Basecamp.'
+): bool {
+    if (
+        $userId < 1
+        || $badgeId < 1
+        || !llama_badge_automatic_revocation_storage_ready($db)
+    ) {
+        return false;
+    }
+
+    $stmt = $db->prepare(
+        'UPDATE badge_automatic_revocations
+         SET
+            cleared_at = UTC_TIMESTAMP(),
+            cleared_by = ?,
+            clear_reason = ?
+         WHERE user_id = ?
+           AND badge_id = ?
+           AND cleared_at IS NULL'
+    );
+
+    $stmt->execute([
+        $clearedBy > 0 ? $clearedBy : null,
+        mb_substr(trim($reason), 0, 500),
+        $userId,
+        $badgeId,
+    ]);
+
+    return $stmt->rowCount() > 0;
+}
+
+
 function llama_badge_maintenance_storage_ready(
     PDO $db
 ): bool {
@@ -254,110 +409,168 @@ function llama_badge_award_automatic(
         return false;
     }
 
-    $userStmt = $db->prepare(
-        'SELECT id
-         FROM users
-         WHERE id = ?
-           AND status = "active"
-           AND anonymized_at IS NULL
-         LIMIT 1'
-    );
+    $revocationStorageReady =
+        llama_badge_automatic_revocation_storage_ready($db);
 
-    $userStmt->execute([
-        $userId,
-    ]);
+    $startedTransaction =
+        $revocationStorageReady
+        && !$db->inTransaction();
 
-    if (!$userStmt->fetchColumn()) {
-        return false;
+    if ($startedTransaction) {
+        $db->beginTransaction();
     }
 
-    $existingStmt = $db->prepare(
-        'SELECT
-            id,
-            review_status
-         FROM user_badges
-         WHERE user_id = ?
-           AND badge_id = ?
-         LIMIT 1'
-    );
-
-    $existingStmt->execute([
-        $userId,
-        $badgeId,
-    ]);
-
-    $existing =
-        $existingStmt->fetch(
-            PDO::FETCH_ASSOC
-        );
-
-    $note =
-        'Automatically earned: '
-        . (
-            llama_badge_threshold_metric_labels()[
-                $metric
-            ]
-            ?? $metric
-        )
-        . ' '
-        . number_format($currentValue)
-        . ' / '
-        . number_format($threshold)
-        . '.';
-
-    if ($existing) {
+    try {
+        /*
+         * Lock the user/badge suppression key before awarding. The unique
+         * (user_id, badge_id) index makes this safe against a concurrent
+         * Basecamp revocation: whichever action commits last leaves the
+         * correct final state instead of silently re-awarding the badge.
+         */
         if (
-            (string) (
-                $existing['review_status']
-                ?? ''
-            ) === 'earned'
+            $revocationStorageReady
+            && llama_badge_automatic_is_suppressed(
+                $db,
+                $userId,
+                $badgeId,
+                true
+            )
         ) {
+            if ($startedTransaction) {
+                $db->commit();
+            }
+
             return false;
         }
 
-        $stmt = $db->prepare(
-            'UPDATE user_badges
-             SET
-                review_status = "earned",
-                awarded_by = NULL,
-                awarded_at = UTC_TIMESTAMP(),
-                note = ?
-             WHERE id = ?'
+        $userStmt = $db->prepare(
+            'SELECT id
+             FROM users
+             WHERE id = ?
+               AND status = "active"
+               AND anonymized_at IS NULL
+             LIMIT 1'
         );
 
-        $stmt->execute([
-            $note,
-            (int) $existing['id'],
+        $userStmt->execute([
+            $userId,
         ]);
 
+        if (!$userStmt->fetchColumn()) {
+            if ($startedTransaction) {
+                $db->commit();
+            }
+
+            return false;
+        }
+
+        $existingSql =
+            'SELECT
+                id,
+                review_status
+             FROM user_badges
+             WHERE user_id = ?
+               AND badge_id = ?
+             LIMIT 1';
+
+        if ($startedTransaction) {
+            $existingSql .= ' FOR UPDATE';
+        }
+
+        $existingStmt = $db->prepare($existingSql);
+        $existingStmt->execute([
+            $userId,
+            $badgeId,
+        ]);
+
+        $existing =
+            $existingStmt->fetch(
+                PDO::FETCH_ASSOC
+            );
+
+        $note =
+            'Automatically earned: '
+            . (
+                llama_badge_threshold_metric_labels()[
+                    $metric
+                ]
+                ?? $metric
+            )
+            . ' '
+            . number_format($currentValue)
+            . ' / '
+            . number_format($threshold)
+            . '.';
+
+        if ($existing) {
+            if (
+                (string) (
+                    $existing['review_status']
+                    ?? ''
+                ) === 'earned'
+            ) {
+                if ($startedTransaction) {
+                    $db->commit();
+                }
+
+                return false;
+            }
+
+            $stmt = $db->prepare(
+                'UPDATE user_badges
+                 SET
+                    review_status = "earned",
+                    awarded_by = NULL,
+                    awarded_at = UTC_TIMESTAMP(),
+                    note = ?
+                 WHERE id = ?'
+            );
+
+            $stmt->execute([
+                $note,
+                (int) $existing['id'],
+            ]);
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO user_badges (
+                    user_id,
+                    badge_id,
+                    awarded_by,
+                    awarded_at,
+                    review_status,
+                    note
+                 ) VALUES (
+                    ?,
+                    ?,
+                    NULL,
+                    UTC_TIMESTAMP(),
+                    "earned",
+                    ?
+                 )'
+            );
+
+            $stmt->execute([
+                $userId,
+                $badgeId,
+                $note,
+            ]);
+        }
+
+        if ($startedTransaction) {
+            $db->commit();
+        }
+
         return true;
+    } catch (Throwable $exception) {
+        if (
+            $startedTransaction
+            && $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        throw $exception;
     }
-
-    $stmt = $db->prepare(
-        'INSERT INTO user_badges (
-            user_id,
-            badge_id,
-            awarded_by,
-            awarded_at,
-            review_status,
-            note
-         ) VALUES (
-            ?,
-            ?,
-            NULL,
-            UTC_TIMESTAMP(),
-            "earned",
-            ?
-         )'
-    );
-
-    $stmt->execute([
-        $userId,
-        $badgeId,
-        $note,
-    ]);
-
-    return true;
 }
 
 
