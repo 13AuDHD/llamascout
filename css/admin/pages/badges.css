@@ -237,7 +237,7 @@
 .admin-badge-stat-grid {
     display: grid;
     grid-template-columns:
-        repeat(4, minmax(0, 1fr));
+        repeat(2, minmax(0, 1fr));
     gap: 10px;
 
     margin-bottom: var(--admin-panel-gap);
@@ -450,13 +450,6 @@
 
 @media (max-width: 620px) {
 
-   .admin-badge-stat-grid {
-       display: grid;
-       grid-template-columns:
-           repeat(2, minmax(0, 1fr));
-       gap: 10px;
-   }
-      
     .admin-member-badge-summary,
     .admin-member-badge-award form,
     .admin-badge-definition-grid {
@@ -474,28 +467,26 @@
 
 .admin-credential-review-list {
     display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px;
 }
 
 .admin-credential-review-card {
-    display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        minmax(120px, 210px)
-        minmax(260px, .75fr);
-    gap: 14px;
-    align-items: start;
-
-    padding: 16px;
-
-    border-bottom: 1px solid var(--border);
-}
-
-.admin-credential-review-card:last-child {
-    border-bottom: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
 }
 
 .admin-credential-review-copy {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .admin-credential-review-copy > span,
@@ -526,20 +517,14 @@
     margin-bottom: 0;
 }
 
-.admin-credential-file-link {
-    margin-top: 10px;
-}
-
 .admin-credential-preview {
     display: block;
     overflow: hidden;
-
+    width: 100%;
     aspect-ratio: 4 / 3;
-
     border: 1px solid var(--border);
     border-radius: 10px;
-
-    background: var(--background);
+    background: var(--surface);
 }
 
 .admin-credential-preview img {
@@ -549,33 +534,35 @@
     object-fit: contain;
 }
 
-.admin-credential-review-actions {
-    display: grid;
-    gap: 10px;
+.admin-credential-file-link {
+    width: 100%;
+    margin-top: 10px;
+    box-sizing: border-box;
+    justify-content: center;
 }
 
-.admin-credential-review-actions form {
+.admin-credential-review-form {
     display: grid;
-    gap: 7px;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--background);
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
 }
 
-.admin-credential-review-actions label {
+.admin-credential-review-form label {
     display: grid;
     gap: 5px;
 }
 
-.admin-credential-review-actions label > span {
+.admin-credential-review-form label > span {
     color: var(--text-muted);
     font-size: .64rem;
     font-weight: 800;
 }
 
-.admin-credential-review-actions textarea {
+.admin-credential-review-form textarea {
     width: 100%;
+    min-height: 64px;
     box-sizing: border-box;
     padding: 8px 9px;
     border: 1px solid var(--border);
@@ -587,35 +574,27 @@
     resize: vertical;
 }
 
-@media (max-width: 980px) {
-    .admin-credential-review-card {
-        grid-template-columns: minmax(0, 1fr) minmax(220px, .8fr);
-    }
+.admin-credential-review-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+}
 
-    .admin-credential-preview {
-        grid-column: 1;
-        width: min(100%, 260px);
-    }
+.admin-credential-review-buttons .admin-button {
+    width: 100%;
+    justify-content: center;
+}
 
-    .admin-credential-review-actions {
-        grid-column: 2;
-        grid-row: 1 / span 2;
+@media (max-width: 1180px) {
+    .admin-credential-review-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 700px) {
-    .admin-credential-review-card {
+    .admin-credential-review-list {
         grid-template-columns: 1fr;
-    }
-
-    .admin-credential-preview,
-    .admin-credential-review-actions {
-        grid-column: auto;
-        grid-row: auto;
-    }
-
-    .admin-credential-preview {
-        width: 100%;
+        padding: 12px;
     }
 }
 
