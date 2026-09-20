@@ -132,11 +132,167 @@ require dirname(__DIR__) . '/partials/header.php';
     </section>
 <?php else: ?>
 
+<?php
+$submittableBadgeCount = 0;
+
+foreach ($credentialBadges as $badge) {
+    $earned = is_array($badge['earned_award'] ?? null);
+    $latest = is_array($badge['latest_submission'] ?? null)
+        ? $badge['latest_submission']
+        : null;
+    $latestStatus = strtolower(trim((string) ($latest['status'] ?? '')));
+
+    if (!$earned && $latestStatus !== 'pending') {
+        $submittableBadgeCount++;
+    }
+}
+?>
+
+<section class="account-section" aria-labelledby="credential-submit-heading">
+    <div class="account-section-heading">
+        <div>
+            <p class="account-eyebrow">Credential review</p>
+            <h2 id="credential-submit-heading">Submit a credential</h2>
+        </div>
+    </div>
+
+    <div class="badge-credential-submit-panel">
+        <form
+            method="post"
+            enctype="multipart/form-data"
+            class="badge-credential-master-form"
+        >
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= badge_credentials_e(llama_badge_credential_csrf_token()) ?>"
+            >
+            <input type="hidden" name="credential_action" value="submit">
+
+            <div class="badge-credential-primary-row">
+                <label>
+                    <span>Credential badge</span>
+                    <select
+                        name="badge_id"
+                        required
+                        <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                    >
+                        <option value="" selected disabled>
+                            <?= $submittableBadgeCount > 0
+                                ? 'Choose a credential badge'
+                                : 'No credential badges available to submit' ?>
+                        </option>
+
+                        <?php foreach ($credentialBadges as $badge): ?>
+                            <?php
+                            $earned = is_array($badge['earned_award'] ?? null);
+                            $latest = is_array($badge['latest_submission'] ?? null)
+                                ? $badge['latest_submission']
+                                : null;
+                            $latestStatus = strtolower(
+                                trim((string) ($latest['status'] ?? ''))
+                            );
+                            $canSubmit = !$earned && $latestStatus !== 'pending';
+
+                            $optionSuffix = '';
+                            if ($earned) {
+                                $optionSuffix = ' (earned)';
+                            } elseif ($latestStatus === 'pending') {
+                                $optionSuffix = ' (in review)';
+                            } elseif ($latestStatus === 'declined') {
+                                $optionSuffix = ' (resubmit)';
+                            } elseif ($latestStatus === 'approved') {
+                                $optionSuffix = ' (submit new proof)';
+                            }
+                            ?>
+
+                            <option
+                                value="<?= (int) $badge['id'] ?>"
+                                <?= $canSubmit ? '' : 'disabled' ?>
+                            >
+                                <?= badge_credentials_e(
+                                    (string) $badge['name'] . $optionSuffix
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>
+                        Badges already earned or currently in review cannot be selected.
+                    </small>
+                </label>
+
+                <label>
+                    <span>Certificate or proof</span>
+                    <input
+                        type="file"
+                        name="credential_file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
+                        required
+                        <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                    >
+                    <small>PDF or image, up to 12 MB. This file is stored privately.</small>
+                </label>
+            </div>
+
+            <div class="badge-credential-secondary-row">
+                <label>
+                    <span>Credential or certificate number</span>
+                    <input
+                        type="text"
+                        name="credential_identifier"
+                        maxlength="150"
+                        autocomplete="off"
+                        placeholder="Optional"
+                        <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                    >
+                </label>
+
+                <label>
+                    <span>Issued date</span>
+                    <input
+                        type="date"
+                        name="issued_on"
+                        <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                    >
+                </label>
+
+                <label>
+                    <span>Expiration date</span>
+                    <input
+                        type="date"
+                        name="expires_on"
+                        <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                    >
+                </label>
+            </div>
+
+            <label class="badge-credential-note-field">
+                <span>Note for the reviewer</span>
+                <textarea
+                    name="member_note"
+                    rows="3"
+                    maxlength="1000"
+                    placeholder="Optional context about this credential"
+                    <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+                ></textarea>
+            </label>
+
+            <button
+                class="account-button is-primary badge-credential-submit-button"
+                type="submit"
+                <?= $submittableBadgeCount < 1 ? 'disabled' : '' ?>
+            >
+                Submit for review
+            </button>
+        </form>
+    </div>
+</section>
+
 <section class="account-section" aria-labelledby="credential-options-heading">
     <div class="account-section-heading">
         <div>
-            <p class="account-eyebrow">Available credentials</p>
-            <h2 id="credential-options-heading">Submit a credential</h2>
+            <p class="account-eyebrow">Recognition</p>
+            <h2 id="credential-options-heading">Credentialed badges</h2>
         </div>
         <span class="account-section-count"><?= count($credentialBadges) ?></span>
     </div>
@@ -150,7 +306,6 @@ require dirname(__DIR__) . '/partials/header.php';
             ? $badge['latest_submission']
             : null;
         $latestStatus = strtolower(trim((string) ($latest['status'] ?? '')));
-        $canSubmit = !$earned && $latestStatus !== 'pending';
         $badgeImage = llama_badge_image_url(
             (string) ($badge['slug'] ?? ''),
             (string) ($badge['image_src'] ?? '')
@@ -181,8 +336,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 : '';
 
         if ($badgeIconMarkup === '') {
-            $badgeIconMarkup =
-                llama_icon('certificate');
+            $badgeIconMarkup = llama_icon('certificate');
         }
         ?>
 
@@ -229,80 +383,21 @@ require dirname(__DIR__) . '/partials/header.php';
                     </span>
                 <?php elseif ($latestStatus === 'declined'): ?>
                     <strong>Needs resubmission</strong>
-                    <span>Your last submission was declined. You can submit new evidence below.</span>
+                    <span>Your last submission was declined.</span>
                     <?php if (!empty($latest['review_note'])): ?>
-                        <p><?= badge_credentials_e((string) $latest['review_note']) ?></p>
+                        <p class="badge-credential-decline-reason">
+                            <?= badge_credentials_e((string) $latest['review_note']) ?>
+                        </p>
                     <?php endif; ?>
+                    <span>You can submit new evidence above.</span>
                 <?php elseif ($latestStatus === 'approved'): ?>
                     <strong>Previously approved</strong>
                     <span>The prior credential was approved, but this badge is not currently on your account.</span>
                 <?php else: ?>
                     <strong>Not submitted</strong>
-                    <span>Upload a certificate or other credential proof for review.</span>
+                    <span>Choose this badge above to submit credential proof for review.</span>
                 <?php endif; ?>
             </div>
-
-            <?php if ($canSubmit): ?>
-                <form
-                    method="post"
-                    enctype="multipart/form-data"
-                    class="badge-credential-form"
-                >
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="<?= badge_credentials_e(llama_badge_credential_csrf_token()) ?>"
-                    >
-                    <input type="hidden" name="credential_action" value="submit">
-                    <input type="hidden" name="badge_id" value="<?= (int) $badge['id'] ?>">
-
-                    <label class="is-wide">
-                        <span>Certificate or proof</span>
-                        <input
-                            type="file"
-                            name="credential_file"
-                            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
-                            required
-                        >
-                        <small>PDF or image, up to 12 MB. This file is stored privately.</small>
-                    </label>
-
-                    <label>
-                        <span>Credential or certificate number</span>
-                        <input
-                            type="text"
-                            name="credential_identifier"
-                            maxlength="150"
-                            autocomplete="off"
-                            placeholder="Optional"
-                        >
-                    </label>
-
-                    <label>
-                        <span>Issued date</span>
-                        <input type="date" name="issued_on">
-                    </label>
-
-                    <label>
-                        <span>Expiration date</span>
-                        <input type="date" name="expires_on">
-                    </label>
-
-                    <label class="is-wide">
-                        <span>Note for the reviewer</span>
-                        <textarea
-                            name="member_note"
-                            rows="3"
-                            maxlength="1000"
-                            placeholder="Optional context about this credential"
-                        ></textarea>
-                    </label>
-
-                    <button class="account-button is-primary" type="submit">
-                        Submit for review
-                    </button>
-                </form>
-            <?php endif; ?>
 
             <a
                 class="badge-credential-public-link"
@@ -318,7 +413,6 @@ require dirname(__DIR__) . '/partials/header.php';
 
     </div>
 </section>
-
 <?php endif; ?>
 
 <?php if ($history): ?>
