@@ -56,6 +56,11 @@ $sections = [
         'place_update_max_points',
         'place_correction_points',
     ],
+    'Place Check In' => [
+        'place_checkin_cooldown_days',
+        'place_checkin_radius_meters',
+        'place_checkin_max_accuracy_meters',
+    ],
     'System' => [
         'maintenance_interval_seconds',
     ],

@@ -10,6 +10,10 @@ function admin_report_problem_icon_name(string $problemType): string
 {
     return match ($problemType) {
         'safety' => 'alert-triangle',
+        'road-closed' => 'barrier-block',
+        'coordinates-incorrect' => 'current-location',
+        'place-inaccessible' => 'road',
+        'place-not-found' => 'map-pin',
         'closure-status' => 'barrier-block',
         'location-access' => 'current-location',
         'amenities' => 'info-circle',
