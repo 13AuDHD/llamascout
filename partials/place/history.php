@@ -1,13 +1,12 @@
-<section class="place-history-section">
+<section class="place-history-section" id="place-history">
     <div class="place-detail-container">
 
         <div class="place-history-heading">
             <p class="place-detail-eyebrow">Place history</p>
             <h2>Who helped document this Place</h2>
             <p>
-                Contribution labels show the level of the person who
-                actually documented the Place. Moderation alone does
-                not raise a Place's documentation level.
+                See who has added or updated information here, and open
+                past reports to see how this Place has changed over time.
             </p>
         </div>
 
@@ -54,6 +53,19 @@
                             : LLAMA_CONTRIBUTION_LEVEL_COMMUNITY
                     );
             }
+
+            $originReportUrl = '';
+            $originSubmissionId = (int) (
+                $historyProvenance['original_submission_id']
+                ?? 0
+            );
+
+            if ($originSubmissionId > 0) {
+                $originReportUrl = llama_historical_report_url(
+                    (string) $place['slug'],
+                    'submission-' . $originSubmissionId
+                );
+            }
             ?>
 
             <div class="place-history-origin">
@@ -77,6 +89,13 @@
                         <?php endif; ?>
                     </p>
                 <?php endif; ?>
+
+                <?php if ($originReportUrl !== ''): ?>
+                    <a class="place-history-report-link" href="<?= place_h($originReportUrl) ?>">
+                        <i aria-hidden="true"><?= llama_icon('history') ?></i>
+                        View original report
+                    </a>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -98,6 +117,35 @@
                         $db,
                         $activity
                     );
+
+                    $activityReportKey = '';
+                    $activitySubmissionId = (int) (
+                        $activity['submission_id']
+                        ?? 0
+                    );
+                    $activityUpdateId = (int) (
+                        $activity['update_submission_id']
+                        ?? 0
+                    );
+
+                    if (
+                        (string) $activity['contribution_type'] === 'new_place'
+                        && $activitySubmissionId > 0
+                    ) {
+                        $activityReportKey =
+                            'submission-' . $activitySubmissionId;
+                    } elseif ($activityUpdateId > 0) {
+                        $activityReportKey =
+                            'update-' . $activityUpdateId;
+                    }
+
+                    $activityReportUrl =
+                        $activityReportKey !== ''
+                            ? llama_historical_report_url(
+                                (string) $place['slug'],
+                                $activityReportKey
+                            )
+                            : '';
                     ?>
                     <article class="place-activity-item">
                         <div class="place-activity-icon">
@@ -141,9 +189,18 @@
                             </span>
                         </div>
 
-                        <?php if ((int) ($activity['points_awarded'] ?? 0) > 0): ?>
-                            <span class="place-activity-points">+<?= (int) $activity['points_awarded'] ?></span>
-                        <?php endif; ?>
+                        <div class="place-activity-actions">
+                            <?php if ((int) ($activity['points_awarded'] ?? 0) > 0): ?>
+                                <span class="place-activity-points">+<?= (int) $activity['points_awarded'] ?></span>
+                            <?php endif; ?>
+
+                            <?php if ($activityReportUrl !== ''): ?>
+                                <a class="place-history-report-link is-compact" href="<?= place_h($activityReportUrl) ?>">
+                                    View report
+                                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </article>
                 <?php endforeach; ?>
             </div>
