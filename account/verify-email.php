@@ -610,10 +610,17 @@ if (
           check your Spam, Junk, or Promotions folder.
         </strong>
         Verification emails can occasionally be filtered there
-        by your email provider. Add "hi@llamascout.com" to your
+        by your email provider. 
+      </p>
+      
+      <p class="account-auth-intro">
+        Add "hi@llamascout.com" to your
         address book to help prevent future bounced messages.
       </p>
 
+      <p class="account-auth-intro">
+          &nbsp;
+      </p>
 
       <a
         class="primary-button"
