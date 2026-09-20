@@ -1,5 +1,5 @@
 <section class="place-report-section" id="report-place">
-    <details class="place-report"<?= $reportError !== null ? ' open' : '' ?>>
+    <details class="place-report"<?= !empty($reportOpen) || $reportError !== null ? ' open' : '' ?>>
         <summary>
             <i aria-hidden="true"><?= llama_icon('flag') ?></i>
             Report a problem with this place
@@ -20,7 +20,7 @@
                 </div>
             <?php endif; ?>
 
-            <?php if ($userId > 0): ?>
+            <?php if (!empty($canReportProblem)): ?>
                 <p>
                     Tell us what changed or what looks wrong. Reports are reviewed before
                     information on the place is changed.
@@ -47,7 +47,7 @@
 
                     <div class="place-report-photo-section">
                         <p>
-                            <strong>Closure or status reports require at least one current photo.</strong>
+                            <strong>Road closure and closure/status reports require at least one current photo.</strong>
                             Photos are optional for the other report types.
                         </p>
 

@@ -78,13 +78,25 @@
                         </a>
                     <?php endif; ?>
 
-                    <a
-                        class="place-detail-action-button"
-                        href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
-                    >
-                        <i aria-hidden="true"><?= llama_icon('edit') ?></i>
-                        Suggest Update
-                    </a>
+                    <?php if ($canCheckIn): ?>
+                        <a
+                            class="place-detail-action-button"
+                            href="/check-in.php?place=<?= rawurlencode((string) $place['slug']) ?>"
+                        >
+                            <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
+                            Check In
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($canSuggestUpdate): ?>
+                        <a
+                            class="place-detail-action-button"
+                            href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
+                        >
+                            <i aria-hidden="true"><?= llama_icon('edit') ?></i>
+                            Suggest Update
+                        </a>
+                    <?php endif; ?>
                 <?php else: ?>
                     <a class="place-detail-action-button" href="https://account.llamascout.com/login.php">
                         <i aria-hidden="true"><?= llama_icon('bookmark') ?></i>
