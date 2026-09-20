@@ -407,7 +407,13 @@ function admin_badges_save_definition(
     if ($awardType !== 'automatic') {
         $thresholdMetric = '';
         $threshold = null;
-    } elseif ($thresholdMetric !== '') {
+    } else {
+        if ($thresholdMetric === '') {
+            throw new RuntimeException(
+                'Automatic badges need a threshold type.'
+            );
+        }
+
         if (
             !llama_badge_threshold_metric_is_valid(
                 $thresholdMetric
@@ -423,16 +429,9 @@ function admin_badges_save_definition(
             || $threshold < 1
         ) {
             throw new RuntimeException(
-                'Automatic threshold badges need a threshold of at least 1.'
+                'Automatic badges need a threshold of at least 1.'
             );
         }
-    } elseif (
-        $threshold !== null
-        && $threshold > 0
-    ) {
-        throw new RuntimeException(
-            'Choose what the automatic badge threshold measures.'
-        );
     }
 
     $thresholdMetricForStorage =

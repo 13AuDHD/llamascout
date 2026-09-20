@@ -22,6 +22,23 @@ function llama_badge_threshold_metric_labels(): array
 }
 
 
+function llama_badge_threshold_metric_descriptions(): array
+{
+    return [
+        'approved_contributions' =>
+            'Counts every approved Place contribution, including new Places, updates, and corrections.',
+        'new_places' =>
+            'Counts unique approved new Places submitted by the member.',
+        'place_updates' =>
+            'Counts approved Place updates and factual corrections.',
+        'llamaversaries' =>
+            'Counts completed years since the member joined Llama Scout.',
+        'total_points' =>
+            "Uses the member's total contribution points.",
+    ];
+}
+
+
 function llama_badge_threshold_metric_is_valid(
     string $metric
 ): bool {
