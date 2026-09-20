@@ -41,11 +41,7 @@ if ($badgeId < 1) {
 $notice =
     isset($_GET['created'])
         ? 'Badge created.'
-        : (
-            isset($_GET['credential_reviewed'])
-                ? 'Credential review saved.'
-                : ''
-        );
+        : '';
 
 $error = '';
 
@@ -125,33 +121,6 @@ if (
 
                 $notice =
                     'Badge awarded.';
-            } elseif ($action === 'review-credential') {
-                llama_badge_credential_review(
-                    $db,
-                    $actorUserId,
-                    (int) (
-                        $_POST['submission_id']
-                        ?? 0
-                    ),
-                    (string) (
-                        $_POST['review_decision']
-                        ?? ''
-                    ),
-                    (string) (
-                        $_POST['review_note']
-                        ?? ''
-                    )
-                );
-
-                header(
-                    'Location: /badge-admin.php?id=' .
-                    $badgeId .
-                    '&credential_reviewed=1',
-                    true,
-                    303
-                );
-                exit;
-
             } elseif ($action === 'revoke') {
                 admin_badges_revoke(
                     $db,
@@ -821,8 +790,15 @@ require __DIR__ .
 
 <div class="admin-badge-credential-history">
 <?php foreach ($credentialSubmissions as $submission): ?>
-    <?php $submissionStatus = (string) $submission['status']; ?>
-    <article class="admin-badge-credential-record is-<?= moderation_e($submissionStatus) ?>">
+    <?php
+    $submissionStatus = (string) $submission['status'];
+    $submissionHasPreview =
+        str_starts_with(
+            (string) $submission['mime_type'],
+            'image/'
+        );
+    ?>
+    <article class="admin-badge-credential-record is-<?= moderation_e($submissionStatus) ?><?= $submissionHasPreview ? ' has-preview' : '' ?>">
         <div class="admin-badge-credential-record-main">
             <span>
                 Submission #<?= (int) $submission['id'] ?>
@@ -967,7 +943,7 @@ require __DIR__ .
             </a>
         </div>
 
-        <?php if (str_starts_with((string) $submission['mime_type'], 'image/')): ?>
+        <?php if ($submissionHasPreview): ?>
             <a
                 class="admin-badge-credential-preview"
                 href="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>"
@@ -981,50 +957,19 @@ require __DIR__ .
         <?php endif; ?>
 
         <?php if ($submissionStatus === 'pending'): ?>
-        <div class="admin-badge-credential-decision">
-            <form method="post">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= moderation_e(moderation_csrf_token()) ?>"
-                >
-                <input type="hidden" name="badge_id" value="<?= (int) $badgeId ?>">
-                <input type="hidden" name="badge_admin_action" value="review-credential">
-                <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
-                <input type="hidden" name="review_decision" value="approve">
-                <label>
-                    <span>Approval note</span>
-                    <textarea
-                        name="review_note"
-                        rows="2"
-                        maxlength="1000"
-                        placeholder="Optional"
-                    ></textarea>
-                </label>
-                <button class="admin-button" type="submit">Approve</button>
-            </form>
-
-            <form method="post">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= moderation_e(moderation_csrf_token()) ?>"
-                >
-                <input type="hidden" name="badge_id" value="<?= (int) $badgeId ?>">
-                <input type="hidden" name="badge_admin_action" value="review-credential">
-                <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
-                <input type="hidden" name="review_decision" value="decline">
-                <label>
-                    <span>Decline reason</span>
-                    <textarea
-                        name="review_note"
-                        rows="2"
-                        maxlength="1000"
-                        required
-                    ></textarea>
-                </label>
-                <button class="admin-button is-danger" type="submit">Decline</button>
-            </form>
+        <div class="admin-badge-credential-pending-action">
+            <div>
+                <strong>Pending review</strong>
+                <span>
+                    Credential decisions are handled in the main Badges review queue.
+                </span>
+            </div>
+            <a
+                class="admin-button"
+                href="/badges.php"
+            >
+                Review in queue
+            </a>
         </div>
         <?php endif; ?>
     </article>
