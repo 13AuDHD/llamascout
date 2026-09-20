@@ -446,6 +446,11 @@ function admin_badges_save_definition(
     $active = ((string) ($data['is_active'] ?? '0')) === '1' ? 1 : 0;
 
     if ($badgeId > 0) {
+        /*
+         * Editing badge metadata must never imply image removal.
+         * A staged upload is committed separately after this save and
+         * replaces image_src only when a new badge image actually exists.
+         */
         $stmt = $db->prepare(
             'UPDATE badge_definitions
              SET
@@ -455,7 +460,6 @@ function admin_badges_save_definition(
                 category = ?,
                 source_organization = ?,
                 icon = ?,
-                image_src = ?,
                 award_type = ?,
                 threshold_metric = ?,
                 threshold_value = ?,
@@ -470,7 +474,6 @@ function admin_badges_save_definition(
             $category,
             $sourceOrganization !== '' ? $sourceOrganization : null,
             $icon,
-            $imageSrc !== '' ? $imageSrc : null,
             $awardType,
             $thresholdMetricForStorage,
             $threshold,
