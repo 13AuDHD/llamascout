@@ -586,75 +586,118 @@ function admin_badges_award(
         throw new RuntimeException('Member account not found.');
     }
 
-    $existing = $db->prepare(
-        'SELECT id, review_status
-         FROM user_badges
-         WHERE user_id = ?
-           AND badge_id = ?
-         LIMIT 1'
-    );
-    $existing->execute([$userId, $badgeId]);
-    $existingRow = $existing->fetch(PDO::FETCH_ASSOC);
-
     $note = mb_substr(trim($note), 0, 500);
     $evidence = admin_badges_validate_url($evidenceUrl);
 
-    if ($existingRow) {
-        if ((string) $existingRow['review_status'] === 'earned') {
-            throw new RuntimeException('This member already has that badge.');
-        }
-
-        $stmt = $db->prepare(
-            'UPDATE user_badges
-             SET
-                review_status = "earned",
-                awarded_by = ?,
-                awarded_at = UTC_TIMESTAMP(),
-                evidence_url = ?,
-                note = ?
-             WHERE id = ?'
-        );
-        $stmt->execute([
-            $actorUserId,
-            $evidence,
-            $note !== '' ? $note : null,
-            (int) $existingRow['id'],
-        ]);
-    } else {
-        $stmt = $db->prepare(
-            'INSERT INTO user_badges (
-                user_id,
-                badge_id,
-                awarded_by,
-                awarded_at,
-                review_status,
-                evidence_url,
-                note
-             ) VALUES (?, ?, ?, UTC_TIMESTAMP(), "earned", ?, ?)'
-        );
-        $stmt->execute([
-            $userId,
-            $badgeId,
-            $actorUserId,
-            $evidence,
-            $note !== '' ? $note : null,
-        ]);
+    $startedTransaction = !$db->inTransaction();
+    if ($startedTransaction) {
+        $db->beginTransaction();
     }
 
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        $userId,
-        'badge.awarded',
-        'Awarded badge "' . (string) $badge['name'] . '".',
-        [
-            'badge_id' => $badgeId,
-            'badge_slug' => $badge['slug'],
-            'evidence_url' => $evidence,
-            'note' => $note !== '' ? $note : null,
-        ]
-    );
+    try {
+        /*
+         * Automatic award/revocation code locks the suppression key before
+         * user_badges. Keep the same lock order here to avoid deadlocks.
+         * This update is rolled back if the explicit award later fails.
+         */
+        $automaticSuppressionCleared = false;
+        if (
+            (string) ($badge['award_type'] ?? '') === 'automatic'
+        ) {
+            $automaticSuppressionCleared =
+                llama_badge_clear_automatic_suppression(
+                    $db,
+                    $userId,
+                    $badgeId,
+                    $actorUserId,
+                    'Explicit manual award from Basecamp.'
+                );
+        }
+
+        $existing = $db->prepare(
+            'SELECT id, review_status
+             FROM user_badges
+             WHERE user_id = ?
+               AND badge_id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $existing->execute([$userId, $badgeId]);
+        $existingRow = $existing->fetch(PDO::FETCH_ASSOC);
+
+        if ($existingRow) {
+            if ((string) $existingRow['review_status'] === 'earned') {
+                throw new RuntimeException('This member already has that badge.');
+            }
+
+            $stmt = $db->prepare(
+                'UPDATE user_badges
+                 SET
+                    review_status = "earned",
+                    awarded_by = ?,
+                    awarded_at = UTC_TIMESTAMP(),
+                    evidence_url = ?,
+                    note = ?
+                 WHERE id = ?'
+            );
+            $stmt->execute([
+                $actorUserId,
+                $evidence,
+                $note !== '' ? $note : null,
+                (int) $existingRow['id'],
+            ]);
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO user_badges (
+                    user_id,
+                    badge_id,
+                    awarded_by,
+                    awarded_at,
+                    review_status,
+                    evidence_url,
+                    note
+                 ) VALUES (?, ?, ?, UTC_TIMESTAMP(), "earned", ?, ?)'
+            );
+            $stmt->execute([
+                $userId,
+                $badgeId,
+                $actorUserId,
+                $evidence,
+                $note !== '' ? $note : null,
+            ]);
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            $userId,
+            'badge.awarded',
+            'Awarded badge "' . (string) $badge['name'] . '".',
+            [
+                'badge_id' => $badgeId,
+                'badge_slug' => $badge['slug'],
+                'evidence_url' => $evidence,
+                'note' => $note !== '' ? $note : null,
+                'automatic_revocation_cleared' =>
+                    $automaticSuppressionCleared,
+            ]
+        );
+
+        if ($startedTransaction) {
+            $db->commit();
+        }
+    } catch (Throwable $exception) {
+        if (
+            $startedTransaction
+            && $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
+
 
 function admin_badges_revoke(
     PDO $db,
@@ -667,57 +710,123 @@ function admin_badges_revoke(
         throw new RuntimeException('A reason is required when removing a badge.');
     }
 
-    $stmt = $db->prepare(
-        'SELECT
-            ub.*,
-            bd.name AS badge_name,
-            bd.slug AS badge_slug
-         FROM user_badges ub
-         INNER JOIN badge_definitions bd
-            ON bd.id = ub.badge_id
-         WHERE ub.id = ?
-         LIMIT 1'
-    );
-    $stmt->execute([$userBadgeId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) {
-        throw new RuntimeException('Badge award not found.');
+    $startedTransaction = !$db->inTransaction();
+    if ($startedTransaction) {
+        $db->beginTransaction();
     }
 
-    $db->prepare('DELETE FROM user_badges WHERE id = ?')->execute([$userBadgeId]);
+    try {
+        /*
+         * Read the award first so we know whether it is automatic. Do not
+         * lock user_badges yet. The automatic worker locks the suppression
+         * key first, so Basecamp must use the same lock order.
+         */
+        $stmt = $db->prepare(
+            'SELECT
+                ub.*,
+                bd.name AS badge_name,
+                bd.slug AS badge_slug,
+                bd.award_type AS badge_award_type
+             FROM user_badges ub
+             INNER JOIN badge_definitions bd
+                ON bd.id = ub.badge_id
+             WHERE ub.id = ?
+             LIMIT 1'
+        );
+        $stmt->execute([$userBadgeId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new RuntimeException('Badge award not found.');
+        }
 
-    $credentialSubmissionId =
-        (int) ($row['credential_submission_id'] ?? 0);
+        if (
+            (string) ($row['badge_award_type'] ?? '') === 'automatic'
+        ) {
+            llama_badge_suppress_automatic_award(
+                $db,
+                (int) $row['user_id'],
+                (int) $row['badge_id'],
+                $userBadgeId,
+                $actorUserId,
+                $reason
+            );
+        }
 
-    if ($credentialSubmissionId > 0) {
-        llama_badge_credential_add_event(
+        /*
+         * Lock and recheck the award after the suppression key is secured.
+         * If anything removed it meanwhile, roll back the suppression too.
+         */
+        $lockStmt = $db->prepare(
+            'SELECT id
+             FROM user_badges
+             WHERE id = ?
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $lockStmt->execute([$userBadgeId]);
+        if (!$lockStmt->fetchColumn()) {
+            throw new RuntimeException('Badge award is no longer available to remove.');
+        }
+
+        $delete = $db->prepare(
+            'DELETE FROM user_badges WHERE id = ?'
+        );
+        $delete->execute([$userBadgeId]);
+
+        if ($delete->rowCount() !== 1) {
+            throw new RuntimeException('Badge could not be removed.');
+        }
+
+        $credentialSubmissionId =
+            (int) ($row['credential_submission_id'] ?? 0);
+
+        if ($credentialSubmissionId > 0) {
+            llama_badge_credential_add_event(
+                $db,
+                $credentialSubmissionId,
+                $actorUserId,
+                'badge_revoked',
+                mb_substr($reason, 0, 1000),
+                [
+                    'user_badge_id' => $userBadgeId,
+                    'badge_id' => (int) $row['badge_id'],
+                    'user_id' => (int) $row['user_id'],
+                ]
+            );
+        }
+
+        admin_users_audit(
             $db,
-            $credentialSubmissionId,
             $actorUserId,
-            'badge_revoked',
-            mb_substr($reason, 0, 1000),
+            (int) $row['user_id'],
+            'badge.revoked',
+            'Removed badge "' . (string) $row['badge_name'] . '".',
             [
-                'user_badge_id' => $userBadgeId,
                 'badge_id' => (int) $row['badge_id'],
-                'user_id' => (int) $row['user_id'],
+                'badge_slug' => $row['badge_slug'],
+                'user_badge_id' => $userBadgeId,
+                'reason' => mb_substr($reason, 0, 500),
+                'automatic_reaward_suppressed' =>
+                    (string) ($row['badge_award_type'] ?? '')
+                    === 'automatic',
             ]
         );
-    }
 
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        (int) $row['user_id'],
-        'badge.revoked',
-        'Removed badge "' . (string) $row['badge_name'] . '".',
-        [
-            'badge_id' => (int) $row['badge_id'],
-            'badge_slug' => $row['badge_slug'],
-            'user_badge_id' => $userBadgeId,
-            'reason' => mb_substr($reason, 0, 500),
-        ]
-    );
+        if ($startedTransaction) {
+            $db->commit();
+        }
+    } catch (Throwable $exception) {
+        if (
+            $startedTransaction
+            && $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 }
+
 
 function admin_badges_replace_image_from_stage(
     PDO $db,
