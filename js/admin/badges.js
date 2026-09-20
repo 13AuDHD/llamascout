@@ -29,6 +29,34 @@
                     + '[name="threshold_value"]'
                 );
 
+            const thresholdMetric =
+                form.querySelector(
+                    '[data-badge-threshold-metric]'
+                );
+
+            const thresholdHelp =
+                form.querySelector(
+                    '[data-badge-threshold-help]'
+                );
+
+            const updateThresholdHelp =
+                () => {
+                    if (
+                        !thresholdMetric
+                        || !thresholdHelp
+                    ) {
+                        return;
+                    }
+
+                    const option =
+                        thresholdMetric
+                            .selectedOptions[0];
+
+                    thresholdHelp.textContent =
+                        option?.dataset.description
+                        || 'Choose the activity this automatic badge measures.';
+                };
+
             const updateThresholdVisibility =
                 () => {
                     const automatic =
@@ -46,13 +74,22 @@
                         (control) => {
                             control.disabled =
                                 !automatic;
+                            control.required =
+                                automatic;
                         }
                     );
+
+                    updateThresholdHelp();
                 };
 
             awardType.addEventListener(
                 'change',
                 updateThresholdVisibility
+            );
+
+            thresholdMetric?.addEventListener(
+                'change',
+                updateThresholdHelp
             );
 
             updateThresholdVisibility();
