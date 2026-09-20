@@ -407,12 +407,6 @@ require dirname(__DIR__) . '/partials/header.php';
                             )
                         );
 
-                    $badgeIcon = preg_replace(
-                        '/^fa-/',
-                        '',
-                        $badgeIcon
-                    ) ?? $badgeIcon;
-
                     if (
                         $badgeIcon === ''
                         || !preg_match(

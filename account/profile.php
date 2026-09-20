@@ -304,12 +304,6 @@ require dirname(__DIR__) . '/partials/header.php';
                                 $badgeIcon = trim(
                                     (string) ($badge['icon'] ?? 'award')
                                 );
-                                $badgeIcon = preg_replace(
-                                    '/^fa-/',
-                                    '',
-                                    $badgeIcon
-                                ) ?? $badgeIcon;
-
                                 if (
                                     $badgeIcon === ''
                                     || !preg_match(
