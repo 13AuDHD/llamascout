@@ -42,15 +42,28 @@
                     </p>
                 <?php endif; ?>
 
-                <?php if (!empty($documentationLevel['label'])): ?>
+                <div class="place-documentation-meta">
+                    <?php if (!empty($documentationLevel['label'])): ?>
+                        <div
+                            class="place-contribution-level is-<?= place_h((string) $documentationLevel['level']) ?>"
+                            title="<?= place_h((string) ($documentationLevel['description'] ?? '')) ?>"
+                        >
+                            <i aria-hidden="true"><?= llama_icon((string) ($documentationLevel['icon'] ?? 'users')) ?></i>
+                            <span><?= place_h((string) $documentationLevel['label']) ?></span>
+                        </div>
+                    <?php endif; ?>
+
                     <div
-                        class="place-contribution-level is-<?= place_h((string) $documentationLevel['level']) ?>"
-                        title="<?= place_h((string) ($documentationLevel['description'] ?? '')) ?>"
+                        class="place-report-completeness"
+                        title="How much of the structured Place Report currently has an observed answer."
                     >
-                        <i aria-hidden="true"><?= llama_icon((string) ($documentationLevel['icon'] ?? 'users')) ?></i>
-                        <span><?= place_h((string) $documentationLevel['label']) ?></span>
+                        <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+                        <span>
+                            Report completeness
+                            <?= (int) ($reportCompleteness['percent'] ?? 0) ?>%
+                        </span>
                     </div>
-                <?php endif; ?>
+                </div>
             </div>
 
             <div class="place-detail-actions">
@@ -68,7 +81,7 @@
                         </button>
                     </form>
 
-                    <?php if ($hasMemberAccess): ?>
+                    <?php if ($hasGlobalMemberAccess): ?>
                         <a
                             class="place-detail-action-button"
                             href="/compare.php?places=<?= rawurlencode((string) $place['slug']) ?>"

@@ -8,6 +8,20 @@ require_once dirname(__DIR__, 2)
 if ($hasMemberAccess):
 ?>
 
+    <?php if (!empty($hasContributorPlaceAccess) && empty($hasGlobalMemberAccess)): ?>
+        <section class="place-section place-contributor-access-note">
+            <i aria-hidden="true"><?= llama_icon('key') ?></i>
+            <div>
+                <strong>Complete Access to this Place</strong>
+                <p>
+                    You originally contributed this Place, so its complete report,
+                    exact location, gallery, and historical reports remain available
+                    to your account even without a paid membership.
+                </p>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <?php if (!empty($place['description'])): ?>
         <section class="place-section">
             <h2>About this place</h2>
