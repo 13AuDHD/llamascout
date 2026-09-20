@@ -185,6 +185,9 @@ $badge =
 $badgeThresholdMetricLabels =
     llama_badge_threshold_metric_labels();
 
+$badgeThresholdMetricDescriptions =
+    llama_badge_threshold_metric_descriptions();
+
 if (!$badge) {
     http_response_code(404);
 
@@ -555,14 +558,21 @@ require __DIR__ .
                 : 'hidden' ?>
         >
             <span>Threshold type</span>
-            <select name="threshold_metric">
+            <select
+                name="threshold_metric"
+                data-badge-threshold-metric
+                <?= (string) $badge['award_type'] === 'automatic'
+                    ? 'required'
+                    : '' ?>
+            >
                 <option
                     value=""
+                    disabled
                     <?= empty($badge['threshold_metric'])
                         ? 'selected'
                         : '' ?>
                 >
-                    Special / legacy automatic logic
+                    Choose metric
                 </option>
                 <?php foreach (
                     $badgeThresholdMetricLabels
@@ -572,6 +582,14 @@ require __DIR__ .
                     <option
                         value="<?= moderation_e(
                             $metricValue
+                        ) ?>"
+                        data-description="<?= moderation_e(
+                            (string) (
+                                $badgeThresholdMetricDescriptions[
+                                    $metricValue
+                                ]
+                                ?? ''
+                            )
                         ) ?>"
                         <?= (string) (
                             $badge['threshold_metric']
@@ -586,8 +604,23 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                Choose what this automatic badge counts.
+            <small data-badge-threshold-help>
+                <?php
+                $currentThresholdMetric =
+                    (string) (
+                        $badge['threshold_metric']
+                        ?? ''
+                    );
+
+                echo moderation_e(
+                    (string) (
+                        $badgeThresholdMetricDescriptions[
+                            $currentThresholdMetric
+                        ]
+                        ?? 'Choose the activity this automatic badge measures.'
+                    )
+                );
+                ?>
             </small>
         </label>
 
@@ -601,11 +634,18 @@ require __DIR__ .
             <input
                 type="number"
                 name="threshold_value"
-                min="0"
+                min="1"
+                step="1"
                 value="<?= $badge['threshold_value'] !== null
                     ? (int) $badge['threshold_value']
                     : '' ?>"
+                <?= (string) $badge['award_type'] === 'automatic'
+                    ? 'required'
+                    : '' ?>
             >
+            <small>
+                Award the badge when the selected metric reaches this value.
+            </small>
         </label>
 
         <label>

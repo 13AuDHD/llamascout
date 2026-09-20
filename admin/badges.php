@@ -239,6 +239,9 @@ $pendingCredentialReviews =
 $badgeThresholdMetricLabels =
     llama_badge_threshold_metric_labels();
 
+$badgeThresholdMetricDescriptions =
+    llama_badge_threshold_metric_descriptions();
+
 $selectedUserBadges =
     $selectedUserId > 0
         ? admin_badges_user_badges(
@@ -1032,9 +1035,13 @@ require __DIR__ .
 
         <label data-badge-threshold-field>
             <span>Threshold type</span>
-            <select name="threshold_metric">
-                <option value="">
-                    Special / legacy automatic logic
+            <select
+                name="threshold_metric"
+                data-badge-threshold-metric
+                required
+            >
+                <option value="" selected disabled>
+                    Choose metric
                 </option>
                 <?php foreach (
                     $badgeThresholdMetricLabels
@@ -1045,6 +1052,14 @@ require __DIR__ .
                         value="<?= moderation_e(
                             $metricValue
                         ) ?>"
+                        data-description="<?= moderation_e(
+                            (string) (
+                                $badgeThresholdMetricDescriptions[
+                                    $metricValue
+                                ]
+                                ?? ''
+                            )
+                        ) ?>"
                     >
                         <?= moderation_e(
                             $metricLabel
@@ -1052,8 +1067,8 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                Choose what this automatic badge counts.
+            <small data-badge-threshold-help>
+                Choose the activity this automatic badge measures.
             </small>
         </label>
 
@@ -1062,9 +1077,14 @@ require __DIR__ .
             <input
                 type="number"
                 name="threshold_value"
-                min="0"
-                placeholder="Optional"
+                min="1"
+                step="1"
+                placeholder="Required"
+                required
             >
+            <small>
+                Award the badge when the selected metric reaches this value.
+            </small>
         </label>
 
         <label>
