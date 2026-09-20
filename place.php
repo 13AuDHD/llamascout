@@ -263,6 +263,12 @@ $documentationLevel =
         (int) $place['id']
     );
 
+$placeFreshness =
+    llama_place_freshness_summary(
+        $db,
+        (int) $place['id']
+    );
+
 try {
     $stmt = $db->prepare(
         'SELECT
@@ -391,6 +397,8 @@ require __DIR__ . '/partials/header.php';
 <article class="place-page">
 
     <?php require __DIR__ . '/partials/place/hero.php'; ?>
+
+    <?php require __DIR__ . '/partials/place/freshness.php'; ?>
 
     <?php require __DIR__ . '/partials/place/gallery.php'; ?>
 
