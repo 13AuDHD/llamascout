@@ -19,6 +19,18 @@ $userId =
     );
 
 
+if (
+    !llama_contributor_can(
+        db(),
+        $userId,
+        'submit_update'
+    )
+) {
+    http_response_code(403);
+    exit('Your account is not eligible to submit Place updates.');
+}
+
+
 $slug =
     trim(
         (string) (
