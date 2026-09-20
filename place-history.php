@@ -60,11 +60,33 @@ $user = current_user();
 $userId = !empty($user['id'])
     ? (int) $user['id']
     : 0;
-$hasMemberAccess = user_has_member_access();
+$hasGlobalMemberAccess =
+    user_has_member_access(
+        $userId > 0
+            ? $userId
+            : null
+    );
 
-$livePlace = $hasMemberAccess
-    ? place_member_by_slug($slug)
-    : place_public_by_slug($slug);
+$hasMemberAccess =
+    $hasGlobalMemberAccess;
+
+$livePlace =
+    $hasGlobalMemberAccess
+        ? place_member_by_slug($slug)
+        : place_public_by_slug($slug);
+
+if (
+    !$hasGlobalMemberAccess
+    && $livePlace
+    && $userId > 0
+    && user_has_place_complete_access(
+        (int) $livePlace['id'],
+        $userId
+    )
+) {
+    $hasMemberAccess = true;
+    $livePlace = place_member_by_slug($slug);
+}
 
 if (!$livePlace) {
     http_response_code(404);

@@ -92,13 +92,30 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
 $slug = trim((string) ($_GET['slug'] ?? ''));
 $user = current_user();
 $userId = !empty($user['id']) ? (int) $user['id'] : 0;
-$hasMemberAccess = user_has_member_access();
+$hasGlobalMemberAccess = user_has_member_access($userId > 0 ? $userId : null);
+$hasContributorPlaceAccess = false;
+$hasMemberAccess = $hasGlobalMemberAccess;
 $place = null;
 
 if ($slug !== '') {
-    $place = $hasMemberAccess
-        ? place_member_by_slug($slug)
-        : place_public_by_slug($slug);
+    if ($hasGlobalMemberAccess) {
+        $place = place_member_by_slug($slug);
+    } else {
+        $place = place_public_by_slug($slug);
+
+        if (
+            $place
+            && $userId > 0
+            && user_has_place_complete_access(
+                (int) $place['id'],
+                $userId
+            )
+        ) {
+            $hasContributorPlaceAccess = true;
+            $hasMemberAccess = true;
+            $place = place_member_by_slug($slug);
+        }
+    }
 }
 
 if (!$place) {
@@ -232,6 +249,53 @@ $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
 $db = db();
+
+$reportCompleteness = [
+    'percent' => 0,
+    'answered' => 0,
+    'total' => 0,
+];
+
+try {
+    $completionSourcePlace =
+        $hasMemberAccess
+            ? $place
+            : place_member_by_slug((string) $place['slug']);
+
+    if ($completionSourcePlace) {
+        $publishedUnknownFields =
+            llama_place_report_published_answer_state(
+                $db,
+                (int) $place['id']
+            );
+
+        $completionData =
+            llama_place_report_data_from_published_place(
+                $completionSourcePlace,
+                $publishedUnknownFields
+            );
+
+        $completionPhotos =
+            is_array($completionSourcePlace['images'] ?? null)
+                ? count($completionSourcePlace['images'])
+                : 0;
+
+        $reportCompleteness =
+            llama_place_report_completion_summary(
+                llama_place_report_scoring_input_from_data(
+                    $completionData
+                ),
+                $completionPhotos
+            );
+    }
+} catch (Throwable $exception) {
+    error_log(
+        'Llama Scout report completeness error for Place #'
+        . (int) $place['id']
+        . ': '
+        . $exception->getMessage()
+    );
+}
 
 $canCheckIn =
     $userId > 0

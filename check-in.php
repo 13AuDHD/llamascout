@@ -66,7 +66,8 @@ if (!$place) {
 $access =
     llama_place_checkin_user_access(
         $db,
-        $userId
+        $userId,
+        (int) $place['id']
     );
 
 if (empty($access['allowed'])) {

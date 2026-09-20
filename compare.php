@@ -125,6 +125,7 @@ if ($compareMode === 'places') {
 
 $reportPlaceSlug = '';
 $reportPlace = null;
+$hasReportPlaceAccess = false;
 $reportVersions = [];
 $requestedReportKeys = [];
 $compareReports = [];
@@ -138,8 +139,29 @@ if ($compareMode === 'reports') {
             ?? ''
         );
 
+    if ($reportPlaceSlug !== '') {
+        $reportAccessPlace =
+            $hasMemberAccess
+                ? place_member_by_slug(
+                    $reportPlaceSlug
+                )
+                : place_public_by_slug(
+                    $reportPlaceSlug
+                );
+
+        $hasReportPlaceAccess =
+            $hasMemberAccess
+            || (
+                $reportAccessPlace
+                && user_has_place_complete_access(
+                    (int) $reportAccessPlace['id'],
+                    $currentUserId
+                )
+            );
+    }
+
     if (
-        $hasMemberAccess
+        $hasReportPlaceAccess
         && $reportPlaceSlug !== ''
     ) {
         $reportPlace =
@@ -216,6 +238,11 @@ if ($compareMode === 'reports') {
 }
 
 
+$hasCurrentCompareAccess =
+    $compareMode === 'reports'
+        ? $hasReportPlaceAccess
+        : $hasMemberAccess;
+
 $pageTitle =
     $compareMode === 'reports'
         ? 'Compare Reports | Llama Scout'
@@ -275,7 +302,7 @@ require __DIR__ . '/partials/header.php';
                 </a>
 
                 <?php if (
-                    $hasMemberAccess
+                    $hasCurrentCompareAccess
                     && (
                         (
                             $compareMode === 'places'
@@ -330,7 +357,7 @@ require __DIR__ . '/partials/header.php';
             </a>
         </nav>
 
-        <?php if (!$hasMemberAccess): ?>
+        <?php if (!$hasCurrentCompareAccess): ?>
             <section class="compare-access-card">
                 <span class="compare-access-icon">
                     <i aria-hidden="true"><?= llama_icon('lock') ?></i>

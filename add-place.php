@@ -354,6 +354,11 @@ require __DIR__ . '/partials/header.php';
 
 $placeReportValues = $_POST;
 $placeReportMode = 'contributor';
+$placeReportRequiredFields = [
+    'name',
+    'latitude',
+    'longitude',
+];
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
@@ -383,6 +388,16 @@ $placeReportPhotoHelp =
             you did not assess it. Choose ? only when you deliberately checked
             but could not determine the answer.
         </p>
+
+        <div class="add-place-form-note">
+            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+
+            <span>
+                <strong>Minimum to submit:</strong> a Place name, exact map
+                location, and at least one current photo. The rest of the report
+                can stay incomplete until someone actually observes those details.
+            </span>
+        </div>
 
         <div class="add-place-form-note">
             <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>

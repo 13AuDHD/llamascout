@@ -4,7 +4,27 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 
-$hasMapMemberAccess = user_has_member_access();
+$mapUser = current_user();
+$mapUserId =
+    is_array($mapUser)
+        ? (int) ($mapUser['id'] ?? 0)
+        : 0;
+
+$hasMapMemberAccess =
+    user_has_member_access(
+        $mapUserId > 0
+            ? $mapUserId
+            : null
+    );
+
+$hasContributorMapAccess =
+    !$hasMapMemberAccess
+    && $mapUserId > 0
+    && !empty(
+        user_original_contributed_place_ids(
+            $mapUserId
+        )
+    );
 
 $pageTitle = 'Explore the Map | Llama Scout';
 $pageDescription = 'Browse Llama Scout Places by location, type, land manager, elevation, and public amenities.';
@@ -32,7 +52,11 @@ require __DIR__ . '/partials/header.php';
                     Search published Places by general area, land management,
                     type, elevation, and public amenities.<?= $hasMapMemberAccess
                         ? ' Your membership unlocks exact Place locations and detailed map layers.'
-                        : ' Map pins use approximate public coordinates unless your account has access to the complete Place report.' ?>
+                        : (
+                            $hasContributorMapAccess
+                                ? ' Places you originally contributed use their exact pin for your account. Other map pins remain approximate.'
+                                : ' Map pins use approximate public coordinates unless your account has access to the complete Place report.'
+                        ) ?>
                 </p>
             </div>
 
@@ -40,9 +64,15 @@ require __DIR__ . '/partials/header.php';
                 <div class="map-privacy-note">
                     <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
                     <div>
-                        <strong>Public pins are approximate.</strong>
+                        <strong>
+                            <?= $hasContributorMapAccess
+                                ? 'Most public pins are approximate.'
+                                : 'Public pins are approximate.' ?>
+                        </strong>
                         <span>
-                            Exact coordinates remain part of the complete Place report.
+                            <?= $hasContributorMapAccess
+                                ? 'Places you originally contributed remain exact for your account. Other exact coordinates are part of Complete Access.'
+                                : 'Exact coordinates remain part of the complete Place report.' ?>
                         </span>
                     </div>
                 </div>
