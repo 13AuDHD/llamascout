@@ -10,42 +10,20 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser = moderation_require_admin();
 $db = db();
 
-$search =
-    trim((string) ($_GET['q'] ?? ''));
+$search = trim((string) ($_GET['q'] ?? ''));
+$state = trim((string) ($_GET['state'] ?? ''));
 
-$type =
-    trim((string) ($_GET['type'] ?? ''));
+$items = admin_place_freshness_rows(
+    $db,
+    $search,
+    $state
+);
 
-$age =
-    trim((string) ($_GET['age'] ?? ''));
+$freshnessStats = admin_place_freshness_stats($db);
+$attentionQueue = admin_place_freshness_attention_queue($db, 100);
+$recentChecks = admin_place_recent_field_checks($db, 100);
 
-$items =
-    admin_verifications_list(
-        $db,
-        $search,
-        $type,
-        $age
-    );
-
-$types =
-    admin_verification_types($db);
-
-$verificationStats =
-    admin_verification_stats($db);
-
-$attentionQueue =
-    admin_verification_attention_queue(
-        $db,
-        100
-    );
-
-$attentionStats =
-    admin_verification_attention_stats(
-        $db
-    );
-
-$stats =
-    admin_dashboard_stats($db);
+$stats = admin_dashboard_stats($db);
 
 $adminNavCounts = [
     'new_places' => $stats['new_places'],
@@ -55,528 +33,339 @@ $adminNavCounts = [
     'scout_reviews' => $stats['scout_reviews'],
 ];
 
-$adminPageTitle = 'Verifications';
+$adminPageTitle = 'Place Freshness';
 $adminPageEyebrow = 'Places';
 $adminActiveNav = 'verifications';
 
 require __DIR__ . '/_header.php';
 ?>
 
-<section class="admin-panel admin-verification-operations-panel">
+<section class="admin-panel admin-verification-intro-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Field freshness</p>
+            <h2>How recently was each Place physically checked?</h2>
+        </div>
 
-<header class="admin-panel-header">
-    <div>
-        <p>Operational Queue</p>
-        <h2>Place Verification Freshness</h2>
+        <span>
+            Official-source checks do not reset field freshness. This page tracks real-world visits and geofenced check-ins.
+        </span>
+    </header>
+</section>
+
+<section class="admin-verification-stat-grid" aria-label="Place freshness summary">
+    <div class="is-fresh">
+        <span>Fresh</span>
+        <strong><?= number_format((int) $freshnessStats['fresh']) ?></strong>
+        <small>Checked within 6 months</small>
     </div>
 
-    <span>
-        Published Places are considered current when checked within the last year.
-    </span>
-</header>
-
-<div class="admin-verification-health-summary">
-
-    <div class="is-good">
-        <span class="admin-verification-light" aria-hidden="true"></span>
-        <div>
-            <strong><?= number_format((int) $attentionStats['published_current']) ?></strong>
-            <span>Current</span>
-        </div>
+    <div class="is-aging">
+        <span>Aging</span>
+        <strong><?= number_format((int) $freshnessStats['aging']) ?></strong>
+        <small>6 to 12 months</small>
     </div>
 
     <div class="is-attention">
-        <span class="admin-verification-light" aria-hidden="true"></span>
+        <span>Needs attention</span>
+        <strong><?= number_format((int) $freshnessStats['attention']) ?></strong>
+        <small>More than 1 year</small>
+    </div>
+
+    <div class="is-never">
+        <span>Never checked</span>
+        <strong><?= number_format((int) $freshnessStats['never_checked']) ?></strong>
+        <small>No field check recorded</small>
+    </div>
+</section>
+
+<section class="admin-panel admin-verification-operations-panel">
+    <header class="admin-panel-header">
         <div>
-            <strong><?= number_format((int) $attentionStats['published_stale']) ?></strong>
-            <span>Need attention</span>
+            <p>Operational queue</p>
+            <h2>Places to revisit</h2>
         </div>
-    </div>
-
-    <div class="is-down">
-        <span class="admin-verification-light" aria-hidden="true"></span>
-        <div>
-            <strong><?= number_format((int) $attentionStats['published_never_verified']) ?></strong>
-            <span>Never verified</span>
-        </div>
-    </div>
-
-</div>
-
-
-<?php
-$needsAttention = array_values(
-    array_filter(
-        $attentionQueue,
-        static fn (array $place): bool =>
-            in_array(
-                (string) $place['freshness_state'],
-                ['never','overdue','attention'],
-                true
-            )
-    )
-);
-?>
-
-<?php if (!$needsAttention): ?>
-
-<div class="admin-empty-state admin-verification-all-current">
-    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
-    <h3>Published Place verification is current.</h3>
-    <p>No active or featured Places are currently more than one year out of date or missing verification.</p>
-</div>
-
-<?php else: ?>
-
-<div class="admin-verification-attention-list">
-
-<?php foreach ($needsAttention as $place): ?>
-
-<?php
-$freshness = (string) $place['freshness_state'];
-$published = in_array(
-    (string) $place['status'],
-    ['active','featured'],
-    true
-);
-?>
-
-<article class="admin-verification-attention-row is-<?= moderation_e($freshness) ?>">
-
-<span class="admin-verification-light" aria-hidden="true"></span>
-
-<div class="admin-verification-attention-main">
-    <div>
-        <strong><?= moderation_e((string) $place['name']) ?></strong>
-        <span>
-            <?= moderation_e(
-                implode(
-                    ' · ',
-                    array_filter([
-                        $place['city'] ?? null,
-                        $place['county'] ?? null,
-                        $place['state'] ?? null,
-                    ])
-                ) ?: 'Location not recorded'
-            ) ?>
-        </span>
-    </div>
-
-    <div class="admin-verification-attention-meta">
-        <span class="admin-status-pill">
-            <?= moderation_e(ucfirst((string) $place['status'])) ?>
-        </span>
 
         <span>
-            <?= moderation_e(admin_verification_freshness_label($freshness)) ?>
+            Aging Places are approaching one year. Red states need a new field check when practical.
         </span>
+    </header>
 
-        <?php if ((int) $place['open_report_count'] > 0): ?>
-            <span class="is-report">
-                <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
-                <?= number_format((int) $place['open_report_count']) ?> open report<?= (int) $place['open_report_count'] === 1 ? '' : 's' ?>
-            </span>
-        <?php endif; ?>
-    </div>
-</div>
+    <?php if (!$attentionQueue): ?>
+        <div class="admin-empty-state admin-verification-all-current">
+            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
+            <h3>Every published Place is fresh.</h3>
+            <p>No active or featured Place is currently aging, overdue, or missing a field check.</p>
+        </div>
+    <?php else: ?>
+        <div class="admin-verification-attention-list">
+            <?php foreach ($attentionQueue as $place): ?>
+                <?php
+                $freshness = (string) ($place['freshness_state'] ?? 'never');
+                ?>
 
-<div class="admin-verification-attention-actions">
-    <a
-        class="admin-button"
-        href="/place.php?id=<?= (int) $place['id'] ?>#verification"
-    >
-        Verify Place
-    </a>
+                <article class="admin-verification-attention-row is-<?= moderation_e($freshness) ?>">
+                    <span class="admin-verification-light" aria-hidden="true"></span>
 
-    <?php if ($published): ?>
-        <a
-            class="admin-button is-muted"
-            href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
-            target="_blank"
-            rel="noopener"
-        >
-            View
-        </a>
+                    <div class="admin-verification-attention-main">
+                        <div>
+                            <strong><?= moderation_e((string) $place['name']) ?></strong>
+                            <span>
+                                <?= moderation_e(
+                                    implode(
+                                        ' · ',
+                                        array_filter([
+                                            $place['city'] ?? null,
+                                            $place['county'] ?? null,
+                                            $place['state'] ?? null,
+                                        ])
+                                    ) ?: 'Location not recorded'
+                                ) ?>
+                            </span>
+                        </div>
+
+                        <div class="admin-verification-attention-meta">
+                            <span class="admin-status-pill">
+                                <?= moderation_e((string) ($place['freshness_label'] ?? 'Never checked')) ?>
+                            </span>
+
+                            <span>
+                                Overall: <?= moderation_e(llama_place_freshness_relative_label($place['overall_last_checked_at'] ?? null)) ?>
+                            </span>
+
+                            <span>
+                                Community: <?= moderation_e(llama_place_freshness_relative_label($place['community_last_checked_at'] ?? null)) ?>
+                            </span>
+
+                            <span>
+                                Scout: <?= moderation_e(llama_place_freshness_relative_label($place['scout_last_checked_at'] ?? null)) ?>
+                            </span>
+
+                            <?php if ((int) ($place['open_report_count'] ?? 0) > 0): ?>
+                                <span class="is-report">
+                                    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
+                                    <?= number_format((int) $place['open_report_count']) ?> open report<?= (int) $place['open_report_count'] === 1 ? '' : 's' ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="admin-verification-attention-actions">
+                        <a
+                            class="admin-button"
+                            href="/place.php?id=<?= (int) $place['id'] ?>"
+                        >
+                            Manage Place
+                        </a>
+
+                        <a
+                            class="admin-button is-muted"
+                            href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            View
+                        </a>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
-</div>
-
-</article>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php endif; ?>
-
 </section>
-
-
-<section class="admin-verification-stat-grid">
-
-<div>
-    <span>Verifications</span>
-    <strong>
-        <?= number_format(
-            $verificationStats['total']
-        ) ?>
-    </strong>
-</div>
-
-<div>
-    <span>Last 30 days</span>
-    <strong>
-        <?= number_format(
-            $verificationStats['last_30']
-        ) ?>
-    </strong>
-</div>
-
-<div>
-    <span>Llama Scouted</span>
-    <strong>
-        <?= number_format(
-            $verificationStats['llama_scouted']
-        ) ?>
-    </strong>
-</div>
-
-<div>
-    <span>Public Data</span>
-    <strong>
-        <?= number_format(
-            $verificationStats['public_checked']
-        ) ?>
-    </strong>
-</div>
-
-</section>
-
 
 <section class="admin-panel admin-user-filter-panel">
+    <form class="admin-verification-filters" method="get">
+        <label class="admin-user-search">
+            <span>Search</span>
+            <div>
+                <i aria-hidden="true"><?= llama_icon('search') ?></i>
+                <input
+                    type="search"
+                    name="q"
+                    value="<?= moderation_e($search) ?>"
+                    placeholder="Place, town, county, state, or Place ID"
+                >
+            </div>
+        </label>
 
-<form
-    class="admin-verification-filters"
-    method="get"
->
+        <label>
+            <span>Freshness</span>
+            <select name="state">
+                <option value="">All published Places</option>
+                <option value="fresh" <?= $state === 'fresh' ? 'selected' : '' ?>>Fresh</option>
+                <option value="aging" <?= $state === 'aging' ? 'selected' : '' ?>>Aging</option>
+                <option value="attention" <?= $state === 'attention' ? 'selected' : '' ?>>Needs attention</option>
+                <option value="never" <?= $state === 'never' ? 'selected' : '' ?>>Never checked</option>
+            </select>
+        </label>
 
-<label class="admin-user-search">
-    <span>Search</span>
-
-    <div>
-        <i aria-hidden="true">
-            <?= llama_icon('search') ?>
-        </i>
-
-        <input
-            type="search"
-            name="q"
-            value="<?= moderation_e($search) ?>"
-            placeholder="Place, town, source, notes, or Place ID"
-        >
-    </div>
-</label>
-
-
-<label>
-    <span>Verification type</span>
-
-    <select name="type">
-        <option value="">
-            All verification types
-        </option>
-
-        <?php foreach ($types as $option): ?>
-            <option
-                value="<?= moderation_e($option) ?>"
-                <?= $type === $option
-                    ? 'selected'
-                    : '' ?>
-            >
-                <?= moderation_e(
-                    ucwords(
-                        str_replace(
-                            ['-', '_'],
-                            ' ',
-                            $option
-                        )
-                    )
-                ) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</label>
-
-
-<label>
-    <span>Age</span>
-
-    <select name="age">
-        <option value="">
-            Any age
-        </option>
-
-        <option
-            value="30"
-            <?= $age === '30'
-                ? 'selected'
-                : '' ?>
-        >
-            Last 30 days
-        </option>
-
-        <option
-            value="90"
-            <?= $age === '90'
-                ? 'selected'
-                : '' ?>
-        >
-            Last 90 days
-        </option>
-
-        <option
-            value="365"
-            <?= $age === '365'
-                ? 'selected'
-                : '' ?>
-        >
-            Last year
-        </option>
-
-        <option
-            value="older-365"
-            <?= $age === 'older-365'
-                ? 'selected'
-                : '' ?>
-        >
-            Older than one year
-        </option>
-    </select>
-</label>
-
-
-<div class="admin-user-filter-actions">
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Filter
-    </button>
-
-    <a
-        class="admin-button is-muted"
-        href="/verifications.php"
-    >
-        Clear
-    </a>
-</div>
-
-</form>
-
+        <div class="admin-user-filter-actions">
+            <button class="admin-button" type="submit">Filter</button>
+            <a class="admin-button is-muted" href="/verifications.php">Clear</a>
+        </div>
+    </form>
 </section>
 
-
 <section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Published Places</p>
+            <h2>
+                <?= number_format(count($items)) ?> Place<?= count($items) === 1 ? '' : 's' ?> shown
+            </h2>
+        </div>
 
-<header class="admin-panel-header">
+        <a class="admin-button" href="/places.php">Browse Places</a>
+    </header>
 
-<div>
-    <p>Verification History</p>
+    <?php if (!$items): ?>
+        <div class="admin-empty-state">
+            <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
+            <h3>No Places match these filters.</h3>
+            <p>Try changing the search or freshness filter.</p>
+        </div>
+    <?php else: ?>
+        <div class="admin-freshness-place-list">
+            <?php foreach ($items as $item): ?>
+                <?php $freshness = (string) ($item['freshness_state'] ?? 'never'); ?>
 
-    <h2>
-        <?= number_format(count($items)) ?>
-        verification<?= count($items) === 1 ? '' : 's' ?>
-        shown
-    </h2>
-</div>
+                <article class="admin-freshness-place-row is-<?= moderation_e($freshness) ?>">
+                    <span class="admin-verification-light" aria-hidden="true"></span>
 
-<a
-    class="admin-button"
-    href="/places.php"
->
-    Browse Places
-</a>
+                    <div class="admin-freshness-place-main">
+                        <div>
+                            <strong><?= moderation_e((string) $item['name']) ?></strong>
+                            <span>
+                                <?= moderation_e(
+                                    implode(
+                                        ' · ',
+                                        array_filter([
+                                            $item['city'] ?? null,
+                                            $item['county'] ?? null,
+                                            $item['state'] ?? null,
+                                        ])
+                                    ) ?: 'Location not recorded'
+                                ) ?>
+                            </span>
+                        </div>
 
-</header>
+                        <div class="admin-freshness-place-dates">
+                            <span>
+                                <small>Overall</small>
+                                <strong><?= moderation_e(llama_place_freshness_relative_label($item['overall_last_checked_at'] ?? null)) ?></strong>
+                            </span>
+                            <span>
+                                <small>Community</small>
+                                <strong><?= moderation_e(llama_place_freshness_relative_label($item['community_last_checked_at'] ?? null)) ?></strong>
+                            </span>
+                            <span>
+                                <small>Scout</small>
+                                <strong><?= moderation_e(llama_place_freshness_relative_label($item['scout_last_checked_at'] ?? null)) ?></strong>
+                            </span>
+                        </div>
+                    </div>
 
+                    <div class="admin-freshness-place-side">
+                        <span class="admin-status-pill is-<?= moderation_e($freshness) ?>">
+                            <?= moderation_e((string) ($item['freshness_label'] ?? 'Never checked')) ?>
+                        </span>
 
-<?php if (!$items): ?>
-
-<div class="admin-empty-state">
-
-<i aria-hidden="true">
-    <?= llama_icon('binoculars') ?>
-</i>
-
-<h3>No verifications found.</h3>
-
-<p>
-    Try changing the current filters.
-</p>
-
-</div>
-
-<?php else: ?>
-
-<div class="admin-verification-list">
-
-<?php foreach ($items as $item): ?>
-
-<article class="admin-verification-row">
-
-<span class="admin-user-table-avatar">
-
-<img
-    src="<?= moderation_e(
-        admin_user_avatar_src(
-            (string) (
-                $item['verifier_profile_image']
-                ?? ''
-            ),
-            $siteUrl
-        )
-    ) ?>"
-    alt=""
-    loading="lazy"
->
-
-</span>
-
-
-<div class="admin-verification-main">
-
-<div class="admin-verification-heading">
-
-<div>
-
-<span>
-    <?= moderation_e(
-        ucwords(
-            str_replace(
-                ['-', '_'],
-                ' ',
-                (string) $item['verification_type']
-            )
-        )
-    ) ?>
-</span>
-
-<h2>
-    <?= moderation_e(
-        (string) $item['place_name']
-    ) ?>
-</h2>
-
-</div>
-
-
-<?php if (
-    (int) $item['public_data_verified'] === 1
-): ?>
-
-<span class="admin-status-pill">
-    Public data checked
-</span>
-
-<?php endif; ?>
-
-</div>
-
-
-<p>
-    <?= moderation_e(
-        (string) $item['verifier_name']
-    ) ?>
-
-    · verified
-    <?= moderation_e(
-        llama_format_viewer_datetime(
-            (string) $item['verified_at']
-        )
-    ) ?>
-
-    <?php if (!empty($item['visited_at'])): ?>
-        · visited
-        <?= moderation_e(
-            llama_format_viewer_datetime(
-                (string) $item['visited_at']
-            )
-        ) ?>
+                        <div>
+                            <a class="admin-button" href="/place.php?id=<?= (int) $item['id'] ?>">Manage</a>
+                            <a
+                                class="admin-button is-muted"
+                                href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $item['slug']) ?>"
+                                target="_blank"
+                                rel="noopener"
+                            >View</a>
+                        </div>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
-</p>
+</section>
 
+<section class="admin-panel admin-recent-field-checks-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Recent activity</p>
+            <h2>Field Checks</h2>
+        </div>
 
-<p>
-    <?= moderation_e(
-        implode(
-            ' · ',
-            array_filter(
-                [
-                    $item['city'] ?? null,
-                    $item['county'] ?? null,
-                    $item['state'] ?? null,
-                    $item['source'] ?? null,
-                ]
-            )
-        )
-    ) ?>
-</p>
+        <span>
+            Check-ins are geofenced. Older Scout field visits are retained as legacy field checks.
+        </span>
+    </header>
 
+    <?php if (!$recentChecks): ?>
+        <div class="admin-empty-state">
+            <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
+            <h3>No field checks recorded yet.</h3>
+            <p>New check-ins will appear here after the Check In workflow is used.</p>
+        </div>
+    <?php else: ?>
+        <div class="admin-verification-list">
+            <?php foreach ($recentChecks as $item): ?>
+                <?php
+                $level = llama_contribution_level_normalize(
+                    (string) ($item['contribution_level'] ?? 'community')
+                );
+                ?>
 
-<?php if (!empty($item['notes'])): ?>
+                <article class="admin-verification-row">
+                    <span class="admin-verification-check-icon" aria-hidden="true">
+                        <?= llama_icon(llama_contribution_level_icon($level)) ?>
+                    </span>
 
-<div class="admin-verification-note">
-    <?= nl2br(
-        moderation_e(
-            (string) $item['notes']
-        )
-    ) ?>
-</div>
+                    <div class="admin-verification-main">
+                        <div class="admin-verification-heading">
+                            <div>
+                                <span><?= moderation_e(llama_contribution_level_short_label($level)) ?> field check</span>
+                                <h2><?= moderation_e((string) $item['place_name']) ?></h2>
+                            </div>
 
-<?php endif; ?>
+                            <span class="admin-status-pill">
+                                <?= moderation_e(llama_contribution_level_short_label($level)) ?>
+                            </span>
+                        </div>
 
-</div>
+                        <p>
+                            <?= moderation_e((string) $item['checker_name']) ?>
+                            · <?= moderation_e(llama_format_viewer_datetime((string) $item['checked_at'])) ?>
+                            <?php if ((string) $item['record_kind'] === 'checkin'): ?>
+                                · geofenced
+                            <?php else: ?>
+                                · legacy Scout field visit
+                            <?php endif; ?>
+                        </p>
 
+                        <?php if ((string) $item['record_kind'] === 'checkin'): ?>
+                            <p>
+                                <?= number_format((float) $item['distance_meters'], 0) ?> m from pin
+                                · GPS accuracy <?= number_format((float) $item['accuracy_meters'], 0) ?> m
+                                <?php if ((int) $item['points_awarded'] > 0): ?>
+                                    · +<?= number_format((int) $item['points_awarded']) ?> points
+                                <?php endif; ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
 
-<div class="admin-verification-actions">
-
-<a
-    class="admin-button"
-    href="/place.php?id=<?= (int) $item['place_id'] ?>#verification"
->
-    Manage Place
-</a>
-
-<?php if (
-    in_array(
-        (string) $item['place_status'],
-        ['active', 'featured'],
-        true
-    )
-): ?>
-
-<a
-    class="admin-button is-muted"
-    href="https://llamascout.com/place.php?slug=<?= rawurlencode(
-        (string) $item['place_slug']
-    ) ?>"
-    target="_blank"
-    rel="noopener"
->
-    View
-</a>
-
-<?php endif; ?>
-
-</div>
-
-</article>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php endif; ?>
-
+                    <div class="admin-verification-actions">
+                        <a class="admin-button" href="/place.php?id=<?= (int) $item['place_id'] ?>">Manage Place</a>
+                        <?php if (in_array((string) $item['place_status'], ['active', 'featured'], true)): ?>
+                            <a
+                                class="admin-button is-muted"
+                                href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $item['place_slug']) ?>"
+                                target="_blank"
+                                rel="noopener"
+                            >View</a>
+                        <?php endif; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </section>
 
 <?php require __DIR__ . '/_footer.php'; ?>

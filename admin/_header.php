@@ -512,7 +512,7 @@ function admin_shell_nav_class(string $key, string $active): string
             href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
         >
             <i  aria-hidden="true"><?= llama_icon('binoculars') ?></i>
-            <span>Verifications</span>
+            <span>Place Freshness</span>
         </a>
 
         <a
