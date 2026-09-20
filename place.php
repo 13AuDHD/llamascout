@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
+require_once __DIR__ . '/app/compare-reports.php';
 
 function place_h(mixed $value): string
 {
@@ -275,6 +276,7 @@ try {
                 pp.origin_type,
                 pp.established_at,
                 pp.original_contributor_id,
+                pp.original_submission_id,
                 u.username AS contributor_username,
                 u.display_name AS contributor_display_name,
                 original_pc.user_id AS original_activity_user_id,
@@ -296,11 +298,15 @@ try {
     $historyProvenance = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
     $stmt = $db->prepare(
-        'SELECT pc.id, pc.user_id, pc.contribution_type,
+        'SELECT pc.id, pc.user_id, pc.submission_id, pc.contribution_type,
                 pc.role_at_time, pc.points_awarded, pc.visited_at, pc.approved_at,
-                u.username, u.display_name
+                u.username, u.display_name,
+                pus.id AS update_submission_id
          FROM place_contributions pc
          LEFT JOIN users u ON u.id = pc.user_id
+         LEFT JOIN place_update_submissions pus
+            ON pus.contribution_id = pc.id
+           AND pus.status = "approved"
          WHERE pc.place_id = ?
            AND pc.status = ?
          ORDER BY COALESCE(pc.approved_at, pc.created_at) DESC, pc.id DESC
