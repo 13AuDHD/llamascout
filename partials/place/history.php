@@ -5,207 +5,167 @@
             <p class="place-detail-eyebrow">Place history</p>
             <h2>Who helped document this Place</h2>
             <p>
-                See who has added or updated information here, and open
-                past reports to see how this Place has changed over time.
+                Follow check-ins, updates, resolved problems, and past reports
+                to see how this Place has changed over time. The newest activity
+                appears first.
             </p>
         </div>
 
-        <?php if ($historyProvenance): ?>
-            <?php
-            $originName = trim((string) (
-                $historyProvenance['contributor_display_name']
-                ?: $historyProvenance['contributor_username']
-                ?: ''
-            ));
-
-            $originRecord = [
-                'user_id' => (int) (
-                    $historyProvenance['original_activity_user_id']
-                    ?? $historyProvenance['original_contributor_id']
-                    ?? 0
-                ),
-                'role_at_time' => (string) (
-                    $historyProvenance['original_role_at_time']
-                    ?? ''
-                ),
-            ];
-
-            if ($originRecord['role_at_time'] !== '') {
-                $originLevel = llama_contribution_level_for_record(
-                    $db,
-                    $originRecord
-                );
-            } else {
-                $originType = strtolower(trim((string) (
-                    $historyProvenance['origin_type']
-                    ?? ''
-                )));
-
-                $originLevel = in_array(
-                    $originType,
-                    ['llama-scouted', 'scout'],
-                    true
-                )
-                    ? LLAMA_CONTRIBUTION_LEVEL_SCOUT
-                    : (
-                        $originType === 'admin'
-                            ? LLAMA_CONTRIBUTION_LEVEL_ADMIN
-                            : LLAMA_CONTRIBUTION_LEVEL_COMMUNITY
-                    );
-            }
-
-            $originReportUrl = '';
-            $originSubmissionId = (int) (
-                $historyProvenance['original_submission_id']
-                ?? 0
-            );
-
-            if ($originSubmissionId > 0) {
-                $originReportUrl = llama_historical_report_url(
-                    (string) $place['slug'],
-                    'submission-' . $originSubmissionId
-                );
-            }
-            ?>
-
-            <div class="place-history-origin">
-                <div class="place-history-badge">
-                    <i aria-hidden="true"><?= llama_icon(llama_contribution_level_icon($originLevel)) ?></i>
-                    <div>
-                        <span><?= place_h(llama_contribution_level_label($originLevel)) ?></span>
-                        <strong>This Place began with this contribution.</strong>
-                    </div>
-                </div>
-
-                <?php if ($originName !== ''): ?>
-                    <p>
-                        Original contributor:
-                        <?php if (!empty($historyProvenance['contributor_username'])): ?>
-                            <a href="/<?= rawurlencode((string) $historyProvenance['contributor_username']) ?>">
-                                <?= place_h($originName) ?>
-                            </a>
-                        <?php else: ?>
-                            <?= place_h($originName) ?>
-                        <?php endif; ?>
-                    </p>
-                <?php endif; ?>
-
-                <?php if ($originReportUrl !== ''): ?>
-                    <a class="place-history-report-link" href="<?= place_h($originReportUrl) ?>">
-                        <i aria-hidden="true"><?= llama_icon('history') ?></i>
-                        View original report
-                    </a>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($recentPlaceActivity): ?>
-            <div class="place-activity-list">
-                <?php foreach ($recentPlaceActivity as $activity): ?>
+        <?php if ($placeHistoryTimeline): ?>
+            <div class="place-history-timeline">
+                <?php foreach ($placeHistoryTimeline as $event): ?>
                     <?php
-                    $activityName = trim((string) (
-                        $activity['display_name']
-                        ?: $activity['username']
-                        ?: 'Llama Scout member'
+                    $eventLevel = llama_contribution_level_normalize(
+                        (string) (
+                            $event['contribution_level']
+                            ?? LLAMA_CONTRIBUTION_LEVEL_COMMUNITY
+                        )
+                    );
+
+                    $eventName = trim((string) (
+                        $event['display_name']
+                        ?: $event['username']
+                        ?: ''
                     ));
-                    $activityType = ucwords(str_replace(
-                        ['_', '-'],
-                        ' ',
-                        (string) $activity['contribution_type']
+
+                    $eventDateSource = trim((string) (
+                        $event['date_label_source']
+                        ?? $event['occurred_at']
+                        ?? ''
                     ));
-                    $activityLevel = llama_contribution_level_for_record(
-                        $db,
-                        $activity
-                    );
 
-                    $activityReportKey = '';
-                    $activitySubmissionId = (int) (
-                        $activity['submission_id']
-                        ?? 0
-                    );
-                    $activityUpdateId = (int) (
-                        $activity['update_submission_id']
-                        ?? 0
-                    );
+                    $eventDateLabel = $eventDateSource !== ''
+                        ? llama_format_viewer_date(
+                            $eventDateSource,
+                            'M j, Y'
+                        )
+                        : '';
 
-                    if (
-                        (string) $activity['contribution_type'] === 'new_place'
-                        && $activitySubmissionId > 0
-                    ) {
-                        $activityReportKey =
-                            'submission-' . $activitySubmissionId;
-                    } elseif ($activityUpdateId > 0) {
-                        $activityReportKey =
-                            'update-' . $activityUpdateId;
-                    }
+                    $visitedAt = trim((string) (
+                        $event['visited_at']
+                        ?? ''
+                    ));
 
-                    $activityReportUrl =
-                        $activityReportKey !== ''
-                            ? llama_historical_report_url(
-                                (string) $place['slug'],
-                                $activityReportKey
-                            )
-                            : '';
+                    $visitedLabel = $visitedAt !== ''
+                        ? llama_format_viewer_date(
+                            $visitedAt,
+                            'M j, Y'
+                        )
+                        : '';
+
+                    $showVisitedDate =
+                        $visitedLabel !== ''
+                        && $visitedLabel !== $eventDateLabel
+                        && !in_array(
+                            (string) ($event['type'] ?? ''),
+                            [
+                                'checkin',
+                                'field_verification',
+                            ],
+                            true
+                        );
                     ?>
-                    <article class="place-activity-item">
-                        <div class="place-activity-icon">
-                            <i aria-hidden="true"><?= llama_icon('check') ?></i>
+
+                    <article class="place-history-event">
+                        <div class="place-history-marker" aria-hidden="true">
+                            <i><?= llama_icon((string) ($event['icon'] ?? 'history')) ?></i>
                         </div>
 
-                        <div class="place-activity-copy">
-                            <div class="place-activity-title-row">
-                                <strong>
-                                    <?php if (!empty($activity['username'])): ?>
-                                        <a href="/<?= rawurlencode((string) $activity['username']) ?>">
-                                            <?= place_h($activityName) ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <?= place_h($activityName) ?>
-                                    <?php endif; ?>
-                                </strong>
+                        <div class="place-history-event-card">
+                            <div class="place-history-event-header">
+                                <div class="place-history-event-title-block">
+                                    <p class="place-history-event-date">
+                                        <?= place_h($eventDateLabel) ?>
+                                    </p>
 
-                                <span class="place-activity-level">
-                                    <?= place_h(llama_contribution_level_short_label($activityLevel)) ?>
-                                </span>
+                                    <h3>
+                                        <?= place_h((string) ($event['title'] ?? 'Place activity')) ?>
+                                    </h3>
+                                </div>
+
+                                <div class="place-history-event-badges">
+                                    <?php if (!empty($event['show_level'])): ?>
+                                        <span class="place-history-level is-<?= place_h($eventLevel) ?>">
+                                            <i aria-hidden="true"><?= llama_icon(llama_contribution_level_icon($eventLevel)) ?></i>
+                                            <?= place_h(llama_contribution_level_short_label($eventLevel)) ?>
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($event['status_label'])): ?>
+                                        <span class="place-history-status">
+                                            <?= place_h((string) $event['status_label']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
 
-                            <span>
-                                <?= place_h($activityType) ?>
-                                <?php if (!empty($activity['visited_at'])): ?>
-                                    / visited <?= place_h(
-                                        llama_format_viewer_date(
-                                            (string) $activity['visited_at'],
-                                            'M j, Y'
-                                        )
-                                    ) ?>
-                                <?php elseif (!empty($activity['approved_at'])): ?>
-                                    / <?= place_h(
-                                        llama_format_viewer_date(
-                                            (string) $activity['approved_at'],
-                                            'M j, Y'
-                                        )
-                                    ) ?>
-                                <?php endif; ?>
-                            </span>
-                        </div>
+                            <p class="place-history-event-summary">
+                                <?= place_h((string) ($event['summary'] ?? '')) ?>
+                            </p>
 
-                        <div class="place-activity-actions">
-                            <?php if ((int) ($activity['points_awarded'] ?? 0) > 0): ?>
-                                <span class="place-activity-points">+<?= (int) $activity['points_awarded'] ?></span>
+                            <?php if ($eventName !== '' || $showVisitedDate): ?>
+                                <div class="place-history-event-meta">
+                                    <?php if ($eventName !== ''): ?>
+                                        <span>
+                                            <?= place_h((string) ($event['actor_label'] ?? 'By')) ?>:
+
+                                            <?php if (!empty($event['username'])): ?>
+                                                <a href="/<?= rawurlencode((string) $event['username']) ?>">
+                                                    <?= place_h($eventName) ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <strong><?= place_h($eventName) ?></strong>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <?php if ($showVisitedDate): ?>
+                                        <span>
+                                            Visited <?= place_h($visitedLabel) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             <?php endif; ?>
 
-                            <?php if ($activityReportUrl !== ''): ?>
-                                <a class="place-history-report-link is-compact" href="<?= place_h($activityReportUrl) ?>">
-                                    View report
-                                    <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
-                                </a>
+                            <?php
+                            $points = max(
+                                0,
+                                (int) (
+                                    $event['points_awarded']
+                                    ?? 0
+                                )
+                            );
+
+                            $reportUrl = trim((string) (
+                                $event['report_url']
+                                ?? ''
+                            ));
+                            ?>
+
+                            <?php if ($points > 0 || $reportUrl !== ''): ?>
+                                <div class="place-history-event-actions">
+                                    <?php if ($points > 0): ?>
+                                        <span class="place-history-points">
+                                            +<?= $points ?> points
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <?php if ($reportUrl !== ''): ?>
+                                        <a class="place-history-report-link" href="<?= place_h($reportUrl) ?>">
+                                            <i aria-hidden="true"><?= llama_icon('history') ?></i>
+                                            <?= place_h((string) ($event['report_label'] ?? 'View report')) ?>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </article>
                 <?php endforeach; ?>
             </div>
-        <?php elseif (!$historyProvenance): ?>
-            <p class="place-history-empty">No approved Place history is available yet.</p>
+        <?php else: ?>
+            <p class="place-history-empty">
+                No approved Place history is available yet.
+            </p>
         <?php endif; ?>
 
     </div>
