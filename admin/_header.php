@@ -68,6 +68,36 @@ try {
 }
 
 /*
+ * Badge review is a global Admin queue. Match the Badges page
+ * "Needs Review" total so the sidebar shows pending work everywhere.
+ */
+$adminBadgeReviewCount = 0;
+
+try {
+    $adminBadgeReviewCount += (int) db()
+        ->query(
+            "SELECT COUNT(*)
+             FROM user_badges
+             WHERE review_status <> 'earned'"
+        )
+        ->fetchColumn();
+} catch (Throwable $exception) {
+    // Badge award storage may not exist yet on an incomplete install.
+}
+
+try {
+    $adminBadgeReviewCount += (int) db()
+        ->query(
+            "SELECT COUNT(*)
+             FROM badge_credential_submissions
+             WHERE status = 'pending'"
+        )
+        ->fetchColumn();
+} catch (Throwable $exception) {
+    // Credential review storage is optional until its migration is installed.
+}
+
+/*
  * Newsletter queue count is also global. Keep this optional so
  * Admin still loads safely before the newsletter migration exists.
  */
@@ -140,32 +170,7 @@ function admin_shell_nav_class(string $key, string $active): string
         })();
     </script>
 
-    <?php
-    /*
-     * Version local CSS URLs with each file's modification time.
-     * This prevents Safari / CDN caches from serving an older stylesheet
-     * after an Admin CSS file is replaced in production.
-     */
-    $adminCssUrl =
-        static function (string $relativePath) use ($siteUrl): string {
-            $relativePath = '/' . ltrim($relativePath, '/');
-            $absolutePath = dirname(__DIR__) . $relativePath;
-
-            $version =
-                is_file($absolutePath)
-                    ? @filemtime($absolutePath)
-                    : false;
-
-            return
-                $siteUrl
-                . $relativePath
-                . ($version !== false
-                    ? '?v=' . (string) $version
-                    : '');
-        };
-    ?>
-
-    <link rel="stylesheet" href="<?= moderation_e($adminCssUrl('/css/site.css')) ?>">
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site.css') ?>">
 
     <?php
     /*
@@ -373,7 +378,7 @@ function admin_shell_nav_class(string $key, string $active): string
 
     <link
         rel="stylesheet"
-        href="<?= moderation_e($adminCssUrl('/css/admin/core.css')) ?>"
+        href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
     >
 
 <?php foreach ($adminPageStyles as $adminStyle): ?>
@@ -383,10 +388,9 @@ function admin_shell_nav_class(string $key, string $active): string
         <link
             rel="stylesheet"
             href="<?= moderation_e(
-                $adminCssUrl(
-                    '/css/admin/pages/'
-                    . $adminStyle
-                )
+                $siteUrl
+                . '/css/admin/pages/'
+                . $adminStyle
             ) ?>"
         >
     <?php endforeach; ?>
@@ -398,17 +402,16 @@ function admin_shell_nav_class(string $key, string $active): string
         <link
             rel="stylesheet"
             href="<?= moderation_e(
-                $adminCssUrl(
-                    '/css/admin/features/'
-                    . $adminStyle
-                )
+                $siteUrl
+                . '/css/admin/features/'
+                . $adminStyle
             ) ?>"
         >
     <?php endforeach; ?>
 
 
     <?php if (!empty($adminNeedsPhotoUploader)): ?>
-        <link rel="stylesheet" href="<?= moderation_e($adminCssUrl('/css/photo-uploader.css')) ?>">
+        <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/photo-uploader.css') ?>">
     <?php endif; ?>
 </head>
 
@@ -572,6 +575,9 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i  aria-hidden="true"><?= llama_icon('award') ?></i>
             <span>Badges</span>
+            <?php if ($adminBadgeReviewCount > 0): ?>
+                <b><?= $adminBadgeReviewCount ?></b>
+            <?php endif; ?>
         </a>
 
 <?php require __DIR__ . '/_communications-nav.php'; ?>

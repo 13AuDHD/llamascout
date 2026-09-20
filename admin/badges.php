@@ -685,6 +685,20 @@ require __DIR__ .
 <?php foreach ($pendingCredentialReviews as $submission): ?>
 <article class="admin-credential-review-card">
 
+    <?php if (str_starts_with((string) $submission['mime_type'], 'image/')): ?>
+        <a
+            class="admin-credential-preview"
+            href="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>"
+            aria-label="Download credential evidence"
+        >
+            <img
+                src="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>&amp;inline=1"
+                alt="Private credential evidence preview"
+                loading="lazy"
+            >
+        </a>
+    <?php endif; ?>
+
     <div class="admin-credential-review-copy">
         <span>
             <?= moderation_e((string) $submission['badge_name']) ?>
@@ -740,71 +754,58 @@ require __DIR__ .
         >
             Download private evidence
         </a>
-    </div>
 
-    <?php if (str_starts_with((string) $submission['mime_type'], 'image/')): ?>
-        <a
-            class="admin-credential-preview"
-            href="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>"
-            aria-label="Download credential evidence"
+        <form
+            method="post"
+            class="admin-credential-review-form"
         >
-            <img
-                src="/badge-credential-file.php?id=<?= (int) $submission['id'] ?>&amp;inline=1"
-                alt="Private credential evidence preview"
-                loading="lazy"
-            >
-        </a>
-    <?php endif; ?>
-
-    <div class="admin-credential-review-actions">
-        <form method="post">
             <input
                 type="hidden"
                 name="csrf_token"
                 value="<?= moderation_e(moderation_csrf_token()) ?>"
             >
-            <input type="hidden" name="badge_admin_action" value="review-credential">
-            <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
-            <input type="hidden" name="review_decision" value="approve">
-
-            <label>
-                <span>Approval note</span>
-                <textarea
-                    name="review_note"
-                    rows="2"
-                    maxlength="1000"
-                    placeholder="Optional"
-                ></textarea>
-            </label>
-
-            <button class="admin-button" type="submit">
-                Approve
-            </button>
-        </form>
-
-        <form method="post">
             <input
                 type="hidden"
-                name="csrf_token"
-                value="<?= moderation_e(moderation_csrf_token()) ?>"
+                name="badge_admin_action"
+                value="review-credential"
             >
-            <input type="hidden" name="badge_admin_action" value="review-credential">
-            <input type="hidden" name="submission_id" value="<?= (int) $submission['id'] ?>">
-            <input type="hidden" name="review_decision" value="decline">
+            <input
+                type="hidden"
+                name="submission_id"
+                value="<?= (int) $submission['id'] ?>"
+            >
 
             <label>
-                <span>Decline reason</span>
+                <span>Review note</span>
                 <textarea
                     name="review_note"
                     rows="2"
                     maxlength="1000"
+                    placeholder="Optional for approval, required for decline"
                     required
                 ></textarea>
             </label>
 
-            <button class="admin-button is-danger" type="submit">
-                Decline
-            </button>
+            <div class="admin-credential-review-buttons">
+                <button
+                    class="admin-button"
+                    type="submit"
+                    name="review_decision"
+                    value="approve"
+                    formnovalidate
+                >
+                    Approve
+                </button>
+
+                <button
+                    class="admin-button is-danger"
+                    type="submit"
+                    name="review_decision"
+                    value="decline"
+                >
+                    Decline
+                </button>
+            </div>
         </form>
     </div>
 
@@ -814,7 +815,6 @@ require __DIR__ .
 </div>
 </section>
 <?php endif; ?>
-
 
 <section class="admin-panel">
 
