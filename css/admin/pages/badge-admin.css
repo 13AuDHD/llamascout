@@ -292,6 +292,228 @@
     }
 }
 
+/* =========================================================
+   CREDENTIAL SUBMISSION HISTORY
+   ========================================================= */
+
+.admin-badge-detail-counts {
+    grid-template-columns: repeat(3, minmax(90px, 1fr));
+}
+
+.admin-badge-credential-history {
+    display: grid;
+}
+
+.admin-badge-credential-record {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(120px, 220px);
+    gap: 14px;
+    align-items: start;
+
+    padding: 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-badge-credential-record:last-child {
+    border-bottom: 0;
+}
+
+.admin-badge-credential-record.is-pending {
+    background: color-mix(in srgb, #c89f42 4%, transparent);
+}
+
+.admin-badge-credential-record-main {
+    min-width: 0;
+}
+
+.admin-badge-credential-record-main > span,
+.admin-badge-credential-record-main > strong,
+.admin-badge-credential-record-main > small {
+    display: block;
+}
+
+.admin-badge-credential-record-main > span,
+.admin-badge-credential-record-main > small,
+.admin-badge-credential-record-main > p {
+    color: var(--text-muted);
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+.admin-badge-credential-record-main > strong {
+    margin-top: 3px;
+    font-size: .82rem;
+}
+
+.admin-badge-credential-record-main > small,
+.admin-badge-credential-record-main > p {
+    margin-top: 5px;
+}
+
+.admin-badge-credential-record-main > p {
+    margin-bottom: 0;
+}
+
+.admin-badge-credential-preview {
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.admin-badge-credential-preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.admin-badge-credential-decision {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-badge-credential-decision form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.admin-badge-credential-decision label {
+    display: grid;
+    gap: 5px;
+}
+
+.admin-badge-credential-decision label > span {
+    color: var(--text-muted);
+    font-size: .64rem;
+    font-weight: 800;
+}
+
+.admin-badge-credential-decision textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: .68rem;
+    resize: vertical;
+}
+
+.admin-badge-credential-provenance {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+}
+
+.admin-badge-credential-provenance summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 850;
+}
+
+.admin-badge-credential-provenance dl {
+    display: grid;
+    gap: 7px;
+    margin: 10px 0 0;
+}
+
+.admin-badge-credential-provenance dl > div {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 8px;
+}
+
+.admin-badge-credential-provenance dt,
+.admin-badge-credential-provenance dd {
+    margin: 0;
+    font-size: .64rem;
+}
+
+.admin-badge-credential-provenance dt {
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.admin-badge-credential-provenance dd,
+.admin-badge-credential-provenance code {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .admin-badge-detail-counts {
+        grid-template-columns: repeat(2, minmax(90px, 1fr));
+    }
+
+    .admin-badge-credential-record {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-credential-decision {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-credential-decision form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-badge-credential-provenance dl > div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}
+
+.admin-badge-credential-event-list {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-badge-credential-event-list li {
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.admin-badge-credential-event-list strong,
+.admin-badge-credential-event-list span {
+    display: block;
+}
+
+.admin-badge-credential-event-list strong {
+    font-size: .66rem;
+}
+
+.admin-badge-credential-event-list span,
+.admin-badge-credential-event-list p {
+    margin: 3px 0 0;
+    color: var(--text-muted);
+    font-size: .62rem;
+    line-height: 1.4;
+}
+
+
 /* Manual award member search */
 
 .admin-badge-award-panel {
