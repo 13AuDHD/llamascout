@@ -416,6 +416,40 @@ body.place-gallery-is-open { overflow: hidden; }
     font-weight: 800;
 }
 
+
+.place-history-report-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    margin-top: 11px;
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: .76rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.place-history-report-link:hover {
+    border-color: color-mix(in srgb, var(--text) 35%, var(--border));
+}
+
+.place-history-report-link.is-compact {
+    margin-top: 0;
+    white-space: nowrap;
+}
+
+.place-activity-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 7px;
+}
+
 .place-activity-list {
     display: grid;
     gap: 8px;
@@ -538,6 +572,16 @@ body.place-gallery-is-open { overflow: hidden; }
     .place-history-section {
         margin-top: 34px;
         padding: 38px 0;
+    }
+
+    .place-activity-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .place-activity-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        padding-left: 45px;
     }
 }
 
