@@ -743,8 +743,6 @@ function e(
 
         4-16 characters.
         Letters, numbers, and underscores only.
-        Official-looking and inappropriate
-        usernames are not allowed.
 
       </p>
 
