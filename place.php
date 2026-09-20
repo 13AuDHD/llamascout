@@ -228,15 +228,33 @@ $db = db();
 
 $historyProvenance = [];
 $recentPlaceActivity = [];
+$documentationLevel =
+    llama_place_documentation_level(
+        $db,
+        (int) $place['id']
+    );
 
 try {
     $stmt = $db->prepare(
-        'SELECT pp.origin_type, pp.established_at, pp.original_contributor_id,
+        'SELECT
+                pp.origin_type,
+                pp.established_at,
+                pp.original_contributor_id,
                 u.username AS contributor_username,
-                u.display_name AS contributor_display_name
+                u.display_name AS contributor_display_name,
+                original_pc.user_id AS original_activity_user_id,
+                original_pc.role_at_time AS original_role_at_time,
+                original_pc.visited_at AS original_visited_at
          FROM place_provenance pp
-         LEFT JOIN users u ON u.id = pp.original_contributor_id
+         LEFT JOIN users u
+            ON u.id = pp.original_contributor_id
+         LEFT JOIN place_contributions original_pc
+            ON original_pc.place_id = pp.place_id
+           AND original_pc.submission_id = pp.original_submission_id
+           AND original_pc.contribution_type = "new_place"
+           AND original_pc.status = "approved"
          WHERE pp.place_id = ?
+         ORDER BY original_pc.id ASC
          LIMIT 1'
     );
     $stmt->execute([(int) $place['id']]);
@@ -244,7 +262,7 @@ try {
 
     $stmt = $db->prepare(
         'SELECT pc.id, pc.user_id, pc.contribution_type,
-                pc.points_awarded, pc.visited_at, pc.approved_at,
+                pc.role_at_time, pc.points_awarded, pc.visited_at, pc.approved_at,
                 u.username, u.display_name
          FROM place_contributions pc
          LEFT JOIN users u ON u.id = pc.user_id
