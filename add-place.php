@@ -10,6 +10,18 @@ require_verified_email();
 
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
+
+if (
+    !llama_contributor_can(
+        db(),
+        $userId,
+        'submit_place'
+    )
+) {
+    http_response_code(403);
+    exit('Your account is not eligible to submit new Places.');
+}
+
 $error = null;
 
 $draftId = max(

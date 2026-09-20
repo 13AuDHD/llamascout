@@ -120,6 +120,7 @@ $isSaved = $userId > 0
 
 $reportError = null;
 $reportSubmitted = isset($_GET['reported']) && $_GET['reported'] === '1';
+$reportOpen = isset($_GET['report']) && $_GET['report'] === '1';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['saved_place_action'])) {
@@ -167,7 +168,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['photos_json'] ?? '[]'
         );
 
-        if ($userId < 1 || !place_report_verify_csrf($csrfToken)) {
+        if (
+            $userId < 1
+            || !llama_contributor_can(db(), $userId, 'report_problem')
+            || !place_report_verify_csrf($csrfToken)
+        ) {
             http_response_code(400);
             exit('Invalid request.');
         }
@@ -225,6 +230,30 @@ $sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
 $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
 $db = db();
+
+$canCheckIn =
+    $userId > 0
+    && llama_contributor_can($db, $userId, 'check_in')
+    && llama_place_checkin_has_coordinates(
+        $db,
+        (int) $place['id']
+    );
+
+$canSuggestUpdate =
+    $userId > 0
+    && llama_contributor_can(
+        $db,
+        $userId,
+        'submit_update'
+    );
+
+$canReportProblem =
+    $userId > 0
+    && llama_contributor_can(
+        $db,
+        $userId,
+        'report_problem'
+    );
 
 $historyProvenance = [];
 $recentPlaceActivity = [];
