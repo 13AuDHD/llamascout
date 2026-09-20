@@ -133,6 +133,22 @@ function llama_compare_reports_url(
 }
 
 
+function llama_historical_report_url(
+    string $slug,
+    string $key
+): string {
+    $slug = llama_compare_report_slug($slug);
+    $keys = llama_compare_requested_report_keys([$key]);
+
+    if ($slug === '' || !$keys) {
+        return '';
+    }
+
+    return '/place-history.php?place=' . rawurlencode($slug)
+        . '&report=' . rawurlencode($keys[0]);
+}
+
+
 /* =========================================================
    SMALL HELPERS
    ========================================================= */
@@ -505,6 +521,12 @@ function llama_compare_report_versions(
         'label' =>
             'Initial report',
 
+        'user_id' =>
+            (int) (
+                $initial['user_id']
+                ?? 0
+            ),
+
         'contributor_name' =>
             llama_compare_report_contributor_name(
                 $initial
@@ -656,6 +678,12 @@ function llama_compare_report_versions(
             'label' =>
                 'Approved update',
 
+            'user_id' =>
+                (int) (
+                    $update['user_id']
+                    ?? 0
+                ),
+
             'contributor_name' =>
                 llama_compare_report_contributor_name(
                     $update
@@ -778,6 +806,19 @@ function llama_compare_reports_by_keys(
     }
 
     return $selected;
+}
+
+
+function llama_compare_report_version_by_key(
+    array $versions,
+    string $key
+): ?array {
+    $selected = llama_compare_reports_by_keys(
+        $versions,
+        [$key]
+    );
+
+    return $selected[0] ?? null;
 }
 
 
