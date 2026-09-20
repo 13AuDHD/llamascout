@@ -382,14 +382,33 @@ foreach ($credentialBadges as $badge) {
                         ) ?>.
                     </span>
                 <?php elseif ($latestStatus === 'declined'): ?>
+                    <?php
+                    $declineReason =
+                        trim(
+                            (string) (
+                                $latest['review_note']
+                                ?? ''
+                            )
+                        );
+
+                    if (
+                        $declineReason !== ''
+                        && !preg_match(
+                            '/[.!?]$/u',
+                            $declineReason
+                        )
+                    ) {
+                        $declineReason .= '.';
+                    }
+                    ?>
                     <strong>Needs resubmission</strong>
-                    <span>Your last submission was declined.</span>
-                    <?php if (!empty($latest['review_note'])): ?>
-                        <p class="badge-credential-decline-reason">
-                            <?= badge_credentials_e((string) $latest['review_note']) ?>
-                        </p>
-                    <?php endif; ?>
-                    <span>You can submit new evidence above.</span>
+                    <span>
+                        Your last submission was declined.
+                        <?php if ($declineReason !== ''): ?>
+                            <?= badge_credentials_e($declineReason) ?>
+                        <?php endif; ?>
+                        You can submit new evidence above.
+                    </span>
                 <?php elseif ($latestStatus === 'approved'): ?>
                     <strong>Previously approved</strong>
                     <span>The prior credential was approved, but this badge is not currently on your account.</span>
