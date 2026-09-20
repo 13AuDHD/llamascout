@@ -269,25 +269,6 @@ foreach ($credentialSubmissions as $credentialSubmission) {
     }
 }
 
-$users =
-    $db->query(
-        'SELECT
-            id,
-            COALESCE(
-                NULLIF(display_name, ""),
-                NULLIF(username, ""),
-                email
-            ) AS name,
-            username,
-            email
-         FROM users
-         WHERE anonymized_at IS NULL
-           AND status <> "disabled"
-         ORDER BY
-            name ASC,
-            id ASC'
-    )->fetchAll(PDO::FETCH_ASSOC)
-    ?: [];
 
 $stats =
     admin_dashboard_stats(
@@ -1164,7 +1145,7 @@ require __DIR__ .
 
 <aside class="admin-badge-detail-side">
 
-<section class="admin-panel">
+<section class="admin-panel admin-badge-award-panel">
 
 <header class="admin-panel-header">
     <div>
@@ -1195,41 +1176,78 @@ require __DIR__ .
         value="award"
     >
 
-    <label>
-        <span>Member</span>
-        <select
-            name="user_id"
-            required
-        >
-            <option value="">
-                Choose member
-            </option>
+    <div
+        class="admin-badge-member-picker"
+        data-badge-member-picker
+        data-search-endpoint="/badge-member-search.php"
+        data-badge-id="<?= (int) $badgeId ?>"
+    >
+        <label for="badge-award-member-search">
+            Member
+        </label>
 
-            <?php foreach ($users as $member): ?>
-                <option
-                    value="<?= (int) $member['id'] ?>"
-                >
-                    <?= moderation_e(
-                        (string) $member['name']
-                    ) ?>
-                    <?php if (!empty($member['username'])): ?>
-                        (@<?= moderation_e(
-                            (string) $member['username']
-                        ) ?>)
-                    <?php endif; ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
+        <div class="admin-badge-member-search-wrap">
+            <input
+                id="badge-award-member-search"
+                class="admin-badge-member-search"
+                type="search"
+                placeholder="Search name, @handle, email, or user ID"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="badge-award-member-results"
+                aria-expanded="false"
+                data-badge-member-search
+                hidden
+            >
 
-    <label>
-        <span>Evidence URL</span>
+            <input
+                type="hidden"
+                data-badge-member-id
+            >
+
+            <div
+                id="badge-award-member-results"
+                class="admin-badge-member-results"
+                role="listbox"
+                data-badge-member-results
+                hidden
+            ></div>
+        </div>
+
         <input
-            type="url"
-            name="evidence_url"
-            placeholder="Optional"
+            class="admin-badge-member-fallback"
+            type="number"
+            name="user_id"
+            min="1"
+            inputmode="numeric"
+            placeholder="Member user ID"
+            required
+            data-badge-member-fallback
         >
-    </label>
+
+        <small
+            class="admin-badge-member-help"
+            data-badge-member-help
+            hidden
+        >
+            Search by name, handle, email, or user ID.
+        </small>
+    </div>
+
+    <?php if ((string) $badge['award_type'] !== 'credential'): ?>
+        <label>
+            <span>Evidence URL</span>
+            <input
+                type="url"
+                name="evidence_url"
+                maxlength="500"
+                placeholder="Optional external evidence link"
+            >
+        </label>
+    <?php endif; ?>
 
     <label>
         <span>Admin note</span>
