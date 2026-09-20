@@ -15,28 +15,17 @@ function badge_e(mixed $value): string
 
 function badge_icon_name(mixed $value): string
 {
-    $raw = strtolower(trim((string) $value));
-
-    if ($raw !== '') {
-        $tokens = preg_split('/\s+/', $raw) ?: [];
-        $raw = (string) end($tokens);
-
-        $legacyPrefix = 'fa' . '-';
-
-        if (str_starts_with($raw, $legacyPrefix)) {
-            $raw = substr($raw, strlen($legacyPrefix));
-        }
-    }
+    $name = strtolower(trim((string) $value));
 
     if (
-        $raw === ''
-        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $raw)
-        || !is_file(__DIR__ . '/assets/icons/' . $raw . '.svg')
+        $name === ''
+        || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)
+        || !is_file(__DIR__ . '/assets/icons/' . $name . '.svg')
     ) {
         return 'award';
     }
 
-    return $raw;
+    return $name;
 }
 
 $slug = strtolower(

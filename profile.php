@@ -19,57 +19,25 @@ function public_profile_local_icon_name(
     mixed $value,
     string $fallback = 'award'
 ): string {
-    $tokens = preg_split(
-        '/\s+/',
-        strtolower(trim((string) $value))
-    ) ?: [];
-
-    foreach ($tokens as $token) {
-        if (
-            !str_starts_with($token, 'fa-')
-            || in_array(
-                $token,
-                ['fa-solid', 'fa-regular', 'fa-brands'],
-                true
-            )
-        ) {
-            continue;
-        }
-
-        $candidate = substr($token, 3);
-
-        if (
-            $candidate !== ''
-            && is_file(
-                __DIR__
-                . '/assets/icons/'
-                . $candidate
-                . '.svg'
-            )
-        ) {
-            return $candidate;
-        }
-    }
-
-    $plain = strtolower(trim((string) $value));
+    $name = strtolower(trim((string) $value));
 
     if (
-        $plain !== ''
-        && preg_match(
+        $name === ''
+        || !preg_match(
             '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-            $plain
+            $name
         )
-        && is_file(
+        || !is_file(
             __DIR__
             . '/assets/icons/'
-            . $plain
+            . $name
             . '.svg'
         )
     ) {
-        return $plain;
+        return $fallback;
     }
 
-    return $fallback;
+    return $name;
 }
 
 if (!$profile) {
@@ -433,7 +401,7 @@ require __DIR__ . '/partials/header.php';
                 <i aria-hidden="true">
                     <?= llama_icon(
                         public_profile_local_icon_name(
-                            $badge['icon'] ?? 'fa-award',
+                            $badge['icon'] ?? 'award',
                             'award'
                         )
                     ) ?>
