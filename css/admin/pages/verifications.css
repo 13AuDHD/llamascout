@@ -392,7 +392,7 @@
 
 @media (max-width: 1080px) {
     .admin-verification-stat-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .admin-verification-attention-main {
@@ -409,8 +409,11 @@
 }
 
 @media (max-width: 760px) {
+    .admin-verification-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+   
     .admin-verification-filters,
-    .admin-verification-stat-grid,
     .admin-freshness-place-dates {
         grid-template-columns: 1fr;
     }
