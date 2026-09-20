@@ -214,7 +214,7 @@ $published = in_array(
 <section class="admin-verification-stat-grid">
 
 <div>
-    <span>Total verifications</span>
+    <span>Verifications</span>
     <strong>
         <?= number_format(
             $verificationStats['total']
@@ -241,7 +241,7 @@ $published = in_array(
 </div>
 
 <div>
-    <span>Public data checked</span>
+    <span>Public Data</span>
     <strong>
         <?= number_format(
             $verificationStats['public_checked']
