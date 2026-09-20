@@ -548,3 +548,117 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
 @media (prefers-reduced-motion: reduce) {
     .place-photo-thumb img { transition: none; }
 }
+
+/* =========================================================
+   PLACE FIELD FRESHNESS
+   Public-facing physical check recency.
+   ========================================================= */
+
+.place-freshness-bar {
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 78%, var(--background));
+}
+
+.place-freshness-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+    gap: 22px;
+    align-items: center;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.place-freshness-summary {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.place-freshness-light {
+    width: 10px;
+    height: 10px;
+    display: block;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.place-freshness-bar.is-fresh .place-freshness-light {
+    background: #58a66a;
+}
+
+.place-freshness-bar.is-aging .place-freshness-light {
+    background: #d3a842;
+}
+
+.place-freshness-bar.is-attention .place-freshness-light,
+.place-freshness-bar.is-never .place-freshness-light {
+    background: #c95a52;
+}
+
+.place-freshness-summary .place-detail-eyebrow {
+    margin-bottom: 4px;
+    color: var(--text-muted);
+}
+
+.place-freshness-summary h2 {
+    margin: 0;
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.place-freshness-summary p:last-child {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+.place-freshness-summary p:last-child span {
+    white-space: nowrap;
+}
+
+.place-freshness-breakdown {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.place-freshness-breakdown > div {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.place-freshness-breakdown span,
+.place-freshness-breakdown strong,
+.place-freshness-breakdown small {
+    display: block;
+}
+
+.place-freshness-breakdown span {
+    color: var(--text-muted);
+    font-size: .64rem;
+    font-weight: 850;
+}
+
+.place-freshness-breakdown strong {
+    margin-top: 3px;
+    font-size: .76rem;
+}
+
+.place-freshness-breakdown small {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: .61rem;
+}
+
+@media (max-width: 760px) {
+    .place-freshness-inner,
+    .place-freshness-breakdown {
+        grid-template-columns: 1fr;
+    }
+}
