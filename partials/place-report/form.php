@@ -151,6 +151,42 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
+$placeReportRequiredFields =
+    is_array(
+        $placeReportRequiredFields
+        ?? null
+    )
+        ? array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        static fn (mixed $value): string =>
+                            trim((string) $value),
+                        $placeReportRequiredFields
+                    ),
+                    static fn (string $value): bool =>
+                        $value !== ''
+                )
+            )
+        )
+        : [];
+
+foreach ($placeReportRequiredFields as $requiredFieldKey) {
+    if (!isset($placeReportFields[$requiredFieldKey])) {
+        continue;
+    }
+
+    $placeReportFields[$requiredFieldKey]['required'] = true;
+
+    $requiredLabel = rtrim(
+        (string) ($placeReportFields[$requiredFieldKey]['label'] ?? ''),
+        " *"
+    );
+
+    $placeReportFields[$requiredFieldKey]['label'] =
+        $requiredLabel . ' *';
+}
+
 
 /*
  * If this consumer supplied an allow-list, remove fields whose
