@@ -838,6 +838,7 @@ function admin_badges_replace_image_from_stage(
     if (!$submittedPhotos) {
         return null;
     }
+
     if (count($submittedPhotos) > 1) {
         throw new RuntimeException('A badge can have only one image.');
     }
@@ -861,6 +862,7 @@ function admin_badges_replace_image_from_stage(
         $submittedPhotos,
         '/images/badges'
     );
+
     if (!$committed) {
         return null;
     }
@@ -870,38 +872,115 @@ function admin_badges_replace_image_from_stage(
         throw new RuntimeException('The badge image could not be saved.');
     }
 
-    $sourceAbsolute = dirname(__DIR__) . $sourcePath;
-    $sourceMime = strtolower(trim((string) ($committed[0]['mime_type'] ?? '')));
+    $root = dirname(__DIR__);
+    $sourceAbsolute = $root . $sourcePath;
+    $sourceMime = strtolower(
+        trim((string) ($committed[0]['mime_type'] ?? ''))
+    );
     $finalExtension = $sourceMime === 'image/png' ? 'png' : 'jpg';
-    $finalRelative = '/images/badges/' . $slug . '.' . $finalExtension;
-    $finalAbsolute = dirname(__DIR__) . $finalRelative;
 
     if (!is_file($sourceAbsolute)) {
         throw new RuntimeException('The committed badge image is missing.');
     }
 
-    $oldImage = trim((string) ($badge['image_src'] ?? ''));
+    /*
+     * Every replacement gets a new permanent URL. Reusing
+     * /images/badges/{slug}.png allowed browser and CDN caches to keep
+     * serving the previous artwork even after the file was replaced.
+     */
+    $versionToken = gmdate('YmdHis') . '-' . bin2hex(random_bytes(4));
+    $finalRelative =
+        '/images/badges/'
+        . $slug
+        . '-'
+        . $versionToken
+        . '.'
+        . $finalExtension;
+    $finalAbsolute = $root . $finalRelative;
 
-    if (
-        is_file($finalAbsolute)
-        && realpath($finalAbsolute) !== realpath($sourceAbsolute)
-    ) {
-        @unlink($finalAbsolute);
+    if (is_file($finalAbsolute)) {
+        throw new RuntimeException(
+            'A unique badge image filename could not be allocated.'
+        );
     }
 
     if (
         $sourceAbsolute !== $finalAbsolute
         && !@rename($sourceAbsolute, $finalAbsolute)
     ) {
-        if (!@copy($sourceAbsolute, $finalAbsolute) || !@unlink($sourceAbsolute)) {
+        if (
+            !@copy($sourceAbsolute, $finalAbsolute)
+            || !@unlink($sourceAbsolute)
+        ) {
             throw new RuntimeException(
-                'The badge image could not be renamed to its badge slug.'
+                'The badge image could not be moved into permanent storage.'
             );
         }
     }
 
+    $oldImage = trim((string) ($badge['image_src'] ?? ''));
+    $startedTransaction = !$db->inTransaction();
+
+    if ($startedTransaction) {
+        $db->beginTransaction();
+    }
+
+    try {
+        $update = $db->prepare(
+            'UPDATE badge_definitions SET image_src = ? WHERE id = ?'
+        );
+        $update->execute([$finalRelative, $badgeId]);
+
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException(
+                'The badge image path could not be saved.'
+            );
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'badge.image_replaced',
+            'Uploaded badge image for "' . (string) $badge['name'] . '".',
+            [
+                'badge_id' => $badgeId,
+                'badge_slug' => $slug,
+                'before_image_src' => $oldImage !== '' ? $oldImage : null,
+                'after_image_src' => $finalRelative,
+            ]
+        );
+
+        if ($startedTransaction) {
+            $db->commit();
+        }
+    } catch (Throwable $exception) {
+        if (
+            $startedTransaction
+            && $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        /*
+         * The database still points at the previous image, so the new file
+         * is safe to remove if the database change did not complete.
+         */
+        if (is_file($finalAbsolute)) {
+            @unlink($finalAbsolute);
+        }
+
+        throw $exception;
+    }
+
+    /*
+     * Only remove the previous artwork after the new image_src is durable.
+     * This also retires the old slug-only filenames used before versioned
+     * badge artwork URLs were introduced.
+     */
     if ($oldImage !== '' && $oldImage !== $finalRelative) {
         $normalizedOld = '/' . ltrim($oldImage, '/');
+
         if (
             str_starts_with($normalizedOld, '/images/badges/')
             || str_starts_with($normalizedOld, '/uploads/badges/')
@@ -914,32 +993,17 @@ function admin_badges_replace_image_from_stage(
     }
 
     foreach (['jpg', 'jpeg', 'png', 'webp'] as $legacyExtension) {
-        if ($legacyExtension === $finalExtension) {
-            continue;
-        }
-        $legacyFile = dirname(__DIR__) . '/images/badges/' . $slug . '.' . $legacyExtension;
+        $legacyFile =
+            $root
+            . '/images/badges/'
+            . $slug
+            . '.'
+            . $legacyExtension;
+
         if (is_file($legacyFile)) {
             @unlink($legacyFile);
         }
     }
-
-    $db->prepare(
-        'UPDATE badge_definitions SET image_src = ? WHERE id = ?'
-    )->execute([$finalRelative, $badgeId]);
-
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        null,
-        'badge.image_replaced',
-        'Uploaded badge image for "' . (string) $badge['name'] . '".',
-        [
-            'badge_id' => $badgeId,
-            'badge_slug' => $slug,
-            'before_image_src' => $oldImage !== '' ? $oldImage : null,
-            'after_image_src' => $finalRelative,
-        ]
-    );
 
     return $finalRelative;
 }
