@@ -155,37 +155,29 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 
 
-<section class="admin-panel">
+<section
+    class="admin-commerce-stat-grid"
+    aria-label="Product catalog statistics"
+>
+    <article class="admin-commerce-stat-card">
+        <span>Total</span>
+        <strong><?= number_format(count($products)) ?></strong>
+    </article>
 
-<header class="admin-panel-header">
-    <div>
-        <p>Catalog</p>
-        <h2><?= number_format(count($products)) ?> products</h2>
-    </div>
+    <article class="admin-commerce-stat-card">
+        <span>Active</span>
+        <strong><?= number_format(count($grouped['active'])) ?></strong>
+    </article>
 
-    <a class="admin-button" href="/product-new.php">
-        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
-        New product
-    </a>
-</header>
+    <article class="admin-commerce-stat-card">
+        <span>Draft</span>
+        <strong><?= number_format(count($grouped['draft'])) ?></strong>
+    </article>
 
-<dl class="admin-user-definition-list">
-    <div>
-        <dt>Active</dt>
-        <dd><?= number_format(count($grouped['active'])) ?></dd>
-    </div>
-
-    <div>
-        <dt>Draft</dt>
-        <dd><?= number_format(count($grouped['draft'])) ?></dd>
-    </div>
-
-    <div>
-        <dt>Archived</dt>
-        <dd><?= number_format(count($grouped['archived'])) ?></dd>
-    </div>
-</dl>
-
+    <article class="admin-commerce-stat-card">
+        <span>Archive</span>
+        <strong><?= number_format(count($grouped['archived'])) ?></strong>
+    </article>
 </section>
 
 
@@ -219,15 +211,22 @@ $statusSections = [
         <h2><?= moderation_e($section['title']) ?></h2>
     </div>
 
-    <span>
-        <?= number_format(count($grouped[$statusKey])) ?>
-    </span>
+    <?php if ($statusKey === 'active'): ?>
+        <a class="admin-button" href="/product-new.php">
+            <span aria-hidden="true">+</span>
+            New product
+        </a>
+    <?php else: ?>
+        <span>
+            <?= number_format(count($grouped[$statusKey])) ?>
+        </span>
+    <?php endif; ?>
 </header>
 
 <?php if (!$grouped[$statusKey]): ?>
 
 <div class="admin-empty-state">
-    <i aria-hidden="true"><?= llama_icon('packages') ?></i>
+    <i class="fa-solid fa-box-open" aria-hidden="true"></i>
     <h3><?= moderation_e($section['empty']) ?></h3>
 </div>
 
@@ -259,7 +258,7 @@ $orderHistoryCount =
             loading="lazy"
         >
     <?php else: ?>
-        <i aria-hidden="true"><?= llama_icon('package') ?></i>
+        <i class="fa-solid fa-box-open" aria-hidden="true"></i>
     <?php endif; ?>
 </div>
 
