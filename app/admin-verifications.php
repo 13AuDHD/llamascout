@@ -2,18 +2,80 @@
 
 declare(strict_types=1);
 
-function admin_verifications_list(
+/* =========================================================
+   BASECAMP PLACE FRESHNESS
+
+   This admin page is intentionally about physical field
+   freshness, not generic verification activity.
+
+   Official-source checks remain available on individual Place
+   records, but they do not make a Place look freshly visited.
+   ========================================================= */
+
+function admin_place_freshness_stats(PDO $db): array
+{
+    $sql = '
+        SELECT
+            COUNT(*) AS total,
+            SUM(
+                CASE
+                    WHEN last_field_checked_on IS NOT NULL
+                     AND last_field_checked_on >= DATE_SUB(UTC_DATE(), INTERVAL 180 DAY)
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS fresh,
+            SUM(
+                CASE
+                    WHEN last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 180 DAY)
+                     AND last_field_checked_on >= DATE_SUB(UTC_DATE(), INTERVAL 365 DAY)
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS aging,
+            SUM(
+                CASE
+                    WHEN last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 365 DAY)
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS attention,
+            SUM(
+                CASE
+                    WHEN last_field_checked_on IS NULL
+                        THEN 1
+                    ELSE 0
+                END
+            ) AS never_checked
+        FROM places
+        WHERE status IN ("active", "featured")
+    ';
+
+    $row = $db->query($sql)->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    return [
+        'total' => (int) ($row['total'] ?? 0),
+        'fresh' => (int) ($row['fresh'] ?? 0),
+        'aging' => (int) ($row['aging'] ?? 0),
+        'attention' => (int) ($row['attention'] ?? 0),
+        'never_checked' => (int) ($row['never_checked'] ?? 0),
+    ];
+}
+
+function admin_place_freshness_rows(
     PDO $db,
     string $search = '',
-    string $type = '',
-    string $age = ''
+    string $state = '',
+    int $limit = 500
 ): array {
-    $where = ['1 = 1'];
-    $params = [];
-
+    $limit = max(1, min(1000, $limit));
     $search = trim($search);
-    $type = trim($type);
-    $age = trim($age);
+    $state = trim($state);
+
+    $where = [
+        'p.status IN ("active", "featured")',
+    ];
+    $params = [];
 
     if ($search !== '') {
         $where[] = '(
@@ -21,17 +83,12 @@ function admin_verifications_list(
             OR p.city LIKE ?
             OR p.county LIKE ?
             OR p.state LIKE ?
-            OR pv.source LIKE ?
-            OR pv.notes LIKE ?
             OR CAST(p.id AS CHAR) = ?
         )';
 
         $needle = '%' . $search . '%';
-
         array_push(
             $params,
-            $needle,
-            $needle,
             $needle,
             $needle,
             $needle,
@@ -40,129 +97,17 @@ function admin_verifications_list(
         );
     }
 
-    if ($type !== '') {
-        $where[] = 'pv.verification_type = ?';
-        $params[] = $type;
+    if ($state === 'fresh') {
+        $where[] = 'p.last_field_checked_on IS NOT NULL
+            AND p.last_field_checked_on >= DATE_SUB(UTC_DATE(), INTERVAL 180 DAY)';
+    } elseif ($state === 'aging') {
+        $where[] = 'p.last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 180 DAY)
+            AND p.last_field_checked_on >= DATE_SUB(UTC_DATE(), INTERVAL 365 DAY)';
+    } elseif ($state === 'attention') {
+        $where[] = 'p.last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 365 DAY)';
+    } elseif ($state === 'never') {
+        $where[] = 'p.last_field_checked_on IS NULL';
     }
-
-    if ($age === '30') {
-        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
-    } elseif ($age === '90') {
-        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 90 DAY)';
-    } elseif ($age === '365') {
-        $where[] = 'pv.verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)';
-    } elseif ($age === 'older-365') {
-        $where[] = 'pv.verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)';
-    }
-
-    $sql =
-        'SELECT
-            pv.*,
-            p.name AS place_name,
-            p.slug AS place_slug,
-            p.status AS place_status,
-            p.city,
-            p.county,
-            p.state,
-            COALESCE(
-                NULLIF(u.display_name, ""),
-                NULLIF(u.username, ""),
-                "System"
-            ) AS verifier_name,
-            u.username AS verifier_username,
-            (
-                SELECT cpi.image_src
-                FROM community_profile_images cpi
-                WHERE cpi.user_id = u.id
-                ORDER BY
-                    cpi.sort_order ASC,
-                    cpi.id ASC
-                LIMIT 1
-            ) AS verifier_profile_image
-         FROM place_verifications pv
-         INNER JOIN places p
-            ON p.id = pv.place_id
-         LEFT JOIN users u
-            ON u.id = pv.verified_by
-         WHERE ' . implode(' AND ', $where) . '
-         ORDER BY
-            pv.verified_at DESC,
-            pv.id DESC
-         LIMIT 500';
-
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-}
-
-function admin_verification_types(
-    PDO $db
-): array {
-    $stmt = $db->query(
-        'SELECT DISTINCT verification_type
-         FROM place_verifications
-         WHERE verification_type IS NOT NULL
-           AND verification_type <> ""
-         ORDER BY verification_type ASC'
-    );
-
-    return array_values(
-        array_filter(
-            array_map(
-                'strval',
-                $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []
-            )
-        )
-    );
-}
-
-function admin_verification_stats(
-    PDO $db
-): array {
-    $sql = '
-        SELECT
-            COUNT(*) AS total,
-            SUM(
-                CASE
-                    WHEN verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS last_30,
-            SUM(
-                CASE
-                    WHEN verification_type = "llama-scouted"
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS llama_scouted,
-            SUM(
-                CASE
-                    WHEN public_data_verified = 1
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS public_checked
-        FROM place_verifications
-    ';
-
-    $row = $db->query($sql)->fetch(PDO::FETCH_ASSOC) ?: [];
-
-    return [
-        'total' => (int) ($row['total'] ?? 0),
-        'last_30' => (int) ($row['last_30'] ?? 0),
-        'llama_scouted' => (int) ($row['llama_scouted'] ?? 0),
-        'public_checked' => (int) ($row['public_checked'] ?? 0),
-    ];
-}
-
-
-function admin_verification_attention_queue(
-    PDO $db,
-    int $limit = 100
-): array {
-    $limit = max(1, min(250, $limit));
 
     $sql =
         'SELECT
@@ -173,122 +118,188 @@ function admin_verification_attention_queue(
             p.city,
             p.county,
             p.state,
-            p.last_verified_at,
-            p.updated_at,
-            p.source_type,
+            p.last_field_checked_on,
+            DATEDIFF(UTC_DATE(), p.last_field_checked_on) AS days_since_field_check,
             (
-                SELECT COUNT(*)
+                SELECT MAX(pc.checked_in_at)
+                FROM place_checkins pc
+                WHERE pc.place_id = p.id
+                  AND pc.contribution_level IN ("community", "member")
+            ) AS community_last_checked_at,
+            (
+                SELECT MAX(pc.checked_in_at)
+                FROM place_checkins pc
+                WHERE pc.place_id = p.id
+                  AND pc.contribution_level IN ("scout", "master-scout", "admin")
+            ) AS scout_checkin_last_checked_at,
+            (
+                SELECT MAX(
+                    COALESCE(
+                        CONCAT(pv.visited_at, " 12:00:00"),
+                        pv.verified_at
+                    )
+                )
                 FROM place_verifications pv
                 WHERE pv.place_id = p.id
-            ) AS verification_count,
+                  AND pv.verification_type = "field-verified"
+            ) AS legacy_scout_last_checked_at,
+            (
+                SELECT pc.contribution_level
+                FROM place_checkins pc
+                WHERE pc.place_id = p.id
+                ORDER BY pc.checked_in_at DESC, pc.id DESC
+                LIMIT 1
+            ) AS latest_checkin_level,
             (
                 SELECT COUNT(*)
                 FROM place_reports pr
                 WHERE pr.place_id = p.id
-                  AND pr.status IN ("open","investigating")
-            ) AS open_report_count,
-            CASE
-                WHEN p.last_verified_at IS NULL
-                    THEN "never"
-                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 730 DAY)
-                    THEN "overdue"
-                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
-                    THEN "attention"
-                ELSE "current"
-            END AS freshness_state,
-            DATEDIFF(
-                UTC_TIMESTAMP(),
-                p.last_verified_at
-            ) AS days_since_verified
+                  AND pr.status IN ("open", "investigating")
+            ) AS open_report_count
          FROM places p
-         WHERE p.status IN (
-            "active",
-            "featured",
-            "draft",
-            "unlisted"
-         )
+         WHERE ' . implode(' AND ', $where) . '
          ORDER BY
             CASE
-                WHEN p.last_verified_at IS NULL THEN 1
-                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 730 DAY) THEN 2
-                WHEN p.last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY) THEN 3
+                WHEN p.last_field_checked_on IS NULL THEN 1
+                WHEN p.last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 365 DAY) THEN 2
+                WHEN p.last_field_checked_on < DATE_SUB(UTC_DATE(), INTERVAL 180 DAY) THEN 3
                 ELSE 4
             END,
-            CASE
-                WHEN p.status IN ("featured","active") THEN 1
-                ELSE 2
-            END,
-            p.last_verified_at ASC,
-            p.updated_at DESC,
+            p.last_field_checked_on ASC,
             p.name ASC
          LIMIT ' . $limit;
 
-    return
-        $db->query($sql)->fetchAll(PDO::FETCH_ASSOC)
-        ?: [];
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($rows as &$row) {
+        $communityLast =
+            trim((string) ($row['community_last_checked_at'] ?? '')) ?: null;
+
+        $scoutLast = llama_place_freshness_latest_value(
+            trim((string) ($row['scout_checkin_last_checked_at'] ?? '')) ?: null,
+            trim((string) ($row['legacy_scout_last_checked_at'] ?? '')) ?: null
+        );
+
+        $overallLast = llama_place_freshness_latest_value(
+            $communityLast,
+            $scoutLast,
+            trim((string) ($row['last_field_checked_on'] ?? '')) ?: null
+        );
+
+        $row['overall_last_checked_at'] = $overallLast;
+        $row['community_last_checked_at'] = $communityLast;
+        $row['scout_last_checked_at'] = $scoutLast;
+        $row['freshness_state'] = llama_place_freshness_state($overallLast);
+        $row['freshness_label'] = llama_place_freshness_state_label(
+            (string) $row['freshness_state']
+        );
+    }
+    unset($row);
+
+    return $rows;
 }
 
-
-function admin_verification_attention_stats(
-    PDO $db
+function admin_place_freshness_attention_queue(
+    PDO $db,
+    int $limit = 100
 ): array {
-    $sql =
-        'SELECT
-            COUNT(*) AS total_places,
-            SUM(
-                CASE
-                    WHEN status IN ("active","featured")
-                     AND last_verified_at IS NULL
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS published_never_verified,
-            SUM(
-                CASE
-                    WHEN status IN ("active","featured")
-                     AND last_verified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS published_stale,
-            SUM(
-                CASE
-                    WHEN status IN ("active","featured")
-                     AND last_verified_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 365 DAY)
-                        THEN 1
-                    ELSE 0
-                END
-            ) AS published_current
-         FROM places
-         WHERE status IN (
-            "active",
-            "featured",
-            "draft",
-            "unlisted"
-         )';
+    $rows = admin_place_freshness_rows($db, '', '', max($limit * 2, 100));
 
-    $row = $db->query($sql)->fetch(PDO::FETCH_ASSOC) ?: [];
+    $rows = array_values(
+        array_filter(
+            $rows,
+            static fn(array $row): bool =>
+                in_array(
+                    (string) ($row['freshness_state'] ?? ''),
+                    ['aging', 'attention', 'never'],
+                    true
+                )
+        )
+    );
 
-    return [
-        'total_places' =>
-            (int) ($row['total_places'] ?? 0),
-        'published_never_verified' =>
-            (int) ($row['published_never_verified'] ?? 0),
-        'published_stale' =>
-            (int) ($row['published_stale'] ?? 0),
-        'published_current' =>
-            (int) ($row['published_current'] ?? 0),
-    ];
+    return array_slice($rows, 0, $limit);
 }
 
+function admin_place_recent_field_checks(
+    PDO $db,
+    int $limit = 100
+): array {
+    $limit = max(1, min(250, $limit));
 
-function admin_verification_freshness_label(
-    string $state
-): string {
-    return match ($state) {
-        'never' => 'Never verified',
-        'overdue' => 'Over 2 years old',
-        'attention' => 'Over 1 year old',
-        default => 'Current',
-    };
+    $sql =
+        'SELECT *
+         FROM (
+            SELECT
+                "checkin" AS record_kind,
+                pc.id AS record_id,
+                pc.place_id,
+                pc.user_id,
+                pc.contribution_level,
+                pc.checked_in_at AS checked_at,
+                pc.points_awarded,
+                pc.distance_meters,
+                pc.accuracy_meters,
+                p.name AS place_name,
+                p.slug AS place_slug,
+                p.status AS place_status,
+                p.city,
+                p.county,
+                p.state,
+                COALESCE(
+                    NULLIF(u.display_name, ""),
+                    NULLIF(u.username, ""),
+                    "Member"
+                ) AS checker_name,
+                u.username AS checker_username
+            FROM place_checkins pc
+            INNER JOIN places p
+                ON p.id = pc.place_id
+            LEFT JOIN users u
+                ON u.id = pc.user_id
+
+            UNION ALL
+
+            SELECT
+                "legacy-field" AS record_kind,
+                pv.id AS record_id,
+                pv.place_id,
+                pv.verified_by AS user_id,
+                "scout" AS contribution_level,
+                COALESCE(
+                    CONCAT(pv.visited_at, " 12:00:00"),
+                    pv.verified_at
+                ) AS checked_at,
+                0 AS points_awarded,
+                NULL AS distance_meters,
+                NULL AS accuracy_meters,
+                p.name AS place_name,
+                p.slug AS place_slug,
+                p.status AS place_status,
+                p.city,
+                p.county,
+                p.state,
+                COALESCE(
+                    NULLIF(u.display_name, ""),
+                    NULLIF(u.username, ""),
+                    "Llama Scout"
+                ) AS checker_name,
+                u.username AS checker_username
+            FROM place_verifications pv
+            INNER JOIN places p
+                ON p.id = pv.place_id
+            LEFT JOIN users u
+                ON u.id = pv.verified_by
+            WHERE pv.verification_type = "field-verified"
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM place_checkins linked
+                    WHERE linked.verification_id = pv.id
+              )
+         ) field_checks
+         ORDER BY checked_at DESC, record_id DESC
+         LIMIT ' . $limit;
+
+    return $db->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
