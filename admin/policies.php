@@ -115,6 +115,15 @@ require __DIR__ . '/_header.php';
                 </div>
             </header>
 
+            <?php if ($sectionTitle === 'Master Scout Qualification'): ?>
+                <p class="admin-policy-section-note">
+                    Master Scout is the community moderation rank. Every numeric qualification
+                    threshold must be set above zero before a Scout can qualify. Only work
+                    completed while serving as a Scout or Master Scout counts toward these
+                    requirements. Promotion still requires Owner review.
+                </p>
+            <?php endif; ?>
+
             <div class="admin-policy-grid">
 
                 <?php foreach ($keys as $key): ?>
