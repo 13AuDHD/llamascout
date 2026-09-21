@@ -31,6 +31,11 @@ $currentContributionShortLabel =
         $currentContributionLevel
     );
 
+$currentContributionLabel =
+    llama_contribution_level_label(
+        $currentContributionLevel
+    );
+
 
 if (
     !llama_contributor_can(
@@ -641,9 +646,10 @@ $e =
             ><?= llama_icon('info-circle') ?></i>
 
             <span>
-                Your edits do not change the live Place immediately.
-                A moderator reviews the differences first.
-                Only approved changes are published.
+                If approved, this field work is recorded as
+                <strong><?= $e($currentContributionLabel) ?></strong>.
+                Your edits do not change the live Place immediately. A moderator
+                reviews the differences first, and only approved changes are published.
             </span>
 
         </div>

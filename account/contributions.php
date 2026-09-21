@@ -50,15 +50,15 @@ $contributorHeading = match ($currentContributionLevel) {
 
 $contributorDescription = match ($currentContributionLevel) {
     LLAMA_CONTRIBUTION_LEVEL_ADMIN =>
-        'You contribute with Llama Scout administration authority and Complete Access.',
+        'Your approved field work is identified as Admin Contributed. Owner accounts are shown publicly as Admin.',
     LLAMA_CONTRIBUTION_LEVEL_MASTER =>
-        'You contribute as a trained Master Scout with Complete Access and moderation responsibility.',
+        'Your approved field work is identified as Master Scout Contributed. You also have limited moderation responsibility while active.',
     LLAMA_CONTRIBUTION_LEVEL_SCOUT =>
-        'You contribute as a trained Llama Scout with Complete Access while your Scout status remains active.',
+        'Your approved field work is identified as Scout Contributed. Active Scout status also includes complimentary Complete Access.',
     LLAMA_CONTRIBUTION_LEVEL_MEMBER =>
-        'Your paid membership includes Complete Access and identifies your approved contributions as Member contributions.',
+        'Your paid membership includes Complete Access, and your approved field work is identified as Member Contributed.',
     default =>
-        'You can help build Llama Scout as a Community contributor. Complete Access stays limited to the Places you originally contribute unless you upgrade.',
+        'Your approved field work is identified as Community Contributed. Places you originally contribute unlock completely for your account.',
 };
 
 $items = community_submissions_for_user($userId);
@@ -280,10 +280,10 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="contributor-level-features">
                 <span>
                     <?= htmlspecialchars(
-                        $currentContributionShortLabel,
+                        llama_contribution_level_label($currentContributionLevel),
                         ENT_QUOTES,
                         'UTF-8'
-                    ) ?> contribution label
+                    ) ?>
                 </span>
 
                 <span>Geofenced check-ins</span>
