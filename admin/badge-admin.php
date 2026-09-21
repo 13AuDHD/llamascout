@@ -663,9 +663,6 @@ require __DIR__ .
 
         <label>
             <span>Local SVG icon</span>
-            <small>
-                Filename from /assets/icons, without .svg.
-            </small>
             <input
                 type="text"
                 name="icon"
