@@ -16,6 +16,16 @@
                     '[data-badge-threshold-field]'
                 );
 
+            const eligibilityScope =
+                form.querySelector(
+                    '[name="eligibility_scope"]'
+                );
+
+            const recognitionMode =
+                form.querySelector(
+                    '[name="recognition_mode"]'
+                );
+
             if (
                 !awardType
                 || thresholdFields.length === 0
@@ -78,6 +88,26 @@
                                 automatic;
                         }
                     );
+
+                    if (eligibilityScope) {
+                        const credential =
+                            awardType.value === 'credential';
+
+                        if (credential) {
+                            eligibilityScope.value = 'credential';
+                            eligibilityScope.disabled = true;
+
+                            if (recognitionMode) {
+                                recognitionMode.value = 'permanent';
+                            }
+                        } else {
+                            eligibilityScope.disabled = false;
+
+                            if (eligibilityScope.value === 'credential') {
+                                eligibilityScope.value = 'all-members';
+                            }
+                        }
+                    }
 
                     updateThresholdHelp();
                 };
@@ -270,7 +300,10 @@
     };
 
     const chooseMember = (member) => {
-        if (member.already_has_badge) {
+        if (
+            member.already_has_badge
+            || member.eligible === false
+        ) {
             return;
         }
 
@@ -330,7 +363,10 @@
                 'false'
             );
 
-            if (member.already_has_badge) {
+            if (
+                member.already_has_badge
+                || member.eligible === false
+            ) {
                 button.disabled = true;
                 button.classList.add(
                     'is-unavailable'
@@ -354,6 +390,12 @@
                     document.createElement('small');
                 status.textContent =
                     'Already has this badge';
+                button.appendChild(status);
+            } else if (member.eligible === false) {
+                const status =
+                    document.createElement('small');
+                status.textContent =
+                    `Not eligible for ${member.eligibility_label || 'this badge track'}`;
                 button.appendChild(status);
             }
 
