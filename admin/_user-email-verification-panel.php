@@ -177,14 +177,27 @@ $isVerified =
                 <button
                     class="admin-button <?= $isVerified ? 'is-secondary' : '' ?>"
                     type="submit"
+                    name="verification_action"
+                    value="send_verification"
                 >
                     <i aria-hidden="true">
                         <?= llama_icon('mail-check') ?>
                     </i>
 
-                    <?= $isVerified
-                        ? 'Unverify + Send Verification'
-                        : 'Send Fresh Verification Email' ?>
+                    Send Verification
+                </button>
+
+                <button
+                    class="admin-button is-secondary"
+                    type="submit"
+                    name="verification_action"
+                    value="manual_verify"
+                >
+                    <i aria-hidden="true">
+                        <?= llama_icon('circle-check') ?>
+                    </i>
+
+                    Manually Verify
                 </button>
 
             </form>
