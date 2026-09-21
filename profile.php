@@ -342,7 +342,7 @@ require __DIR__ . '/partials/header.php';
             </div>
             <div class="public-community-profile-fact">
                 <i aria-hidden="true"><?= llama_icon('edit') ?></i>
-                <span>Improvements</span>
+                <span>Updates</span>
                 <strong><?= number_format((int) ($stats['places_improved'] ?? 0)) ?></strong>
             </div>
             <div class="public-community-profile-fact">
