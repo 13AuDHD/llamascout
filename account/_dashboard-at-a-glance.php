@@ -34,6 +34,14 @@ $dashboardScoutDescription =
     $dashboardScoutIsMaster
         ? 'Your Master Scout status, field work, moderation tools, and Scout activity.'
         : 'Your Scout status, field-work requirements, contributions, and Master Scout progress.';
+
+$dashboardProfileStats =
+    function_exists('llama_profile_stats')
+        ? llama_profile_stats(
+            $db,
+            $userId
+        )
+        : [];
 ?>
 
 <link
@@ -77,6 +85,46 @@ $dashboardScoutDescription =
         <div class="account-dashboard-stat-card">
             <span class="account-glance-icon">
                 <?= llama_icon('map-pin') ?>
+            </span>
+
+            <div>
+                <strong>
+                    <?= number_format(
+                        (int) (
+                            $dashboardProfileStats['places_submitted']
+                            ?? 0
+                        )
+                    ) ?>
+                </strong>
+
+                <span>New Places</span>
+            </div>
+        </div>
+
+
+        <div class="account-dashboard-stat-card">
+            <span class="account-glance-icon">
+                <?= llama_icon('edit') ?>
+            </span>
+
+            <div>
+                <strong>
+                    <?= number_format(
+                        (int) (
+                            $dashboardProfileStats['places_improved']
+                            ?? 0
+                        )
+                    ) ?>
+                </strong>
+
+                <span>Updates</span>
+            </div>
+        </div>
+
+
+        <div class="account-dashboard-stat-card">
+            <span class="account-glance-icon">
+                <?= llama_icon('check') ?>
             </span>
 
             <div>
