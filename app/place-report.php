@@ -1934,6 +1934,37 @@ function llama_place_report_validate_new_place_minimum(
 }
 
 
+function llama_place_report_validate_scout_submission(
+    PDO $db,
+    int $userId,
+    array $data
+): void {
+    if ($userId < 1) {
+        return;
+    }
+
+    $level = llama_user_contribution_level(
+        $db,
+        $userId
+    );
+
+    if (
+        llama_contribution_level_rank($level)
+        < llama_contribution_level_rank(
+            LLAMA_CONTRIBUTION_LEVEL_SCOUT
+        )
+    ) {
+        return;
+    }
+
+    if (trim((string) ($data['visited_at'] ?? '')) === '') {
+        throw new InvalidArgumentException(
+            'Scout and Master Scout new Place submissions require the date you personally visited the Place.'
+        );
+    }
+}
+
+
 function llama_place_report_submit_new_place(
     int $userId,
     array $input
@@ -1982,6 +2013,12 @@ function llama_place_report_submit_new_place(
     );
 
     $db = db();
+
+    llama_place_report_validate_scout_submission(
+        $db,
+        $userId,
+        $data
+    );
     $submissionId = 0;
 
     try {
@@ -2176,6 +2213,12 @@ function llama_place_report_resubmit_new_place(
 
     $newPhotos = [];
     $db = db();
+
+    llama_place_report_validate_scout_submission(
+        $db,
+        $userId,
+        $data
+    );
 
     try {
         $db->beginTransaction();

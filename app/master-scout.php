@@ -29,7 +29,7 @@ require_once
    This file answers:
 
        Does this Scout currently satisfy the published
-       Master Scout requirements?
+       Master Scout service requirements?
 
    It does NOT automatically modify roles.
 
@@ -106,6 +106,13 @@ function llama_master_scout_contribution_counts(
 
               AND status =
                   \'approved\'
+
+              AND role_at_time IN
+                  (
+                      \'scout\',
+                      \'master-scout\',
+                      \'master_scout\'
+                  )
             '
         );
 
@@ -309,6 +316,13 @@ function llama_master_scout_qualification(
         );
 
 
+    $servicePoints =
+        llama_scout_service_points(
+            $db,
+            $userId
+        );
+
+
     $reactivating =
         (string) (
             $summary['period']['type']
@@ -358,18 +372,12 @@ function llama_master_scout_qualification(
 
         llama_master_requirement(
             'lifetime_points',
-            'Lifetime points',
-            (int)
-            $summary[
-                'lifetime_points'
-            ],
+            'Scout service points',
+            $servicePoints,
             $pointsRequired,
             $pointsRequired === 0
             ||
-            (int)
-            $summary[
-                'lifetime_points'
-            ]
+            $servicePoints
             >=
             $pointsRequired
         ),
@@ -377,7 +385,7 @@ function llama_master_scout_qualification(
 
         llama_master_requirement(
             'new_places',
-            'Lifetime new Places',
+            'Scout new Places',
             $counts[
                 'new_places'
             ],
@@ -394,7 +402,7 @@ function llama_master_scout_qualification(
 
         llama_master_requirement(
             'updates',
-            'Approved updates',
+            'Scout updates',
             $counts[
                 'updates'
             ],
@@ -411,7 +419,7 @@ function llama_master_scout_qualification(
 
         llama_master_requirement(
             'corrections',
-            'Approved corrections',
+            'Scout corrections',
             $counts[
                 'corrections'
             ],
@@ -428,7 +436,7 @@ function llama_master_scout_qualification(
 
         llama_master_requirement(
             'updated_places',
-            'Different existing Places improved',
+            'Different Places improved as a Scout',
             $counts[
                 'updated_places'
             ],
@@ -446,20 +454,21 @@ function llama_master_scout_qualification(
 
 
     /*
-     * Zero means that individual requirement is disabled.
-     * Negative values are invalid policy configuration.
+     * Master Scout is a senior moderator role, so every numeric
+     * qualification dimension must have a real minimum greater
+     * than zero before promotion can be enabled.
      */
 
     $numericPolicyComplete =
-        $pointsRequired >= 0
+        $pointsRequired > 0
         &&
-        $newPlacesRequired >= 0
+        $newPlacesRequired > 0
         &&
-        $updatesRequired >= 0
+        $updatesRequired > 0
         &&
-        $correctionsRequired >= 0
+        $correctionsRequired > 0
         &&
-        $updatedPlacesRequired >= 0;
+        $updatedPlacesRequired > 0;
 
 
     $allRequirementsMet =
@@ -543,6 +552,9 @@ function llama_master_scout_qualification(
         'enabled' =>
             $enabled,
 
+        'policy_complete' =>
+            $numericPolicyComplete,
+
         'eligible' =>
             $eligible,
 
@@ -555,10 +567,7 @@ function llama_master_scout_qualification(
         'stats' => [
 
             'lifetime_points' =>
-                (int)
-                $summary[
-                    'lifetime_points'
-                ],
+                $servicePoints,
 
             'new_places' =>
                 $counts[

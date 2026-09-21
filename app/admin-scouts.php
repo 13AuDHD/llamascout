@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/scout-policy.php';
 require_once __DIR__ . '/scout-onboarding.php';
 require_once __DIR__ . '/scout-maintenance.php';
+require_once __DIR__ . '/master-scout.php';
 
 function admin_scouts_list(PDO $db): array
 {
@@ -25,14 +26,36 @@ function admin_scouts_list(PDO $db): array
                 SEPARATOR ','
             ) AS role_slugs,
             (
-                SELECT COUNT(*)
-                FROM scout_activity sa
-                WHERE sa.user_id = sp.user_id
+                (
+                    SELECT COUNT(*)
+                    FROM place_contributions pc
+                    WHERE pc.user_id = sp.user_id
+                      AND pc.status = 'approved'
+                      AND pc.role_at_time IN ('scout','master-scout','master_scout')
+                )
+                +
+                (
+                    SELECT COUNT(*)
+                    FROM place_checkins pci
+                    WHERE pci.user_id = sp.user_id
+                      AND pci.contribution_level IN ('scout','master-scout')
+                )
             ) AS activity_count,
             (
-                SELECT COALESCE(SUM(sa.points),0)
-                FROM scout_activity sa
-                WHERE sa.user_id = sp.user_id
+                (
+                    SELECT COALESCE(SUM(pc.points_awarded),0)
+                    FROM place_contributions pc
+                    WHERE pc.user_id = sp.user_id
+                      AND pc.status = 'approved'
+                      AND pc.role_at_time IN ('scout','master-scout','master_scout')
+                )
+                +
+                (
+                    SELECT COALESCE(SUM(pci.points_awarded),0)
+                    FROM place_checkins pci
+                    WHERE pci.user_id = sp.user_id
+                      AND pci.contribution_level IN ('scout','master-scout')
+                )
             ) AS scout_points,
             (
                 SELECT COUNT(*)
@@ -40,6 +63,8 @@ function admin_scouts_list(PDO $db): array
                 WHERE pc.user_id = sp.user_id
                   AND pc.status = 'approved'
                   AND pc.contribution_type = 'new_place'
+                  AND pc.visited_at IS NOT NULL
+                  AND pc.role_at_time IN ('scout','master-scout','master_scout')
             ) AS new_place_count,
             (
                 SELECT COUNT(*)
@@ -47,6 +72,7 @@ function admin_scouts_list(PDO $db): array
                 WHERE pc.user_id = sp.user_id
                   AND pc.status = 'approved'
                   AND pc.contribution_type IN ('update','correction')
+                  AND pc.role_at_time IN ('scout','master-scout','master_scout')
             ) AS improvement_count
         FROM scout_profiles sp
         INNER JOIN users u
@@ -157,17 +183,47 @@ function admin_scout_activity(
     int $userId
 ): array {
     $stmt = $db->prepare(
-        'SELECT
-            sa.*,
-            p.name AS place_name
-         FROM scout_activity sa
-         LEFT JOIN places p
-            ON p.id = sa.place_id
-         WHERE sa.user_id = ?
-         ORDER BY sa.occurred_at DESC
+        'SELECT *
+         FROM (
+            SELECT
+                pc.id,
+                pc.user_id,
+                pc.place_id,
+                pc.contribution_type AS activity_type,
+                pc.points_awarded AS points,
+                COALESCE(pc.approved_at, pc.submitted_at, pc.created_at) AS occurred_at,
+                p.name AS place_name
+            FROM place_contributions pc
+            LEFT JOIN places p
+                ON p.id = pc.place_id
+            WHERE pc.user_id = ?
+              AND pc.status = "approved"
+              AND pc.role_at_time IN ("scout", "master-scout", "master_scout")
+
+            UNION ALL
+
+            SELECT
+                pci.id,
+                pci.user_id,
+                pci.place_id,
+                "field_checkin" AS activity_type,
+                pci.points_awarded AS points,
+                pci.checked_in_at AS occurred_at,
+                p2.name AS place_name
+            FROM place_checkins pci
+            LEFT JOIN places p2
+                ON p2.id = pci.place_id
+            WHERE pci.user_id = ?
+              AND pci.contribution_level IN ("scout", "master-scout")
+         ) activity
+         ORDER BY occurred_at DESC, id DESC
          LIMIT 50'
     );
-    $stmt->execute([$userId]);
+
+    $stmt->execute([
+        $userId,
+        $userId,
+    ]);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
@@ -316,24 +372,13 @@ function admin_scout_current_period(
             $startDate = new DateTimeImmutable($start);
             $endDate = new DateTimeImmutable($end);
 
-            $stmt = $db->prepare(
-                'SELECT COUNT(*)
-                 FROM scout_activity
-                 WHERE scout_profile_id = ?
-                   AND user_id = ?
-                   AND activity_type = "place_approved"
-                   AND occurred_at >= ?
-                   AND occurred_at < ?'
-            );
-
-            $stmt->execute([
+            $completed = llama_scout_new_places_in_period(
+                $db,
                 $scoutProfileId,
                 $userId,
                 $startDate->format('Y-m-d H:i:s'),
-                $endDate->format('Y-m-d H:i:s'),
-            ]);
-
-            $completed = (int) $stmt->fetchColumn();
+                $endDate->format('Y-m-d H:i:s')
+            );
 
             return [
                 'type' => 'reactivation',
@@ -400,24 +445,13 @@ function admin_scout_current_period(
             }
         }
 
-        $stmt = $db->prepare(
-            'SELECT COUNT(*)
-             FROM scout_activity
-             WHERE scout_profile_id = ?
-               AND user_id = ?
-               AND activity_type = "place_approved"
-               AND occurred_at >= ?
-               AND occurred_at < ?'
-        );
-
-        $stmt->execute([
+        $completed = llama_scout_new_places_in_period(
+            $db,
             (int) $scout['id'],
             (int) $scout['user_id'],
             $startDate->format('Y-m-d H:i:s'),
-            $endDate->format('Y-m-d H:i:s'),
-        ]);
-
-        $completed = (int) $stmt->fetchColumn();
+            $endDate->format('Y-m-d H:i:s')
+        );
 
         $daysRemaining = (int) floor(
             ($endDate->getTimestamp() - time()) / 86400
@@ -488,8 +522,7 @@ function admin_scout_master_qualification(
 
     $stmt = $db->prepare(
         'SELECT
-            COALESCE(SUM(points_awarded),0) AS points,
-            SUM(CASE WHEN contribution_type = "new_place" THEN 1 ELSE 0 END) AS new_places,
+            SUM(CASE WHEN contribution_type = "new_place" AND visited_at IS NOT NULL THEN 1 ELSE 0 END) AS new_places,
             SUM(CASE WHEN contribution_type = "update" THEN 1 ELSE 0 END) AS updates,
             SUM(CASE WHEN contribution_type = "correction" THEN 1 ELSE 0 END) AS corrections,
             COUNT(DISTINCT CASE
@@ -498,7 +531,8 @@ function admin_scout_master_qualification(
             END) AS updated_places
          FROM place_contributions
          WHERE user_id = ?
-           AND status = "approved"'
+           AND status = "approved"
+           AND role_at_time IN ("scout", "master-scout", "master_scout")'
     );
 
     $stmt->execute([
@@ -506,6 +540,10 @@ function admin_scout_master_qualification(
     ]);
 
     $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $servicePoints = llama_scout_service_points(
+        $db,
+        (int) $scout['user_id']
+    );
     $period = admin_scout_current_period($db, $scout);
     $reactivating = (string) ($period['type'] ?? '') === 'reactivation';
     $active =
@@ -529,35 +567,35 @@ function admin_scout_master_qualification(
         ],
         [
             'key' => 'points',
-            'label' => 'Lifetime points',
-            'current' => (int) ($counts['points'] ?? 0),
+            'label' => 'Scout service points',
+            'current' => $servicePoints,
             'required' => $pointsRequired,
-            'met' => $pointsRequired === 0 || (int) ($counts['points'] ?? 0) >= $pointsRequired,
+            'met' => $pointsRequired === 0 || $servicePoints >= $pointsRequired,
         ],
         [
             'key' => 'new_places',
-            'label' => 'Lifetime new Places',
+            'label' => 'Scout new Places',
             'current' => (int) ($counts['new_places'] ?? 0),
             'required' => $newPlacesRequired,
             'met' => $newPlacesRequired === 0 || (int) ($counts['new_places'] ?? 0) >= $newPlacesRequired,
         ],
         [
             'key' => 'updates',
-            'label' => 'Approved updates',
+            'label' => 'Scout updates',
             'current' => (int) ($counts['updates'] ?? 0),
             'required' => $updatesRequired,
             'met' => $updatesRequired === 0 || (int) ($counts['updates'] ?? 0) >= $updatesRequired,
         ],
         [
             'key' => 'corrections',
-            'label' => 'Approved corrections',
+            'label' => 'Scout corrections',
             'current' => (int) ($counts['corrections'] ?? 0),
             'required' => $correctionsRequired,
             'met' => $correctionsRequired === 0 || (int) ($counts['corrections'] ?? 0) >= $correctionsRequired,
         ],
         [
             'key' => 'updated_places',
-            'label' => 'Different Places improved',
+            'label' => 'Different Places improved as a Scout',
             'current' => (int) ($counts['updated_places'] ?? 0),
             'required' => $updatedPlacesRequired,
             'met' => $updatedPlacesRequired === 0 || (int) ($counts['updated_places'] ?? 0) >= $updatedPlacesRequired,
@@ -565,11 +603,11 @@ function admin_scout_master_qualification(
     ];
 
     $numericComplete =
-        $pointsRequired >= 0
-        && $newPlacesRequired >= 0
-        && $updatesRequired >= 0
-        && $correctionsRequired >= 0
-        && $updatedPlacesRequired >= 0;
+        $pointsRequired > 0
+        && $newPlacesRequired > 0
+        && $updatesRequired > 0
+        && $correctionsRequired > 0
+        && $updatedPlacesRequired > 0;
 
     $allMet = true;
     foreach ($requirements as $requirement) {

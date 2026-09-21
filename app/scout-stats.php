@@ -484,7 +484,13 @@ function llama_scout_current_period(
 
 
 /* =========================================================
-   APPROVED NEW PLACES IN PERIOD
+   APPROVED SCOUT NEW PLACES IN PERIOD
+
+   Scout renewal credit is based on durable approved Place
+   contributions recorded while the contributor was acting as
+   a Scout or Master Scout. Community and paid-Member work from
+   before Scout training remains part of lifetime contribution
+   history, but it does not satisfy Scout service requirements.
    ========================================================= */
 
 function llama_scout_new_places_in_period(
@@ -497,72 +503,12 @@ function llama_scout_new_places_in_period(
 
     if (
         $scoutProfileId < 1
-        ||
-        $userId < 1
-        ||
-        !$start
-        ||
-        !$end
+        || $userId < 1
+        || !$start
+        || !$end
     ) {
-
         return 0;
-
     }
-
-
-    $stmt =
-        $db->prepare(
-            '
-            SELECT COUNT(*)
-
-            FROM scout_activity
-
-            WHERE scout_profile_id = ?
-
-              AND user_id = ?
-
-              AND activity_type =
-                  \'place_approved\'
-
-              AND occurred_at >= ?
-
-              AND occurred_at < ?
-            '
-        );
-
-
-    $stmt->execute([
-        $scoutProfileId,
-        $userId,
-        $start,
-        $end
-    ]);
-
-
-    return
-        (int)
-        $stmt->fetchColumn();
-
-}
-
-
-/* =========================================================
-   LIFETIME APPROVED NEW PLACES
-   ========================================================= */
-
-function llama_scout_lifetime_new_places(
-    PDO $db,
-    int $userId
-): int {
-
-    if (
-        $userId < 1
-    ) {
-
-        return 0;
-
-    }
-
 
     $stmt =
         $db->prepare(
@@ -574,23 +520,161 @@ function llama_scout_lifetime_new_places(
             WHERE user_id = ?
 
               AND contribution_type =
-                  \'new_place\'
+                  "new_place"
 
               AND status =
-                  \'approved\'
+                  "approved"
+
+              AND visited_at IS NOT NULL
+
+              AND role_at_time IN
+                  (
+                      "scout",
+                      "master-scout",
+                      "master_scout"
+                  )
+
+              AND COALESCE(approved_at, submitted_at, created_at) >= ?
+
+              AND COALESCE(approved_at, submitted_at, created_at) < ?
             '
         );
 
-
     $stmt->execute([
-        $userId
+        $userId,
+        $start,
+        $end,
     ]);
 
+    return (int) $stmt->fetchColumn();
+}
 
-    return
-        (int)
-        $stmt->fetchColumn();
 
+/* =========================================================
+   LIFETIME SCOUT NEW PLACES
+   ========================================================= */
+
+function llama_scout_lifetime_new_places(
+    PDO $db,
+    int $userId
+): int {
+
+    if ($userId < 1) {
+        return 0;
+    }
+
+    $stmt =
+        $db->prepare(
+            '
+            SELECT COUNT(*)
+
+            FROM place_contributions
+
+            WHERE user_id = ?
+
+              AND contribution_type =
+                  "new_place"
+
+              AND status =
+                  "approved"
+
+              AND visited_at IS NOT NULL
+
+              AND role_at_time IN
+                  (
+                      "scout",
+                      "master-scout",
+                      "master_scout"
+                  )
+            '
+        );
+
+    $stmt->execute([
+        $userId,
+    ]);
+
+    return (int) $stmt->fetchColumn();
+}
+
+
+/* =========================================================
+   LIFETIME SCOUT SERVICE POINTS
+
+   Master Scout qualification must reflect work performed after
+   Scout training. General Community or Member points earned
+   before Scout status remain in the user's normal lifetime
+   points ledger, but are not counted as Scout service points.
+   ========================================================= */
+
+function llama_scout_service_points(
+    PDO $db,
+    int $userId
+): int {
+
+    if ($userId < 1) {
+        return 0;
+    }
+
+    $contributionStmt =
+        $db->prepare(
+            '
+            SELECT COALESCE(SUM(points_awarded), 0)
+
+            FROM place_contributions
+
+            WHERE user_id = ?
+
+              AND status = "approved"
+
+              AND role_at_time IN
+                  (
+                      "scout",
+                      "master-scout",
+                      "master_scout"
+                  )
+            '
+        );
+
+    $contributionStmt->execute([
+        $userId,
+    ]);
+
+    $points = (int) $contributionStmt->fetchColumn();
+
+    /*
+     * Check-ins have their own durable record instead of a
+     * place_contributions row. Count only Scout-level check-ins
+     * so Community and Member check-ins cannot accelerate Master
+     * Scout qualification later.
+     */
+    try {
+        $checkinStmt =
+            $db->prepare(
+                '
+                SELECT COALESCE(SUM(points_awarded), 0)
+
+                FROM place_checkins
+
+                WHERE user_id = ?
+
+                  AND contribution_level IN
+                      (
+                          "scout",
+                          "master-scout"
+                      )
+                '
+            );
+
+        $checkinStmt->execute([
+            $userId,
+        ]);
+
+        $points += (int) $checkinStmt->fetchColumn();
+    } catch (Throwable) {
+        /* Check-in storage may not exist on an older deployment yet. */
+    }
+
+    return max(0, $points);
 }
 
 
@@ -789,7 +873,7 @@ function llama_scout_summary(
         ],
 
         'lifetime_points' =>
-            llama_user_contribution_points(
+            llama_scout_service_points(
                 $db,
                 $userId
             ),

@@ -113,17 +113,27 @@ function llama_count_scout_reports(
     string $periodStart,
     string $periodEnd
 ): int {
+    if ($scoutProfileId < 1 || $userId < 1) {
+        return 0;
+    }
+
+    /*
+     * Renewal credit comes from the same durable contribution history
+     * shown to members. Only new Places submitted while acting as a
+     * Scout or Master Scout count toward Scout service requirements.
+     */
     $stmt = $db->prepare(
         'SELECT COUNT(*)
-         FROM scout_activity
-         WHERE scout_profile_id = ?
-           AND user_id = ?
-           AND activity_type = "place_approved"
-           AND occurred_at >= ?
-           AND occurred_at < ?'
+         FROM place_contributions
+         WHERE user_id = ?
+           AND contribution_type = "new_place"
+           AND status = "approved"
+           AND visited_at IS NOT NULL
+           AND role_at_time IN ("scout", "master-scout", "master_scout")
+           AND COALESCE(approved_at, submitted_at, created_at) >= ?
+           AND COALESCE(approved_at, submitted_at, created_at) < ?'
     );
     $stmt->execute([
-        $scoutProfileId,
         $userId,
         $periodStart,
         $periodEnd,
