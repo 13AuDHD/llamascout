@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/admin-users.php';
 require_once __DIR__ . '/automatic-badges.php';
+require_once __DIR__ . '/badge-eligibility.php';
 require_once __DIR__ . '/badge-credentials.php';
 
 function admin_badges_definitions(PDO $db): array {
@@ -132,6 +133,9 @@ function admin_badges_user_badges(PDO $db, int $userId): array {
             bd.icon,
             bd.image_src,
             bd.award_type,
+            bd.eligibility_scope,
+            bd.recognition_mode,
+            bd.how_to_earn,
             bd.threshold_metric,
             bd.threshold_value,
             bd.is_active,
@@ -220,6 +224,116 @@ function admin_badges_stats(PDO $db): array {
             (int) ($row['legacy_pending_review'] ?? 0)
             + llama_badge_credential_pending_count($db),
     ];
+}
+
+function admin_badges_eligibility_review(
+    PDO $db,
+    int $limit = 100
+): array {
+    $limit = max(1, min(500, $limit));
+
+    $stmt = $db->query(
+        'SELECT
+            ub.id AS user_badge_id,
+            ub.user_id,
+            ub.awarded_at,
+            bd.id AS badge_id,
+            bd.slug,
+            bd.name AS badge_name,
+            bd.award_type,
+            bd.eligibility_scope,
+            bd.recognition_mode,
+            bd.threshold_metric,
+            bd.threshold_value,
+            COALESCE(
+                NULLIF(u.display_name, ""),
+                NULLIF(u.username, ""),
+                CONCAT("User #", ub.user_id)
+            ) AS member_name
+         FROM user_badges ub
+         INNER JOIN badge_definitions bd
+            ON bd.id = ub.badge_id
+         INNER JOIN users u
+            ON u.id = ub.user_id
+         WHERE ub.review_status = "earned"
+           AND bd.is_active = 1
+           AND u.status = "active"
+           AND u.anonymized_at IS NULL
+           AND bd.eligibility_scope <> "all-members"
+           AND bd.eligibility_scope <> "credential"
+         ORDER BY ub.awarded_at DESC, ub.id DESC
+         LIMIT 2000'
+    );
+
+    $rows = $stmt
+        ? ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [])
+        : [];
+
+    $issues = [];
+
+    foreach ($rows as $row) {
+        $scope = llama_badge_definition_scope($row);
+        $recognition = llama_badge_definition_recognition($row);
+        $reason = '';
+
+        if (
+            $recognition === LLAMA_BADGE_RECOGNITION_CURRENT_ROLE
+            && !llama_badge_user_matches_current_scope(
+                $db,
+                (int) $row['user_id'],
+                $scope
+            )
+        ) {
+            $reason = 'Current role recognition is still awarded, but the member no longer holds the required role.';
+        } elseif (
+            (string) ($row['award_type'] ?? '') === 'automatic'
+            && (int) ($row['threshold_value'] ?? 0) > 0
+            && llama_badge_threshold_metric_is_valid(
+                (string) ($row['threshold_metric'] ?? '')
+            )
+        ) {
+            $currentValue = llama_badge_user_metric_value(
+                $db,
+                (int) $row['user_id'],
+                (string) $row['threshold_metric'],
+                $scope
+            );
+
+            if ($currentValue < (int) $row['threshold_value']) {
+                $reason = 'Earned award does not meet the configured threshold inside its current badge track.';
+            }
+        } elseif (
+            !in_array(
+                $scope,
+                [
+                    LLAMA_BADGE_SCOPE_ALL_MEMBERS,
+                    LLAMA_BADGE_SCOPE_CREDENTIAL,
+                ],
+                true
+            )
+            && !llama_badge_user_has_historical_scope(
+                $db,
+                (int) $row['user_id'],
+                $scope
+            )
+        ) {
+            $reason = 'No current or historical activity was found for the badge track attached to this award.';
+        }
+
+        if ($reason === '') {
+            continue;
+        }
+
+        $row['scope_label'] = llama_badge_scope_label($scope);
+        $row['review_reason'] = $reason;
+        $issues[] = $row;
+
+        if (count($issues) >= $limit) {
+            break;
+        }
+    }
+
+    return $issues;
 }
 
 function admin_badges_slugify(string $value): string {
@@ -378,6 +492,40 @@ function admin_badges_save_definition(
         throw new RuntimeException('Choose a valid award type.');
     }
 
+    $eligibilityScope = llama_badge_scope_normalize(
+        $data['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+    );
+
+    if ($awardType === 'credential') {
+        $eligibilityScope = LLAMA_BADGE_SCOPE_CREDENTIAL;
+    } elseif ($eligibilityScope === LLAMA_BADGE_SCOPE_CREDENTIAL) {
+        throw new RuntimeException(
+            'Credential-based eligibility can only be used with a Credential award type.'
+        );
+    }
+
+    $recognitionMode = llama_badge_recognition_normalize(
+        $data['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
+    );
+
+    if (
+        $recognitionMode === LLAMA_BADGE_RECOGNITION_CURRENT_ROLE
+        && in_array(
+            $eligibilityScope,
+            [LLAMA_BADGE_SCOPE_ALL_MEMBERS, LLAMA_BADGE_SCOPE_CREDENTIAL],
+            true
+        )
+    ) {
+        throw new RuntimeException(
+            'Current role recognition needs a specific Community, Member, Scout, Master Scout, or Admin eligibility scope.'
+        );
+    }
+
+    $howToEarn = trim((string) ($data['how_to_earn'] ?? ''));
+    if (mb_strlen($howToEarn) > 500) {
+        throw new RuntimeException('How to earn text must be 500 characters or fewer.');
+    }
+
     $thresholdRaw =
         trim(
             (string) (
@@ -461,6 +609,9 @@ function admin_badges_save_definition(
                 source_organization = ?,
                 icon = ?,
                 award_type = ?,
+                eligibility_scope = ?,
+                recognition_mode = ?,
+                how_to_earn = ?,
                 threshold_metric = ?,
                 threshold_value = ?,
                 is_active = ?,
@@ -475,6 +626,9 @@ function admin_badges_save_definition(
             $sourceOrganization !== '' ? $sourceOrganization : null,
             $icon,
             $awardType,
+            $eligibilityScope,
+            $recognitionMode,
+            $howToEarn !== '' ? $howToEarn : null,
             $thresholdMetricForStorage,
             $threshold,
             $active,
@@ -497,6 +651,9 @@ function admin_badges_save_definition(
                     : null,
                 'after_active' => $active,
                 'award_type' => $awardType,
+                'eligibility_scope' => $eligibilityScope,
+                'recognition_mode' => $recognitionMode,
+                'how_to_earn' => $howToEarn !== '' ? $howToEarn : null,
                 'threshold_metric' =>
                     $thresholdMetricForStorage,
                 'threshold_value' => $threshold,
@@ -516,11 +673,14 @@ function admin_badges_save_definition(
             icon,
             image_src,
             award_type,
+            eligibility_scope,
+            recognition_mode,
+            how_to_earn,
             threshold_metric,
             threshold_value,
             is_active,
             sort_order
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $slug,
@@ -531,6 +691,9 @@ function admin_badges_save_definition(
         $icon,
         $imageSrc !== '' ? $imageSrc : null,
         $awardType,
+        $eligibilityScope,
+        $recognitionMode,
+        $howToEarn !== '' ? $howToEarn : null,
         $thresholdMetricForStorage,
         $threshold,
         $active,
@@ -549,6 +712,9 @@ function admin_badges_save_definition(
             'badge_id' => $newId,
             'slug' => $slug,
             'award_type' => $awardType,
+            'eligibility_scope' => $eligibilityScope,
+            'recognition_mode' => $recognitionMode,
+            'how_to_earn' => $howToEarn !== '' ? $howToEarn : null,
             'threshold_metric' =>
                 $thresholdMetricForStorage,
             'threshold_value' => $threshold,
@@ -576,6 +742,28 @@ function admin_badges_award(
     }
     if ((int) $badge['is_active'] !== 1) {
         throw new RuntimeException('Inactive badges cannot be newly awarded.');
+    }
+
+    if ((string) ($badge['award_type'] ?? '') === 'credential') {
+        throw new RuntimeException(
+            'Credential badges must be awarded through the credential review workflow.'
+        );
+    }
+
+    if (
+        !llama_badge_user_eligible_for_manual_award(
+            $db,
+            $userId,
+            $badge
+        )
+    ) {
+        throw new RuntimeException(
+            'This member is not eligible for the "'
+            . llama_badge_scope_label(
+                $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+            )
+            . '" badge track.'
+        );
     }
 
     $userExists = $db->prepare(
@@ -707,7 +895,7 @@ function admin_badges_revoke(
 ): void {
     $reason = trim($reason);
     if ($reason === '') {
-        throw new RuntimeException('A reason is required when removing a badge.');
+        throw new RuntimeException('A cheating or fraud reason is required when revoking an earned badge.');
     }
 
     $startedTransaction = !$db->inTransaction();
@@ -774,7 +962,7 @@ function admin_badges_revoke(
         $delete->execute([$userBadgeId]);
 
         if ($delete->rowCount() !== 1) {
-            throw new RuntimeException('Badge could not be removed.');
+            throw new RuntimeException('Badge could not be revoked.');
         }
 
         $credentialSubmissionId =
@@ -800,7 +988,7 @@ function admin_badges_revoke(
             $actorUserId,
             (int) $row['user_id'],
             'badge.revoked',
-            'Removed badge "' . (string) $row['badge_name'] . '".',
+            'Revoked earned badge "' . (string) $row['badge_name'] . '".',
             [
                 'badge_id' => (int) $row['badge_id'],
                 'badge_slug' => $row['badge_slug'],

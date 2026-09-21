@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/badge-eligibility.php';
+
 /* =========================================================
    LLAMA SCOUT BADGE CREDENTIALS
 
@@ -937,6 +939,8 @@ function llama_badge_credential_review(
                 bd.name AS badge_name,
                 bd.slug AS badge_slug,
                 bd.award_type,
+                bd.eligibility_scope,
+                bd.recognition_mode,
                 bd.is_active
              FROM badge_credential_submissions s
              INNER JOIN badge_definitions bd
@@ -970,6 +974,8 @@ function llama_badge_credential_review(
             if (
                 (string) $submission['award_type'] !== 'credential'
                 || (int) $submission['is_active'] !== 1
+                || llama_badge_definition_scope($submission)
+                    !== LLAMA_BADGE_SCOPE_CREDENTIAL
             ) {
                 throw new RuntimeException(
                     'This badge is no longer an active credential badge.'

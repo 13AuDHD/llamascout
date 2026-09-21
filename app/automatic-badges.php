@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/points.php';
+require_once __DIR__ . '/badge-eligibility.php';
 
 
 function llama_badge_threshold_metric_labels(): array
@@ -263,6 +264,9 @@ function llama_badge_automatic_definitions(
             name,
             threshold_metric,
             threshold_value,
+            eligibility_scope,
+            recognition_mode,
+            how_to_earn,
             sort_order
          FROM badge_definitions
          WHERE is_active = 1
@@ -291,7 +295,8 @@ function llama_badge_automatic_definitions(
 function llama_badge_user_metric_value(
     PDO $db,
     int $userId,
-    string $metric
+    string $metric,
+    string $eligibilityScope = LLAMA_BADGE_SCOPE_ALL_MEMBERS
 ): int {
     if (
         $userId < 1
@@ -302,7 +307,15 @@ function llama_badge_user_metric_value(
         return 0;
     }
 
-    if ($metric === 'total_points') {
+    $eligibilityScope =
+        llama_badge_scope_normalize(
+            $eligibilityScope
+        );
+
+    if (
+        $metric === 'total_points'
+        && $eligibilityScope === LLAMA_BADGE_SCOPE_ALL_MEMBERS
+    ) {
         return max(
             0,
             llama_points_total(
@@ -313,6 +326,17 @@ function llama_badge_user_metric_value(
     }
 
     if ($metric === 'llamaversaries') {
+        if (
+            $eligibilityScope !== LLAMA_BADGE_SCOPE_ALL_MEMBERS
+            && !llama_badge_user_matches_current_scope(
+                $db,
+                $userId,
+                $eligibilityScope
+            )
+        ) {
+            return 0;
+        }
+
         $stmt = $db->prepare(
             'SELECT
                 GREATEST(
@@ -339,6 +363,56 @@ function llama_badge_user_metric_value(
                 ?: 0
             )
         );
+    }
+
+    if ($metric === 'total_points') {
+        $contributionFilter =
+            llama_badge_scope_activity_sql(
+                $eligibilityScope,
+                'role_at_time'
+            );
+
+        $stmt = $db->prepare(
+            'SELECT COALESCE(SUM(points_awarded), 0)
+             FROM place_contributions
+             WHERE user_id = ?
+               AND status = "approved"'
+            . $contributionFilter['sql']
+        );
+        $stmt->execute(
+            array_merge(
+                [$userId],
+                $contributionFilter['params']
+            )
+        );
+
+        $points = max(0, (int) ($stmt->fetchColumn() ?: 0));
+
+        try {
+            $checkinFilter =
+                llama_badge_scope_level_sql(
+                    $eligibilityScope,
+                    'contribution_level'
+                );
+
+            $checkinStmt = $db->prepare(
+                'SELECT COALESCE(SUM(points_awarded), 0)
+                 FROM place_checkins
+                 WHERE user_id = ?'
+                . $checkinFilter['sql']
+            );
+            $checkinStmt->execute(
+                array_merge(
+                    [$userId],
+                    $checkinFilter['params']
+                )
+            );
+            $points += max(0, (int) ($checkinStmt->fetchColumn() ?: 0));
+        } catch (Throwable) {
+            // Check-in storage may not exist during a staged migration.
+        }
+
+        return $points;
     }
 
     $metricSql = match ($metric) {
@@ -370,6 +444,12 @@ function llama_badge_user_metric_value(
             '0',
     };
 
+    $scopeFilter =
+        llama_badge_scope_activity_sql(
+            $eligibilityScope,
+            'role_at_time'
+        );
+
     $stmt = $db->prepare(
         'SELECT COALESCE('
         . $metricSql
@@ -377,11 +457,15 @@ function llama_badge_user_metric_value(
          FROM place_contributions
          WHERE user_id = ?
            AND status = "approved"'
+        . $scopeFilter['sql']
     );
 
-    $stmt->execute([
-        $userId,
-    ]);
+    $stmt->execute(
+        array_merge(
+            [$userId],
+            $scopeFilter['params']
+        )
+    );
 
     return max(
         0,
@@ -392,19 +476,34 @@ function llama_badge_user_metric_value(
     );
 }
 
-
 function llama_badge_award_automatic(
     PDO $db,
     int $userId,
     int $badgeId,
     string $metric,
     int $currentValue,
-    int $threshold
+    int $threshold,
+    string $eligibilityScope = LLAMA_BADGE_SCOPE_ALL_MEMBERS,
+    string $recognitionMode = LLAMA_BADGE_RECOGNITION_PERMANENT
 ): bool {
     if (
         $userId < 1
         || $badgeId < 1
         || $threshold < 1
+    ) {
+        return false;
+    }
+
+    $eligibilityScope = llama_badge_scope_normalize($eligibilityScope);
+    $recognitionMode = llama_badge_recognition_normalize($recognitionMode);
+
+    if (
+        $recognitionMode === LLAMA_BADGE_RECOGNITION_CURRENT_ROLE
+        && !llama_badge_user_matches_current_scope(
+            $db,
+            $userId,
+            $eligibilityScope
+        )
     ) {
         return false;
     }
@@ -500,6 +599,8 @@ function llama_badge_award_automatic(
             . number_format($currentValue)
             . ' / '
             . number_format($threshold)
+            . '. Badge track: '
+            . llama_badge_scope_label($eligibilityScope)
             . '.';
 
         if ($existing) {
@@ -581,11 +682,18 @@ function llama_badges_sync_user(
     $summary = [
         'checked' => 0,
         'awarded' => 0,
+        'role_recognition_removed' => 0,
     ];
 
     if ($userId < 1) {
         return $summary;
     }
+
+    $summary['role_recognition_removed'] =
+        llama_badge_sync_current_role_recognition(
+            $db,
+            $userId
+        );
 
     foreach (
         llama_badge_automatic_definitions(
@@ -610,6 +718,12 @@ function llama_badges_sync_user(
                 )
             );
 
+        $eligibilityScope =
+            llama_badge_definition_scope($badge);
+
+        $recognitionMode =
+            llama_badge_definition_recognition($badge);
+
         if (
             !llama_badge_threshold_metric_is_valid(
                 $metric
@@ -625,7 +739,8 @@ function llama_badges_sync_user(
             llama_badge_user_metric_value(
                 $db,
                 $userId,
-                $metric
+                $metric,
+                $eligibilityScope
             );
 
         if ($currentValue < $threshold) {
@@ -639,7 +754,9 @@ function llama_badges_sync_user(
                 (int) $badge['id'],
                 $metric,
                 $currentValue,
-                $threshold
+                $threshold,
+                $eligibilityScope,
+                $recognitionMode
             )
         ) {
             $summary['awarded']++;
@@ -731,6 +848,7 @@ function llama_run_automatic_badge_maintenance(
         'ran' => false,
         'users_checked' => 0,
         'awarded' => 0,
+        'role_recognition_removed' => 0,
     ];
 
     if (
@@ -891,6 +1009,12 @@ function llama_run_automatic_badge_maintenance(
                 $summary['awarded'] +=
                     (int) (
                         $userSummary['awarded']
+                        ?? 0
+                    );
+
+                $summary['role_recognition_removed'] +=
+                    (int) (
+                        $userSummary['role_recognition_removed']
                         ?? 0
                     );
             }

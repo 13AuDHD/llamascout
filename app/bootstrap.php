@@ -25,6 +25,7 @@ require_once __DIR__ . '/maintenance-mode.php';
 require_once __DIR__ . '/places.php';
 require_once __DIR__ . '/access.php';
 require_once __DIR__ . '/contribution-levels.php';
+require_once __DIR__ . '/badge-eligibility.php';
 require_once __DIR__ . '/place-checkins.php';
 require_once __DIR__ . '/place-freshness.php';
 require_once __DIR__ . '/weather.php';

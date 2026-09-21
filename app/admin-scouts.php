@@ -6,6 +6,7 @@ require_once __DIR__ . '/scout-policy.php';
 require_once __DIR__ . '/scout-onboarding.php';
 require_once __DIR__ . '/scout-maintenance.php';
 require_once __DIR__ . '/master-scout.php';
+require_once __DIR__ . '/badge-eligibility.php';
 
 function admin_scouts_list(PDO $db): array
 {
@@ -774,18 +775,6 @@ function admin_scout_set_status(
                 );
             }
 
-            $db->prepare(
-                'DELETE ub
-                 FROM user_badges ub
-                 INNER JOIN badge_definitions bd
-                    ON bd.id = ub.badge_id
-                 WHERE ub.user_id = ?
-                   AND bd.slug = "master-scout"
-                   AND ub.review_status = "earned"'
-            )->execute([
-                $userId,
-            ]);
-
             llama_end_scout_complimentary_membership(
                 $db,
                 $userId
@@ -952,18 +941,6 @@ function admin_scout_set_status(
                 $db,
                 $userId
             );
-
-            $db->prepare(
-                'DELETE ub
-                 FROM user_badges ub
-                 INNER JOIN badge_definitions bd
-                    ON bd.id = ub.badge_id
-                 WHERE ub.user_id = ?
-                   AND bd.slug = "master-scout"
-                   AND ub.review_status = "earned"'
-            )->execute([
-                $userId,
-            ]);
         }
 
         if ($status === 'application_started') {
@@ -1288,18 +1265,6 @@ function admin_scout_set_status(
                 );
             }
 
-            $db->prepare(
-                'DELETE ub
-                 FROM user_badges ub
-                 INNER JOIN badge_definitions bd
-                    ON bd.id = ub.badge_id
-                 WHERE ub.user_id = ?
-                   AND bd.slug = "master-scout"
-                   AND ub.review_status = "earned"'
-            )->execute([
-                $userId,
-            ]);
-
             llama_end_scout_complimentary_membership(
                 $db,
                 $userId
@@ -1419,68 +1384,13 @@ function admin_scout_set_master(
                         : null
                 );
 
-            $badgeStmt =
-                $db->prepare(
-                    'SELECT id
-                     FROM badge_definitions
-                     WHERE slug = "master-scout"
-                       AND is_active = 1
-                     LIMIT 1'
-                );
-
-            $badgeStmt->execute();
-
-            $masterBadgeId =
-                (int) $badgeStmt->fetchColumn();
-
-            if ($masterBadgeId > 0) {
-                $existingStmt =
-                    $db->prepare(
-                        'SELECT id
-                         FROM user_badges
-                         WHERE user_id = ?
-                           AND badge_id = ?
-                         LIMIT 1'
-                    );
-
-                $existingStmt->execute([
-                    $userId,
-                    $masterBadgeId,
-                ]);
-
-                $userBadgeId =
-                    (int) $existingStmt->fetchColumn();
-
-                if ($userBadgeId > 0) {
-                    $db->prepare(
-                        'UPDATE user_badges
-                         SET
-                            awarded_by = ?,
-                            review_status = "earned",
-                            note = ?
-                         WHERE id = ?'
-                    )->execute([
-                        $actorUserId,
-                        'Automatically awarded with Master Scout rank.',
-                        $userBadgeId,
-                    ]);
-                } else {
-                    $db->prepare(
-                        'INSERT INTO user_badges (
-                            user_id,
-                            badge_id,
-                            awarded_by,
-                            review_status,
-                            note
-                         ) VALUES (?, ?, ?, "earned", ?)'
-                    )->execute([
-                        $userId,
-                        $masterBadgeId,
-                        $actorUserId,
-                        'Automatically awarded with Master Scout rank.',
-                    ]);
-                }
-            }
+            llama_badge_award_system_by_slug(
+                $db,
+                $userId,
+                'master-scout',
+                $actorUserId,
+                'Earned Master Scout badge for attaining Master Scout status.'
+            );
 
             $action =
                 'scout.master_granted';
@@ -1511,18 +1421,6 @@ function admin_scout_set_master(
                         : 'Master Scout status removed by Owner.'
                 );
             }
-
-            $db->prepare(
-                'DELETE ub
-                 FROM user_badges ub
-                 INNER JOIN badge_definitions bd
-                    ON bd.id = ub.badge_id
-                 WHERE ub.user_id = ?
-                   AND bd.slug = "master-scout"
-                   AND ub.review_status = "earned"'
-            )->execute([
-                $userId,
-            ]);
 
             $action =
                 'scout.master_removed';

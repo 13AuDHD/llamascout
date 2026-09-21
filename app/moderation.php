@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/points.php';
+require_once __DIR__ . '/badge-eligibility.php';
 
 /* =========================================================
    LLAMA SCOUT
@@ -854,43 +855,13 @@ function moderation_report(PDO $db, int $reportId): ?array
 
 function moderation_award_badge(PDO $db, int $userId, string $slug): void
 {
-    if ($userId < 1 || $slug === '') {
-        return;
-    }
-
-    $stmt = $db->prepare(
-        'SELECT id
-         FROM badge_definitions
-         WHERE slug = ?
-           AND is_active = 1
-         LIMIT 1'
+    llama_badge_award_system_by_slug(
+        $db,
+        $userId,
+        $slug,
+        null,
+        'Earned from an approved Place contribution.'
     );
-    $stmt->execute([$slug]);
-    $badgeId = (int) ($stmt->fetchColumn() ?: 0);
-
-    if ($badgeId < 1) {
-        return;
-    }
-
-    $exists = $db->prepare(
-        'SELECT id
-         FROM user_badges
-         WHERE user_id = ?
-           AND badge_id = ?
-         LIMIT 1'
-    );
-    $exists->execute([$userId, $badgeId]);
-
-    if ($exists->fetchColumn()) {
-        return;
-    }
-
-    $insert = $db->prepare(
-        'INSERT INTO user_badges
-            (user_id, badge_id, awarded_by, review_status)
-         VALUES (?, ?, NULL, ?)'
-    );
-    $insert->execute([$userId, $badgeId, 'earned']);
 }
 
 function moderation_insert_contribution(
