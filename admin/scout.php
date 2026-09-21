@@ -3,166 +3,248 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/scout-stats.php';
-require_once dirname(__DIR__) . '/app/place-contributions.php';
-require_once dirname(__DIR__) . '/app/master-scout.php';
-require_once dirname(__DIR__) . '/app/master-scout-moderation.php';
+require_once dirname(__DIR__) . '/app/admin-users.php';
+require_once dirname(__DIR__) . '/app/admin-scouts.php';
+require_once __DIR__ . '/_dashboard.php';
 
-require_login();
-
+$adminUser = moderation_require_admin();
 $db = db();
-$user = current_user();
-$userId = (int) ($user['id'] ?? 0);
 
-$summary =
-    llama_scout_summary(
-        $db,
-        $userId
-    );
+$actorUserId = (int) ($adminUser['id'] ?? 0);
+$actorIsOwner = admin_users_current_is_owner(
+    $db,
+    $actorUserId
+);
 
-if (
-    !$summary
-    || empty($summary['active'])
-) {
-    header(
-        'Location: /',
-        true,
-        303
-    );
+$scoutProfileId = (int) ($_GET['id'] ?? $_POST['scout_profile_id'] ?? 0);
+
+if ($scoutProfileId < 1) {
+    header('Location: /scouts.php');
     exit;
 }
 
-$period =
-    is_array(
-        $summary['period']
-        ?? null
-    )
-        ? $summary['period']
-        : [];
+$notice = '';
+$error = '';
 
-$rank =
-    (string) (
-        $summary['rank']
-        ?? 'Llama Scout'
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+        $error = 'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            $action = (string) ($_POST['scout_admin_action'] ?? '');
+
+            if ($action === 'status') {
+                admin_scout_set_status(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    (string) ($_POST['status'] ?? ''),
+                    (string) ($_POST['notes'] ?? '')
+                );
+                $notice = 'Scout status updated.';
+            } elseif ($action === 'master') {
+                admin_scout_set_master(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    ((string) ($_POST['make_master'] ?? '0')) === '1',
+                    (string) ($_POST['notes'] ?? '')
+                );
+                $notice = 'Scout rank updated.';
+
+            } elseif ($action === 'reactivation-grant') {
+                $result =
+                    admin_scout_grant_reactivation(
+                        $db,
+                        $actorUserId,
+                        $scoutProfileId,
+                        (string) (
+                            $_POST['notes']
+                            ?? ''
+                        )
+                    );
+
+                $notice =
+                    (int) $result['window_days'] .
+                    '-day Scout reactivation window granted.';
+
+            } elseif ($action === 'reactivation-cancel') {
+                admin_scout_cancel_reactivation(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    (string) (
+                        $_POST['notes']
+                        ?? ''
+                    )
+                );
+
+                $notice =
+                    'Scout reactivation window canceled.';
+
+            } elseif ($action === 'onboarding-review') {
+                $reviewAction =
+                    (string) (
+                        $_POST['review_action']
+                        ?? ''
+                    );
+
+                llama_scout_admin_review(
+                    $db,
+                    $actorUserId,
+                    $scoutProfileId,
+                    $reviewAction,
+                    (string) (
+                        $_POST['notes']
+                        ?? ''
+                    )
+                );
+
+                $notice =
+                    match ($reviewAction) {
+                        'approve' =>
+                            'Scout onboarding approved. Scout access is active.',
+                        'return' =>
+                            'Scout onboarding returned for changes.',
+                        'decline' =>
+                            'Scout onboarding declined.',
+                        default =>
+                            'Scout onboarding updated.',
+                    };
+            }
+        } catch (Throwable $exception) {
+            $reference = llama_log_caught_exception(
+                $exception,
+                'admin.scout_action',
+                ['scout_profile_id' => $scoutProfileId, 'action' => $action],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+
+            $error = $reference === null
+                ? $exception->getMessage()
+                : llama_error_message_with_reference('The Scout action could not be completed.', $reference);
+        }
+    }
+}
+
+$scout = admin_scout_get($db, $scoutProfileId);
+
+if (!$scout) {
+    header('Location: /scouts.php');
+    exit;
+}
+
+$application = admin_scout_application($db, $scoutProfileId);
+$training = admin_scout_training($db, $scoutProfileId);
+$activity = admin_scout_activity($db, (int) $scout['user_id']);
+$rankHistory = admin_scout_rank_history($db, (int) $scout['user_id']);
+$statusHistory = admin_scout_status_history(
+    $db,
+    $scoutProfileId,
+    (int) $scout['user_id']
+);
+$currentPeriod = admin_scout_current_period($db, $scout);
+$masterQualification = admin_scout_master_qualification($db, $scout);
+$latestExtension =
+    admin_scout_latest_extension(
+        $db,
+        $scoutProfileId,
+        (int) $scout['user_id']
     );
 
-$isMasterScout =
-    $rank === 'Master Scout';
+$activeExtension =
+    $latestExtension
+    && (string) $latestExtension['status'] === 'active'
+        ? $latestExtension
+        : null;
 
-$displayName =
-    trim(
-        (string) (
-            $user['display_name']
-            ?: $user['username']
-            ?: $user['email']
-            ?: 'Scout'
-        )
+$reactivationRequired =
+    admin_scout_policy_int_value(
+        $db,
+        'reactivation_new_places_required'
     );
 
-$requiredPlaces =
-    (int) (
-        $period['required_new_places']
-        ?? 0
+$reactivationWindowDays =
+    admin_scout_policy_int_value(
+        $db,
+        'reactivation_window_days'
     );
 
-$acceptedPlaces =
-    (int) (
-        $period['accepted_new_places']
-        ?? 0
+$reactivationAccepted = 0;
+
+if ($activeExtension) {
+    $reactivationAccepted =
+        llama_count_scout_reports(
+            $db,
+            $scoutProfileId,
+            (int) $scout['user_id'],
+            (string) $activeExtension['started_at'],
+            (string) $activeExtension['ends_at']
+        );
+}
+
+
+$scoutStatus =
+    (string) $scout['status'];
+
+$isOnboarding =
+    in_array(
+        $scoutStatus,
+        [
+            'invited',
+            'application_started',
+            'application_submitted',
+            'training',
+            'pending_approval',
+        ],
+        true
     );
 
-$remainingPlaces =
-    max(
-        0,
-        (int) (
-            $period['remaining_new_places']
-            ?? (
-                $requiredPlaces
-                - $acceptedPlaces
-            )
-        )
+$onboardingStep =
+    llama_scout_onboarding_step(
+        $scoutStatus
     );
 
-$requirementMet =
-    !empty(
-        $period['requirement_met']
+$invitationExpired =
+    llama_scout_invitation_expired(
+        $scout
     );
 
-$progressPercent =
-    max(
-        0,
-        min(
-            100,
-            (float) (
-                $period['progress_percent']
-                ?? (
-                    $requiredPlaces > 0
-                        ? (
-                            $acceptedPlaces
-                            / $requiredPlaces
-                        ) * 100
-                        : 0
-                )
-            )
-        )
-    );
+$trainingComplete =
+    $training
+    && !empty($training['completed_at'])
+    && !empty($training['acknowledged_tools'])
+    && !empty($training['acknowledged_accuracy'])
+    && !empty($training['acknowledged_safety'])
+    && !empty($training['acknowledged_privacy']);
 
-$lifetimePoints =
-    (int) (
-        $summary['lifetime_points']
-        ?? 0
-    );
+$applicationComplete =
+    $application
+    && !empty($application['submitted_at']);
 
-$lifetimeNewPlaces =
-    (int) (
-        $summary['lifetime_new_places']
-        ?? 0
-    );
-
-$scoutStartedAt =
-    (string) (
-        $summary['scout_started_at']
-        ?? ''
-    );
-
-$activeThrough =
-    (string) (
-        $summary['active_through']
-        ?? ''
-    );
-
-$periodStart =
-    (string) (
-        $period['start']
-        ?? ''
-    );
-
-$periodEnd =
-    (string) (
-        $period['end']
-        ?? ''
-    );
-
-$periodLabel =
-    (string) (
-        $period['label']
-        ?? 'Current Scout period'
-    );
-
-$isReactivation =
-    (string) (
-        $period['type']
-        ?? ''
-    ) === 'reactivation';
-
-
-function scout_basecamp_date(
-    string $value
+function admin_scout_display_datetime(
+    mixed $value,
+    string $fallback
 ): string {
-    $value = trim($value);
+    $value = trim((string) $value);
 
     if ($value === '') {
-        return 'Not set';
+        return $fallback;
+    }
+
+    return llama_format_viewer_datetime(
+        $value
+    );
+}
+
+function admin_scout_display_date(
+    mixed $value,
+    string $fallback
+): string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return $fallback;
     }
 
     return llama_format_viewer_date(
@@ -171,901 +253,1211 @@ function scout_basecamp_date(
     );
 }
 
+$timelineEntries = [];
 
-function scout_basecamp_contribution_label(
-    string $type
-): string {
-    return match ($type) {
-        'new_place' => 'New Place',
-        'update' => 'Place Update',
-        'correction' => 'Correction',
-        'field_report' => 'Field Report',
-        default =>
-            ucwords(
-                str_replace(
-                    [
-                        '_',
-                        '-',
-                    ],
-                    ' ',
-                    $type
-                )
+foreach ($statusHistory as $entry) {
+    $metadata = [];
+
+    if (!empty($entry['metadata_json'])) {
+        $decoded =
+            json_decode(
+                (string) $entry['metadata_json'],
+                true
+            );
+
+        if (is_array($decoded)) {
+            $metadata = $decoded;
+        }
+    }
+
+    $details = [];
+
+    $fromStatus =
+        trim(
+            (string) (
+                $entry['from_status']
+                ?? ''
+            )
+        );
+
+    $toStatus =
+        trim(
+            (string) (
+                $entry['to_status']
+                ?? ''
+            )
+        );
+
+    if ($fromStatus !== '' && $toStatus !== '') {
+        $details[] =
+            llama_scout_onboarding_status_label(
+                $fromStatus
+            )
+            . ' -> '
+            . llama_scout_onboarding_status_label(
+                $toStatus
+            );
+    }
+
+    $note =
+        trim(
+            (string) (
+                $metadata['notes']
+                ?? ''
+            )
+        );
+
+    if ($note !== '') {
+        $details[] = $note;
+    }
+
+    $timelineEntries[] = [
+        'occurred_at' =>
+            (string) (
+                $entry['occurred_at']
+                ?? ''
             ),
-    };
+
+        'summary' =>
+            (string) (
+                $entry['summary']
+                ?? 'Scout status updated.'
+            ),
+
+        'actor' =>
+            (string) (
+                $entry['actor_name']
+                ?? 'System'
+            ),
+
+        'detail' =>
+            implode(
+                ' | ',
+                $details
+            ),
+
+        'kind' =>
+            'status',
+    ];
 }
 
+foreach ($rankHistory as $entry) {
+    $fromRank =
+        trim(
+            (string) (
+                $entry['from_rank']
+                ?? 'none'
+            )
+        );
 
-function scout_basecamp_submission_label(
-    string $status
-): string {
-    return match ($status) {
-        'approved' => 'Approved',
-        'pending' => 'Pending Review',
-        'needs-changes' => 'Needs Changes',
-        'rejected' => 'Not Approved',
-        default =>
+    $toRank =
+        trim(
+            (string) (
+                $entry['to_rank']
+                ?? 'none'
+            )
+        );
+
+    $details = [];
+
+    $reason =
+        trim(
+            (string) (
+                $entry['reason']
+                ?? ''
+            )
+        );
+
+    if ($reason !== '') {
+        $details[] =
             ucwords(
                 str_replace(
-                    [
-                        '_',
-                        '-',
-                    ],
+                    '_',
                     ' ',
-                    $status
+                    $reason
                 )
+            );
+    }
+
+    $rankNotes =
+        trim(
+            (string) (
+                $entry['notes']
+                ?? ''
+            )
+        );
+
+    if ($rankNotes !== '') {
+        $details[] = $rankNotes;
+    }
+
+    $changedBy =
+        (int) (
+            $entry['changed_by']
+            ?? 0
+        );
+
+    $timelineEntries[] = [
+        'occurred_at' =>
+            (string) (
+                $entry['occurred_at']
+                ?? ''
             ),
-    };
+
+        'summary' =>
+            'Rank changed from '
+            . ucwords(
+                str_replace(
+                    ['_', '-'],
+                    ' ',
+                    $fromRank
+                )
+            )
+            . ' to '
+            . ucwords(
+                str_replace(
+                    ['_', '-'],
+                    ' ',
+                    $toRank
+                )
+            )
+            . '.',
+
+        'actor' =>
+            $changedBy > 0
+                ? 'User #' . $changedBy
+                : 'System',
+
+        'detail' =>
+            implode(
+                ' | ',
+                $details
+            ),
+
+        'kind' =>
+            'rank',
+    ];
 }
 
+usort(
+    $timelineEntries,
+    static function (
+        array $a,
+        array $b
+    ): int {
+        $aTime =
+            strtotime(
+                (string) (
+                    $a['occurred_at']
+                    ?? ''
+                )
+            )
+            ?: 0;
 
-/* =========================================================
-   CONTRIBUTION COUNTS
-   ========================================================= */
+        $bTime =
+            strtotime(
+                (string) (
+                    $b['occurred_at']
+                    ?? ''
+                )
+            )
+            ?: 0;
 
-llama_ensure_place_contributions_table(
-    $db
+        return
+            $bTime
+            <=>
+            $aTime;
+    }
 );
 
-$stmt =
-    $db->prepare(
-        'SELECT
-            COUNT(*) AS total,
-            SUM(
-                CASE
-                    WHEN contribution_type = "update"
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS updates,
-            SUM(
-                CASE
-                    WHEN contribution_type = "correction"
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS corrections
-         FROM place_contributions
-         WHERE user_id = ?
-           AND status = "approved"
-           AND role_at_time IN ("scout", "master-scout", "master_scout")'
+$roles = explode(
+    ',',
+    (string) ($scout['role_slugs'] ?? '')
+);
+
+$isMaster =
+    in_array('master-scout', $roles, true)
+    || in_array('master_scout', $roles, true);
+
+$stats = admin_dashboard_stats($db);
+
+$adminNavCounts = [
+    'new_places' => $stats['new_places'],
+    'updates' => $stats['updates'],
+    'reports' => $stats['reports'],
+    'orders' => $stats['orders'],
+    'scout_reviews' => $stats['scout_reviews'],
+];
+
+$adminPageTitle =
+    (string) (
+        $scout['display_name']
+        ?: $scout['username']
+        ?: 'Scout'
     );
 
-$stmt->execute([
-    $userId,
-]);
+$adminPageEyebrow = 'Scout Administration';
+$adminActiveNav = 'scouts';
 
-$contributionStats =
-    $stmt->fetch(PDO::FETCH_ASSOC)
-    ?: [];
-
-$totalApproved =
-    (int) (
-        $contributionStats['total']
-        ?? 0
-    );
-
-$totalUpdates =
-    (int) (
-        $contributionStats['updates']
-        ?? 0
-    );
-
-$totalCorrections =
-    (int) (
-        $contributionStats['corrections']
-        ?? 0
-    );
-
-
-/* =========================================================
-   SUBMISSION COUNTS
-   ========================================================= */
-
-$stmt =
-    $db->prepare(
-        'SELECT
-            COUNT(*) AS total,
-            SUM(
-                CASE
-                    WHEN status = "pending"
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS pending,
-            SUM(
-                CASE
-                    WHEN status = "needs-changes"
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS needs_changes
-         FROM place_submissions
-         WHERE user_id = ?'
-    );
-
-$stmt->execute([
-    $userId,
-]);
-
-$submissionStats =
-    $stmt->fetch(PDO::FETCH_ASSOC)
-    ?: [];
-
-$totalSubmissions =
-    (int) (
-        $submissionStats['total']
-        ?? 0
-    );
-
-$pendingSubmissions =
-    (int) (
-        $submissionStats['pending']
-        ?? 0
-    );
-
-$needsChanges =
-    (int) (
-        $submissionStats['needs_changes']
-        ?? 0
-    );
-
-
-/* =========================================================
-   RECENT CONTRIBUTIONS
-   ========================================================= */
-
-$stmt =
-    $db->prepare(
-        'SELECT
-            pc.id,
-            pc.place_id,
-            pc.contribution_type,
-            pc.points_awarded,
-            pc.submitted_at,
-            pc.approved_at,
-            p.name AS place_name,
-            p.slug AS place_slug
-         FROM place_contributions pc
-         LEFT JOIN places p
-            ON p.id = pc.place_id
-         WHERE pc.user_id = ?
-           AND pc.status = "approved"
-           AND pc.role_at_time IN ("scout", "master-scout", "master_scout")
-         ORDER BY
-            COALESCE(
-                pc.approved_at,
-                pc.submitted_at,
-                pc.created_at
-            ) DESC,
-            pc.id DESC
-         LIMIT 8'
-    );
-
-$stmt->execute([
-    $userId,
-]);
-
-$recentContributions =
-    $stmt->fetchAll(PDO::FETCH_ASSOC)
-    ?: [];
-
-
-/* =========================================================
-   RECENT SUBMISSIONS
-   ========================================================= */
-
-$stmt =
-    $db->prepare(
-        'SELECT
-            id,
-            place_name,
-            status,
-            submitted_at,
-            reviewed_at
-         FROM place_submissions
-         WHERE user_id = ?
-         ORDER BY
-            submitted_at DESC,
-            id DESC
-         LIMIT 6'
-    );
-
-$stmt->execute([
-    $userId,
-]);
-
-$recentSubmissions =
-    $stmt->fetchAll(PDO::FETCH_ASSOC)
-    ?: [];
-
-
-/* =========================================================
-   MASTER SCOUT PROGRESS
-   ========================================================= */
-
-$masterQualification =
-    llama_master_scout_qualification(
-        $db,
-        $userId
-    );
-
-$masterRequirements =
-    is_array(
-        $masterQualification['requirements']
-        ?? null
-    )
-        ? $masterQualification['requirements']
-        : [];
-
-$masterEligible =
-    !empty(
-        $masterQualification['eligible']
-    );
-
-$masterEnabled =
-    !empty(
-        $masterQualification['enabled']
-    );
-
-$masterModerationCounts =
-    $isMasterScout
-        ? llama_master_moderation_counts(
-            $db,
-            $userId
-        )
-        : [
-            'new_places' => 0,
-            'updates' => 0,
-        ];
-
-$masterModerationWaiting =
-    (int) ($masterModerationCounts['new_places'] ?? 0)
-    + (int) ($masterModerationCounts['updates'] ?? 0);
-
-
-$pageTitle =
-    'Scout Basecamp | Llama Scout';
-
-require dirname(__DIR__) . '/partials/header.php';
+require __DIR__ . '/_header.php';
 ?>
 
-<link
-    rel="stylesheet"
-    href="https://llamascout.com/css/account/features/scout-dashboard.css"
->
-
-<section class="scout-basecamp-page">
-
-<div class="scout-basecamp-shell">
-
-<header class="scout-basecamp-hero">
-
-    <div>
-        <p class="eyebrow">Scout Basecamp</p>
-
-        <h1>
-            <?= htmlspecialchars(
-                $displayName,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </h1>
-
-        <p>
-            Your Scout status, current field-work requirement,
-            contribution history, and Master Scout progress.
-        </p>
+<?php if ($notice !== ''): ?>
+    <div class="admin-user-notice is-success">
+        <?= moderation_e($notice) ?>
     </div>
+<?php endif; ?>
 
-    <div class="scout-basecamp-rank">
-        <i aria-hidden="true">
-            <?= llama_icon(
-                $isMasterScout
-                    ? 'compass'
-                    : 'binoculars'
-            ) ?>
-        </i>
-
-        <span>
-            <?= htmlspecialchars(
-                $rank,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </span>
-
-        <small>
-            Active through
-            <?= htmlspecialchars(
-                scout_basecamp_date(
-                    $activeThrough
-                ),
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </small>
+<?php if ($error !== ''): ?>
+    <div class="admin-user-notice is-error">
+        <?= moderation_e($error) ?>
     </div>
-
-</header>
-
-
-<?php if ($isReactivation): ?>
-
-<div class="scout-basecamp-notice is-attention">
-    <i
-        aria-hidden="true"
-    ><?= llama_icon('alert-triangle') ?></i>
-
-    <div>
-        <strong>
-            Reactivation period
-        </strong>
-
-        <span>
-            Complete the required approved new Places before this
-            reactivation window closes to restore normal Scout status.
-        </span>
-    </div>
-</div>
-
 <?php endif; ?>
 
 
-<section class="scout-basecamp-stat-grid">
-
-    <div>
-        <span>Scout Since</span>
-        <strong>
-            <?= htmlspecialchars(
-                scout_basecamp_date(
-                    $scoutStartedAt
-                ),
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </strong>
-    </div>
-
-    <div>
-        <span>Scout Service Points</span>
-        <strong>
-            <?= number_format(
-                $lifetimePoints
-            ) ?>
-        </strong>
-    </div>
-
-    <div>
-        <span>Scout New Places</span>
-        <strong>
-            <?= number_format(
-                $lifetimeNewPlaces
-            ) ?>
-        </strong>
-    </div>
-
-    <div>
-        <span>Scout Contributions</span>
-        <strong>
-            <?= number_format(
-                $totalApproved
-            ) ?>
-        </strong>
-    </div>
-
-    <div>
-        <span>Pending Reviews</span>
-        <strong>
-            <?= number_format(
-                $pendingSubmissions
-            ) ?>
-        </strong>
-    </div>
-
-</section>
-
-
-<section class="scout-basecamp-panel scout-basecamp-period">
-
-<header>
-    <div>
-        <p class="eyebrow">
-            <?= htmlspecialchars(
-                $periodLabel,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>
-        </p>
-
-        <h2>
-            <?= $isReactivation
-                ? 'Complete Your Reactivation'
-                : 'Maintain Llama Scout Status' ?>
-        </h2>
-    </div>
-
-    <span>
-        <?= htmlspecialchars(
-            scout_basecamp_date(
-                $periodStart
-            ),
-            ENT_QUOTES,
-            'UTF-8'
-        ) ?>
-        to
-        <?= htmlspecialchars(
-            scout_basecamp_date(
-                $periodEnd
-            ),
-            ENT_QUOTES,
-            'UTF-8'
-        ) ?>
-    </span>
-</header>
-
-<div class="scout-basecamp-period-copy">
-    <strong>
-        <?= number_format(
-            $acceptedPlaces
-        ) ?>
-        of
-        <?= number_format(
-            $requiredPlaces
-        ) ?>
-        approved new Places
-    </strong>
-
-    <span>
-        <?php if ($requirementMet): ?>
-            Current Scout-period requirement complete.
-        <?php elseif ($remainingPlaces === 1): ?>
-            One more approved new Place completes this Scout period.
-        <?php else: ?>
-            <?= number_format(
-                $remainingPlaces
-            ) ?>
-            approved new Places remain.
-        <?php endif; ?>
-    </span>
-</div>
-
-<div
-    class="scout-basecamp-progress"
-    aria-label="Scout period progress"
->
-    <span
-        style="width: <?= htmlspecialchars(
-            number_format(
-                $progressPercent,
-                2,
-                '.',
-                ''
-            ),
-            ENT_QUOTES,
-            'UTF-8'
-        ) ?>%;"
-    ></span>
-</div>
-
-<div class="scout-basecamp-period-actions">
-    <a
-        class="scout-basecamp-button"
-        href="https://llamascout.com/add-place.php"
-    >
-        <i
-            aria-hidden="true"
-        ><?= llama_icon('map-pin') ?></i>
-        Add a new Place
-    </a>
-
-    <a
-        class="scout-basecamp-button is-secondary"
-        href="https://llamascout.com/"
-    >
-        Browse Places
-    </a>
-</div>
-
-</section>
-
-
-<div class="scout-basecamp-main-grid">
-
-<div class="scout-basecamp-main-column">
-
-<section class="scout-basecamp-panel">
-
-<header>
-    <div>
-        <p class="eyebrow">Field Work</p>
-        <h2>Recent Scout Contributions</h2>
-    </div>
-</header>
-
-<?php if (!$recentContributions): ?>
-
-    <div class="scout-basecamp-empty">
-        No approved Scout contributions yet.
-    </div>
-
-<?php else: ?>
-
-<div class="scout-basecamp-list">
-
-<?php foreach ($recentContributions as $contribution): ?>
-
-    <article>
-        <div>
-            <span>
-                <?= htmlspecialchars(
-                    scout_basecamp_contribution_label(
-                        (string)
-                        $contribution['contribution_type']
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </span>
-
-            <strong>
-                <?= htmlspecialchars(
-                    (string) (
-                        $contribution['place_name']
-                        ?: 'Place contribution'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </strong>
-
-            <small>
-                <?= htmlspecialchars(
-                    scout_basecamp_date(
-                        (string) (
-                            $contribution['approved_at']
-                            ?: $contribution['submitted_at']
-                        )
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </small>
-        </div>
-
-        <div class="scout-basecamp-list-points">
-            +<?= number_format(
-                (int) (
-                    $contribution['points_awarded']
-                    ?? 0
-                )
-            ) ?>
-        </div>
-
-        <?php if (!empty($contribution['place_slug'])): ?>
-            <a
-                href="https://llamascout.com/place.php?slug=<?= rawurlencode(
-                    (string)
-                    $contribution['place_slug']
+<section class="admin-user-summary">
+    <div class="admin-user-summary-identity">
+        <span class="admin-user-summary-avatar">
+            <img
+                src="<?= moderation_e(
+                    admin_user_avatar_src(
+                        (string) ($scout['profile_image_src'] ?? ''),
+                        $siteUrl
+                    )
                 ) ?>"
+                alt=""
             >
-                View
-            </a>
-        <?php endif; ?>
-    </article>
+        </span>
 
-<?php endforeach; ?>
+        <div>
+            <div class="admin-user-summary-heading">
+                <h2>
+                    <?= moderation_e(
+                        $scout['display_name']
+                        ?: $scout['username']
+                    ) ?>
+                </h2>
 
-</div>
+                <span class="admin-status-pill admin-scout-rank-pill">
+                    <?= $isMaster ? 'Master Scout' : 'Llama Scout' ?>
+                </span>
 
-<?php endif; ?>
+                <span class="admin-status-pill admin-scout-status-pill <?= $scoutStatus === 'active' ? 'is-good' : '' ?>">
+                    <?= moderation_e(
+                        ucwords(
+                            str_replace(
+                                '_',
+                                ' ',
+                                (string) $scout['status']
+                            )
+                        )
+                    ) ?>
+                </span>
+            </div>
 
+            <p>
+                @<?= moderation_e((string) $scout['username']) ?>
+                | Scout profile #<?= (int) $scout['id'] ?>
+            </p>
+        </div>
+    </div>
+
+    <a
+        class="admin-button"
+        href="/user.php?id=<?= (int) $scout['user_id'] ?>"
+    >
+        User account
+    </a>
+</section>
+
+<section class="admin-scout-operation-strip">
+    <div class="<?= !empty($currentPeriod['met']) ? 'is-good' : '' ?>">
+        <span>Current period</span>
+        <strong><?= number_format((int) $currentPeriod['completed']) ?> / <?= number_format((int) $currentPeriod['required']) ?> new Places</strong>
+    </div>
+    <div>
+        <span>Active through</span>
+        <strong><?= moderation_e(
+            admin_scout_display_date(
+                $currentPeriod['end'] ?? '',
+                'Not active'
+            )
+        ) ?></strong>
+    </div>
+    <div class="<?= !empty($masterQualification['eligible']) ? 'is-good' : '' ?>">
+        <span>Master qualification</span>
+        <strong><?= $isMaster ? 'Earned' : (!empty($masterQualification['eligible']) ? 'Ready' : 'In progress') ?></strong>
+    </div>
 </section>
 
 
-<section class="scout-basecamp-panel">
 
-<header>
-    <div>
-        <p class="eyebrow">Review Queue</p>
-        <h2>Your Recent Submissions</h2>
-    </div>
+<div class="admin-user-detail-grid">
 
-    <span>
-        <?= number_format(
-            $totalSubmissions
-        ) ?>
-        total
-    </span>
-</header>
+    <div class="admin-user-detail-main">
 
-<?php if (!$recentSubmissions): ?>
+        <?php if ($isOnboarding): ?>
 
-    <div class="scout-basecamp-empty">
-        No Place submissions yet.
-    </div>
+        <section class="admin-panel admin-scout-onboarding-review">
 
-<?php else: ?>
+            <header class="admin-panel-header">
+                <div>
+                    <p>Onboarding</p>
+                    <h2>Scout Candidate Progress</h2>
+                </div>
 
-<div class="scout-basecamp-list">
+                <span>
+                    Step <?= $onboardingStep ?> of 5
+                </span>
+            </header>
 
-<?php foreach ($recentSubmissions as $submission): ?>
+            <div class="admin-scout-onboarding-steps">
 
-    <article>
-        <div>
-            <span>
-                <?= htmlspecialchars(
-                    scout_basecamp_submission_label(
-                        (string)
-                        $submission['status']
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </span>
+                <?php
+                $steps = [
+                    1 => 'Invitation',
+                    2 => 'About You',
+                    3 => 'Training',
+                    4 => 'Approval',
+                    5 => 'Active Scout',
+                ];
+                ?>
 
-            <strong>
-                <?= htmlspecialchars(
-                    (string) (
-                        $submission['place_name']
-                        ?: 'Place submission'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </strong>
+                <?php foreach ($steps as $stepNumber => $stepLabel): ?>
+                    <div class="<?= $stepNumber < $onboardingStep
+                        ? 'is-complete'
+                        : (
+                            $stepNumber === $onboardingStep
+                                ? 'is-current'
+                                : ''
+                        ) ?>">
+                        <span><?= $stepNumber ?></span>
+                        <strong><?= moderation_e($stepLabel) ?></strong>
+                    </div>
+                <?php endforeach; ?>
 
-            <small>
-                Submitted
-                <?= htmlspecialchars(
-                    scout_basecamp_date(
-                        (string)
-                        $submission['submitted_at']
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </small>
-        </div>
+            </div>
+
+            <div class="admin-scout-onboarding-facts">
+                <div class="<?= !empty($scout['invited_at']) && !$invitationExpired ? 'is-good' : '' ?>">
+                    <span>Invitation</span>
+                    <strong>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $scout['invited_at'] ?? '',
+                                'Not recorded'
+                            )
+                        ) ?>
+                    </strong>
+                    <small>
+                        Expires:
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $scout['invitation_expires_at'] ?? '',
+                                'No expiration'
+                            )
+                        ) ?>
+                        <?= $invitationExpired ? ' | expired' : '' ?>
+                    </small>
+                </div>
+
+                <div class="<?= $applicationComplete ? 'is-good' : '' ?>">
+                    <span>Application</span>
+                    <strong>
+                        <?= $applicationComplete
+                            ? 'Submitted'
+                            : 'Not complete' ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $scout['application_submitted_at'] ?? '',
+                                'Waiting on candidate'
+                            )
+                        ) ?>
+                    </small>
+                </div>
+
+                <div class="<?= $trainingComplete ? 'is-good' : '' ?>">
+                    <span>Training</span>
+                    <strong>
+                        <?= $trainingComplete
+                            ? 'Complete'
+                            : 'Not complete' ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $scout['training_completed_at'] ?? '',
+                                'Waiting on candidate'
+                            )
+                        ) ?>
+                    </small>
+                </div>
+
+                <div class="<?= $scoutStatus === 'pending_approval' ? 'has-attention' : '' ?>">
+                    <span>Review</span>
+                    <strong>
+                        <?= $scoutStatus === 'pending_approval'
+                            ? 'Ready for review'
+                            : llama_scout_onboarding_status_label($scoutStatus) ?>
+                    </strong>
+                </div>
+            </div>
+
+            <?php if (
+                $application
+                && !empty($application['review_notes'])
+                && $scoutStatus === 'application_started'
+            ): ?>
+                <div class="admin-scout-review-note">
+                    <strong>Returned for changes</strong>
+                    <p>
+                        <?= nl2br(
+                            moderation_e(
+                                (string) $application['review_notes']
+                            )
+                        ) ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (
+                in_array(
+                    $scoutStatus,
+                    [
+                        'application_submitted',
+                        'training',
+                        'pending_approval',
+                    ],
+                    true
+                )
+            ): ?>
+
+                <form
+                    class="admin-user-form admin-scout-review-actions"
+                    method="post"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= moderation_e(moderation_csrf_token()) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="scout_profile_id"
+                        value="<?= (int) $scoutProfileId ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="scout_admin_action"
+                        value="onboarding-review"
+                    >
+
+                    <label>
+                        <span>Review notes</span>
+                        <textarea
+                            name="notes"
+                            rows="3"
+                            placeholder="Required when returning or declining. Optional welcome note when approving."
+                        ></textarea>
+                    </label>
+
+                    <div class="admin-scout-review-buttons">
+                        <?php if ($scoutStatus === 'pending_approval'): ?>
+                            <button
+                                class="admin-button"
+                                type="submit"
+                                name="review_action"
+                                value="approve"
+                            >
+                                <i aria-hidden="true">
+                                    <?= llama_icon('circle-check') ?>
+                                </i>
+                                Approve Scout
+                            </button>
+                        <?php endif; ?>
+
+                        <button
+                            class="admin-button is-muted"
+                            type="submit"
+                            name="review_action"
+                            value="return"
+                        >
+                            Return for changes
+                        </button>
+
+                        <button
+                            class="admin-button is-danger"
+                            type="submit"
+                            name="review_action"
+                            value="decline"
+                            onclick="return confirm('Decline this Scout onboarding? Their regular Llama Scout account will remain unchanged.');"
+                        >
+                            Decline onboarding
+                        </button>
+                    </div>
+                </form>
+
+            <?php endif; ?>
+
+        </section>
+
+        <?php endif; ?>
+
+
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>Program</p>
+                    <h2>Scout Status</h2>
+                </div>
+            </header>
+
+            <form class="admin-user-form" method="post">
+                <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                <input type="hidden" name="scout_admin_action" value="status">
+
+                <div class="admin-user-form-grid">
+                    <label>
+                        <span>Status</span>
+                        <select name="status">
+                            <?php foreach (
+                                [
+                                    'invited',
+                                    'application_started',
+                                    'application_submitted',
+                                    'training',
+                                    'pending_approval',
+                                    'active',
+                                    'inactive',
+                                    'declined',
+                                    'removed',
+                                ] as $status
+                            ): ?>
+                                <option
+                                    value="<?= moderation_e($status) ?>"
+                                    <?= (string) $scout['status'] === $status ? 'selected' : '' ?>
+                                    <?= $status === 'active'
+                                        && $scoutStatus !== 'active'
+                                            ? 'disabled'
+                                            : (
+                                                $activeExtension
+                                                && $status !== $scoutStatus
+                                                    ? 'disabled'
+                                                    : ''
+                                            ) ?>
+                                >
+                                    <?= moderation_e(
+                                        ucwords(
+                                            str_replace('_', ' ', $status)
+                                        )
+                                    ) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Active through</span>
+                        <input
+                            type="text"
+                            value="<?= moderation_e(
+                                admin_scout_display_datetime(
+                                    $scout['active_through'] ?? '',
+                                    'Not active'
+                                )
+                            ) ?>"
+                            disabled
+                        >
+                    </label>
+
+                    <label class="is-wide">
+                        <span>Administrative notes</span>
+                        <textarea
+                            name="notes"
+                            rows="3"
+                            placeholder="Reason for this status change."
+                        ></textarea>
+                    </label>
+                </div>
+
+                <div class="admin-user-form-actions">
+                    <button class="admin-button" type="submit">
+                        Save Scout status
+                    </button>
+                </div>
+            </form>
+        </section>
+
+
+        <?php if ($application): ?>
+            <section class="admin-panel">
+                <header class="admin-panel-header">
+                    <div>
+                        <p>Application</p>
+                        <h2>Scout Application</h2>
+                    </div>
+                    <span>
+                        Submitted <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $application['submitted_at'] ?? '',
+                                'Not yet'
+                            )
+                        ) ?>
+                    </span>
+                </header>
+
+                <dl class="admin-user-definition-list">
+                    <div>
+                        <dt>Legal name</dt>
+                        <dd><?= moderation_e((string) ($application['legal_name'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Mailing location</dt>
+                        <dd>
+                            <?= moderation_e(
+                                trim(
+                                    implode(
+                                        ', ',
+                                        array_filter([
+                                            $application['city'] ?? null,
+                                            $application['state_region'] ?? null,
+                                            $application['postal_code'] ?? null,
+                                            $application['country'] ?? null,
+                                        ])
+                                    )
+                                ) ?: 'Not provided'
+                            ) ?>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Phone</dt>
+                        <dd><?= moderation_e((string) ($application['phone'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Why Scout</dt>
+                        <dd><?= moderation_e((string) ($application['why_scout'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Travel experience</dt>
+                        <dd><?= moderation_e((string) ($application['travel_experience'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Field experience</dt>
+                        <dd><?= moderation_e((string) ($application['field_experience'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Accessibility experience</dt>
+                        <dd><?= moderation_e((string) ($application['accessibility_experience'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Sensory experience</dt>
+                        <dd><?= moderation_e((string) ($application['sensory_experience'] ?: 'Not provided')) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Review notes</dt>
+                        <dd><?= moderation_e((string) ($application['review_notes'] ?: 'None')) ?></dd>
+                    </div>
+                </dl>
+            </section>
+        <?php endif; ?>
+
 
         <?php if (
-            (string) $submission['status']
-            === 'needs-changes'
+            in_array(
+                $scoutStatus,
+                ['inactive', 'removed'],
+                true
+            )
+            || $activeExtension
+            || $latestExtension
         ): ?>
-            <strong class="scout-basecamp-attention">
-                Needs changes
-            </strong>
-        <?php endif; ?>
-    </article>
 
-<?php endforeach; ?>
+        <section class="admin-panel admin-scout-reactivation-panel">
 
-</div>
+            <header class="admin-panel-header">
+                <div>
+                    <p>Lifecycle</p>
+                    <h2>Scout Reactivation</h2>
+                </div>
 
-<?php endif; ?>
+                <?php if ($activeExtension): ?>
+                    <span>
+                        Active through
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $activeExtension['ends_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
+                    </span>
+                <?php endif; ?>
+            </header>
 
-</section>
+            <?php if ($activeExtension): ?>
 
-</div>
+                <div class="admin-scout-reactivation-status">
+                    <div>
+                        <span>Window</span>
+                        <strong>
+                            <?= moderation_e(
+                                admin_scout_display_datetime(
+                                    $activeExtension['started_at'] ?? '',
+                                    'Not set'
+                                )
+                            ) ?>
+                            to
+                            <?= moderation_e(
+                                admin_scout_display_datetime(
+                                    $activeExtension['ends_at'] ?? '',
+                                    'Not set'
+                                )
+                            ) ?>
+                        </strong>
+                    </div>
 
+                    <div>
+                        <span>New Places</span>
+                        <strong>
+                            <?= number_format($reactivationAccepted) ?>
+                            of
+                            <?= number_format($reactivationRequired) ?>
+                        </strong>
+                    </div>
 
-<aside class="scout-basecamp-side-column">
+                    <div>
+                        <span>Access</span>
+                        <strong>Basic Scout</strong>
+                        <small>Master Scout is not restored during reactivation.</small>
+                    </div>
 
+                    <div>
+                        <span>Result</span>
+                        <strong>
+                            <?= $reactivationAccepted >= $reactivationRequired
+                                ? 'Requirement met'
+                                : 'In progress' ?>
+                        </strong>
+                        <small>
+                            Maintenance finalizes the window automatically.
+                        </small>
+                    </div>
+                </div>
 
-<section class="scout-basecamp-panel">
+                <form
+                    class="admin-user-form admin-scout-reactivation-cancel"
+                    method="post"
+                >
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                    <input type="hidden" name="scout_admin_action" value="reactivation-cancel">
 
-<header>
-    <div>
-        <p class="eyebrow">Contribution Mix</p>
-        <h2>Scout Service History</h2>
-    </div>
-</header>
+                    <label>
+                        <span>Cancellation reason</span>
+                        <textarea
+                            name="notes"
+                            rows="2"
+                            placeholder="Required to cancel temporary Scout access."
+                            required
+                        ></textarea>
+                    </label>
 
-<dl class="scout-basecamp-definition-list">
-    <div>
-        <dt>Scout new Places</dt>
-        <dd><?= number_format($lifetimeNewPlaces) ?></dd>
-    </div>
+                    <div class="admin-user-form-actions">
+                        <button
+                            class="admin-button is-danger"
+                            type="submit"
+                            onclick="return confirm('Cancel this Scout reactivation window and remove temporary Scout access?');"
+                        >
+                            Cancel reactivation
+                        </button>
+                    </div>
+                </form>
 
-    <div>
-        <dt>Updates</dt>
-        <dd><?= number_format($totalUpdates) ?></dd>
-    </div>
+            <?php elseif (
+                in_array(
+                    $scoutStatus,
+                    ['inactive', 'removed'],
+                    true
+                )
+            ): ?>
 
-    <div>
-        <dt>Corrections</dt>
-        <dd><?= number_format($totalCorrections) ?></dd>
-    </div>
+                <div class="admin-scout-reactivation-intro">
+                    <div>
+                        <strong>
+                            <?= number_format($reactivationWindowDays) ?>-day window
+                        </strong>
+                        <span>
+                            Temporary basic Scout access while the former Scout completes
+                            <?= number_format($reactivationRequired) ?> approved new
+                            <?= $reactivationRequired === 1 ? 'Place' : 'Places' ?>.
+                        </span>
+                    </div>
 
-    <div>
-        <dt>Needs changes</dt>
-        <dd><?= number_format($needsChanges) ?></dd>
-    </div>
-</dl>
+                    <div>
+                        <strong>Successful reactivation</strong>
+                        <span>
+                            Returns as a basic Llama Scout for a normal Scout period.
+                            Former Master Scout rank must be earned again.
+                        </span>
+                    </div>
+                </div>
 
-</section>
+                <form class="admin-user-form" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                    <input type="hidden" name="scout_admin_action" value="reactivation-grant">
 
+                    <label>
+                        <span>Administrative note (optional)</span>
+                        <textarea
+                            name="notes"
+                            rows="2"
+                            placeholder="Reason for granting another Scout opportunity."
+                        ></textarea>
+                    </label>
 
-<?php if (!$isMasterScout): ?>
+                    <div class="admin-user-form-actions">
+                        <button
+                            class="admin-button"
+                            type="submit"
+                            onclick="return confirm('Grant this former Scout temporary basic Scout access for the configured reactivation window?');"
+                        >
+                            Grant reactivation window
+                        </button>
+                    </div>
+                </form>
 
-<section class="scout-basecamp-panel">
-
-<header>
-    <div>
-        <p class="eyebrow">Rank Progress</p>
-        <h2>Master Scout</h2>
-    </div>
-
-    <?php if ($masterEligible): ?>
-        <span class="is-good">
-            Ready
-        </span>
-    <?php endif; ?>
-</header>
-
-<?php if (!$masterEnabled): ?>
-
-    <p class="scout-basecamp-muted">
-        Master Scout qualification is not currently enabled.
-    </p>
-
-<?php elseif (!$masterRequirements): ?>
-
-    <p class="scout-basecamp-muted">
-        Master Scout requirements have not been configured.
-    </p>
-
-<?php else: ?>
-
-<p class="scout-basecamp-muted">
-    Master Scout progress counts work completed while serving as a Scout.
-    Community and paid-Member contributions from before Scout training remain
-    in your lifetime history, but do not satisfy Master Scout service requirements.
-</p>
-
-<div class="scout-basecamp-requirements">
-
-<?php foreach ($masterRequirements as $requirement): ?>
-
-    <div class="<?= !empty($requirement['met'])
-        ? 'is-met'
-        : '' ?>"
-    >
-        <i aria-hidden="true">
-            <?= llama_icon(
-                !empty($requirement['met'])
-                    ? 'circle-check'
-                    : 'circle-minus'
-            ) ?>
-        </i>
-
-        <span>
-            <strong>
-                <?= htmlspecialchars(
-                    (string) (
-                        $requirement['label']
-                        ?? 'Requirement'
-                    ),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </strong>
-
-            <small>
-                <?= number_format(
-                    (int) (
-                        $requirement['current']
-                        ?? 0
-                    )
-                ) ?>
-                /
-                <?= number_format(
-                    (int) (
-                        $requirement['required']
-                        ?? 0
-                    )
-                ) ?>
-            </small>
-        </span>
-    </div>
-
-<?php endforeach; ?>
-
-</div>
-
-<?php endif; ?>
-
-</section>
-
-<?php else: ?>
-
-<section class="scout-basecamp-panel scout-basecamp-master-panel">
-    <i
-        aria-hidden="true"
-    ><?= llama_icon('compass') ?></i>
-
-    <div>
-        <p class="eyebrow">Current Rank</p>
-        <h2>Master Scout</h2>
-        <p>
-            Master Scout recognizes sustained trained field work and carries
-            responsibility for moderating community Place contributions.
-        </p>
-    </div>
-</section>
-
-<?php endif; ?>
-
-
-<section class="scout-basecamp-panel">
-
-<header>
-    <div>
-        <p class="eyebrow">Scout Access</p>
-        <h2>Quick Links</h2>
-    </div>
-</header>
-
-<nav class="scout-basecamp-links">
-    <?php if ($isMasterScout): ?>
-        <a href="/master-moderation.php">
-            <i aria-hidden="true"><?= llama_icon('clipboard-check') ?></i>
-            Moderation Queue
-            <?php if ($masterModerationWaiting > 0): ?>
-                <strong><?= number_format($masterModerationWaiting) ?></strong>
             <?php endif; ?>
-        </a>
-    <?php endif; ?>
 
-    <a href="https://llamascout.com/add-place.php">
-        <i aria-hidden="true"><?= llama_icon('plus') ?></i>
-        Add a Place
-    </a>
+            <?php if ($latestExtension): ?>
+                <div class="admin-scout-reactivation-history">
+                    <span>Latest reactivation</span>
+                    <strong>
+                        <?= moderation_e(
+                            ucwords(
+                                str_replace(
+                                    '_',
+                                    ' ',
+                                    (string) $latestExtension['status']
+                                )
+                            )
+                        ) ?>
+                    </strong>
+                    <small>
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $latestExtension['started_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
+                        to
+                        <?= moderation_e(
+                            admin_scout_display_datetime(
+                                $latestExtension['ends_at'] ?? '',
+                                'Not set'
+                            )
+                        ) ?>
+                        | granted by
+                        <?= moderation_e((string) ($latestExtension['granted_by_name'] ?: 'System')) ?>
+                    </small>
+                </div>
+            <?php endif; ?>
 
-    <a href="/contributions.php">
-        <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
-        My Contributions
-    </a>
+        </section>
 
-    <a href="/#account-overview-heading">
-        <i aria-hidden="true"><?= llama_icon('star') ?></i>
-        Contribution points
-    </a>
-
-    <a href="/#badges-heading">
-        <i aria-hidden="true"><?= llama_icon('award') ?></i>
-        My badges
-    </a>
-</nav>
-
-</section>
+        <?php endif; ?>
 
 
-</aside>
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>Qualification Period</p>
+                    <h2>Current Scout Period</h2>
+                </div>
+                <?php if (!empty($currentPeriod['end'])): ?>
+                    <span><?= moderation_e(
+                        admin_scout_display_date(
+                            $currentPeriod['end'],
+                            'Not set'
+                        )
+                    ) ?></span>
+                <?php endif; ?>
+            </header>
+
+            <div class="admin-scout-period-panel">
+                <div class="admin-scout-period-progress">
+                    <div>
+                        <strong><?= number_format((int) $currentPeriod['completed']) ?></strong>
+                        <span>approved new Places</span>
+                    </div>
+                    <div>
+                        <strong><?= number_format((int) $currentPeriod['required']) ?></strong>
+                        <span>required this period</span>
+                    </div>
+                    <div>
+                        <strong><?= number_format((int) $currentPeriod['remaining']) ?></strong>
+                        <span>remaining</span>
+                    </div>
+                </div>
+
+                <?php if ((string) $scout['status'] === 'active'): ?>
+                    <div class="admin-scout-period-status <?= !empty($currentPeriod['met']) ? 'is-good' : 'has-attention' ?>">
+                        <i aria-hidden="true">
+                            <?= llama_icon(
+                                !empty($currentPeriod['met'])
+                                    ? 'circle-check'
+                                    : 'hourglass'
+                            ) ?>
+                        </i>
+                        <div>
+                            <strong><?= !empty($currentPeriod['met']) ? 'Current period requirement complete' : 'Current period still in progress' ?></strong>
+                            <span>
+                                <?php if ($currentPeriod['days_remaining'] !== null): ?>
+                                    <?= number_format(max(0, (int) $currentPeriod['days_remaining'])) ?> days remain in this Scout period.
+                                <?php else: ?>
+                                    The active-through date needs review.
+                                <?php endif; ?>
+                            </span>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="admin-scout-period-status has-attention">
+                        <i aria-hidden="true">
+                            <?= llama_icon('player-pause') ?>
+                        </i>
+                        <div>
+                            <strong>No active Scout period</strong>
+                            <span>Activating this Scout establishes a new period using the current Scout policy.</span>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>Field Work</p>
+                    <h2>Recent Scout Activity</h2>
+                </div>
+            </header>
+
+            <?php if (!$activity): ?>
+                <div class="admin-empty-state">
+                    <p>No Scout activity recorded yet.</p>
+                </div>
+            <?php else: ?>
+                <div class="admin-user-history-list">
+                    <?php foreach ($activity as $item): ?>
+                        <div class="admin-scout-activity-row">
+                            <span>
+                                <strong>
+                                    <?= moderation_e(
+                                        ucwords(
+                                            str_replace(
+                                                '_',
+                                                ' ',
+                                                (string) $item['activity_type']
+                                            )
+                                        )
+                                    ) ?>
+                                </strong>
+                                <small>
+                                    <?php if (!empty($item['place_name'])): ?>
+                                        <?= moderation_e(
+                                            (string) $item['place_name']
+                                        ) ?>
+                                    <?php else: ?>
+                                        <?= moderation_e(
+                                            admin_scout_display_datetime(
+                                                $item['occurred_at'] ?? '',
+                                                'Date not recorded'
+                                            )
+                                        ) ?>
+                                    <?php endif; ?>
+                                </small>
+                            </span>
+                            <span>
+                                <?= (int) $item['points'] >= 0 ? '+' : '' ?>
+                                <?= number_format((int) $item['points']) ?> pts
+                            </span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
+    </div>
+
+
+    <aside class="admin-user-detail-side">
+
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>Rank</p>
+                    <h2>Master Scout Qualification</h2>
+                </div>
+                <span><?= $isMaster ? 'Master Scout' : (!empty($masterQualification['eligible']) ? 'Ready' : 'In progress') ?></span>
+            </header>
+
+            <div class="admin-scout-master-checklist">
+                <?php foreach ($masterQualification['requirements'] as $requirement): ?>
+                    <div class="<?= !empty($requirement['met']) ? 'is-met' : '' ?>">
+                        <i aria-hidden="true">
+                            <?= llama_icon(
+                                !empty($requirement['met'])
+                                    ? 'circle-check'
+                                    : 'circle'
+                            ) ?>
+                        </i>
+                        <span>
+                            <strong><?= moderation_e((string) $requirement['label']) ?></strong>
+                            <small>
+                                <?= number_format((int) $requirement['current']) ?>
+                                / <?= number_format((int) $requirement['required']) ?>
+                            </small>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (!$isMaster && empty($masterQualification['enabled'])): ?>
+                <div class="admin-scout-policy-warning">Master Scout qualification is disabled in Scout policy.</div>
+            <?php elseif (!$isMaster && empty($masterQualification['policy_complete'])): ?>
+                <div class="admin-scout-policy-warning">One or more Master Scout thresholds are not configured.</div>
+            <?php endif; ?>
+
+            <?php if ($actorIsOwner): ?>
+                <form class="admin-user-action-box admin-scout-master-action" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="scout_profile_id" value="<?= (int) $scoutProfileId ?>">
+                    <input type="hidden" name="scout_admin_action" value="master">
+                    <input type="hidden" name="make_master" value="<?= $isMaster ? '0' : '1' ?>">
+
+                    <label>
+                        <span>Reason / notes</span>
+                        <textarea name="notes" rows="3" required></textarea>
+                    </label>
+
+                    <button
+                        class="admin-button"
+                        type="submit"
+                        <?= !$isMaster && empty($masterQualification['eligible']) ? 'disabled' : '' ?>
+                    >
+                        <?= $isMaster ? 'Remove Master Scout' : 'Promote to Master Scout' ?>
+                    </button>
+
+                    <?php if (!$isMaster && empty($masterQualification['eligible'])): ?>
+                        <small>Promotion becomes available when every current qualification requirement is complete.</small>
+                    <?php endif; ?>
+                </form>
+            <?php endif; ?>
+        </section>
+
+
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>Training</p>
+                    <h2>Completion</h2>
+                </div>
+            </header>
+
+            <dl class="admin-user-definition-list">
+                <div>
+                    <dt>Training started</dt>
+                    <dd><?= moderation_e(
+                        admin_scout_display_datetime(
+                            $scout['training_started_at'] ?? '',
+                            'No'
+                        )
+                    ) ?></dd>
+                </div>
+                <div>
+                    <dt>Training completed</dt>
+                    <dd><?= moderation_e(
+                        admin_scout_display_datetime(
+                            $scout['training_completed_at'] ?? '',
+                            'No'
+                        )
+                    ) ?></dd>
+                </div>
+                <?php if ($training): ?>
+                    <div>
+                        <dt>Accuracy acknowledged</dt>
+                        <dd><?= (int) $training['acknowledged_accuracy'] === 1 ? 'Yes' : 'No' ?></dd>
+                    </div>
+                    <div>
+                        <dt>Safety acknowledged</dt>
+                        <dd><?= (int) $training['acknowledged_safety'] === 1 ? 'Yes' : 'No' ?></dd>
+                    </div>
+                    <div>
+                        <dt>Privacy acknowledged</dt>
+                        <dd><?= (int) $training['acknowledged_privacy'] === 1 ? 'Yes' : 'No' ?></dd>
+                    </div>
+                <?php endif; ?>
+            </dl>
+        </section>
+
+
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p>History</p>
+                    <h2>Status History</h2>
+                </div>
+            </header>
+
+            <?php if (!$timelineEntries): ?>
+                <div class="admin-empty-state">
+                    <p>No Scout status history recorded yet.</p>
+                </div>
+            <?php else: ?>
+                <div class="admin-user-audit-list">
+                    <?php foreach ($timelineEntries as $entry): ?>
+                        <div>
+                            <strong>
+                                <?= moderation_e(
+                                    (string) $entry['summary']
+                                ) ?>
+                            </strong>
+
+                            <span>
+                                <?= moderation_e(
+                                    (string) $entry['actor']
+                                ) ?>
+                                |
+                                <?= moderation_e(
+                                    admin_scout_display_datetime(
+                                        $entry['occurred_at'] ?? '',
+                                        'Date not recorded'
+                                    )
+                                ) ?>
+                            </span>
+
+                            <?php if (
+                                trim(
+                                    (string) $entry['detail']
+                                ) !== ''
+                            ): ?>
+                                <span>
+                                    <?= moderation_e(
+                                        (string) $entry['detail']
+                                    ) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
+    </aside>
 
 </div>
 
-</div>
-
-</section>
-
-<?php require dirname(__DIR__) . '/partials/footer.php'; ?>
+<?php require __DIR__ . '/_footer.php'; ?>
