@@ -826,6 +826,25 @@ html[data-reduced-motion="true"] .place-photo-thumb img {
     color: var(--text);
 }
 
+
+.place-contribution-help {
+    color: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    opacity: .88;
+}
+
+.place-contribution-help:hover {
+    opacity: 1;
+}
+
+.place-detail-hero.no-image .place-contribution-help {
+    color: var(--text-muted);
+}
+
 .place-contributor-access-note {
     display: grid;
     grid-template-columns: 38px minmax(0, 1fr);

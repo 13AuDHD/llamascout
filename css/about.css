@@ -180,6 +180,15 @@
     line-height: 1.65;
 }
 
+
+.about-contribution-label-note {
+    margin-top: 24px;
+}
+
+.about-contribution-label-note p:last-child {
+    margin-bottom: 0;
+}
+
 .about-origin-section {
     padding-top: 72px;
     padding-bottom: 72px;
