@@ -236,11 +236,22 @@ $pendingCredentialReviews =
         100
     );
 
+$badgeEligibilityReview =
+    admin_badges_eligibility_review(
+        $db,
+        100
+    );
+
 $badgeThresholdMetricLabels =
     llama_badge_threshold_metric_labels();
 
 $badgeThresholdMetricDescriptions =
     llama_badge_threshold_metric_descriptions();
+
+$badgeScopeLabels = llama_badge_scope_labels();
+$badgeScopeDescriptions = llama_badge_scope_descriptions();
+$badgeRecognitionLabels = llama_badge_recognition_labels();
+$badgeRecognitionDescriptions = llama_badge_recognition_descriptions();
 
 $selectedUserBadges =
     $selectedUserId > 0
@@ -270,12 +281,21 @@ $availableUserBadges =
     array_values(
         array_filter(
             $definitions,
-            static fn (array $badge): bool =>
+            fn (array $badge): bool =>
                 (int) $badge['is_active'] === 1
+                && (string) ($badge['award_type'] ?? '') !== 'credential'
                 && !in_array(
                     (int) $badge['id'],
                     $selectedEarnedBadgeIds,
                     true
+                )
+                && (
+                    $selectedUserId < 1
+                    || llama_badge_user_eligible_for_manual_award(
+                        $db,
+                        $selectedUserId,
+                        $badge
+                    )
                 )
         )
     );
@@ -466,6 +486,12 @@ require __DIR__ .
                     )
                 )
             ) ?>
+            ·
+            <?= moderation_e(
+                llama_badge_scope_label(
+                    $userBadge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+                )
+            ) ?>
         </span>
 
         <strong>
@@ -525,7 +551,7 @@ require __DIR__ .
                         type="text"
                         name="reason"
                         maxlength="500"
-                        placeholder="Reason required"
+                        placeholder="Cheating/fraud reason required"
                         required
                     >
                 </label>
@@ -533,7 +559,7 @@ require __DIR__ .
                 <button
                     class="admin-button is-danger"
                     type="submit"
-                    onclick="return confirm('Remove this badge from the member?');"
+                    onclick="return confirm('Revoke this earned badge? Use this only for confirmed cheating or fraud.');"
                 >
                     Remove
                 </button>
@@ -666,6 +692,58 @@ require __DIR__ .
 </div>
 
 </section>
+
+<?php if ($badgeEligibilityReview): ?>
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Eligibility Review</p>
+        <h2>Badge awards to check</h2>
+    </div>
+    <span><?= number_format(count($badgeEligibilityReview)) ?></span>
+</header>
+
+<div class="admin-member-badge-list">
+<?php foreach ($badgeEligibilityReview as $issue): ?>
+<article class="admin-member-badge-row">
+    <div class="admin-member-badge-copy">
+        <span>
+            <?= moderation_e((string) $issue['scope_label']) ?>
+            · Review needed
+        </span>
+        <strong>
+            <?= moderation_e((string) $issue['member_name']) ?>
+            ·
+            <?= moderation_e((string) $issue['badge_name']) ?>
+        </strong>
+        <p><?= moderation_e((string) $issue['review_reason']) ?></p>
+    </div>
+
+    <div class="admin-member-badge-actions">
+        <a
+            class="admin-button is-muted"
+            href="/badges.php?user_id=<?= (int) $issue['user_id'] ?>"
+        >
+            Review member
+        </a>
+        <a
+            class="admin-button is-muted"
+            href="/badge-admin.php?id=<?= (int) $issue['badge_id'] ?>"
+        >
+            Badge
+        </a>
+    </div>
+</article>
+<?php endforeach; ?>
+</div>
+
+<p class="admin-muted-copy">
+    This audit is intentionally non-destructive. Review the member history before removing any legacy badge.
+</p>
+
+</section>
+<?php endif; ?>
 
 
 <?php if ($pendingCredentialReviews): ?>
@@ -889,6 +967,12 @@ require __DIR__ .
                 )
             )
         ) ?>
+        ·
+        <?= moderation_e(
+            llama_badge_scope_label(
+                $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+            )
+        ) ?>
     </span>
 
     <strong>
@@ -1031,6 +1115,50 @@ require __DIR__ .
                 <option value="manual">Manual</option>
                 <option value="credential">Credential</option>
             </select>
+        </label>
+
+        <label>
+            <span>Eligible badge track</span>
+            <select name="eligibility_scope">
+                <?php foreach ($badgeScopeLabels as $scopeValue => $scopeLabel): ?>
+                    <option
+                        value="<?= moderation_e($scopeValue) ?>"
+                        <?= $scopeValue === LLAMA_BADGE_SCOPE_ALL_MEMBERS ? 'selected' : '' ?>
+                    >
+                        <?= moderation_e($scopeLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                Controls which contribution level can earn this badge. Credential badges are automatically kept credential-based.
+            </small>
+        </label>
+
+        <label>
+            <span>Recognition</span>
+            <select name="recognition_mode">
+                <?php foreach ($badgeRecognitionLabels as $modeValue => $modeLabel): ?>
+                    <option
+                        value="<?= moderation_e($modeValue) ?>"
+                        <?= $modeValue === LLAMA_BADGE_RECOGNITION_PERMANENT ? 'selected' : '' ?>
+                    >
+                        <?= moderation_e($modeLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                Badges stay earned when a membership or Scout role changes. Removal is an explicit disciplinary action, not an automatic role change.
+            </small>
+        </label>
+
+        <label class="is-wide">
+            <span>How to earn</span>
+            <textarea
+                name="how_to_earn"
+                rows="2"
+                maxlength="500"
+                placeholder="Explain the requirement in member-facing language"
+            ></textarea>
         </label>
 
         <label data-badge-threshold-field>

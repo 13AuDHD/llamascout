@@ -157,6 +157,11 @@ $badgeThresholdMetricLabels =
 $badgeThresholdMetricDescriptions =
     llama_badge_threshold_metric_descriptions();
 
+$badgeScopeLabels = llama_badge_scope_labels();
+$badgeScopeDescriptions = llama_badge_scope_descriptions();
+$badgeRecognitionLabels = llama_badge_recognition_labels();
+$badgeRecognitionDescriptions = llama_badge_recognition_descriptions();
+
 if (!$badge) {
     http_response_code(404);
 
@@ -347,6 +352,18 @@ require __DIR__ .
                 )
             )
         ) ?>
+        ·
+        <?= moderation_e(
+            llama_badge_scope_label(
+                $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+            )
+        ) ?>
+        ·
+        <?= moderation_e(
+            llama_badge_recognition_label(
+                $badge['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
+            )
+        ) ?>
     </span>
 
     <h2>
@@ -518,6 +535,68 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
+        </label>
+
+        <label>
+            <span>Eligible badge track</span>
+            <select name="eligibility_scope">
+                <?php foreach ($badgeScopeLabels as $scopeValue => $scopeLabel): ?>
+                    <option
+                        value="<?= moderation_e($scopeValue) ?>"
+                        <?= llama_badge_scope_normalize(
+                            $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+                        ) === $scopeValue ? 'selected' : '' ?>
+                    >
+                        <?= moderation_e($scopeLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                <?= moderation_e(
+                    $badgeScopeDescriptions[
+                        llama_badge_scope_normalize(
+                            $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+                        )
+                    ] ?? ''
+                ) ?>
+            </small>
+        </label>
+
+        <label>
+            <span>Recognition</span>
+            <select name="recognition_mode">
+                <?php foreach ($badgeRecognitionLabels as $modeValue => $modeLabel): ?>
+                    <option
+                        value="<?= moderation_e($modeValue) ?>"
+                        <?= llama_badge_recognition_normalize(
+                            $badge['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
+                        ) === $modeValue ? 'selected' : '' ?>
+                    >
+                        <?= moderation_e($modeLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>
+                <?= moderation_e(
+                    $badgeRecognitionDescriptions[
+                        llama_badge_recognition_normalize(
+                            $badge['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
+                        )
+                    ] ?? ''
+                ) ?>
+            </small>
+        </label>
+
+        <label class="is-wide">
+            <span>How to earn</span>
+            <textarea
+                name="how_to_earn"
+                rows="2"
+                maxlength="500"
+            ><?= moderation_e((string) ($badge['how_to_earn'] ?? '')) ?></textarea>
+            <small>
+                Member-facing requirement text. Leave blank to use the automatic fallback.
+            </small>
         </label>
 
         <label
@@ -1073,7 +1152,7 @@ require __DIR__ .
 <form
     method="post"
     class="admin-badge-revoke-form"
-    onsubmit="return confirm('Remove this badge from the member?');"
+    onsubmit="return confirm('Revoke this earned badge? Use this only for confirmed cheating or fraud.');"
 >
     <input
         type="hidden"
@@ -1103,7 +1182,7 @@ require __DIR__ .
         type="text"
         name="reason"
         maxlength="500"
-        placeholder="Reason for removal"
+        placeholder="Cheating/fraud reason for revocation"
         required
     >
 

@@ -48,15 +48,16 @@ if (!ctype_digit($matchQuery) && mb_strlen($matchQuery) < 2) {
     exit;
 }
 
-$badgeExists = $db->prepare(
-    'SELECT id
+$badgeStmt = $db->prepare(
+    'SELECT *
      FROM badge_definitions
      WHERE id = ?
      LIMIT 1'
 );
-$badgeExists->execute([$badgeId]);
+$badgeStmt->execute([$badgeId]);
+$badge = $badgeStmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$badgeExists->fetchColumn()) {
+if (!$badge) {
     http_response_code(404);
     echo json_encode([
         'ok' => false,
@@ -129,18 +130,27 @@ $stmt->execute([
 
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-$results = array_map(
-    static function (array $row): array {
-        return [
-            'id' => (int) $row['id'],
-            'display_name' => trim((string) ($row['display_name'] ?? '')),
-            'username' => trim((string) ($row['username'] ?? '')),
-            'email' => trim((string) ($row['email'] ?? '')),
-            'already_has_badge' => (int) ($row['already_has_badge'] ?? 0) === 1,
-        ];
-    },
-    $rows
-);
+$results = [];
+
+foreach ($rows as $row) {
+    $eligible = llama_badge_user_eligible_for_manual_award(
+        $db,
+        (int) $row['id'],
+        $badge
+    );
+
+    $results[] = [
+        'id' => (int) $row['id'],
+        'display_name' => trim((string) ($row['display_name'] ?? '')),
+        'username' => trim((string) ($row['username'] ?? '')),
+        'email' => trim((string) ($row['email'] ?? '')),
+        'already_has_badge' => (int) ($row['already_has_badge'] ?? 0) === 1,
+        'eligible' => $eligible,
+        'eligibility_label' => llama_badge_scope_label(
+            $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+        ),
+    ];
+}
 
 echo json_encode(
     [
