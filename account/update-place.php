@@ -19,6 +19,19 @@ $userId =
     );
 
 
+$currentContributionLevel =
+    llama_user_contribution_level(
+        db(),
+        $userId
+    );
+
+
+$currentContributionShortLabel =
+    llama_contribution_level_short_label(
+        $currentContributionLevel
+    );
+
+
 if (
     !llama_contributor_can(
         db(),
@@ -583,7 +596,10 @@ $e =
 
             <?= $isNeedsChanges
                 ? 'Changes requested'
-                : 'Community contribution' ?>
+                : $e(
+                    $currentContributionShortLabel
+                    . ' contribution'
+                ) ?>
 
         </p>
 

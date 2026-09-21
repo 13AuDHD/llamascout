@@ -7,6 +7,60 @@ require_login();
 
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
+$db = db();
+
+$currentContributionLevel =
+    llama_user_contribution_level(
+        $db,
+        $userId
+    );
+
+$currentContributionDefinition =
+    llama_contribution_level_definitions()[
+        $currentContributionLevel
+    ] ?? llama_contribution_level_definitions()[
+        LLAMA_CONTRIBUTION_LEVEL_COMMUNITY
+    ];
+
+$currentContributionShortLabel =
+    (string) (
+        $currentContributionDefinition['short_label']
+        ?? 'Community'
+    );
+
+$currentContributionIcon =
+    (string) (
+        $currentContributionDefinition['icon']
+        ?? 'users'
+    );
+
+$hasCompleteAccess =
+    user_has_member_access($userId);
+
+$isPaidMember =
+    user_has_paid_membership($userId);
+
+$contributorHeading = match ($currentContributionLevel) {
+    LLAMA_CONTRIBUTION_LEVEL_ADMIN => 'Admin Contributor',
+    LLAMA_CONTRIBUTION_LEVEL_MASTER => 'Master Scout',
+    LLAMA_CONTRIBUTION_LEVEL_SCOUT => 'Llama Scout',
+    LLAMA_CONTRIBUTION_LEVEL_MEMBER => 'Member Contributor',
+    default => 'Community Contributor',
+};
+
+$contributorDescription = match ($currentContributionLevel) {
+    LLAMA_CONTRIBUTION_LEVEL_ADMIN =>
+        'You contribute with Llama Scout administration authority and Complete Access.',
+    LLAMA_CONTRIBUTION_LEVEL_MASTER =>
+        'You contribute as a trained Master Scout with Complete Access and moderation responsibility.',
+    LLAMA_CONTRIBUTION_LEVEL_SCOUT =>
+        'You contribute as a trained Llama Scout with Complete Access while your Scout status remains active.',
+    LLAMA_CONTRIBUTION_LEVEL_MEMBER =>
+        'Your paid membership includes Complete Access and identifies your approved contributions as Member contributions.',
+    default =>
+        'You can help build Llama Scout as a Community contributor. Complete Access stays limited to the Places you originally contribute unless you upgrade.',
+};
+
 $items = community_submissions_for_user($userId);
 
 /*
@@ -191,6 +245,62 @@ require dirname(__DIR__) . '/partials/header.php';
         </a>
 
     </header>
+
+    <section
+        class="contributor-level-card level-<?= htmlspecialchars(
+            $currentContributionLevel,
+            ENT_QUOTES,
+            'UTF-8'
+        ) ?>"
+        aria-labelledby="contributor-level-title"
+    >
+        <div class="contributor-level-icon" aria-hidden="true">
+            <?= llama_icon($currentContributionIcon) ?>
+        </div>
+
+        <div class="contributor-level-copy">
+            <p class="account-eyebrow">Your contribution level</p>
+
+            <h2 id="contributor-level-title">
+                <?= htmlspecialchars(
+                    $contributorHeading,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </h2>
+
+            <p>
+                <?= htmlspecialchars(
+                    $contributorDescription,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </p>
+
+            <div class="contributor-level-features">
+                <span>
+                    <?= htmlspecialchars(
+                        $currentContributionShortLabel,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?> contribution label
+                </span>
+
+                <span>Geofenced check-ins</span>
+
+                <?php if ($hasCompleteAccess): ?>
+                    <span>Complete Access</span>
+                    <span>Historical report comparison</span>
+                <?php else: ?>
+                    <span>Complete Access to Places you originally contribute</span>
+                <?php endif; ?>
+
+                <?php if ($isPaidMember): ?>
+                    <span>Paid Member</span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
 
     <?php if ($successMessage !== '' || $submitted !== ''): ?>
 
