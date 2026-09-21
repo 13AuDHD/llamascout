@@ -37,10 +37,10 @@ require __DIR__ . '/partials/header.php';
             <h1>Choose how much of the place you want to know.</h1>
 
             <p>
-                A free Llama Scout membership gives you useful planning information,
-                account tools, and contribution features. Paid membership unlocks the
-                complete Place report, including exact locations and the detailed
-                information documented by Scouts.
+                A free Llama Scout membership lets you participate as a Community
+                contributor while keeping most of the database in the public planning
+                view. Paid membership adds Complete Access and identifies your approved
+                field work as Member contributions.
             </p>
         </div>
     </header>
@@ -56,8 +56,8 @@ require __DIR__ . '/partials/header.php';
                     <h2>Free Member</h2>
                     <p class="membership-public-price"><strong>$0</strong></p>
                     <p>
-                        Useful planning information plus your Llama Scout account
-                        and contribution tools.
+                        Useful planning information plus Community contribution tools.
+                        Places you originally contribute unlock completely for you.
                     </p>
 
                     <ul>
@@ -167,7 +167,7 @@ require __DIR__ . '/partials/header.php';
                     <?php endif; ?>
 
                     <p>
-                        The complete Llama Scout Place report.
+                        Complete Access plus the Member Contributor experience.
                         Still no actual llama included.
                     </p>
 
@@ -184,6 +184,9 @@ require __DIR__ . '/partials/header.php';
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Connectivity</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Rules, experience, and Scout Notes</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact-location weather plus 5-day forecast</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Member Contributed label on approved field work</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Geofenced Place check-ins</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Compare Places and historical Place reports</li>
                     </ul>
 
                     <a
@@ -250,6 +253,10 @@ require __DIR__ . '/partials/header.php';
                         <tr><td>City weather today</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Save Places</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Contribute Places and updates</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Contribution label</td><td>Community</td><td>Member</td></tr>
+                        <tr><td>Geofenced Place check-ins</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Historical report comparison</td><td>Own contributed Places</td><td>Complete Access Places</td></tr>
+                        <tr><td>Compare Places</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Member profile / badges</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Exact coordinates</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Full photo gallery</td><td>No</td><td>Yes</td></tr>
@@ -285,6 +292,16 @@ require __DIR__ . '/partials/header.php';
                         No. A free membership includes useful Place information,
                         saved Places, contributions, profiles, badges, and related
                         account tools. Paid membership unlocks the complete Place report.
+                    </p>
+                </details>
+
+                <details>
+                    <summary>Does paid membership change how my contributions are identified?</summary>
+                    <p>
+                        Yes. Free accounts contribute at the Community level. An active paid
+                        membership contributes at the Member level and includes Complete Access.
+                        Scout and Master Scout levels are separate trained roles and are not
+                        purchased through membership.
                     </p>
                 </details>
 

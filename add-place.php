@@ -11,6 +11,17 @@ require_verified_email();
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 
+$currentContributionLevel =
+    llama_user_contribution_level(
+        db(),
+        $userId
+    );
+
+$currentContributionShortLabel =
+    llama_contribution_level_short_label(
+        $currentContributionLevel
+    );
+
 if (
     !llama_contributor_can(
         db(),
@@ -374,7 +385,11 @@ $placeReportPhotoHelp =
         <p class="eyebrow">
             <?= $isNeedsChanges
                 ? 'Changes requested'
-                : 'Community contribution' ?>
+                : htmlspecialchars(
+                    $currentContributionShortLabel . ' contribution',
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
         </p>
 
         <h1>
