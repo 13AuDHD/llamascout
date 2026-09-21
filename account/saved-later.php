@@ -80,7 +80,7 @@ $siteUrl = rtrim(
     '/'
 );
 
-$pageTitle = 'Saved for Later | Llama Scout';
+$pageTitle = 'Continue Later | Llama Scout';
 $pageRobots = 'noindex,nofollow';
 
 require dirname(__DIR__) . '/partials/header.php';
@@ -100,7 +100,7 @@ require dirname(__DIR__) . '/partials/header.php';
     <header class="account-page-header saved-later-header">
         <div>
             <p class="account-eyebrow">Contributions</p>
-            <h1>Saved for Later</h1>
+            <h1>Continue Later</h1>
             <p>
                 Continue Place reports you started in the field without sending
                 incomplete information to moderation.
@@ -138,7 +138,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
             <h2>Nothing saved for later</h2>
             <p>
-                Start a Place report and use Save for Later whenever you want
+                Start a Place report and use Continue Later whenever you want
                 to finish it another time.
             </p>
         </div>
@@ -169,7 +169,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <div class="saved-later-card-main">
                         <div class="saved-later-title-row">
                             <div>
-                                <p class="account-eyebrow">Saved Place</p>
+                                <p class="account-eyebrow">Place Draft</p>
                                 <h2><?= htmlspecialchars($draftName, ENT_QUOTES, 'UTF-8') ?></h2>
 
                                 <?php if ($draftId === $savedDraftId): ?>
@@ -287,11 +287,9 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="saved-later-estimate-note">
-            The point estimate uses the current sitewide policy from Admin Points.
             Amenities and Connectivity earn their configured category value once any
             information is supplied. Other categories are weighted by how much has
-            been answered. Changing the policy updates future estimates and awards
-            without changing historical ledger entries.
+            been answered.
         </p>
     <?php endif; ?>
 </section>
