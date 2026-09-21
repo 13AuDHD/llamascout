@@ -307,6 +307,10 @@ $canCheckIn =
 
 $canSuggestUpdate =
     $userId > 0
+    && user_has_place_complete_access(
+        (int) $place['id'],
+        $userId
+    )
     && llama_contributor_can(
         $db,
         $userId,
