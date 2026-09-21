@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/points.php';
+require_once __DIR__ . '/access.php';
 
 
 /*
@@ -1498,6 +1499,17 @@ function llama_place_update_submit(
     }
 
     if (
+        !user_has_place_complete_access(
+            $placeId,
+            $userId
+        )
+    ) {
+        throw new RuntimeException(
+            'Complete Access is required to update this Place.'
+        );
+    }
+
+    if (
         !llama_contributor_can(
             db(),
             $userId,
@@ -1839,6 +1851,17 @@ function llama_place_update_resubmit(
         );
     }
 
+    if (
+        !user_has_place_complete_access(
+            $placeId,
+            $userId
+        )
+    ) {
+        throw new RuntimeException(
+            'Complete Access is required to update this Place.'
+        );
+    }
+    
     if (
         !llama_contributor_can(
             db(),
