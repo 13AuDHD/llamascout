@@ -65,6 +65,10 @@ $stmt = $db->prepare(
         icon,
         image_src,
         award_type,
+        eligibility_scope,
+        recognition_mode,
+        how_to_earn,
+        threshold_metric,
         threshold_value
      FROM badge_definitions
      WHERE slug = ?
@@ -163,48 +167,15 @@ if ($earnedCount === 0) {
     $rarity = 'Common';
 }
 
-$howToEarn = match ($slug) {
-    'first-contribution' =>
-        'Make your first approved contribution to Llama Scout.',
+$howToEarn = llama_badge_definition_how_to_earn($badge);
 
-    'first-place' =>
-        'Add your first approved Place to Llama Scout.',
+$eligibilityLabel = llama_badge_scope_label(
+    $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
+);
 
-    'first-llama-scout' =>
-        'Complete your first approved Llama Scout field visit.',
-
-    'five-places-scouted' =>
-        'Llama Scout 5 different Places.',
-
-    'ten-places-scouted' =>
-        'Llama Scout 10 different Places.',
-
-    'twenty-five-places-scouted' =>
-        'Llama Scout 25 different Places.',
-
-    'fifty-places-scouted' =>
-        'Llama Scout 50 different Places.',
-
-    'helpful-editor' =>
-        'Submit an approved update or correction that improves an existing Place.',
-
-    'master-scout' =>
-        'Earn Master Scout status.',
-
-    'founding-member' =>
-        'Be one of the early members who helped Llama Scout get its hooves under it.',
-
-    default => match ((string) ($badge['award_type'] ?? '')) {
-        'credential' =>
-            'Awarded for an applicable training or stewardship credential.',
-
-        'automatic' =>
-            'Earned automatically when the badge requirements are met.',
-
-        default =>
-            'Awarded by Llama Scout for meeting the badge requirements.',
-    },
-};
+$recognitionLabel = llama_badge_recognition_label(
+    $badge['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
+);
 
 $pageTitle =
     (string) $badge['name'] .
@@ -309,6 +280,12 @@ require __DIR__ . '/partials/header.php';
 
                 </div>
 
+
+                <section class="badge-detail-how">
+                    <p class="badge-detail-label">Available to</p>
+                    <h2><?= badge_e($eligibilityLabel) ?></h2>
+                    <p><?= badge_e($recognitionLabel) ?></p>
+                </section>
 
                 <section class="badge-detail-how">
                     <p class="badge-detail-label">How to earn</p>
