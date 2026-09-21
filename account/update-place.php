@@ -120,9 +120,82 @@ $placeId =
     );
 
 
+/*
+ * =========================================================
+ * COMPLETE ACCESS REQUIRED
+ * =========================================================
+ *
+ * The update form is pre-filled with the complete published
+ * Place report, including information that is normally hidden
+ * behind Complete Access.
+ *
+ * Never render that form unless this user is entitled to see
+ * the complete data for this specific Place.
+ *
+ * Free contributors retain access to Places they originally
+ * contributed through user_has_place_complete_access().
+ */
+if (
+    !user_has_place_complete_access(
+        $placeId,
+        $userId
+    )
+) {
+    http_response_code(403);
+
+    $pageTitle =
+        'Complete Access Required | Llama Scout';
+
+    require dirname(__DIR__)
+        . '/partials/header.php';
+    ?>
+
+    <section class="contribution-page place-update-page">
+
+        <header class="contribution-header">
+
+            <p class="eyebrow">
+                Place updates
+            </p>
+
+            <h1>
+                Complete Access required
+            </h1>
+
+            <p>
+                You do not have access to the complete information
+                for this Place, so its update form cannot be opened.
+            </p>
+
+            <p>
+                <a
+                    class="contribution-submit"
+                    href="<?= htmlspecialchars(
+                        'https://llamascout.com/place.php?slug='
+                        . rawurlencode($slug),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                >
+                    Return to Place
+                </a>
+            </p>
+
+        </header>
+
+    </section>
+
+    <?php
+
+    require dirname(__DIR__)
+        . '/partials/footer.php';
+
+    exit;
+}
+
+
 $error =
     null;
-
 
 /*
  * =========================================================
