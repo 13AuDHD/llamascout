@@ -303,12 +303,10 @@ require __DIR__ . '/partials/header.php';
                 </p>
                 <p>
                     <strong>Admin Contributed:</strong> Llama Scout administration
-                    personally documented the Place. Owner contributions are shown
-                    publicly as Admin contributions.
+                    personally documented the Place.
                 </p>
                 <p>
-                    The label can move upward as higher-level contributors personally
-                    add field information. It is not a guarantee that conditions have
+                    A label is not a guarantee that conditions have
                     stayed unchanged, so Place History and Field Freshness remain part
                     of the picture.
                 </p>
@@ -362,7 +360,7 @@ require __DIR__ . '/partials/header.php';
                     <p>
                         No. Paid membership provides Complete Access and Member-level
                         contribution status. Scout is a trained field role. Master Scout is
-                        a senior trained role with limited moderation responsibility.
+                        a senior trained role with moderation responsibility.
                     </p>
                 </details>
 
