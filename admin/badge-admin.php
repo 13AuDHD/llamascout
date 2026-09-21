@@ -1108,7 +1108,7 @@ require __DIR__ .
 <form
     method="post"
     class="admin-badge-revoke-form"
-    onsubmit="return confirm('Revoke this earned badge? Use this only for confirmed cheating or fraud.');"
+    onsubmit="return confirm('Revoke this earned badge?');"
 >
     <input
         type="hidden"
