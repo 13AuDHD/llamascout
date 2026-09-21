@@ -6,6 +6,15 @@
    features/policy-forms.css
    ========================================================= */
 
+.admin-policy-section-note {
+    margin: 0;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: .67rem;
+    line-height: 1.5;
+}
+
 .admin-policy-savebar {
     position: sticky;
     bottom: 14px;
