@@ -501,7 +501,7 @@ require dirname(__DIR__) . '/partials/header.php';
     <section class="account-section" aria-labelledby="saved-places-heading">
         <div class="account-section-heading">
             <div>
-                <p class="account-eyebrow">Saved for later</p>
+                <p class="account-eyebrow">Bookmarks</p>
                 <h2 id="saved-places-heading">Saved places</h2>
             </div>
 
