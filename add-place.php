@@ -622,7 +622,7 @@ $placeReportPhotoHelp =
                 >
                     <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
 
-                    Save for Later
+                    Continue Later
                 </button>
             <?php endif; ?>
 
