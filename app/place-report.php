@@ -509,14 +509,14 @@ function llama_place_report_fields(): array
         'min' => '-90',
         'max' => '90',
         'location_field' => true,
-        'placeholder' => '37.25222',
+        'placeholder' => '37.272376',
     ]);
     $add('longitude', 'Longitude', 'location', 'number', 'longitude', [
         'step' => 'any',
         'min' => '-180',
         'max' => '180',
         'location_field' => true,
-        'placeholder' => '-107.2192',
+        'placeholder' => '-107.882456',
     ]);
     $add('elevation_feet', 'Elevation (ft)', 'location', 'number', 'elevation_feet', [
         'step' => '1',
@@ -526,7 +526,7 @@ function llama_place_report_fields(): array
     ]);
     $add('road', 'Road', 'location', 'text', 'road', [
         'location_field' => true,
-        'placeholder' => 'Forest Road 622',
+        'placeholder' => 'Example Creek Rd. / FR 813',
     ]);
     $add('city', 'Nearest city / locality', 'location', 'text', 'city', [
         'location_field' => true,
@@ -540,7 +540,7 @@ function llama_place_report_fields(): array
         'options' => array_combine($stateList, $stateList) ?: [],
     ]);
     $add('region', 'Region / ranger district', 'location', 'text', 'region', [
-        'placeholder' => 'Pagosa Ranger District',
+        'allow_unknown' => true,
     ]);
     $add('land_manager', 'Land manager', 'location', 'select', 'land_manager', [
         'options' => llama_place_report_land_managers(),
@@ -688,7 +688,7 @@ function llama_place_report_fields(): array
         'toilets' => 'Toilets',
         'potable_water' => 'Potable water',
         'trash' => 'Trash service',
-        'fire_ring' => 'Fire ring',
+        'fire_ring' => 'Metal Fire ring',
         'picnic_table' => 'Picnic table',
         'bear_box' => 'Bear box',
         'showers' => 'Showers',
@@ -718,7 +718,7 @@ function llama_place_report_fields(): array
             'points_categories' => ['connectivity'],
         ]);
     }
-    $add('connectivity_starlink_tested', 'Starlink actually tested?', 'connectivity', 'tri', 'connectivity.starlink_tested', [
+    $add('connectivity_starlink_tested', 'Starlink tested?', 'connectivity', 'tri', 'connectivity.starlink_tested', [
         'allow_unknown' => true,
         'points_categories' => ['connectivity'],
     ]);
@@ -858,9 +858,9 @@ function llama_place_report_fields(): array
             'summer' => 'Summer',
             'fall' => 'Fall',
             'winter' => 'Winter',
-            'spring-summer' => 'Spring through summer',
-            'summer-fall' => 'Summer through fall',
-            'late-spring-fall' => 'Late spring through fall',
+            'spring-summer' => 'Spring through Summer',
+            'summer-fall' => 'Summer through Fall',
+            'late-spring-fall' => 'Late Spring through Fall',
             'snow-free-months' => 'Generally snow-free months',
         ],
         'points_categories' => ['seasons_rules_services'],
@@ -903,7 +903,7 @@ function llama_place_report_fields(): array
     foreach ([
         'designated_sites_only' => 'Designated sites only?',
         'pets_allowed' => 'Pets allowed?',
-        'dogs_required_to_be_leashed' => 'Dogs required to be leashed?',
+        'dogs_required_to_be_leashed' => 'Dogs require leash?',
         'food_storage_required' => 'Food storage required?',
         'generator_restrictions' => 'Generator restrictions?',
         'existing_sites_encouraged' => 'Existing sites encouraged?',
@@ -981,7 +981,7 @@ function llama_place_report_fields(): array
         ]);
     }
     foreach ([
-        'recommended_overnight_stop' => 'Recommended for an overnight stop?',
+        'recommended_overnight_stop' => 'Recommended for overnight stop?',
         'recommended_quiet_evening' => 'Recommended for a quiet evening?',
         'recommended_extended_stay' => 'Recommended for an extended stay?',
         'recommended_sensory_retreat' => 'Recommended for a sensory retreat?',
@@ -1057,7 +1057,7 @@ function llama_place_report_fields(): array
      */
     $fieldHelp = [
         'type' =>
-            'Choose the kind of place someone would recognize when planning a stay. For example: dispersed camping for an undeveloped public-land site, retail parking for an overnight store lot, or travel center for a Loveâs-style stop.',
+            'Choose the kind of place someone would recognize when planning a stay. For example: dispersed camping for an undeveloped public-land site, retail parking for an overnight store lot, or travel center for a Loves-style stop.',
         'region' =>
             'Use the local administrative area when one exists. Examples include Pagosa Ranger District, Moab Field Office, a national park district, or a named city neighborhood. For an urban place with no useful region, leave this blank.',
         'land_manager' =>
