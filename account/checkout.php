@@ -342,7 +342,7 @@ require dirname(__DIR__) . '/partials/header.php';
     <h1>Finish joining Llama Scout.</h1>
     <p>
         You stay on Llama Scout while Stripe securely handles the payment fields.
-        Llama Scout never receives or stores your full card number.
+        Llama Scout never receives or stores your financial data.
     </p>
 </header>
 
