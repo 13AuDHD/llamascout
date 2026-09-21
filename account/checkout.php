@@ -198,37 +198,46 @@ if (!$offer) {
             ];
 
             if ($onSale) {
+                /*
+                 * A campaign discount is already being applied automatically.
+                 * Stripe does not allow discounts and allow_promotion_codes
+                 * to be supplied on the same Checkout Session.
+                 */
                 $sessionData['discounts'] = [[
                     'coupon' => $couponId,
                 ]];
-
-                $sessionData['allow_promotion_codes'] = false;
-
+            
             } elseif ($linkedPromotionCode) {
+                /*
+                 * A specific Promotion Code is already attached to this
+                 * Checkout Session, so do not send allow_promotion_codes.
+                 */
                 $sessionData['discounts'] = [[
                     'promotion_code' =>
                         (string) $linkedPromotionCode[
                             'stripe_promotion_code_id'
                         ],
                 ]];
-
-                $sessionData['allow_promotion_codes'] = false;
-
+            
                 $sessionData['metadata'][
                     'llama_promotion_code'
                 ] =
                     (string) $linkedPromotionCode['code'];
-
+            
                 $sessionData['subscription_data']['metadata'][
                     'llama_promotion_code'
                 ] =
                     (string) $linkedPromotionCode['code'];
-
+            
             } else {
+                /*
+                 * Only offer Stripe's manual promotion-code field when
+                 * Llama Scout is not already applying a discount.
+                 */
                 $sessionData['allow_promotion_codes'] =
                     $manualPromotionCodesEnabled;
             }
-
+            
             if (!empty($account['stripe_customer_id'])) {
                 $sessionData['customer'] = (string) $account['stripe_customer_id'];
             } else {
