@@ -67,7 +67,7 @@ $savedDraftCount = llama_place_draft_count(
             <?= llama_icon('bookmark') ?>
 
             <span>
-                <strong>Saved for Later</strong>
+                <strong>Continue Editing</strong>
                 <small>
                     You have <?= $savedDraftCount ?>
                     place<?= $savedDraftCount === 1 ? '' : 's' ?>
