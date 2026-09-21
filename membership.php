@@ -37,10 +37,10 @@ require __DIR__ . '/partials/header.php';
             <h1>Choose how much of the place you want to know.</h1>
 
             <p>
-                A free Llama Scout membership lets you participate as a Community
-                contributor while keeping most of the database in the public planning
-                view. Paid membership adds Complete Access and identifies your approved
-                field work as Member contributions.
+                A free Llama Scout membership lets you help build the database as a
+                Community contributor. Paid membership adds Complete Access to the
+                database and identifies your approved field work at the Member level.
+                Scout and Master Scout are separate trained roles.
             </p>
         </div>
     </header>
@@ -56,8 +56,8 @@ require __DIR__ . '/partials/header.php';
                     <h2>Free Member</h2>
                     <p class="membership-public-price"><strong>$0</strong></p>
                     <p>
-                        Useful planning information plus Community contribution tools.
-                        Places you originally contribute unlock completely for you.
+                        Useful planning information plus Community-level contribution
+                        tools. Places you originally contribute unlock completely for you.
                     </p>
 
                     <ul>
@@ -167,7 +167,7 @@ require __DIR__ . '/partials/header.php';
                     <?php endif; ?>
 
                     <p>
-                        Complete Access plus the Member Contributor experience.
+                        Complete Access plus Member-level contribution tools.
                         Still no actual llama included.
                     </p>
 
@@ -253,7 +253,7 @@ require __DIR__ . '/partials/header.php';
                         <tr><td>City weather today</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Save Places</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Contribute Places and updates</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Contribution label</td><td>Community</td><td>Member</td></tr>
+                        <tr><td>Contribution label</td><td>Community Contributed</td><td>Member Contributed</td></tr>
                         <tr><td>Geofenced Place check-ins</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Historical report comparison</td><td>Own contributed Places</td><td>Complete Access Places</td></tr>
                         <tr><td>Compare Places</td><td>No</td><td>Yes</td></tr>
@@ -276,6 +276,47 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 
+    <section class="membership-public-explainer" id="contribution-levels">
+        <div class="public-home-container membership-public-explainer-grid">
+            <div>
+                <p class="public-home-eyebrow">Contribution labels</p>
+                <h2>Membership controls access. Contribution level shows who documented the Place.</h2>
+            </div>
+
+            <div>
+                <p>
+                    <strong>Community Contributed:</strong> a signed-in Free Member
+                    personally added field information.
+                </p>
+                <p>
+                    <strong>Member Contributed:</strong> a paid Member with Complete
+                    Access personally added field information.
+                </p>
+                <p>
+                    <strong>Scout Contributed:</strong> a trained Llama Scout personally
+                    documented the Place in the field.
+                </p>
+                <p>
+                    <strong>Master Scout Contributed:</strong> a trained Master Scout
+                    personally documented the Place. Master Scouts also have limited
+                    moderation responsibilities.
+                </p>
+                <p>
+                    <strong>Admin Contributed:</strong> Llama Scout administration
+                    personally documented the Place. Owner contributions are shown
+                    publicly as Admin contributions.
+                </p>
+                <p>
+                    The label can move upward as higher-level contributors personally
+                    add field information. It is not a guarantee that conditions have
+                    stayed unchanged, so Place History and Field Freshness remain part
+                    of the picture.
+                </p>
+            </div>
+        </div>
+    </section>
+
+
     <section class="membership-public-faq">
         <div class="public-home-container">
             <div class="public-home-section-heading">
@@ -290,18 +331,38 @@ require __DIR__ . '/partials/header.php';
                     <summary>Do I have to pay to use Llama Scout?</summary>
                     <p>
                         No. A free membership includes useful Place information,
-                        saved Places, contributions, profiles, badges, and related
-                        account tools. Paid membership unlocks the complete Place report.
+                        saved Places, Community-level contributions, profiles, points,
+                        eligible badges, and related account tools. Paid membership
+                        unlocks Complete Access to the database.
                     </p>
                 </details>
 
                 <details>
                     <summary>Does paid membership change how my contributions are identified?</summary>
                     <p>
-                        Yes. Free accounts contribute at the Community level. An active paid
-                        membership contributes at the Member level and includes Complete Access.
-                        Scout and Master Scout levels are separate trained roles and are not
-                        purchased through membership.
+                        Yes. Free accounts contribute at the Community level. An active
+                        paid membership contributes at the Member level and includes Complete
+                        Access. Scout and Master Scout are separate trained roles and cannot
+                        be purchased through membership.
+                    </p>
+                </details>
+
+
+                <details>
+                    <summary>Does a higher contribution label guarantee that a Place is accurate?</summary>
+                    <p>
+                        No. The label identifies the highest contributor level that has
+                        personally documented the Place. Conditions can change after any
+                        visit, so Llama Scout also shows Field Freshness and Place History.
+                    </p>
+                </details>
+
+                <details>
+                    <summary>Can I become a Scout or Master Scout by buying a membership?</summary>
+                    <p>
+                        No. Paid membership provides Complete Access and Member-level
+                        contribution status. Scout is a trained field role. Master Scout is
+                        a senior trained role with limited moderation responsibility.
                     </p>
                 </details>
 

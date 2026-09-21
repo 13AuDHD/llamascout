@@ -260,26 +260,81 @@ require __DIR__ . '/partials/header.php';
     </section>
 
 
-    <section class="about-section">
-        <div class="about-container about-two-column">
+    <section class="about-feature-section" id="contribution-labels">
+        <div class="about-container">
 
-            <div>
-                <p class="about-eyebrow">Llama Scouted</p>
-                <h2>What that label actually means.</h2>
+            <div class="about-section-heading">
+                <p class="about-eyebrow">Contribution labels</p>
+                <h2>See who has personally helped document a Place.</h2>
+                <p>
+                    Each Place can show the highest contributor level that has
+                    personally added field information to it. The label can move
+                    upward when someone at a higher level creates the Place, checks
+                    in there, or submits an approved field update. Simply reviewing
+                    someone else's work does not change the label.
+                </p>
             </div>
 
-            <div class="about-copy">
+            <div class="about-feature-grid">
+                <article class="about-feature-card">
+                    <i aria-hidden="true"><?= llama_icon('users') ?></i>
+                    <h3>Community Contributed</h3>
+                    <p>
+                        A signed-in Free Member personally contributed information
+                        about the Place.
+                    </p>
+                </article>
+
+                <article class="about-feature-card">
+                    <i aria-hidden="true"><?= llama_icon('user') ?></i>
+                    <h3>Member Contributed</h3>
+                    <p>
+                        A paid Member with Complete Access personally contributed
+                        information about the Place.
+                    </p>
+                </article>
+
+                <article class="about-feature-card">
+                    <i aria-hidden="true"><?= llama_icon('binoculars') ?></i>
+                    <h3>Scout Contributed</h3>
+                    <p>
+                        A trained Llama Scout personally documented the Place in the
+                        field.
+                    </p>
+                </article>
+
+                <article class="about-feature-card">
+                    <i aria-hidden="true"><?= llama_icon('compass') ?></i>
+                    <h3>Master Scout Contributed</h3>
+                    <p>
+                        A trained Master Scout personally documented the Place.
+                        Master Scouts also help moderate community contributions.
+                    </p>
+                </article>
+
+                <article class="about-feature-card">
+                    <i aria-hidden="true"><?= llama_icon('shield-check') ?></i>
+                    <h3>Admin Contributed</h3>
+                    <p>
+                        Llama Scout administration personally documented the Place.
+                        Owner contributions are shown publicly as Admin contributions.
+                    </p>
+                </article>
+            </div>
+
+            <div class="about-copy about-contribution-label-note">
                 <p>
-                    "Llama Scouted" means a Llama Scout has physically been at the
-                    Place and documented it through the Scout process. It is a record
-                    that field observation happened, not a permanent guarantee that
-                    every condition remains unchanged forever.
+                    A contribution label tells you who has personally documented the
+                    Place. It does not guarantee that every condition is still the same.
+                    Use Field Freshness and Place History to see when the Place was last
+                    checked and how its information has changed over time.
                 </p>
 
                 <p>
-                    A Place can also begin as a member contribution and later become
-                    Llama Scouted. Future member edits can improve that Place without
-                    erasing the fact that it was field-scouted at an earlier point.
+                    "Llama Scouted" still means a trained Scout or Master Scout has
+                    physically visited and documented the Place through the Scout
+                    process. A Place can begin as Community Contributed and later become
+                    Scout Contributed without losing its original history.
                 </p>
             </div>
 
@@ -291,19 +346,20 @@ require __DIR__ . '/partials/header.php';
         <div class="about-container about-community-grid">
 
             <div>
-                <p class="about-eyebrow">Member contributions</p>
+                <p class="about-eyebrow">Community contributions</p>
                 <h2>Llama Scout can get better without pretending every submission is automatically correct.</h2>
 
                 <p>
-                    Members can submit new Places, suggest updates, report problems,
-                    and contribute photos. Those contributions go through review
-                    before they change the published Place.
+                    Signed-in members can submit new Places, suggest updates, report
+                    problems, contribute photos, and check in when they are physically
+                    at a Place. Free Members contribute at the Community level. Paid
+                    Members contribute at the Member level.
                 </p>
 
                 <p>
-                    Approved contributions build a visible history. Members can earn
-                    contribution points and badges, while the Place keeps provenance
-                    showing how it was created and improved.
+                    Approved contributions build a visible history and can earn
+                    contribution points and eligible badges. Trained Scouts and Master
+                    Scouts have separate field roles beyond ordinary membership.
                 </p>
             </div>
 
@@ -325,13 +381,13 @@ require __DIR__ . '/partials/header.php';
         <div class="about-container about-membership-grid">
 
             <div>
-                <p class="about-eyebrow">Public and paid access</p>
-                <h2>Useful public context, complete Place reports for members with full access.</h2>
+                <p class="about-eyebrow">Membership and contributor roles</p>
+                <h2>Access and contribution level answer two different questions.</h2>
 
                 <p>
-                    Public visitors can see general location and planning information
-                    without exposing the exact Place. Full membership unlocks the
-                    exact coordinates and the detailed field report.
+                    Membership controls what Place information an account can see.
+                    Contribution level shows how that person participates when they
+                    help document a Place.
                 </p>
             </div>
 
@@ -347,17 +403,34 @@ require __DIR__ . '/partials/header.php';
                 <div>
                     <strong>Free Member</strong>
                     <span>
-                        Public access plus saved Places, contributions, profile,
-                        badges, reports, and member tools.
+                        Public planning access plus Community-level contributions,
+                        saved Places, profile tools, points, and eligible badges.
+                        Places they originally contribute unlock completely for them.
                     </span>
                 </div>
 
                 <div>
                     <strong>Paid Member</strong>
                     <span>
-                        Exact coordinates, full gallery, road and access details,
-                        sensory conditions, connectivity, complete report, and
-                        exact-location weather.
+                        Complete Access to the database plus Member-level contributions,
+                        exact coordinates, full reports, exact-location weather, and
+                        comparison tools.
+                    </span>
+                </div>
+
+                <div>
+                    <strong>Scout</strong>
+                    <span>
+                        A trained field contributor who receives complimentary Complete
+                        Access while active and contributes at the Scout level.
+                    </span>
+                </div>
+
+                <div>
+                    <strong>Master Scout</strong>
+                    <span>
+                        A senior trained Scout who contributes at the Master Scout level
+                        and can moderate eligible community submissions.
                     </span>
                 </div>
             </div>

@@ -343,6 +343,10 @@ require __DIR__ . '/partials/header.php';
                         <?= place_history_h(llama_contribution_level_label($contributionLevel)) ?>
                     </span>
 
+                    <a class="historical-report-level-help" href="/about.php#contribution-labels">
+                        What does this label mean?
+                    </a>
+
                     <dl>
                         <div>
                             <dt>Report date</dt>

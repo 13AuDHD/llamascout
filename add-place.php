@@ -22,6 +22,11 @@ $currentContributionShortLabel =
         $currentContributionLevel
     );
 
+$currentContributionLabel =
+    llama_contribution_level_label(
+        $currentContributionLevel
+    );
+
 if (
     !llama_contributor_can(
         db(),
@@ -418,7 +423,17 @@ $placeReportPhotoHelp =
             <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
 
             <span>
-                A moderator reviews the full submission, photos, and location 
+                If approved, your field work is identified as
+                <strong><?= htmlspecialchars($currentContributionLabel, ENT_QUOTES, 'UTF-8') ?></strong>.
+                The label records your contributor level when you documented the Place.
+            </span>
+        </div>
+
+        <div class="add-place-form-note">
+            <i aria-hidden="true"><?= llama_icon('shield-check') ?></i>
+
+            <span>
+                A moderator reviews the full submission, photos, and location
                 data before it becomes a Place.
             </span>
         </div>

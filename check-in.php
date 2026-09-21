@@ -324,7 +324,8 @@ require __DIR__ . '/partials/header.php';
         <p>
             A check-in records that you were physically at this Place. It keeps
             the history fresh without forcing you to submit an update when
-            nothing changed.
+            nothing changed. Your check-in appears in Place History with the
+            contributor level you hold at the time.
         </p>
     </header>
 
