@@ -548,15 +548,6 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                <?= moderation_e(
-                    $badgeScopeDescriptions[
-                        llama_badge_scope_normalize(
-                            $badge['eligibility_scope'] ?? LLAMA_BADGE_SCOPE_ALL_MEMBERS
-                        )
-                    ] ?? ''
-                ) ?>
-            </small>
         </label>
 
         <label>
@@ -573,15 +564,6 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                <?= moderation_e(
-                    $badgeRecognitionDescriptions[
-                        llama_badge_recognition_normalize(
-                            $badge['recognition_mode'] ?? LLAMA_BADGE_RECOGNITION_PERMANENT
-                        )
-                    ] ?? ''
-                ) ?>
-            </small>
         </label>
 
         <label class="is-wide">
@@ -646,24 +628,6 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small data-badge-threshold-help>
-                <?php
-                $currentThresholdMetric =
-                    (string) (
-                        $badge['threshold_metric']
-                        ?? ''
-                    );
-
-                echo moderation_e(
-                    (string) (
-                        $badgeThresholdMetricDescriptions[
-                            $currentThresholdMetric
-                        ]
-                        ?? 'Choose the activity this automatic badge measures.'
-                    )
-                );
-                ?>
-            </small>
         </label>
 
         <label
