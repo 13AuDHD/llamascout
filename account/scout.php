@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/scout-stats.php';
 require_once dirname(__DIR__) . '/app/place-contributions.php';
 require_once dirname(__DIR__) . '/app/master-scout.php';
+require_once dirname(__DIR__) . '/app/master-scout-moderation.php';
 
 require_login();
 
@@ -245,7 +246,8 @@ $stmt =
             ) AS corrections
          FROM place_contributions
          WHERE user_id = ?
-           AND status = "approved"'
+           AND status = "approved"
+           AND role_at_time IN ("scout", "master-scout", "master_scout")'
     );
 
 $stmt->execute([
@@ -348,6 +350,7 @@ $stmt =
             ON p.id = pc.place_id
          WHERE pc.user_id = ?
            AND pc.status = "approved"
+           AND pc.role_at_time IN ("scout", "master-scout", "master_scout")
          ORDER BY
             COALESCE(
                 pc.approved_at,
@@ -423,6 +426,21 @@ $masterEnabled =
     !empty(
         $masterQualification['enabled']
     );
+
+$masterModerationCounts =
+    $isMasterScout
+        ? llama_master_moderation_counts(
+            $db,
+            $userId
+        )
+        : [
+            'new_places' => 0,
+            'updates' => 0,
+        ];
+
+$masterModerationWaiting =
+    (int) ($masterModerationCounts['new_places'] ?? 0)
+    + (int) ($masterModerationCounts['updates'] ?? 0);
 
 
 $pageTitle =
@@ -529,7 +547,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <div>
-        <span>Lifetime Points</span>
+        <span>Scout Service Points</span>
         <strong>
             <?= number_format(
                 $lifetimePoints
@@ -538,7 +556,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <div>
-        <span>New Places</span>
+        <span>Scout New Places</span>
         <strong>
             <?= number_format(
                 $lifetimeNewPlaces
@@ -547,7 +565,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
 
     <div>
-        <span>Approved Contributions</span>
+        <span>Scout Contributions</span>
         <strong>
             <?= number_format(
                 $totalApproved
@@ -680,14 +698,14 @@ require dirname(__DIR__) . '/partials/header.php';
 <header>
     <div>
         <p class="eyebrow">Field Work</p>
-        <h2>Recent Approved Contributions</h2>
+        <h2>Recent Scout Contributions</h2>
     </div>
 </header>
 
 <?php if (!$recentContributions): ?>
 
     <div class="scout-basecamp-empty">
-        No approved contributions yet.
+        No approved Scout contributions yet.
     </div>
 
 <?php else: ?>
@@ -858,13 +876,13 @@ require dirname(__DIR__) . '/partials/header.php';
 <header>
     <div>
         <p class="eyebrow">Contribution Mix</p>
-        <h2>Lifetime Field Work</h2>
+        <h2>Scout Service History</h2>
     </div>
 </header>
 
 <dl class="scout-basecamp-definition-list">
     <div>
-        <dt>New Places</dt>
+        <dt>Scout new Places</dt>
         <dd><?= number_format($lifetimeNewPlaces) ?></dd>
     </div>
 
@@ -917,6 +935,12 @@ require dirname(__DIR__) . '/partials/header.php';
     </p>
 
 <?php else: ?>
+
+<p class="scout-basecamp-muted">
+    Master Scout progress counts work completed while serving as a Scout.
+    Community and paid-Member contributions from before Scout training remain
+    in your lifetime history, but do not satisfy Master Scout service requirements.
+</p>
 
 <div class="scout-basecamp-requirements">
 
@@ -983,8 +1007,8 @@ require dirname(__DIR__) . '/partials/header.php';
         <p class="eyebrow">Current Rank</p>
         <h2>Master Scout</h2>
         <p>
-            Master Scout recognizes sustained contribution across
-            new Places, updates, corrections, and database stewardship.
+            Master Scout recognizes sustained trained field work and carries
+            responsibility for moderating community Place contributions.
         </p>
     </div>
 </section>
@@ -1002,14 +1026,24 @@ require dirname(__DIR__) . '/partials/header.php';
 </header>
 
 <nav class="scout-basecamp-links">
+    <?php if ($isMasterScout): ?>
+        <a href="/master-moderation.php">
+            <i aria-hidden="true"><?= llama_icon('clipboard-check') ?></i>
+            Moderation Queue
+            <?php if ($masterModerationWaiting > 0): ?>
+                <strong><?= number_format($masterModerationWaiting) ?></strong>
+            <?php endif; ?>
+        </a>
+    <?php endif; ?>
+
     <a href="https://llamascout.com/add-place.php">
         <i aria-hidden="true"><?= llama_icon('plus') ?></i>
         Add a Place
     </a>
 
-    <a href="/">
-        <i aria-hidden="true"><?= llama_icon('user') ?></i>
-        My account
+    <a href="/contributions.php">
+        <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+        My Contributions
     </a>
 
     <a href="/#account-overview-heading">
