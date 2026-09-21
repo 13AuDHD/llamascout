@@ -414,8 +414,7 @@ $placeReportPhotoHelp =
 
             <span>
                 <strong>Minimum to submit:</strong> a Place name, exact map
-                location, and at least one current photo. The rest of the report
-                can stay incomplete until someone actually observes those details.
+                location, and at least one current photo.
             </span>
         </div>
 
@@ -425,7 +424,6 @@ $placeReportPhotoHelp =
             <span>
                 If approved, your field work is identified as
                 <strong><?= htmlspecialchars($currentContributionLabel, ENT_QUOTES, 'UTF-8') ?></strong>.
-                The label records your contributor level when you documented the Place.
             </span>
         </div>
 
