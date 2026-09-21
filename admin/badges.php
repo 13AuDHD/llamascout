@@ -1129,9 +1129,6 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                Controls which contribution level can earn this badge. Credential badges are automatically kept credential-based.
-            </small>
         </label>
 
         <label>
@@ -1146,9 +1143,6 @@ require __DIR__ .
                     </option>
                 <?php endforeach; ?>
             </select>
-            <small>
-                Badges stay earned when a membership or Scout role changes. Removal is an explicit disciplinary action, not an automatic role change.
-            </small>
         </label>
 
         <label class="is-wide">
@@ -1157,7 +1151,7 @@ require __DIR__ .
                 name="how_to_earn"
                 rows="2"
                 maxlength="500"
-                placeholder="Explain the requirement in member-facing language"
+                placeholder="Explain the requirement..."
             ></textarea>
         </label>
 
@@ -1217,6 +1211,9 @@ require __DIR__ .
 
         <label>
             <span>Sort order</span>
+            <small>
+                Filename from /assets/icons, without .svg.
+            </small>
             <input
                 type="number"
                 name="sort_order"
@@ -1234,9 +1231,6 @@ require __DIR__ .
                 placeholder="award"
                 list="badge-icon-options"
             >
-            <small>
-                Filename from /assets/icons, without .svg.
-            </small>
         </label>
 
         <datalist id="badge-icon-options">
