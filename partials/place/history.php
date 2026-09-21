@@ -7,7 +7,8 @@
             <p>
                 Follow check-ins, updates, resolved problems, and past reports
                 to see how this Place has changed over time. The newest activity
-                appears first.
+                appears first. Contribution labels show each person's level when
+                that activity was recorded.
             </p>
         </div>
 

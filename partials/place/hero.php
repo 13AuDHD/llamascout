@@ -63,6 +63,13 @@
                             <?= (int) ($reportCompleteness['percent'] ?? 0) ?>%
                         </span>
                     </div>
+
+                    <a
+                        class="place-contribution-help"
+                        href="/about.php#contribution-labels"
+                    >
+                        What do these labels mean?
+                    </a>
                 </div>
             </div>
 

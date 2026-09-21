@@ -49,7 +49,7 @@ $overallLevel =
             </div>
 
             <div>
-                <span>Scout / Admin</span>
+                <span>Scout / Master Scout / Admin</span>
                 <strong><?= place_h((string) ($placeFreshness['scout_relative'] ?? 'No check yet')) ?></strong>
                 <small><?= place_h((string) ($placeFreshness['scout_date_label'] ?? 'No check recorded')) ?></small>
             </div>
