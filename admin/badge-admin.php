@@ -479,9 +479,6 @@ require __DIR__ .
                 ) ?>"
                 required
             >
-            <small>
-                Defaults from the badge name, but can be edited.
-            </small>
         </label>
 
         <label>
@@ -594,9 +591,6 @@ require __DIR__ .
                 rows="2"
                 maxlength="500"
             ><?= moderation_e((string) ($badge['how_to_earn'] ?? '')) ?></textarea>
-            <small>
-                Member-facing requirement text. Leave blank to use the automatic fallback.
-            </small>
         </label>
 
         <label
@@ -691,9 +685,6 @@ require __DIR__ .
                     ? 'required'
                     : '' ?>
             >
-            <small>
-                Award the badge when the selected metric reaches this value.
-            </small>
         </label>
 
         <label>
@@ -708,6 +699,9 @@ require __DIR__ .
 
         <label>
             <span>Local SVG icon</span>
+            <small>
+                Filename from /assets/icons, without .svg.
+            </small>
             <input
                 type="text"
                 name="icon"
@@ -719,9 +713,7 @@ require __DIR__ .
                 ) ?>"
                 list="badge-icon-options"
             >
-            <small>
-                Filename from /assets/icons, without .svg.
-            </small>
+
         </label>
 
         <datalist id="badge-icon-options">
