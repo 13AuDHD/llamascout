@@ -580,25 +580,37 @@ $newPlacePointEstimate =
 $fields =
     llama_place_report_fields();
 
+$optionalFields =
+    llama_points_optional_new_place_fields();
+
 $answered = 0;
+$totalFields = 0;
 
 foreach (
     array_keys($fields)
     as $fieldKey
 ) {
     if (
-        llama_place_report_answer_state(
-            $data,
-            $fieldKey
+        isset(
+            $optionalFields[
+                (string) $fieldKey
+            ]
         )
-        !== 'unanswered'
+    ) {
+        continue;
+    }
+
+    $totalFields++;
+
+    if (
+        llama_points_has_answer(
+            $pointInput,
+            (string) $fieldKey
+        )
     ) {
         $answered++;
     }
 }
-
-$totalFields =
-    count($fields);
 
 $unknownCount =
     count(
@@ -680,8 +692,9 @@ require __DIR__
             </h2>
 
             <p>
-                Not provided means the question was untouched.
-                Unknown means the contributor deliberately selected ?.
+                Optional notes are excluded. Unknown counts as answered,
+                and completed checkbox sections treat unchecked options
+                as observed No answers.
             </p>
         </div>
     </header>
