@@ -11,11 +11,11 @@
 .admin-topbar-user-trigger {
     display: grid;
     grid-template-columns:
-        38px minmax(0, auto) 12px;
-    gap: 9px;
+        50px minmax(0, auto) 12px;
+    gap: 10px;
     align-items: center;
 
-    min-height: 46px;
+    min-height: 58px;
 
     padding: 4px 7px 4px 4px;
 
@@ -41,8 +41,8 @@
 
 .admin-topbar-user-trigger
 .admin-user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
 
     display: block;
 
@@ -189,7 +189,7 @@
 @media (max-width: 560px) {
     .admin-topbar-user-trigger {
         grid-template-columns:
-            38px 12px;
+            50px 12px;
 
         gap: 6px;
     }
