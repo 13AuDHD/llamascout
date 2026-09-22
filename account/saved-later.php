@@ -287,7 +287,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="saved-later-estimate-note">
-            All point categories are weighted by how much has been answered.
+            All point categories are weighted by how much has been answered. The llamas hid the algorithm, somewhere.
         </p>
     <?php endif; ?>
 </section>
