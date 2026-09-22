@@ -50,13 +50,13 @@ $contributorHeading = match ($currentContributionLevel) {
 
 $contributorDescription = match ($currentContributionLevel) {
     LLAMA_CONTRIBUTION_LEVEL_ADMIN =>
-        'Your approved field work is identified as Admin Contributed. Owner accounts are shown publicly as Admin.',
+        'Your approved field work is identified as Admin Contributed.',
     LLAMA_CONTRIBUTION_LEVEL_MASTER =>
-        'Your approved field work is identified as Master Scout Contributed. You also have limited moderation responsibility while active.',
+        'Your approved field work is identified as Master Scout Contributed.',
     LLAMA_CONTRIBUTION_LEVEL_SCOUT =>
-        'Your approved field work is identified as Scout Contributed. Active Scout status also includes complimentary Complete Access.',
+        'Your approved field work is identified as Scout Contributed.',
     LLAMA_CONTRIBUTION_LEVEL_MEMBER =>
-        'Your paid membership includes Complete Access, and your approved field work is identified as Member Contributed.',
+        'Your approved field work is identified as Member Contributed.',
     default =>
         'Your approved field work is identified as Community Contributed. Places you originally contribute unlock completely for your account.',
 };
