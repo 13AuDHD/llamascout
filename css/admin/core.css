@@ -6,7 +6,7 @@
 
 :root {
     --admin-sidebar-width: 260px;
-    --admin-topbar-height: 80px;
+    --admin-topbar-height: 92px;
 
     --admin-gap: 18px;
     --admin-panel-gap: 18px;
@@ -49,6 +49,7 @@
 
 .admin-sidebar-top {
     flex: 0 0 auto;
+    height: var(--admin-topbar-height);
     min-height: var(--admin-topbar-height);
 
     display: flex;
@@ -244,6 +245,7 @@
     top: 0;
     z-index: 900;
 
+    height: var(--admin-topbar-height);
     min-height: var(--admin-topbar-height);
 
     display: flex;
