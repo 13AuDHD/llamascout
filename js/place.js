@@ -978,9 +978,7 @@
 
             <p class="place-weather-note">
 
-                Forecast calculated for this campsite’s exact
-
-                location and recorded elevation.
+                Forecast for this campsite’s location and elevation.
 
             </p>
 
