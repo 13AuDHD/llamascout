@@ -83,7 +83,7 @@
     </div>
 
     <div class="place-weather-content" data-place-weather-content aria-live="polite">
-        <p class="place-weather-loading">Loading weatherâ¦</p>
+        <p class="place-weather-loading">Loading weather:</p>
     </div>
 </section>
 
