@@ -287,9 +287,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="saved-later-estimate-note">
-            Amenities and Connectivity earn their configured category value once any
-            information is supplied. Other categories are weighted by how much has
-            been answered.
+            All point categories are weighted by how much has been answered.
         </p>
     <?php endif; ?>
 </section>
