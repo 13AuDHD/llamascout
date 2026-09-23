@@ -8,9 +8,11 @@ require_once dirname(__DIR__) . '/app/admin-shop.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment.php';
 require_once dirname(__DIR__) . '/app/admin-fulfillment-safe.php';
 require_once dirname(__DIR__) . '/app/shop-returns.php';
+require_once dirname(__DIR__) . '/app/shop-return-refunds.php';
 require_once dirname(__DIR__) . '/app/shipping.php';
 require_once dirname(__DIR__) . '/app/printful-orders.php';
 require_once dirname(__DIR__) . '/app/printful-sync.php';
+require_once dirname(__DIR__) . '/app/printful-cancellation.php';
 require_once dirname(__DIR__) . '/app/printify-orders.php';
 require_once dirname(__DIR__) . '/app/printify-sync.php';
 require_once __DIR__ . '/_dashboard.php';
@@ -145,6 +147,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notice =
                     'Shipping label purchased. Tracking: ' .
                     (string) $label['tracking_code'];
+            } elseif ($action === 'cancel-printful') {
+                $cancelled = llama_printful_cancel_fulfillment(
+                    $db,
+                    (int) ($_POST['fulfillment_id'] ?? 0),
+                    $actorUserId
+                );
+
+                $notice =
+                    'Printful order #' .
+                    (string) $cancelled['provider_order_id'] .
+                    ' cancelled.';
+
+                if (!empty($cancelled['refund_required'])) {
+                    $notice .=
+                        ' Fulfillment is stopped. The customer can now be refunded through Stripe.';
+                }
             } elseif ($action === 'refresh-printful') {
                 $sync = llama_printful_sync_fulfillment(
                     $db,
@@ -304,6 +322,38 @@ $fulfillments = admin_shop_fulfillments(
     $db,
     $orderId
 );
+
+$refundBlocker = null;
+
+if ((string) $order['payment_status'] === 'paid') {
+    $refundBlocker = shop_return_aware_refund_blocker(
+        $db,
+        $orderId
+    );
+}
+
+$hasShippedOrDeliveredFulfillment = false;
+
+foreach ($fulfillments as $fulfillment) {
+    $fulfillmentStatus = strtolower(
+        trim((string) ($fulfillment['status'] ?? ''))
+    );
+
+    if (
+        in_array(
+            $fulfillmentStatus,
+            [
+                'shipped',
+                'delivered',
+                'fulfilled',
+            ],
+            true
+        )
+    ) {
+        $hasShippedOrDeliveredFulfillment = true;
+        break;
+    }
+}
 
 $shippingAddress = [];
 
@@ -616,7 +666,7 @@ $itemReturn =
 <?php endif; ?>
 
 
-<section class="admin-panel">
+<section class="admin-panel" id="fulfillment">
 
 <header class="admin-panel-header">
     <div>
@@ -826,6 +876,31 @@ if ($printfulProviderOrderId !== '') {
         $printfulRemoteError = $exception->getMessage();
     }
 }
+
+$printfulRemoteStatus = strtolower(
+    trim((string) ($printfulRemoteOrder['status'] ?? ''))
+);
+
+$printfulLocalStatus = strtolower(
+    trim((string) ($fulfillment['status'] ?? ''))
+);
+
+$printfulRemoteAlreadyCancelled = in_array(
+    $printfulRemoteStatus,
+    ['canceled', 'cancelled'],
+    true
+);
+
+$printfulCanCancel =
+    $printfulProviderOrderId !== ''
+    && $printfulRemoteError === ''
+    && $printfulLocalStatus !== 'cancelled'
+    && (
+        llama_printful_cancellable_status(
+            $printfulRemoteStatus
+        )
+        || $printfulRemoteAlreadyCancelled
+    );
 ?>
 <div class="admin-commerce-provider-box">
 <div>
@@ -856,6 +931,25 @@ if ($printfulProviderOrderId !== '') {
     </button>
 </form>
 <?php else: ?>
+<div class="admin-user-form-actions">
+
+<?php if ($printfulCanCancel): ?>
+<form
+    method="post"
+    onsubmit="return confirm('Cancel this order at Printful? This stops fulfillment but does NOT refund the customer.');"
+>
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
+    <input type="hidden" name="fulfillment_id" value="<?= (int) $fulfillment['id'] ?>">
+    <input type="hidden" name="shop_admin_action" value="cancel-printful">
+    <button class="admin-button" type="submit">
+        <?= $printfulRemoteAlreadyCancelled
+            ? 'Reconcile Printful cancellation'
+            : 'Cancel at Printful' ?>
+    </button>
+</form>
+<?php endif; ?>
+
 <form method="post">
     <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
     <input type="hidden" name="order_id" value="<?= (int) $orderId ?>">
@@ -866,11 +960,46 @@ if ($printfulProviderOrderId !== '') {
         Refresh from Printful
     </button>
 </form>
+
 <?php if (!empty($printfulRemoteOrder['dashboard_url'])): ?>
 <a class="admin-button" href="<?= moderation_e((string) $printfulRemoteOrder['dashboard_url']) ?>" target="_blank" rel="noopener">
     Open in Printful
 </a>
 <?php endif; ?>
+
+</div>
+
+<?php if ($printfulRemoteStatus === 'archived'): ?>
+<div class="admin-user-notice is-warning">
+    <strong>Archived is not cancelled.</strong>
+    <p>
+        Printful has only hidden this order from its normal order list.
+        Llama Scout will not allow the customer refund until Printful
+        confirms that fulfillment is actually cancelled. Use
+        <strong>Cancel at Printful</strong> above. If Printful refuses
+        cancellation while the order is archived, unarchive it in
+        Printful and try the cancellation again.
+    </p>
+</div>
+<?php elseif (in_array($printfulRemoteStatus, ['inprocess', 'partial', 'fulfilled'], true)): ?>
+<div class="admin-user-notice is-warning">
+    <strong>Printful fulfillment has already started.</strong>
+    <p>
+        This order can no longer use the normal cancellation path.
+        If merchandise ships, record the physical return before
+        refunding the customer.
+    </p>
+</div>
+<?php elseif ($printfulRemoteStatus === 'inreview'): ?>
+<div class="admin-user-notice is-warning">
+    <strong>Printful is reviewing this order.</strong>
+    <p>
+        Printful does not permit cancellation while the order is in
+        review. Refresh after the review finishes.
+    </p>
+</div>
+<?php endif; ?>
+
 <?php endif; ?>
 </div>
 
@@ -1217,34 +1346,75 @@ $shippingLabel = admin_fulfillment_label($db, (int) $fulfillment['id']);
 
     <strong>Customer payment</strong>
 
-    <p>
-        This customer has paid for the order.
-        Use the refund workflow if money must be returned.
-    </p>
+    <?php if ($refundBlocker === null): ?>
 
-    <div class="admin-user-form-actions">
+        <p>
+            This customer has paid for the order and no active
+            fulfillment blocker remains. A full Stripe refund can
+            now be issued.
+        </p>
 
-        <a
-            class="admin-button"
-            href="/refund-order.php?id=<?= (int) $orderId ?>"
-        >
-            <i aria-hidden="true">
-                <?= llama_icon('credit-card-refund') ?>
-            </i>
-            Refund customer
-        </a>
+        <div class="admin-user-form-actions">
+            <a
+                class="admin-button"
+                href="/refund-order.php?id=<?= (int) $orderId ?>"
+            >
+                <i aria-hidden="true">
+                    <?= llama_icon('credit-card-refund') ?>
+                </i>
+                Refund customer
+            </a>
+        </div>
 
-        <a
-            class="admin-button"
-            href="/return-order.php?id=<?= (int) $orderId ?>"
-        >
-            <i aria-hidden="true">
-                <?= llama_icon('arrow-back-up') ?>
-            </i>
-            Receive return
-        </a>
+    <?php elseif ($hasShippedOrDeliveredFulfillment): ?>
 
-    </div>
+        <p>
+            The customer is still paid, but merchandise has already
+            shipped. Record the merchandise as physically returned
+            before issuing the full refund.
+        </p>
+
+        <p>
+            <strong>Refund blocked:</strong>
+            <?= moderation_e($refundBlocker) ?>
+        </p>
+
+        <div class="admin-user-form-actions">
+            <a
+                class="admin-button"
+                href="/return-order.php?id=<?= (int) $orderId ?>"
+            >
+                <i aria-hidden="true">
+                    <?= llama_icon('arrow-back-up') ?>
+                </i>
+                Receive return
+            </a>
+        </div>
+
+    <?php else: ?>
+
+        <p>
+            The customer is still paid, but fulfillment has not been
+            safely stopped yet. Cancel or resolve the fulfillment
+            first. Once fulfillment is cancelled, the refund button
+            will become available here.
+        </p>
+
+        <p>
+            <strong>Refund blocked:</strong>
+            <?= moderation_e($refundBlocker) ?>
+        </p>
+
+        <div class="admin-user-form-actions">
+            <a
+                class="admin-button"
+                href="#fulfillment"
+            >
+                Review fulfillment
+            </a>
+        </div>
+
+    <?php endif; ?>
 
 </div>
 

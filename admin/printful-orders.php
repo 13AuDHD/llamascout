@@ -151,12 +151,38 @@ foreach ($fulfillments as $fulfillment) {
         '_remote_error'
     ] = $remoteError;
 
+    $remoteAlreadyCancelled = in_array(
+        $remoteStatus,
+        [
+            'canceled',
+            'cancelled',
+        ],
+        true
+    );
+
+    $localStatus = strtolower(
+        trim(
+            (string) (
+                $fulfillment['status']
+                ?? ''
+            )
+        )
+    );
+
+    $fulfillment[
+        '_remote_cancelled'
+    ] = $remoteAlreadyCancelled;
+
     $fulfillment[
         '_can_cancel'
     ] =
         $remoteError === ''
-        && llama_printful_cancellable_status(
-            $remoteStatus
+        && $localStatus !== 'cancelled'
+        && (
+            llama_printful_cancellable_status(
+                $remoteStatus
+            )
+            || $remoteAlreadyCancelled
         );
 
     $rows[] = $fulfillment;
@@ -290,6 +316,11 @@ $canCancel =
     !empty(
         $row['_can_cancel']
     );
+
+$remoteAlreadyCancelled =
+    !empty(
+        $row['_remote_cancelled']
+    );
 ?>
 
 <tr>
@@ -336,6 +367,12 @@ $canCancel =
                 )
             ) ?>
         </span>
+
+        <?php if ($remoteStatus === 'archived'): ?>
+            <small class="admin-printful-remote-error">
+                Archived is hidden, not cancelled.
+            </small>
+        <?php endif; ?>
     <?php endif; ?>
 </td>
 
@@ -378,20 +415,6 @@ $canCancel =
         Manage Order
     </a>
 
-    <?php if (
-        (string) (
-            $row['payment_status']
-            ?? ''
-        ) === 'paid'
-    ): ?>
-        <a
-            class="admin-button"
-            href="/refund-order.php?id=<?= (int) $row['order_id'] ?>"
-        >
-            Refund Customer
-        </a>
-    <?php endif; ?>
-
     <?php if ($canCancel): ?>
 
         <form method="post">
@@ -421,11 +444,35 @@ $canCancel =
                 type="submit"
                 onclick="return confirm('Cancel this order at Printful? The customer will NOT be refunded by this action.');"
             >
-                Cancel at Printful
+                <?= $remoteAlreadyCancelled
+                    ? 'Reconcile cancellation'
+                    : 'Cancel at Printful' ?>
             </button>
 
         </form>
 
+    <?php endif; ?>
+
+    <?php if (
+        (string) (
+            $row['payment_status']
+            ?? ''
+        ) === 'paid'
+        && strtolower(
+            trim(
+                (string) (
+                    $row['status']
+                    ?? ''
+                )
+            )
+        ) === 'cancelled'
+    ): ?>
+        <a
+            class="admin-button"
+            href="/order.php?id=<?= (int) $row['order_id'] ?>"
+        >
+            Continue to refund
+        </a>
     <?php endif; ?>
 
 </div>

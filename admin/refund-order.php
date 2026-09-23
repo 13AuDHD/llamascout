@@ -45,6 +45,34 @@ $refundBlocker = shop_return_aware_refund_blocker(
     $orderId
 );
 
+$fulfillments = admin_shop_fulfillments(
+    $db,
+    $orderId
+);
+
+$hasShippedOrDeliveredFulfillment = false;
+
+foreach ($fulfillments as $fulfillment) {
+    $fulfillmentStatus = strtolower(
+        trim((string) ($fulfillment['status'] ?? ''))
+    );
+
+    if (
+        in_array(
+            $fulfillmentStatus,
+            [
+                'shipped',
+                'delivered',
+                'fulfilled',
+            ],
+            true
+        )
+    ) {
+        $hasShippedOrDeliveredFulfillment = true;
+        break;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
         !moderation_verify_csrf(
@@ -166,10 +194,14 @@ $adminActiveNav = 'orders';
 $adminPageActions =
     '<a class="admin-button" href="/order.php?id='
     . (int) $orderId
-    . '">Back to order</a>'
-    . '<a class="admin-button" href="/return-order.php?id='
-    . (int) $orderId
-    . '">Receive return</a>';
+    . '">Back to order</a>';
+
+if ($hasShippedOrDeliveredFulfillment) {
+    $adminPageActions .=
+        '<a class="admin-button" href="/return-order.php?id='
+        . (int) $orderId
+        . '">Receive return</a>';
+}
 
 require __DIR__ . '/_header.php';
 ?>
@@ -431,20 +463,36 @@ $canAttemptReconciliation =
     <p>
         <?= moderation_e($refundBlocker) ?>
     </p>
-    <p>
-        If the merchandise has already shipped or was delivered,
-        record it as physically returned before issuing or reconciling
-        the refund. If it has not shipped, cancel or resolve
-        fulfillment first.
-    </p>
-    <p>
-        <a
-            class="admin-button"
-            href="/return-order.php?id=<?= (int) $orderId ?>"
-        >
-            Receive returned merchandise
-        </a>
-    </p>
+    <?php if ($hasShippedOrDeliveredFulfillment): ?>
+        <p>
+            Merchandise has already shipped or was delivered. Record
+            the physical return before issuing or reconciling the
+            refund.
+        </p>
+        <p>
+            <a
+                class="admin-button"
+                href="/return-order.php?id=<?= (int) $orderId ?>"
+            >
+                Receive returned merchandise
+            </a>
+        </p>
+    <?php else: ?>
+        <p>
+            This order has not shipped. Do not create a return for
+            merchandise the customer never received. Cancel or resolve
+            the active fulfillment first; then come back to issue the
+            Stripe refund.
+        </p>
+        <p>
+            <a
+                class="admin-button"
+                href="/order.php?id=<?= (int) $orderId ?>#fulfillment"
+            >
+                Cancel or resolve fulfillment
+            </a>
+        </p>
+    <?php endif; ?>
 </div>
 
 <?php elseif ($localRefundComplete): ?>
