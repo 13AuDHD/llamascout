@@ -1,0 +1,227 @@
+/* =========================================================
+   CONTRIBUTOR PHOTO SORTER
+   Add Place and revised New Place submissions.
+   ========================================================= */
+
+.contributor-photo-sort-guide {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    margin: 12px 0;
+}
+
+.contributor-photo-sort-help,
+.contributor-photo-sort-status {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.contributor-photo-sort-help {
+    max-width: 720px;
+}
+
+.contributor-photo-sort-status {
+    min-height: 1.2em;
+
+    font-weight: 800;
+    text-align: right;
+}
+
+.contributor-photo-sort-status.is-saving {
+    color: #d3a842;
+}
+
+.contributor-photo-sort-status.is-saved {
+    color: #58a66a;
+}
+
+.contributor-photo-sort-status.is-error {
+    color: #e36a63;
+}
+
+.llama-photo-card {
+    position: relative;
+
+    transition:
+        transform .14s ease,
+        box-shadow .14s ease,
+        opacity .14s ease,
+        border-color .14s ease;
+}
+
+.llama-photo-card.is-contributor-featured {
+    border-color: color-mix(
+        in srgb,
+        #58a66a 70%,
+        var(--border)
+    );
+}
+
+.llama-photo-card.is-contributor-dragging {
+    z-index: 20;
+
+    opacity: .78;
+    transform: scale(.985);
+
+    box-shadow:
+        0 12px 28px
+        color-mix(
+            in srgb,
+            #000000 22%,
+            transparent
+        );
+
+    pointer-events: none;
+}
+
+.contributor-photo-featured,
+.contributor-photo-sort-handle {
+    position: absolute;
+    z-index: 5;
+}
+
+.contributor-photo-featured {
+    left: 8px;
+    bottom: 8px;
+
+    display: none;
+    align-items: center;
+
+    min-height: 28px;
+    padding: 4px 9px;
+
+    box-sizing: border-box;
+
+    border: 1px solid
+        color-mix(
+            in srgb,
+            #58a66a 72%,
+            var(--border)
+        );
+    border-radius: 999px;
+
+    background:
+        color-mix(
+            in srgb,
+            #102018 90%,
+            transparent
+        );
+    color: #dff7e4;
+
+    font-size: .67rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.llama-photo-card.is-contributor-featured
+.contributor-photo-featured {
+    display: inline-flex;
+}
+
+.contributor-photo-sort-handle {
+    right: 8px;
+    bottom: 8px;
+
+    width: 44px;
+    height: 44px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid
+        color-mix(
+            in srgb,
+            #ffffff 30%,
+            transparent
+        );
+    border-radius: 999px;
+
+    background:
+        color-mix(
+            in srgb,
+            #000000 76%,
+            transparent
+        );
+    color: #ffffff;
+
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.contributor-photo-sort-handle span {
+    display: block;
+
+    transform: rotate(90deg);
+
+    font-size: 1.05rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -.2em;
+}
+
+.contributor-photo-sort-handle:hover,
+.contributor-photo-sort-handle:focus-visible {
+    background:
+        color-mix(
+            in srgb,
+            #000000 90%,
+            transparent
+        );
+}
+
+.contributor-photo-sort-handle:active,
+.llama-photo-card.is-contributor-dragging
+.contributor-photo-sort-handle {
+    cursor: grabbing;
+}
+
+.contributor-photo-sort-handle:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+.llama-photo-grid.is-contributor-saving
+.llama-photo-card {
+    opacity: .72;
+}
+
+@media (max-width: 760px) {
+    .contributor-photo-sort-guide {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .contributor-photo-sort-status {
+        text-align: left;
+    }
+}
+
+html[data-reduced-motion="true"]
+.llama-photo-card {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .llama-photo-card {
+        transition: none;
+    }
+}
