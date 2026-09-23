@@ -330,8 +330,14 @@
     -webkit-backdrop-filter: blur(8px);
 }
 
-.admin-moderation-photo-featured[hidden] {
+/* Only show the Featured badge on photo #1 */
+.admin-moderation-photo-featured {
     display: none;
+}
+
+.admin-moderation-photo-item.is-featured
+.admin-moderation-photo-featured {
+    display: inline-flex;
 }
 
 .admin-moderation-photo-position {
