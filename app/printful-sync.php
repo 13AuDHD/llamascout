@@ -177,7 +177,8 @@ function llama_printful_local_status(
 
         'failed',
         'onhold',
-        'on_hold' => 'problem',
+        'on_hold',
+        'archived' => 'problem',
 
         'canceled',
         'cancelled' => 'cancelled',
