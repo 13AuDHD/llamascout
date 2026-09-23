@@ -330,6 +330,10 @@
     -webkit-backdrop-filter: blur(8px);
 }
 
+.admin-moderation-photo-featured[hidden] {
+    display: none;
+}
+
 .admin-moderation-photo-position {
     right: 10px;
     bottom: 10px;
