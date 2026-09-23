@@ -1,0 +1,199 @@
+/* =========================================================
+   PLACE QUICK-FACT ACTIONS
+   ========================================================= */
+
+.place-fact--with-action {
+    position: relative;
+    z-index: 1;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr)
+        auto;
+    grid-template-areas:
+        "icon label action"
+        "icon value action";
+}
+
+.place-fact--with-action.is-navigation-open {
+    z-index: 30;
+}
+
+.place-fact-action {
+    position: relative;
+    grid-area: action;
+    align-self: center;
+}
+
+.place-fact-icon-button {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--background);
+    color: var(--text);
+    cursor: pointer;
+    transition:
+        border-color .15s ease,
+        background-color .15s ease,
+        transform .15s ease;
+}
+
+.place-fact-icon-button:hover {
+    border-color: color-mix(in srgb, var(--text) 34%, var(--border));
+    background: var(--surface);
+}
+
+.place-fact-icon-button:active {
+    transform: translateY(1px);
+}
+
+.place-fact-icon-button:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+}
+
+.place-fact-icon-button .llama-icon {
+    width: 19px;
+    height: 19px;
+}
+
+.place-navigation-menu {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 9px);
+    right: 0;
+    width: min(276px, calc(100vw - 48px));
+    overflow: hidden;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--background);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .18);
+}
+
+.place-navigation-menu[hidden] {
+    display: none;
+}
+
+.place-navigation-heading {
+    margin: 0;
+    padding: 7px 9px 8px;
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 900;
+    letter-spacing: .065em;
+    text-transform: uppercase;
+}
+
+.place-navigation-menu a {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 54px;
+    padding: 8px 9px;
+    border-radius: 9px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.place-navigation-menu a:hover {
+    background: var(--surface);
+}
+
+.place-navigation-menu a:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: -1px;
+}
+
+.place-navigation-menu a > span:nth-child(2) {
+    min-width: 0;
+}
+
+.place-navigation-menu strong,
+.place-navigation-menu small {
+    display: block;
+}
+
+.place-navigation-menu strong {
+    font-size: .86rem;
+}
+
+.place-navigation-menu small {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: .7rem;
+    line-height: 1.3;
+}
+
+.place-navigation-brand {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+}
+
+.place-navigation-brand .llama-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.place-navigation-brand--onx .llama-icon {
+    width: 31px;
+    height: 18px;
+}
+
+.place-navigation-external {
+    width: 15px;
+    height: 15px;
+    color: var(--text-muted);
+}
+
+.place-copy-feedback {
+    position: absolute;
+    top: calc(100% + 7px);
+    right: 0;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--background);
+    color: var(--text);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .14);
+    font-size: .68rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.place-copy-feedback[hidden] {
+    display: none;
+}
+
+.place-coordinate-copy.is-copied .place-fact-icon-button {
+    border-color: #237a4b;
+}
+
+@media (max-width: 520px) {
+    .place-navigation-menu {
+        position: fixed;
+        top: auto;
+        right: 16px;
+        bottom: 16px;
+        left: 16px;
+        width: auto;
+        max-height: min(70vh, 360px);
+        overflow-y: auto;
+    }
+}
+
+html[data-reduced-motion="true"] .place-fact-icon-button {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .place-fact-icon-button {
+        transition: none;
+    }
+}
