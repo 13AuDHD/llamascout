@@ -1,3 +1,48 @@
+<?php
+$hasExactPlaceCoordinates =
+    $hasMemberAccess
+    && ($place['latitude'] ?? null) !== null
+    && ($place['longitude'] ?? null) !== null
+    && is_numeric($place['latitude'])
+    && is_numeric($place['longitude']);
+
+$placeLatitude =
+    $hasExactPlaceCoordinates
+        ? trim((string) $place['latitude'])
+        : '';
+
+$placeLongitude =
+    $hasExactPlaceCoordinates
+        ? trim((string) $place['longitude'])
+        : '';
+
+$placeCoordinateText =
+    $hasExactPlaceCoordinates
+        ? $placeLatitude . ', ' . $placeLongitude
+        : '';
+
+$googleMapsUrl =
+    $hasExactPlaceCoordinates
+        ? 'https://www.google.com/maps/dir/?api=1&destination='
+            . rawurlencode($placeLatitude . ',' . $placeLongitude)
+        : '';
+
+$appleMapsUrl =
+    $hasExactPlaceCoordinates
+        ? 'https://maps.apple.com/?daddr='
+            . rawurlencode($placeLatitude . ',' . $placeLongitude)
+        : '';
+
+$onxMapsUrl =
+    $hasExactPlaceCoordinates
+        ? 'https://webmap.onxmaps.com/offroad/map/query/'
+            . rawurlencode($placeLatitude)
+            . ','
+            . rawurlencode($placeLongitude)
+            . ',14/overview?mode=dirt'
+        : '';
+?>
+
 <section class="place-facts" aria-label="Place details">
     <?php if (!empty($place['elevation_feet'])): ?>
         <div class="place-fact">
@@ -8,25 +53,108 @@
     <?php endif; ?>
 
     <?php if ($hasMemberAccess && !empty($place['road'])): ?>
-        <div class="place-fact">
+        <div class="place-fact<?= $hasExactPlaceCoordinates ? ' place-fact--with-action' : '' ?>">
             <i aria-hidden="true"><?= llama_icon('road') ?></i>
             <span>Road</span>
             <strong><?= place_h($place['road']) ?></strong>
+
+            <?php if ($hasExactPlaceCoordinates): ?>
+                <div class="place-fact-action place-navigation" data-place-navigation>
+                    <button
+                        type="button"
+                        class="place-fact-icon-button"
+                        data-place-navigation-toggle
+                        aria-expanded="false"
+                        aria-controls="place-navigation-menu"
+                        aria-label="Open navigation options"
+                        title="Open navigation options"
+                    >
+                        <?= llama_icon('directions') ?>
+                    </button>
+
+                    <div
+                        id="place-navigation-menu"
+                        class="place-navigation-menu"
+                        data-place-navigation-menu
+                        hidden
+                    >
+                        <p class="place-navigation-heading">Navigate with</p>
+
+                        <a
+                            href="<?= place_h($googleMapsUrl) ?>"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span class="place-navigation-brand" aria-hidden="true">
+                                <?= llama_icon('brand-google-maps') ?>
+                            </span>
+                            <span>
+                                <strong>Google Maps</strong>
+                                <small>Directions to this Place</small>
+                            </span>
+                            <?= llama_icon('external-link', ['class' => 'place-navigation-external']) ?>
+                        </a>
+
+                        <a
+                            href="<?= place_h($appleMapsUrl) ?>"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span class="place-navigation-brand" aria-hidden="true">
+                                <?= llama_icon('brand-apple-filled') ?>
+                            </span>
+                            <span>
+                                <strong>Apple Maps</strong>
+                                <small>Directions to this Place</small>
+                            </span>
+                            <?= llama_icon('external-link', ['class' => 'place-navigation-external']) ?>
+                        </a>
+
+                        <a
+                            href="<?= place_h($onxMapsUrl) ?>"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span class="place-navigation-brand place-navigation-brand--onx" aria-hidden="true">
+                                <?= llama_icon('brand-onx') ?>
+                            </span>
+                            <span>
+                                <strong>onX Offroad</strong>
+                                <small>Open this location in onX</small>
+                            </span>
+                            <?= llama_icon('external-link', ['class' => 'place-navigation-external']) ?>
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
-    <?php if (
-        $hasMemberAccess
-        && ($place['latitude'] ?? null) !== null
-        && ($place['longitude'] ?? null) !== null
-    ): ?>
-        <div class="place-fact">
+    <?php if ($hasExactPlaceCoordinates): ?>
+        <div class="place-fact place-fact--with-action">
             <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
             <span>GPS coordinates</span>
-            <strong>
-                <?= place_h($place['latitude']) ?>,
-                <?= place_h($place['longitude']) ?>
-            </strong>
+            <strong><?= place_h($placeCoordinateText) ?></strong>
+
+            <div class="place-fact-action place-coordinate-copy">
+                <button
+                    type="button"
+                    class="place-fact-icon-button"
+                    data-copy-place-coordinates="<?= place_h($placeCoordinateText) ?>"
+                    aria-label="Copy GPS coordinates"
+                    title="Copy GPS coordinates"
+                >
+                    <?= llama_icon('copy') ?>
+                </button>
+
+                <span
+                    class="place-copy-feedback"
+                    data-place-copy-feedback
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                >Copied</span>
+            </div>
         </div>
     <?php endif; ?>
 </section>
@@ -151,3 +279,5 @@ $hasAmenityRecord = !empty($place['amenities']);
         </div>
     </section>
 <?php endif; ?>
+
+<script src="/js/place-actions.js"></script>
