@@ -88,9 +88,9 @@ $tested = (string) ($_GET['tested'] ?? '') === '1';
 $retentionUpdated = (int) ($_GET['retention_updated'] ?? 0);
 $cleaned = isset($_GET['cleaned']) ? max(0, (int) $_GET['cleaned']) : null;
 if ($updated === 'resolved') {
-    $notice = 'Error marked resolved.';
+    $notice = 'Error marked resolved. 🎉';
 } elseif ($updated === 'open') {
-    $notice = 'Error reopened.';
+    $notice = 'Error reopened. 😒';
 } elseif ($tested) {
     $notice = 'Diagnostic test recorded successfully. The matching error record is shown below.';
 } elseif ($retentionUpdated > 0) {
