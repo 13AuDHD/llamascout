@@ -78,6 +78,7 @@ function llama_page_styles(string $scriptName = ''): array
 
     if (!$isAccount && $basename === 'place.php') {
         $styles[] = 'place-detail.css';
+        $styles[] = 'place-actions.css';
         $styles[] = 'site/features/place-shared.css';
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
