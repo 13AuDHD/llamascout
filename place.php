@@ -250,11 +250,53 @@ $rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
 $experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
 $db = db();
 
-$reportCompleteness = [
-    'percent' => 0,
-    'answered' => 0,
-    'total' => 0,
-];
+$reportCompleteness =
+    llama_place_report_completion_summary(
+        llama_place_report_scoring_input_from_data(
+            $completionData
+        ),
+        $completionPhotos
+    );
+
+/*
+ * A visit date belongs to the contribution/report that recorded
+ * the observation, not to the live Place itself. Published Place
+ * records intentionally do not store visited_at.
+ *
+ * Remove that contribution-only field from the live Place
+ * completeness denominator so a fully documented Place can
+ * correctly reach 100%.
+ */
+if (
+    isset(
+        $reportCompleteness['answered'],
+        $reportCompleteness['total']
+    )
+    && (int) $reportCompleteness['total'] > 0
+) {
+    $liveCompletenessTotal =
+        max(
+            0,
+            (int) $reportCompleteness['total'] - 1
+        );
+
+    $reportCompleteness['total'] =
+        $liveCompletenessTotal;
+
+    $reportCompleteness['percent'] =
+        $liveCompletenessTotal > 0
+            ? min(
+                100,
+                (int) round(
+                    100
+                    * (
+                        (int) $reportCompleteness['answered']
+                        / $liveCompletenessTotal
+                    )
+                )
+            )
+            : 0;
+}
 
 try {
     $completionSourcePlace =
