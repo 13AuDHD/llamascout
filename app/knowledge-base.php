@@ -725,3 +725,410 @@ function llama_kb_public_category_icon(
         default => 'article',
     };
 }
+
+/**
+ * KB-05
+ * Search analytics, click-through tracking, and article feedback.
+ */
+
+function llama_kb_public_session_ready(): bool
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return true;
+    }
+
+    if (
+        session_status() === PHP_SESSION_NONE
+        && !headers_sent()
+    ) {
+        @session_start();
+    }
+
+    return session_status() === PHP_SESSION_ACTIVE;
+}
+
+function llama_kb_public_current_user_id(): int
+{
+    if (!function_exists('current_user')) {
+        return 0;
+    }
+
+    try {
+        $user = current_user();
+    } catch (Throwable $exception) {
+        return 0;
+    }
+
+    return is_array($user)
+        ? max(0, (int) ($user['id'] ?? 0))
+        : 0;
+}
+
+function llama_kb_public_normalize_search_query(
+    string $query
+): string {
+    $query = trim(
+        preg_replace('/\s+/u', ' ', $query) ?? $query
+    );
+
+    $query = mb_substr($query, 0, 500);
+
+    return mb_strtolower($query);
+}
+
+function llama_kb_public_log_search(
+    PDO $db,
+    string $query,
+    int $resultCount
+): int {
+    if (!llama_kb_schema_ready($db)) {
+        return 0;
+    }
+
+    $query = trim(
+        preg_replace('/\s+/u', ' ', $query) ?? $query
+    );
+
+    $query = mb_substr($query, 0, 500);
+
+    if ($query === '' || mb_strlen($query) < 2) {
+        return 0;
+    }
+
+    $normalized =
+        llama_kb_public_normalize_search_query($query);
+
+    $userId =
+        llama_kb_public_current_user_id();
+
+    try {
+        $statement = $db->prepare(
+            'INSERT INTO kb_search_log
+                (
+                    query_text,
+                    normalized_query,
+                    result_count,
+                    clicked_article_id,
+                    user_id,
+                    created_at
+                )
+             VALUES
+                (?, ?, ?, NULL, ?, UTC_TIMESTAMP())'
+        );
+
+        $statement->execute([
+            $query,
+            $normalized,
+            max(0, $resultCount),
+            $userId > 0 ? $userId : null,
+        ]);
+
+        $searchId = (int) $db->lastInsertId();
+
+        if (
+            $searchId > 0
+            && llama_kb_public_session_ready()
+        ) {
+            $ids =
+                $_SESSION['kb_search_log_ids']
+                ?? [];
+
+            if (!is_array($ids)) {
+                $ids = [];
+            }
+
+            $ids[] = $searchId;
+            $ids = array_values(
+                array_unique(
+                    array_map('intval', $ids)
+                )
+            );
+
+            if (count($ids) > 30) {
+                $ids = array_slice($ids, -30);
+            }
+
+            $_SESSION['kb_search_log_ids'] = $ids;
+        }
+
+        return $searchId;
+
+    } catch (Throwable $exception) {
+        /*
+         * Search itself should keep working even if analytics storage
+         * has a temporary problem.
+         */
+        return 0;
+    }
+}
+
+function llama_kb_public_search_id_belongs_to_session(
+    int $searchId
+): bool {
+    if (
+        $searchId <= 0
+        || !llama_kb_public_session_ready()
+    ) {
+        return false;
+    }
+
+    $ids =
+        $_SESSION['kb_search_log_ids']
+        ?? [];
+
+    if (!is_array($ids)) {
+        return false;
+    }
+
+    return in_array(
+        $searchId,
+        array_map('intval', $ids),
+        true
+    );
+}
+
+function llama_kb_public_mark_search_click(
+    PDO $db,
+    int $searchId,
+    int $articleId
+): bool {
+    if (
+        $searchId <= 0
+        || $articleId <= 0
+        || !llama_kb_public_search_id_belongs_to_session($searchId)
+    ) {
+        return false;
+    }
+
+    $articleStatement = $db->prepare(
+        'SELECT id
+         FROM kb_articles
+         WHERE id = ?
+           AND status = "published"
+         LIMIT 1'
+    );
+
+    $articleStatement->execute([$articleId]);
+
+    if (!$articleStatement->fetchColumn()) {
+        return false;
+    }
+
+    $statement = $db->prepare(
+        'UPDATE kb_search_log
+         SET clicked_article_id = ?
+         WHERE id = ?
+           AND clicked_article_id IS NULL'
+    );
+
+    $statement->execute([
+        $articleId,
+        $searchId,
+    ]);
+
+    return $statement->rowCount() > 0;
+}
+
+function llama_kb_public_feedback_token(): string
+{
+    if (!llama_kb_public_session_ready()) {
+        return '';
+    }
+
+    $token =
+        $_SESSION['kb_feedback_csrf']
+        ?? '';
+
+    if (
+        !is_string($token)
+        || strlen($token) < 32
+    ) {
+        $token = bin2hex(random_bytes(24));
+        $_SESSION['kb_feedback_csrf'] = $token;
+    }
+
+    return $token;
+}
+
+function llama_kb_public_verify_feedback_token(
+    string $token
+): bool {
+    if (
+        $token === ''
+        || !llama_kb_public_session_ready()
+    ) {
+        return false;
+    }
+
+    $expected =
+        $_SESSION['kb_feedback_csrf']
+        ?? '';
+
+    return is_string($expected)
+        && $expected !== ''
+        && hash_equals($expected, $token);
+}
+
+function llama_kb_public_feedback_article_exists(
+    PDO $db,
+    int $articleId
+): bool {
+    if ($articleId <= 0) {
+        return false;
+    }
+
+    $statement = $db->prepare(
+        'SELECT id
+         FROM kb_articles
+         WHERE id = ?
+           AND status = "published"
+         LIMIT 1'
+    );
+
+    $statement->execute([$articleId]);
+
+    return (bool) $statement->fetchColumn();
+}
+
+function llama_kb_public_submit_feedback(
+    PDO $db,
+    int $articleId,
+    bool $helpful,
+    string $reason
+): int {
+    if (
+        $articleId <= 0
+        || !llama_kb_public_feedback_article_exists(
+            $db,
+            $articleId
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'That Knowledge Base article is not available.'
+        );
+    }
+
+    $reason = trim(
+        preg_replace('/\s+/u', ' ', $reason) ?? $reason
+    );
+
+    $reason = mb_substr($reason, 0, 1000);
+
+    if ($helpful) {
+        $reason = '';
+    }
+
+    $userId =
+        llama_kb_public_current_user_id();
+
+    $existingId = 0;
+
+    if ($userId > 0) {
+        $statement = $db->prepare(
+            'SELECT id
+             FROM kb_article_feedback
+             WHERE article_id = ?
+               AND user_id = ?
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+
+        $statement->execute([
+            $articleId,
+            $userId,
+        ]);
+
+        $existingId =
+            (int) ($statement->fetchColumn() ?: 0);
+    } elseif (llama_kb_public_session_ready()) {
+        $feedbackMap =
+            $_SESSION['kb_article_feedback_ids']
+            ?? [];
+
+        if (is_array($feedbackMap)) {
+            $existingId =
+                max(
+                    0,
+                    (int) (
+                        $feedbackMap[$articleId]
+                        ?? 0
+                    )
+                );
+        }
+    }
+
+    if ($existingId > 0) {
+        $statement = $db->prepare(
+            'UPDATE kb_article_feedback
+             SET
+                helpful = ?,
+                reason = ?
+             WHERE id = ?
+               AND article_id = ?'
+        );
+
+        $statement->execute([
+            $helpful ? 1 : 0,
+            $reason,
+            $existingId,
+            $articleId,
+        ]);
+
+        return $existingId;
+    }
+
+    $statement = $db->prepare(
+        'INSERT INTO kb_article_feedback
+            (
+                article_id,
+                helpful,
+                reason,
+                user_id,
+                created_at
+            )
+         VALUES
+            (?, ?, ?, ?, UTC_TIMESTAMP())'
+    );
+
+    $statement->execute([
+        $articleId,
+        $helpful ? 1 : 0,
+        $reason,
+        $userId > 0 ? $userId : null,
+    ]);
+
+    $feedbackId =
+        (int) $db->lastInsertId();
+
+    if (
+        $feedbackId > 0
+        && $userId <= 0
+        && llama_kb_public_session_ready()
+    ) {
+        $feedbackMap =
+            $_SESSION['kb_article_feedback_ids']
+            ?? [];
+
+        if (!is_array($feedbackMap)) {
+            $feedbackMap = [];
+        }
+
+        $feedbackMap[$articleId] = $feedbackId;
+
+        if (count($feedbackMap) > 40) {
+            $feedbackMap =
+                array_slice(
+                    $feedbackMap,
+                    -40,
+                    null,
+                    true
+                );
+        }
+
+        $_SESSION['kb_article_feedback_ids'] =
+            $feedbackMap;
+    }
+
+    return $feedbackId;
+}
+
