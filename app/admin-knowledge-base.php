@@ -1022,6 +1022,547 @@ function kb_admin_set_article_status(
     }
 }
 
+
+/**
+ * KB-03 screenshot library.
+ *
+ * Screenshots are retained when archived so article revisions never
+ * lose an image simply because it was removed from the current editor.
+ */
+function kb_admin_article_images(
+    PDO $db,
+    int $articleId,
+    bool $includeArchived = true
+): array {
+    if ($articleId <= 0) {
+        return [];
+    }
+
+    $sql =
+        'SELECT *
+         FROM kb_article_images
+         WHERE article_id = ?';
+
+    if (!$includeArchived) {
+        $sql .= ' AND status = "active"';
+    }
+
+    $sql .=
+        ' ORDER BY
+            CASE status WHEN "active" THEN 0 ELSE 1 END,
+            sort_order ASC,
+            id ASC';
+
+    $statement = $db->prepare($sql);
+    $statement->execute([$articleId]);
+
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function kb_admin_article_image(
+    PDO $db,
+    int $articleId,
+    int $imageId
+): ?array {
+    if ($articleId <= 0 || $imageId <= 0) {
+        return null;
+    }
+
+    $statement = $db->prepare(
+        'SELECT *
+         FROM kb_article_images
+         WHERE id = ?
+           AND article_id = ?
+         LIMIT 1'
+    );
+
+    $statement->execute([
+        $imageId,
+        $articleId,
+    ]);
+
+    $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+    return is_array($row) ? $row : null;
+}
+
+function kb_admin_image_storage_root(): string
+{
+    return dirname(__DIR__)
+        . '/uploads/knowledge-base';
+}
+
+function kb_admin_image_public_path(
+    int $articleId,
+    string $filename
+): string {
+    return '/uploads/knowledge-base/'
+        . $articleId
+        . '/'
+        . ltrim($filename, '/');
+}
+
+function kb_admin_image_disk_path(
+    string $publicPath
+): string {
+    $publicPath = '/' . ltrim($publicPath, '/');
+    $expectedPrefix = '/uploads/knowledge-base/';
+
+    if (!str_starts_with($publicPath, $expectedPrefix)) {
+        throw new RuntimeException(
+            'Knowledge Base screenshot path is outside the managed upload area.'
+        );
+    }
+
+    $relative = substr(
+        $publicPath,
+        strlen($expectedPrefix)
+    );
+
+    if (
+        $relative === ''
+        || str_contains($relative, '..')
+        || str_contains($relative, "\0")
+    ) {
+        throw new RuntimeException(
+            'Knowledge Base screenshot path is invalid.'
+        );
+    }
+
+    return kb_admin_image_storage_root()
+        . '/'
+        . $relative;
+}
+
+function kb_admin_image_extension_for_mime(
+    string $mimeType
+): ?string {
+    return match ($mimeType) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        default => null,
+    };
+}
+
+function kb_admin_upload_article_image(
+    PDO $db,
+    int $articleId,
+    array $upload,
+    array $input = []
+): int {
+    if (!kb_admin_article($db, $articleId)) {
+        throw new RuntimeException(
+            'Save the Knowledge Base article before adding screenshots.'
+        );
+    }
+
+    $uploadError = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+
+    if ($uploadError !== UPLOAD_ERR_OK) {
+        $message = match ($uploadError) {
+            UPLOAD_ERR_INI_SIZE,
+            UPLOAD_ERR_FORM_SIZE =>
+                'That screenshot is larger than the server allows.',
+            UPLOAD_ERR_PARTIAL =>
+                'The screenshot upload was interrupted. Try again.',
+            UPLOAD_ERR_NO_FILE =>
+                'Choose a screenshot to upload.',
+            default =>
+                'The screenshot could not be uploaded.',
+        };
+
+        throw new RuntimeException($message);
+    }
+
+    $tmpPath = (string) ($upload['tmp_name'] ?? '');
+    $fileSize = (int) ($upload['size'] ?? 0);
+
+    if (
+        $tmpPath === ''
+        || !is_uploaded_file($tmpPath)
+    ) {
+        throw new RuntimeException(
+            'The uploaded screenshot could not be verified.'
+        );
+    }
+
+    if ($fileSize <= 0 || $fileSize > 8 * 1024 * 1024) {
+        throw new RuntimeException(
+            'Screenshots must be between 1 byte and 8 MB.'
+        );
+    }
+
+    if (!class_exists('finfo')) {
+        throw new RuntimeException(
+            'The server cannot verify screenshot file types.'
+        );
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = (string) $finfo->file($tmpPath);
+    $extension = kb_admin_image_extension_for_mime($mimeType);
+
+    if ($extension === null) {
+        throw new RuntimeException(
+            'Screenshots must be JPG, PNG, or WebP.'
+        );
+    }
+
+    $dimensions = @getimagesize($tmpPath);
+
+    if (!is_array($dimensions)) {
+        throw new RuntimeException(
+            'The uploaded file is not a readable image.'
+        );
+    }
+
+    $width = (int) ($dimensions[0] ?? 0);
+    $height = (int) ($dimensions[1] ?? 0);
+
+    if (
+        $width <= 0
+        || $height <= 0
+        || $width > 8000
+        || $height > 8000
+    ) {
+        throw new RuntimeException(
+            'Screenshots must be no larger than 8000 × 8000 pixels.'
+        );
+    }
+
+    $altText = trim((string) ($input['alt_text'] ?? ''));
+    $caption = trim((string) ($input['caption'] ?? ''));
+
+    if ($altText === '') {
+        throw new InvalidArgumentException(
+            'Alt text is required for Knowledge Base screenshots.'
+        );
+    }
+
+    $altText = mb_substr($altText, 0, 300);
+    $caption = mb_substr($caption, 0, 500);
+
+    $articleDirectory =
+        kb_admin_image_storage_root()
+        . '/'
+        . $articleId;
+
+    if (
+        !is_dir($articleDirectory)
+        && !mkdir($articleDirectory, 0755, true)
+        && !is_dir($articleDirectory)
+    ) {
+        throw new RuntimeException(
+            'The Knowledge Base screenshot folder could not be created.'
+        );
+    }
+
+    $filename =
+        gmdate('Ymd-His')
+        . '-'
+        . bin2hex(random_bytes(8))
+        . '.'
+        . $extension;
+
+    $diskPath =
+        $articleDirectory
+        . '/'
+        . $filename;
+
+    if (!move_uploaded_file($tmpPath, $diskPath)) {
+        throw new RuntimeException(
+            'The screenshot could not be moved into Knowledge Base storage.'
+        );
+    }
+
+    @chmod($diskPath, 0644);
+
+    $publicPath =
+        kb_admin_image_public_path(
+            $articleId,
+            $filename
+        );
+
+    try {
+        $sortStatement = $db->prepare(
+            'SELECT COALESCE(MAX(sort_order), 0) + 10
+             FROM kb_article_images
+             WHERE article_id = ?
+               AND status = "active"'
+        );
+        $sortStatement->execute([$articleId]);
+        $sortOrder = (int) $sortStatement->fetchColumn();
+
+        $statement = $db->prepare(
+            'INSERT INTO kb_article_images
+                (
+                    article_id,
+                    image_path,
+                    mime_type,
+                    file_size_bytes,
+                    width_px,
+                    height_px,
+                    alt_text,
+                    caption,
+                    status,
+                    sort_order,
+                    archived_at,
+                    created_at,
+                    updated_at
+                )
+             VALUES
+                (
+                    ?, ?, ?, ?, ?, ?, ?, ?,
+                    "active", ?, NULL,
+                    UTC_TIMESTAMP(), UTC_TIMESTAMP()
+                )'
+        );
+
+        $statement->execute([
+            $articleId,
+            $publicPath,
+            $mimeType,
+            $fileSize,
+            $width,
+            $height,
+            $altText,
+            $caption,
+            $sortOrder,
+        ]);
+
+        return (int) $db->lastInsertId();
+
+    } catch (Throwable $exception) {
+        @unlink($diskPath);
+        throw $exception;
+    }
+}
+
+function kb_admin_update_article_image(
+    PDO $db,
+    int $articleId,
+    int $imageId,
+    array $input
+): void {
+    if (!kb_admin_article_image($db, $articleId, $imageId)) {
+        throw new RuntimeException(
+            'Knowledge Base screenshot not found.'
+        );
+    }
+
+    $altText = trim((string) ($input['alt_text'] ?? ''));
+    $caption = trim((string) ($input['caption'] ?? ''));
+    $sortOrder = (int) ($input['sort_order'] ?? 0);
+
+    if ($altText === '') {
+        throw new InvalidArgumentException(
+            'Alt text is required for Knowledge Base screenshots.'
+        );
+    }
+
+    $statement = $db->prepare(
+        'UPDATE kb_article_images
+         SET
+            alt_text = ?,
+            caption = ?,
+            sort_order = ?,
+            updated_at = UTC_TIMESTAMP()
+         WHERE id = ?
+           AND article_id = ?'
+    );
+
+    $statement->execute([
+        mb_substr($altText, 0, 300),
+        mb_substr($caption, 0, 500),
+        $sortOrder,
+        $imageId,
+        $articleId,
+    ]);
+}
+
+function kb_admin_set_article_image_status(
+    PDO $db,
+    int $articleId,
+    int $imageId,
+    string $status
+): void {
+    if (!in_array($status, ['active', 'archived'], true)) {
+        throw new InvalidArgumentException(
+            'Invalid screenshot status.'
+        );
+    }
+
+    if (!kb_admin_article_image($db, $articleId, $imageId)) {
+        throw new RuntimeException(
+            'Knowledge Base screenshot not found.'
+        );
+    }
+
+    $archivedSql =
+        $status === 'archived'
+            ? 'UTC_TIMESTAMP()'
+            : 'NULL';
+
+    $statement = $db->prepare(
+        'UPDATE kb_article_images
+         SET
+            status = ?,
+            archived_at = ' . $archivedSql . ',
+            updated_at = UTC_TIMESTAMP()
+         WHERE id = ?
+           AND article_id = ?'
+    );
+
+    $statement->execute([
+        $status,
+        $imageId,
+        $articleId,
+    ]);
+}
+
+function kb_admin_clone_article_images(
+    PDO $db,
+    int $sourceArticleId,
+    int $targetArticleId,
+    string $content
+): array {
+    $images =
+        kb_admin_article_images(
+            $db,
+            $sourceArticleId,
+            true
+        );
+
+    if (!$images) {
+        return [
+            'content' => $content,
+            'paths' => [],
+        ];
+    }
+
+    $targetDirectory =
+        kb_admin_image_storage_root()
+        . '/'
+        . $targetArticleId;
+
+    if (
+        !is_dir($targetDirectory)
+        && !mkdir($targetDirectory, 0755, true)
+        && !is_dir($targetDirectory)
+    ) {
+        throw new RuntimeException(
+            'The copied article screenshot folder could not be created.'
+        );
+    }
+
+    $createdPaths = [];
+    $idMap = [];
+
+    $insert = $db->prepare(
+        'INSERT INTO kb_article_images
+            (
+                article_id,
+                image_path,
+                mime_type,
+                file_size_bytes,
+                width_px,
+                height_px,
+                alt_text,
+                caption,
+                status,
+                sort_order,
+                archived_at,
+                created_at,
+                updated_at
+            )
+         VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+    );
+
+    foreach ($images as $image) {
+        $sourcePath =
+            kb_admin_image_disk_path(
+                (string) ($image['image_path'] ?? '')
+            );
+
+        if (!is_file($sourcePath)) {
+            throw new RuntimeException(
+                'A screenshot used by the source article is missing from storage.'
+            );
+        }
+
+        $extension =
+            pathinfo(
+                $sourcePath,
+                PATHINFO_EXTENSION
+            );
+
+        $filename =
+            gmdate('Ymd-His')
+            . '-'
+            . bin2hex(random_bytes(8))
+            . '.'
+            . strtolower($extension ?: 'png');
+
+        $targetPath =
+            $targetDirectory
+            . '/'
+            . $filename;
+
+        if (!copy($sourcePath, $targetPath)) {
+            throw new RuntimeException(
+                'A Knowledge Base screenshot could not be copied.'
+            );
+        }
+
+        @chmod($targetPath, 0644);
+        $createdPaths[] = $targetPath;
+
+        $publicPath =
+            kb_admin_image_public_path(
+                $targetArticleId,
+                $filename
+            );
+
+        $insert->execute([
+            $targetArticleId,
+            $publicPath,
+            (string) ($image['mime_type'] ?? ''),
+            (int) ($image['file_size_bytes'] ?? 0),
+            (int) ($image['width_px'] ?? 0),
+            (int) ($image['height_px'] ?? 0),
+            (string) ($image['alt_text'] ?? ''),
+            (string) ($image['caption'] ?? ''),
+            (string) ($image['status'] ?? 'active'),
+            (int) ($image['sort_order'] ?? 0),
+            $image['archived_at'] ?? null,
+        ]);
+
+        $newImageId = (int) $db->lastInsertId();
+        $oldImageId = (int) ($image['id'] ?? 0);
+
+        if ($oldImageId > 0 && $newImageId > 0) {
+            $idMap[$oldImageId] = $newImageId;
+        }
+    }
+
+    foreach ($idMap as $oldId => $newId) {
+        $content = preg_replace(
+            '/\[kb-image\s+id=["\']?'
+            . preg_quote((string) $oldId, '/')
+            . '["\']?\s*\]/i',
+            '[kb-image id="' . $newId . '"]',
+            $content
+        ) ?? $content;
+    }
+
+    return [
+        'content' => $content,
+        'paths' => $createdPaths,
+    ];
+}
+
 function kb_admin_duplicate_article(
     PDO $db,
     int $actorUserId,
@@ -1041,6 +1582,8 @@ function kb_admin_duplicate_article(
         '',
         $copyTitle
     );
+
+    $createdImagePaths = [];
 
     $db->beginTransaction();
 
@@ -1093,6 +1636,36 @@ function kb_admin_duplicate_article(
                 : []
         );
 
+        $cloneResult =
+            kb_admin_clone_article_images(
+                $db,
+                $articleId,
+                $newId,
+                (string) ($source['content'] ?? '')
+            );
+
+        $createdImagePaths =
+            is_array($cloneResult['paths'] ?? null)
+                ? $cloneResult['paths']
+                : [];
+
+        $clonedContent =
+            (string) (
+                $cloneResult['content']
+                ?? (string) ($source['content'] ?? '')
+            );
+
+        if ($clonedContent !== (string) ($source['content'] ?? '')) {
+            $db->prepare(
+                'UPDATE kb_articles
+                 SET content = ?
+                 WHERE id = ?'
+            )->execute([
+                $clonedContent,
+                $newId,
+            ]);
+        }
+
         $db->commit();
 
         return $newId;
@@ -1100,6 +1673,12 @@ function kb_admin_duplicate_article(
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();
+        }
+
+        foreach ($createdImagePaths as $path) {
+            if (is_string($path) && $path !== '') {
+                @unlink($path);
+            }
         }
 
         throw $exception;
