@@ -51,14 +51,159 @@
     let memberMapAccess = initialMemberAccess;
     let selectedLayer = 'auto';
     let activeTileLayer = null;
+    let searchRenderTimer = null;
+    let userLocationMarker = null;
 
     const PUBLIC_MAX_ZOOM = 11;
     const MEMBER_MAX_ZOOM = 20;
 
     const map = L.map(mapElement, {
         maxZoom: initialMemberAccess ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM,
-        zoomControl: true
+        zoomControl: false
     }).setView([37.3, -107.4], 7);
+
+    /*
+     * Keep the map controls together in the lower-right corner.
+     * The locate control is added after zoom so Leaflet stacks it above
+     * the zoom buttons in a bottom-positioned control corner.
+     */
+    L.control.zoom({
+        position: 'bottomright'
+    }).addTo(map);
+
+    const locateControl = L.control({
+        position: 'bottomright'
+    });
+
+    locateControl.onAdd = () => {
+        const container = L.DomUtil.create(
+            'div',
+            'map-locate-control'
+        );
+
+        const button = L.DomUtil.create(
+            'button',
+            'map-locate-button',
+            container
+        );
+
+        button.type = 'button';
+        button.title = 'Show my location';
+        button.setAttribute('aria-label', 'Show my location');
+        button.innerHTML =
+            '<span class="map-locate-icon" aria-hidden="true"></span>';
+
+        const status = L.DomUtil.create(
+            'span',
+            'visually-hidden',
+            container
+        );
+
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        L.DomEvent.on(button, 'click', () => {
+            if (!navigator.geolocation) {
+                status.textContent =
+                    'Location is not available in this browser.';
+                button.classList.add('is-error');
+                return;
+            }
+
+            button.classList.remove('is-error');
+            button.classList.add('is-locating');
+            button.setAttribute('aria-busy', 'true');
+            status.textContent = 'Finding your location.';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latitude =
+                        Number(position.coords.latitude);
+                    const longitude =
+                        Number(position.coords.longitude);
+
+                    button.classList.remove('is-locating');
+                    button.removeAttribute('aria-busy');
+
+                    if (
+                        !Number.isFinite(latitude) ||
+                        !Number.isFinite(longitude)
+                    ) {
+                        button.classList.add('is-error');
+                        status.textContent =
+                            'Your location could not be determined.';
+                        return;
+                    }
+
+                    const coordinates = [latitude, longitude];
+
+                    if (userLocationMarker) {
+                        userLocationMarker.setLatLng(coordinates);
+                    } else {
+                        userLocationMarker = L.marker(
+                            coordinates,
+                            {
+                                icon: L.divIcon({
+                                    className: 'map-user-location-shell',
+                                    html: '<span class="map-user-location-dot"></span>',
+                                    iconSize: [24, 24],
+                                    iconAnchor: [12, 12]
+                                }),
+                                interactive: false,
+                                keyboard: false
+                            }
+                        ).addTo(map);
+                    }
+
+                    const exactZoomAllowed =
+                        memberMapAccess || contributorPlaceAccess;
+
+                    const targetZoom = Math.min(
+                        map.getMaxZoom(),
+                        exactZoomAllowed ? 15 : PUBLIC_MAX_ZOOM
+                    );
+
+                    const reduceMotion =
+                        document.documentElement.dataset.reducedMotion === 'true' ||
+                        window.matchMedia?.(
+                            '(prefers-reduced-motion: reduce)'
+                        ).matches === true;
+
+                    map.setView(
+                        coordinates,
+                        targetZoom,
+                        {
+                            animate: !reduceMotion
+                        }
+                    );
+
+                    status.textContent = 'Your location is shown on the map.';
+                },
+                (error) => {
+                    button.classList.remove('is-locating');
+                    button.classList.add('is-error');
+                    button.removeAttribute('aria-busy');
+
+                    status.textContent =
+                        error?.code === 1
+                            ? 'Location permission was not granted.'
+                            : 'Your location could not be determined.';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 12000,
+                    maximumAge: 60000
+                }
+            );
+        });
+
+        return container;
+    };
+
+    locateControl.addTo(map);
 
 
     const tileSources = {
@@ -352,6 +497,32 @@
         [place.city, place.state].filter(Boolean).join(', ');
 
 
+    const isFeaturedPlace = (place) =>
+        String(place?.status || '').toLowerCase() === 'featured' ||
+        place?.is_featured === true ||
+        place?.is_featured === 1 ||
+        place?.is_featured === '1';
+
+
+    const markerIcon = (place) =>
+        L.divIcon({
+            className: 'map-place-marker-shell',
+            html: `
+                <span
+                    class="map-place-marker${
+                        isFeaturedPlace(place)
+                            ? ' is-featured'
+                            : ''
+                    }"
+                    aria-hidden="true"
+                ></span>
+            `,
+            iconSize: [30, 38],
+            iconAnchor: [15, 36],
+            popupAnchor: [0, -34]
+        });
+
+
     const placeCoordinates = (place) => {
         const exactLat = Number(place.latitude);
         const exactLng = Number(place.longitude);
@@ -604,15 +775,23 @@
 
 
     const renderCard = (place, marker) => {
-        const article = document.createElement('article');
+        const card = document.createElement('a');
         const image = imageUrl(place.featured_image);
         const location = locationLabel(place);
         const url = placeUrl(place);
+        const featured = isFeaturedPlace(place);
 
-        article.className = 'map-place-card';
+        card.className =
+            'map-place-card' +
+            (featured ? ' is-featured' : '');
+        card.href = url;
+        card.setAttribute(
+            'aria-label',
+            `View ${String(place.name || 'Place')}`
+        );
 
-        article.innerHTML = `
-            <a class="map-place-image" href="${url}">
+        card.innerHTML = `
+            <span class="map-place-image">
                 ${
                     image
                         ? `
@@ -630,7 +809,7 @@
                 }
 
                 ${
-                    place.status === 'featured'
+                    featured
                         ? `
                             <span class="map-featured-badge">
                                 <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/star.svg')" aria-hidden="true"></i>
@@ -639,18 +818,14 @@
                         `
                         : ''
                 }
-            </a>
+            </span>
 
             <div class="map-place-body">
                 <div class="map-place-topline">
                     <span>${escapeHtml(formatLabel(place.type))}</span>
                 </div>
 
-                <h3>
-                    <a href="${url}">
-                        ${escapeHtml(place.name)}
-                    </a>
-                </h3>
+                <h3>${escapeHtml(place.name)}</h3>
 
                 ${
                     location
@@ -676,21 +851,20 @@
                             : ''
                     }
                 </div>
-
             </div>
         `;
 
         if (marker) {
-            article.addEventListener('mouseenter', () => {
+            card.addEventListener('mouseenter', () => {
                 marker.openPopup();
             });
 
-            article.addEventListener('focusin', () => {
+            card.addEventListener('focus', () => {
                 marker.openPopup();
             });
         }
 
-        return article;
+        return card;
     };
 
 
@@ -708,7 +882,12 @@
             let marker = null;
 
             if (coordinates) {
-                marker = L.marker(coordinates);
+                marker = L.marker(
+                    coordinates,
+                    {
+                        icon: markerIcon(place)
+                    }
+                );
                 marker.bindPopup(popupHtml(place));
                 marker.addTo(map);
                 markers.push(marker);
@@ -859,7 +1038,14 @@
     controls.clear?.addEventListener('click', clearFilters);
     controls.fit?.addEventListener('click', fitVisiblePlaces);
 
-    controls.search?.addEventListener('input', () => render(false));
+    controls.search?.addEventListener('input', () => {
+        window.clearTimeout(searchRenderTimer);
+
+        searchRenderTimer = window.setTimeout(
+            () => render(true),
+            180
+        );
+    });
 
     [
         controls.state,
