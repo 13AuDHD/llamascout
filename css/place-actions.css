@@ -2,16 +2,39 @@
    PLACE QUICK-FACT ACTIONS
    ========================================================= */
 
+/*
+ * The shared Place card stylesheet centers grid content by default.
+ * Quick facts with different amounts of text can therefore look vertically
+ * mismatched when CSS Grid stretches the cards to the same row height.
+ * Keep every quick fact anchored to the top of its card instead.
+ */
+.place-facts > .place-fact {
+    align-content: start;
+    align-items: start;
+}
+
+.place-facts > .place-fact > i {
+    align-self: start;
+    margin-top: 2px;
+}
+
+/*
+ * Action buttons belong below the Road / GPS value, aligned to the lower
+ * right of the content rather than consuming a permanent third column.
+ * This gives the text its full normal width and keeps the cards compact.
+ */
 .place-fact--with-action {
     position: relative;
     z-index: 1;
     grid-template-columns:
         auto
-        minmax(0, 1fr)
-        auto;
+        minmax(0, 1fr);
     grid-template-areas:
-        "icon label action"
-        "icon value action";
+        "icon label"
+        "icon value"
+        ". action";
+    column-gap: 13px;
+    row-gap: 3px;
 }
 
 .place-fact--with-action.is-navigation-open {
@@ -21,12 +44,14 @@
 .place-fact-action {
     position: relative;
     grid-area: action;
-    align-self: center;
+    justify-self: end;
+    align-self: start;
+    margin-top: 8px;
 }
 
 .place-fact-icon-button {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
     padding: 0;
@@ -56,8 +81,8 @@
 }
 
 .place-fact-icon-button .llama-icon {
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 18px;
 }
 
 .place-navigation-menu {
@@ -65,7 +90,7 @@
     z-index: 40;
     top: calc(100% + 9px);
     right: 0;
-    width: min(276px, calc(100vw - 48px));
+    width: min(292px, calc(100vw - 48px));
     overflow: hidden;
     padding: 7px;
     border: 1px solid var(--border);
@@ -90,7 +115,7 @@
 
 .place-navigation-menu a {
     display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(0, 1fr) 18px;
     gap: 10px;
     align-items: center;
     min-height: 54px;
@@ -98,6 +123,21 @@
     border-radius: 9px;
     color: var(--text);
     text-decoration: none;
+}
+
+/*
+ * place-shared.css assigns grid areas to every span inside .place-fact.
+ * Navigation rows contain their own spans, so explicitly return those nested
+ * elements to the navigation row's grid instead of the parent Place card grid.
+ */
+.place-navigation-menu a > span,
+.place-navigation-menu a > svg {
+    grid-area: auto;
+}
+
+.place-navigation-menu a > span {
+    color: inherit;
+    font-size: inherit;
 }
 
 .place-navigation-menu a:hover {
@@ -119,7 +159,9 @@
 }
 
 .place-navigation-menu strong {
+    color: var(--text);
     font-size: .86rem;
+    line-height: 1.25;
 }
 
 .place-navigation-menu small {
@@ -134,11 +176,14 @@
     height: 30px;
     display: grid;
     place-items: center;
+    justify-self: center;
+    color: var(--text);
 }
 
 .place-navigation-brand .llama-icon {
     width: 22px;
     height: 22px;
+    display: block;
 }
 
 .place-navigation-brand--onx .llama-icon {
@@ -149,6 +194,8 @@
 .place-navigation-external {
     width: 15px;
     height: 15px;
+    display: block;
+    justify-self: end;
     color: var(--text-muted);
 }
 
