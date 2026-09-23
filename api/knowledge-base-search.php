@@ -15,6 +15,7 @@ if ($query === '' || mb_strlen($query) < 2) {
         [
             'ok' => true,
             'query' => $query,
+            'search_id' => 0,
             'results' => [],
         ],
         JSON_UNESCAPED_SLASHES
@@ -24,17 +25,28 @@ if ($query === '' || mb_strlen($query) < 2) {
 }
 
 try {
+    $db = db();
+
     $rows =
         llama_kb_public_search(
-            db(),
+            $db,
             $query,
             12
+        );
+
+    $searchId =
+        llama_kb_public_log_search(
+            $db,
+            $query,
+            count($rows)
         );
 
     $results = [];
 
     foreach ($rows as $row) {
         $results[] = [
+            'id' =>
+                (int) ($row['id'] ?? 0),
             'title' =>
                 (string) ($row['title'] ?? ''),
             'slug' =>
@@ -52,6 +64,7 @@ try {
         [
             'ok' => true,
             'query' => $query,
+            'search_id' => $searchId,
             'results' => $results,
         ],
         JSON_UNESCAPED_SLASHES
@@ -64,6 +77,7 @@ try {
         [
             'ok' => false,
             'query' => $query,
+            'search_id' => 0,
             'results' => [],
             'message' =>
                 'Knowledge Base search is temporarily unavailable.',
