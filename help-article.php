@@ -89,6 +89,9 @@ $renderedContent =
         $siteUrl ?? 'https://llamascout.com'
     );
 
+$feedbackToken =
+    llama_kb_public_feedback_token();
+
 require __DIR__ . '/partials/header.php';
 
 /*
@@ -178,6 +181,89 @@ $renderedContent =
                         hidden under the hay.
                     </p>
                 </div>
+
+                <section
+                    class="kb-feedback"
+                    aria-labelledby="kb-feedback-title"
+                    data-kb-feedback
+                    data-article-id="<?= (int) ($article['id'] ?? 0) ?>"
+                    data-csrf-token="<?= llama_kb_e($feedbackToken) ?>"
+                >
+                    <div class="kb-feedback-question">
+                        <div>
+                            <p class="kb-eyebrow">Article Feedback</p>
+                            <h2 id="kb-feedback-title">
+                                Did this answer your question?
+                            </h2>
+                        </div>
+
+                        <div
+                            class="kb-feedback-buttons"
+                            data-kb-feedback-buttons
+                        >
+                            <button
+                                type="button"
+                                class="kb-feedback-choice"
+                                data-kb-feedback-yes
+                            >
+                                Yes
+                            </button>
+
+                            <button
+                                type="button"
+                                class="kb-feedback-choice"
+                                data-kb-feedback-no
+                            >
+                                No
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        class="kb-feedback-reason"
+                        data-kb-feedback-reason
+                        hidden
+                    >
+                        <label for="kb-feedback-reason-text">
+                            <span>
+                                What were you trying to find?
+                            </span>
+                            <textarea
+                                id="kb-feedback-reason-text"
+                                maxlength="1000"
+                                rows="4"
+                                placeholder="Optional. Tell the llamas what was missing, unclear, or out of date."
+                                data-kb-feedback-reason-text
+                            ></textarea>
+                        </label>
+
+                        <div class="kb-feedback-reason-actions">
+                            <button
+                                type="button"
+                                class="kb-button"
+                                data-kb-feedback-send-no
+                            >
+                                Send feedback
+                            </button>
+
+                            <button
+                                type="button"
+                                class="kb-button is-secondary"
+                                data-kb-feedback-skip-no
+                            >
+                                Skip comment
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        class="kb-feedback-status"
+                        role="status"
+                        aria-live="polite"
+                        data-kb-feedback-status
+                        hidden
+                    ></div>
+                </section>
             </article>
 
             <aside class="kb-article-sidebar">
@@ -212,5 +298,10 @@ $renderedContent =
         </div>
     </section>
 </main>
+
+<script
+    src="<?= llama_kb_e($siteUrl . '/js/knowledge-base.js') ?>"
+    defer
+></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
