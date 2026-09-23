@@ -150,7 +150,7 @@ try {
         );
 
     try {
-        shop_send_pending_shipment_notifications(
+        shop_run_shipment_email_maintenance(
             $db,
             10
         );
