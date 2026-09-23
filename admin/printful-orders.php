@@ -367,12 +367,7 @@ $remoteAlreadyCancelled =
                 )
             ) ?>
         </span>
-
-        <?php if ($remoteStatus === 'archived'): ?>
-            <small class="admin-printful-remote-error">
-                Archived is hidden, not cancelled.
-            </small>
-        <?php endif; ?>
+    
     <?php endif; ?>
 </td>
 
