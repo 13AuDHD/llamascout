@@ -12,14 +12,7 @@ require_once __DIR__ . '/memberships.php';
 
 function llama_membership_promotion_code_month_options(): array
 {
-    return [
-        1,
-        2,
-        3,
-        6,
-        9,
-        12,
-    ];
+    return [1, 2, 3, 6, 9, 12];
 }
 
 
@@ -27,18 +20,10 @@ function llama_membership_promotion_code_duration_label(
     array $promotionCode
 ): string {
     $duration = strtolower(
-        trim(
-            (string) (
-                $promotionCode['discount_duration']
-                ?? 'once'
-            )
-        )
+        trim((string) ($promotionCode['discount_duration'] ?? 'once'))
     );
 
-    $months = (int) (
-        $promotionCode['duration_months']
-        ?? 0
-    );
+    $months = (int) ($promotionCode['duration_months'] ?? 0);
 
     if (
         $duration === 'months'
@@ -61,18 +46,10 @@ function llama_membership_promotion_code_is_multi_month(
     array $promotionCode
 ): bool {
     $duration = strtolower(
-        trim(
-            (string) (
-                $promotionCode['discount_duration']
-                ?? 'once'
-            )
-        )
+        trim((string) ($promotionCode['discount_duration'] ?? 'once'))
     );
 
-    $months = (int) (
-        $promotionCode['duration_months']
-        ?? 0
-    );
+    $months = (int) ($promotionCode['duration_months'] ?? 0);
 
     return
         $duration === 'months'
@@ -93,35 +70,21 @@ function llama_membership_promotion_code_price_cents(
     int $basePriceCents,
     array $promotionCode
 ): int {
-    $basePriceCents = max(
-        0,
-        $basePriceCents
-    );
+    $basePriceCents = max(0, $basePriceCents);
 
     $discountType = strtolower(
-        trim(
-            (string) (
-                $promotionCode['discount_type']
-                ?? ''
-            )
-        )
+        trim((string) ($promotionCode['discount_type'] ?? ''))
     );
 
     $discountValue = max(
         0,
-        (int) (
-            $promotionCode['discount_value']
-            ?? 0
-        )
+        (int) ($promotionCode['discount_value'] ?? 0)
     );
 
     if (
         in_array(
             $discountType,
-            [
-                'percent',
-                'amount',
-            ],
+            ['percent', 'amount'],
             true
         )
     ) {
@@ -143,9 +106,7 @@ function llama_membership_promotion_code_price_cents(
 function llama_promotion_code_utc_timestamp(
     ?string $value
 ): ?int {
-    $value = trim(
-        (string) $value
-    );
+    $value = trim((string) $value);
 
     if ($value === '') {
         return null;
@@ -172,31 +133,19 @@ function llama_promotion_code_utc_timestamp(
 function llama_promotion_code_should_be_active(
     array $row
 ): bool {
-    if (
-        empty(
-            $row['is_enabled']
-        )
-    ) {
+    if (empty($row['is_enabled'])) {
         return false;
     }
 
     $now = time();
 
-    $start =
-        llama_promotion_code_utc_timestamp(
-            (string) (
-                $row['starts_at']
-                ?? ''
-            )
-        );
+    $start = llama_promotion_code_utc_timestamp(
+        (string) ($row['starts_at'] ?? '')
+    );
 
-    $end =
-        llama_promotion_code_utc_timestamp(
-            (string) (
-                $row['ends_at']
-                ?? ''
-            )
-        );
+    $end = llama_promotion_code_utc_timestamp(
+        (string) ($row['ends_at'] ?? '')
+    );
 
     return
         $start !== null
@@ -239,16 +188,13 @@ function llama_sync_membership_promotion_codes(
              WHERE stripe_promotion_code_id IS NOT NULL
                AND stripe_promotion_code_id <> ""
              ORDER BY id ASC'
-        )->fetchAll(
-            PDO::FETCH_ASSOC
-        );
+        )->fetchAll(PDO::FETCH_ASSOC);
 
         if (!$rows) {
             return $summary;
         }
 
-        $stripe =
-            llama_stripe_client();
+        $stripe = llama_stripe_client();
 
         $update = $db->prepare(
             'UPDATE membership_promotion_codes
@@ -260,14 +206,10 @@ function llama_sync_membership_promotion_codes(
             $summary['checked']++;
 
             $desired =
-                llama_promotion_code_should_be_active(
-                    $row
-                );
+                llama_promotion_code_should_be_active($row);
 
             $current =
-                !empty(
-                    $row['stripe_active']
-                );
+                !empty($row['stripe_active']);
 
             if ($desired === $current) {
                 continue;
@@ -276,12 +218,9 @@ function llama_sync_membership_promotion_codes(
             $stripe
                 ->promotionCodes
                 ->update(
-                    (string) $row[
-                        'stripe_promotion_code_id'
-                    ],
+                    (string) $row['stripe_promotion_code_id'],
                     [
-                        'active' =>
-                            $desired,
+                        'active' => $desired,
                     ]
                 );
 
@@ -307,102 +246,14 @@ function llama_sync_membership_promotion_codes(
 
 
 /* =========================================================
-   CREATE PROMOTION CODE
+   VALIDATE AND NORMALIZE INPUT
    ========================================================= */
 
-function llama_create_membership_promotion_code(
+function llama_prepare_membership_promotion_code(
     PDO $db,
     array $input,
-    ?int $createdBy = null
-): int {
-    $name = trim(
-        (string) (
-            $input['internal_name']
-            ?? ''
-        )
-    );
-
-    $code = strtoupper(
-        trim(
-            (string) (
-                $input['code']
-                ?? ''
-            )
-        )
-    );
-
-    $discountType = strtolower(
-        trim(
-            (string) (
-                $input['discount_type']
-                ?? 'percent'
-            )
-        )
-    );
-
-    $discountValue = (int) (
-        $input['discount_value']
-        ?? 0
-    );
-
-    $planScope = strtolower(
-        trim(
-            (string) (
-                $input['plan_scope']
-                ?? 'all'
-            )
-        )
-    );
-
-    $discountDuration = strtolower(
-        trim(
-            (string) (
-                $input['discount_duration']
-                ?? 'once'
-            )
-        )
-    );
-
-    $durationMonths = isset(
-        $input['duration_months']
-    )
-        ? (int) $input['duration_months']
-        : null;
-
-    $startsAt = trim(
-        (string) (
-            $input['starts_at']
-            ?? ''
-        )
-    );
-
-    $endsAt = trim(
-        (string) (
-            $input['ends_at']
-            ?? ''
-        )
-    );
-
-    $firstTimeOnly =
-        !empty(
-            $input[
-                'first_time_customers_only'
-            ]
-        );
-
-    $maxRedemptions =
-        isset(
-            $input['max_redemptions']
-        )
-        && (int) $input['max_redemptions'] > 0
-            ? (int) $input['max_redemptions']
-            : null;
-
-
-    /* =====================================================
-       DATABASE UPGRADE CHECK
-       ===================================================== */
-
+    ?int $excludeId = null
+): array {
     if (
         !llama_membership_column_exists(
             $db,
@@ -420,10 +271,52 @@ function llama_create_membership_promotion_code(
         );
     }
 
+    $name = trim(
+        (string) ($input['internal_name'] ?? '')
+    );
 
-    /* =====================================================
-       BASIC VALIDATION
-       ===================================================== */
+    $code = strtoupper(
+        trim((string) ($input['code'] ?? ''))
+    );
+
+    $discountType = strtolower(
+        trim((string) ($input['discount_type'] ?? 'percent'))
+    );
+
+    $discountValue =
+        (int) ($input['discount_value'] ?? 0);
+
+    $planScope = strtolower(
+        trim((string) ($input['plan_scope'] ?? 'all'))
+    );
+
+    $discountDuration = strtolower(
+        trim((string) ($input['discount_duration'] ?? 'once'))
+    );
+
+    $durationMonths =
+        isset($input['duration_months'])
+            && $input['duration_months'] !== null
+            ? (int) $input['duration_months']
+            : null;
+
+    $startsAt = trim(
+        (string) ($input['starts_at'] ?? '')
+    );
+
+    $endsAt = trim(
+        (string) ($input['ends_at'] ?? '')
+    );
+
+    $firstTimeOnly =
+        !empty($input['first_time_customers_only']);
+
+    $maxRedemptions =
+        isset($input['max_redemptions'])
+        && (int) $input['max_redemptions'] > 0
+            ? (int) $input['max_redemptions']
+            : null;
+
 
     if ($name === '') {
         throw new InvalidArgumentException(
@@ -445,11 +338,7 @@ function llama_create_membership_promotion_code(
     if (
         !in_array(
             $discountType,
-            [
-                'percent',
-                'amount',
-                'promotional_price',
-            ],
+            ['percent', 'amount', 'promotional_price'],
             true
         )
     ) {
@@ -476,11 +365,7 @@ function llama_create_membership_promotion_code(
     if (
         !in_array(
             $planScope,
-            [
-                'all',
-                'monthly',
-                'annual',
-            ],
+            ['all', 'monthly', 'annual'],
             true
         )
     ) {
@@ -490,17 +375,10 @@ function llama_create_membership_promotion_code(
     }
 
 
-    /* =====================================================
-       DURATION VALIDATION
-       ===================================================== */
-
     if (
         !in_array(
             $discountDuration,
-            [
-                'once',
-                'months',
-            ],
+            ['once', 'months'],
             true
         )
     ) {
@@ -509,13 +387,8 @@ function llama_create_membership_promotion_code(
         );
     }
 
-
-    if (
-        $discountDuration === 'months'
-    ) {
-        if (
-            $planScope !== 'monthly'
-        ) {
+    if ($discountDuration === 'months') {
+        if ($planScope !== 'monthly') {
             throw new InvalidArgumentException(
                 'Multi-month discounts are available only for the Monthly membership.'
             );
@@ -538,7 +411,6 @@ function llama_create_membership_promotion_code(
         $durationMonths = null;
     }
 
-
     if (
         $discountType === 'promotional_price'
         && $planScope !== 'monthly'
@@ -549,19 +421,11 @@ function llama_create_membership_promotion_code(
     }
 
 
-    /* =====================================================
-       DATE VALIDATION
-       ===================================================== */
-
     $startsTimestamp =
-        llama_promotion_code_utc_timestamp(
-            $startsAt
-        );
+        llama_promotion_code_utc_timestamp($startsAt);
 
     $endsTimestamp =
-        llama_promotion_code_utc_timestamp(
-            $endsAt
-        );
+        llama_promotion_code_utc_timestamp($endsAt);
 
     if (
         $startsTimestamp === null
@@ -574,47 +438,45 @@ function llama_create_membership_promotion_code(
     }
 
 
-    /* =====================================================
-       DUPLICATE CODE
-       ===================================================== */
-
-    $duplicate = $db->prepare(
+    $duplicateSql =
         'SELECT id
          FROM membership_promotion_codes
-         WHERE UPPER(code) = ?
-         LIMIT 1'
-    );
+         WHERE UPPER(code) = ?';
 
-    $duplicate->execute([
-        $code,
-    ]);
+    $duplicateParams = [$code];
 
     if (
-        $duplicate->fetchColumn()
+        $excludeId !== null
+        && $excludeId > 0
     ) {
+        $duplicateSql .=
+            ' AND id <> ?';
+
+        $duplicateParams[] =
+            $excludeId;
+    }
+
+    $duplicateSql .=
+        ' LIMIT 1';
+
+    $duplicate = $db->prepare(
+        $duplicateSql
+    );
+
+    $duplicate->execute(
+        $duplicateParams
+    );
+
+    if ($duplicate->fetchColumn()) {
         throw new InvalidArgumentException(
             'That promotion code already exists.'
         );
     }
 
 
-    /* =====================================================
-       STRIPE PRODUCT REPAIR
-       ===================================================== */
-
-    /*
-     * Older membership records may know the Stripe Price but not
-     * its Product. Repair those catalog links before creating a
-     * product-restricted promotion code.
-     */
     llama_stripe_backfill_membership_product_ids(
         $db
     );
-
-
-    /* =====================================================
-       SELECT MEMBERSHIP PRODUCTS
-       ===================================================== */
 
     $plans =
         llama_membership_plans(
@@ -626,17 +488,9 @@ function llama_create_membership_promotion_code(
     $productIds = [];
     $currencies = [];
 
-    foreach (
-        $plans
-        as $plan
-    ) {
+    foreach ($plans as $plan) {
         $interval = strtolower(
-            trim(
-                (string) (
-                    $plan['interval_slug']
-                    ?? ''
-                )
-            )
+            trim((string) ($plan['interval_slug'] ?? ''))
         );
 
         if (
@@ -647,10 +501,7 @@ function llama_create_membership_promotion_code(
         }
 
         $productId = trim(
-            (string) (
-                $plan['stripe_product_id']
-                ?? ''
-            )
+            (string) ($plan['stripe_product_id'] ?? '')
         );
 
         if ($productId === '') {
@@ -659,33 +510,22 @@ function llama_create_membership_promotion_code(
             );
         }
 
-        $selectedPlans[] =
-            $plan;
+        $selectedPlans[] = $plan;
+        $productIds[] = $productId;
 
-        $productIds[] =
-            $productId;
-
-        $currencies[] =
-            strtolower(
-                (string) (
-                    $plan['currency']
-                    ?? 'usd'
-                )
-            );
+        $currencies[] = strtolower(
+            (string) ($plan['currency'] ?? 'usd')
+        );
     }
 
     $productIds =
         array_values(
-            array_unique(
-                $productIds
-            )
+            array_unique($productIds)
         );
 
     $currencies =
         array_values(
-            array_unique(
-                $currencies
-            )
+            array_unique($currencies)
         );
 
     if (!$productIds) {
@@ -695,59 +535,37 @@ function llama_create_membership_promotion_code(
     }
 
     if (
-        $discountType === 'amount'
+        in_array(
+            $discountType,
+            ['amount', 'promotional_price'],
+            true
+        )
         && count($currencies) !== 1
     ) {
         throw new RuntimeException(
-            'Dollar-off codes require the selected plans to use one currency.'
+            'Dollar-based codes require the selected plans to use one currency.'
         );
     }
 
 
-    /* =====================================================
-       PROMOTIONAL MONTHLY PRICE
-       ===================================================== */
-
     /*
-     * Admin may provide a target Monthly price such as $4.99.
-     *
-     * Stripe needs the actual discount amount, so convert the
-     * target price to an amount-off coupon before storing it.
-     *
-     * Example:
-     *
-     * Regular Monthly price: $6.99
-     * Promotional price:     $4.99
-     * Stripe amount off:     $2.00
-     *
-     * The stored code remains an amount discount so existing
-     * checkout pricing continues to work without another schema
-     * change.
+     * Admin can enter a target Monthly price. Stripe stores the
+     * equivalent amount-off coupon, which is also what the local
+     * record stores.
      */
-
-    if (
-        $discountType === 'promotional_price'
-    ) {
+    if ($discountType === 'promotional_price') {
         $monthlyPlan = null;
 
-        foreach (
-            $selectedPlans
-            as $selectedPlan
-        ) {
+        foreach ($selectedPlans as $selectedPlan) {
             if (
                 strtolower(
                     (string) (
-                        $selectedPlan[
-                            'interval_slug'
-                        ]
+                        $selectedPlan['interval_slug']
                         ?? ''
                     )
-                )
-                === 'monthly'
+                ) === 'monthly'
             ) {
-                $monthlyPlan =
-                    $selectedPlan;
-
+                $monthlyPlan = $selectedPlan;
                 break;
             }
         }
@@ -759,19 +577,12 @@ function llama_create_membership_promotion_code(
         }
 
         $regularMonthlyPrice =
-            (int) (
-                $monthlyPlan[
-                    'base_price_cents'
-                ]
-                ?? 0
-            );
+            (int) ($monthlyPlan['base_price_cents'] ?? 0);
 
         $promotionalMonthlyPrice =
             $discountValue;
 
-        if (
-            $regularMonthlyPrice < 1
-        ) {
+        if ($regularMonthlyPrice < 1) {
             throw new RuntimeException(
                 'The Monthly membership price is not configured.'
             );
@@ -786,8 +597,7 @@ function llama_create_membership_promotion_code(
             );
         }
 
-        $discountType =
-            'amount';
+        $discountType = 'amount';
 
         $discountValue =
             $regularMonthlyPrice
@@ -795,59 +605,78 @@ function llama_create_membership_promotion_code(
     }
 
 
-    /* =====================================================
-       CREATE STRIPE COUPON
-       ===================================================== */
+    return [
+        'internal_name' => $name,
+        'code' => $code,
+        'discount_type' => $discountType,
+        'discount_value' => $discountValue,
+        'discount_duration' => $discountDuration,
+        'duration_months' => $durationMonths,
+        'plan_scope' => $planScope,
+        'starts_at' => $startsAt,
+        'ends_at' => $endsAt,
+        'starts_timestamp' => $startsTimestamp,
+        'ends_timestamp' => $endsTimestamp,
+        'first_time_customers_only' => $firstTimeOnly,
+        'max_redemptions' => $maxRedemptions,
+        'product_ids' => $productIds,
+        'currencies' => $currencies,
+    ];
+}
 
+
+/* =========================================================
+   CREATE STRIPE OBJECTS
+   ========================================================= */
+
+function llama_create_membership_promotion_code_stripe_objects(
+    array $config,
+    bool $enabled
+): array {
     $stripe =
         llama_stripe_client();
 
-
     $couponData = [
         'name' =>
-            $name,
+            mb_substr(
+                (string) $config['internal_name'],
+                0,
+                40
+            ),
 
         'applies_to' => [
             'products' =>
-                $productIds,
+                $config['product_ids'],
         ],
 
         'metadata' => [
             'llama_promotion_code' =>
-                $code,
+                (string) $config['code'],
 
             'llama_plan_scope' =>
-                $planScope,
+                (string) $config['plan_scope'],
 
             'llama_discount_duration' =>
-                $discountDuration,
+                (string) $config['discount_duration'],
 
             'llama_duration_months' =>
-                $durationMonths !== null
-                    ? (string) $durationMonths
+                $config['duration_months'] !== null
+                    ? (string) $config['duration_months']
                     : '',
         ],
     ];
 
 
-    /*
-     * A 1-month Monthly promotion is equivalent to Stripe's
-     * one-time discount because the subscription bills monthly.
-     *
-     * Two or more months require Stripe's repeating coupon.
-     */
     if (
-        $discountDuration === 'months'
-        && $durationMonths !== null
-        && $durationMonths > 1
+        $config['discount_duration'] === 'months'
+        && $config['duration_months'] !== null
+        && (int) $config['duration_months'] > 1
     ) {
         $couponData['duration'] =
             'repeating';
 
-        $couponData[
-            'duration_in_months'
-        ] =
-            $durationMonths;
+        $couponData['duration_in_months'] =
+            (int) $config['duration_months'];
 
     } else {
         $couponData['duration'] =
@@ -856,23 +685,17 @@ function llama_create_membership_promotion_code(
 
 
     if (
-        $discountType === 'percent'
+        $config['discount_type'] === 'percent'
     ) {
-        $couponData[
-            'percent_off'
-        ] =
-            $discountValue;
+        $couponData['percent_off'] =
+            (int) $config['discount_value'];
 
     } else {
-        $couponData[
-            'amount_off'
-        ] =
-            $discountValue;
+        $couponData['amount_off'] =
+            (int) $config['discount_value'];
 
-        $couponData[
-            'currency'
-        ] =
-            $currencies[0]
+        $couponData['currency'] =
+            $config['currencies'][0]
             ?? 'usd';
     }
 
@@ -880,17 +703,10 @@ function llama_create_membership_promotion_code(
     $coupon =
         $stripe
             ->coupons
-            ->create(
-                $couponData
-            );
+            ->create($couponData);
 
     $couponId =
-        trim(
-            (string) (
-                $coupon->id
-                ?? ''
-            )
-        );
+        trim((string) ($coupon->id ?? ''));
 
     if ($couponId === '') {
         throw new RuntimeException(
@@ -899,74 +715,64 @@ function llama_create_membership_promotion_code(
     }
 
 
-    /* =====================================================
-       CREATE STRIPE PROMOTION CODE
-       ===================================================== */
-
     $now = time();
 
     $shouldBeActive =
-        $now >= $startsTimestamp
-        && $now < $endsTimestamp;
-
+        $enabled
+        && $now >= (int) $config['starts_timestamp']
+        && $now < (int) $config['ends_timestamp'];
 
     $promotionData = [
         'promotion' => [
-            'type' =>
-                'coupon',
-
-            'coupon' =>
-                $couponId,
+            'type' => 'coupon',
+            'coupon' => $couponId,
         ],
 
         'active' =>
             $shouldBeActive,
 
         'code' =>
-            $code,
+            (string) $config['code'],
 
         'expires_at' =>
-            $endsTimestamp,
+            (int) $config['ends_timestamp'],
 
         'metadata' => [
             'llama_internal_name' =>
-                $name,
+                (string) $config['internal_name'],
 
             'llama_plan_scope' =>
-                $planScope,
+                (string) $config['plan_scope'],
 
             'llama_discount_duration' =>
-                $discountDuration,
+                (string) $config['discount_duration'],
 
             'llama_duration_months' =>
-                $durationMonths !== null
-                    ? (string) $durationMonths
+                $config['duration_months'] !== null
+                    ? (string) $config['duration_months']
                     : '',
         ],
 
         'restrictions' => [
             'first_time_transaction' =>
-                $firstTimeOnly,
+                !empty(
+                    $config['first_time_customers_only']
+                ),
         ],
     ];
 
-
     if (
-        $maxRedemptions !== null
+        $config['max_redemptions'] !== null
     ) {
-        $promotionData[
-            'max_redemptions'
-        ] =
-            $maxRedemptions;
+        $promotionData['max_redemptions'] =
+            (int) $config['max_redemptions'];
     }
 
 
     $promotionCode =
         $stripe
             ->promotionCodes
-            ->create(
-                $promotionData
-            );
+            ->create($promotionData);
 
     $promotionCodeId =
         trim(
@@ -976,18 +782,46 @@ function llama_create_membership_promotion_code(
             )
         );
 
-    if (
-        $promotionCodeId === ''
-    ) {
+    if ($promotionCodeId === '') {
         throw new RuntimeException(
             'Stripe did not return a Promotion Code ID.'
         );
     }
 
 
-    /* =====================================================
-       SAVE LOCAL PROMOTION CODE
-       ===================================================== */
+    return [
+        'coupon_id' =>
+            $couponId,
+
+        'promotion_code_id' =>
+            $promotionCodeId,
+
+        'stripe_active' =>
+            $shouldBeActive,
+    ];
+}
+
+
+/* =========================================================
+   CREATE PROMOTION CODE
+   ========================================================= */
+
+function llama_create_membership_promotion_code(
+    PDO $db,
+    array $input,
+    ?int $createdBy = null
+): int {
+    $config =
+        llama_prepare_membership_promotion_code(
+            $db,
+            $input
+        );
+
+    $stripeObjects =
+        llama_create_membership_promotion_code_stripe_objects(
+            $config,
+            true
+        );
 
     $stmt = $db->prepare(
         'INSERT INTO membership_promotion_codes
@@ -1010,54 +844,223 @@ function llama_create_membership_promotion_code(
             created_by
          )
          VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            1,
-            ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?
          )'
     );
 
-
     $stmt->execute([
-        $name,
-        $code,
-        $discountType,
-        $discountValue,
-        $discountDuration,
-        $durationMonths,
-        $planScope,
-        $startsAt,
-        $endsAt,
-        $firstTimeOnly
-            ? 1
-            : 0,
-        $maxRedemptions,
-        $couponId,
-        $promotionCodeId,
-        $shouldBeActive
-            ? 1
-            : 0,
-        $createdBy
-        && $createdBy > 0
+        $config['internal_name'],
+        $config['code'],
+        $config['discount_type'],
+        $config['discount_value'],
+        $config['discount_duration'],
+        $config['duration_months'],
+        $config['plan_scope'],
+        $config['starts_at'],
+        $config['ends_at'],
+        $config['first_time_customers_only'] ? 1 : 0,
+        $config['max_redemptions'],
+        $stripeObjects['coupon_id'],
+        $stripeObjects['promotion_code_id'],
+        $stripeObjects['stripe_active'] ? 1 : 0,
+        $createdBy && $createdBy > 0
             ? $createdBy
             : null,
     ]);
 
+    return (int) $db->lastInsertId();
+}
 
-    return (int)
-        $db->lastInsertId();
+
+/* =========================================================
+   EDIT PROMOTION CODE
+   ========================================================= */
+
+function llama_update_membership_promotion_code(
+    PDO $db,
+    int $id,
+    array $input
+): void {
+    if ($id < 1) {
+        throw new InvalidArgumentException(
+            'Promotion code not found.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'SELECT *
+         FROM membership_promotion_codes
+         WHERE id = ?
+         LIMIT 1'
+    );
+
+    $stmt->execute([$id]);
+
+    $existing =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$existing) {
+        throw new InvalidArgumentException(
+            'Promotion code not found.'
+        );
+    }
+
+
+    $config =
+        llama_prepare_membership_promotion_code(
+            $db,
+            $input,
+            $id
+        );
+
+    $enabled =
+        !empty($existing['is_enabled']);
+
+    $oldPromotionCodeId =
+        trim(
+            (string) (
+                $existing['stripe_promotion_code_id']
+                ?? ''
+            )
+        );
+
+    $oldWasActive =
+        !empty($existing['stripe_active']);
+
+    $stripe =
+        llama_stripe_client();
+
+
+    /*
+     * Stripe intentionally makes most coupon and promotion-code
+     * fields immutable. Editing therefore creates replacement
+     * Stripe objects while keeping the same local record and stats.
+     *
+     * The old Promotion Code is disabled first so the same
+     * customer-facing code can be reused.
+     */
+    if ($oldPromotionCodeId !== '') {
+        $stripe
+            ->promotionCodes
+            ->update(
+                $oldPromotionCodeId,
+                [
+                    'active' => false,
+                ]
+            );
+    }
+
+
+    $newObjects = null;
+
+    try {
+        $newObjects =
+            llama_create_membership_promotion_code_stripe_objects(
+                $config,
+                $enabled
+            );
+
+    } catch (Throwable $exception) {
+        if (
+            $oldPromotionCodeId !== ''
+            && $oldWasActive
+        ) {
+            try {
+                $stripe
+                    ->promotionCodes
+                    ->update(
+                        $oldPromotionCodeId,
+                        [
+                            'active' => true,
+                        ]
+                    );
+            } catch (Throwable $restoreException) {
+                error_log(
+                    'Llama Scout could not reactivate the original promotion code after an edit failure: '
+                    . $restoreException->getMessage()
+                );
+            }
+        }
+
+        throw $exception;
+    }
+
+
+    try {
+        $update = $db->prepare(
+            'UPDATE membership_promotion_codes
+             SET
+                internal_name = ?,
+                code = ?,
+                discount_type = ?,
+                discount_value = ?,
+                discount_duration = ?,
+                duration_months = ?,
+                plan_scope = ?,
+                starts_at = ?,
+                ends_at = ?,
+                first_time_customers_only = ?,
+                max_redemptions = ?,
+                stripe_coupon_id = ?,
+                stripe_promotion_code_id = ?,
+                stripe_active = ?
+             WHERE id = ?'
+        );
+
+        $update->execute([
+            $config['internal_name'],
+            $config['code'],
+            $config['discount_type'],
+            $config['discount_value'],
+            $config['discount_duration'],
+            $config['duration_months'],
+            $config['plan_scope'],
+            $config['starts_at'],
+            $config['ends_at'],
+            $config['first_time_customers_only'] ? 1 : 0,
+            $config['max_redemptions'],
+            $newObjects['coupon_id'],
+            $newObjects['promotion_code_id'],
+            $newObjects['stripe_active'] ? 1 : 0,
+            $id,
+        ]);
+
+    } catch (Throwable $exception) {
+        try {
+            $stripe
+                ->promotionCodes
+                ->update(
+                    (string) $newObjects['promotion_code_id'],
+                    [
+                        'active' => false,
+                    ]
+                );
+        } catch (Throwable) {
+        }
+
+        if (
+            $oldPromotionCodeId !== ''
+            && $oldWasActive
+        ) {
+            try {
+                $stripe
+                    ->promotionCodes
+                    ->update(
+                        $oldPromotionCodeId,
+                        [
+                            'active' => true,
+                        ]
+                    );
+            } catch (Throwable $restoreException) {
+                error_log(
+                    'Llama Scout could not reactivate the original promotion code after a database edit failure: '
+                    . $restoreException->getMessage()
+                );
+            }
+        }
+
+        throw $exception;
+    }
 }
 
 
@@ -1077,14 +1080,10 @@ function llama_set_membership_promotion_code_enabled(
          LIMIT 1'
     );
 
-    $stmt->execute([
-        $id,
-    ]);
+    $stmt->execute([$id]);
 
     $row =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
         throw new InvalidArgumentException(
@@ -1092,21 +1091,14 @@ function llama_set_membership_promotion_code_enabled(
         );
     }
 
-
     $startsTimestamp =
         llama_promotion_code_utc_timestamp(
-            (string) (
-                $row['starts_at']
-                ?? ''
-            )
+            (string) ($row['starts_at'] ?? '')
         );
 
     $endsTimestamp =
         llama_promotion_code_utc_timestamp(
-            (string) (
-                $row['ends_at']
-                ?? ''
-            )
+            (string) ($row['ends_at'] ?? '')
         );
 
     $now = time();
@@ -1118,16 +1110,12 @@ function llama_set_membership_promotion_code_enabled(
         && $now >= $startsTimestamp
         && $now < $endsTimestamp;
 
-
     $stripeId = trim(
         (string) (
-            $row[
-                'stripe_promotion_code_id'
-            ]
+            $row['stripe_promotion_code_id']
             ?? ''
         )
     );
-
 
     if ($stripeId !== '') {
         llama_stripe_client()
@@ -1141,7 +1129,6 @@ function llama_set_membership_promotion_code_enabled(
             );
     }
 
-
     $update = $db->prepare(
         'UPDATE membership_promotion_codes
          SET
@@ -1150,16 +1137,9 @@ function llama_set_membership_promotion_code_enabled(
          WHERE id = ?'
     );
 
-
     $update->execute([
-        $enabled
-            ? 1
-            : 0,
-
-        $desiredStripeActive
-            ? 1
-            : 0,
-
+        $enabled ? 1 : 0,
+        $desiredStripeActive ? 1 : 0,
         $id,
     ]);
 }
@@ -1179,14 +1159,10 @@ function llama_record_membership_promotion_code_redemption(
     ?int $amountCents
 ): void {
     $stripePromotionCodeId =
-        trim(
-            $stripePromotionCodeId
-        );
+        trim($stripePromotionCodeId);
 
     $checkoutSessionId =
-        trim(
-            $checkoutSessionId
-        );
+        trim($checkoutSessionId);
 
     if (
         $stripePromotionCodeId === ''
@@ -1195,7 +1171,6 @@ function llama_record_membership_promotion_code_redemption(
     ) {
         return;
     }
-
 
     $lookup = $db->prepare(
         'SELECT id
@@ -1208,16 +1183,12 @@ function llama_record_membership_promotion_code_redemption(
         $stripePromotionCodeId,
     ]);
 
-
     $promotionCodeId =
-        (int)
-        $lookup->fetchColumn();
-
+        (int) $lookup->fetchColumn();
 
     if ($promotionCodeId < 1) {
         return;
     }
-
 
     $stmt = $db->prepare(
         'INSERT INTO membership_promotion_code_events
@@ -1237,27 +1208,18 @@ function llama_record_membership_promotion_code_redemption(
                 VALUES(amount_cents)'
     );
 
-
     $stmt->execute([
         $promotionCodeId,
-
         $userId,
-
         $membershipInterval !== ''
             ? $membershipInterval
             : null,
-
         $checkoutSessionId,
-
         $subscriptionId !== ''
             ? $subscriptionId
             : null,
-
         $amountCents !== null
-            ? max(
-                0,
-                $amountCents
-            )
+            ? max(0, $amountCents)
             : null,
     ]);
 }
@@ -1272,7 +1234,6 @@ function llama_membership_promotion_code_stats(
 ): array {
     $stats = [];
 
-
     $table = $db->query(
         "SELECT COUNT(*)
          FROM information_schema.tables
@@ -1280,14 +1241,12 @@ function llama_membership_promotion_code_stats(
            AND table_name = 'membership_promotion_code_events'"
     );
 
-
     if (
         !$table
         || (int) $table->fetchColumn() < 1
     ) {
         return $stats;
     }
-
 
     $rows = $db->query(
         'SELECT
@@ -1299,38 +1258,16 @@ function llama_membership_promotion_code_stats(
             ) AS revenue_cents
          FROM membership_promotion_code_events
          GROUP BY promotion_code_id'
-    )->fetchAll(
-        PDO::FETCH_ASSOC
-    );
+    )->fetchAll(PDO::FETCH_ASSOC);
 
-
-    foreach (
-        $rows
-        as $row
-    ) {
-        $stats[
-            (int) $row[
-                'promotion_code_id'
-            ]
-        ] = [
+    foreach ($rows as $row) {
+        $stats[(int) $row['promotion_code_id']] = [
             'redemptions' =>
-                (int) (
-                    $row[
-                        'redemptions'
-                    ]
-                    ?? 0
-                ),
-
+                (int) ($row['redemptions'] ?? 0),
             'revenue_cents' =>
-                (int) (
-                    $row[
-                        'revenue_cents'
-                    ]
-                    ?? 0
-                ),
+                (int) ($row['revenue_cents'] ?? 0),
         ];
     }
-
 
     return $stats;
 }
@@ -1346,39 +1283,27 @@ function llama_membership_promotion_code_by_code(
     ?string $membershipInterval = null
 ): ?array {
     $code = strtoupper(
-        trim(
-            $code
-        )
+        trim($code)
     );
-
 
     if ($code === '') {
         return null;
     }
 
-
-    $membershipInterval =
-        strtolower(
-            trim(
-                (string) $membershipInterval
-            )
-        );
-
+    $membershipInterval = strtolower(
+        trim((string) $membershipInterval)
+    );
 
     if (
         $membershipInterval !== ''
         && !in_array(
             $membershipInterval,
-            [
-                'monthly',
-                'annual',
-            ],
+            ['monthly', 'annual'],
             true
         )
     ) {
         return null;
     }
-
 
     $sql =
         'SELECT *
@@ -1391,15 +1316,9 @@ function llama_membership_promotion_code_by_code(
            AND stripe_promotion_code_id IS NOT NULL
            AND stripe_promotion_code_id <> ""';
 
+    $params = [$code];
 
-    $params = [
-        $code,
-    ];
-
-
-    if (
-        $membershipInterval !== ''
-    ) {
+    if ($membershipInterval !== '') {
         $sql .=
             ' AND (
                 plan_scope = "all"
@@ -1410,29 +1329,16 @@ function llama_membership_promotion_code_by_code(
             $membershipInterval;
     }
 
-
     $sql .=
         ' LIMIT 1';
 
-
     $stmt =
-        $db->prepare(
-            $sql
-        );
+        $db->prepare($sql);
 
-
-    $stmt->execute(
-        $params
-    );
-
+    $stmt->execute($params);
 
     $row =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
-
-    return
-        $row
-        ?: null;
+    return $row ?: null;
 }
