@@ -1,8 +1,0 @@
---- a/account/profile.php
-+++ b/account/profile.php
-@@
--$profileImages = llama_community_profile_images($db, $userId, true);
-+$profileImages = llama_community_profile_images($db, $userId, false);
-@@
- <script src="/js/photo-uploader.js"></script>
-+<script src="/js/persistent-photo-manager.js"></script>
