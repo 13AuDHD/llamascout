@@ -381,12 +381,46 @@ require __DIR__ . '/partials/header.php';
 
     <p class="eyebrow">Help</p>
 
+    <div class="support-kb-entry">
+
+        <div class="support-kb-entry-copy">
+
+            <p class="support-kb-kicker">
+                Got a question?
+            </p>
+
+            <h2>
+                Search our Knowledge Base first.
+            </h2>
+
+            <p>
+                It is the quickest way to find answers about
+                accounts, memberships, Places, Scouts, orders,
+                privacy, weather, and more. Apparently the llama
+                has been taking very thorough notes.
+            </p>
+
+        </div>
+
+        <a
+            class="support-kb-button"
+            href="/help.php"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('search') ?>
+            </i>
+
+            <span>Search Knowledge Base</span>
+        </a>
+
+    </div>
+
     <h1>Contact &amp; Support</h1>
 
     <p class="legal-lede">
-        Questions about your account, membership, an order,
-        a place listing, accessibility, privacy, a technical
-        problem, or Llama Scout in general can be sent here.
+        Still need help? Send us a message about your account,
+        membership, an order, a Place, accessibility, privacy,
+        a technical problem, or Llama Scout in general.
     </p>
 
 </div>
