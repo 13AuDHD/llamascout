@@ -27,8 +27,8 @@
             sourceText: 'BLM National Surface Management Agency',
             style: {
                 color: '#4f8f46',
-                weight: 1.5,
-                opacity: 0.62,
+                weight: 1.3,
+                opacity: 0.52,
                 fillColor: '#4f8f46',
                 fillOpacity: 0.10
             }
@@ -45,9 +45,8 @@
             sourceText: 'BLM National Surface Management Agency',
             style: {
                 color: '#c59a27',
-                weight: 1.5,
-                opacity: 0.64,
-                dashArray: '7 5',
+                weight: 1.3,
+                opacity: 0.54,
                 fillColor: '#c59a27',
                 fillOpacity: 0.11
             }
@@ -66,9 +65,8 @@
                 'Access and camping rules vary by tribal nation. Do not assume public access.',
             style: {
                 color: '#9a536f',
-                weight: 1.7,
-                opacity: 0.66,
-                dashArray: '3 5',
+                weight: 1.4,
+                opacity: 0.56,
                 fillColor: '#9a536f',
                 fillOpacity: 0.11
             }
