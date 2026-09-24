@@ -17,58 +17,60 @@
 
     const sources = {
         usfs: {
-            label: 'USFS',
-            fullLabel: 'U.S. Forest Service',
+            shortLabel: 'USFS',
+            label: 'U.S. Forest Service',
             endpoint:
                 'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/23/query',
-            fields:
-                'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
+            fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
             nameField: 'ADMIN_UNIT_NAME',
             detailField: 'ADMIN_UNIT_TYPE',
+            sourceText: 'BLM National Surface Management Agency',
             style: {
                 color: '#4f8f46',
-                weight: 2,
-                opacity: 0.92,
+                weight: 1.5,
+                opacity: 0.62,
                 fillColor: '#4f8f46',
-                fillOpacity: 0.18
+                fillOpacity: 0.10
             }
         },
 
         blm: {
-            label: 'BLM',
-            fullLabel: 'Bureau of Land Management',
+            shortLabel: 'BLM',
+            label: 'Bureau of Land Management',
             endpoint:
                 'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/21/query',
-            fields:
-                'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
+            fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
             nameField: 'ADMIN_UNIT_NAME',
             detailField: 'ADMIN_UNIT_TYPE',
+            sourceText: 'BLM National Surface Management Agency',
             style: {
-                color: '#c99a28',
-                weight: 2,
-                opacity: 0.95,
-                dashArray: '8 5',
-                fillColor: '#c99a28',
-                fillOpacity: 0.2
+                color: '#c59a27',
+                weight: 1.5,
+                opacity: 0.64,
+                dashArray: '7 5',
+                fillColor: '#c59a27',
+                fillOpacity: 0.11
             }
         },
 
         tribal: {
-            label: 'Tribal',
-            fullLabel: 'Tribal land',
+            shortLabel: 'Tribal',
+            label: 'Tribal land',
             endpoint:
                 'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer/0/query',
-            fields:
-                'LARNAME,CLASSIFICATION,REGION,AGENCY',
+            fields: 'LARNAME,CLASSIFICATION,REGION,AGENCY',
             nameField: 'LARNAME',
             detailField: 'CLASSIFICATION',
+            sourceText: 'Bureau of Indian Affairs National LAR',
+            warning:
+                'Access and camping rules vary by tribal nation. Do not assume public access.',
             style: {
-                color: '#b8583c',
-                weight: 2.3,
-                opacity: 0.98,
-                dashArray: '2 5',
-                fillColor: '#b8583c',
-                fillOpacity: 0.2
+                color: '#9a536f',
+                weight: 1.7,
+                opacity: 0.66,
+                dashArray: '3 5',
+                fillColor: '#9a536f',
+                fillOpacity: 0.11
             }
         }
     };
