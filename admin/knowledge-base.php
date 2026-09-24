@@ -256,13 +256,17 @@ require __DIR__ . '/_header.php';
         <label>
             <span>Topic</span>
             <select name="category_id">
-                <option value="0">All topics</option>
+                <option value="0">
+                    All Topics (<?= number_format((int) ($stats['articles'] ?? 0)) ?>)
+                </option>
+        
                 <?php foreach ($categories as $category): ?>
                     <option
                         value="<?= (int) $category['id'] ?>"
                         <?= $categoryId === (int) $category['id'] ? 'selected' : '' ?>
                     >
                         <?= moderation_e((string) $category['name']) ?>
+                        (<?= number_format((int) ($category['article_count'] ?? 0)) ?>)
                     </option>
                 <?php endforeach; ?>
             </select>
