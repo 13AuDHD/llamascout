@@ -1,0 +1,225 @@
+/* =========================================================
+   LLAMA SCOUT
+   LAND BOUNDARY OVERLAYS
+
+   USFS, BLM, and Tribal land context for the Leaflet map.
+   ========================================================= */
+
+.map-land-control {
+    position: absolute;
+    z-index: 700;
+    top: 12px;
+    left: 50%;
+    width: min(calc(100% - 96px), 520px);
+    transform: translateX(-50%);
+
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    padding: 6px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    border-radius: 13px;
+
+    background:
+        color-mix(in srgb, var(--surface) 94%, transparent);
+
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .14);
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.map-card[data-map-member="1"] .map-land-control {
+    top: 64px;
+}
+
+.map-land-label {
+    flex: 0 0 auto;
+    padding: 0 4px;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.map-land-buttons {
+    flex: 1 1 auto;
+
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+
+    min-width: 0;
+}
+
+.map-land-buttons button {
+    min-width: 0;
+    min-height: 32px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    padding: 5px 7px;
+
+    border: 1px solid transparent;
+    border-radius: 8px;
+
+    background: transparent;
+    color: var(--text-muted);
+
+    font: inherit;
+    font-size: .7rem;
+    font-weight: 850;
+
+    cursor: pointer;
+
+    transition:
+        background-color .15s ease,
+        border-color .15s ease,
+        color .15s ease,
+        transform .15s ease;
+}
+
+.map-land-buttons button:hover {
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.map-land-buttons button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.map-land-buttons button:active {
+    transform: translateY(1px);
+}
+
+.map-land-buttons button.is-active {
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--surface) 76%, var(--text) 8%);
+    color: var(--text);
+}
+
+.map-land-swatch {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+
+    border: 2px solid currentColor;
+    border-radius: 3px;
+}
+
+.map-land-swatch-usfs {
+    border-color: #4f8f46;
+    background: color-mix(in srgb, #4f8f46 35%, transparent);
+}
+
+.map-land-swatch-blm {
+    border-color: #c99a28;
+    background: color-mix(in srgb, #c99a28 38%, transparent);
+}
+
+.map-land-swatch-tribal {
+    border-color: #b8583c;
+    background: color-mix(in srgb, #b8583c 38%, transparent);
+}
+
+.map-land-status {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: max-content;
+    max-width: min(90vw, 420px);
+
+    padding: 5px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background:
+        color-mix(in srgb, var(--surface) 94%, transparent);
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 750;
+    line-height: 1.3;
+    text-align: center;
+
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
+}
+
+.map-land-status[hidden] {
+    display: none;
+}
+
+.map-land-popup {
+    display: grid;
+    gap: 4px;
+    min-width: 170px;
+}
+
+.map-land-popup strong,
+.map-land-popup span,
+.map-land-popup small {
+    display: block;
+}
+
+.map-land-popup strong {
+    font-size: .92rem;
+}
+
+.map-land-popup span {
+    font-size: .82rem;
+}
+
+.map-land-popup small {
+    color: #666;
+    font-size: .7rem;
+    line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+    .map-land-control {
+        width: min(calc(100% - 72px), 500px);
+    }
+
+    .map-card[data-map-member="1"] .map-land-control {
+        top: 62px;
+    }
+}
+
+@media (max-width: 520px) {
+    .map-land-control {
+        width: calc(100% - 24px);
+        gap: 4px;
+    }
+
+    .map-card[data-map-member="1"] .map-land-control {
+        top: 60px;
+    }
+
+    .map-land-label {
+        display: none;
+    }
+
+    .map-land-buttons button {
+        min-height: 30px;
+        padding-inline: 5px;
+        font-size: .66rem;
+    }
+
+    .map-land-swatch {
+        width: 9px;
+        height: 9px;
+        flex-basis: 9px;
+    }
+}
