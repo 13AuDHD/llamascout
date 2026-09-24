@@ -481,6 +481,31 @@
 }
 
 /* =========================================================
+   PANEL BODY
+   Standard inner gutter for ordinary Admin panel content.
+   ========================================================= */
+
+.admin-panel-body {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--admin-panel-padding);
+}
+
+.admin-panel-body > :first-child {
+    margin-top: 0;
+}
+
+.admin-panel-body > :last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 620px) {
+    .admin-panel-body {
+        padding: 16px;
+    }
+}
+
+/* =========================================================
    BUTTONS + STATUS
    ========================================================= */
 
