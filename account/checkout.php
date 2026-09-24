@@ -24,16 +24,8 @@ if (!$user) {
    REQUEST
    ========================================================= */
 
-if (
-    ($_SERVER['REQUEST_METHOD'] ?? '')
-    !== 'POST'
-) {
-    header(
-        'Location: /membership.php',
-        true,
-        303
-    );
-
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    header('Location: /membership.php', true, 303);
     exit;
 }
 
@@ -50,18 +42,9 @@ $requiredTables = [
     'membership_checkout_settings',
 ];
 
-foreach (
-    $requiredTables
-    as $requiredTable
-) {
-    if (
-        !llama_membership_table_exists(
-            $db,
-            $requiredTable
-        )
-    ) {
+foreach ($requiredTables as $requiredTable) {
+    if (!llama_membership_table_exists($db, $requiredTable)) {
         http_response_code(503);
-
         exit(
             'Membership checkout is temporarily unavailable while configuration is completed.'
         );
@@ -74,28 +57,20 @@ foreach (
    ========================================================= */
 
 $expectedToken =
-    $_SESSION[
-        'membership_checkout_csrf'
-    ]
+    $_SESSION['membership_checkout_csrf']
     ?? '';
 
 $submittedToken =
-    $_POST[
-        'csrf_token'
-    ]
+    $_POST['csrf_token']
     ?? '';
 
 if (
     !is_string($expectedToken)
     || $expectedToken === ''
     || !is_string($submittedToken)
-    || !hash_equals(
-        $expectedToken,
-        $submittedToken
-    )
+    || !hash_equals($expectedToken, $submittedToken)
 ) {
     http_response_code(403);
-
     exit(
         'Your session could not be verified. Reload the membership page and try again.'
     );
@@ -110,9 +85,7 @@ $interval =
     strtolower(
         trim(
             (string) (
-                $_POST[
-                    'interval'
-                ]
+                $_POST['interval']
                 ?? ''
             )
         )
@@ -129,21 +102,10 @@ if (
     )
 ) {
     http_response_code(400);
-
-    exit(
-        'That membership option is not valid.'
-    );
+    exit('That membership option is not valid.');
 }
 
-
-/*
- * Keep the selected membership in the temporary purchase basket.
- *
- * Opening Stripe Checkout is not the same as completing payment.
- */
-$_SESSION[
-    'pending_membership_plan'
-] =
+$_SESSION['pending_membership_plan'] =
     $interval;
 
 
@@ -171,9 +133,7 @@ $stmt->execute([
 ]);
 
 $account =
-    $stmt->fetch(
-        PDO::FETCH_ASSOC
-    )
+    $stmt->fetch(PDO::FETCH_ASSOC)
     ?: null;
 
 if (!$account) {
@@ -190,9 +150,7 @@ $membershipStatus =
     strtolower(
         trim(
             (string) (
-                $account[
-                    'membership_status'
-                ]
+                $account['membership_status']
                 ?? 'none'
             )
         )
@@ -201,9 +159,7 @@ $membershipStatus =
 $stripeSubscriptionId =
     trim(
         (string) (
-            $account[
-                'stripe_subscription_id'
-            ]
+            $account['stripe_subscription_id']
             ?? ''
         )
     );
@@ -220,30 +176,13 @@ $hasExistingStripeMembership =
         true
     );
 
-
-/*
- * Existing Stripe subscribers manage their subscription through
- * Billing instead of creating another subscription.
- *
- * Complimentary access does not prevent someone from choosing
- * to begin a paid membership.
- */
-if (
-    $hasExistingStripeMembership
-) {
-    header(
-        'Location: /billing.php',
-        true,
-        303
-    );
-
+if ($hasExistingStripeMembership) {
+    header('Location: /billing.php', true, 303);
     exit;
 }
 
-
 $hasLegacyComplimentaryAccess =
-    $membershipStatus ===
-    'complimentary';
+    $membershipStatus === 'complimentary';
 
 $hasComplimentaryGrant =
     llama_user_has_complimentary_grant(
@@ -273,12 +212,16 @@ $clientSecret = '';
 $publishableKey = '';
 
 $plan = null;
+$promotion = null;
+$promotionId = 0;
+$onSale = false;
 
-$manualPromotionCodesEnabled =
-    false;
+$manualPromotionCodesEnabled = false;
+$linkedPromotionCode = null;
 
-$linkedPromotionCode =
-    null;
+$checkoutDisplayPriceCents = 0;
+$checkoutRegularPriceCents = 0;
+$checkoutHasDiscount = false;
 
 
 /* =========================================================
@@ -289,9 +232,7 @@ $pendingPromotionCodeValue =
     strtoupper(
         trim(
             (string) (
-                $_SESSION[
-                    'pending_membership_promo_code'
-                ]
+                $_SESSION['pending_membership_promo_code']
                 ?? ''
             )
         )
@@ -313,19 +254,8 @@ $manualCodesStmt =
 
 if ($manualCodesStmt) {
     $manualPromotionCodesEnabled =
-        (bool)
-        $manualCodesStmt
-            ->fetchColumn();
+        (bool) $manualCodesStmt->fetchColumn();
 }
-
-
-/* =========================================================
-   DISPLAY PRICE
-   ========================================================= */
-
-$checkoutDisplayPriceCents = 0;
-$checkoutRegularPriceCents = 0;
-$checkoutHasDiscount = false;
 
 
 /* =========================================================
@@ -333,25 +263,19 @@ $checkoutHasDiscount = false;
    ========================================================= */
 
 if (!$offer) {
-
     http_response_code(409);
 
     $checkoutError =
         'That membership plan is not currently available.';
 
 } else {
-
     $plan =
-        $offer[
-            'plan'
-        ];
+        $offer['plan'];
 
     $priceId =
         trim(
             (string) (
-                $plan[
-                    'stripe_price_id'
-                ]
+                $plan['stripe_price_id']
                 ?? ''
             )
         );
@@ -359,43 +283,33 @@ if (!$offer) {
     $couponId =
         trim(
             (string) (
-                $offer[
-                    'stripe_coupon_id'
-                ]
+                $offer['stripe_coupon_id']
                 ?? ''
             )
         );
 
     $promotion =
-        $offer[
-            'promotion'
-        ]
+        $offer['promotion']
         ?? null;
 
     $promotionId =
         $promotion
             ? (int) (
-                $promotion[
-                    'promotion_id'
-                ]
+                $promotion['promotion_id']
                 ?? 0
             )
             : 0;
 
     $onSale =
         !empty(
-            $offer[
-                'on_sale'
-            ]
+            $offer['on_sale']
         );
 
     $checkoutRegularPriceCents =
         max(
             0,
             (int) (
-                $offer[
-                    'base_price_cents'
-                ]
+                $offer['base_price_cents']
                 ?? 0
             )
         );
@@ -404,9 +318,7 @@ if (!$offer) {
         max(
             0,
             (int) (
-                $offer[
-                    'effective_price_cents'
-                ]
+                $offer['effective_price_cents']
                 ?? $checkoutRegularPriceCents
             )
         );
@@ -418,15 +330,13 @@ if (!$offer) {
 
     /*
      * Automatic campaign pricing takes priority.
-     *
-     * Otherwise, look up the Promotion Code carried from the
-     * promotional share link or membership session.
+     * Promotion Codes are considered only when this plan is not
+     * currently receiving an automatic campaign price.
      */
     if (
         !$onSale
         && $pendingPromotionCodeValue !== ''
     ) {
-
         $linkedPromotionCode =
             llama_membership_promotion_code_by_code(
                 $db,
@@ -434,41 +344,17 @@ if (!$offer) {
                 $interval
             );
 
-
         if (!$linkedPromotionCode) {
-
-            /*
-             * The saved code is no longer valid for this plan.
-             * Remove only the invalid code. Keep the selected plan.
-             */
             unset(
-                $_SESSION[
-                    'pending_membership_promo_code'
-                ]
+                $_SESSION['pending_membership_promo_code']
             );
 
-            $pendingPromotionCodeValue =
-                '';
+            $pendingPromotionCodeValue = '';
 
         } else {
+            $_SESSION['pending_membership_promo_code'] =
+                (string) $linkedPromotionCode['code'];
 
-            /*
-             * Keep the validated code in the basket while checkout
-             * remains unfinished.
-             */
-            $_SESSION[
-                'pending_membership_promo_code'
-            ] =
-                (string) $linkedPromotionCode[
-                    'code'
-                ];
-
-
-            /*
-             * Use the same pricing helper as the membership page.
-             *
-             * This supports one-payment and multi-month codes.
-             */
             $checkoutDisplayPriceCents =
                 llama_membership_promotion_code_price_cents(
                     $checkoutRegularPriceCents,
@@ -482,10 +368,7 @@ if (!$offer) {
     }
 
 
-    if (
-        $priceId === ''
-    ) {
-
+    if ($priceId === '') {
         http_response_code(503);
 
         $checkoutError =
@@ -495,16 +378,13 @@ if (!$offer) {
         $onSale
         && $couponId === ''
     ) {
-
         http_response_code(503);
 
         $checkoutError =
             'This membership promotion is temporarily unavailable at checkout.';
 
     } else {
-
         try {
-
             $publishableKey =
                 llama_stripe_publishable_key();
 
@@ -512,8 +392,34 @@ if (!$offer) {
                 llama_stripe_client();
 
 
-            $sessionData = [
+            /*
+             * Automatic campaign duration comes from the selected
+             * membership_promotion_plans rule.
+             *
+             * Monthly can be 1, 2, 3, 6, 9, or 12 billing periods.
+             * Annual is one annual billing period.
+             */
+            $automaticDuration =
+                strtolower(
+                    trim(
+                        (string) (
+                            $offer['discount_duration']
+                            ?? LLAMA_PROMOTION_DURATION_ONCE
+                        )
+                    )
+                );
 
+            $automaticDurationCount =
+                max(
+                    1,
+                    (int) (
+                        $offer['duration_count']
+                        ?? 1
+                    )
+                );
+
+
+            $sessionData = [
                 'mode' =>
                     'subscription',
 
@@ -531,24 +437,17 @@ if (!$offer) {
                 ],
 
                 'client_reference_id' =>
-                    (string) $account[
-                        'id'
-                    ],
+                    (string) $account['id'],
 
                 'metadata' => [
-
                     'llama_user_id' =>
-                        (string) $account[
-                            'id'
-                        ],
+                        (string) $account['id'],
 
                     'membership_interval' =>
                         $interval,
 
                     'membership_plan_id' =>
-                        (string) $plan[
-                            'id'
-                        ],
+                        (string) $plan['id'],
 
                     'membership_promotion_id' =>
                         $promotionId > 0
@@ -557,26 +456,30 @@ if (!$offer) {
 
                     'membership_promotion_policy' =>
                         $promotionId > 0
-                            ? 'first_year_only'
+                            ? 'billing_periods'
+                            : '',
+
+                    'llama_promotion_duration' =>
+                        $promotionId > 0
+                            ? $automaticDuration
+                            : '',
+
+                    'llama_promotion_duration_count' =>
+                        $promotionId > 0
+                            ? (string) $automaticDurationCount
                             : '',
                 ],
 
                 'subscription_data' => [
-
                     'metadata' => [
-
                         'llama_user_id' =>
-                            (string) $account[
-                                'id'
-                            ],
+                            (string) $account['id'],
 
                         'membership_interval' =>
                             $interval,
 
                         'membership_plan_id' =>
-                            (string) $plan[
-                                'id'
-                            ],
+                            (string) $plan['id'],
 
                         'membership_promotion_id' =>
                             $promotionId > 0
@@ -585,7 +488,17 @@ if (!$offer) {
 
                         'membership_promotion_policy' =>
                             $promotionId > 0
-                                ? 'first_year_only'
+                                ? 'billing_periods'
+                                : '',
+
+                        'llama_promotion_duration' =>
+                            $promotionId > 0
+                                ? $automaticDuration
+                                : '',
+
+                        'llama_promotion_duration_count' =>
+                            $promotionId > 0
+                                ? (string) $automaticDurationCount
                                 : '',
                     ],
                 ],
@@ -606,10 +519,7 @@ if (!$offer) {
                ================================================= */
 
             if ($onSale) {
-
-                $sessionData[
-                    'discounts'
-                ] = [
+                $sessionData['discounts'] = [
                     [
                         'coupon' =>
                             $couponId,
@@ -621,13 +531,8 @@ if (!$offer) {
                LINKED PROMOTION CODE
                ================================================= */
 
-            } elseif (
-                $linkedPromotionCode
-            ) {
-
-                $sessionData[
-                    'discounts'
-                ] = [
+            } elseif ($linkedPromotionCode) {
+                $sessionData['discounts'] = [
                     [
                         'promotion_code' =>
                             (string) $linkedPromotionCode[
@@ -635,7 +540,6 @@ if (!$offer) {
                             ],
                     ],
                 ];
-
 
                 $linkedDuration =
                     strtolower(
@@ -657,60 +561,24 @@ if (!$offer) {
                         ?? 0
                     );
 
+                $sessionData['metadata']['llama_promotion_code'] =
+                    (string) $linkedPromotionCode['code'];
 
-                $sessionData[
-                    'metadata'
-                ][
-                    'llama_promotion_code'
-                ] =
-                    (string) $linkedPromotionCode[
-                        'code'
-                    ];
-
-                $sessionData[
-                    'metadata'
-                ][
-                    'llama_promotion_duration'
-                ] =
+                $sessionData['metadata']['llama_promotion_duration'] =
                     $linkedDuration;
 
-                $sessionData[
-                    'metadata'
-                ][
-                    'llama_promotion_duration_months'
-                ] =
+                $sessionData['metadata']['llama_promotion_duration_months'] =
                     $linkedDurationMonths > 0
                         ? (string) $linkedDurationMonths
                         : '';
 
+                $sessionData['subscription_data']['metadata']['llama_promotion_code'] =
+                    (string) $linkedPromotionCode['code'];
 
-                $sessionData[
-                    'subscription_data'
-                ][
-                    'metadata'
-                ][
-                    'llama_promotion_code'
-                ] =
-                    (string) $linkedPromotionCode[
-                        'code'
-                    ];
-
-                $sessionData[
-                    'subscription_data'
-                ][
-                    'metadata'
-                ][
-                    'llama_promotion_duration'
-                ] =
+                $sessionData['subscription_data']['metadata']['llama_promotion_duration'] =
                     $linkedDuration;
 
-                $sessionData[
-                    'subscription_data'
-                ][
-                    'metadata'
-                ][
-                    'llama_promotion_duration_months'
-                ] =
+                $sessionData['subscription_data']['metadata']['llama_promotion_duration_months'] =
                     $linkedDurationMonths > 0
                         ? (string) $linkedDurationMonths
                         : '';
@@ -721,10 +589,7 @@ if (!$offer) {
                ================================================= */
 
             } else {
-
-                $sessionData[
-                    'allow_promotion_codes'
-                ] =
+                $sessionData['allow_promotion_codes'] =
                     $manualPromotionCodesEnabled;
             }
 
@@ -735,27 +600,15 @@ if (!$offer) {
 
             if (
                 !empty(
-                    $account[
-                        'stripe_customer_id'
-                    ]
+                    $account['stripe_customer_id']
                 )
             ) {
-
-                $sessionData[
-                    'customer'
-                ] =
-                    (string) $account[
-                        'stripe_customer_id'
-                    ];
+                $sessionData['customer'] =
+                    (string) $account['stripe_customer_id'];
 
             } else {
-
-                $sessionData[
-                    'customer_email'
-                ] =
-                    (string) $account[
-                        'email'
-                    ];
+                $sessionData['customer_email'] =
+                    (string) $account['email'];
             }
 
 
@@ -774,8 +627,7 @@ if (!$offer) {
             $clientSecret =
                 trim(
                     (string) (
-                        $session
-                            ->client_secret
+                        $session->client_secret
                         ?? ''
                     )
                 );
@@ -783,32 +635,18 @@ if (!$offer) {
             $sessionId =
                 trim(
                     (string) (
-                        $session
-                            ->id
+                        $session->id
                         ?? ''
                     )
                 );
 
-
-            if (
-                $clientSecret === ''
-            ) {
+            if ($clientSecret === '') {
                 throw new RuntimeException(
                     'Stripe did not return an Embedded Checkout client secret.'
                 );
             }
 
-
-            /*
-             * Remember which Stripe Checkout Session belongs to
-             * the current temporary membership basket.
-             *
-             * The basket itself remains intact until checkout
-             * succeeds.
-             */
-            if (
-                $sessionId !== ''
-            ) {
+            if ($sessionId !== '') {
                 $_SESSION[
                     'pending_membership_checkout_session_id'
                 ] =
@@ -824,14 +662,11 @@ if (!$offer) {
                 $promotionId > 0
                 && $sessionId !== ''
             ) {
-
                 llama_membership_promotion_event(
                     $db,
                     $promotionId,
                     'checkout_started',
-                    (int) $account[
-                        'id'
-                    ],
+                    (int) $account['id'],
                     $interval,
                     $sessionId,
                     null,
@@ -839,48 +674,38 @@ if (!$offer) {
                     [
                         'plan_id' =>
                             (int) (
-                                $plan[
-                                    'id'
-                                ]
+                                $plan['id']
                                 ?? 0
                             ),
 
                         'base_price_cents' =>
                             $checkoutRegularPriceCents,
+
+                        'discount_duration' =>
+                            $automaticDuration,
+
+                        'duration_count' =>
+                            $automaticDurationCount,
                     ]
                 );
             }
 
 
-            /*
-             * Do not clear the pending plan or Promotion Code here.
-             *
-             * They are cleared only after successful checkout.
-             */
-
-
-        } catch (
-            Throwable $exception
-        ) {
-
+        } catch (Throwable $exception) {
             $checkoutReference =
                 llama_log_caught_exception(
                     $exception,
                     'stripe_embedded_checkout',
                     [
                         'user_id' =>
-                            (int) $account[
-                                'id'
-                            ],
+                            (int) $account['id'],
 
                         'interval' =>
                             $interval,
 
                         'plan_id' =>
                             (int) (
-                                $plan[
-                                    'id'
-                                ]
+                                $plan['id']
                                 ?? 0
                             ),
 
@@ -892,9 +717,7 @@ if (!$offer) {
                     ]
                 );
 
-
             http_response_code(500);
-
 
             $checkoutError =
                 llama_error_message_with_reference(
@@ -915,31 +738,22 @@ $membershipReturnQuery = [
         $interval,
 ];
 
-
 if (
     $linkedPromotionCode
     && trim(
         (string) (
-            $linkedPromotionCode[
-                'code'
-            ]
+            $linkedPromotionCode['code']
             ?? ''
         )
     ) !== ''
 ) {
-
-    $membershipReturnQuery[
-        'promo'
-    ] =
+    $membershipReturnQuery['promo'] =
         strtoupper(
             trim(
-                (string) $linkedPromotionCode[
-                    'code'
-                ]
+                (string) $linkedPromotionCode['code']
             )
         );
 }
-
 
 $membershipReturnUrl =
     '/membership.php?'
@@ -971,9 +785,7 @@ function checkout_money(
     string $currency
 ): string {
     if (
-        strtolower(
-            $currency
-        )
+        strtolower($currency)
         === 'usd'
     ) {
         return
@@ -984,16 +796,13 @@ function checkout_money(
             );
     }
 
-
     return
         number_format(
             $cents / 100,
             2
         )
         . ' '
-        . strtoupper(
-            $currency
-        );
+        . strtoupper($currency);
 }
 
 
@@ -1012,7 +821,6 @@ function checkout_promotion_duration_months(
             )
         );
 
-
     $months =
         (int) (
             $promotionCode[
@@ -1020,7 +828,6 @@ function checkout_promotion_duration_months(
             ]
             ?? 0
         );
-
 
     if (
         $duration !== 'months'
@@ -1032,7 +839,6 @@ function checkout_promotion_duration_months(
     ) {
         return 0;
     }
-
 
     return $months;
 }
@@ -1051,52 +857,42 @@ function checkout_promotion_terms(
             $currency
         );
 
-
     $regularPrice =
         checkout_money(
             $regularPriceCents,
             $currency
         );
 
-
     $durationMonths =
         checkout_promotion_duration_months(
             $promotionCode
         );
 
-
     if (
-        $interval === 'monthly'
+        $interval ===
+            LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
         && $durationMonths > 0
     ) {
-
-        if (
-            $durationMonths === 1
-        ) {
+        if ($durationMonths === 1) {
             return
                 $promotionalPrice
-                . '/month for your first month. '
-                . 'Then '
+                . '/month for your first month. Then '
                 . $regularPrice
                 . '/month.';
         }
 
-
         return
             $promotionalPrice
             . '/month for your first '
-            . number_format(
-                $durationMonths
-            )
-            . ' months. '
-            . 'Then '
+            . number_format($durationMonths)
+            . ' months. Then '
             . $regularPrice
             . '/month.';
     }
 
-
     if (
-        $interval === 'monthly'
+        $interval ===
+        LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
     ) {
         return
             'Your first month is '
@@ -1106,11 +902,67 @@ function checkout_promotion_terms(
             . '/month.';
     }
 
-
     return
         'Your first year is '
         . $promotionalPrice
         . '. Then '
+        . $regularPrice
+        . '/year.';
+}
+
+
+function checkout_automatic_promotion_terms(
+    array $offer,
+    string $interval,
+    int $promotionalPriceCents,
+    int $regularPriceCents,
+    string $currency
+): string {
+    $promotionalPrice =
+        checkout_money(
+            $promotionalPriceCents,
+            $currency
+        );
+
+    $regularPrice =
+        checkout_money(
+            $regularPriceCents,
+            $currency
+        );
+
+    if (
+        $interval ===
+        LLAMA_MEMBERSHIP_INTERVAL_MONTHLY
+    ) {
+        $months =
+            max(
+                1,
+                (int) (
+                    $offer['duration_count']
+                    ?? 1
+                )
+            );
+
+        if ($months === 1) {
+            return
+                $promotionalPrice
+                . '/month for your first month. Then '
+                . $regularPrice
+                . '/month.';
+        }
+
+        return
+            $promotionalPrice
+            . '/month for your first '
+            . number_format($months)
+            . ' months. Then '
+            . $regularPrice
+            . '/month.';
+    }
+
+    return
+        $promotionalPrice
+        . ' for your first year. Then '
         . $regularPrice
         . '/year.';
 }
@@ -1126,8 +978,7 @@ $pageTitle =
 $pageRobots =
     'noindex,nofollow';
 
-$pageDescription =
-    '';
+$pageDescription = '';
 
 require dirname(__DIR__)
     . '/partials/header.php';
@@ -1139,10 +990,7 @@ require dirname(__DIR__)
     href="https://llamascout.com/css/account/pages/checkout.css"
 >
 
-
-<?php if (
-    $clientSecret !== ''
-): ?>
+<?php if ($clientSecret !== ''): ?>
 
 <script src="https://js.stripe.com/clover/stripe.js"></script>
 
@@ -1154,34 +1002,24 @@ require dirname(__DIR__)
 
 <header class="checkout-page-header">
 
-
 <a
     class="checkout-back-link"
-    href="<?= checkout_e(
-        $membershipReturnUrl
-    ) ?>"
+    href="<?= checkout_e($membershipReturnUrl) ?>"
 >
-
     <i aria-hidden="true">
-        <?= llama_icon(
-            'arrow-left'
-        ) ?>
+        <?= llama_icon('arrow-left') ?>
     </i>
 
     Change membership
-
 </a>
-
 
 <p class="eyebrow">
     Secure membership checkout
 </p>
 
-
 <h1>
     Finish joining Llama Scout.
 </h1>
-
 
 <p>
     You stay on Llama Scout while Stripe securely handles the
@@ -1189,46 +1027,32 @@ require dirname(__DIR__)
     financial data.
 </p>
 
-
 </header>
 
 
-<?php if (
-    $checkoutError !== ''
-): ?>
+<?php if ($checkoutError !== ''): ?>
 
 
 <div class="checkout-error-card">
 
+    <i aria-hidden="true">
+        <?= llama_icon('alert-triangle') ?>
+    </i>
 
-<i aria-hidden="true">
-    <?= llama_icon(
-        'alert-triangle'
-    ) ?>
-</i>
+    <h2>
+        Checkout could not start.
+    </h2>
 
+    <p>
+        <?= checkout_e($checkoutError) ?>
+    </p>
 
-<h2>
-    Checkout could not start.
-</h2>
-
-
-<p>
-    <?= checkout_e(
-        $checkoutError
-    ) ?>
-</p>
-
-
-<a
-    class="checkout-primary-button"
-    href="<?= checkout_e(
-        $membershipReturnUrl
-    ) ?>"
->
-    Return to membership
-</a>
-
+    <a
+        class="checkout-primary-button"
+        href="<?= checkout_e($membershipReturnUrl) ?>"
+    >
+        Return to membership
+    </a>
 
 </div>
 
@@ -1241,303 +1065,229 @@ require dirname(__DIR__)
 
 <aside class="checkout-summary-card">
 
+    <p class="eyebrow">
+        Your membership
+    </p>
 
-<p class="eyebrow">
-    Your membership
-</p>
-
-
-<h2>
-    <?= checkout_e(
-        (string) (
-            $plan[
-                'name'
-            ]
-            ?? ucfirst(
-                $interval
-            )
-                . ' membership'
-        )
-    ) ?>
-</h2>
-
-
-<div class="checkout-summary-price">
-
-
-<?php if (
-    $checkoutHasDiscount
-): ?>
-
-
-<del>
-    <?= checkout_e(
-        checkout_money(
-            $checkoutRegularPriceCents,
-            (string) (
-                $plan[
-                    'currency'
-                ]
-                ?? 'usd'
-            )
-        )
-    ) ?>
-</del>
-
-
-<?php endif; ?>
-
-
-<strong>
-    <?= checkout_e(
-        checkout_money(
-            $checkoutDisplayPriceCents,
-            (string) (
-                $plan[
-                    'currency'
-                ]
-                ?? 'usd'
-            )
-        )
-    ) ?>
-</strong>
-
-
-<span>
-    / <?= $interval === 'annual'
-        ? 'year'
-        : 'month'
-    ?>
-</span>
-
-
-</div>
-
-
-<?php if (
-    !empty(
-        $offer[
-            'on_sale'
-        ]
-    )
-): ?>
-
-
-<p class="checkout-sale-note">
-
-    Introductory promotion applied automatically.
-
-    Regular price
-    <?= checkout_e(
-        checkout_money(
-            $checkoutRegularPriceCents,
-            (string) (
-                $plan[
-                    'currency'
-                ]
-                ?? 'usd'
-            )
-        )
-    ) ?>.
-
-    The promotional rate applies only during your first year,
-    then renews at the regular price.
-
-</p>
-
-
-<?php elseif (
-    $linkedPromotionCode
-): ?>
-
-
-<p class="checkout-sale-note">
-
-    Promotion code
-
-    <strong>
+    <h2>
         <?= checkout_e(
-            (string) $linkedPromotionCode[
-                'code'
-            ]
-        ) ?>
-    </strong>
-
-    is applied.
-
-    <?= checkout_e(
-        checkout_promotion_terms(
-            $linkedPromotionCode,
-            $interval,
-            $checkoutDisplayPriceCents,
-            $checkoutRegularPriceCents,
             (string) (
-                $plan[
-                    'currency'
-                ]
-                ?? 'usd'
+                $plan['name']
+                ?? ucfirst($interval)
+                    . ' membership'
             )
-        )
-    ) ?>
+        ) ?>
+    </h2>
+
+
+    <div class="checkout-summary-price">
+
+        <?php if ($checkoutHasDiscount): ?>
+
+        <del>
+            <?= checkout_e(
+                checkout_money(
+                    $checkoutRegularPriceCents,
+                    (string) (
+                        $plan['currency']
+                        ?? 'usd'
+                    )
+                )
+            ) ?>
+        </del>
+
+        <?php endif; ?>
+
+        <strong>
+            <?= checkout_e(
+                checkout_money(
+                    $checkoutDisplayPriceCents,
+                    (string) (
+                        $plan['currency']
+                        ?? 'usd'
+                    )
+                )
+            ) ?>
+        </strong>
+
+        <span>
+            / <?= $interval ===
+                LLAMA_MEMBERSHIP_INTERVAL_ANNUAL
+                    ? 'year'
+                    : 'month'
+            ?>
+        </span>
+
+    </div>
+
 
     <?php if (
         !empty(
-            $linkedPromotionCode[
-                'first_time_customers_only'
-            ]
+            $offer['on_sale']
         )
     ): ?>
 
-        First-time customers only.
+    <p class="checkout-sale-note">
+
+        Introductory promotion applied automatically.
+
+        <?= checkout_e(
+            checkout_automatic_promotion_terms(
+                $offer,
+                $interval,
+                $checkoutDisplayPriceCents,
+                $checkoutRegularPriceCents,
+                (string) (
+                    $plan['currency']
+                    ?? 'usd'
+                )
+            )
+        ) ?>
+
+    </p>
+
+
+    <?php elseif ($linkedPromotionCode): ?>
+
+    <p class="checkout-sale-note">
+
+        Promotion code
+
+        <strong>
+            <?= checkout_e(
+                (string) $linkedPromotionCode['code']
+            ) ?>
+        </strong>
+
+        is applied.
+
+        <?= checkout_e(
+            checkout_promotion_terms(
+                $linkedPromotionCode,
+                $interval,
+                $checkoutDisplayPriceCents,
+                $checkoutRegularPriceCents,
+                (string) (
+                    $plan['currency']
+                    ?? 'usd'
+                )
+            )
+        ) ?>
+
+        <?php if (
+            !empty(
+                $linkedPromotionCode[
+                    'first_time_customers_only'
+                ]
+            )
+        ): ?>
+
+            First-time customers only.
+
+        <?php endif; ?>
+
+    </p>
+
+
+    <?php elseif ($manualPromotionCodesEnabled): ?>
+
+    <p class="checkout-sale-note">
+        Have a special promotion code? Enter it in the secure
+        Stripe checkout form.
+    </p>
 
     <?php endif; ?>
 
-</p>
+
+    <?php if ($hasComplimentaryAccess): ?>
+
+    <p class="checkout-sale-note">
+
+        <strong>
+            Your account currently has complimentary access.
+        </strong>
+
+        Continuing will start a paid membership subscription.
+
+    </p>
+
+    <?php endif; ?>
 
 
-<?php elseif (
-    $manualPromotionCodesEnabled
-): ?>
+    <ul class="checkout-trust-list">
+
+        <li>
+            <i aria-hidden="true">
+                <?= llama_icon('check') ?>
+            </i>
+            Full Llama Scout membership access
+        </li>
+
+        <li>
+            <i aria-hidden="true">
+                <?= llama_icon('lock') ?>
+            </i>
+            Payment details handled by Stripe
+        </li>
+
+        <li>
+            <i aria-hidden="true">
+                <?= llama_icon('refresh') ?>
+            </i>
+            Manage membership from your account
+        </li>
+
+    </ul>
 
 
-<p class="checkout-sale-note">
+    <div class="checkout-secure-note">
 
-    Have a special promotion code? Enter it in the secure
-    Stripe checkout form.
+        <i aria-hidden="true">
+            <?= llama_icon('brand-stripe') ?>
+        </i>
 
-</p>
+        <span>
+            Secure payment processing by Stripe
+        </span>
 
-
-<?php endif; ?>
-
-
-<?php if (
-    $hasComplimentaryAccess
-): ?>
-
-
-<p class="checkout-sale-note">
-
-    <strong>
-        Your account currently has complimentary access.
-    </strong>
-
-    Continuing will start a paid membership subscription.
-
-</p>
-
-
-<?php endif; ?>
-
-
-<ul class="checkout-trust-list">
-
-
-<li>
-
-    <i aria-hidden="true">
-        <?= llama_icon(
-            'check'
-        ) ?>
-    </i>
-
-    Full Llama Scout membership access
-
-</li>
-
-
-<li>
-
-    <i aria-hidden="true">
-        <?= llama_icon(
-            'lock'
-        ) ?>
-    </i>
-
-    Payment details handled by Stripe
-
-</li>
-
-
-<li>
-
-    <i aria-hidden="true">
-        <?= llama_icon(
-            'refresh'
-        ) ?>
-    </i>
-
-    Manage membership from your account
-
-</li>
-
-
-</ul>
-
-
-<div class="checkout-secure-note">
-
-    <i aria-hidden="true">
-        <?= llama_icon(
-            'brand-stripe'
-        ) ?>
-    </i>
-
-    <span>
-        Secure payment processing by Stripe
-    </span>
-
-</div>
-
+    </div>
 
 </aside>
 
 
 <main class="checkout-form-card">
 
-
-<div
-    id="llama-embedded-checkout"
-    class="checkout-embed"
-    data-publishable-key="<?= checkout_e(
-        $publishableKey
-    ) ?>"
-    data-client-secret="<?= checkout_e(
-        $clientSecret
-    ) ?>"
->
-
-
-<div class="checkout-loading">
-
-    <i
-        class="llama-icon-spin"
-        aria-hidden="true"
+    <div
+        id="llama-embedded-checkout"
+        class="checkout-embed"
+        data-publishable-key="<?= checkout_e($publishableKey) ?>"
+        data-client-secret="<?= checkout_e($clientSecret) ?>"
     >
-        <?= llama_icon(
-            'loader-2'
-        ) ?>
-    </i>
 
-    Loading secure payment form...
+        <div class="checkout-loading">
 
-</div>
+            <i
+                class="llama-icon-spin"
+                aria-hidden="true"
+            >
+                <?= llama_icon('loader-2') ?>
+            </i>
+
+            Loading secure payment form...
+
+        </div>
+
+    </div>
 
 
-</div>
-
-
-<div
-    id="checkout-load-error"
-    class="checkout-load-error"
-    hidden
->
-
-    Secure payment fields could not load.
-    Refresh this page and try again.
-
-</div>
-
+    <div
+        id="checkout-load-error"
+        class="checkout-load-error"
+        hidden
+    >
+        Secure payment fields could not load.
+        Refresh this page and try again.
+    </div>
 
 </main>
 
