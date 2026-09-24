@@ -852,7 +852,7 @@ $regularPrice =
             <?= $interval === 'annual'
                 ? 'per year'
                 : 'per month' ?>
-            after the promotional payment.
+            after the promotional period.
 
             <?php if (
                 !empty(
