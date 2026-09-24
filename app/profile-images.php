@@ -140,6 +140,94 @@ function profile_images_set_primary(int $userId, int $imageId): void
     $stmt->execute([':image_id' => $imageId, ':user_id' => $userId]);
 }
 
+/**
+ * Save the complete profile-photo order.
+ *
+ * The first image in the submitted order becomes the primary/featured image.
+ * Every current profile image must be present exactly once so a stale browser
+ * cannot accidentally hide, duplicate, or take ownership of another image.
+ */
+function profile_images_reorder(int $userId, array $orderedImageIds): int
+{
+    $normalized = [];
+
+    foreach ($orderedImageIds as $imageId) {
+        $imageId = (int) $imageId;
+
+        if ($imageId <= 0) {
+            throw new InvalidArgumentException('The photo order contains an invalid image.');
+        }
+
+        if (in_array($imageId, $normalized, true)) {
+            throw new InvalidArgumentException('The photo order contains the same image more than once.');
+        }
+
+        $normalized[] = $imageId;
+    }
+
+    $currentImages = profile_images_for_user($userId);
+    $currentIds = array_map(
+        static fn (array $image): int => (int) ($image['id'] ?? 0),
+        $currentImages
+    );
+
+    $expected = $currentIds;
+    $received = $normalized;
+    sort($expected, SORT_NUMERIC);
+    sort($received, SORT_NUMERIC);
+
+    if ($expected !== $received) {
+        throw new InvalidArgumentException(
+            'Your profile photos changed before that order could be saved. Reload the page and try again.'
+        );
+    }
+
+    $db = db();
+    $db->beginTransaction();
+
+    try {
+        profile_images_ensure_profile($userId);
+
+        $update = $db->prepare(
+            'UPDATE community_profile_images
+             SET sort_order = :sort_order
+             WHERE id = :id
+               AND user_id = :user_id'
+        );
+
+        foreach ($normalized as $index => $imageId) {
+            $update->execute([
+                ':sort_order' => $index,
+                ':id' => $imageId,
+                ':user_id' => $userId,
+            ]);
+        }
+
+        $primaryId = $normalized[0] ?? 0;
+        $setPrimary = $db->prepare(
+            'UPDATE community_profiles
+             SET primary_image_id = :image_id
+             WHERE user_id = :user_id'
+        );
+        $setPrimary->bindValue(
+            ':image_id',
+            $primaryId > 0 ? $primaryId : null,
+            $primaryId > 0 ? PDO::PARAM_INT : PDO::PARAM_NULL
+        );
+        $setPrimary->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $setPrimary->execute();
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $exception;
+    }
+
+    return $normalized[0] ?? 0;
+}
+
 function profile_images_delete(int $userId, int $imageId): void
 {
     $db = db();
