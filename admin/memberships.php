@@ -463,6 +463,29 @@ try {
     );
 }
 
+/*
+ * Older membership records may have a Stripe Price ID without
+ * the corresponding Product ID. Stripe already knows that
+ * relationship, so repair the local catalog before Admin uses it.
+ */
+if ($error === '') {
+    try {
+        llama_stripe_backfill_membership_product_ids(
+            $db
+        );
+    } catch (Throwable $exception) {
+        $reference = llama_log_caught_exception(
+            $exception,
+            'admin.membership_catalog_backfill'
+        );
+
+        $error = llama_error_message_with_reference(
+            'Membership catalog could not be synchronized with Stripe.',
+            $reference
+        );
+    }
+}
+
 if (
     $error === ''
     && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
