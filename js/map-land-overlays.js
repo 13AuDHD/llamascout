@@ -10,17 +10,28 @@
         return;
     }
 
+    /*
+     * Land overlays are a Complete Access feature.
+     * This client-side guard is intentional defense-in-depth.
+     * map.php should also avoid loading this file for public/free users.
+     */
+    if (mapCard.dataset.mapMember !== '1') {
+        return;
+    }
+
     const STYLE_HREF = '/css/map-land-overlays.css?v=20260924-1';
     const STORAGE_KEY = 'llama-map-land-overlays';
     const MIN_ZOOM = 7;
     const VIEWPORT_PADDING = 0.35;
+    const RETRY_DELAY_MS = 350;
 
     const sources = {
         usfs: {
-            shortLabel: 'USFS',
             label: 'U.S. Forest Service',
-            endpoint:
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/23/query',
+            endpoints: [
+                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_LimitedScale/MapServer/24/query',
+                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/23/query'
+            ],
             fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
             nameField: 'ADMIN_UNIT_NAME',
             detailField: 'ADMIN_UNIT_TYPE',
@@ -35,10 +46,11 @@
         },
 
         blm: {
-            shortLabel: 'BLM',
             label: 'Bureau of Land Management',
-            endpoint:
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/21/query',
+            endpoints: [
+                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_LimitedScale/MapServer/22/query',
+                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/21/query'
+            ],
             fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
             nameField: 'ADMIN_UNIT_NAME',
             detailField: 'ADMIN_UNIT_TYPE',
@@ -53,16 +65,14 @@
         },
 
         tribal: {
-            shortLabel: 'Tribal',
             label: 'Tribal land',
-            endpoint:
-                'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer/0/query',
+            endpoints: [
+                'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer/0/query'
+            ],
             fields: 'LARNAME,CLASSIFICATION,REGION,AGENCY',
             nameField: 'LARNAME',
             detailField: 'CLASSIFICATION',
             sourceText: 'Bureau of Indian Affairs National LAR',
-            warning:
-                'Access and camping rules vary by tribal nation. Do not assume public access.',
             style: {
                 color: '#9a536f',
                 weight: 1.4,
@@ -124,7 +134,7 @@
                 }
             });
         } catch (error) {
-            // Local storage is optional. Defaults remain enabled.
+            // Local storage is optional.
         }
     }
 
@@ -165,7 +175,7 @@
                             type="button"
                             data-land-layer="${key}"
                             aria-pressed="true"
-                            title="${escapeHtml(source.fullLabel)} boundaries"
+                            title="${escapeHtml(source.label)} boundaries"
                         >
                             <span
                                 class="map-land-swatch map-land-swatch-${key}"
@@ -187,7 +197,6 @@
         `;
 
         mapCard.appendChild(control);
-
         statusNode = control.querySelector('#map-land-status');
 
         control
@@ -208,6 +217,7 @@
                     } else {
                         state[key].loadedBounds = null;
                         state[key].zoomBucket = null;
+                        state[key].error = false;
                     }
 
                     savePreferences();
@@ -247,17 +257,9 @@
     function currentZoomBucket() {
         const zoom = map.getZoom();
 
-        if (zoom <= 7) {
-            return 7;
-        }
-
-        if (zoom <= 9) {
-            return 9;
-        }
-
-        if (zoom <= 11) {
-            return 11;
-        }
+        if (zoom <= 7) return 7;
+        if (zoom <= 9) return 9;
+        if (zoom <= 11) return 11;
 
         return 12;
     }
@@ -265,17 +267,9 @@
     function maxAllowableOffset() {
         const zoom = map.getZoom();
 
-        if (zoom <= 7) {
-            return 0.01;
-        }
-
-        if (zoom <= 9) {
-            return 0.004;
-        }
-
-        if (zoom <= 11) {
-            return 0.0015;
-        }
+        if (zoom <= 7) return 0.01;
+        if (zoom <= 9) return 0.004;
+        if (zoom <= 11) return 0.0015;
 
         return 0.0006;
     }
@@ -295,9 +289,10 @@
         };
     }
 
-    function buildQueryUrl(key, bounds) {
+    function buildQueryUrl(endpoint, key, bounds) {
         const source = sources[key];
         const box = normalizedBounds(bounds);
+
         const params = new URLSearchParams({
             where: '1=1',
             geometry: [
@@ -314,10 +309,11 @@
             outSR: '4326',
             geometryPrecision: '5',
             maxAllowableOffset: String(maxAllowableOffset()),
+            resultRecordCount: '2000',
             f: 'geojson'
         });
 
-        return `${source.endpoint}?${params.toString()}`;
+        return `${endpoint}?${params.toString()}`;
     }
 
     function loadedAreaStillCoversView(key) {
@@ -352,7 +348,10 @@
     function removeSourceLayer(key) {
         const sourceState = state[key];
 
-        if (sourceState.layer && map.hasLayer(sourceState.layer)) {
+        if (
+            sourceState.layer &&
+            map.hasLayer(sourceState.layer)
+        ) {
             map.removeLayer(sourceState.layer);
         }
     }
@@ -371,6 +370,7 @@
 
     function popupHtml(key, properties) {
         const source = sources[key];
+
         const name = String(
             properties?.[source.nameField] || ''
         ).trim();
@@ -379,13 +379,12 @@
             properties?.[source.detailField] || ''
         ).trim();
 
-        const sourceLine = key === 'tribal'
-            ? 'Boundary data: Bureau of Indian Affairs'
-            : 'Boundary data: Bureau of Land Management SMA';
+        const sourceLine =
+            `Boundary data: ${source.sourceText}`;
 
         return `
             <article class="map-land-popup">
-                <strong>${escapeHtml(source.fullLabel)}</strong>
+                <strong>${escapeHtml(source.label)}</strong>
 
                 ${
                     name
@@ -428,6 +427,116 @@
         });
     }
 
+    function sleep(ms, signal) {
+        return new Promise((resolve, reject) => {
+            const timer = window.setTimeout(resolve, ms);
+
+            signal?.addEventListener(
+                'abort',
+                () => {
+                    window.clearTimeout(timer);
+
+                    const error =
+                        new DOMException(
+                            'Request aborted.',
+                            'AbortError'
+                        );
+
+                    reject(error);
+                },
+                { once: true }
+            );
+        });
+    }
+
+    async function requestGeoJson(
+        endpoint,
+        key,
+        bounds,
+        signal
+    ) {
+        const response = await fetch(
+            buildQueryUrl(endpoint, key, bounds),
+            {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'default',
+                signal,
+                headers: {
+                    Accept:
+                        'application/geo+json, application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `${sources[key].label} returned HTTP ${response.status}.`
+            );
+        }
+
+        const data = await response.json();
+
+        if (
+            data?.type !== 'FeatureCollection' ||
+            !Array.isArray(data.features)
+        ) {
+            throw new Error(
+                `${sources[key].label} did not return GeoJSON.`
+            );
+        }
+
+        return data;
+    }
+
+    async function fetchWithRetry(
+        key,
+        bounds,
+        signal
+    ) {
+        const endpoints = sources[key].endpoints;
+        let lastError = null;
+
+        for (
+            let endpointIndex = 0;
+            endpointIndex < endpoints.length;
+            endpointIndex++
+        ) {
+            const endpoint = endpoints[endpointIndex];
+
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    return await requestGeoJson(
+                        endpoint,
+                        key,
+                        bounds,
+                        signal
+                    );
+                } catch (error) {
+                    if (error?.name === 'AbortError') {
+                        throw error;
+                    }
+
+                    lastError = error;
+
+                    if (attempt === 0) {
+                        await sleep(
+                            RETRY_DELAY_MS,
+                            signal
+                        );
+                    }
+                }
+            }
+        }
+
+        throw (
+            lastError ||
+            new Error(
+                `${sources[key].label} boundaries could not load.`
+            )
+        );
+    }
+
     async function loadSource(key) {
         const sourceState = state[key];
 
@@ -448,7 +557,8 @@
         sourceState.requestNumber = requestNumber;
         sourceState.loading = true;
         sourceState.error = false;
-        sourceState.controller = new AbortController();
+        sourceState.controller =
+            new AbortController();
 
         updateStatus();
 
@@ -456,36 +566,11 @@
         const zoomBucket = currentZoomBucket();
 
         try {
-            const response = await fetch(
-                buildQueryUrl(key, bounds),
-                {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'default',
-                    signal: sourceState.controller.signal,
-                    headers: {
-                        'Accept':
-                            'application/geo+json, application/json'
-                    }
-                }
+            const data = await fetchWithRetry(
+                key,
+                bounds,
+                sourceState.controller.signal
             );
-
-            if (!response.ok) {
-                throw new Error(
-                    `${sources[key].fullLabel} returned HTTP ${response.status}.`
-                );
-            }
-
-            const data = await response.json();
-
-            if (
-                data?.type !== 'FeatureCollection' ||
-                !Array.isArray(data.features)
-            ) {
-                throw new Error(
-                    `${sources[key].fullLabel} did not return GeoJSON.`
-                );
-            }
 
             if (
                 !state[key].enabled ||
@@ -497,17 +582,29 @@
             const nextLayer =
                 makeGeoJsonLayer(key, data);
 
+            /*
+             * Only replace the existing successful layer after
+             * the new response has been completely parsed.
+             * A temporary service failure therefore cannot erase
+             * the last good polygons.
+             */
             removeSourceLayer(key);
 
             sourceState.layer = nextLayer;
             sourceState.loadedBounds = bounds;
             sourceState.zoomBucket = zoomBucket;
+            sourceState.error = false;
 
             nextLayer.addTo(map);
 
         } catch (error) {
             if (error?.name !== 'AbortError') {
                 sourceState.error = true;
+
+                /*
+                 * Keep the last successful layer visible.
+                 */
+                ensureSourceLayerShown(key);
 
                 console.warn(
                     `Llama Scout land overlay (${key}):`,
@@ -529,6 +626,12 @@
     function enabledKeys() {
         return Object.keys(state)
             .filter((key) => state[key].enabled);
+    }
+
+    function failedLabels() {
+        return enabledKeys()
+            .filter((key) => state[key].error)
+            .map((key) => sources[key].label);
     }
 
     function updateStatus() {
@@ -554,9 +657,6 @@
         const loading =
             enabled.some((key) => state[key].loading);
 
-        const failed =
-            enabled.some((key) => state[key].error);
-
         if (loading) {
             statusNode.hidden = false;
             statusNode.textContent =
@@ -564,10 +664,19 @@
             return;
         }
 
-        if (failed) {
+        const failed = failedLabels();
+
+        if (failed.length) {
             statusNode.hidden = false;
-            statusNode.textContent =
-                'Some land boundaries could not load.';
+
+            if (failed.length === 1) {
+                statusNode.textContent =
+                    `${failed[0]} boundaries are temporarily unavailable.`;
+            } else {
+                statusNode.textContent =
+                    `${failed.join(' and ')} boundaries are temporarily unavailable.`;
+            }
+
             return;
         }
 
@@ -619,8 +728,12 @@
     ensureStyles();
     loadPreferences();
 
-    map.createPane('llama-land-pane');
-    map.getPane('llama-land-pane').style.zIndex = '350';
+    if (!map.getPane('llama-land-pane')) {
+        map.createPane('llama-land-pane');
+    }
+
+    map.getPane('llama-land-pane')
+        .style.zIndex = '350';
 
     createControl();
 
