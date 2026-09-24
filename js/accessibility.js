@@ -10,14 +10,16 @@
     const themeSelect = document.getElementById('theme-select');
     const fontSizeSelect = document.getElementById('font-size-select');
     const reducedMotion = document.getElementById('reduced-motion');
+    const focusIndicators = document.getElementById('focus-indicators');
     const resetButton = document.getElementById('accessibility-reset');
-
+    
     if (
         !button ||
         !panel ||
         !themeSelect ||
         !fontSizeSelect ||
-        !reducedMotion
+        !reducedMotion ||
+        !focusIndicators
     ) {
         return;
     }
@@ -70,6 +72,13 @@
         }
     }
 
+    function applyFocusIndicators(value) {
+        root.dataset.focusIndicators =
+            value === 'always'
+                ? 'always'
+                : 'auto';
+    }
+
     function openPanel() {
         panel.hidden = false;
         button.setAttribute('aria-expanded', 'true');
@@ -89,15 +98,24 @@
     const storedFontSize = getPreference('llama-font-size', 'normal');
     const storedReducedMotion =
         getPreference('llama-reduced-motion', 'false') === 'true';
-
+    
+    const storedFocusIndicators =
+        getPreference(
+            'llama-focus-indicators',
+            'auto'
+        );
+    
     themeSelect.value = storedTheme;
     fontSizeSelect.value = storedFontSize;
     reducedMotion.checked = storedReducedMotion;
-
+    focusIndicators.checked =
+        storedFocusIndicators === 'always';
+    
     applyTheme(storedTheme);
     applyFontSize(storedFontSize);
     applyReducedMotion(storedReducedMotion);
-
+    applyFocusIndicators(storedFocusIndicators);
+    
     button.addEventListener('click', () => {
         if (panel.hidden) {
             openPanel();
@@ -133,20 +151,56 @@
         applyReducedMotion(enabled);
     });
 
+    focusIndicators.addEventListener('change', () => {
+        const value =
+            focusIndicators.checked
+                ? 'always'
+                : 'auto';
+    
+        setPreference(
+            'llama-focus-indicators',
+            value
+        );
+    
+        applyFocusIndicators(value);
+    });
+
     resetButton?.addEventListener('click', () => {
         removePreference('llama-theme');
         removePreference('llama-font-size');
         removePreference('llama-reduced-motion');
+        removePreference('llama-focus-indicators');
 
         themeSelect.value = 'system';
         fontSizeSelect.value = 'normal';
         reducedMotion.checked = false;
+        focusIndicators.checked = false;
 
         delete root.dataset.theme;
         delete root.dataset.fontSize;
         delete root.dataset.reducedMotion;
+        
+        root.dataset.focusIndicators = 'auto';
     });
 
+    document.addEventListener(
+        'pointerdown',
+        () => {
+            root.dataset.focusModality = 'pointer';
+        },
+        true
+    );
+    
+    document.addEventListener(
+        'keydown',
+        (event) => {
+            if (event.key === 'Tab') {
+                root.dataset.focusModality = 'keyboard';
+            }
+        },
+        true
+    );
+    
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !panel.hidden) {
             closePanel();
