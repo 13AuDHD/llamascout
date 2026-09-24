@@ -64,6 +64,11 @@
         zoomControl: false
     }).setView([37.3, -107.4], 7);
 
+    window.LlamaScoutMap = Object.freeze({
+        map,
+        mapElement
+    });
+
     /*
      * Keep the map controls together in the lower-right corner.
      * The locate control is added after zoom so Leaflet stacks it above
