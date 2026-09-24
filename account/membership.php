@@ -559,8 +559,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </strong>
 
         <span>
-            Your promotional price is already attached to this
-            membership session and will carry into secure checkout.
+            Your promotional price is applied and will carry into secure checkout.
         </span>
     </div>
 </div>
@@ -574,7 +573,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <strong>A site promotion is already active.</strong>
 
         <span>
-            Promotion codes cannot be combined with the automatic
+            Promotional codes cannot be combined with the
             membership sale currently being offered.
         </span>
     </div>
