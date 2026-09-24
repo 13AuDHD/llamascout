@@ -46,8 +46,10 @@
     };
 
     let places = [];
+    let filteredPlaces = [];
     let visiblePlaces = [];
     let markers = [];
+    let markerByPlace = new Map();
     let memberMapAccess = initialMemberAccess;
     let selectedLayer = 'auto';
     let activeTileLayer = null;
@@ -348,7 +350,6 @@
                 button.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
     };
-
 
     const applyTileLayer = () => {
         const key = layerKeyForSelection(selectedLayer);
@@ -692,13 +693,13 @@ popupAnchor: [0, -42]
         });
 
         markers = [];
+        markerByPlace.clear();
     };
 
 
     const fitVisiblePlaces = () => {
-        const bounds = visiblePlaces
-            .map(placeCoordinates)
-            .filter(Boolean);
+        const bounds = filteredPlaces
+            .map(placeCoordinates)            .filter(Boolean);
 
         const fitMaxZoom = memberMapAccess ? 16 : 9;
 
@@ -868,35 +869,38 @@ popupAnchor: [0, -42]
     };
 
 
-    const render = (fitMap = false) => {
-        visiblePlaces = places.filter(matches);
+    const placesInsideMap = () => {
+        const bounds = map.getBounds();
 
-        clearMarkers();
+        return filteredPlaces.filter((place) => {
+            const coordinates = placeCoordinates(place);
+
+            if (!coordinates) {
+                return false;
+            }
+
+            return bounds.contains(
+                L.latLng(coordinates[0], coordinates[1])
+            );
+        });
+    };
+
+
+    const renderViewportCards = () => {
+        visiblePlaces = placesInsideMap();
 
         if (controls.results) {
             controls.results.innerHTML = '';
-        }
 
-        visiblePlaces.forEach((place) => {
-            const coordinates = placeCoordinates(place);
-            let marker = null;
-
-            if (coordinates) {
-                marker = L.marker(
-                    coordinates,
-                    {
-                        icon: markerIcon(place)
-                    }
+            visiblePlaces.forEach((place) => {
+                controls.results.appendChild(
+                    renderCard(
+                        place,
+                        markerByPlace.get(place) || null
+                    )
                 );
-                marker.bindPopup(popupHtml(place));
-                marker.addTo(map);
-                markers.push(marker);
-            }
-
-            controls.results?.appendChild(
-                renderCard(place, marker)
-            );
-        });
+            });
+        }
 
         if (controls.status) {
             controls.status.textContent =
@@ -904,14 +908,72 @@ popupAnchor: [0, -42]
         }
 
         if (controls.empty) {
-            controls.empty.hidden = visiblePlaces.length !== 0;
+            const heading = controls.empty.querySelector('h3');
+            const paragraph = controls.empty.querySelector('p');
+
+            controls.empty.hidden =
+                visiblePlaces.length !== 0;
+
+            if (visiblePlaces.length === 0) {
+                if (filteredPlaces.length === 0) {
+                    if (heading) {
+                        heading.textContent =
+                            'No Places match those filters.';
+                    }
+
+                    if (paragraph) {
+                        paragraph.textContent =
+                            'Try clearing one or more filters.';
+                    }
+                } else {
+                    if (heading) {
+                        heading.textContent =
+                            'No Places in this map area.';
+                    }
+
+                    if (paragraph) {
+                        paragraph.textContent =
+                            'Pan the map, zoom out, or choose Fit map to bring matching Places back into view.';
+                    }
+                }
+            }
         }
+    };
+
+
+    const render = (fitMap = false) => {
+        filteredPlaces = places.filter(matches);
+
+        clearMarkers();
+
+        filteredPlaces.forEach((place) => {
+            const coordinates = placeCoordinates(place);
+
+            if (!coordinates) {
+                return;
+            }
+
+            const marker = L.marker(
+                coordinates,
+                {
+                    icon: markerIcon(place)
+                }
+            );
+
+            marker.bindPopup(popupHtml(place));
+            marker.addTo(map);
+
+            markers.push(marker);
+            markerByPlace.set(place, marker);
+        });
 
         updateFilterCount();
 
         if (fitMap) {
             fitVisiblePlaces();
         }
+
+        renderViewportCards();
     };
 
 
@@ -1047,8 +1109,7 @@ popupAnchor: [0, -42]
         );
     });
 
-    [
-        controls.state,
+    [        controls.state,
         controls.county,
         controls.city,
         controls.type,
@@ -1058,6 +1119,14 @@ popupAnchor: [0, -42]
         controls.amenity
     ].forEach((element) => {
         element?.addEventListener('change', () => render(true));
+    });
+
+    map.on('moveend', () => {
+        if (!places.length) {
+            return;
+        }
+
+        renderViewportCards();
     });
 
     loadPlaces();
