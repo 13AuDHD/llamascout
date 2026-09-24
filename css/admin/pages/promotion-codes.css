@@ -149,6 +149,59 @@
     font-size: .68rem;
 }
 
+.promo-code-share-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.promo-code-share-control input {
+    min-width: 0;
+}
+
+.promo-code-copy-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--surface);
+    color: var(--text-muted);
+
+    cursor: pointer;
+}
+
+.promo-code-copy-button:hover {
+    color: var(--text);
+    background: var(--background);
+}
+
+.promo-code-copy-button .llama-icon {
+    width: 19px;
+    height: 19px;
+}
+
+.promo-code-copy-success {
+    display: none;
+}
+
+.promo-code-copy-button.is-copied .promo-code-copy-default {
+    display: none;
+}
+
+.promo-code-copy-button.is-copied .promo-code-copy-success {
+    display: inline-flex;
+}
+
 
 /* Results */
 
