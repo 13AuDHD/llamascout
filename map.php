@@ -298,5 +298,6 @@ require __DIR__ . '/partials/header.php';
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/map.js"></script>
+<script src="/js/map-land-overlays.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
