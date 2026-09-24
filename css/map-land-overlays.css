@@ -126,8 +126,8 @@
 }
 
 .map-land-swatch-tribal {
-    border-color: #b8583c;
-    background: color-mix(in srgb, #b8583c 38%, transparent);
+    border-color: #9a536f;
+    background: rgba(154, 83, 111, .30);
 }
 
 .map-land-status {
