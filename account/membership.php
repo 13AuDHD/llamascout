@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/memberships.php';
+require_once dirname(__DIR__) . '/app/promotion-codes.php';
 
 start_llama_session();
 
 $db = db();
+
+
+/* =========================================================
+   PLAN SELECTION
+   ========================================================= */
 
 $plan = strtolower(
     trim(
@@ -27,10 +33,137 @@ if ($plan !== '') {
     $_SESSION['pending_membership_plan'] = $plan;
 }
 
+
+/* =========================================================
+   MEMBERSHIP OFFERS
+   ========================================================= */
+
 $offers = llama_membership_offers($db);
 
 $monthlyOffer = $offers['monthly'] ?? null;
 $annualOffer = $offers['annual'] ?? null;
+
+
+/* =========================================================
+   PROMOTION CODE
+   ========================================================= */
+
+/*
+ * A promotion may arrive through:
+ *
+ * /promo.php?code=LLAMA25
+ *
+ * which stores the code in the session, or directly through:
+ *
+ * /membership.php?promo=LLAMA25
+ * /membership.php?code=LLAMA25
+ *
+ * Supporting both lets membership pricing render the offer
+ * immediately instead of waiting until Stripe checkout.
+ */
+
+$incomingPromotionCode = strtoupper(
+    trim(
+        (string) (
+            $_GET['promo']
+            ?? $_GET['code']
+            ?? ''
+        )
+    )
+);
+
+$pendingPromotionCode = $incomingPromotionCode !== ''
+    ? $incomingPromotionCode
+    : strtoupper(
+        trim(
+            (string) (
+                $_SESSION['pending_membership_promo_code']
+                ?? ''
+            )
+        )
+    );
+
+$promotionCodesByInterval = [
+    'monthly' => null,
+    'annual' => null,
+];
+
+$promotionCodeExists = false;
+$promotionBlockedByAutomaticSale = false;
+$promotionError = '';
+
+if ($pendingPromotionCode !== '') {
+
+    foreach (
+        [
+            'monthly' => $monthlyOffer,
+            'annual' => $annualOffer,
+        ]
+        as $interval => $offer
+    ) {
+
+        if (!$offer) {
+            continue;
+        }
+
+        $promotionCode =
+            llama_membership_promotion_code_by_code(
+                $db,
+                $pendingPromotionCode,
+                $interval
+            );
+
+        if (!$promotionCode) {
+            continue;
+        }
+
+        $promotionCodeExists = true;
+
+        /*
+         * Checkout intentionally does not stack an automatic
+         * membership sale with a manual Promotion Code.
+         */
+        if (!empty($offer['on_sale'])) {
+            $promotionBlockedByAutomaticSale = true;
+            continue;
+        }
+
+        $promotionCodesByInterval[$interval] =
+            $promotionCode;
+    }
+
+
+    $hasApplicablePromotion =
+        $promotionCodesByInterval['monthly'] !== null
+        || $promotionCodesByInterval['annual'] !== null;
+
+
+    if ($hasApplicablePromotion) {
+
+        $_SESSION['pending_membership_promo_code'] =
+            $pendingPromotionCode;
+
+    } elseif (!$promotionCodeExists) {
+
+        unset(
+            $_SESSION['pending_membership_promo_code']
+        );
+
+        $pendingPromotionCode = '';
+
+        if ($incomingPromotionCode !== '') {
+            $promotionError =
+                'That promotion code is not currently active or does not apply to an available membership plan.';
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   ACCOUNT STATE
+   ========================================================= */
 
 $user = current_user();
 $isLoggedIn = is_logged_in();
@@ -65,65 +198,290 @@ if ($isLoggedIn) {
 
     $stmt->execute([(int) $user['id']]);
 
-    $account = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    $account =
+        $stmt->fetch(PDO::FETCH_ASSOC)
+        ?: null;
 }
 
 $membershipStatus = strtolower(
-    trim((string) ($account['membership_status'] ?? 'none'))
+    trim(
+        (string) (
+            $account['membership_status']
+            ?? 'none'
+        )
+    )
 );
 
 $membershipInterval = strtolower(
-    trim((string) ($account['membership_interval'] ?? ''))
+    trim(
+        (string) (
+            $account['membership_interval']
+            ?? ''
+        )
+    )
 );
 
 $hasPaidMembership =
     $account
     && in_array(
         $membershipStatus,
-        ['active', 'trialing', 'past_due'],
+        [
+            'active',
+            'trialing',
+            'past_due',
+        ],
         true
     )
-    && trim((string) ($account['stripe_subscription_id'] ?? '')) !== '';
+    && trim(
+        (string) (
+            $account['stripe_subscription_id']
+            ?? ''
+        )
+    ) !== '';
+
+
+/* =========================================================
+   CHECKOUT SESSION TOKEN
+   ========================================================= */
 
 if (empty($_SESSION['membership_checkout_csrf'])) {
-    $_SESSION['membership_checkout_csrf'] = bin2hex(random_bytes(32));
+    $_SESSION['membership_checkout_csrf'] =
+        bin2hex(
+            random_bytes(32)
+        );
 }
 
-$csrfToken = (string) $_SESSION['membership_checkout_csrf'];
+$csrfToken =
+    (string) $_SESSION['membership_checkout_csrf'];
 
-function signup_membership_e(mixed $value): string
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-}
 
-function signup_membership_price(?array $offer): string
-{
-    if (!$offer) {
-        return 'Unavailable';
-    }
+/* =========================================================
+   DISPLAY HELPERS
+   ========================================================= */
 
-    return llama_membership_format_money(
-        (int) $offer['effective_price_cents'],
-        (string) $offer['plan']['currency']
+function signup_membership_e(
+    mixed $value
+): string {
+    return htmlspecialchars(
+        (string) $value,
+        ENT_QUOTES,
+        'UTF-8'
     );
 }
 
-function signup_membership_regular_price(?array $offer): string
-{
+
+function signup_membership_money(
+    int $cents,
+    string $currency = 'usd'
+): string {
+
+    return llama_membership_format_money(
+        max(0, $cents),
+        $currency
+    );
+}
+
+
+function signup_membership_regular_price(
+    ?array $offer
+): string {
+
     if (!$offer) {
         return '';
     }
 
-    return llama_membership_format_money(
-        (int) $offer['base_price_cents'],
-        (string) $offer['plan']['currency']
+    return signup_membership_money(
+        (int) (
+            $offer['base_price_cents']
+            ?? 0
+        ),
+        (string) (
+            $offer['plan']['currency']
+            ?? 'usd'
+        )
     );
 }
 
-$pageTitle = 'Membership | Llama Scout';
+
+function signup_membership_promotion_price_cents(
+    array $offer,
+    ?array $promotionCode
+): int {
+
+    if (!$promotionCode) {
+        return (int) (
+            $offer['effective_price_cents']
+            ?? $offer['base_price_cents']
+            ?? 0
+        );
+    }
+
+    $basePriceCents =
+        max(
+            0,
+            (int) (
+                $offer['base_price_cents']
+                ?? 0
+            )
+        );
+
+    $discountType =
+        strtolower(
+            trim(
+                (string) (
+                    $promotionCode['discount_type']
+                    ?? ''
+                )
+            )
+        );
+
+    $discountValue =
+        max(
+            0,
+            (int) (
+                $promotionCode['discount_value']
+                ?? 0
+            )
+        );
+
+
+    if ($discountType === 'percent') {
+
+        $percentage =
+            min(
+                100,
+                $discountValue
+            );
+
+        return max(
+            0,
+            (int) round(
+                $basePriceCents
+                * ((100 - $percentage) / 100)
+            )
+        );
+    }
+
+
+    if ($discountType === 'amount') {
+
+        return max(
+            0,
+            $basePriceCents
+            - $discountValue
+        );
+    }
+
+
+    return $basePriceCents;
+}
+
+
+function signup_membership_promotion_description(
+    array $promotionCode,
+    string $currency = 'usd'
+): string {
+
+    $discountType =
+        strtolower(
+            trim(
+                (string) (
+                    $promotionCode['discount_type']
+                    ?? ''
+                )
+            )
+        );
+
+    $discountValue =
+        max(
+            0,
+            (int) (
+                $promotionCode['discount_value']
+                ?? 0
+            )
+        );
+
+
+    if ($discountType === 'percent') {
+        return
+            number_format($discountValue)
+            . '% off your first payment.';
+    }
+
+
+    if ($discountType === 'amount') {
+        return
+            signup_membership_money(
+                $discountValue,
+                $currency
+            )
+            . ' off your first payment.';
+    }
+
+
+    return 'Special promotional pricing applied.';
+}
+
+
+function signup_membership_price(
+    array $offer,
+    ?array $promotionCode = null
+): string {
+
+    return signup_membership_money(
+        signup_membership_promotion_price_cents(
+            $offer,
+            $promotionCode
+        ),
+        (string) (
+            $offer['plan']['currency']
+            ?? 'usd'
+        )
+    );
+}
+
+
+/* =========================================================
+   PAGE STATE
+   ========================================================= */
+
+$hasPromotionPreview =
+    $promotionCodesByInterval['monthly'] !== null
+    || $promotionCodesByInterval['annual'] !== null;
+
+$displayPromotionCode = '';
+
+foreach ($promotionCodesByInterval as $promotionCode) {
+    if (!$promotionCode) {
+        continue;
+    }
+
+    $displayPromotionCode =
+        strtoupper(
+            trim(
+                (string) (
+                    $promotionCode['code']
+                    ?? ''
+                )
+            )
+        );
+
+    if ($displayPromotionCode !== '') {
+        break;
+    }
+}
+
+
+$pageTitle =
+    $hasPromotionPreview
+        ? 'Special Membership Offer | Llama Scout'
+        : 'Membership | Llama Scout';
+
 $pageRobots = 'noindex,nofollow';
+
 $pageDescription =
     'Choose a Llama Scout membership plan and complete secure checkout without leaving Llama Scout.';
+
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
@@ -135,6 +493,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
 <section class="signup-membership-page">
 
+
 <header class="signup-membership-header">
 
 <a
@@ -145,22 +504,107 @@ require dirname(__DIR__) . '/partials/header.php';
     Membership details
 </a>
 
-<p class="eyebrow">Llama Scout Membership</p>
 
-<h1>Choose how you want to join.</h1>
+<?php if ($hasPromotionPreview): ?>
+
+<p class="eyebrow">
+    Special Membership Offer
+</p>
+
+<h1>
+    Your Llama Scout offer is ready.
+</h1>
+
+<p>
+    Promotional pricing is shown below for every membership
+    plan eligible for your offer.
+</p>
+
+<?php else: ?>
+
+<p class="eyebrow">
+    Llama Scout Membership
+</p>
+
+<h1>
+    Choose how you want to join.
+</h1>
 
 <p>
     Monthly and annual memberships unlock the same complete
     Llama Scout Place reports. Only the billing interval changes.
 </p>
 
+<?php endif; ?>
+
 </header>
+
+
+<?php if ($hasPromotionPreview): ?>
+
+<div class="signup-membership-notice is-success">
+    <i aria-hidden="true">
+        <?= llama_icon('ticket') ?>
+    </i>
+
+    <div>
+        <strong>
+            <?= signup_membership_e(
+                $displayPromotionCode
+            ) ?>
+            applied
+        </strong>
+
+        <span>
+            Your promotional price is already attached to this
+            membership session and will carry into secure checkout.
+        </span>
+    </div>
+</div>
+
+<?php elseif ($promotionBlockedByAutomaticSale): ?>
+
+<div class="signup-membership-notice">
+    <i aria-hidden="true">
+        <?= llama_icon('info-circle') ?>
+    </i>
+
+    <div>
+        <strong>
+            A site promotion is already active.
+        </strong>
+
+        <span>
+            Promotion codes cannot be combined with the automatic
+            membership sale currently being offered.
+        </span>
+    </div>
+</div>
+
+<?php elseif ($promotionError !== ''): ?>
+
+<div class="signup-membership-notice">
+    <i aria-hidden="true">
+        <?= llama_icon('alert-triangle') ?>
+    </i>
+
+    <span>
+        <?= signup_membership_e(
+            $promotionError
+        ) ?>
+    </span>
+</div>
+
+<?php endif; ?>
 
 
 <?php if (isset($_GET['verified'])): ?>
 
 <div class="signup-membership-notice is-success">
-    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
+    <i aria-hidden="true">
+        <?= llama_icon('circle-check') ?>
+    </i>
+
     Email verified. Your account is ready. Continue with the
     membership you selected.
 </div>
@@ -174,7 +618,10 @@ require dirname(__DIR__) . '/partials/header.php';
 ): ?>
 
 <div class="signup-membership-notice is-success">
-    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
+    <i aria-hidden="true">
+        <?= llama_icon('circle-check') ?>
+    </i>
+
     Payment completed. Stripe is confirming your membership and
     your account will update automatically.
 </div>
@@ -196,7 +643,9 @@ require dirname(__DIR__) . '/partials/header.php';
 <section class="signup-membership-current">
 
 <div>
-    <span>Current membership</span>
+    <span>
+        Current membership
+    </span>
 
     <strong>
         <?= signup_membership_e(
@@ -205,7 +654,9 @@ require dirname(__DIR__) . '/partials/header.php';
                 : (
                     $membershipInterval === 'monthly'
                         ? 'Monthly'
-                        : ucfirst($membershipStatus)
+                        : ucfirst(
+                            $membershipStatus
+                        )
                 )
         ) ?>
     </strong>
@@ -236,95 +687,273 @@ require dirname(__DIR__) . '/partials/header.php';
 <?php if (!$offer) continue; ?>
 
 <?php
-$isSelected = $plan === $interval;
-$onSale = !empty($offer['on_sale']);
-$promotion = $offer['promotion'] ?? null;
+
+$isSelected =
+    $plan === $interval;
+
+$automaticPromotion =
+    $offer['promotion']
+    ?? null;
+
+$automaticSale =
+    !empty(
+        $offer['on_sale']
+    );
+
+$promotionCode =
+    $promotionCodesByInterval[
+        $interval
+    ]
+    ?? null;
+
+$hasPromotionCode =
+    $promotionCode !== null;
+
+$showDiscountedPrice =
+    $automaticSale
+    || $hasPromotionCode;
+
+$currency =
+    (string) (
+        $offer['plan']['currency']
+        ?? 'usd'
+    );
+
+$displayPrice =
+    signup_membership_price(
+        $offer,
+        $hasPromotionCode
+            ? $promotionCode
+            : null
+    );
+
+$regularPrice =
+    signup_membership_regular_price(
+        $offer
+    );
+
 ?>
 
 <article
     class="signup-membership-plan <?= $isSelected ? 'is-selected' : '' ?>"
 >
 
+
 <?php if ($isSelected): ?>
+
 <span class="signup-membership-selected">
     You selected this plan
 </span>
+
 <?php endif; ?>
 
-<h2><?= $interval === 'annual' ? 'Annual' : 'Monthly' ?></h2>
+
+<h2>
+    <?= $interval === 'annual'
+        ? 'Annual'
+        : 'Monthly' ?>
+</h2>
+
 
 <div class="signup-membership-price">
 
-<?php if ($onSale): ?>
-    <del>
-        <?= signup_membership_e(
-            signup_membership_regular_price($offer)
-        ) ?>
-    </del>
+<?php if ($showDiscountedPrice): ?>
+
+<del>
+    <?= signup_membership_e(
+        $regularPrice
+    ) ?>
+</del>
+
 <?php endif; ?>
+
 
 <strong>
     <?= signup_membership_e(
-        signup_membership_price($offer)
+        $displayPrice
     ) ?>
 </strong>
 
+
 <span>
-    / <?= $interval === 'annual' ? 'year' : 'month' ?>
+    / <?= $interval === 'annual'
+        ? 'year'
+        : 'month' ?>
 </span>
 
 </div>
 
-<?php if ($onSale): ?>
+
+<?php if ($automaticSale): ?>
+
 <div class="signup-membership-notice is-success">
-    <strong>
-        <?= signup_membership_e(
-            (string) (
-                $promotion['public_label']
-                ?? $promotion['promotion_name']
-                ?? 'Limited-time promotion'
-            )
-        ) ?>
-    </strong>
-    <span>
-        Introductory price for your first year only.
-        After the first year, the membership renews at
-        <?= signup_membership_e(
-            signup_membership_regular_price($offer)
-        ) ?>
-        <?= $interval === 'annual' ? 'per year' : 'per month' ?>.
-    </span>
+
+    <div>
+
+        <strong>
+            <?= signup_membership_e(
+                (string) (
+                    $automaticPromotion['public_label']
+                    ?? $automaticPromotion['promotion_name']
+                    ?? 'Limited-time promotion'
+                )
+            ) ?>
+        </strong>
+
+        <span>
+            Introductory price for your first year only.
+            After the first year, the membership renews at
+            <?= signup_membership_e(
+                $regularPrice
+            ) ?>
+            <?= $interval === 'annual'
+                ? 'per year'
+                : 'per month' ?>.
+        </span>
+
+    </div>
+
 </div>
+
+
+<?php elseif ($hasPromotionCode): ?>
+
+<div class="signup-membership-notice is-success">
+
+    <i aria-hidden="true">
+        <?= llama_icon('ticket') ?>
+    </i>
+
+    <div>
+
+        <strong>
+            <?= signup_membership_e(
+                (string) (
+                    $promotionCode['code']
+                    ?? ''
+                )
+            ) ?>
+            applied
+        </strong>
+
+        <span>
+
+            <?= signup_membership_e(
+                signup_membership_promotion_description(
+                    $promotionCode,
+                    $currency
+                )
+            ) ?>
+
+            Regular price is
+            <?= signup_membership_e(
+                $regularPrice
+            ) ?>
+            <?= $interval === 'annual'
+                ? 'per year'
+                : 'per month' ?>
+            after the promotional payment.
+
+            <?php if (
+                !empty(
+                    $promotionCode[
+                        'first_time_customers_only'
+                    ]
+                )
+            ): ?>
+
+                First-time customers only.
+
+            <?php endif; ?>
+
+        </span>
+
+    </div>
+
+</div>
+
 <?php endif; ?>
 
+
 <ul>
-    <li>Exact Place locations and coordinates</li>
-    <li>Complete sensory details</li>
-    <li>Road and vehicle-access information</li>
-    <li>Connectivity and Starlink information</li>
-    <li>Complete warnings, rules, and planning data</li>
+    <li>
+        Exact Place locations and coordinates
+    </li>
+
+    <li>
+        Complete sensory details
+    </li>
+
+    <li>
+        Road and vehicle-access information
+    </li>
+
+    <li>
+        Connectivity and Starlink information
+    </li>
+
+    <li>
+        Complete warnings, rules, and planning data
+    </li>
 </ul>
 
 
 <?php if (!$isLoggedIn): ?>
 
+<?php
+
+$registrationUrl =
+    '/register.php?plan='
+    . rawurlencode(
+        $interval
+    );
+
+if ($displayPromotionCode !== '') {
+    $registrationUrl .=
+        '&promo='
+        . rawurlencode(
+            $displayPromotionCode
+        );
+}
+
+$returnUrl =
+    'https://account.llamascout.com/membership.php?plan='
+    . rawurlencode(
+        $interval
+    );
+
+if ($displayPromotionCode !== '') {
+    $returnUrl .=
+        '&promo='
+        . rawurlencode(
+            $displayPromotionCode
+        );
+}
+
+?>
+
 <a
     class="signup-membership-button"
-    href="/register.php?plan=<?= signup_membership_e($interval) ?>"
+    href="<?= signup_membership_e(
+        $registrationUrl
+    ) ?>"
 >
     Create account to continue
 </a>
 
+
 <a
     class="signup-membership-signin"
     href="/login.php?return=<?= rawurlencode(
-        'https://account.llamascout.com/membership.php?plan=' . $interval
+        $returnUrl
     ) ?>"
 >
     Already have an account? Sign in
 </a>
 
+
 <?php else: ?>
+
 
 <form
     method="post"
@@ -334,13 +963,17 @@ $promotion = $offer['promotion'] ?? null;
 <input
     type="hidden"
     name="csrf_token"
-    value="<?= signup_membership_e($csrfToken) ?>"
+    value="<?= signup_membership_e(
+        $csrfToken
+    ) ?>"
 >
 
 <input
     type="hidden"
     name="interval"
-    value="<?= signup_membership_e($interval) ?>"
+    value="<?= signup_membership_e(
+        $interval
+    ) ?>"
 >
 
 <button
@@ -352,7 +985,9 @@ $promotion = $offer['promotion'] ?? null;
 
 </form>
 
+
 <?php endif; ?>
+
 
 </article>
 
@@ -363,22 +998,29 @@ $promotion = $offer['promotion'] ?? null;
 
 <div class="signup-membership-security">
 
-<i aria-hidden="true"><?= llama_icon('lock') ?></i>
+<i aria-hidden="true">
+    <?= llama_icon('lock') ?>
+</i>
 
 <div>
-    <strong>Secure checkout stays on Llama Scout</strong>
+
+    <strong>
+        Secure checkout on Llama Scout
+    </strong>
 
     <span>
         Stripe securely handles the payment fields inside Llama Scout.
-        Llama Scout does not receive or store your complete card
-        number.
+        Llama Scout does not receive or store your financial data.
     </span>
+
 </div>
 
 </div>
+
 
 <?php endif; ?>
 
 </section>
+
 
 <?php require dirname(__DIR__) . '/partials/footer.php'; ?>
