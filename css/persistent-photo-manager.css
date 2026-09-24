@@ -1,10 +1,17 @@
 /* =========================================================
    LLAMA SCOUT PERSISTENT PHOTO MANAGER
-   Saved-photo gallery behavior shared by permanent galleries.
+   Saved profile-photo gallery.
    ========================================================= */
 
+/*
+ * profile.css also uses .community-profile-image-manager as a card grid.
+ * The persistent manager itself contains help text, the photo grid, and a
+ * status line, so keep THIS outer manager to one column. The actual photos
+ * are laid out horizontally by .community-profile-image-grid below.
+ */
 [data-persistent-photo-manager].community-profile-image-manager {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
 }
 
@@ -16,9 +23,16 @@
 }
 
 .community-profile-image-grid {
+    width: 100%;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 14px;
+    align-items: start;
+}
+
+.community-profile-image-card {
+    position: relative;
+    min-width: 0;
 }
 
 .persistent-photo-manager__image-wrap {
@@ -32,21 +46,59 @@
     object-fit: cover;
 }
 
+/* Position number, like the other photo sorter. */
+.persistent-photo-manager__position {
+    position: absolute;
+    z-index: 6;
+    top: 8px;
+    left: 8px;
+
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid color-mix(in srgb, #ffffff 30%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, #000000 76%, transparent);
+    color: #ffffff;
+
+    font-size: .78rem;
+    font-weight: 900;
+    line-height: 1;
+
+    box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Featured stays visible without competing with the position number. */
 [data-photo-featured-badge] {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    z-index: 6;
+    left: 8px;
+    bottom: 8px;
+    top: auto;
+
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 9px;
-    border: 1px solid var(--border);
+    padding: 5px 9px;
+
+    border: 1px solid color-mix(in srgb, #58a66a 72%, var(--border));
     border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
-    font-size: .8rem;
-    font-weight: 850;
+    background: color-mix(in srgb, #102018 90%, transparent);
+    color: #dff7e4;
+
+    font-size: .67rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+
     box-shadow: 0 2px 10px rgb(0 0 0 / 14%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 [data-photo-featured-badge][hidden] {
@@ -92,12 +144,58 @@
     cursor: not-allowed;
 }
 
+/*
+ * The old full-width "Drag to rearrange" button is moved into the image by
+ * JavaScript and becomes the same compact grab handle used by the other
+ * photo sorter.
+ */
 .persistent-photo-manager__drag {
-    grid-column: 1 / -1;
+    position: absolute;
+    z-index: 7;
+    top: 8px;
+    right: 8px;
+
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    border: 1px solid color-mix(in srgb, #ffffff 30%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, #000000 76%, transparent);
+    color: #ffffff;
+
     cursor: grab;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+
+    box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.persistent-photo-manager__drag span {
+    display: block;
+    transform: rotate(90deg);
+    font-size: 1.05rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -.2em;
+}
+
+.persistent-photo-manager__drag:hover,
+.persistent-photo-manager__drag:focus-visible {
+    background: color-mix(in srgb, #000000 90%, transparent);
+}
+
+.persistent-photo-manager__drag:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
 }
 
 .persistent-photo-manager__drag:active,
@@ -105,20 +203,33 @@
     cursor: grabbing;
 }
 
+/* Remove sits above Earlier/Later. */
 .persistent-photo-manager__remove {
     grid-column: 1 / -1;
+    grid-row: 1;
+}
+
+[data-photo-move-earlier] {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+[data-photo-move-later] {
+    grid-column: 2;
+    grid-row: 2;
 }
 
 .community-profile-image-card.is-featured {
-    border-color: var(--text-muted);
+    border-color: color-mix(in srgb, #58a66a 70%, var(--border));
 }
 
 .community-profile-image-card.is-photo-manager-dragging {
-    opacity: .58;
+    opacity: .72;
     outline: 2px dashed var(--focus);
     outline-offset: 3px;
-    position: relative;
-    z-index: 3;
+    z-index: 20;
+    transform: scale(.985);
+    box-shadow: 0 12px 28px color-mix(in srgb, #000000 22%, transparent);
 }
 
 .is-photo-manager-sorting .community-profile-image-card:not(.is-photo-manager-dragging) {
@@ -137,23 +248,47 @@
     color: var(--danger, #b42318);
 }
 
-@media (max-width: 480px) {
+/* Keep the gallery horizontal on tablets whenever space allows. */
+@media (max-width: 760px) {
+    .community-profile-image-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+    }
+}
+
+/* Phones stay compact but usable. */
+@media (max-width: 520px) {
     .community-profile-image-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .persistent-photo-manager__controls {
-        grid-template-columns: 1fr;
+    .community-profile-image-card-body {
+        padding: 9px;
     }
 
-    .persistent-photo-manager__drag,
-    .persistent-photo-manager__remove {
-        grid-column: auto;
+    .persistent-photo-manager__button {
+        min-height: 38px;
+        padding: 7px 6px;
+        font-size: .76rem;
     }
+}
+
+html[data-reduced-motion="true"]
+.is-photo-manager-sorting .community-profile-image-card:not(.is-photo-manager-dragging) {
+    transition: none;
+}
+
+html[data-reduced-motion="true"]
+.community-profile-image-card.is-photo-manager-dragging {
+    transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .is-photo-manager-sorting .community-profile-image-card:not(.is-photo-manager-dragging) {
         transition: none;
+    }
+
+    .community-profile-image-card.is-photo-manager-dragging {
+        transform: none;
     }
 }
