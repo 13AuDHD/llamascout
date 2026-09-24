@@ -209,6 +209,79 @@ function promotion_code_discount_summary(
 }
 
 
+function promotion_code_duration_summary(
+    array $code
+): string {
+    $scope =
+        strtolower(
+            trim(
+                (string) (
+                    $code[
+                        'plan_scope'
+                    ]
+                    ?? ''
+                )
+            )
+        );
+
+    $duration =
+        strtolower(
+            trim(
+                (string) (
+                    $code[
+                        'discount_duration'
+                    ]
+                    ?? 'once'
+                )
+            )
+        );
+
+    $months =
+        (int) (
+            $code[
+                'duration_months'
+            ]
+            ?? 0
+        );
+
+
+    if (
+        $scope === 'monthly'
+        && $duration === 'months'
+        && in_array(
+            $months,
+            llama_membership_promotion_code_month_options(),
+            true
+        )
+    ) {
+        return
+            $months === 1
+                ? '1 month'
+                : $months . ' months';
+    }
+
+
+    if (
+        $scope === 'annual'
+    ) {
+        return
+            '1 annual billing period';
+    }
+
+
+    if (
+        $scope === 'all'
+    ) {
+        return
+            '1 billing period per plan';
+    }
+
+
+    return
+        '1 billing period';
+}
+
+
 /* =========================================================
    PAGE DATA
    ========================================================= */
@@ -351,18 +424,6 @@ try {
                     )
                 );
 
-            $promotionDuration =
-                strtolower(
-                    trim(
-                        (string) (
-                            $_POST[
-                                'promotion_duration'
-                            ]
-                            ?? 'once'
-                        )
-                    )
-                );
-
 
             if (
                 !is_numeric(
@@ -455,10 +516,29 @@ try {
                 null;
 
 
+            /*
+             * Monthly always uses an explicit number of months.
+             *
+             * One month means the first monthly billing period,
+             * then the normal price resumes on the next renewal.
+             */
             if (
-                $promotionDuration !==
-                'once'
+                $planScope ===
+                'monthly'
             ) {
+
+                $promotionDuration =
+                    strtolower(
+                        trim(
+                            (string) (
+                                $_POST[
+                                    'promotion_duration'
+                                ]
+                                ?? 'months_1'
+                            )
+                        )
+                    );
+
 
                 if (
                     !preg_match(
@@ -468,9 +548,10 @@ try {
                     )
                 ) {
                     throw new InvalidArgumentException(
-                        'Choose a valid promotion duration.'
+                        'Choose 1, 2, 3, 6, 9, or 12 months.'
                     );
                 }
+
 
                 $discountDuration =
                     'months';
@@ -480,15 +561,19 @@ try {
             }
 
 
+            /*
+             * Annual and combined-scope codes use one billing
+             * period for each applicable plan.
+             */
             if (
-                $discountDuration ===
-                'months'
-                && $planScope !==
-                    'monthly'
+                $planScope === 'annual'
+                || $planScope === 'all'
             ) {
-                throw new InvalidArgumentException(
-                    'Multi-month discounts are available only for the Monthly membership.'
-                );
+                $discountDuration =
+                    'once';
+
+                $durationMonths =
+                    null;
             }
 
 
@@ -619,10 +704,6 @@ try {
         }
     }
 
-
-    /* =====================================================
-       STRIPE STATUS SYNC
-       ===================================================== */
 
     llama_sync_membership_promotion_codes(
         $db
@@ -940,10 +1021,6 @@ require __DIR__
         disabled
     >
 
-        <option value="once">
-            First payment only
-        </option>
-
         <option value="months_1">
             1 month
         </option>
@@ -1213,7 +1290,7 @@ $discount =
 
 
 $duration =
-    llama_membership_promotion_code_duration_label(
+    promotion_code_duration_summary(
         $code
     );
 
@@ -1614,6 +1691,7 @@ $revenueCents =
         return;
     }
 
+
     const planSelect =
         document.getElementById(
             'promotion-plan-scope'
@@ -1665,27 +1743,71 @@ $revenueCents =
             planSelect.value ===
             'monthly';
 
+        const annualOnly =
+            planSelect.value ===
+            'annual';
 
-        if (!monthlyOnly) {
-            durationSelect.value =
-                'once';
 
-            durationSelect.disabled =
-                true;
+        /*
+         * Monthly has a real duration selector.
+         *
+         * Annual and combined codes always use one billing period.
+         */
+        if (monthlyOnly) {
 
-            if (durationHelp) {
-                durationHelp.textContent =
-                    'Annual and Monthly + Annual promotions apply to the first payment only.';
-            }
-
-        } else {
             durationSelect.disabled =
                 false;
+
+            if (
+                ![
+                    'months_1',
+                    'months_2',
+                    'months_3',
+                    'months_6',
+                    'months_9',
+                    'months_12'
+                ].includes(
+                    durationSelect.value
+                )
+            ) {
+                durationSelect.value =
+                    'months_1';
+            }
+
 
             if (durationHelp) {
                 durationHelp.textContent =
                     'Choose how many monthly billing cycles receive the promotional price.';
             }
+
+        } else {
+
+            durationSelect.value =
+                'months_1';
+
+            durationSelect.disabled =
+                true;
+
+
+            if (durationHelp) {
+                durationHelp.textContent =
+                    annualOnly
+                        ? 'Annual promotions apply to the first annual billing period.'
+                        : 'This promotion applies to one billing period for each membership plan.';
+            }
+        }
+
+
+        /*
+         * Promotional monthly price belongs only to Monthly.
+         */
+        if (
+            discountType.value ===
+            'promotional_price'
+            && !monthlyOnly
+        ) {
+            discountType.value =
+                'percent';
         }
 
 
@@ -1693,7 +1815,10 @@ $revenueCents =
             discountType.value ===
             'promotional_price'
         ) {
-            if (discountValueLabel) {
+
+            if (
+                discountValueLabel
+            ) {
                 discountValueLabel.textContent =
                     'Promotional monthly price';
             }
@@ -1707,7 +1832,10 @@ $revenueCents =
             discountValue.placeholder =
                 '4.99';
 
-            if (discountValueHelp) {
+
+            if (
+                discountValueHelp
+            ) {
                 discountValueHelp.textContent =
                     'Enter the price the customer pays each month, not the amount off.';
             }
@@ -1720,7 +1848,10 @@ $revenueCents =
             discountType.value ===
             'amount'
         ) {
-            if (discountValueLabel) {
+
+            if (
+                discountValueLabel
+            ) {
                 discountValueLabel.textContent =
                     'Dollar amount off';
             }
@@ -1734,7 +1865,10 @@ $revenueCents =
             discountValue.placeholder =
                 '2.00';
 
-            if (discountValueHelp) {
+
+            if (
+                discountValueHelp
+            ) {
                 discountValueHelp.textContent =
                     'Enter the dollar amount deducted from the normal membership price.';
             }
@@ -1743,7 +1877,9 @@ $revenueCents =
         }
 
 
-        if (discountValueLabel) {
+        if (
+            discountValueLabel
+        ) {
             discountValueLabel.textContent =
                 'Percent off';
         }
@@ -1757,21 +1893,23 @@ $revenueCents =
         discountValue.placeholder =
             '25';
 
-        if (discountValueHelp) {
+
+        if (
+            discountValueHelp
+        ) {
             discountValueHelp.textContent =
                 'Enter the percentage to discount.';
         }
     }
 
 
-    if (discountType) {
+    if (
+        discountType
+    ) {
         discountType.addEventListener(
             'change',
             function () {
-                /*
-                 * Promotional monthly price belongs specifically
-                 * to the Monthly membership.
-                 */
+
                 if (
                     discountType.value ===
                     'promotional_price'
@@ -1787,29 +1925,12 @@ $revenueCents =
     }
 
 
-    if (planSelect) {
+    if (
+        planSelect
+    ) {
         planSelect.addEventListener(
             'change',
-            function () {
-                /*
-                 * If the Admin deliberately changes away from
-                 * Monthly, switch the discount type back to the
-                 * general percentage option rather than silently
-                 * forcing the plan back to Monthly.
-                 */
-                if (
-                    planSelect.value !==
-                    'monthly'
-                    && discountType
-                    && discountType.value ===
-                        'promotional_price'
-                ) {
-                    discountType.value =
-                        'percent';
-                }
-
-                syncPromotionForm();
-            }
+            syncPromotionForm
         );
     }
 
@@ -1850,6 +1971,7 @@ document.addEventListener(
 
 
         try {
+
             if (
                 navigator.clipboard
                 && window.isSecureContext
@@ -1863,12 +1985,14 @@ document.addEventListener(
             }
 
         } catch (error) {
+
             copied =
                 false;
         }
 
 
         if (!copied) {
+
             input.focus();
             input.select();
 
@@ -1877,13 +2001,16 @@ document.addEventListener(
                 input.value.length
             );
 
+
             try {
+
                 copied =
                     document.execCommand(
                         'copy'
                     );
 
             } catch (error) {
+
                 copied =
                     false;
             }
