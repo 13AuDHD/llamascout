@@ -143,6 +143,11 @@ $adminActiveNav = 'knowledge-base';
 
 $adminPageActions =
     '<a class="admin-button" href="'
+    . moderation_e($adminBaseUrl . '/knowledge-base-search-gaps.php')
+    . '">'
+    . moderation_e('Search gaps')
+    . '</a>'
+    . '<a class="admin-button" href="'
     . moderation_e($adminBaseUrl . '/knowledge-base-categories.php')
     . '">'
     . moderation_e('Topics')
