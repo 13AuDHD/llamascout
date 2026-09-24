@@ -46,7 +46,7 @@ require __DIR__ . '/partials/header.php';
             <p class="kb-eyebrow">Knowledge Base</p>
             <h1>What can this llama help you find?</h1>
             <p class="kb-hero-copy">
-                Search the customer-facing encyclopedia of Llama Scout.
+                Search the entire encyclopedia of Llama Scout...
                 Features, settings, Places, security, shopping, and the
                 occasional thing a llama had to write down so nobody forgot.
             </p>
