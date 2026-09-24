@@ -178,6 +178,12 @@ function llama_presence_touch(
          *
          * Repeated activity during the same hour simply keeps
          * that hour's bit enabled.
+         *
+         * The active-account check is inside EXISTS rather than
+         * selecting directly from users. That prevents MariaDB
+         * from seeing both users.last_seen_at and
+         * user_activity_daily.last_seen_at in the duplicate-key
+         * update scope.
          */
         $activityStmt =
             $db->prepare(
@@ -191,7 +197,7 @@ function llama_presence_touch(
                 )
 
                 SELECT
-                    u.id,
+                    ?,
                     UTC_DATE(),
                     (
                         1 <<
@@ -202,10 +208,12 @@ function llama_presence_touch(
                     UTC_TIMESTAMP(),
                     UTC_TIMESTAMP()
 
-                FROM users u
-
-                WHERE u.id = ?
-                  AND u.status = \'active\'
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM users
+                    WHERE id = ?
+                      AND status = \'active\'
+                )
 
                 ON DUPLICATE KEY UPDATE
 
@@ -236,6 +244,7 @@ function llama_presence_touch(
 
 
         $activityStmt->execute([
+            $userId,
             $userId
         ]);
 
