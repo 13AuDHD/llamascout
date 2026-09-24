@@ -427,15 +427,34 @@ require __DIR__ . '/_header.php';
                         >
                             Share link
                         </label>
-                        <input
-                            id="promotion-share-link-<?= (int) $code['id'] ?>"
-                            type="text"
-                            readonly
-                            value="<?= moderation_e(
-                                'https://account.llamascout.com/promo.php?code='
-                                . rawurlencode((string) $code['code'])
-                            ) ?>"
-                        >
+                    
+                        <div class="promo-code-share-control">
+                            <input
+                                id="promotion-share-link-<?= (int) $code['id'] ?>"
+                                type="text"
+                                readonly
+                                value="<?= moderation_e(
+                                    'https://account.llamascout.com/promo.php?code='
+                                    . rawurlencode((string) $code['code'])
+                                ) ?>"
+                            >
+                    
+                            <button
+                                class="promo-code-copy-button"
+                                type="button"
+                                data-copy-target="promotion-share-link-<?= (int) $code['id'] ?>"
+                                aria-label="Copy share link"
+                                title="Copy share link"
+                            >
+                                <span class="promo-code-copy-default" aria-hidden="true">
+                                    <?= llama_icon('copy') ?>
+                                </span>
+                    
+                                <span class="promo-code-copy-success" aria-hidden="true">
+                                    <?= llama_icon('check') ?>
+                                </span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="promo-code-results">
@@ -479,5 +498,59 @@ require __DIR__ . '/_header.php';
 </section>
 
 <?php endif; ?>
+
+<script>
+document.addEventListener('click', async function (event) {
+    const button = event.target.closest('.promo-code-copy-button');
+
+    if (!button) {
+        return;
+    }
+
+    const targetId = button.dataset.copyTarget;
+    const input = document.getElementById(targetId);
+
+    if (!input) {
+        return;
+    }
+
+    let copied = false;
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(input.value);
+            copied = true;
+        }
+    } catch (error) {
+        copied = false;
+    }
+
+    if (!copied) {
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            copied = false;
+        }
+    }
+
+    if (!copied) {
+        return;
+    }
+
+    button.classList.add('is-copied');
+    button.setAttribute('aria-label', 'Copied');
+    button.setAttribute('title', 'Copied');
+
+    window.setTimeout(function () {
+        button.classList.remove('is-copied');
+        button.setAttribute('aria-label', 'Copy share link');
+        button.setAttribute('title', 'Copy share link');
+    }, 1600);
+});
+</script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
