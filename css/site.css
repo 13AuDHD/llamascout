@@ -95,17 +95,64 @@ select {
     background: var(--background);
 }
 
-button,
-a,
-input,
-select,
-textarea {
+
+/* =========================================================
+   PUBLIC SITE FOCUS INDICATORS
+   ========================================================= */
+
+:root[data-site-shell="public"] button,
+:root[data-site-shell="public"] a,
+:root[data-site-shell="public"] input,
+:root[data-site-shell="public"] select,
+:root[data-site-shell="public"] textarea {
     outline-offset: 4px;
 }
 
+/*
+ * Automatic mode is the default.
+ *
+ * Browser focus-visible behavior remains as a fallback so keyboard
+ * focus is still visible even if the accessibility JavaScript does
+ * not run.
+ */
+:root[data-site-shell="public"]
+[data-focus-indicators="auto"]
 :focus-visible {
     outline: 3px solid var(--focus);
 }
+
+/*
+ * Pointer and touch interaction should not leave a focus ring around
+ * controls after they are tapped or clicked.
+ */
+:root[data-site-shell="public"]
+[data-focus-indicators="auto"]
+[data-focus-modality="pointer"]
+:focus {
+    outline: none;
+}
+
+/*
+ * Once keyboard navigation is detected, make the focused control
+ * clearly visible.
+ */
+:root[data-site-shell="public"]
+[data-focus-indicators="auto"]
+[data-focus-modality="keyboard"]
+:focus {
+    outline: 3px solid var(--focus);
+}
+
+/*
+ * Accessibility preference:
+ * Always show focus indicators regardless of input method.
+ */
+:root[data-site-shell="public"]
+[data-focus-indicators="always"]
+:focus {
+    outline: 3px solid var(--focus);
+}
+
 
 /*
  * Native date/time controls on Safari and iPadOS can retain
@@ -164,6 +211,7 @@ form {
 
     border: 0 !important;
 }
+
 
 /* =========================================================
    LOCAL SVG ICONS
