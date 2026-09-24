@@ -185,6 +185,53 @@
 }
 
 
+/* Nearby Place duplicate inspection */
+
+.admin-moderation-nearby-map-section {
+    margin-top: 16px;
+}
+
+.admin-moderation-nearby-map-section
+> h3 {
+    margin-bottom: 6px;
+}
+
+.admin-moderation-nearby-map-section
+.scout-report-summary {
+    max-width: 820px;
+    margin: 0 0 12px;
+
+    color: var(--text-muted);
+
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+.admin-moderation-nearby-map-shell {
+    position: relative;
+    width: 100%;
+    height: 230px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--background);
+}
+
+.admin-moderation-nearby-map-frame {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    border: 0;
+
+    background: var(--background);
+}
+
+
 /* Submitted photo ordering */
 
 .admin-moderation-photo-sorter-guide {
@@ -469,6 +516,10 @@
         grid-template-columns: 1fr;
     }
 
+    .admin-moderation-nearby-map-shell {
+        height: 360px;
+    }
+
     .admin-moderation-photo-sorter-guide {
         align-items: flex-start;
         flex-direction: column;
@@ -480,8 +531,19 @@
 }
 
 @media (max-width: 600px) {
+
     .admin-moderation-readiness-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-moderation-nearby-map-section
+    .scout-report-summary {
+        font-size: .74rem;
+    }
+
+    .admin-moderation-nearby-map-shell {
+        height: 390px;
+        border-radius: 10px;
     }
 }
 
