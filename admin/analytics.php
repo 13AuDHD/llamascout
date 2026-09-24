@@ -12,8 +12,8 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser = moderation_require_admin();
 
 /*
- * Analytics contains account-growth and financial information.
- * Admin and Moderator access is intentionally not enough.
+ * Analytics contains account growth, engagement, and financial
+ * information. Admin and Moderator access is intentionally not enough.
  */
 require_role('owner');
 
@@ -121,24 +121,28 @@ function admin_analytics_range(
             'start' => $nowUtc->modify('-24 hours'),
             'bucket' => 'hour',
         ],
+
         '7d' => [
             'key' => '7d',
             'label' => '7D',
             'start' => $nowUtc->modify('-7 days'),
             'bucket' => 'day',
         ],
+
         'quarter' => [
             'key' => 'quarter',
             'label' => 'QTD',
             'start' => $quarterStartUtc,
             'bucket' => 'day',
         ],
+
         'year' => [
             'key' => 'year',
             'label' => 'YTD',
             'start' => $yearStartUtc,
             'bucket' => 'month',
         ],
+
         default => [
             'key' => '30d',
             'label' => '30D',
@@ -154,9 +158,23 @@ function admin_analytics_bucket_key(
     string $bucket
 ): string {
     return match ($bucket) {
-        'hour' => gmdate('Y-m-d H', $timestamp),
-        'month' => gmdate('Y-m', $timestamp),
-        default => gmdate('Y-m-d', $timestamp),
+        'hour' =>
+            gmdate(
+                'Y-m-d H',
+                $timestamp
+            ),
+
+        'month' =>
+            gmdate(
+                'Y-m',
+                $timestamp
+            ),
+
+        default =>
+            gmdate(
+                'Y-m-d',
+                $timestamp
+            ),
     };
 }
 
@@ -169,11 +187,12 @@ function admin_analytics_empty_buckets(
     $values = [];
 
     if ($bucket === 'hour') {
-        $cursor = $startUtc->setTime(
-            (int) $startUtc->format('H'),
-            0,
-            0
-        );
+        $cursor =
+            $startUtc->setTime(
+                (int) $startUtc->format('H'),
+                0,
+                0
+            );
 
         while ($cursor <= $endUtc) {
             $values[
@@ -188,9 +207,14 @@ function admin_analytics_empty_buckets(
     }
 
     if ($bucket === 'month') {
-        $cursor = $startUtc
-            ->modify('first day of this month')
-            ->setTime(0, 0, 0);
+        $cursor =
+            $startUtc
+                ->modify('first day of this month')
+                ->setTime(
+                    0,
+                    0,
+                    0
+                );
 
         while ($cursor <= $endUtc) {
             $values[
@@ -206,11 +230,12 @@ function admin_analytics_empty_buckets(
         return $values;
     }
 
-    $cursor = $startUtc->setTime(
-        0,
-        0,
-        0
-    );
+    $cursor =
+        $startUtc->setTime(
+            0,
+            0,
+            0
+        );
 
     while ($cursor <= $endUtc) {
         $values[
@@ -229,26 +254,37 @@ function admin_analytics_bar_chart(
     array $values,
     string $ariaLabel
 ): string {
-    $values = array_values(
-        array_map(
-            static fn ($value): int =>
-                max(0, (int) $value),
-            $values
-        )
-    );
+    $values =
+        array_values(
+            array_map(
+                static fn ($value): int =>
+                    max(
+                        0,
+                        (int) $value
+                    ),
+                $values
+            )
+        );
 
     if (!$values) {
         $values = [0];
     }
 
     $maxValue =
-        max(1, max($values));
+        max(
+            1,
+            max($values)
+        );
 
     $count =
-        max(1, count($values));
+        max(
+            1,
+            count($values)
+        );
 
     $canvasWidth = 1000.0;
     $canvasHeight = 120.0;
+
     $gap =
         $count > 60
             ? 2.0
@@ -263,7 +299,10 @@ function admin_analytics_bar_chart(
             1.5,
             (
                 $canvasWidth
-                - ($gap * ($count - 1))
+                - (
+                    $gap
+                    * ($count - 1)
+                )
             ) / $count
         );
 
@@ -280,7 +319,10 @@ function admin_analytics_bar_chart(
         . '">',
     ];
 
-    foreach ($values as $index => $value) {
+    foreach (
+        $values
+        as $index => $value
+    ) {
         $height =
             $value > 0
                 ? max(
@@ -334,7 +376,10 @@ function admin_analytics_bar_chart(
 
     $parts[] = '</svg>';
 
-    return implode('', $parts);
+    return implode(
+        '',
+        $parts
+    );
 }
 
 
@@ -356,6 +401,7 @@ function admin_analytics_invoice_is_membership(
     if (is_string($subscription)) {
         $subscriptionId =
             trim($subscription);
+
     } elseif (is_object($subscription)) {
         $subscriptionId =
             trim(
@@ -397,6 +443,7 @@ function admin_analytics_invoice_is_membership(
         if (is_string($price)) {
             $linePriceId =
                 trim($price);
+
         } elseif (is_object($price)) {
             $linePriceId =
                 trim(
@@ -417,10 +464,11 @@ function admin_analytics_invoice_is_membership(
 
             if (is_string($pricingPrice)) {
                 $linePriceId =
-                    trim($pricingPrice);
-            } elseif (
-                is_object($pricingPrice)
-            ) {
+                    trim(
+                        $pricingPrice
+                    );
+
+            } elseif (is_object($pricingPrice)) {
                 $linePriceId =
                     trim(
                         (string) (
@@ -465,16 +513,422 @@ function admin_analytics_source_label(
             );
     }
 
-    return ucwords(
-        str_replace(
-            [
-                '_',
-                '-',
-            ],
-            ' ',
-            $key
+    return
+        ucwords(
+            str_replace(
+                [
+                    '_',
+                    '-',
+                ],
+                ' ',
+                $key
+            )
+        );
+}
+
+
+/* =========================================================
+   ACTIVE ACCOUNT HISTORY
+   ========================================================= */
+
+/*
+ * Historical activity is written by app/presence.php.
+ *
+ * Each database row represents one authenticated user on one
+ * UTC date. activity_hours_mask contains one bit for each UTC
+ * hour in which that user was seen.
+ */
+
+function admin_analytics_activity_rows(
+    PDO $db,
+    DateTimeImmutable $startUtc,
+    DateTimeImmutable $endUtc
+): array {
+    if (
+        !admin_analytics_table_exists(
+            $db,
+            'user_activity_daily'
         )
-    );
+    ) {
+        return [];
+    }
+
+    /*
+     * Include one extra UTC date at each side. Viewer timezone
+     * conversion can move an hour into the neighboring local day.
+     */
+    $startDate =
+        $startUtc
+            ->modify('-1 day')
+            ->format('Y-m-d');
+
+    $endDate =
+        $endUtc
+            ->modify('+1 day')
+            ->format('Y-m-d');
+
+    $stmt =
+        $db->prepare(
+            'SELECT
+                a.user_id,
+                a.activity_date,
+                a.activity_hours_mask
+             FROM user_activity_daily a
+             INNER JOIN users u
+                ON u.id = a.user_id
+             WHERE u.status = "active"
+               AND a.activity_date >= ?
+               AND a.activity_date <= ?
+             ORDER BY
+                a.activity_date ASC,
+                a.user_id ASC'
+        );
+
+    $stmt->execute([
+        $startDate,
+        $endDate,
+    ]);
+
+    return
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+}
+
+
+function admin_analytics_activity_hour_timestamps(
+    array $row
+): array {
+    $activityDate =
+        trim(
+            (string) (
+                $row['activity_date']
+                ?? ''
+            )
+        );
+
+    $mask =
+        (int) (
+            $row['activity_hours_mask']
+            ?? 0
+        );
+
+    if (
+        $activityDate === ''
+        || $mask < 1
+    ) {
+        return [];
+    }
+
+    $timestamps = [];
+
+    for (
+        $hour = 0;
+        $hour < 24;
+        $hour++
+    ) {
+        $bit =
+            1 << $hour;
+
+        if (
+            ($mask & $bit)
+            === 0
+        ) {
+            continue;
+        }
+
+        try {
+            $hourUtc =
+                new DateTimeImmutable(
+                    $activityDate
+                    . ' '
+                    . str_pad(
+                        (string) $hour,
+                        2,
+                        '0',
+                        STR_PAD_LEFT
+                    )
+                    . ':00:00',
+                    new DateTimeZone('UTC')
+                );
+
+            $timestamps[] =
+                $hourUtc->getTimestamp();
+
+        } catch (Throwable) {
+        }
+    }
+
+    return $timestamps;
+}
+
+
+function admin_analytics_active_count(
+    PDO $db,
+    DateTimeImmutable $startUtc,
+    DateTimeImmutable $endUtc
+): int {
+    /*
+     * Before historical tracking exists, last_seen_at remains a
+     * useful fallback for the current period.
+     */
+    if (
+        !admin_analytics_table_exists(
+            $db,
+            'user_activity_daily'
+        )
+    ) {
+        $stmt =
+            $db->prepare(
+                'SELECT COUNT(*)
+                 FROM users
+                 WHERE status = "active"
+                   AND last_seen_at IS NOT NULL
+                   AND last_seen_at >= ?
+                   AND last_seen_at < ?'
+            );
+
+        $stmt->execute([
+            $startUtc->format(
+                'Y-m-d H:i:s'
+            ),
+            $endUtc->format(
+                'Y-m-d H:i:s'
+            ),
+        ]);
+
+        return
+            (int) $stmt->fetchColumn();
+    }
+
+    $users = [];
+
+    foreach (
+        admin_analytics_activity_rows(
+            $db,
+            $startUtc,
+            $endUtc
+        )
+        as $row
+    ) {
+        $userId =
+            (int) (
+                $row['user_id']
+                ?? 0
+            );
+
+        if ($userId < 1) {
+            continue;
+        }
+
+        foreach (
+            admin_analytics_activity_hour_timestamps(
+                $row
+            )
+            as $timestamp
+        ) {
+            $hourStart =
+                $timestamp;
+
+            $hourEnd =
+                $timestamp
+                + 3600;
+
+            if (
+                $hourEnd <=
+                    $startUtc->getTimestamp()
+                || $hourStart >=
+                    $endUtc->getTimestamp()
+            ) {
+                continue;
+            }
+
+            $users[$userId] =
+                true;
+
+            break;
+        }
+    }
+
+    return count($users);
+}
+
+
+function admin_analytics_active_buckets(
+    PDO $db,
+    DateTimeImmutable $startUtc,
+    DateTimeImmutable $endUtc,
+    DateTimeZone $viewerTimezone,
+    string $bucket
+): array {
+    /*
+     * Build bucket keys in the viewer's timezone so activity
+     * patterns line up with the actual local day and hour.
+     */
+    $localStart =
+        $startUtc->setTimezone(
+            $viewerTimezone
+        );
+
+    $localEnd =
+        $endUtc->setTimezone(
+            $viewerTimezone
+        );
+
+    $sets = [];
+
+    if ($bucket === 'hour') {
+        $cursor =
+            $localStart->setTime(
+                (int) $localStart->format('H'),
+                0,
+                0
+            );
+
+        while ($cursor <= $localEnd) {
+            $sets[
+                $cursor->format(
+                    'Y-m-d H'
+                )
+            ] = [];
+
+            $cursor =
+                $cursor->modify('+1 hour');
+        }
+
+    } elseif ($bucket === 'month') {
+        $cursor =
+            $localStart
+                ->modify(
+                    'first day of this month'
+                )
+                ->setTime(
+                    0,
+                    0,
+                    0
+                );
+
+        while ($cursor <= $localEnd) {
+            $sets[
+                $cursor->format('Y-m')
+            ] = [];
+
+            $cursor =
+                $cursor->modify(
+                    'first day of next month'
+                );
+        }
+
+    } else {
+        $cursor =
+            $localStart->setTime(
+                0,
+                0,
+                0
+            );
+
+        while ($cursor <= $localEnd) {
+            $sets[
+                $cursor->format('Y-m-d')
+            ] = [];
+
+            $cursor =
+                $cursor->modify('+1 day');
+        }
+    }
+
+    foreach (
+        admin_analytics_activity_rows(
+            $db,
+            $startUtc,
+            $endUtc
+        )
+        as $row
+    ) {
+        $userId =
+            (int) (
+                $row['user_id']
+                ?? 0
+            );
+
+        if ($userId < 1) {
+            continue;
+        }
+
+        foreach (
+            admin_analytics_activity_hour_timestamps(
+                $row
+            )
+            as $timestamp
+        ) {
+            $hourStart =
+                $timestamp;
+
+            $hourEnd =
+                $timestamp
+                + 3600;
+
+            if (
+                $hourEnd <=
+                    $startUtc->getTimestamp()
+                || $hourStart >=
+                    $endUtc->getTimestamp()
+            ) {
+                continue;
+            }
+
+            $local =
+                (
+                    new DateTimeImmutable(
+                        '@'
+                        . $timestamp
+                    )
+                )->setTimezone(
+                    $viewerTimezone
+                );
+
+            $key =
+                match ($bucket) {
+                    'hour' =>
+                        $local->format(
+                            'Y-m-d H'
+                        ),
+
+                    'month' =>
+                        $local->format(
+                            'Y-m'
+                        ),
+
+                    default =>
+                        $local->format(
+                            'Y-m-d'
+                        ),
+                };
+
+            if (
+                array_key_exists(
+                    $key,
+                    $sets
+                )
+            ) {
+                $sets[$key][$userId] =
+                    true;
+            }
+        }
+    }
+
+    $values = [];
+
+    foreach (
+        $sets
+        as $key => $users
+    ) {
+        $values[$key] =
+            count($users);
+    }
+
+    return $values;
 }
 
 
@@ -504,7 +958,10 @@ $nowLocal =
 $quarterMonth =
     (
         intdiv(
-            ((int) $nowLocal->format('n')) - 1,
+            (
+                (int) $nowLocal
+                    ->format('n')
+            ) - 1,
             3
         ) * 3
     ) + 1;
@@ -512,7 +969,8 @@ $quarterMonth =
 $quarterStartLocal =
     $nowLocal
         ->setDate(
-            (int) $nowLocal->format('Y'),
+            (int) $nowLocal
+                ->format('Y'),
             $quarterMonth,
             1
         )
@@ -529,7 +987,8 @@ $quarterStartUtc =
 $yearStartLocal =
     $nowLocal
         ->setDate(
-            (int) $nowLocal->format('Y'),
+            (int) $nowLocal
+                ->format('Y'),
             1,
             1
         )
@@ -601,19 +1060,21 @@ $bucketType =
    ========================================================= */
 
 $stats =
-    admin_dashboard_stats(
-        $db
-    );
+    admin_dashboard_stats($db);
 
 $adminNavCounts = [
     'new_places' =>
         $stats['new_places'],
+
     'updates' =>
         $stats['updates'],
+
     'reports' =>
         $stats['reports'],
+
     'orders' =>
         $stats['orders'],
+
     'scout_reviews' =>
         $stats['scout_reviews'],
 ];
@@ -697,17 +1158,20 @@ try {
                         "active",
                         "trialing"
                     )
-                    AND membership_interval = "monthly"
+                    AND membership_interval =
+                        "monthly"
                 ) AS monthly_paid,
                 SUM(
                     membership_status IN (
                         "active",
                         "trialing"
                     )
-                    AND membership_interval = "annual"
+                    AND membership_interval =
+                        "annual"
                 ) AS annual_paid,
                 SUM(
-                    membership_status = "complimentary"
+                    membership_status =
+                        "complimentary"
                 ) AS complimentary
              FROM users
              WHERE status <> "deleted"'
@@ -833,7 +1297,10 @@ try {
         $monthlyPrice = 0;
         $annualPrice = 0;
 
-        foreach ($planRows as $plan) {
+        foreach (
+            $planRows
+            as $plan
+        ) {
             $interval =
                 strtolower(
                     trim(
@@ -885,6 +1352,7 @@ try {
                 ) / 12
             );
     }
+
 } catch (Throwable $exception) {
     $analyticsWarnings[] =
         'Account metrics are partially unavailable.';
@@ -892,6 +1360,117 @@ try {
     llama_log_caught_exception(
         $exception,
         'admin.analytics_accounts'
+    );
+}
+
+
+/* =========================================================
+   ACTIVE ACCOUNTS
+   ========================================================= */
+
+$activeAccounts = [
+    '24h' => 0,
+    '7d' => 0,
+    '30d' => 0,
+    'quarter' => 0,
+    'year' => 0,
+];
+
+$activeAccountBuckets = [];
+$selectedActiveAccounts = 0;
+$activityHistoryStart = null;
+
+try {
+    $activeAccounts['24h'] =
+        admin_analytics_active_count(
+            $db,
+            $nowUtc->modify(
+                '-24 hours'
+            ),
+            $nowUtc
+        );
+
+    $activeAccounts['7d'] =
+        admin_analytics_active_count(
+            $db,
+            $nowUtc->modify(
+                '-7 days'
+            ),
+            $nowUtc
+        );
+
+    $activeAccounts['30d'] =
+        admin_analytics_active_count(
+            $db,
+            $nowUtc->modify(
+                '-30 days'
+            ),
+            $nowUtc
+        );
+
+    $activeAccounts['quarter'] =
+        admin_analytics_active_count(
+            $db,
+            $quarterStartUtc,
+            $nowUtc
+        );
+
+    $activeAccounts['year'] =
+        admin_analytics_active_count(
+            $db,
+            $yearStartUtc,
+            $nowUtc
+        );
+
+    $selectedActiveAccounts =
+        admin_analytics_active_count(
+            $db,
+            $rangeStartUtc,
+            $nowUtc
+        );
+
+    $activeAccountBuckets =
+        admin_analytics_active_buckets(
+            $db,
+            $rangeStartUtc,
+            $nowUtc,
+            $viewerTimezone,
+            $bucketType
+        );
+
+    if (
+        admin_analytics_table_exists(
+            $db,
+            'user_activity_daily'
+        )
+    ) {
+        $earliest =
+            $db->query(
+                'SELECT MIN(activity_date)
+                 FROM user_activity_daily'
+            )
+            ->fetchColumn();
+
+        if (
+            is_string($earliest)
+            && trim($earliest) !== ''
+        ) {
+            $activityHistoryStart =
+                new DateTimeImmutable(
+                    $earliest
+                    . ' 00:00:00',
+                    $utc
+                );
+        }
+    }
+
+} catch (Throwable $exception) {
+    $analyticsWarnings[] =
+        'Active account history is partially unavailable.';
+
+    llama_log_caught_exception(
+        $exception,
+        'admin.analytics_active_accounts'
     );
 }
 
@@ -912,23 +1491,28 @@ try {
         match ($bucketType) {
             'hour' =>
                 'DATE_FORMAT(created_at, "%Y-%m-%d %H")',
+
             'month' =>
                 'DATE_FORMAT(created_at, "%Y-%m")',
+
             default =>
                 'DATE_FORMAT(created_at, "%Y-%m-%d")',
         };
 
-    $stmt = $db->prepare(
-        'SELECT
-            ' . $bucketExpression . ' AS bucket_key,
-            COUNT(*) AS account_count
-         FROM users
-         WHERE status <> "deleted"
-           AND created_at >= ?
-           AND created_at < ?
-         GROUP BY bucket_key
-         ORDER BY bucket_key ASC'
-    );
+    $stmt =
+        $db->prepare(
+            'SELECT
+                '
+            . $bucketExpression
+            . ' AS bucket_key,
+                COUNT(*) AS account_count
+             FROM users
+             WHERE status <> "deleted"
+               AND created_at >= ?
+               AND created_at < ?
+             GROUP BY bucket_key
+             ORDER BY bucket_key ASC'
+        );
 
     $stmt->execute([
         $rangeStartSql,
@@ -944,9 +1528,7 @@ try {
     ) {
         $key =
             (string) (
-                $row[
-                    'bucket_key'
-                ]
+                $row['bucket_key']
                 ?? ''
             );
 
@@ -969,6 +1551,7 @@ try {
                 );
         }
     }
+
 } catch (Throwable $exception) {
     $analyticsWarnings[] =
         'Account trend data is unavailable.';
@@ -988,23 +1571,28 @@ $acquisitionRows = [];
 $acquisitionTotal = 0;
 
 try {
-    $stmt = $db->prepare(
-        'SELECT
-            COALESCE(
-                NULLIF(
-                    TRIM(registration_source),
-                    ""
-                ),
-                "unknown"
-            ) AS source_key,
-            COUNT(*) AS source_count
-         FROM users
-         WHERE status <> "deleted"
-           AND created_at >= ?
-           AND created_at < ?
-         GROUP BY source_key
-         ORDER BY source_count DESC, source_key ASC'
-    );
+    $stmt =
+        $db->prepare(
+            'SELECT
+                COALESCE(
+                    NULLIF(
+                        TRIM(
+                            registration_source
+                        ),
+                        ""
+                    ),
+                    "unknown"
+                ) AS source_key,
+                COUNT(*) AS source_count
+             FROM users
+             WHERE status <> "deleted"
+               AND created_at >= ?
+               AND created_at < ?
+             GROUP BY source_key
+             ORDER BY
+                source_count DESC,
+                source_key ASC'
+        );
 
     $stmt->execute([
         $rangeStartSql,
@@ -1017,7 +1605,10 @@ try {
         )
         ?: [];
 
-    foreach ($acquisitionRows as $row) {
+    foreach (
+        $acquisitionRows
+        as $row
+    ) {
         $acquisitionTotal +=
             max(
                 0,
@@ -1029,9 +1620,10 @@ try {
                 )
             );
     }
+
 } catch (Throwable $exception) {
     $analyticsWarnings[] =
-        'Acquisition-source data is unavailable.';
+        'Acquisition source data is unavailable.';
 
     llama_log_caught_exception(
         $exception,
@@ -1066,30 +1658,32 @@ $shopAvailable =
 
 if ($shopAvailable) {
     try {
-        $shopStmt = $db->prepare(
-            'SELECT
-                id,
-                total_cents,
-                COALESCE(
-                    paid_at,
-                    created_at
-                ) AS paid_at_effective
-             FROM shop_orders
-             WHERE payment_status IN (
-                    "paid",
-                    "refunded",
-                    "partially_refunded"
-             )
-               AND COALESCE(
-                    paid_at,
-                    created_at
-               ) >= ?
-               AND COALESCE(
-                    paid_at,
-                    created_at
-               ) < ?
-             ORDER BY paid_at_effective ASC'
-        );
+        $shopStmt =
+            $db->prepare(
+                'SELECT
+                    id,
+                    total_cents,
+                    COALESCE(
+                        paid_at,
+                        created_at
+                    ) AS paid_at_effective
+                 FROM shop_orders
+                 WHERE payment_status IN (
+                        "paid",
+                        "refunded",
+                        "partially_refunded"
+                 )
+                   AND COALESCE(
+                        paid_at,
+                        created_at
+                   ) >= ?
+                   AND COALESCE(
+                        paid_at,
+                        created_at
+                   ) < ?
+                 ORDER BY
+                    paid_at_effective ASC'
+            );
 
         $shopStmt->execute([
             $rangeStartSql,
@@ -1102,7 +1696,10 @@ if ($shopAvailable) {
             )
             ?: [];
 
-        foreach ($shopOrders as $order) {
+        foreach (
+            $shopOrders
+            as $order
+        ) {
             $amount =
                 max(
                     0,
@@ -1132,7 +1729,8 @@ if ($shopAvailable) {
             $timestamp =
                 $paidAt !== ''
                     ? strtotime(
-                        $paidAt . ' UTC'
+                        $paidAt
+                        . ' UTC'
                     )
                     : false;
 
@@ -1151,7 +1749,8 @@ if ($shopAvailable) {
                 ) {
                     $revenueBuckets[
                         $bucketKey
-                    ] += $amount;
+                    ] +=
+                        $amount;
                 }
             }
         }
@@ -1233,7 +1832,8 @@ if ($shopAvailable) {
                     ) {
                         $revenueBuckets[
                             $bucketKey
-                        ] -= $amount;
+                        ] -=
+                            $amount;
                     }
                 }
             }
@@ -1264,7 +1864,9 @@ if ($shopAvailable) {
                 $db->prepare(
                     'SELECT
                         COALESCE(
-                            SUM(oi.quantity),
+                            SUM(
+                                oi.quantity
+                            ),
                             0
                         )
                      FROM shop_order_items oi
@@ -1298,6 +1900,7 @@ if ($shopAvailable) {
                         ->fetchColumn()
                 );
         }
+
     } catch (Throwable $exception) {
         $shopAvailable = false;
 
@@ -1333,25 +1936,32 @@ try {
     ) {
         $subscriptionRows =
             $db->query(
-                'SELECT stripe_subscription_id
+                'SELECT
+                    stripe_subscription_id
                  FROM users
-                 WHERE stripe_subscription_id IS NOT NULL
-                   AND stripe_subscription_id <> ""'
+                 WHERE stripe_subscription_id
+                    IS NOT NULL
+                   AND stripe_subscription_id
+                    <> ""'
             )
             ->fetchAll(
                 PDO::FETCH_COLUMN
             )
             ?: [];
 
-        foreach ($subscriptionRows as $id) {
+        foreach (
+            $subscriptionRows
+            as $id
+        ) {
             $id =
                 trim(
                     (string) $id
                 );
 
             if ($id !== '') {
-                $knownSubscriptionIds[$id] =
-                    true;
+                $knownSubscriptionIds[
+                    $id
+                ] = true;
             }
         }
     }
@@ -1364,25 +1974,32 @@ try {
     ) {
         $priceRows =
             $db->query(
-                'SELECT stripe_price_id
+                'SELECT
+                    stripe_price_id
                  FROM membership_plan_prices
-                 WHERE stripe_price_id IS NOT NULL
-                   AND stripe_price_id <> ""'
+                 WHERE stripe_price_id
+                    IS NOT NULL
+                   AND stripe_price_id
+                    <> ""'
             )
             ->fetchAll(
                 PDO::FETCH_COLUMN
             )
             ?: [];
 
-        foreach ($priceRows as $id) {
+        foreach (
+            $priceRows
+            as $id
+        ) {
             $id =
                 trim(
                     (string) $id
                 );
 
             if ($id !== '') {
-                $knownPriceIds[$id] =
-                    true;
+                $knownPriceIds[
+                    $id
+                ] = true;
             }
         }
     }
@@ -1395,25 +2012,32 @@ try {
     ) {
         $priceRows =
             $db->query(
-                'SELECT stripe_price_id
+                'SELECT
+                    stripe_price_id
                  FROM membership_plans
-                 WHERE stripe_price_id IS NOT NULL
-                   AND stripe_price_id <> ""'
+                 WHERE stripe_price_id
+                    IS NOT NULL
+                   AND stripe_price_id
+                    <> ""'
             )
             ->fetchAll(
                 PDO::FETCH_COLUMN
             )
             ?: [];
 
-        foreach ($priceRows as $id) {
+        foreach (
+            $priceRows
+            as $id
+        ) {
             $id =
                 trim(
                     (string) $id
                 );
 
             if ($id !== '') {
-                $knownPriceIds[$id] =
-                    true;
+                $knownPriceIds[
+                    $id
+                ] = true;
             }
         }
     }
@@ -1426,16 +2050,21 @@ try {
             llama_stripe_client()
                 ->invoices
                 ->all([
-                    'status' => 'paid',
+                    'status' =>
+                        'paid',
+
                     'created' => [
                         'gte' =>
                             $rangeStartUtc
                                 ->getTimestamp(),
+
                         'lt' =>
                             $nowUtc
                                 ->getTimestamp(),
                     ],
-                    'limit' => 100,
+
+                    'limit' =>
+                        100,
                 ]);
 
         $invoiceIterable =
@@ -1462,13 +2091,9 @@ try {
 
             $scanned++;
 
-            /*
-             * Defensive ceiling. It is far above current expected
-             * volume but prevents an accidental unbounded admin request.
-             */
             if ($scanned > 5000) {
                 $analyticsWarnings[] =
-                    'Membership revenue hit the 5,000-invoice display limit.';
+                    'Membership revenue hit the 5,000 invoice display limit.';
 
                 break;
             }
@@ -1508,9 +2133,7 @@ try {
                 ?? $invoice->created
                 ?? null;
 
-            if (
-                is_numeric($paidAt)
-            ) {
+            if (is_numeric($paidAt)) {
                 $bucketKey =
                     admin_analytics_bucket_key(
                         (int) $paidAt,
@@ -1525,11 +2148,13 @@ try {
                 ) {
                     $revenueBuckets[
                         $bucketKey
-                    ] += $amountPaid;
+                    ] +=
+                        $amountPaid;
                 }
             }
         }
     }
+
 } catch (Throwable $exception) {
     $membershipRevenueAvailable =
         false;
@@ -1574,14 +2199,19 @@ try {
             $db->query(
                 'SELECT *
                  FROM membership_promotion_codes
-                 ORDER BY starts_at DESC, id DESC'
+                 ORDER BY
+                    starts_at DESC,
+                    id DESC'
             )
             ->fetchAll(
                 PDO::FETCH_ASSOC
             )
             ?: [];
 
-        foreach ($codeRows as $code) {
+        foreach (
+            $codeRows
+            as $code
+        ) {
             $id =
                 (int) (
                     $code['id']
@@ -1658,9 +2288,10 @@ try {
             }
         );
     }
+
 } catch (Throwable $exception) {
     $analyticsWarnings[] =
-        'Promotion-code analytics are unavailable.';
+        'Promotion code analytics are unavailable.';
 
     llama_log_caught_exception(
         $exception,
@@ -1693,15 +2324,18 @@ try {
                 'SELECT
                     promotion_id,
                     SUM(
-                        event_type = "checkout_started"
+                        event_type =
+                            "checkout_started"
                     ) AS checkout_started,
                     SUM(
-                        event_type = "membership_purchased"
+                        event_type =
+                            "membership_purchased"
                     ) AS membership_purchased,
                     COALESCE(
                         SUM(
                             CASE
-                                WHEN event_type = "membership_purchased"
+                                WHEN event_type =
+                                    "membership_purchased"
                                 THEN amount_cents
                                 ELSE 0
                             END
@@ -1716,7 +2350,10 @@ try {
             )
             ?: [];
 
-        foreach ($eventRows as $row) {
+        foreach (
+            $eventRows
+            as $row
+        ) {
             $campaignStats[
                 (int) (
                     $row[
@@ -1724,21 +2361,27 @@ try {
                     ]
                     ?? 0
                 )
-            ] = $row;
+            ] =
+                $row;
         }
 
         $promotions =
             $db->query(
                 'SELECT *
                  FROM membership_promotions
-                 ORDER BY starts_at DESC, id DESC'
+                 ORDER BY
+                    starts_at DESC,
+                    id DESC'
             )
             ->fetchAll(
                 PDO::FETCH_ASSOC
             )
             ?: [];
 
-        foreach ($promotions as $promotion) {
+        foreach (
+            $promotions
+            as $promotion
+        ) {
             $id =
                 (int) (
                     $promotion['id']
@@ -1767,11 +2410,13 @@ try {
 
             $promotion[
                 'checkout_started'
-            ] = $checkouts;
+            ] =
+                $checkouts;
 
             $promotion[
                 'membership_purchased'
-            ] = $purchases;
+            ] =
+                $purchases;
 
             $promotion[
                 'revenue_cents'
@@ -1843,6 +2488,7 @@ try {
             }
         );
     }
+
 } catch (Throwable $exception) {
     $analyticsWarnings[] =
         'Campaign analytics are unavailable.';
@@ -1855,7 +2501,7 @@ try {
 
 
 /* =========================================================
-   PAGE
+   PAGE LABELS
    ========================================================= */
 
 $rangeStartLabel =
@@ -1884,11 +2530,27 @@ $rangeEndLabel =
             )
     );
 
+$activityHistoryLabel =
+    $activityHistoryStart
+        ? $activityHistoryStart
+            ->setTimezone(
+                $viewerTimezone
+            )
+            ->format(
+                'M j, Y'
+            )
+        : 'Today';
+
+
 require __DIR__ . '/_header.php';
+
 ?>
 
+
 <?php if ($analyticsWarnings): ?>
+
 <div class="admin-analytics-warning">
+
     <?= moderation_e(
         implode(
             ' ',
@@ -1899,7 +2561,9 @@ require __DIR__ . '/_header.php';
             )
         )
     ) ?>
+
 </div>
+
 <?php endif; ?>
 
 
@@ -1907,7 +2571,9 @@ require __DIR__ . '/_header.php';
     class="admin-analytics-range"
     aria-label="Analytics date range"
 >
+
 <?php
+
 $rangeOptions = [
     '24h' => '24H',
     '7d' => '7D',
@@ -1915,37 +2581,49 @@ $rangeOptions = [
     'quarter' => 'QTD',
     'year' => 'YTD',
 ];
+
 ?>
 
 <?php foreach (
     $rangeOptions
     as $key => $label
 ): ?>
+
 <a
     class="<?= $rangeKey === $key
         ? 'is-active'
-        : '' ?>"
+        : ''
+    ?>"
     href="/analytics.php?range=<?= moderation_e(
         $key
     ) ?>"
 >
-    <?= moderation_e($label) ?>
+    <?= moderation_e(
+        $label
+    ) ?>
 </a>
+
 <?php endforeach; ?>
+
 </nav>
 
 
 <section
     class="admin-panel admin-analytics-section"
 >
+
 <header class="admin-panel-header">
+
     <div>
         <p>Acquisition</p>
         <h2>New Accounts</h2>
     </div>
+
 </header>
 
+
 <div class="admin-analytics-metrics is-four">
+
     <div>
         <span>24H</span>
         <strong><?= number_format(
@@ -1973,35 +2651,138 @@ $rangeOptions = [
             $accountGrowth['quarter']
         ) ?></strong>
     </div>
+
 </div>
+
+</section>
+
+
+<section
+    class="admin-panel admin-analytics-section"
+>
+
+<header class="admin-panel-header">
+
+    <div>
+        <p>Engagement</p>
+        <h2>Active Accounts</h2>
+    </div>
+
+</header>
+
+
+<div class="admin-analytics-metrics is-six">
+
+    <div>
+        <span>24H</span>
+        <strong><?= number_format(
+            $activeAccounts['24h']
+        ) ?></strong>
+    </div>
+
+    <div>
+        <span>7D</span>
+        <strong><?= number_format(
+            $activeAccounts['7d']
+        ) ?></strong>
+    </div>
+
+    <div>
+        <span>30D</span>
+        <strong><?= number_format(
+            $activeAccounts['30d']
+        ) ?></strong>
+    </div>
+
+    <div>
+        <span>QTD</span>
+        <strong><?= number_format(
+            $activeAccounts['quarter']
+        ) ?></strong>
+    </div>
+
+    <div>
+        <span>YTD</span>
+        <strong><?= number_format(
+            $activeAccounts['year']
+        ) ?></strong>
+    </div>
+
+    <div>
+        <span>Online Now</span>
+        <strong><?= number_format(
+            (int) (
+                $stats['online_now']
+                ?? 0
+            )
+        ) ?></strong>
+    </div>
+
+</div>
+
+
+<div class="admin-analytics-submetrics">
+
+    <span>
+        Unique signed in accounts
+    </span>
+
+    <span>
+        Activity history since
+        <strong>
+            <?= moderation_e(
+                $activityHistoryLabel
+            ) ?>
+        </strong>
+    </span>
+
+</div>
+
 </section>
 
 
 <section class="admin-analytics-chart-grid">
 
-<article class="admin-panel admin-analytics-chart-card">
+
+<article
+    class="admin-panel admin-analytics-chart-card"
+    style="grid-column: 1 / -1;"
+>
+
 <header class="admin-panel-header">
+
     <div>
-        <p><?= moderation_e(
-            $range['label']
-        ) ?></p>
-        <h2>Account Growth</h2>
+
+        <p>
+            <?= moderation_e(
+                $range['label']
+            ) ?>
+        </p>
+
+        <h2>
+            Active Account Activity
+        </h2>
+
     </div>
 
     <strong>
         <?= number_format(
-            $selectedNewAccounts
+            $selectedActiveAccounts
         ) ?>
     </strong>
+
 </header>
 
+
 <div class="admin-analytics-chart">
+
     <?= admin_analytics_bar_chart(
-        $accountBuckets,
-        'New accounts over the selected analytics period'
+        $activeAccountBuckets,
+        'Unique active accounts over the selected analytics period'
     ) ?>
 
     <div class="admin-analytics-chart-foot">
+
         <span>
             <?= moderation_e(
                 $rangeStartLabel
@@ -2013,18 +2794,85 @@ $rangeOptions = [
                 $rangeEndLabel
             ) ?>
         </span>
+
     </div>
+
 </div>
+
 </article>
 
 
 <article class="admin-panel admin-analytics-chart-card">
+
 <header class="admin-panel-header">
+
     <div>
-        <p><?= moderation_e(
-            $range['label']
-        ) ?></p>
-        <h2>Revenue</h2>
+
+        <p>
+            <?= moderation_e(
+                $range['label']
+            ) ?>
+        </p>
+
+        <h2>
+            Account Growth
+        </h2>
+
+    </div>
+
+    <strong>
+        <?= number_format(
+            $selectedNewAccounts
+        ) ?>
+    </strong>
+
+</header>
+
+
+<div class="admin-analytics-chart">
+
+    <?= admin_analytics_bar_chart(
+        $accountBuckets,
+        'New accounts over the selected analytics period'
+    ) ?>
+
+    <div class="admin-analytics-chart-foot">
+
+        <span>
+            <?= moderation_e(
+                $rangeStartLabel
+            ) ?>
+        </span>
+
+        <span>
+            <?= moderation_e(
+                $rangeEndLabel
+            ) ?>
+        </span>
+
+    </div>
+
+</div>
+
+</article>
+
+
+<article class="admin-panel admin-analytics-chart-card">
+
+<header class="admin-panel-header">
+
+    <div>
+
+        <p>
+            <?= moderation_e(
+                $range['label']
+            ) ?>
+        </p>
+
+        <h2>
+            Revenue
+        </h2>
+
     </div>
 
     <strong>
@@ -2034,11 +2882,15 @@ $rangeOptions = [
                     $siteRevenueCents
                 )
             )
-            : 'â' ?>
+            : 'Unavailable'
+        ?>
     </strong>
+
 </header>
 
+
 <div class="admin-analytics-chart">
+
     <?= admin_analytics_bar_chart(
         array_map(
             static fn ($value): int =>
@@ -2052,6 +2904,7 @@ $rangeOptions = [
     ) ?>
 
     <div class="admin-analytics-chart-foot">
+
         <span>
             <?= moderation_e(
                 $rangeStartLabel
@@ -2063,9 +2916,13 @@ $rangeOptions = [
                 $rangeEndLabel
             ) ?>
         </span>
+
     </div>
+
 </div>
+
 </article>
+
 
 </section>
 
@@ -2073,18 +2930,34 @@ $rangeOptions = [
 <section
     class="admin-panel admin-analytics-section"
 >
+
 <header class="admin-panel-header">
+
     <div>
-        <p><?= moderation_e(
-            $range['label']
-        ) ?></p>
-        <h2>Revenue & Commerce</h2>
+
+        <p>
+            <?= moderation_e(
+                $range['label']
+            ) ?>
+        </p>
+
+        <h2>
+            Revenue &amp; Commerce
+        </h2>
+
     </div>
+
 </header>
 
+
 <div class="admin-analytics-metrics is-six">
+
     <div>
-        <span>Site Revenue</span>
+
+        <span>
+            Site Revenue
+        </span>
+
         <strong>
             <?= $siteRevenueAvailable
                 ? moderation_e(
@@ -2092,12 +2965,19 @@ $rangeOptions = [
                         $siteRevenueCents
                     )
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Memberships</span>
+
+        <span>
+            Memberships
+        </span>
+
         <strong>
             <?= $membershipRevenueAvailable
                 ? moderation_e(
@@ -2105,12 +2985,19 @@ $rangeOptions = [
                         $membershipRevenueCents
                     )
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Shop</span>
+
+        <span>
+            Shop
+        </span>
+
         <strong>
             <?= $shopAvailable
                 ? moderation_e(
@@ -2118,34 +3005,55 @@ $rangeOptions = [
                         $shopRevenueCents
                     )
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Shop Orders</span>
+
+        <span>
+            Shop Orders
+        </span>
+
         <strong>
             <?= $shopAvailable
                 ? number_format(
                     $shopOrderCount
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Units</span>
+
+        <span>
+            Units
+        </span>
+
         <strong>
             <?= $shopAvailable
                 ? number_format(
                     $shopUnits
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Avg Order</span>
+
+        <span>
+            Avg Order
+        </span>
+
         <strong>
             <?= $shopAvailable
                 ? moderation_e(
@@ -2153,80 +3061,131 @@ $rangeOptions = [
                         $shopAverageOrderCents
                     )
                 )
-                : 'â' ?>
+                : 'Unavailable'
+            ?>
         </strong>
+
     </div>
+
 </div>
+
 
 <div class="admin-analytics-submetrics">
-    <span>
-        Membership payments
-        <strong><?= number_format(
-            $membershipPaymentCount
-        ) ?></strong>
-    </span>
 
     <span>
-        Shop refunds
-        <strong><?= moderation_e(
-            admin_analytics_money(
-                $shopRefundCents
-            )
-        ) ?></strong>
+
+        Membership payments
+
+        <strong>
+            <?= number_format(
+                $membershipPaymentCount
+            ) ?>
+        </strong>
+
     </span>
+
+
+    <span>
+
+        Shop refunds
+
+        <strong>
+            <?= moderation_e(
+                admin_analytics_money(
+                    $shopRefundCents
+                )
+            ) ?>
+        </strong>
+
+    </span>
+
 </div>
+
 </section>
 
 
 <section
     class="admin-panel admin-analytics-section"
 >
+
 <header class="admin-panel-header">
+
     <div>
         <p>Membership</p>
         <h2>Current Base</h2>
     </div>
+
 </header>
 
+
 <div class="admin-analytics-metrics is-six">
+
     <div>
-        <span>Accounts</span>
+
+        <span>
+            Accounts
+        </span>
+
         <strong>
             <?= number_format(
                 $totalAccounts
             ) ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Paid</span>
+
+        <span>
+            Paid
+        </span>
+
         <strong>
             <?= number_format(
                 $activePaid
             ) ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Monthly</span>
+
+        <span>
+            Monthly
+        </span>
+
         <strong>
             <?= number_format(
                 $monthlyPaid
             ) ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Annual</span>
+
+        <span>
+            Annual
+        </span>
+
         <strong>
             <?= number_format(
                 $annualPaid
             ) ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Paid Share</span>
+
+        <span>
+            Paid Share
+        </span>
+
         <strong>
             <?= moderation_e(
                 admin_analytics_percent(
@@ -2234,10 +3193,16 @@ $rangeOptions = [
                 )
             ) ?>
         </strong>
+
     </div>
 
+
     <div>
-        <span>Est. MRR</span>
+
+        <span>
+            Est. MRR
+        </span>
+
         <strong>
             <?= moderation_e(
                 admin_analytics_money(
@@ -2245,55 +3210,93 @@ $rangeOptions = [
                 )
             ) ?>
         </strong>
+
     </div>
+
 </div>
+
 
 <div class="admin-analytics-submetrics">
-    <span>
-        Complimentary
-        <strong><?= number_format(
-            $complimentary
-        ) ?></strong>
-    </span>
 
     <span>
-        Paid starts <?= moderation_e(
+
+        Complimentary
+
+        <strong>
+            <?= number_format(
+                $complimentary
+            ) ?>
+        </strong>
+
+    </span>
+
+
+    <span>
+
+        Paid starts
+        <?= moderation_e(
             $range['label']
         ) ?>
-        <strong><?= number_format(
-            $selectedPaidStarts
-        ) ?></strong>
+
+        <strong>
+            <?= number_format(
+                $selectedPaidStarts
+            ) ?>
+        </strong>
+
     </span>
+
 </div>
+
 </section>
 
 
 <section class="admin-analytics-detail-grid">
 
-<article class="admin-panel admin-analytics-section">
+
+<article
+    class="admin-panel admin-analytics-section"
+>
+
 <header class="admin-panel-header">
+
     <div>
-        <p><?= moderation_e(
-            $range['label']
-        ) ?></p>
-        <h2>Acquisition Sources</h2>
+
+        <p>
+            <?= moderation_e(
+                $range['label']
+            ) ?>
+        </p>
+
+        <h2>
+            Acquisition Sources
+        </h2>
+
     </div>
+
 </header>
+
 
 <?php if (!$acquisitionRows): ?>
 
 <div class="admin-analytics-empty">
-    No account-source data in this period.
+    No account source data in this period.
 </div>
 
 <?php else: ?>
 
+
 <div class="admin-analytics-source-list">
+
+
 <?php foreach (
     $acquisitionRows
     as $row
 ): ?>
+
+
 <?php
+
 $sourceKey =
     (string) (
         $row['source_key']
@@ -2316,16 +3319,22 @@ $sourcePercent =
             / $acquisitionTotal
         ) * 100
         : 0.0;
+
 ?>
 
+
 <div class="admin-analytics-source-row">
+
     <span>
+
         <?= moderation_e(
             admin_analytics_source_label(
                 $sourceKey
             )
         ) ?>
+
     </span>
+
 
     <progress
         max="100"
@@ -2339,22 +3348,34 @@ $sourcePercent =
         ) ?>"
     ></progress>
 
+
     <strong>
         <?= number_format(
             $sourceCount
         ) ?>
     </strong>
+
 </div>
+
 
 <?php endforeach; ?>
+
+
 </div>
 
+
 <?php endif; ?>
+
+
 </article>
 
 
-<article class="admin-panel admin-analytics-section">
+<article
+    class="admin-panel admin-analytics-section"
+>
+
 <header class="admin-panel-header">
+
     <div>
         <p>Lifetime</p>
         <h2>Promotion Codes</h2>
@@ -2366,7 +3387,9 @@ $sourcePercent =
     >
         Manage
     </a>
+
 </header>
+
 
 <?php if (!$promotionCodes): ?>
 
@@ -2376,24 +3399,38 @@ $sourcePercent =
 
 <?php else: ?>
 
+
 <div class="admin-analytics-table-scroll">
+
+
 <table class="admin-analytics-table">
+
+
 <thead>
+
 <tr>
     <th>Code</th>
     <th>Uses</th>
     <th>Limit</th>
     <th>Revenue</th>
 </tr>
+
 </thead>
+
+
 <tbody>
+
 
 <?php foreach (
     $promotionCodes
     as $code
 ): ?>
+
+
 <tr>
+
     <td>
+
         <strong>
             <?= moderation_e(
                 (string) (
@@ -2403,8 +3440,11 @@ $sourcePercent =
             ) ?>
         </strong>
 
+
         <small>
+
             <?php
+
             $discountType =
                 (string) (
                     $code[
@@ -2422,29 +3462,41 @@ $sourcePercent =
                 );
 
             echo moderation_e(
-                $discountType === 'amount'
+                $discountType ===
+                    'amount'
                     ? admin_analytics_money(
                         $discountValue
-                    ) . ' off'
+                    )
+                        . ' off'
                     : number_format(
                         $discountValue
-                    ) . '% off'
+                    )
+                        . '% off'
             );
+
             ?>
+
         </small>
+
     </td>
+
 
     <td>
         <?= number_format(
             (int) (
-                $code['redemptions']
+                $code[
+                    'redemptions'
+                ]
                 ?? 0
             )
         ) ?>
     </td>
 
+
     <td>
+
         <?php
+
         $limit =
             (int) (
                 $code[
@@ -2452,14 +3504,21 @@ $sourcePercent =
                 ]
                 ?? 0
             );
+
         ?>
 
         <?= $limit > 0
-            ? number_format($limit)
-            : 'â' ?>
+            ? number_format(
+                $limit
+            )
+            : 'Unlimited'
+        ?>
+
     </td>
 
+
     <td>
+
         <?= moderation_e(
             admin_analytics_money(
                 (int) (
@@ -2470,16 +3529,29 @@ $sourcePercent =
                 )
             )
         ) ?>
+
     </td>
+
 </tr>
+
+
 <?php endforeach; ?>
 
+
 </tbody>
+
+
 </table>
+
+
 </div>
 
+
 <?php endif; ?>
+
+
 </article>
+
 
 </section>
 
@@ -2487,7 +3559,9 @@ $sourcePercent =
 <section
     class="admin-panel admin-analytics-section"
 >
+
 <header class="admin-panel-header">
+
     <div>
         <p>Lifetime</p>
         <h2>Promotion Campaigns</h2>
@@ -2499,7 +3573,9 @@ $sourcePercent =
     >
         Manage
     </a>
+
 </header>
+
 
 <?php if (!$campaignRows): ?>
 
@@ -2509,9 +3585,17 @@ $sourcePercent =
 
 <?php else: ?>
 
-<div class="admin-analytics-table-scroll is-campaigns">
+
+<div
+    class="admin-analytics-table-scroll is-campaigns"
+>
+
+
 <table class="admin-analytics-table">
+
+
 <thead>
+
 <tr>
     <th>Campaign</th>
     <th>Checkouts</th>
@@ -2519,16 +3603,25 @@ $sourcePercent =
     <th>Conv.</th>
     <th>Revenue</th>
 </tr>
+
 </thead>
+
+
 <tbody>
+
 
 <?php foreach (
     $campaignRows
     as $campaign
 ): ?>
+
+
 <tr>
+
     <td>
+
         <strong>
+
             <?= moderation_e(
                 (string) (
                     $campaign['name']
@@ -2538,7 +3631,9 @@ $sourcePercent =
                     ?? 'Promotion'
                 )
             ) ?>
+
         </strong>
+
 
         <?php if (
             !empty(
@@ -2559,15 +3654,21 @@ $sourcePercent =
                 )
             )
         ): ?>
+
         <small>
+
             <?= moderation_e(
                 (string) $campaign[
                     'public_label'
                 ]
             ) ?>
+
         </small>
+
         <?php endif; ?>
+
     </td>
+
 
     <td>
         <?= number_format(
@@ -2580,6 +3681,7 @@ $sourcePercent =
         ) ?>
     </td>
 
+
     <td>
         <?= number_format(
             (int) (
@@ -2591,7 +3693,9 @@ $sourcePercent =
         ) ?>
     </td>
 
+
     <td>
+
         <?= moderation_e(
             admin_analytics_percent(
                 (float) (
@@ -2602,9 +3706,12 @@ $sourcePercent =
                 )
             )
         ) ?>
+
     </td>
 
+
     <td>
+
         <?= moderation_e(
             admin_analytics_money(
                 (int) (
@@ -2615,16 +3722,32 @@ $sourcePercent =
                 )
             )
         ) ?>
+
     </td>
+
 </tr>
+
+
 <?php endforeach; ?>
 
+
 </tbody>
+
+
 </table>
+
+
 </div>
 
+
 <?php endif; ?>
+
+
 </section>
 
 
-<?php require __DIR__ . '/_footer.php'; ?>
+<?php
+
+require __DIR__ . '/_footer.php';
+
+?>
