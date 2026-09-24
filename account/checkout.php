@@ -136,6 +136,17 @@ if (
 }
 
 
+/*
+ * Keep the selected membership in the temporary purchase basket.
+ *
+ * Do not clear this merely because Stripe Checkout opened.
+ * The user may back out and continue shopping.
+ */
+$_SESSION[
+    'pending_membership_plan'
+] = $interval;
+
+
 /* =========================================================
    ACCOUNT
    ========================================================= */
@@ -212,10 +223,8 @@ $hasExistingStripeMembership =
  * Existing Stripe subscribers manage their subscription through
  * Billing instead of creating another subscription.
  *
- * Complimentary access is deliberately NOT blocked here.
- * Someone with complimentary access may choose to begin paying.
- * This also prevents complimentary-grant records from creating
- * a redirect cycle between Checkout, Billing and Membership.
+ * Complimentary access does not prevent someone from choosing
+ * to begin a paid membership.
  */
 if ($hasExistingStripeMembership) {
 
@@ -419,6 +428,10 @@ if (!$offer) {
 
         if (!$linkedPromotionCode) {
 
+            /*
+             * The saved code is no longer valid for this plan.
+             * Remove only the invalid code. Keep the selected plan.
+             */
             unset(
                 $_SESSION[
                     'pending_membership_promo_code'
@@ -429,6 +442,18 @@ if (!$offer) {
                 '';
 
         } else {
+
+            /*
+             * Keep the validated code in the basket while checkout
+             * remains unfinished.
+             */
+            $_SESSION[
+                'pending_membership_promo_code'
+            ] =
+                (string) $linkedPromotionCode[
+                    'code'
+                ];
+
 
             /*
              * Calculate the same promotional price shown on the
@@ -713,6 +738,22 @@ if (!$offer) {
             }
 
 
+            /*
+             * Remember which Stripe Checkout Session belongs to
+             * the current temporary membership basket.
+             *
+             * The basket itself remains intact until checkout
+             * succeeds.
+             */
+            if ($sessionId !== '') {
+
+                $_SESSION[
+                    'pending_membership_checkout_session_id'
+                ] =
+                    $sessionId;
+            }
+
+
             /* =================================================
                CAMPAIGN CHECKOUT EVENT
                ================================================= */
@@ -750,18 +791,16 @@ if (!$offer) {
 
 
             /*
-             * The Checkout Session now owns the purchase state.
-             * Clear the temporary membership basket only after
-             * Stripe successfully creates the session.
+             * IMPORTANT:
+             *
+             * Do not clear pending_membership_plan or
+             * pending_membership_promo_code here.
+             *
+             * Opening Stripe Checkout is not the same as completing
+             * checkout. Keeping these values allows Back, Change
+             * membership, canceled checkout and retry flows to retain
+             * the customer's offer.
              */
-            unset(
-                $_SESSION[
-                    'pending_membership_plan'
-                ],
-                $_SESSION[
-                    'pending_membership_promo_code'
-                ]
-            );
 
 
         } catch (Throwable $exception) {
@@ -807,6 +846,49 @@ if (!$offer) {
         }
     }
 }
+
+
+/* =========================================================
+   MEMBERSHIP RETURN URL
+   ========================================================= */
+
+$membershipReturnQuery = [
+    'plan' =>
+        $interval,
+];
+
+if (
+    $linkedPromotionCode
+    && trim(
+        (string) (
+            $linkedPromotionCode[
+                'code'
+            ]
+            ?? ''
+        )
+    ) !== ''
+) {
+
+    $membershipReturnQuery[
+        'promo'
+    ] =
+        strtoupper(
+            trim(
+                (string) $linkedPromotionCode[
+                    'code'
+                ]
+            )
+        );
+}
+
+$membershipReturnUrl =
+    '/membership.php?'
+    . http_build_query(
+        $membershipReturnQuery,
+        '',
+        '&',
+        PHP_QUERY_RFC3986
+    );
 
 
 /* =========================================================
@@ -894,8 +976,8 @@ require dirname(__DIR__)
 
     <a
         class="checkout-back-link"
-        href="/membership.php?plan=<?= checkout_e(
-            $interval
+        href="<?= checkout_e(
+            $membershipReturnUrl
         ) ?>"
     >
         <i aria-hidden="true">
@@ -946,8 +1028,8 @@ require dirname(__DIR__)
 
     <a
         class="checkout-primary-button"
-        href="/membership.php?plan=<?= checkout_e(
-            $interval
+        href="<?= checkout_e(
+            $membershipReturnUrl
         ) ?>"
     >
         Return to membership
