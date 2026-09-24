@@ -1,12 +1,13 @@
 (() => {
     'use strict';
 
-    const ROOT_SELECTOR = '.community-profile-image-manager';
-    const GRID_SELECTOR = '.community-profile-image-grid';
-    const CARD_SELECTOR = '.community-profile-image-card';
-    const ENDPOINT = '/profile-photo-manager.php';
-    const STYLE_HREF = '/css/persistent-photo-manager.css';
+    const ROOT_SELECTOR = '[data-persistent-photo-manager]';
+    const CARD_SELECTOR = '[data-photo-manager-card]';
     const DRAG_THRESHOLD = 6;
+    const scriptElement = document.currentScript;
+    const assetOrigin = scriptElement && scriptElement.src
+        ? new URL(scriptElement.src, window.location.href).origin
+        : window.location.origin;
 
     function ensureStyles() {
         if (document.querySelector('link[data-persistent-photo-manager-style]')) {
@@ -15,59 +16,40 @@
 
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = STYLE_HREF;
+        link.href = `${assetOrigin}/css/persistent-photo-manager.css?v=20260923-2`;
         link.dataset.persistentPhotoManagerStyle = '1';
         document.head.appendChild(link);
     }
 
     function initManager(root) {
-        const grid = root.querySelector(GRID_SELECTOR);
-        if (!grid) {
+        const list = root.querySelector('[data-photo-manager-list]');
+        if (!list || root.dataset.photoManagerReady === '1') {
             return;
         }
 
+        root.dataset.photoManagerReady = '1';
         ensureStyles();
 
-        const csrfInput = root.querySelector('input[name="csrf_token"]');
-        const csrf = csrfInput ? csrfInput.value : '';
-        const primaryPreview = root.querySelector('#profileImagePrimaryPreview');
-        const countBadge = root.querySelector('.account-profile-status');
-        const primaryBlock = root.querySelector('.community-profile-primary');
-        const primaryHeading = primaryBlock ? primaryBlock.querySelector('h3') : null;
-        const primaryCopy = primaryBlock ? primaryBlock.querySelector('p') : null;
-        const emptyImageUrl = '/images/llamalogo.png';
+        const endpoint = root.dataset.photoManagerEndpoint || '/profile-image-action.php';
+        const csrf = root.dataset.photoManagerCsrf || '';
+        const avatarSelector = root.dataset.photoAvatarSelector || '.community-profile-avatar-large';
+        const avatar = document.querySelector(avatarSelector);
+        const defaultSrc = root.dataset.photoDefaultSrc || '';
+        const countNode = document.querySelector('[data-profile-photo-count]');
+        const status = root.querySelector('[data-photo-manager-status]');
+        const initialPrimaryId = Number.parseInt(root.dataset.photoPrimaryId || '0', 10);
 
         let requestChain = Promise.resolve();
         let dragState = null;
-
-        const status = document.createElement('div');
-        status.className = 'persistent-photo-manager__status';
-        status.setAttribute('role', 'status');
-        status.setAttribute('aria-live', 'polite');
-        status.setAttribute('aria-atomic', 'true');
-        grid.insertAdjacentElement('afterend', status);
-
-        if (primaryHeading) {
-            primaryHeading.textContent = 'Featured profile photo';
-        }
-        if (primaryCopy) {
-            primaryCopy.textContent = 'The first photo in your gallery is featured. Drag photos to rearrange them.';
-        }
+        let confirmedOrder = [];
 
         function cards() {
-            return Array.from(grid.querySelectorAll(CARD_SELECTOR));
+            return Array.from(list.querySelectorAll(CARD_SELECTOR));
         }
 
         function imageId(card) {
-            const input = card.querySelector('input[name="image_id"]');
-            const value = input ? Number.parseInt(input.value, 10) : 0;
+            const value = Number.parseInt(card.dataset.photoId || '0', 10);
             return Number.isFinite(value) && value > 0 ? value : 0;
-        }
-
-        function imageLabel(card) {
-            const filename = card.querySelector('.community-profile-image-card__filename');
-            const text = filename ? filename.textContent.trim() : '';
-            return text || 'profile photo';
         }
 
         function orderedIds() {
@@ -75,13 +57,17 @@
         }
 
         function announce(message, isError = false) {
+            if (!status) {
+                return;
+            }
+
             status.textContent = message;
             status.classList.toggle('is-error', isError);
         }
 
         function request(payload) {
             const run = async () => {
-                const response = await fetch(ENDPOINT, {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -93,6 +79,7 @@
                 });
 
                 let data = null;
+
                 try {
                     data = await response.json();
                 } catch (error) {
@@ -100,10 +87,11 @@
                 }
 
                 if (!response.ok || !data || data.ok !== true) {
-                    const message = data && data.message
-                        ? data.message
-                        : 'Llama Scout could not save that photo change.';
-                    throw new Error(message);
+                    throw new Error(
+                        data && data.message
+                            ? data.message
+                            : 'Llama Scout could not save that photo change.'
+                    );
                 }
 
                 return data;
@@ -113,26 +101,15 @@
             return requestChain;
         }
 
-        function getActionForm(card, actionName) {
-            return Array.from(card.querySelectorAll('form')).find((form) => {
-                const action = form.querySelector('input[name="action"]');
-                return action && action.value === actionName;
-            }) || null;
-        }
+        function restoreOrder(ids) {
+            const byId = new Map(cards().map((card) => [imageId(card), card]));
 
-        function getOrCreateFeaturedBadge(card) {
-            const titleRow = card.querySelector('.community-profile-image-card__title-row');
-            if (!titleRow) {
-                return null;
-            }
-
-            let badge = titleRow.querySelector('.community-profile-primary-badge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'community-profile-primary-badge';
-                titleRow.appendChild(badge);
-            }
-            return badge;
+            ids.forEach((id) => {
+                const card = byId.get(id);
+                if (card) {
+                    list.appendChild(card);
+                }
+            });
         }
 
         function refreshUi() {
@@ -140,43 +117,47 @@
             const first = allCards[0] || null;
 
             allCards.forEach((card, index) => {
-                const badge = card.querySelector('.community-profile-primary-badge');
-                const controls = card.querySelector('.persistent-photo-manager__controls');
-                const earlier = controls ? controls.querySelector('[data-photo-move="earlier"]') : null;
-                const later = controls ? controls.querySelector('[data-photo-move="later"]') : null;
+                const badge = card.querySelector('[data-photo-featured-badge]');
+                const earlier = card.querySelector('[data-photo-move-earlier]');
+                const later = card.querySelector('[data-photo-move-later]');
 
-                card.classList.toggle('is-primary', index === 0);
+                card.classList.toggle('is-featured', index === 0);
                 card.dataset.photoPosition = String(index + 1);
 
-                if (index === 0) {
-                    const featuredBadge = getOrCreateFeaturedBadge(card);
-                    if (featuredBadge) {
-                        featuredBadge.textContent = 'Featured';
-                    }
-                } else if (badge) {
-                    badge.remove();
+                if (badge) {
+                    badge.hidden = index !== 0;
                 }
 
                 if (earlier) {
                     earlier.disabled = index === 0;
                 }
+
                 if (later) {
                     later.disabled = index === allCards.length - 1;
                 }
             });
 
-            if (primaryPreview) {
-                const firstImage = first ? first.querySelector('img') : null;
-                primaryPreview.src = firstImage && firstImage.src ? firstImage.src : emptyImageUrl;
-                primaryPreview.alt = first ? 'Featured profile photo' : 'Default profile picture';
+            if (avatar) {
+                const firstImage = first
+                    ? first.querySelector('[data-photo-preview]')
+                    : null;
+
+                avatar.src = firstImage && firstImage.src
+                    ? firstImage.src
+                    : defaultSrc;
+                avatar.alt = first
+                    ? 'Featured profile photo'
+                    : 'Default profile picture';
             }
 
-            if (countBadge) {
-                countBadge.textContent = `${allCards.length} / 10`;
+            if (countNode) {
+                countNode.textContent = `${allCards.length}/5`;
             }
+
+            root.classList.toggle('is-empty', allCards.length === 0);
         }
 
-        function saveOrder(message = 'Photo order saved.') {
+        function persistOrder(message = 'Photo order saved.', initialSync = false) {
             const ids = orderedIds();
             announce('Saving photo order...');
 
@@ -184,10 +165,19 @@
                 action: 'reorder',
                 image_ids: ids,
             }).then((data) => {
+                confirmedOrder = ids.slice();
                 refreshUi();
                 announce(message || data.message || 'Photo order saved.');
                 return data;
             }).catch((error) => {
+                if (initialSync) {
+                    announce(error.message, true);
+                    window.setTimeout(() => window.location.reload(), 900);
+                    throw error;
+                }
+
+                restoreOrder(confirmedOrder);
+                refreshUi();
                 announce(error.message, true);
                 throw error;
             });
@@ -196,108 +186,77 @@
         function moveCard(card, direction) {
             const allCards = cards();
             const index = allCards.indexOf(card);
-            if (index < 0) {
-                return;
-            }
-
             const nextIndex = index + direction;
-            if (nextIndex < 0 || nextIndex >= allCards.length) {
+
+            if (index < 0 || nextIndex < 0 || nextIndex >= allCards.length) {
                 return;
             }
 
             if (direction < 0) {
-                grid.insertBefore(card, allCards[nextIndex]);
+                list.insertBefore(card, allCards[nextIndex]);
             } else {
-                grid.insertBefore(allCards[nextIndex], card);
+                list.insertBefore(allCards[nextIndex], card);
             }
 
             refreshUi();
-            saveOrder().catch(() => {});
-            card.focus({ preventScroll: true });
+            persistOrder().catch(() => {});
         }
 
-        function addControls(card) {
-            if (card.querySelector('.persistent-photo-manager__controls')) {
+        function removeCard(card, button) {
+            if (!window.confirm('Remove this profile photo?')) {
                 return;
             }
 
-            const meta = card.querySelector('.community-profile-image-card__meta');
-            if (!meta) {
+            button.disabled = true;
+            announce('Removing profile photo...');
+
+            request({
+                action: 'delete',
+                image_id: imageId(card),
+            }).then(() => {
+                card.remove();
+                confirmedOrder = orderedIds();
+                refreshUi();
+                announce('Profile photo removed.');
+
+                // A reload also recalculates the uploader's remaining-photo limit.
+                window.setTimeout(() => window.location.reload(), 450);
+            }).catch((error) => {
+                button.disabled = false;
+                announce(error.message, true);
+            });
+        }
+
+        function bindCard(card) {
+            const earlier = card.querySelector('[data-photo-move-earlier]');
+            const later = card.querySelector('[data-photo-move-later]');
+            const remove = card.querySelector('[data-photo-remove]');
+            const handle = card.querySelector('[data-photo-drag-handle]');
+
+            if (earlier) {
+                earlier.addEventListener('click', () => moveCard(card, -1));
+            }
+
+            if (later) {
+                later.addEventListener('click', () => moveCard(card, 1));
+            }
+
+            if (remove) {
+                remove.addEventListener('click', () => removeCard(card, remove));
+            }
+
+            if (!handle) {
                 return;
             }
 
-            card.tabIndex = -1;
-            card.dataset.photoId = String(imageId(card));
-
-            const controls = document.createElement('div');
-            controls.className = 'persistent-photo-manager__controls';
-
-            const drag = document.createElement('button');
-            drag.type = 'button';
-            drag.className = 'pill-button persistent-photo-manager__drag';
-            drag.textContent = 'Drag';
-            drag.setAttribute('aria-label', `Drag ${imageLabel(card)} to rearrange`);
-            drag.title = 'Drag to rearrange';
-
-            const earlier = document.createElement('button');
-            earlier.type = 'button';
-            earlier.className = 'pill-button persistent-photo-manager__move';
-            earlier.dataset.photoMove = 'earlier';
-            earlier.textContent = 'Move earlier';
-            earlier.addEventListener('click', () => moveCard(card, -1));
-
-            const later = document.createElement('button');
-            later.type = 'button';
-            later.className = 'pill-button persistent-photo-manager__move';
-            later.dataset.photoMove = 'later';
-            later.textContent = 'Move later';
-            later.addEventListener('click', () => moveCard(card, 1));
-
-            controls.append(drag, earlier, later);
-            meta.insertBefore(controls, meta.querySelector('.community-profile-image-card__actions'));
-
-            const makePrimaryForm = getActionForm(card, 'make_primary');
-            if (makePrimaryForm) {
-                makePrimaryForm.hidden = true;
-            }
-
-            const deleteForm = getActionForm(card, 'delete');
-            if (deleteForm) {
-                const deleteButton = deleteForm.querySelector('button[type="submit"], button:not([type])');
-                if (deleteButton) {
-                    deleteButton.addEventListener('click', (event) => {
-                        event.preventDefault();
-
-                        if (!window.confirm('Remove this profile photo?')) {
-                            return;
-                        }
-
-                        deleteButton.disabled = true;
-                        announce('Removing profile photo...');
-
-                        request({
-                            action: 'delete',
-                            image_id: imageId(card),
-                        }).then(() => {
-                            card.remove();
-                            refreshUi();
-                            announce('Profile photo removed.');
-                        }).catch((error) => {
-                            deleteButton.disabled = false;
-                            announce(error.message, true);
-                        });
-                    });
-                }
-            }
-
-            drag.addEventListener('pointerdown', (event) => {
+            handle.addEventListener('pointerdown', (event) => {
                 if (event.button !== undefined && event.button !== 0) {
                     return;
                 }
 
                 dragState = {
                     card,
-                    handle: drag,
+                    handle,
                     pointerId: event.pointerId,
                     startX: event.clientX,
                     startY: event.clientY,
@@ -305,9 +264,9 @@
                     originalOrder: orderedIds().join(','),
                 };
 
-                if (drag.setPointerCapture) {
+                if (handle.setPointerCapture) {
                     try {
-                        drag.setPointerCapture(event.pointerId);
+                        handle.setPointerCapture(event.pointerId);
                     } catch (error) {
                         // Pointer capture is helpful, but not required.
                     }
@@ -335,10 +294,13 @@
 
             event.preventDefault();
 
-            const elements = document.elementsFromPoint(event.clientX, event.clientY);
-            const target = elements
+            const target = document.elementsFromPoint(event.clientX, event.clientY)
                 .map((element) => element.closest ? element.closest(CARD_SELECTOR) : null)
-                .find((candidate) => candidate && candidate !== dragState.card && grid.contains(candidate));
+                .find((candidate) => (
+                    candidate
+                    && candidate !== dragState.card
+                    && list.contains(candidate)
+                ));
 
             if (!target) {
                 return;
@@ -347,23 +309,29 @@
             const rect = target.getBoundingClientRect();
             const centerX = rect.left + (rect.width / 2);
             const centerY = rect.top + (rect.height / 2);
-            const verticalDistance = Math.abs(event.clientY - centerY);
-            const sameVisualRow = verticalDistance < rect.height * 0.35;
-            const insertBefore = sameVisualRow
+            const sameRow = Math.abs(event.clientY - centerY) < rect.height * 0.35;
+            const before = sameRow
                 ? event.clientX < centerX
                 : event.clientY < centerY;
 
-            if (insertBefore) {
-                grid.insertBefore(dragState.card, target);
+            if (before) {
+                list.insertBefore(dragState.card, target);
             } else {
-                grid.insertBefore(dragState.card, target.nextSibling);
+                list.insertBefore(dragState.card, target.nextSibling);
             }
 
             refreshUi();
         }
 
         function finishDrag(event) {
-            if (!dragState || (event.pointerId !== undefined && event.pointerId !== dragState.pointerId)) {
+            if (!dragState) {
+                return;
+            }
+
+            if (
+                event.pointerId !== undefined
+                && event.pointerId !== dragState.pointerId
+            ) {
                 return;
             }
 
@@ -377,7 +345,7 @@
                 try {
                     state.handle.releasePointerCapture(event.pointerId);
                 } catch (error) {
-                    // The pointer may already have been released by the browser.
+                    // The browser may already have released the pointer.
                 }
             }
 
@@ -386,29 +354,38 @@
             }
 
             refreshUi();
-            const newOrder = orderedIds().join(',');
-            if (newOrder !== state.originalOrder) {
-                saveOrder().catch(() => {});
+
+            if (orderedIds().join(',') !== state.originalOrder) {
+                persistOrder().catch(() => {});
             }
         }
+
+        confirmedOrder = orderedIds();
+        cards().forEach(bindCard);
 
         document.addEventListener('pointermove', pointerMove, { passive: false });
         document.addEventListener('pointerup', finishDrag);
         document.addEventListener('pointercancel', finishDrag);
 
-        const existingPrimary = grid.querySelector(`${CARD_SELECTOR}.is-primary`);
+        const primaryCard = initialPrimaryId > 0
+            ? cards().find((card) => imageId(card) === initialPrimaryId)
+            : null;
         const firstCard = cards()[0] || null;
-        const needsInitialSync = Boolean(existingPrimary && firstCard && existingPrimary !== firstCard);
+        const needsInitialSync = Boolean(
+            primaryCard
+            && firstCard
+            && primaryCard !== firstCard
+        );
 
         if (needsInitialSync) {
-            grid.insertBefore(existingPrimary, firstCard);
+            list.insertBefore(primaryCard, firstCard);
         }
 
-        cards().forEach(addControls);
         refreshUi();
 
         if (needsInitialSync) {
-            saveOrder('Featured photo synced with your gallery.').catch(() => {});
+            persistOrder('Featured photo synced with your gallery.', true)
+                .catch(() => {});
         }
     }
 
