@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
 }
 
 $profile = llama_community_profile($db, $userId);
-$profileImages = llama_community_profile_images($db, $userId, false);
+$profileImages = llama_community_profile_images($db, $userId);
 $primaryImage = llama_primary_profile_image($db, $userId);
 $userBadges = llama_user_badges($db, $userId);
 $selectedTimezone = llama_user_timezone($user);
@@ -149,125 +149,184 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
     <?php endif; ?>
 
-    <section
-        class="community-profile-section"
-        aria-labelledby="profile-photos-heading"
-    >
-        <div class="community-profile-section-heading">
-            <div>
-                <p class="account-eyebrow">Your face around the herd</p>
-                <h2 id="profile-photos-heading">Profile photos</h2>
-            </div>
-
-            <span class="account-section-count">
-                <?= count($profileImages) ?>/5
-            </span>
+<section
+    class="community-profile-section"
+    aria-labelledby="profile-photos-heading"
+>
+    <div class="community-profile-section-heading">
+        <div>
+            <p class="account-eyebrow">Your face around the herd</p>
+            <h2 id="profile-photos-heading">Profile photos</h2>
         </div>
 
-        <div class="community-profile-avatar-row">
-            <img
-                class="community-profile-avatar-large"
-                src="<?= profile_e(
-                    llama_profile_image_url(
-                        $primaryImage,
-                        $siteUrl
-                    )
-                ) ?>"
-                alt="Current profile picture"
+        <span
+            class="account-section-count"
+            data-profile-photo-count
+        >
+            <?= count($profileImages) ?>/5
+        </span>
+    </div>
+
+    <div class="community-profile-avatar-row">
+        <img
+            class="community-profile-avatar-large"
+            src="<?= profile_e(
+                llama_profile_image_url(
+                    $primaryImage,
+                    $siteUrl
+                )
+            ) ?>"
+            alt="Current profile picture"
+        >
+
+        <div>
+            <strong>Featured profile photo</strong>
+            <p>
+                The first photo in your gallery is featured on your profile.
+                Drag your photos into the order you want.
+            </p>
+        </div>
+    </div>
+
+    <?php if ($profileImages): ?>
+        <div
+            class="community-profile-image-manager"
+            data-persistent-photo-manager
+            data-photo-manager-endpoint="/profile-image-action.php"
+            data-photo-manager-csrf="<?= profile_e($profileImageCsrf) ?>"
+            data-photo-primary-id="<?= (int) ($profile['primary_image_id'] ?? 0) ?>"
+            data-photo-avatar-selector=".community-profile-avatar-large"
+            data-photo-default-src="<?= profile_e(
+                llama_profile_image_url(
+                    LLAMA_DEFAULT_PROFILE_IMAGE,
+                    $siteUrl
+                )
+            ) ?>"
+        >
+            <p class="persistent-photo-manager__help">
+                Drag and drop to rearrange. The first photo is always Featured.
+                The Earlier and Later buttons do the same thing without dragging.
+            </p>
+
+            <div
+                class="community-profile-image-grid"
+                data-photo-manager-list
             >
-
-            <div>
-                <strong>Current profile picture</strong>
-                <p>
-                    If you do not choose a photo, the default
-                    Llama Scout llama is used automatically.
-                </p>
-            </div>
-        </div>
-
-        <?php if ($profileImages): ?>
-            <div class="community-profile-image-manager">
                 <?php foreach ($profileImages as $image): ?>
                     <?php
+                    $imageId = (int) ($image['id'] ?? 0);
                     $isPrimary =
                         (int) ($profile['primary_image_id'] ?? 0)
-                        === (int) $image['id'];
+                        === $imageId;
                     ?>
 
-                    <article class="community-profile-image-card">
-                        <img
-                            src="<?= profile_e(
-                                llama_profile_image_url(
-                                    (string) $image['image_src'],
-                                    $siteUrl
-                                )
-                            ) ?>"
-                            alt="<?= profile_e(
-                                $image['alt_text']
-                                ?: 'Profile photo'
-                            ) ?>"
-                        >
+                    <article
+                        class="community-profile-image-card<?= $isPrimary ? ' is-featured' : '' ?>"
+                        data-photo-manager-card
+                        data-photo-id="<?= $imageId ?>"
+                    >
+                        <div class="persistent-photo-manager__image-wrap">
+                            <img
+                                data-photo-preview
+                                src="<?= profile_e(
+                                    llama_profile_image_url(
+                                        (string) $image['image_src'],
+                                        $siteUrl
+                                    )
+                                ) ?>"
+                                alt="<?= profile_e(
+                                    $image['alt_text']
+                                    ?: 'Profile photo'
+                                ) ?>"
+                            >
+
+                            <span
+                                class="community-profile-primary-badge"
+                                data-photo-featured-badge
+                                <?= $isPrimary ? '' : 'hidden' ?>
+                            >
+                                Featured
+                            </span>
+                        </div>
 
                         <div class="community-profile-image-card-body">
-                            <?php if ($isPrimary): ?>
-                                <span class="community-profile-primary-badge">
-                                    <i
-                                        aria-hidden="true"
-                                    ><?= llama_icon('circle-check') ?></i>
-                                    Profile picture
-                                </span>
-                            <?php else: ?>
-                                <form method="post" action="/profile-image-action.php">
-                                    <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
-                                    <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-                                    <button class="photo-manager-button" type="submit" name="action" value="primary">
-                                        <i aria-hidden="true"><?= llama_icon('user') ?></i>
-                                        Make primary
-                                    </button>
-                                </form>
-                            <?php endif; ?>
+                            <div class="persistent-photo-manager__controls">
+                                <button
+                                    type="button"
+                                    class="persistent-photo-manager__button persistent-photo-manager__drag"
+                                    data-photo-drag-handle
+                                >
+                                    Drag to rearrange
+                                </button>
 
-                            <form method="post" action="/profile-image-action.php">
-                                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
-                                <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-                                <button class="photo-manager-button" type="submit" name="action" value="delete">
+                                <button
+                                    type="button"
+                                    class="persistent-photo-manager__button"
+                                    data-photo-move-earlier
+                                >
+                                    Earlier
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="persistent-photo-manager__button"
+                                    data-photo-move-later
+                                >
+                                    Later
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="persistent-photo-manager__button persistent-photo-manager__remove"
+                                    data-photo-remove
+                                >
                                     <i aria-hidden="true"><?= llama_icon('trash') ?></i>
                                     Remove
                                 </button>
-                            </form>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>
             </div>
-        <?php endif; ?>
 
-        <?php if (count($profileImages) < 5): ?>
-            <form
-                method="post"
-                action="/save-profile-images.php"
-                class="community-profile-photo-upload-form"
-            >
-                <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
-                <input type="hidden" name="photo_stage_token" value="">
-                <input type="hidden" name="photos_json" value="[]">
+            <p
+                class="persistent-photo-manager__status"
+                data-photo-manager-status
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+            ></p>
+        </div>
+    <?php endif; ?>
 
-                <div
-                    data-photo-uploader
-                    data-photo-context="profile-images"
-                    data-photo-max="<?= 5 - count($profileImages) ?>"
-                    data-photo-csrf="<?= profile_e(llama_photo_csrf_token()) ?>"
-                    data-photo-endpoint="/photo-upload.php"
-                    data-photo-title="Add profile photos"
-                    data-photo-help="Choose up to <?= 5 - count($profileImages) ?> more. You can remove photos before saving."
-                ></div>
+    <?php if (count($profileImages) < 5): ?>
+        <form
+            method="post"
+            action="/save-profile-images.php"
+            class="community-profile-photo-upload-form"
+        >
+            <input type="hidden" name="csrf_token" value="<?= profile_e($profileImageCsrf) ?>">
+            <input type="hidden" name="photo_stage_token" value="">
+            <input type="hidden" name="photos_json" value="[]">
 
-                <button type="submit" class="contribution-submit">
-                    <i aria-hidden="true"><?= llama_icon('cloud-upload') ?></i>
-                    Save selected photos
-                </button>
-            </form>
-        <?php endif; ?>
-    </section>
+            <div
+                data-photo-uploader
+                data-photo-context="profile-images"
+                data-photo-max="<?= 5 - count($profileImages) ?>"
+                data-photo-csrf="<?= profile_e(llama_photo_csrf_token()) ?>"
+                data-photo-endpoint="/photo-upload.php"
+                data-photo-title="Add profile photos"
+                data-photo-help="Choose up to <?= 5 - count($profileImages) ?> more. You can remove photos before saving."
+            ></div>
+
+            <button type="submit" class="contribution-submit">
+                <i aria-hidden="true"><?= llama_icon('cloud-upload') ?></i>
+                Save selected photos
+            </button>
+        </form>
+    <?php endif; ?>
+</section>
+
 
     <section
         class="community-profile-section"
