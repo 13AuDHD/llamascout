@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
 }
 
 $profile = llama_community_profile($db, $userId);
-$profileImages = llama_community_profile_images($db, $userId);
+$profileImages = llama_community_profile_images($db, $userId, false);
 $primaryImage = llama_primary_profile_image($db, $userId);
 $userBadges = llama_user_badges($db, $userId);
 $selectedTimezone = llama_user_timezone($user);
