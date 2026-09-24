@@ -517,9 +517,9 @@
                     aria-hidden="true"
                 ></span>
             `,
-            iconSize: [30, 38],
-            iconAnchor: [15, 36],
-            popupAnchor: [0, -34]
+iconSize: [36, 46],
+iconAnchor: [18, 44],
+popupAnchor: [0, -42]
         });
 
 
