@@ -179,6 +179,224 @@ function llama_stripe_client(): \Stripe\StripeClient
 
 
 /* =========================================================
+   BACKFILL MEMBERSHIP STRIPE PRODUCT IDS
+
+   Older membership configuration stored Stripe Price IDs
+   before Stripe Product IDs became part of the local catalog.
+
+   Stripe already knows which Product owns each Price, so
+   repair active membership plans automatically when possible.
+   ========================================================= */
+
+function llama_stripe_backfill_membership_product_ids(
+    PDO $db
+): array {
+
+    $summary = [
+        'checked' => 0,
+        'updated' => 0,
+        'missing_price' => 0,
+    ];
+
+
+    $plans =
+        llama_membership_plans(
+            $db,
+            true
+        );
+
+
+    if (
+        !$plans
+    ) {
+        return
+            $summary;
+    }
+
+
+    $stripe =
+        null;
+
+
+    $update =
+        $db->prepare(
+            '
+            UPDATE membership_plans
+
+            SET
+                stripe_product_id = ?
+
+            WHERE id = ?
+              AND (
+                    stripe_product_id IS NULL
+                    OR stripe_product_id = \'\'
+                  )
+            '
+        );
+
+
+    foreach (
+        $plans as
+        $plan
+    ) {
+
+        $existingProductId =
+            trim(
+                (string) (
+                    $plan[
+                        'stripe_product_id'
+                    ]
+                    ?? ''
+                )
+            );
+
+
+        if (
+            $existingProductId !== ''
+        ) {
+            continue;
+        }
+
+
+        $priceId =
+            trim(
+                (string) (
+                    $plan[
+                        'stripe_price_id'
+                    ]
+                    ?? ''
+                )
+            );
+
+
+        if (
+            $priceId === ''
+        ) {
+
+            $summary[
+                'missing_price'
+            ]++;
+
+            continue;
+        }
+
+
+        $summary[
+            'checked'
+        ]++;
+
+
+        if (
+            !(
+                $stripe
+                instanceof
+                \Stripe\StripeClient
+            )
+        ) {
+
+            $stripe =
+                llama_stripe_client();
+        }
+
+
+        $price =
+            $stripe
+                ->prices
+                ->retrieve(
+                    $priceId,
+                    []
+                );
+
+
+        $product =
+            $price
+                ->product
+            ?? null;
+
+
+        $productId =
+            '';
+
+
+        if (
+            is_string(
+                $product
+            )
+        ) {
+
+            $productId =
+                trim(
+                    $product
+                );
+
+        } elseif (
+            is_object(
+                $product
+            )
+        ) {
+
+            $productId =
+                trim(
+                    (string) (
+                        $product
+                            ->id
+                        ?? ''
+                    )
+                );
+
+        }
+
+
+        if (
+            $productId === ''
+        ) {
+
+            throw new RuntimeException(
+                'Stripe Price '
+                . $priceId
+                . ' for '
+                . (
+                    trim(
+                        (string) (
+                            $plan[
+                                'name'
+                            ]
+                            ?? ''
+                        )
+                    )
+                    ?: 'a membership plan'
+                )
+                . ' is not attached to a Stripe Product.'
+            );
+
+        }
+
+
+        $update->execute([
+            $productId,
+            (int) $plan['id'],
+        ]);
+
+
+        if (
+            $update->rowCount() > 0
+        ) {
+
+            $summary[
+                'updated'
+            ]++;
+
+        }
+
+    }
+
+
+    return
+        $summary;
+}
+
+
+/* =========================================================
    LEGACY PRIVATE-CONFIG PRICE LOOKUP
 
    New checkout code MUST use membership_plans.stripe_price_id.
