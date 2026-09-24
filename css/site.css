@@ -109,36 +109,22 @@ select {
 }
 
 /*
- * Automatic mode is the default.
+ * Automatic mode.
  *
- * Browser focus-visible behavior remains as a fallback so keyboard
- * focus is still visible even if the accessibility JavaScript does
- * not run.
+ * Keyboard navigation receives a visible focus indicator.
+ * Pointer and touch interaction do not retain one.
  */
-:root[data-site-shell="public"]
-[data-focus-indicators="auto"]
+:root[data-site-shell="public"][data-focus-indicators="auto"]
 :focus-visible {
     outline: 3px solid var(--focus);
 }
 
-/*
- * Pointer and touch interaction should not leave a focus ring around
- * controls after they are tapped or clicked.
- */
-:root[data-site-shell="public"]
-[data-focus-indicators="auto"]
-[data-focus-modality="pointer"]
+:root[data-site-shell="public"][data-focus-indicators="auto"][data-focus-modality="pointer"]
 :focus {
     outline: none;
 }
 
-/*
- * Once keyboard navigation is detected, make the focused control
- * clearly visible.
- */
-:root[data-site-shell="public"]
-[data-focus-indicators="auto"]
-[data-focus-modality="keyboard"]
+:root[data-site-shell="public"][data-focus-indicators="auto"][data-focus-modality="keyboard"]
 :focus {
     outline: 3px solid var(--focus);
 }
@@ -147,10 +133,27 @@ select {
  * Accessibility preference:
  * Always show focus indicators regardless of input method.
  */
-:root[data-site-shell="public"]
-[data-focus-indicators="always"]
+:root[data-site-shell="public"][data-focus-indicators="always"]
 :focus {
     outline: 3px solid var(--focus);
+}
+
+
+/* =========================================================
+   ADMIN FOCUS OVERRIDE
+   Admin intentionally does not display focus rings or iOS tap
+   highlighting. Public accessibility behavior is unaffected.
+   ========================================================= */
+
+.admin-body,
+.admin-body * {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.admin-body :focus,
+.admin-body :focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 
