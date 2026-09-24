@@ -198,10 +198,23 @@ function llama_create_membership_promotion_code(
         throw new InvalidArgumentException('That promotion code already exists.');
     }
 
-    $plans = llama_membership_plans($db, true);
+    /*
+     * Older membership records may know the Stripe Price but not
+     * its Product. Repair those catalog links from Stripe before
+     * building a product-restricted promotion code.
+     */
+    llama_stripe_backfill_membership_product_ids(
+        $db
+    );
+    
+    $plans = llama_membership_plans(
+        $db,
+        true
+    );
+    
     $productIds = [];
     $currencies = [];
-
+    
     foreach ($plans as $plan) {
         $interval = (string) ($plan['interval_slug'] ?? '');
 
