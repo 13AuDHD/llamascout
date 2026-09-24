@@ -7,18 +7,13 @@ require_once dirname(__DIR__) . '/app/promotion-codes.php';
 require_once dirname(__DIR__) . '/app/timezone.php';
 require_once __DIR__ . '/_dashboard.php';
 
-
 $adminUser =
     moderation_require_admin();
 
-$db =
-    db();
+$db = db();
 
 $actorUserId =
-    (int) (
-        $adminUser['id']
-        ?? 0
-    );
+    (int) ($adminUser['id'] ?? 0);
 
 $notice = '';
 $error = '';
@@ -31,9 +26,7 @@ $timezoneLabels =
 
 $viewerTimezoneLabel =
     (string) (
-        $timezoneLabels[
-            $viewerTimezone
-        ]
+        $timezoneLabels[$viewerTimezone]
         ?? $viewerTimezone
     );
 
@@ -46,18 +39,13 @@ function promotion_code_local_to_utc(
     string $value,
     string $timezone
 ): string {
-    $value =
-        trim(
-            $value
-        );
+    $value = trim($value);
 
     $local =
         DateTimeImmutable::createFromFormat(
             'Y-m-d\TH:i',
             $value,
-            new DateTimeZone(
-                $timezone
-            )
+            new DateTimeZone($timezone)
         );
 
     if (!$local) {
@@ -66,16 +54,40 @@ function promotion_code_local_to_utc(
         );
     }
 
-    return
-        $local
-            ->setTimezone(
-                new DateTimeZone(
-                    'UTC'
-                )
+    return $local
+        ->setTimezone(
+            new DateTimeZone('UTC')
+        )
+        ->format('Y-m-d H:i:s');
+}
+
+
+function promotion_code_utc_to_local_input(
+    ?string $value,
+    string $timezone
+): string {
+    $value =
+        trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    try {
+        return (
+            new DateTimeImmutable(
+                $value,
+                new DateTimeZone('UTC')
             )
-            ->format(
-                'Y-m-d H:i:s'
-            );
+        )
+            ->setTimezone(
+                new DateTimeZone($timezone)
+            )
+            ->format('Y-m-d\TH:i');
+
+    } catch (Throwable) {
+        return '';
+    }
 }
 
 
@@ -95,25 +107,12 @@ function promotion_code_scope_label(
     string $scope
 ): string {
     return match (
-        strtolower(
-            trim(
-                $scope
-            )
-        )
+        strtolower(trim($scope))
     ) {
-        'monthly' =>
-            'Monthly',
-
-        'annual' =>
-            'Annual',
-
-        'all' =>
-            'Monthly + Annual',
-
-        default =>
-            ucfirst(
-                $scope
-            ),
+        'monthly' => 'Monthly',
+        'annual' => 'Annual',
+        'all' => 'Monthly + Annual',
+        default => ucfirst($scope),
     };
 }
 
@@ -122,63 +121,43 @@ function promotion_code_discount_summary(
     array $code,
     int $monthlyBasePriceCents
 ): string {
-    $discountType =
-        strtolower(
-            trim(
-                (string) (
-                    $code[
-                        'discount_type'
-                    ]
-                    ?? ''
-                )
+    $discountType = strtolower(
+        trim(
+            (string) (
+                $code['discount_type']
+                ?? ''
             )
-        );
+        )
+    );
 
-    $discountValue =
-        max(
-            0,
-            (int) (
-                $code[
-                    'discount_value'
-                ]
-                ?? 0
+    $discountValue = max(
+        0,
+        (int) (
+            $code['discount_value']
+            ?? 0
+        )
+    );
+
+    $planScope = strtolower(
+        trim(
+            (string) (
+                $code['plan_scope']
+                ?? ''
             )
-        );
+        )
+    );
 
-    $planScope =
-        strtolower(
-            trim(
-                (string) (
-                    $code[
-                        'plan_scope'
-                    ]
-                    ?? ''
-                )
-            )
-        );
-
-
-    if (
-        $discountType ===
-        'percent'
-    ) {
+    if ($discountType === 'percent') {
         return
-            number_format(
-                $discountValue
-            )
+            number_format($discountValue)
             . '% off';
     }
 
-
-    if (
-        $discountType ===
-        'amount'
-    ) {
+    if ($discountType === 'amount') {
         if (
             $planScope === 'monthly'
             && $monthlyBasePriceCents > 0
-            && $discountValue <
-                $monthlyBasePriceCents
+            && $discountValue < $monthlyBasePriceCents
         ) {
             $promotionalPrice =
                 $monthlyBasePriceCents
@@ -197,53 +176,40 @@ function promotion_code_discount_summary(
         }
 
         return
-            promotion_code_money(
-                $discountValue
-            )
+            promotion_code_money($discountValue)
             . ' off';
     }
 
-
-    return
-        'Promotion';
+    return 'Promotion';
 }
 
 
 function promotion_code_duration_summary(
     array $code
 ): string {
-    $scope =
-        strtolower(
-            trim(
-                (string) (
-                    $code[
-                        'plan_scope'
-                    ]
-                    ?? ''
-                )
+    $scope = strtolower(
+        trim(
+            (string) (
+                $code['plan_scope']
+                ?? ''
             )
-        );
+        )
+    );
 
-    $duration =
-        strtolower(
-            trim(
-                (string) (
-                    $code[
-                        'discount_duration'
-                    ]
-                    ?? 'once'
-                )
+    $duration = strtolower(
+        trim(
+            (string) (
+                $code['discount_duration']
+                ?? 'once'
             )
-        );
+        )
+    );
 
     $months =
         (int) (
-            $code[
-                'duration_months'
-            ]
+            $code['duration_months']
             ?? 0
         );
-
 
     if (
         $scope === 'monthly'
@@ -260,25 +226,137 @@ function promotion_code_duration_summary(
                 : $months . ' months';
     }
 
-
-    if (
-        $scope === 'annual'
-    ) {
-        return
-            '1 annual billing period';
+    if ($scope === 'annual') {
+        return '1 annual billing period';
     }
 
-
-    if (
-        $scope === 'all'
-    ) {
-        return
-            '1 billing period per plan';
+    if ($scope === 'all') {
+        return '1 billing period per plan';
     }
 
+    return '1 billing period';
+}
 
-    return
-        '1 billing period';
+
+function promotion_code_form_input(
+    array $source
+): array {
+    $planScope =
+        strtolower(
+            trim(
+                (string) (
+                    $source['plan_scope']
+                    ?? 'all'
+                )
+            )
+        );
+
+    $discountType =
+        strtolower(
+            trim(
+                (string) (
+                    $source['discount_type']
+                    ?? 'percent'
+                )
+            )
+        );
+
+    $discountValue =
+        (int) (
+            $source['discount_value']
+            ?? 0
+        );
+
+    $durationMonths =
+        (int) (
+            $source['duration_months']
+            ?? 1
+        );
+
+    if (
+        !in_array(
+            $durationMonths,
+            llama_membership_promotion_code_month_options(),
+            true
+        )
+    ) {
+        $durationMonths = 1;
+    }
+
+    return [
+        'internal_name' =>
+            (string) (
+                $source['internal_name']
+                ?? ''
+            ),
+
+        'code' =>
+            (string) (
+                $source['code']
+                ?? ''
+            ),
+
+        'plan_scope' =>
+            in_array(
+                $planScope,
+                ['all', 'monthly', 'annual'],
+                true
+            )
+                ? $planScope
+                : 'all',
+
+        'discount_type' =>
+            in_array(
+                $discountType,
+                ['percent', 'amount'],
+                true
+            )
+                ? $discountType
+                : 'percent',
+
+        'discount_value' =>
+            $discountType === 'amount'
+                ? number_format(
+                    $discountValue / 100,
+                    2,
+                    '.',
+                    ''
+                )
+                : (
+                    $discountValue > 0
+                        ? (string) $discountValue
+                        : ''
+                ),
+
+        'duration_months' =>
+            $durationMonths,
+
+        'max_redemptions' =>
+            !empty(
+                $source['max_redemptions']
+            )
+                ? (string) (
+                    (int) $source['max_redemptions']
+                )
+                : '',
+
+        'starts_at' =>
+            (string) (
+                $source['starts_at']
+                ?? ''
+            ),
+
+        'ends_at' =>
+            (string) (
+                $source['ends_at']
+                ?? ''
+            ),
+
+        'first_time_customers_only' =>
+            !empty(
+                $source['first_time_customers_only']
+            ),
+    ];
 }
 
 
@@ -287,10 +365,9 @@ function promotion_code_duration_summary(
    ========================================================= */
 
 $monthlyBasePriceCents = 0;
-
+$schemaReady = false;
 
 try {
-
     $exists =
         $db->query(
             "SELECT COUNT(*)
@@ -307,7 +384,6 @@ try {
             'Promotion code database table is missing.'
         );
     }
-
 
     if (
         !llama_membership_column_exists(
@@ -326,6 +402,7 @@ try {
         );
     }
 
+    $schemaReady = true;
 
     $monthlyPlan =
         llama_membership_plan_by_interval(
@@ -337,29 +414,20 @@ try {
     if ($monthlyPlan) {
         $monthlyBasePriceCents =
             (int) (
-                $monthlyPlan[
-                    'base_price_cents'
-                ]
+                $monthlyPlan['base_price_cents']
                 ?? 0
             );
     }
 
 
-    /* =====================================================
-       POST ACTIONS
-       ===================================================== */
-
     if (
         ($_SERVER['REQUEST_METHOD'] ?? '')
         === 'POST'
     ) {
-
         if (
             !moderation_verify_csrf(
                 (string) (
-                    $_POST[
-                        'csrf_token'
-                    ]
+                    $_POST['csrf_token']
                     ?? ''
                 )
             )
@@ -369,72 +437,68 @@ try {
             );
         }
 
+        $action = trim(
+            (string) (
+                $_POST['promotion_code_action']
+                ?? ''
+            )
+        );
 
-        $action =
-            trim(
+
+        if (
+            in_array(
+                $action,
+                ['create', 'update'],
+                true
+            )
+            && (
                 (string) (
-                    $_POST[
-                        'promotion_code_action'
-                    ]
+                    $_POST['confirm_save']
+                    ?? ''
+                )
+                !== '1'
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Use the save button to create or update a promotion code.'
+            );
+        }
+
+
+        if (
+            $action === 'create'
+            || $action === 'update'
+        ) {
+            $discountType = strtolower(
+                trim(
+                    (string) (
+                        $_POST['discount_type']
+                        ?? 'percent'
+                    )
+                )
+            );
+
+            $discountRaw = trim(
+                (string) (
+                    $_POST['discount_value']
                     ?? ''
                 )
             );
 
-
-        /* =================================================
-           CREATE
-           ================================================= */
-
-        if (
-            $action ===
-            'create'
-        ) {
-
-            $discountType =
-                strtolower(
-                    trim(
-                        (string) (
-                            $_POST[
-                                'discount_type'
-                            ]
-                            ?? 'percent'
-                        )
-                    )
-                );
-
-            $discountRaw =
+            $planScope = strtolower(
                 trim(
                     (string) (
-                        $_POST[
-                            'discount_value'
-                        ]
-                        ?? ''
+                        $_POST['plan_scope']
+                        ?? 'all'
                     )
-                );
-
-            $planScope =
-                strtolower(
-                    trim(
-                        (string) (
-                            $_POST[
-                                'plan_scope'
-                            ]
-                            ?? 'all'
-                        )
-                    )
-                );
-
-
-            if (
-                !is_numeric(
-                    $discountRaw
                 )
-            ) {
+            );
+
+            if (!is_numeric($discountRaw)) {
                 throw new InvalidArgumentException(
                     'Enter a valid discount.'
                 );
             }
-
 
             if (
                 !in_array(
@@ -452,15 +516,10 @@ try {
                 );
             }
 
-
             if (
                 !in_array(
                     $planScope,
-                    [
-                        'all',
-                        'monthly',
-                        'annual',
-                    ],
+                    ['all', 'monthly', 'annual'],
                     true
                 )
             ) {
@@ -469,76 +528,35 @@ try {
                 );
             }
 
-
-            /*
-             * Percent values are whole percentages.
-             *
-             * Dollar amount and Promotional price values are
-             * converted from dollars to integer cents.
-             */
-            if (
-                $discountType ===
-                'percent'
-            ) {
-                $discountValue =
-                    (int) round(
+            $discountValue =
+                $discountType === 'percent'
+                    ? (int) round(
                         (float) $discountRaw
-                    );
-
-            } else {
-                $discountValue =
-                    (int) round(
-                        (
-                            (float) $discountRaw
-                        )
+                    )
+                    : (int) round(
+                        ((float) $discountRaw)
                         * 100
                     );
-            }
 
-
-            if (
-                $discountValue < 1
-            ) {
+            if ($discountValue < 1) {
                 throw new InvalidArgumentException(
                     'Discount must be greater than zero.'
                 );
             }
 
 
-            /* =================================================
-               DURATION
-               ================================================= */
+            $discountDuration = 'once';
+            $durationMonths = null;
 
-            $discountDuration =
-                'once';
-
-            $durationMonths =
-                null;
-
-
-            /*
-             * Monthly always uses an explicit number of months.
-             *
-             * One month means the first monthly billing period,
-             * then the normal price resumes on the next renewal.
-             */
-            if (
-                $planScope ===
-                'monthly'
-            ) {
-
-                $promotionDuration =
-                    strtolower(
-                        trim(
-                            (string) (
-                                $_POST[
-                                    'promotion_duration'
-                                ]
-                                ?? 'months_1'
-                            )
+            if ($planScope === 'monthly') {
+                $promotionDuration = strtolower(
+                    trim(
+                        (string) (
+                            $_POST['promotion_duration']
+                            ?? 'months_1'
                         )
-                    );
-
+                    )
+                );
 
                 if (
                     !preg_match(
@@ -552,36 +570,14 @@ try {
                     );
                 }
 
-
-                $discountDuration =
-                    'months';
-
+                $discountDuration = 'months';
                 $durationMonths =
                     (int) $durationMatch[1];
             }
 
-
-            /*
-             * Annual and combined-scope codes use one billing
-             * period for each applicable plan.
-             */
             if (
-                $planScope === 'annual'
-                || $planScope === 'all'
-            ) {
-                $discountDuration =
-                    'once';
-
-                $durationMonths =
-                    null;
-            }
-
-
-            if (
-                $discountType ===
-                'promotional_price'
-                && $planScope !==
-                    'monthly'
+                $discountType === 'promotional_price'
+                && $planScope !== 'monthly'
             ) {
                 throw new InvalidArgumentException(
                     'Promotional monthly pricing is available only for the Monthly membership.'
@@ -589,113 +585,109 @@ try {
             }
 
 
-            llama_create_membership_promotion_code(
-                $db,
-                [
-                    'internal_name' =>
-                        $_POST[
-                            'internal_name'
-                        ]
-                        ?? '',
+            $input = [
+                'internal_name' =>
+                    $_POST['internal_name']
+                    ?? '',
 
-                    'code' =>
-                        $_POST[
-                            'code'
-                        ]
-                        ?? '',
+                'code' =>
+                    $_POST['code']
+                    ?? '',
 
-                    'discount_type' =>
-                        $discountType,
+                'discount_type' =>
+                    $discountType,
 
-                    'discount_value' =>
-                        $discountValue,
+                'discount_value' =>
+                    $discountValue,
 
-                    'plan_scope' =>
-                        $planScope,
+                'plan_scope' =>
+                    $planScope,
 
-                    'discount_duration' =>
-                        $discountDuration,
+                'discount_duration' =>
+                    $discountDuration,
 
-                    'duration_months' =>
-                        $durationMonths,
+                'duration_months' =>
+                    $durationMonths,
 
-                    'starts_at' =>
-                        promotion_code_local_to_utc(
-                            (string) (
-                                $_POST[
-                                    'starts_at'
-                                ]
-                                ?? ''
-                            ),
-                            $viewerTimezone
+                'starts_at' =>
+                    promotion_code_local_to_utc(
+                        (string) (
+                            $_POST['starts_at']
+                            ?? ''
                         ),
+                        $viewerTimezone
+                    ),
 
-                    'ends_at' =>
-                        promotion_code_local_to_utc(
-                            (string) (
-                                $_POST[
-                                    'ends_at'
-                                ]
-                                ?? ''
-                            ),
-                            $viewerTimezone
+                'ends_at' =>
+                    promotion_code_local_to_utc(
+                        (string) (
+                            $_POST['ends_at']
+                            ?? ''
                         ),
+                        $viewerTimezone
+                    ),
 
-                    'first_time_customers_only' =>
-                        isset(
-                            $_POST[
-                                'first_time_customers_only'
-                            ]
-                        ),
-
-                    'max_redemptions' =>
+                'first_time_customers_only' =>
+                    isset(
                         $_POST[
-                            'max_redemptions'
+                            'first_time_customers_only'
                         ]
-                        ?? null,
-                ],
-                $actorUserId
-            );
+                    ),
+
+                'max_redemptions' =>
+                    $_POST['max_redemptions']
+                    ?? null,
+            ];
 
 
-            $notice =
-                'Promotion code created in Stripe.';
+            if ($action === 'update') {
+                $id =
+                    (int) (
+                        $_POST['promotion_code_id']
+                        ?? 0
+                    );
+
+                llama_update_membership_promotion_code(
+                    $db,
+                    $id,
+                    $input
+                );
+
+                $notice =
+                    'Promotion code updated in Stripe and Llama Scout.';
+
+            } else {
+                llama_create_membership_promotion_code(
+                    $db,
+                    $input,
+                    $actorUserId
+                );
+
+                $notice =
+                    'Promotion code created in Stripe.';
+            }
         }
 
 
-        /* =================================================
-           ENABLE / DISABLE
-           ================================================= */
-
-        if (
-            $action ===
-            'toggle'
-        ) {
-
+        if ($action === 'toggle') {
             $id =
                 (int) (
-                    $_POST[
-                        'promotion_code_id'
-                    ]
+                    $_POST['promotion_code_id']
                     ?? 0
                 );
 
             $enabled =
                 (int) (
-                    $_POST[
-                        'enabled'
-                    ]
+                    $_POST['enabled']
                     ?? 0
                 )
                 === 1;
-
 
             llama_set_membership_promotion_code_enabled(
                 $db,
                 $id,
                 $enabled
             );
-
 
             $notice =
                 $enabled
@@ -709,9 +701,7 @@ try {
         $db
     );
 
-
 } catch (Throwable $exception) {
-
     $reference =
         llama_log_caught_exception(
             $exception,
@@ -721,7 +711,6 @@ try {
                 InvalidArgumentException::class,
             ]
         );
-
 
     $error =
         $reference === null
@@ -738,38 +727,24 @@ try {
    ========================================================= */
 
 $stats =
-    admin_dashboard_stats(
-        $db
-    );
-
+    admin_dashboard_stats($db);
 
 $adminNavCounts = [
     'new_places' =>
-        $stats[
-            'new_places'
-        ],
+        $stats['new_places'],
 
     'updates' =>
-        $stats[
-            'updates'
-        ],
+        $stats['updates'],
 
     'reports' =>
-        $stats[
-            'reports'
-        ],
+        $stats['reports'],
 
     'orders' =>
-        $stats[
-            'orders'
-        ],
+        $stats['orders'],
 
     'scout_reviews' =>
-        $stats[
-            'scout_reviews'
-        ],
+        $stats['scout_reviews'],
 ];
-
 
 $adminPageTitle =
     'Promotion Codes';
@@ -782,30 +757,101 @@ $adminActiveNav =
 
 
 /* =========================================================
-   PROMOTION CODE LIST
+   PROMOTION CODE LIST AND EDITOR
    ========================================================= */
 
 $codes = [];
 $codeStats = [];
+$editingCode = null;
+
+if ($schemaReady) {
+    try {
+        $codes =
+            $db->query(
+                'SELECT *
+                 FROM membership_promotion_codes
+                 ORDER BY starts_at DESC, id DESC'
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+        $codeStats =
+            llama_membership_promotion_code_stats(
+                $db
+            );
+
+        $editId =
+            (int) (
+                $_GET['edit']
+                ?? (
+                    $_POST['promotion_code_action'] === 'update'
+                        ? (
+                            $_POST['promotion_code_id']
+                            ?? 0
+                        )
+                        : 0
+                )
+            );
+
+        if ($editId > 0) {
+            foreach ($codes as $candidate) {
+                if (
+                    (int) $candidate['id']
+                    === $editId
+                ) {
+                    $editingCode = $candidate;
+                    break;
+                }
+            }
+        }
+
+    } catch (Throwable $listException) {
+        if ($error === '') {
+            $reference =
+                llama_log_caught_exception(
+                    $listException,
+                    'admin.promotion_codes.list'
+                );
+
+            $error =
+                llama_error_message_with_reference(
+                    'Promotion codes could not be loaded.',
+                    $reference
+                );
+        }
+    }
+}
 
 
-if (
-    $error === ''
-) {
+$formSource =
+    $editingCode
+        ? promotion_code_form_input(
+            $editingCode
+        )
+        : [
+            'internal_name' => '',
+            'code' => '',
+            'plan_scope' => 'all',
+            'discount_type' => 'percent',
+            'discount_value' => '',
+            'duration_months' => 1,
+            'max_redemptions' => '',
+            'starts_at' => '',
+            'ends_at' => '',
+            'first_time_customers_only' => false,
+        ];
 
-    $codes =
-        $db->query(
-            'SELECT *
-             FROM membership_promotion_codes
-             ORDER BY starts_at DESC, id DESC'
-        )->fetchAll(
-            PDO::FETCH_ASSOC
+if ($editingCode) {
+    $formSource['starts_at'] =
+        promotion_code_utc_to_local_input(
+            $editingCode['starts_at']
+                ?? null,
+            $viewerTimezone
         );
 
-
-    $codeStats =
-        llama_membership_promotion_code_stats(
-            $db
+    $formSource['ends_at'] =
+        promotion_code_utc_to_local_input(
+            $editingCode['ends_at']
+                ?? null,
+            $viewerTimezone
         );
 }
 
@@ -816,35 +862,25 @@ require __DIR__
 ?>
 
 
-<?php if (
-    $notice !== ''
-): ?>
+<?php if ($notice !== ''): ?>
 
 <div class="admin-user-notice is-success">
-    <?= moderation_e(
-        $notice
-    ) ?>
+    <?= moderation_e($notice) ?>
 </div>
 
 <?php endif; ?>
 
 
-<?php if (
-    $error !== ''
-): ?>
+<?php if ($error !== ''): ?>
 
 <div class="admin-user-notice is-error">
-    <?= moderation_e(
-        $error
-    ) ?>
+    <?= moderation_e($error) ?>
 </div>
 
 <?php endif; ?>
 
 
-<?php if (
-    $error === ''
-): ?>
+<?php if ($schemaReady): ?>
 
 
 <section class="admin-panel">
@@ -853,26 +889,60 @@ require __DIR__
 <header class="admin-panel-header">
 
     <div>
-
         <p>
-            Customer discounts
+            <?= $editingCode
+                ? 'Edit customer discount'
+                : 'Customer discounts'
+            ?>
         </p>
 
         <h2>
-            Create Promotion Code
+            <?= $editingCode
+                ? 'Edit Promotion Code'
+                : 'Create Promotion Code'
+            ?>
         </h2>
-
     </div>
 
 
-    <a
-        class="admin-button"
-        href="/memberships.php"
-    >
-        Pricing & Promotions
-    </a>
+    <div class="admin-campaign-card-actions">
+
+        <?php if ($editingCode): ?>
+
+        <a
+            class="admin-button"
+            href="/promotion-codes.php"
+        >
+            Cancel edit
+        </a>
+
+        <?php endif; ?>
+
+
+        <a
+            class="admin-button"
+            href="/memberships.php"
+        >
+            Pricing & Promotions
+        </a>
+
+    </div>
 
 </header>
+
+
+<?php if ($editingCode): ?>
+
+<div class="admin-user-notice">
+
+    Saving changes replaces the underlying Stripe Promotion Code
+    and Coupon when needed. Existing customer subscriptions keep
+    discounts already attached to them. Redemption and revenue
+    history stay attached to this Llama Scout record.
+
+</div>
+
+<?php endif; ?>
 
 
 <form
@@ -894,7 +964,28 @@ require __DIR__
 <input
     type="hidden"
     name="promotion_code_action"
-    value="create"
+    value="<?= $editingCode
+        ? 'update'
+        : 'create'
+    ?>"
+>
+
+
+<input
+    type="hidden"
+    name="promotion_code_id"
+    value="<?= $editingCode
+        ? (int) $editingCode['id']
+        : 0
+    ?>"
+>
+
+
+<input
+    type="hidden"
+    name="confirm_save"
+    id="promotion-confirm-save"
+    value="0"
 >
 
 
@@ -910,6 +1001,9 @@ require __DIR__
         name="internal_name"
         maxlength="150"
         placeholder="Summer monthly special"
+        value="<?= moderation_e(
+            $formSource['internal_name']
+        ) ?>"
         required
     >
 
@@ -926,6 +1020,9 @@ require __DIR__
         maxlength="100"
         placeholder="SUMMER499"
         autocapitalize="characters"
+        value="<?= moderation_e(
+            $formSource['code']
+        ) ?>"
         required
     >
 
@@ -941,15 +1038,33 @@ require __DIR__
         id="promotion-plan-scope"
     >
 
-        <option value="all">
+        <option
+            value="all"
+            <?= $formSource['plan_scope'] === 'all'
+                ? 'selected'
+                : ''
+            ?>
+        >
             Monthly + Annual
         </option>
 
-        <option value="monthly">
+        <option
+            value="monthly"
+            <?= $formSource['plan_scope'] === 'monthly'
+                ? 'selected'
+                : ''
+            ?>
+        >
             Monthly only
         </option>
 
-        <option value="annual">
+        <option
+            value="annual"
+            <?= $formSource['plan_scope'] === 'annual'
+                ? 'selected'
+                : ''
+            ?>
+        >
             Annual only
         </option>
 
@@ -967,11 +1082,23 @@ require __DIR__
         id="promotion-discount-type"
     >
 
-        <option value="percent">
+        <option
+            value="percent"
+            <?= $formSource['discount_type'] === 'percent'
+                ? 'selected'
+                : ''
+            ?>
+        >
             Percent off
         </option>
 
-        <option value="amount">
+        <option
+            value="amount"
+            <?= $formSource['discount_type'] === 'amount'
+                ? 'selected'
+                : ''
+            ?>
+        >
             Dollar amount off
         </option>
 
@@ -987,17 +1114,19 @@ require __DIR__
 <label>
 
     <span id="promotion-discount-value-label">
-        Percent off
+        Discount value
     </span>
 
     <input
         type="number"
         name="discount_value"
         id="promotion-discount-value"
-        min="1"
-        step="1"
+        min="0.01"
+        step="0.01"
         inputmode="decimal"
-        placeholder="25"
+        value="<?= moderation_e(
+            $formSource['discount_value']
+        ) ?>"
         required
     >
 
@@ -1005,7 +1134,7 @@ require __DIR__
         class="admin-table-muted"
         id="promotion-discount-value-help"
     >
-        Enter the percentage to discount.
+        Enter the discount.
     </small>
 
 </label>
@@ -1018,32 +1147,33 @@ require __DIR__
     <select
         name="promotion_duration"
         id="promotion-duration"
-        disabled
+        <?= $formSource['plan_scope'] === 'monthly'
+            ? ''
+            : 'disabled'
+        ?>
     >
 
-        <option value="months_1">
-            1 month
+        <?php foreach (
+            llama_membership_promotion_code_month_options()
+            as $months
+        ): ?>
+
+        <option
+            value="months_<?= (int) $months ?>"
+            <?= (int) $formSource['duration_months'] ===
+                $months
+                    ? 'selected'
+                    : ''
+            ?>
+        >
+            <?= (int) $months ?>
+            <?= $months === 1
+                ? 'month'
+                : 'months'
+            ?>
         </option>
 
-        <option value="months_2">
-            2 months
-        </option>
-
-        <option value="months_3">
-            3 months
-        </option>
-
-        <option value="months_6">
-            6 months
-        </option>
-
-        <option value="months_9">
-            9 months
-        </option>
-
-        <option value="months_12">
-            12 months
-        </option>
+        <?php endforeach; ?>
 
     </select>
 
@@ -1068,6 +1198,9 @@ require __DIR__
         step="1"
         inputmode="numeric"
         placeholder="Unlimited"
+        value="<?= moderation_e(
+            $formSource['max_redemptions']
+        ) ?>"
     >
 
 </label>
@@ -1083,6 +1216,9 @@ require __DIR__
     <input
         type="datetime-local"
         name="starts_at"
+        value="<?= moderation_e(
+            $formSource['starts_at']
+        ) ?>"
         required
     >
 
@@ -1099,6 +1235,9 @@ require __DIR__
     <input
         type="datetime-local"
         name="ends_at"
+        value="<?= moderation_e(
+            $formSource['ends_at']
+        ) ?>"
         required
     >
 
@@ -1111,9 +1250,7 @@ require __DIR__
 <p class="admin-table-muted">
 
     Times entered here use your profile timezone:
-    <?= moderation_e(
-        $viewerTimezone
-    ) ?>.
+    <?= moderation_e($viewerTimezone) ?>.
 
 </p>
 
@@ -1124,6 +1261,14 @@ require __DIR__
         type="checkbox"
         name="first_time_customers_only"
         value="1"
+        <?= !empty(
+            $formSource[
+                'first_time_customers_only'
+            ]
+        )
+            ? 'checked'
+            : ''
+        ?>
     >
 
     <span
@@ -1142,12 +1287,31 @@ require __DIR__
 </label>
 
 
-<button
-    class="admin-button"
-    type="submit"
->
-    Create code in Stripe
-</button>
+<div class="admin-campaign-card-actions">
+
+    <button
+        class="admin-button"
+        type="button"
+        id="promotion-save-button"
+    >
+        <?= $editingCode
+            ? 'Save changes'
+            : 'Create code in Stripe'
+        ?>
+    </button>
+
+    <?php if ($editingCode): ?>
+
+    <a
+        class="admin-button"
+        href="/promotion-codes.php"
+    >
+        Cancel
+    </a>
+
+    <?php endif; ?>
+
+</div>
 
 
 </form>
@@ -1162,40 +1326,25 @@ require __DIR__
 <header class="admin-panel-header">
 
     <div>
-
-        <p>
-            Stripe promotion codes
-        </p>
-
-        <h2>
-            Codes
-        </h2>
-
+        <p>Stripe promotion codes</p>
+        <h2>Codes</h2>
     </div>
 
     <span>
-        <?= number_format(
-            count(
-                $codes
-            )
-        ) ?>
+        <?= number_format(count($codes)) ?>
         total
     </span>
 
 </header>
 
 
-<?php if (
-    !$codes
-): ?>
+<?php if (!$codes): ?>
 
 
 <div class="admin-empty-state">
 
     <i aria-hidden="true">
-        <?= llama_icon(
-            'ticket'
-        ) ?>
+        <?= llama_icon('ticket') ?>
     </i>
 
     <h3>
@@ -1211,76 +1360,43 @@ require __DIR__
 <div class="promo-code-list">
 
 
-<?php foreach (
-    $codes
-    as $code
-): ?>
+<?php foreach ($codes as $code): ?>
 
 
 <?php
 
-$now =
-    time();
-
+$now = time();
 
 $startsDate =
     new DateTimeImmutable(
-        (string) $code[
-            'starts_at'
-        ],
-        new DateTimeZone(
-            'UTC'
-        )
+        (string) $code['starts_at'],
+        new DateTimeZone('UTC')
     );
-
 
 $endsDate =
     new DateTimeImmutable(
-        (string) $code[
-            'ends_at'
-        ],
-        new DateTimeZone(
-            'UTC'
-        )
+        (string) $code['ends_at'],
+        new DateTimeZone('UTC')
     );
 
-
 $starts =
-    $startsDate
-        ->getTimestamp();
+    $startsDate->getTimestamp();
 
 $ends =
-    $endsDate
-        ->getTimestamp();
+    $endsDate->getTimestamp();
 
+if (empty($code['is_enabled'])) {
+    $status = 'Disabled';
 
-if (
-    empty(
-        $code[
-            'is_enabled'
-        ]
-    )
-) {
-    $status =
-        'Disabled';
+} elseif ($now < $starts) {
+    $status = 'Scheduled';
 
-} elseif (
-    $now < $starts
-) {
-    $status =
-        'Scheduled';
-
-} elseif (
-    $now >= $ends
-) {
-    $status =
-        'Ended';
+} elseif ($now >= $ends) {
+    $status = 'Ended';
 
 } else {
-    $status =
-        'Active';
+    $status = 'Active';
 }
-
 
 $discount =
     promotion_code_discount_summary(
@@ -1288,47 +1404,34 @@ $discount =
         $monthlyBasePriceCents
     );
 
-
 $duration =
     promotion_code_duration_summary(
         $code
     );
 
-
 $scopeLabel =
     promotion_code_scope_label(
         (string) (
-            $code[
-                'plan_scope'
-            ]
+            $code['plan_scope']
             ?? ''
         )
     );
 
-
 $results =
     $codeStats[
-        (int) $code[
-            'id'
-        ]
+        (int) $code['id']
     ]
     ?? [];
 
-
 $redemptions =
     (int) (
-        $results[
-            'redemptions'
-        ]
+        $results['redemptions']
         ?? 0
     );
 
-
 $revenueCents =
     (int) (
-        $results[
-            'revenue_cents'
-        ]
+        $results['revenue_cents']
         ?? 0
     );
 
@@ -1344,120 +1447,105 @@ $revenueCents =
 <div>
 
     <span class="admin-status-pill">
-        <?= moderation_e(
-            $status
-        ) ?>
+        <?= moderation_e($status) ?>
     </span>
 
     <h3>
         <?= moderation_e(
-            (string) $code[
-                'code'
-            ]
+            (string) $code['code']
         ) ?>
     </h3>
 
     <p>
         <?= moderation_e(
-            (string) $code[
-                'internal_name'
-            ]
+            (string) $code['internal_name']
         ) ?>
     </p>
 
 </div>
 
 
-<form method="post">
+<div class="admin-campaign-card-actions">
+
+    <a
+        class="admin-button"
+        href="/promotion-codes.php?edit=<?= (int) $code['id'] ?>"
+    >
+        Edit
+    </a>
 
 
-<input
-    type="hidden"
-    name="csrf_token"
-    value="<?= moderation_e(
-        moderation_csrf_token()
-    ) ?>"
->
+    <form method="post">
 
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= moderation_e(
+                moderation_csrf_token()
+            ) ?>"
+        >
 
-<input
-    type="hidden"
-    name="promotion_code_action"
-    value="toggle"
->
+        <input
+            type="hidden"
+            name="promotion_code_action"
+            value="toggle"
+        >
 
+        <input
+            type="hidden"
+            name="promotion_code_id"
+            value="<?= (int) $code['id'] ?>"
+        >
 
-<input
-    type="hidden"
-    name="promotion_code_id"
-    value="<?= (int) $code[
-        'id'
-    ] ?>"
->
+        <input
+            type="hidden"
+            name="enabled"
+            value="<?= !empty(
+                $code['is_enabled']
+            )
+                ? '0'
+                : '1'
+            ?>"
+        >
 
+        <button
+            class="admin-toggle-action"
+            type="submit"
+            aria-pressed="<?= !empty(
+                $code['is_enabled']
+            )
+                ? 'true'
+                : 'false'
+            ?>"
+            title="<?= !empty(
+                $code['is_enabled']
+            )
+                ? 'Disable code'
+                : 'Enable code'
+            ?>"
+        >
 
-<input
-    type="hidden"
-    name="enabled"
-    value="<?= !empty(
-        $code[
-            'is_enabled'
-        ]
-    )
-        ? '0'
-        : '1'
-    ?>"
->
+            <span
+                class="admin-toggle-track"
+                aria-hidden="true"
+            >
+                <span class="admin-toggle-knob"></span>
+            </span>
 
+            <span class="admin-toggle-action-label">
+                <?= !empty(
+                    $code['is_enabled']
+                )
+                    ? 'Enabled'
+                    : 'Disabled'
+                ?>
+            </span>
 
-<button
-    class="admin-toggle-action"
-    type="submit"
-    aria-pressed="<?= !empty(
-        $code[
-            'is_enabled'
-        ]
-    )
-        ? 'true'
-        : 'false'
-    ?>"
-    title="<?= !empty(
-        $code[
-            'is_enabled'
-        ]
-    )
-        ? 'Disable code'
-        : 'Enable code'
-    ?>"
->
+        </button>
 
+    </form>
 
-<span
-    class="admin-toggle-track"
-    aria-hidden="true"
->
-    <span class="admin-toggle-knob"></span>
-</span>
-
-
-<span class="admin-toggle-action-label">
-
-    <?= !empty(
-        $code[
-            'is_enabled'
-        ]
-    )
-        ? 'Enabled'
-        : 'Disabled'
-    ?>
-
-</span>
-
-
-</button>
-
-
-</form>
+</div>
 
 
 </div>
@@ -1467,9 +1555,7 @@ $revenueCents =
 
 
 <label
-    for="promotion-share-link-<?= (int) $code[
-        'id'
-    ] ?>"
+    for="promotion-share-link-<?= (int) $code['id'] ?>"
 >
     Share link
 </label>
@@ -1477,19 +1563,14 @@ $revenueCents =
 
 <div class="promo-code-share-control">
 
-
 <input
-    id="promotion-share-link-<?= (int) $code[
-        'id'
-    ] ?>"
+    id="promotion-share-link-<?= (int) $code['id'] ?>"
     type="text"
     readonly
     value="<?= moderation_e(
         'https://account.llamascout.com/promo.php?code='
         . rawurlencode(
-            (string) $code[
-                'code'
-            ]
+            (string) $code['code']
         )
     ) ?>"
 >
@@ -1498,33 +1579,24 @@ $revenueCents =
 <button
     class="promo-code-copy-button"
     type="button"
-    data-copy-target="promotion-share-link-<?= (int) $code[
-        'id'
-    ] ?>"
+    data-copy-target="promotion-share-link-<?= (int) $code['id'] ?>"
     aria-label="Copy share link"
     title="Copy share link"
 >
 
+    <span
+        class="promo-code-copy-default"
+        aria-hidden="true"
+    >
+        <?= llama_icon('copy') ?>
+    </span>
 
-<span
-    class="promo-code-copy-default"
-    aria-hidden="true"
->
-    <?= llama_icon(
-        'copy'
-    ) ?>
-</span>
-
-
-<span
-    class="promo-code-copy-success"
-    aria-hidden="true"
->
-    <?= llama_icon(
-        'check'
-    ) ?>
-</span>
-
+    <span
+        class="promo-code-copy-success"
+        aria-hidden="true"
+    >
+        <?= llama_icon('check') ?>
+    </span>
 
 </button>
 
@@ -1575,33 +1647,22 @@ $revenueCents =
 
 <div class="promo-code-meta">
 
-
 <span>
-    <?= moderation_e(
-        $discount
-    ) ?>
+    <?= moderation_e($discount) ?>
 </span>
 
-
 <span>
-    <?= moderation_e(
-        $scopeLabel
-    ) ?>
+    <?= moderation_e($scopeLabel) ?>
 </span>
 
-
 <span>
-    <?= moderation_e(
-        $duration
-    ) ?>
+    <?= moderation_e($duration) ?>
 </span>
 
 
 <?php if (
     !empty(
-        $code[
-            'first_time_customers_only'
-        ]
+        $code['first_time_customers_only']
     )
 ): ?>
 
@@ -1614,21 +1675,15 @@ $revenueCents =
 
 <?php if (
     !empty(
-        $code[
-            'max_redemptions'
-        ]
+        $code['max_redemptions']
     )
 ): ?>
 
 <span>
-
     <?= number_format(
-        (int) $code[
-            'max_redemptions'
-        ]
+        (int) $code['max_redemptions']
     ) ?>
     max
-
 </span>
 
 <?php endif; ?>
@@ -1638,19 +1693,15 @@ $revenueCents =
 
     <?= moderation_e(
         llama_format_viewer_datetime(
-            (string) $code[
-                'starts_at'
-            ]
+            (string) $code['starts_at']
         )
     ) ?>
 
-    →
+    â
 
     <?= moderation_e(
         llama_format_viewer_datetime(
-            (string) $code[
-                'ends_at'
-            ]
+            (string) $code['ends_at']
         )
     ) ?>
 
@@ -1691,7 +1742,6 @@ $revenueCents =
         return;
     }
 
-
     const planSelect =
         document.getElementById(
             'promotion-plan-scope'
@@ -1727,6 +1777,16 @@ $revenueCents =
             'promotion-duration-help'
         );
 
+    const saveButton =
+        document.getElementById(
+            'promotion-save-button'
+        );
+
+    const confirmSave =
+        document.getElementById(
+            'promotion-confirm-save'
+        );
+
 
     function syncPromotionForm() {
         if (
@@ -1738,25 +1798,14 @@ $revenueCents =
             return;
         }
 
-
         const monthlyOnly =
-            planSelect.value ===
-            'monthly';
+            planSelect.value === 'monthly';
 
         const annualOnly =
-            planSelect.value ===
-            'annual';
+            planSelect.value === 'annual';
 
-
-        /*
-         * Monthly has a real duration selector.
-         *
-         * Annual and combined codes always use one billing period.
-         */
         if (monthlyOnly) {
-
-            durationSelect.disabled =
-                false;
+            durationSelect.disabled = false;
 
             if (
                 ![
@@ -1774,20 +1823,17 @@ $revenueCents =
                     'months_1';
             }
 
-
             if (durationHelp) {
                 durationHelp.textContent =
                     'Choose how many monthly billing cycles receive the promotional price.';
             }
 
         } else {
-
             durationSelect.value =
                 'months_1';
 
             durationSelect.disabled =
                 true;
-
 
             if (durationHelp) {
                 durationHelp.textContent =
@@ -1798,44 +1844,27 @@ $revenueCents =
         }
 
 
-        /*
-         * Promotional monthly price belongs only to Monthly.
-         */
         if (
-            discountType.value ===
-            'promotional_price'
+            discountType.value === 'promotional_price'
             && !monthlyOnly
         ) {
-            discountType.value =
-                'percent';
+            discountType.value = 'percent';
         }
 
 
         if (
-            discountType.value ===
-            'promotional_price'
+            discountType.value === 'promotional_price'
         ) {
-
-            if (
-                discountValueLabel
-            ) {
+            if (discountValueLabel) {
                 discountValueLabel.textContent =
                     'Promotional monthly price';
             }
 
-            discountValue.min =
-                '0.01';
+            discountValue.min = '0.01';
+            discountValue.step = '0.01';
+            discountValue.placeholder = '4.99';
 
-            discountValue.step =
-                '0.01';
-
-            discountValue.placeholder =
-                '4.99';
-
-
-            if (
-                discountValueHelp
-            ) {
+            if (discountValueHelp) {
                 discountValueHelp.textContent =
                     'Enter the price the customer pays each month, not the amount off.';
             }
@@ -1844,31 +1873,17 @@ $revenueCents =
         }
 
 
-        if (
-            discountType.value ===
-            'amount'
-        ) {
-
-            if (
-                discountValueLabel
-            ) {
+        if (discountType.value === 'amount') {
+            if (discountValueLabel) {
                 discountValueLabel.textContent =
                     'Dollar amount off';
             }
 
-            discountValue.min =
-                '0.01';
+            discountValue.min = '0.01';
+            discountValue.step = '0.01';
+            discountValue.placeholder = '2.00';
 
-            discountValue.step =
-                '0.01';
-
-            discountValue.placeholder =
-                '2.00';
-
-
-            if (
-                discountValueHelp
-            ) {
+            if (discountValueHelp) {
                 discountValueHelp.textContent =
                     'Enter the dollar amount deducted from the normal membership price.';
             }
@@ -1877,46 +1892,89 @@ $revenueCents =
         }
 
 
-        if (
-            discountValueLabel
-        ) {
+        if (discountValueLabel) {
             discountValueLabel.textContent =
                 'Percent off';
         }
 
-        discountValue.min =
-            '1';
+        discountValue.min = '1';
+        discountValue.step = '1';
+        discountValue.placeholder = '25';
 
-        discountValue.step =
-            '1';
-
-        discountValue.placeholder =
-            '25';
-
-
-        if (
-            discountValueHelp
-        ) {
+        if (discountValueHelp) {
             discountValueHelp.textContent =
                 'Enter the percentage to discount.';
         }
     }
 
 
-    if (
-        discountType
-    ) {
+    /*
+     * Return or Enter must never create or update a code.
+     * The user must deliberately tap the save button.
+     */
+    form.addEventListener(
+        'keydown',
+        function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            const target = event.target;
+
+            if (
+                target
+                && target.matches(
+                    'input, select, textarea'
+                )
+            ) {
+                event.preventDefault();
+            }
+        }
+    );
+
+
+    form.addEventListener(
+        'submit',
+        function (event) {
+            if (
+                !confirmSave
+                || confirmSave.value !== '1'
+            ) {
+                event.preventDefault();
+            }
+        }
+    );
+
+
+    if (saveButton) {
+        saveButton.addEventListener(
+            'click',
+            function () {
+                if (confirmSave) {
+                    confirmSave.value = '1';
+                }
+
+                if (
+                    typeof form.requestSubmit === 'function'
+                ) {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            }
+        );
+    }
+
+
+    if (discountType) {
         discountType.addEventListener(
             'change',
             function () {
-
                 if (
-                    discountType.value ===
-                    'promotional_price'
+                    discountType.value === 'promotional_price'
                     && planSelect
                 ) {
-                    planSelect.value =
-                        'monthly';
+                    planSelect.value = 'monthly';
                 }
 
                 syncPromotionForm();
@@ -1925,9 +1983,7 @@ $revenueCents =
     }
 
 
-    if (
-        planSelect
-    ) {
+    if (planSelect) {
         planSelect.addEventListener(
             'change',
             syncPromotionForm
@@ -1942,7 +1998,6 @@ $revenueCents =
 document.addEventListener(
     'click',
     async function (event) {
-
         const button =
             event.target.closest(
                 '.promo-code-copy-button'
@@ -1951,7 +2006,6 @@ document.addEventListener(
         if (!button) {
             return;
         }
-
 
         const targetId =
             button.dataset.copyTarget;
@@ -1965,13 +2019,9 @@ document.addEventListener(
             return;
         }
 
-
-        let copied =
-            false;
-
+        let copied = false;
 
         try {
-
             if (
                 navigator.clipboard
                 && window.isSecureContext
@@ -1980,19 +2030,15 @@ document.addEventListener(
                     input.value
                 );
 
-                copied =
-                    true;
+                copied = true;
             }
 
         } catch (error) {
-
-            copied =
-                false;
+            copied = false;
         }
 
 
         if (!copied) {
-
             input.focus();
             input.select();
 
@@ -2001,18 +2047,12 @@ document.addEventListener(
                 input.value.length
             );
 
-
             try {
-
                 copied =
-                    document.execCommand(
-                        'copy'
-                    );
+                    document.execCommand('copy');
 
             } catch (error) {
-
-                copied =
-                    false;
+                copied = false;
             }
         }
 
@@ -2021,10 +2061,7 @@ document.addEventListener(
             return;
         }
 
-
-        button.classList.add(
-            'is-copied'
-        );
+        button.classList.add('is-copied');
 
         button.setAttribute(
             'aria-label',
@@ -2036,10 +2073,8 @@ document.addEventListener(
             'Copied'
         );
 
-
         window.setTimeout(
             function () {
-
                 button.classList.remove(
                     'is-copied'
                 );
