@@ -70,7 +70,10 @@ $promotionBannerEndsAt = $activeWebsitePromotion
     : '';
 ?>
 <!doctype html>
-<html lang="en">
+<html
+    lang="en"
+    data-site-shell="public"
+>
 <head>
     <meta charset="utf-8">
 
@@ -157,7 +160,9 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 const theme = localStorage.getItem('llama-theme');
                 const fontSize = localStorage.getItem('llama-font-size');
                 const reducedMotion = localStorage.getItem('llama-reduced-motion');
-
+                const focusIndicators = localStorage.getItem(
+                    'llama-focus-indicators'
+                );
                 if (theme) {
                     document.documentElement.dataset.theme = theme;
                 }
@@ -169,6 +174,12 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 if (reducedMotion === 'true') {
                     document.documentElement.dataset.reducedMotion = 'true';
                 }
+                
+                document.documentElement.dataset.focusIndicators =
+                    focusIndicators === 'always'
+                        ? 'always'
+                        : 'auto';
+                
             } catch (e) {
                 // Accessibility preferences are optional.
             }
@@ -438,6 +449,17 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 </label>
             </div>
 
+            <div class="accessibility-setting accessibility-checkbox">
+                <input
+                    type="checkbox"
+                    id="focus-indicators"
+                >
+            
+                <label for="focus-indicators">
+                    <?= llama_icon('eye') ?>
+                    Always show focus indicators
+                </label>
+            </div>
 
             <button
                 type="button"
