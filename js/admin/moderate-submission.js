@@ -84,6 +84,171 @@
         );
     };
 
+
+    const initNearbyPlaceMap = () => {
+        const report =
+            document.querySelector(
+                '.scout-report'
+            );
+
+        if (!report) {
+            return;
+        }
+
+        const sections =
+            Array.from(
+                report.querySelectorAll(
+                    ':scope > .scout-report-section'
+                )
+            );
+
+        const locationSection =
+            sections.find(
+                (section) => {
+                    const heading =
+                        section.querySelector('h3');
+
+                    return (
+                        heading
+                        && heading.textContent
+                            .trim()
+                            .toLowerCase()
+                            === 'location'
+                    );
+                }
+            );
+
+        if (!locationSection) {
+            return;
+        }
+
+        const existing =
+            document.getElementById(
+                'admin-nearby-place-map-section'
+            );
+
+        if (existing) {
+            return;
+        }
+
+        const query =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        let submissionId =
+            String(
+                query.get('id')
+                || ''
+            ).trim();
+
+        if (submissionId === '') {
+            const input =
+                document.querySelector(
+                    '.admin-submission-decision-form input[name="id"]'
+                );
+
+            submissionId =
+                String(
+                    input?.value
+                    || ''
+                ).trim();
+        }
+
+        if (
+            submissionId === ''
+            || !/^\d+$/.test(
+                submissionId
+            )
+        ) {
+            return;
+        }
+
+        const section =
+            document.createElement(
+                'section'
+            );
+
+        section.id =
+            'admin-nearby-place-map-section';
+
+        section.className =
+            'scout-report-section admin-moderation-nearby-map-section';
+
+
+        const heading =
+            document.createElement(
+                'h3'
+            );
+
+        heading.textContent =
+            'Nearby Place Check';
+
+
+        const summary =
+            document.createElement(
+                'p'
+            );
+
+        summary.className =
+            'scout-report-summary';
+
+        summary.textContent =
+            'Compare the submitted coordinates with published Places nearby. Use Satellite for a closer visual inspection when two pins may represent the same campsite.';
+
+
+        const frameShell =
+            document.createElement(
+                'div'
+            );
+
+        frameShell.className =
+            'admin-moderation-nearby-map-shell';
+
+
+        const frame =
+            document.createElement(
+                'iframe'
+            );
+
+        frame.className =
+            'admin-moderation-nearby-map-frame';
+
+        frame.src =
+            '/nearby-place-map.php?id='
+            + encodeURIComponent(
+                submissionId
+            );
+
+        frame.title =
+            'Nearby Place duplicate inspection map';
+
+        frame.loading =
+            'eager';
+
+        frame.setAttribute(
+            'referrerpolicy',
+            'same-origin'
+        );
+
+
+        frameShell.appendChild(
+            frame
+        );
+
+        section.append(
+            heading,
+            summary,
+            frameShell
+        );
+
+
+        locationSection.before(
+            section
+        );
+    };
+
+
     const initPhotoSorter = () => {
         const grid =
             document.querySelector(
@@ -251,6 +416,7 @@
                         document.createElement('button');
 
                     handle.type = 'button';
+
                     handle.className =
                         'admin-moderation-photo-sort-handle';
 
@@ -279,7 +445,9 @@
                         handleMark
                     );
 
-                    item.appendChild(handle);
+                    item.appendChild(
+                        handle
+                    );
                 }
             }
         );
@@ -302,7 +470,8 @@
             message,
             state = ''
         ) => {
-            status.textContent = message;
+            status.textContent =
+                message;
 
             status.classList.remove(
                 'is-saving',
@@ -318,8 +487,11 @@
         };
 
         const refreshPresentation = () => {
-            const items = getItems();
-            const total = items.length;
+            const items =
+                getItems();
+
+            const total =
+                items.length;
 
             items.forEach(
                 (item, index) => {
@@ -345,7 +517,9 @@
 
                     if (position) {
                         position.textContent =
-                            String(index + 1);
+                            String(
+                                index + 1
+                            );
                     }
 
                     const handle =
@@ -414,8 +588,11 @@
         let lastSavedItems =
             getItems();
 
-        let saveTimer = null;
-        let saving = false;
+        let saveTimer =
+            null;
+
+        let saving =
+            false;
 
         const currentOrder = () =>
             getItems().map(
@@ -435,161 +612,208 @@
                     value === index
             );
 
-        const restoreLastSavedOrder = () => {
-            lastSavedItems.forEach(
-                (item) => {
-                    grid.appendChild(item);
-                }
-            );
-
-            refreshPresentation();
-        };
-
-        const saveOrder = async () => {
-            if (saving) {
-                return;
-            }
-
-            if (saveTimer) {
-                window.clearTimeout(
-                    saveTimer
-                );
-
-                saveTimer = null;
-            }
-
-            const items = getItems();
-            const order = currentOrder();
-
-            if (orderIsBaseline(order)) {
-                refreshPresentation();
-                setDecisionDisabled(false);
-                setStatus(
-                    'Photo order saved.',
-                    'saved'
-                );
-                return;
-            }
-
-            if (
-                order.some(
-                    (value) =>
-                        !Number.isInteger(value)
-                )
-            ) {
-                restoreLastSavedOrder();
-                setDecisionDisabled(false);
-
-                setStatus(
-                    'Photo order could not be read. Reload this page before trying again.',
-                    'error'
-                );
-
-                return;
-            }
-
-            saving = true;
-            setSortingDisabled(true);
-            setDecisionDisabled(true);
-
-            setStatus(
-                'Saving photo order…',
-                'saving'
-            );
-
-            const body =
-                new URLSearchParams();
-
-            body.set(
-                'id',
-                submissionId
-            );
-
-            body.set(
-                'csrf_token',
-                csrfToken
-            );
-
-            body.set(
-                'order',
-                JSON.stringify(order)
-            );
-
-            try {
-                const response =
-                    await fetch(
-                        '/save-submission-photo-order.php',
-                        {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: {
-                                'Content-Type':
-                                    'application/x-www-form-urlencoded;charset=UTF-8',
-                                'X-Requested-With':
-                                    'XMLHttpRequest',
-                            },
-                            body: body.toString(),
-                        }
-                    );
-
-                let payload = null;
-
-                try {
-                    payload =
-                        await response.json();
-                } catch (error) {
-                    payload = null;
-                }
-
-                if (
-                    !response.ok
-                    || !payload
-                    || payload.ok !== true
-                ) {
-                    throw new Error(
-                        payload
-                        && typeof payload.message === 'string'
-                        && payload.message !== ''
-                            ? payload.message
-                            : 'The photo order could not be saved.'
-                    );
-                }
-
-                const savedItems =
-                    getItems();
-
-                savedItems.forEach(
-                    (item, index) => {
-                        item.dataset.photoIndex =
-                            String(index);
+        const restoreLastSavedOrder =
+            () => {
+                lastSavedItems.forEach(
+                    (item) => {
+                        grid.appendChild(
+                            item
+                        );
                     }
                 );
 
-                lastSavedItems =
-                    savedItems.slice();
-
                 refreshPresentation();
+            };
+
+        const saveOrder =
+            async () => {
+                if (saving) {
+                    return;
+                }
+
+                if (saveTimer) {
+                    window.clearTimeout(
+                        saveTimer
+                    );
+
+                    saveTimer =
+                        null;
+                }
+
+                const order =
+                    currentOrder();
+
+                if (
+                    orderIsBaseline(
+                        order
+                    )
+                ) {
+                    refreshPresentation();
+
+                    setDecisionDisabled(
+                        false
+                    );
+
+                    setStatus(
+                        'Photo order saved.',
+                        'saved'
+                    );
+
+                    return;
+                }
+
+                if (
+                    order.some(
+                        (value) =>
+                            !Number.isInteger(
+                                value
+                            )
+                    )
+                ) {
+                    restoreLastSavedOrder();
+
+                    setDecisionDisabled(
+                        false
+                    );
+
+                    setStatus(
+                        'Photo order could not be read. Reload this page before trying again.',
+                        'error'
+                    );
+
+                    return;
+                }
+
+                saving =
+                    true;
+
+                setSortingDisabled(
+                    true
+                );
+
+                setDecisionDisabled(
+                    true
+                );
 
                 setStatus(
-                    'Photo order saved.',
-                    'saved'
+                    'Saving photo order…',
+                    'saving'
                 );
-            } catch (error) {
-                restoreLastSavedOrder();
 
-                setStatus(
-                    error instanceof Error
-                    && error.message !== ''
-                        ? error.message
-                        : 'The photo order could not be saved.',
-                    'error'
+                const body =
+                    new URLSearchParams();
+
+                body.set(
+                    'id',
+                    submissionId
                 );
-            } finally {
-                saving = false;
-                setSortingDisabled(false);
-                setDecisionDisabled(false);
-            }
-        };
+
+                body.set(
+                    'csrf_token',
+                    csrfToken
+                );
+
+                body.set(
+                    'order',
+                    JSON.stringify(
+                        order
+                    )
+                );
+
+                try {
+                    const response =
+                        await fetch(
+                            '/save-submission-photo-order.php',
+                            {
+                                method:
+                                    'POST',
+
+                                credentials:
+                                    'same-origin',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/x-www-form-urlencoded;charset=UTF-8',
+
+                                    'X-Requested-With':
+                                        'XMLHttpRequest',
+                                },
+
+                                body:
+                                    body.toString(),
+                            }
+                        );
+
+                    let payload =
+                        null;
+
+                    try {
+                        payload =
+                            await response.json();
+                    } catch (error) {
+                        payload =
+                            null;
+                    }
+
+                    if (
+                        !response.ok
+                        || !payload
+                        || payload.ok !== true
+                    ) {
+                        throw new Error(
+                            payload
+                            && typeof payload.message
+                                === 'string'
+                            && payload.message !== ''
+                                ? payload.message
+                                : 'The photo order could not be saved.'
+                        );
+                    }
+
+                    const savedItems =
+                        getItems();
+
+                    savedItems.forEach(
+                        (item, index) => {
+                            item.dataset.photoIndex =
+                                String(index);
+                        }
+                    );
+
+                    lastSavedItems =
+                        savedItems.slice();
+
+                    refreshPresentation();
+
+                    setStatus(
+                        'Photo order saved.',
+                        'saved'
+                    );
+
+                } catch (error) {
+                    restoreLastSavedOrder();
+
+                    setStatus(
+                        error instanceof Error
+                        && error.message !== ''
+                            ? error.message
+                            : 'The photo order could not be saved.',
+                        'error'
+                    );
+
+                } finally {
+                    saving =
+                        false;
+
+                    setSortingDisabled(
+                        false
+                    );
+
+                    setDecisionDisabled(
+                        false
+                    );
+                }
+            };
 
         const scheduleSave = () => {
             if (saveTimer) {
@@ -598,7 +822,9 @@
                 );
             }
 
-            setDecisionDisabled(true);
+            setDecisionDisabled(
+                true
+            );
 
             setStatus(
                 'Photo order changed. Saving…',
@@ -616,23 +842,34 @@
             item,
             targetIndex
         ) => {
-            const items = getItems();
+            const items =
+                getItems();
+
             const currentIndex =
-                items.indexOf(item);
+                items.indexOf(
+                    item
+                );
 
             if (
                 currentIndex < 0
                 || targetIndex < 0
-                || targetIndex >= items.length
-                || targetIndex === currentIndex
+                || targetIndex >=
+                    items.length
+                || targetIndex ===
+                    currentIndex
             ) {
                 return false;
             }
 
             const target =
-                items[targetIndex];
+                items[
+                    targetIndex
+                ];
 
-            if (targetIndex > currentIndex) {
+            if (
+                targetIndex
+                > currentIndex
+            ) {
                 grid.insertBefore(
                     item,
                     target.nextSibling
@@ -649,9 +886,14 @@
             return true;
         };
 
-        let draggedItem = null;
-        let activePointerId = null;
-        let pointerStartOrder = '';
+        let draggedItem =
+            null;
+
+        let activePointerId =
+            null;
+
+        let pointerStartOrder =
+            '';
 
         grid.addEventListener(
             'pointerdown',
@@ -666,7 +908,8 @@
                     || handle.disabled
                     || saving
                     || (
-                        event.pointerType === 'mouse'
+                        event.pointerType
+                            === 'mouse'
                         && event.button !== 0
                     )
                 ) {
@@ -684,12 +927,15 @@
 
                 event.preventDefault();
 
-                draggedItem = item;
+                draggedItem =
+                    item;
+
                 activePointerId =
                     event.pointerId;
 
                 pointerStartOrder =
-                    currentOrder().join(',');
+                    currentOrder()
+                        .join(',');
 
                 item.classList.add(
                     'is-dragging'
@@ -704,7 +950,9 @@
                         event.pointerId
                     );
                 } catch (error) {
-                    /* Pointer capture is optional. */
+                    /*
+                     * Pointer capture is optional.
+                     */
                 }
             }
         );
@@ -738,13 +986,17 @@
 
                 if (
                     !targetItem
-                    || targetItem === draggedItem
-                    || targetItem.parentNode !== grid
+                    || targetItem
+                        === draggedItem
+                    || targetItem.parentNode
+                        !== grid
                 ) {
                     return;
                 }
 
-                const items = getItems();
+                const items =
+                    getItems();
+
                 const draggedIndex =
                     items.indexOf(
                         draggedItem
@@ -762,7 +1014,10 @@
                     return;
                 }
 
-                if (targetIndex > draggedIndex) {
+                if (
+                    targetIndex
+                    > draggedIndex
+                ) {
                     grid.insertBefore(
                         draggedItem,
                         targetItem.nextSibling
@@ -789,7 +1044,8 @@
                 return;
             }
 
-            const item = draggedItem;
+            const item =
+                draggedItem;
 
             item.classList.remove(
                 'is-dragging'
@@ -799,11 +1055,15 @@
                 'is-sorting'
             );
 
-            draggedItem = null;
-            activePointerId = null;
+            draggedItem =
+                null;
+
+            activePointerId =
+                null;
 
             const newOrder =
-                currentOrder().join(',');
+                currentOrder()
+                    .join(',');
 
             if (
                 newOrder
@@ -848,34 +1108,49 @@
                     return;
                 }
 
-                const items = getItems();
+                const items =
+                    getItems();
+
                 const currentIndex =
-                    items.indexOf(item);
+                    items.indexOf(
+                        item
+                    );
 
                 let targetIndex =
                     currentIndex;
 
                 if (
-                    event.key === 'ArrowLeft'
-                    || event.key === 'ArrowUp'
+                    event.key ===
+                        'ArrowLeft'
+                    || event.key ===
+                        'ArrowUp'
                 ) {
                     targetIndex =
                         currentIndex - 1;
+
                 } else if (
-                    event.key === 'ArrowRight'
-                    || event.key === 'ArrowDown'
+                    event.key ===
+                        'ArrowRight'
+                    || event.key ===
+                        'ArrowDown'
                 ) {
                     targetIndex =
                         currentIndex + 1;
+
                 } else if (
-                    event.key === 'Home'
+                    event.key ===
+                        'Home'
                 ) {
-                    targetIndex = 0;
+                    targetIndex =
+                        0;
+
                 } else if (
-                    event.key === 'End'
+                    event.key ===
+                        'End'
                 ) {
                     targetIndex =
                         items.length - 1;
+
                 } else {
                     return;
                 }
@@ -889,6 +1164,7 @@
                     )
                 ) {
                     handle.focus();
+
                     scheduleSave();
                 }
             }
@@ -897,6 +1173,8 @@
         refreshPresentation();
     };
 
+
     initDeleteConfirmation();
+    initNearbyPlaceMap();
     initPhotoSorter();
 })();
