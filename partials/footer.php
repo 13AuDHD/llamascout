@@ -203,7 +203,8 @@ $footerUser = current_user();
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/accessibility.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/mobile-menu.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/photo-uploader.js', ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($footerSiteBase . '/js/contributor-photo-sorter.js?v=20260922-2', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/contributor-photo-sorter.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/persistent-photo-manager.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/share.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/session-heartbeat.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 
