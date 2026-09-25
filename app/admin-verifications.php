@@ -8,12 +8,15 @@ declare(strict_types=1);
    This admin page is intentionally about physical field
    freshness, not generic verification activity.
 
-   Official-source checks remain available on individual Place
-   records, but they do not make a Place look freshly visited.
+   Official-source checks do not reset field freshness.
 
-   The original approved new Place report counts as the first
-   field observation. Later check-ins and field verifications
-   can refresh that date.
+   A new Place contributes an initial field observation only
+   when its approved Place report contains a real visited_at
+   date. Submission, approval, and publication dates never
+   count as visits.
+
+   Later geofenced check-ins and field verifications can refresh
+   the observation date.
    ========================================================= */
 
 function admin_place_freshness_base_rows(
@@ -81,7 +84,6 @@ function admin_place_freshness_base_rows(
             p.city,
             p.county,
             p.state,
-            p.published_at,
             p.last_field_checked_on,
 
             (
@@ -114,11 +116,7 @@ function admin_place_freshness_base_rows(
             ) AS legacy_scout_last_checked_at,
 
             (
-                SELECT COALESCE(
-                    pc.visited_at,
-                    pc.approved_at,
-                    pc.submitted_at
-                )
+                SELECT pc.visited_at
                 FROM place_contributions pc
                 WHERE pc.place_id = p.id
                   AND pc.contribution_type = "new_place"
@@ -182,13 +180,8 @@ function admin_place_freshness_base_rows(
         as &$row
     ) {
         /*
-         * The original Place report is the first field
-         * observation for a newly created Place.
-         *
-         * Prefer its recorded visit date. If a legacy Place
-         * lacks contribution history, published_at remains
-         * the compatibility fallback used by the public
-         * freshness system.
+         * The original Place report counts only when visited_at
+         * contains a real field-visit date.
          */
         $creationObservedAt =
             trim(
@@ -197,15 +190,7 @@ function admin_place_freshness_base_rows(
                     ?? ''
                 )
             )
-            ?: (
-                trim(
-                    (string) (
-                        $row['published_at']
-                        ?? ''
-                    )
-                )
-                ?: null
-            );
+            ?: null;
 
         $creationRoleAtTime =
             trim(
@@ -232,9 +217,8 @@ function admin_place_freshness_base_rows(
              * Use the shared contribution-level system whenever
              * an original contributor is known.
              *
-             * This also repairs the known legacy case where an
-             * Owner contribution was historically stored as
-             * "member" instead of Owner/Admin.
+             * This repairs the legacy case where some Owner
+             * submissions were historically stored as member.
              */
             if (
                 $creationRoleAtTime !== ''
@@ -330,6 +314,11 @@ function admin_place_freshness_base_rows(
                 $scoutCreationLast
             );
 
+        /*
+         * last_field_checked_on is allowed only as a stored
+         * summary of actual field evidence. The repair SQL
+         * recalculates it from visit evidence only.
+         */
         $storedOverall =
             trim(
                 (string) (
@@ -573,11 +562,6 @@ function admin_place_freshness_rows(
             $search
         );
 
-    /*
-     * Freshness is calculated from every qualifying field
-     * observation, so state filtering happens after the
-     * complete freshness result has been assembled.
-     */
     if (
         in_array(
             $state,
