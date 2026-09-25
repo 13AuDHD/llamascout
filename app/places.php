@@ -2,6 +2,196 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/geography.php';
+
+
+/* =========================================================
+   COUNTY DISPLAY NORMALIZATION
+   ========================================================= */
+
+/**
+ * Prefer the most complete county-equivalent label when several
+ * stored variants represent the same jurisdiction.
+ *
+ * Example:
+ * La Plata
+ * La Plata Co.
+ * La Plata County
+ *
+ * becomes:
+ * La Plata County
+ */
+function places_preferred_county_label(
+    array $labels
+): ?string {
+    $cleaned = [];
+
+    foreach ($labels as $label) {
+        $value =
+            llama_county_text_cleanup(
+                is_string($label)
+                    ? $label
+                    : null
+            );
+
+        if ($value === null) {
+            continue;
+        }
+
+        $cleaned[$value] = $value;
+    }
+
+    if (!$cleaned) {
+        return null;
+    }
+
+    $values =
+        array_values($cleaned);
+
+    $officialSuffixPattern =
+        '/\s+(County|Parish|Borough|Census Area|Municipio|Municipality)$/iu';
+
+    foreach ($values as $value) {
+        if (
+            preg_match(
+                $officialSuffixPattern,
+                $value
+            )
+        ) {
+            return $value;
+        }
+    }
+
+    usort(
+        $values,
+        static fn (
+            string $a,
+            string $b
+        ): int =>
+            mb_strlen($b, 'UTF-8')
+            <=>
+            mb_strlen($a, 'UTF-8')
+    );
+
+    return
+        $values[0]
+        ?? null;
+}
+
+
+/**
+ * Normalize county labels across a group of Place rows.
+ *
+ * State is included in the grouping key so identically named
+ * counties in different states are never merged.
+ */
+function places_normalize_county_rows(
+    array $rows
+): array {
+    if (!$rows) {
+        return $rows;
+    }
+
+    $groups = [];
+
+    foreach ($rows as $index => $row) {
+        $county =
+            llama_county_text_cleanup(
+                isset($row['county'])
+                    ? (string) $row['county']
+                    : null
+            );
+
+        if ($county === null) {
+            continue;
+        }
+
+        $state =
+            mb_strtolower(
+                trim(
+                    (string) (
+                        $row['state']
+                        ?? ''
+                    )
+                ),
+                'UTF-8'
+            );
+
+        $countyKey =
+            llama_county_comparison_key(
+                $county
+            );
+
+        if ($countyKey === '') {
+            continue;
+        }
+
+        $groupKey =
+            $state
+            . '|'
+            . $countyKey;
+
+        if (!isset($groups[$groupKey])) {
+            $groups[$groupKey] = [
+                'indexes' => [],
+                'labels' => [],
+            ];
+        }
+
+        $groups[$groupKey]['indexes'][] =
+            $index;
+
+        $groups[$groupKey]['labels'][] =
+            $county;
+    }
+
+    foreach ($groups as $group) {
+        $preferred =
+            places_preferred_county_label(
+                $group['labels']
+            );
+
+        if ($preferred === null) {
+            continue;
+        }
+
+        foreach (
+            $group['indexes']
+            as $index
+        ) {
+            $rows[$index]['county'] =
+                $preferred;
+        }
+    }
+
+    return $rows;
+}
+
+
+/**
+ * Clean a county value on a single Place response.
+ */
+function places_normalize_single_county(
+    array $place
+): array {
+    if (
+        array_key_exists(
+            'county',
+            $place
+        )
+    ) {
+        $place['county'] =
+            llama_county_text_cleanup(
+                is_string($place['county'])
+                    ? $place['county']
+                    : null
+            );
+    }
+
+    return $place;
+}
+
+
 function places_public(): array
 {
     $stmt = db()->query(
@@ -62,6 +252,11 @@ function places_public(): array
     );
 
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $rows =
+        places_normalize_county_rows(
+            $rows
+        );
 
     foreach ($rows as &$row) {
         $row['amenities'] = [
@@ -238,6 +433,11 @@ function place_public_by_slug(string $slug): ?array
         return null;
     }
 
+    $place =
+        places_normalize_single_county(
+            $place
+        );
+
     $place['featured_image'] = place_public_featured_image((int) $place['id']);
     $place['amenities'] = place_public_amenities((int) $place['id']);
 
@@ -354,6 +554,11 @@ function place_member_by_slug(string $slug): ?array
     if (!$place) {
         return null;
     }
+
+    $place =
+        places_normalize_single_county(
+            $place
+        );
 
     $placeId = (int) $place['id'];
 
