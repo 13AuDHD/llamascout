@@ -58,10 +58,7 @@
 
     /*
      * =====================================================
-     * SAVE FOR LATER
-     *
-     * Draft saving deliberately uses its own endpoint rather
-     * than the Add a Place form's normal submission path.
+     * ADD PLACE FORM
      * =====================================================
      */
 
@@ -70,15 +67,62 @@
             '.add-place-form'
         );
 
+    if (!form) {
+        return;
+    }
+
+    /*
+     * Pressing Enter or Return in an ordinary Add a Place
+     * control must never submit the report.
+     *
+     * Textareas and contenteditable controls keep their normal
+     * newline behavior. The Submit for Review button must be
+     * activated deliberately instead of through implicit form
+     * submission.
+     */
+    form.addEventListener(
+        'keydown',
+        (event) => {
+            if (
+                event.key !== 'Enter'
+                || event.isComposing
+            ) {
+                return;
+            }
+
+            const target =
+                event.target;
+
+            if (
+                target instanceof HTMLTextAreaElement
+                || (
+                    target instanceof HTMLElement
+                    && target.isContentEditable
+                )
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+        }
+    );
+
+
+    /*
+     * =====================================================
+     * SAVE FOR LATER
+     *
+     * Draft saving deliberately uses its own endpoint rather
+     * than the Add a Place form's normal submission path.
+     * =====================================================
+     */
+
     const saveButton =
-        form?.querySelector(
+        form.querySelector(
             'button[name="save_for_later"]'
         );
 
-    if (
-        !form
-        || !saveButton
-    ) {
+    if (!saveButton) {
         return;
     }
 
