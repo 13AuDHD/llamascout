@@ -8,9 +8,13 @@ declare(strict_types=1);
    Field freshness is about physical observation at a Place.
    It is deliberately separate from official-source checks.
 
-   A newly created Place starts freshness immediately because
-   the approved Place report is itself the first field
-   observation. Later check-ins can refresh that date.
+   A new Place starts freshness only when its approved Place
+   report contains a real visited_at date. Submission, approval,
+   publication, and other processing dates never count as field
+   observations.
+
+   Later geofenced check-ins and field verifications can refresh
+   the observation date.
 
    Public states:
    - fresh: observed within 180 days
@@ -20,8 +24,8 @@ declare(strict_types=1);
 
    Community freshness includes Community + Member activity.
    Scout freshness includes Scout + Master Scout + Admin activity,
-   owner-created Place reports, and legacy Llama Scout
-   field-verified records.
+   owner-created Place reports with a real visit date, and legacy
+   Llama Scout field-verified records.
    ========================================================= */
 
 function llama_place_freshness_thresholds(): array
@@ -74,10 +78,7 @@ function llama_place_freshness_latest_value(?string ...$values): ?string
             || $timestamp > $latestTimestamp
         ) {
             $latestTimestamp = $timestamp;
-            $latestValue =
-                trim(
-                    (string) $value
-                );
+            $latestValue = trim((string) $value);
         }
     }
 
@@ -115,8 +116,7 @@ function llama_place_freshness_days_since(?string $value): ?int
     }
 
     return
-        (int)
-        $checked
+        (int) $checked
             ->diff($today)
             ->days;
 }
@@ -155,17 +155,10 @@ function llama_place_freshness_state(?string $value): string
 function llama_place_freshness_state_label(string $state): string
 {
     return match ($state) {
-        'fresh' =>
-            'Fresh',
-
-        'aging' =>
-            'Aging',
-
-        'attention' =>
-            'Needs attention',
-
-        default =>
-            'Never checked',
+        'fresh' => 'Fresh',
+        'aging' => 'Aging',
+        'attention' => 'Needs attention',
+        default => 'Never checked',
     };
 }
 
@@ -297,8 +290,8 @@ function llama_place_freshness_date_label(?string $value): string
  * Convert the role snapshot stored with a new Place contribution
  * into the two public freshness lanes.
  *
- * The role at the time of the original contribution is used so
- * later promotion or demotion does not rewrite history.
+ * This helper determines only the lane. It never supplies a date.
+ * A new Place contributes to freshness only when visited_at exists.
  */
 function llama_place_freshness_creation_lane(
     ?string $roleAtTime,
@@ -335,11 +328,6 @@ function llama_place_freshness_creation_lane(
         return 'community';
     }
 
-    /*
-     * Older Places may predate contribution history.
-     * Community-scouted Places belong in the community lane.
-     * First-party and other legacy Places fall into the Scout lane.
-     */
     $source =
         strtolower(
             trim(
@@ -427,7 +415,6 @@ function llama_place_freshness_summary(
             $db->prepare(
                 'SELECT
                     p.last_field_checked_on,
-                    p.published_at,
                     p.source_type,
 
                     (
@@ -447,7 +434,10 @@ function llama_place_freshness_summary(
                     (
                         SELECT MAX(
                             COALESCE(
-                                CONCAT(pv.visited_at, " 12:00:00"),
+                                CONCAT(
+                                    pv.visited_at,
+                                    " 12:00:00"
+                                ),
                                 pv.verified_at
                             )
                         )
@@ -457,11 +447,7 @@ function llama_place_freshness_summary(
                     ) AS legacy_scout_last_checked_at,
 
                     (
-                        SELECT COALESCE(
-                            pc.visited_at,
-                            pc.approved_at,
-                            pc.submitted_at
-                        )
+                        SELECT pc.visited_at
                         FROM place_contributions pc
                         WHERE pc.place_id = p.id
                           AND pc.contribution_type = "new_place"
@@ -479,6 +465,16 @@ function llama_place_freshness_summary(
                         ORDER BY pc.id ASC
                         LIMIT 1
                     ) AS creation_role_at_time,
+
+                    (
+                        SELECT pc.user_id
+                        FROM place_contributions pc
+                        WHERE pc.place_id = p.id
+                          AND pc.contribution_type = "new_place"
+                          AND pc.status = "approved"
+                        ORDER BY pc.id ASC
+                        LIMIT 1
+                    ) AS creation_user_id,
 
                     (
                         SELECT pc.contribution_level
@@ -516,12 +512,11 @@ function llama_place_freshness_summary(
 
 
         /*
-         * A Place report is the first field observation.
+         * The original Place report is a field observation only
+         * when the report contains visited_at.
          *
-         * Prefer the contributor's actual visited_at date. If that
-         * was not supplied, use approval time. Legacy Places that
-         * predate contribution history use published_at so they also
-         * begin with a freshness date instead of "Never checked."
+         * approved_at, submitted_at, and published_at are processing
+         * dates and are intentionally excluded.
          */
         $creationObservedAt =
             trim(
@@ -530,35 +525,74 @@ function llama_place_freshness_summary(
                     ?? ''
                 )
             )
-            ?: (
-                trim(
-                    (string) (
-                        $row['published_at']
-                        ?? ''
-                    )
+            ?: null;
+
+        $creationRoleAtTime =
+            trim(
+                (string) (
+                    $row['creation_role_at_time']
+                    ?? ''
                 )
-                ?: null
+            );
+
+        $creationUserId =
+            (int) (
+                $row['creation_user_id']
+                ?? 0
             );
 
         $creationLane =
-            $creationObservedAt !== null
-                ? llama_place_freshness_creation_lane(
-                    trim(
-                        (string) (
-                            $row['creation_role_at_time']
-                            ?? ''
-                        )
+            null;
+
+        if ($creationObservedAt !== null) {
+            /*
+             * Prefer the centralized contribution-level logic.
+             * It also repairs the known legacy Owner record case
+             * where some Owner submissions were stored as member.
+             */
+            if (
+                $creationRoleAtTime !== ''
+                && $creationUserId > 0
+            ) {
+                $creationLevel =
+                    llama_contribution_level_for_record(
+                        $db,
+                        [
+                            'role_at_time' =>
+                                $creationRoleAtTime,
+
+                            'user_id' =>
+                                $creationUserId,
+                        ]
+                    );
+
+                $creationLane =
+                    llama_contribution_level_rank(
+                        $creationLevel
                     )
-                    ?: null,
-                    trim(
-                        (string) (
-                            $row['source_type']
-                            ?? ''
-                        )
+                    >=
+                    llama_contribution_level_rank(
+                        LLAMA_CONTRIBUTION_LEVEL_SCOUT
                     )
-                    ?: null
-                )
-                : null;
+                        ? 'scout'
+                        : 'community';
+            } else {
+                $creationLane =
+                    llama_place_freshness_creation_lane(
+                        $creationRoleAtTime !== ''
+                            ? $creationRoleAtTime
+                            : null,
+
+                        trim(
+                            (string) (
+                                $row['source_type']
+                                ?? ''
+                            )
+                        )
+                            ?: null
+                    );
+            }
+        }
 
 
         $communityCheckinLast =
@@ -613,6 +647,11 @@ function llama_place_freshness_summary(
             );
 
 
+        /*
+         * last_field_checked_on is a stored summary of physical
+         * field evidence. It is never populated here from workflow
+         * or publication dates.
+         */
         $storedOverall =
             trim(
                 (string) (
@@ -639,7 +678,8 @@ function llama_place_freshness_summary(
             )
             ?: null;
 
-        $overallLevel = null;
+        $overallLevel =
+            null;
 
         if (
             $latestCheckinAt !== null
