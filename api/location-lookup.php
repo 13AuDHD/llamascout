@@ -6,6 +6,10 @@ require_once
     dirname(__DIR__)
     . '/app/bootstrap.php';
 
+require_once
+    dirname(__DIR__)
+    . '/app/geography.php';
+
 header(
     'Content-Type: application/json; charset=UTF-8'
 );
@@ -359,123 +363,6 @@ function location_nearest_named_road(
 }
 
 
-/*
- * Resolve the official U.S. county-equivalent name directly from
- * coordinates using the Census Geocoder.
- *
- * This prevents values such as:
- *
- * La Plata
- * La Plata Co.
- * La Plata County
- *
- * from entering Llama Scout as three separate county names.
- *
- * The Census result keeps the correct local designation, including
- * County, Parish, Borough, Census Area, Municipio, and other official
- * county-equivalent names.
- */
-function location_census_county(
-    float $lat,
-    float $lng
-): ?array {
-    $url =
-        'https://geocoding.geo.census.gov/geocoder/geographies/coordinates?'
-        . http_build_query(
-            [
-                'x' =>
-                    number_format(
-                        $lng,
-                        7,
-                        '.',
-                        ''
-                    ),
-
-                'y' =>
-                    number_format(
-                        $lat,
-                        7,
-                        '.',
-                        ''
-                    ),
-
-                'benchmark' =>
-                    'Public_AR_Current',
-
-                'vintage' =>
-                    'Current_Current',
-
-                'format' =>
-                    'json',
-            ]
-        );
-
-    $result =
-        location_lookup_json(
-            $url,
-            [],
-            10
-        );
-
-    $geographies =
-        is_array(
-            $result['result']['geographies']
-            ?? null
-        )
-            ? $result['result']['geographies']
-            : [];
-
-    $counties =
-        is_array(
-            $geographies['Counties']
-            ?? null
-        )
-            ? $geographies['Counties']
-            : [];
-
-    $county =
-        is_array(
-            $counties[0]
-            ?? null
-        )
-            ? $counties[0]
-            : null;
-
-    if (!$county) {
-        return null;
-    }
-
-    $name =
-        trim(
-            (string) (
-                $county['NAME']
-                ?? ''
-            )
-        );
-
-    if ($name === '') {
-        return null;
-    }
-
-    $geoid =
-        trim(
-            (string) (
-                $county['GEOID']
-                ?? ''
-            )
-        );
-
-    return [
-        'name' =>
-            $name,
-
-        'geoid' =>
-            $geoid !== ''
-                ? $geoid
-                : null,
-    ];
-}
-
 
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
@@ -565,7 +452,7 @@ $nominatimCounty =
     ?? null;
 
 $censusCounty =
-    location_census_county(
+    llama_official_county_from_coordinates(
         $lat,
         $lng
     );
