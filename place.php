@@ -14,8 +14,15 @@ function place_h(mixed $value): string
 function place_image_url(?string $src): string
 {
     $src = trim((string) $src);
-    if ($src === '') return '';
-    if (preg_match('~^https?://~i', $src)) return $src;
+
+    if ($src === '') {
+        return '';
+    }
+
+    if (preg_match('~^https?://~i', $src)) {
+        return $src;
+    }
+
     return '/' . ltrim($src, '/');
 }
 
@@ -25,11 +32,15 @@ function place_yes_no(mixed $value): ?string
         return null;
     }
 
-    return (int) $value === 1 ? 'Yes' : 'No';
+    return (int) $value === 1
+        ? 'Yes'
+        : 'No';
 }
 
-function place_report_rating_item(string $label, mixed $value): void
-{
+function place_report_rating_item(
+    string $label,
+    mixed $value
+): void {
     if ($value === null || $value === '') {
         return;
     }
@@ -65,13 +76,16 @@ function place_report_rating_item(string $label, mixed $value): void
     <?php
 }
 
-
-function place_report_item(string $label, mixed $value, ?string $icon = null): void
-{
+function place_report_item(
+    string $label,
+    mixed $value,
+    ?string $icon = null
+): void {
     if ($value === null || $value === '') {
         return;
     }
     ?>
+
     <div class="scout-report-item scout-report-value-item">
 
         <div class="scout-report-value-content">
@@ -81,27 +95,66 @@ function place_report_item(string $label, mixed $value, ?string $icon = null): v
 
         <?php if ($icon): ?>
             <i aria-hidden="true">
-                <?= llama_icon($icon, ['class' => 'scout-report-value-icon']) ?>
+                <?= llama_icon(
+                    $icon,
+                    [
+                        'class' =>
+                            'scout-report-value-icon',
+                    ]
+                ) ?>
             </i>
         <?php endif; ?>
 
     </div>
+
     <?php
 }
 
-$slug = trim((string) ($_GET['slug'] ?? ''));
-$user = current_user();
-$userId = !empty($user['id']) ? (int) $user['id'] : 0;
-$hasGlobalMemberAccess = user_has_member_access($userId > 0 ? $userId : null);
-$hasContributorPlaceAccess = false;
-$hasMemberAccess = $hasGlobalMemberAccess;
-$place = null;
+$slug =
+    trim(
+        (string) (
+            $_GET['slug']
+            ?? ''
+        )
+    );
+
+$user =
+    current_user();
+
+$userId =
+    !empty(
+        $user['id']
+    )
+        ? (int) $user['id']
+        : 0;
+
+$hasGlobalMemberAccess =
+    user_has_member_access(
+        $userId > 0
+            ? $userId
+            : null
+    );
+
+$hasContributorPlaceAccess =
+    false;
+
+$hasMemberAccess =
+    $hasGlobalMemberAccess;
+
+$place =
+    null;
 
 if ($slug !== '') {
     if ($hasGlobalMemberAccess) {
-        $place = place_member_by_slug($slug);
+        $place =
+            place_member_by_slug(
+                $slug
+            );
     } else {
-        $place = place_public_by_slug($slug);
+        $place =
+            place_public_by_slug(
+                $slug
+            );
 
         if (
             $place
@@ -111,48 +164,121 @@ if ($slug !== '') {
                 $userId
             )
         ) {
-            $hasContributorPlaceAccess = true;
-            $hasMemberAccess = true;
-            $place = place_member_by_slug($slug);
+            $hasContributorPlaceAccess =
+                true;
+
+            $hasMemberAccess =
+                true;
+
+            $place =
+                place_member_by_slug(
+                    $slug
+                );
         }
     }
 }
 
 if (!$place) {
-    http_response_code(404);
-    $pageTitle = 'Place Not Found | Llama Scout';
-    require __DIR__ . '/partials/header.php';
+    http_response_code(
+        404
+    );
+
+    $pageTitle =
+        'Place Not Found | Llama Scout';
+
+    require
+        __DIR__
+        . '/partials/header.php';
     ?>
+
     <section class="place-not-found">
         <h1>Place not found</h1>
-        <p>This place is unavailable or has not been published.</p>
-        <p><a href="/map.php">Return to the map</a></p>
+
+        <p>
+            This place is unavailable or has not been published.
+        </p>
+
+        <p>
+            <a href="/map.php">
+                Return to the map
+            </a>
+        </p>
     </section>
+
     <?php
-    require __DIR__ . '/partials/footer.php';
+
+    require
+        __DIR__
+        . '/partials/footer.php';
+
     exit;
 }
 
-$isSaved = $userId > 0
-    ? user_has_saved_place($userId, (int) $place['id'])
-    : false;
+$isSaved =
+    $userId > 0
+        ? user_has_saved_place(
+            $userId,
+            (int) $place['id']
+        )
+        : false;
 
-$reportError = null;
-$reportSubmitted = isset($_GET['reported']) && $_GET['reported'] === '1';
-$reportOpen = isset($_GET['report']) && $_GET['report'] === '1';
+$reportError =
+    null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['saved_place_action'])) {
-        $action = (string) ($_POST['saved_place_action'] ?? '');
-        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+$reportSubmitted =
+    isset(
+        $_GET['reported']
+    )
+    && $_GET['reported'] === '1';
+
+$reportOpen =
+    isset(
+        $_GET['report']
+    )
+    && $_GET['report'] === '1';
+
+if (
+    $_SERVER['REQUEST_METHOD']
+    === 'POST'
+) {
+    if (
+        isset(
+            $_POST['saved_place_action']
+        )
+    ) {
+        $action =
+            (string) (
+                $_POST['saved_place_action']
+                ?? ''
+            );
+
+        $csrfToken =
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            );
 
         if (
             $userId < 1
-            || !in_array($action, ['save', 'remove'], true)
-            || !saved_places_verify_csrf($csrfToken)
+            || !in_array(
+                $action,
+                [
+                    'save',
+                    'remove',
+                ],
+                true
+            )
+            || !saved_places_verify_csrf(
+                $csrfToken
+            )
         ) {
-            http_response_code(400);
-            exit('Invalid request.');
+            http_response_code(
+                400
+            );
+
+            exit(
+                'Invalid request.'
+            );
         }
 
         if ($action === 'save') {
@@ -170,30 +296,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         header(
-            'Location: /place.php?slug=' .
-            rawurlencode((string) $place['slug']),
+            'Location: /place.php?slug='
+            . rawurlencode(
+                (string) $place['slug']
+            ),
             true,
             303
         );
+
         exit;
     }
 
-    if (isset($_POST['place_report_action'])) {
-        $csrfToken = (string) ($_POST['csrf_token'] ?? '');
-        $problemType = trim((string) ($_POST['problem_type'] ?? ''));
-        $reportDetails = trim((string) ($_POST['report_details'] ?? ''));
-        $reportPhotoToken = trim((string) ($_POST['photo_stage_token'] ?? ''));
-        $reportPhotos = llama_photo_decode_form_photos(
-            $_POST['photos_json'] ?? '[]'
-        );
+    if (
+        isset(
+            $_POST['place_report_action']
+        )
+    ) {
+        $csrfToken =
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            );
+
+        $problemType =
+            trim(
+                (string) (
+                    $_POST['problem_type']
+                    ?? ''
+                )
+            );
+
+        $reportDetails =
+            trim(
+                (string) (
+                    $_POST['report_details']
+                    ?? ''
+                )
+            );
+
+        $reportPhotoToken =
+            trim(
+                (string) (
+                    $_POST['photo_stage_token']
+                    ?? ''
+                )
+            );
+
+        $reportPhotos =
+            llama_photo_decode_form_photos(
+                $_POST['photos_json']
+                ?? '[]'
+            );
 
         if (
             $userId < 1
-            || !llama_contributor_can(db(), $userId, 'report_problem')
-            || !place_report_verify_csrf($csrfToken)
+            || !llama_contributor_can(
+                db(),
+                $userId,
+                'report_problem'
+            )
+            || !place_report_verify_csrf(
+                $csrfToken
+            )
         ) {
-            http_response_code(400);
-            exit('Invalid request.');
+            http_response_code(
+                400
+            );
+
+            exit(
+                'Invalid request.'
+            );
         }
 
         try {
@@ -207,48 +379,164 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             header(
-                'Location: /place.php?slug=' .
-                rawurlencode((string) $place['slug']) .
-                '&reported=1#report-place',
+                'Location: /place.php?slug='
+                . rawurlencode(
+                    (string) $place['slug']
+                )
+                . '&reported=1#report-place',
                 true,
                 303
             );
+
             exit;
-        } catch (InvalidArgumentException $exception) {
-            $reportError = $exception->getMessage();
+        } catch (
+            InvalidArgumentException
+            $exception
+        ) {
+            $reportError =
+                $exception
+                    ->getMessage();
         }
     }
 }
 
-$pageTitle = $place['name'] . ' | Llama Scout';
+$pageTitle =
+    $place['name']
+    . ' | Llama Scout';
 
-$locationParts = array_filter([
-    $place['city'] ?? null,
-    !empty($place['county']) ? $place['county'] . ' County' : null,
-    $place['state'] ?? null,
-]);
+$locationParts =
+    array_filter(
+        [
+            $place['city']
+                ?? null,
+
+            $place['county']
+                ?? null,
+
+            $place['state']
+                ?? null,
+        ]
+    );
 
 $amenityLabels = [
-    'toilets' => ['at-toilet', 'Toilets'],
-    'potable_water' => ['at-water-tap', 'Potable water'],
-    'trash' => ['trash', 'Trash'],
-    'fire_ring' => ['campfire', 'Metal fire ring'],
-    'picnic_table' => ['picnic-table', 'Picnic table'],
-    'bear_box' => ['bear', 'Bear box'],
-    'showers' => ['at-shower-facilities', 'Showers'],
-    'electricity' => ['at-electricity-socket', 'Electricity'],
-    'dump_station' => ['caravan', 'Dump station'],
-    'wifi' => ['at-wifi', 'WiFi'],
-    'laundry' => ['wash-machine', 'Laundry'],
+    'toilets' => [
+        'at-toilet',
+        'Toilets',
+    ],
+
+    'potable_water' => [
+        'at-water-tap',
+        'Potable water',
+    ],
+
+    'trash' => [
+        'trash',
+        'Trash',
+    ],
+
+    'fire_ring' => [
+        'campfire',
+        'Metal fire ring',
+    ],
+
+    'picnic_table' => [
+        'picnic-table',
+        'Picnic table',
+    ],
+
+    'bear_box' => [
+        'bear',
+        'Bear box',
+    ],
+
+    'showers' => [
+        'at-shower-facilities',
+        'Showers',
+    ],
+
+    'electricity' => [
+        'at-electricity-socket',
+        'Electricity',
+    ],
+
+    'dump_station' => [
+        'caravan',
+        'Dump station',
+    ],
+
+    'wifi' => [
+        'at-wifi',
+        'WiFi',
+    ],
+
+    'laundry' => [
+        'wash-machine',
+        'Laundry',
+    ],
 ];
 
-$details = $hasMemberAccess ? ($place['details'] ?? []) : [];
-$connectivity = $hasMemberAccess ? ($place['connectivity'] ?? []) : [];
-$sensory = $hasMemberAccess ? ($place['sensory'] ?? []) : [];
-$sensoryDetails = $hasMemberAccess ? ($place['sensory_details'] ?? []) : [];
-$rules = $hasMemberAccess ? ($place['rules'] ?? []) : [];
-$experience = $hasMemberAccess ? ($place['experience'] ?? []) : [];
-$db = db();
+$details =
+    $hasMemberAccess
+        ? (
+            $place['details']
+            ?? []
+        )
+        : [];
+
+$connectivity =
+    $hasMemberAccess
+        ? (
+            $place['connectivity']
+            ?? []
+        )
+        : [];
+
+$sensory =
+    $hasMemberAccess
+        ? (
+            $place['sensory']
+            ?? []
+        )
+        : [];
+
+$sensoryDetails =
+    $hasMemberAccess
+        ? (
+            $place['sensory_details']
+            ?? []
+        )
+        : [];
+
+$rules =
+    $hasMemberAccess
+        ? (
+            $place['rules']
+            ?? []
+        )
+        : [];
+
+$experience =
+    $hasMemberAccess
+        ? (
+            $place['experience']
+            ?? []
+        )
+        : [];
+
+$db =
+    db();
+
+/*
+ * Build the freshness data before the freshness partial renders.
+ *
+ * The freshness helper already handles check-ins, legacy field
+ * verifications, and the original approved Place contribution.
+ */
+$placeFreshness =
+    llama_place_freshness_summary(
+        $db,
+        (int) $place['id']
+    );
 
 $reportCompleteness = [
     'percent' => 0,
@@ -311,7 +599,8 @@ try {
             $liveCompletenessTotal =
                 max(
                     0,
-                    (int) $reportCompleteness['total'] - 1
+                    (int) $reportCompleteness['total']
+                    - 1
                 );
 
             $reportCompleteness['total'] =
@@ -332,18 +621,26 @@ try {
                     : 0;
         }
     }
-} catch (Throwable $exception) {
+} catch (
+    Throwable
+    $exception
+) {
     error_log(
         'Llama Scout report completeness error for Place #'
         . (int) $place['id']
         . ': '
-        . $exception->getMessage()
+        . $exception
+            ->getMessage()
     );
 }
 
 $canCheckIn =
     $userId > 0
-    && llama_contributor_can($db, $userId, 'check_in')
+    && llama_contributor_can(
+        $db,
+        $userId,
+        'check_in'
+    )
     && llama_place_checkin_has_coordinates(
         $db,
         (int) $place['id']
@@ -369,7 +666,8 @@ $canReportProblem =
         'report_problem'
     );
 
-$placeHistoryTimeline = [];
+$placeHistoryTimeline =
+    [];
 
 try {
     $placeHistoryTimeline =
@@ -378,38 +676,78 @@ try {
             (int) $place['id'],
             (string) $place['slug']
         );
-} catch (Throwable $exception) {
+} catch (
+    Throwable
+    $exception
+) {
     error_log(
         'Llama Scout public Place history error: '
-        . $exception->getMessage()
+        . $exception
+            ->getMessage()
     );
 }
 
-$galleryImages = [];
-$heroImage = null;
+$galleryImages =
+    [];
 
-if ($hasMemberAccess && !empty($place['images'])) {
-    $galleryImages = array_values(array_filter(
-        $place['images'],
-        static fn(array $image): bool =>
-            trim((string) ($image['src'] ?? '')) !== ''
-    ));
+$heroImage =
+    null;
 
-    foreach ($galleryImages as $image) {
-        if (!empty($image['is_featured'])) {
-            $heroImage = $image;
+if (
+    $hasMemberAccess
+    && !empty(
+        $place['images']
+    )
+) {
+    $galleryImages =
+        array_values(
+            array_filter(
+                $place['images'],
+                static fn (
+                    array $image
+                ): bool =>
+                    trim(
+                        (string) (
+                            $image['src']
+                            ?? ''
+                        )
+                    )
+                    !== ''
+            )
+        );
+
+    foreach (
+        $galleryImages
+        as $image
+    ) {
+        if (
+            !empty(
+                $image['is_featured']
+            )
+        ) {
+            $heroImage =
+                $image;
+
             break;
         }
     }
 
-    $heroImage ??= $galleryImages[0] ?? null;
-} elseif (!empty($place['featured_image'])) {
-    $heroImage = $place['featured_image'];
+    $heroImage ??=
+        $galleryImages[0]
+        ?? null;
+
+} elseif (
+    !empty(
+        $place['featured_image']
+    )
+) {
+    $heroImage =
+        $place['featured_image'];
 }
 
 $canonicalUrl =
-    'https://llamascout.com/place.php?slug=' .
-    rawurlencode(
+    'https://llamascout.com/place.php?slug='
+    . rawurlencode(
         (string) $place['slug']
     );
 
@@ -428,12 +766,13 @@ $pageDescription =
 
 if ($pageDescription === '') {
     $pageDescription =
-        'Explore ' .
-        (string) $place['name'] .
-        ' on Llama Scout.';
+        'Explore '
+        . (string) $place['name']
+        . ' on Llama Scout.';
 }
 
-$pageSocialImage = '';
+$pageSocialImage =
+    '';
 
 if ($heroImage) {
     $pageSocialImage =
@@ -456,36 +795,70 @@ if ($heroImage) {
         )
     ) {
         $pageSocialImage =
-            'https://llamascout.com/' .
-            ltrim(
+            'https://llamascout.com/'
+            . ltrim(
                 $pageSocialImage,
                 '/'
             );
     }
 }
 
-require __DIR__ . '/partials/header.php';
+require
+    __DIR__
+    . '/partials/header.php';
 ?>
 
 <article class="place-page">
 
-    <?php require __DIR__ . '/partials/place/hero.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/hero.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/freshness.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/freshness.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/gallery.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/gallery.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/facts-weather-amenities.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/facts-weather-amenities.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/member-content.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/member-content.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/history.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/history.php';
+    ?>
 
-    <?php require __DIR__ . '/partials/place/report-problem.php'; ?>
+    <?php
+    require
+        __DIR__
+        . '/partials/place/report-problem.php';
+    ?>
 
 </article>
 
 <script src="/js/place-gallery.js"></script>
 <script src="/js/place.js"></script>
 
-<?php require __DIR__ . '/partials/footer.php'; ?>
+<?php
+require
+    __DIR__
+    . '/partials/footer.php';
+?>
