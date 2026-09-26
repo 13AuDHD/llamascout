@@ -382,40 +382,128 @@ statusNode =
         }
     }
 
-    function popupHtml(key, properties) {
-        const source = sources[key];
+function popupRow(
+    label,
+    value
+) {
+    const clean =
+        String(value ?? '').trim();
 
-        const name = String(
-            properties?.[source.nameField] || ''
-        ).trim();
-
-        const detail = String(
-            properties?.[source.detailField] || ''
-        ).trim();
-
-        const sourceLine =
-            `Boundary data: ${source.sourceText}`;
-
-        return `
-            <article class="map-land-popup">
-                <strong>${escapeHtml(source.label)}</strong>
-
-                ${
-                    name
-                        ? `<span>${escapeHtml(name)}</span>`
-                        : ''
-                }
-
-                ${
-                    detail && detail !== name
-                        ? `<small>${escapeHtml(detail)}</small>`
-                        : ''
-                }
-
-                <small>${escapeHtml(sourceLine)}</small>
-            </article>
-        `;
+    if (!clean) {
+        return '';
     }
+
+    return `
+        <div class="map-overlay-popup-row">
+            <strong>
+                ${escapeHtml(label)}
+            </strong>
+
+            <span>
+                ${escapeHtml(clean)}
+            </span>
+        </div>
+    `;
+}
+
+
+function popupHtml(
+    key,
+    properties
+) {
+    const source =
+        sources[key];
+
+    const name =
+        String(
+            properties?.[
+                source.nameField
+            ] || ''
+        ).trim();
+
+    const detail =
+        String(
+            properties?.[
+                source.detailField
+            ] || ''
+        ).trim();
+
+    let extraRows = '';
+
+    if (key === 'tribal') {
+        extraRows +=
+            popupRow(
+                'Region',
+                properties?.REGION
+            );
+
+        extraRows +=
+            popupRow(
+                'Agency',
+                properties?.AGENCY
+            );
+    } else {
+        extraRows +=
+            popupRow(
+                'State',
+                properties?.ADMIN_ST
+            );
+    }
+
+    return `
+        <article
+            class="
+                map-overlay-popup
+                map-land-popup
+            "
+        >
+
+            <button
+                type="button"
+                class="map-overlay-popup-close"
+                data-map-overlay-popup-close
+                aria-label="Close boundary details"
+            >
+                ×
+            </button>
+
+            <p class="map-overlay-popup-eyebrow">
+                ${escapeHtml(source.label)}
+            </p>
+
+            <h3>
+                ${escapeHtml(
+                    name ||
+                    source.label
+                )}
+            </h3>
+
+            <div class="map-overlay-popup-meta">
+
+                ${
+                    detail &&
+                    detail !== name
+                        ? popupRow(
+                            'Type',
+                            detail
+                        )
+                        : ''
+                }
+
+                ${extraRows}
+
+            </div>
+
+            <p class="map-overlay-popup-source">
+                Boundary data:
+                ${escapeHtml(
+                    source.sourceText
+                )}
+            </p>
+
+        </article>
+    `;
+}
 
     function makeGeoJsonLayer(key, data) {
         const source = sources[key];
