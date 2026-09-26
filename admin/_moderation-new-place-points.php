@@ -28,6 +28,14 @@ $categories =
     )
         ? $newPlacePointEstimate['categories']
         : [];
+
+$standaloneFields =
+    is_array(
+        $newPlacePointEstimate['standalone_fields']
+        ?? null
+    )
+        ? $newPlacePointEstimate['standalone_fields']
+        : [];
 ?>
 
 <link
@@ -70,7 +78,7 @@ $categories =
     </header>
 
 
-    <?php if ($categories): ?>
+    <?php if ($categories || $standaloneFields): ?>
         <div class="admin-moderation-points-grid">
 
             <?php foreach ($categories as $category): ?>
@@ -140,6 +148,56 @@ $categories =
                         </small>
                     </strong>
                 </div>
+            <?php endforeach; ?>
+
+                        <?php foreach ($standaloneFields as $field): ?>
+                <?php
+                $points =
+                    (int) (
+                        $field['points']
+                        ?? 0
+                    );
+
+                $fieldMax =
+                    (int) (
+                        $field['max_points']
+                        ?? 0
+                    );
+
+                $answered =
+                    !empty(
+                        $field['answered']
+                    );
+                ?>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            <?= moderation_e(
+                                (string) (
+                                    $field['label']
+                                    ?? ''
+                                )
+                            ) ?>
+                        </strong>
+
+                        <small>
+                            <?= $answered
+                                ? 'Answered'
+                                : 'Not answered'
+                            ?>
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($points) ?>
+                        <small>
+                            /
+                            <?= number_format($fieldMax) ?>
+                        </small>
+                    </strong>
+                </div>
+
             <?php endforeach; ?>
 
         </div>
