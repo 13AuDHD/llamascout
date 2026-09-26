@@ -41,6 +41,63 @@ function llama_cell_float(
 }
 
 
+function llama_cell_requested_bit(
+    string $provider,
+    string $technology,
+    string $environment
+): int {
+    return match (
+        $provider
+        . ':'
+        . $technology
+        . ':'
+        . $environment
+    ) {
+        'tmobile:4g:outdoors' => 1,
+        'tmobile:4g:vehicle' => 2,
+        'tmobile:5g:outdoors' => 4,
+        'tmobile:5g:vehicle' => 8,
+
+        'verizon:4g:outdoors' => 16,
+        'verizon:4g:vehicle' => 32,
+        'verizon:5g:outdoors' => 64,
+        'verizon:5g:vehicle' => 128,
+
+        'att:4g:outdoors' => 256,
+        'att:4g:vehicle' => 512,
+        'att:5g:outdoors' => 1024,
+        'att:5g:vehicle' => 2048,
+
+        default => 0,
+    };
+}
+
+
+function llama_cell_binary_to_h3(
+    mixed $value
+): string {
+    if (!is_string($value) || strlen($value) !== 8) {
+        return '';
+    }
+
+    $hex = strtolower(bin2hex($value));
+
+    /*
+     * H3 indexes used here are 15 hexadecimal characters.
+     * BINARY(8) stores one leading zero nibble so MariaDB can
+     * index a compact fixed-width value.
+     */
+    if (
+        strlen($hex) === 16
+        && $hex[0] === '0'
+    ) {
+        return substr($hex, 1);
+    }
+
+    return ltrim($hex, '0');
+}
+
+
 try {
     $viewer = current_user();
 
@@ -85,9 +142,7 @@ try {
                 array_filter(
                     array_map(
                         static fn(string $value): string =>
-                            strtolower(
-                                trim($value)
-                            ),
+                            strtolower(trim($value)),
                         explode(
                             ',',
                             $providerInput
@@ -222,10 +277,6 @@ try {
             : (180 - $west)
                 + ($east + 180);
 
-    /*
-     * Do not allow a spoofed zoom value to turn this endpoint into
-     * a nationwide table scan.
-     */
     if (
         $latitudeSpan > 6.0
         || $longitudeSpan > 8.0
@@ -243,11 +294,11 @@ try {
         );
     }
 
-    $db = db();
+    $db = cell_db();
 
     $tableCheck =
         $db->query(
-            "SHOW TABLES LIKE 'cell_coverage_h3'"
+            "SHOW TABLES LIKE 'cell_coverage_cells'"
         );
 
     if (!$tableCheck->fetchColumn()) {
@@ -266,54 +317,51 @@ try {
         );
     }
 
-    $technologyCode =
-        $technology === '5g'
-            ? 500
-            : 400;
+    $providerBits = [];
+    $combinedMask = 0;
 
-    $minimumDownload =
-        $technology === '5g'
-            ? 7
-            : 5;
+    foreach ($providers as $provider) {
+        $bit =
+            llama_cell_requested_bit(
+                $provider,
+                $technology,
+                $environment
+            );
 
-    $minimumUpload = 1;
+        if ($bit <= 0) {
+            continue;
+        }
 
-    $providerPlaceholders =
-        implode(
-            ', ',
-            array_fill(
-                0,
-                count($providers),
-                '?'
-            )
+        $providerBits[$provider] =
+            $bit;
+
+        $combinedMask |= $bit;
+    }
+
+    if (!$providerBits || $combinedMask <= 0) {
+        llama_cell_json(
+            [
+                'ok' => true,
+                'coverage' => [],
+                'as_of_dates' => [],
+                'truncated' => false,
+                'data_ready' => true,
+                'minimum_zoom' =>
+                    $minimumZoom,
+            ]
         );
+    }
 
     $where = [
-        '`provider_key` IN ('
-            . $providerPlaceholders
-            . ')',
-        '`technology_code` = ?',
-        '`minimum_download` >= ?',
-        '`minimum_upload` >= ?',
         '`center_lat` BETWEEN ? AND ?',
+        '(`coverage_flags` & ?) <> 0',
     ];
 
     $params = [
-        ...$providers,
-        $technologyCode,
-        $minimumDownload,
-        $minimumUpload,
         $south,
         $north,
+        $combinedMask,
     ];
-
-    if ($environment === 'vehicle') {
-        $where[] =
-            '`environment` = 1';
-    } else {
-        $where[] =
-            '`environment` IN (0, 1)';
-    }
 
     if ($west <= $east) {
         $where[] =
@@ -336,20 +384,16 @@ try {
 
     $sql =
         'SELECT
-            `provider_key`,
             `h3_index`,
-            MAX(`as_of_date`) AS `as_of_date`
-        FROM `cell_coverage_h3`
-        WHERE '
+            `coverage_flags`
+         FROM `cell_coverage_cells`
+         WHERE '
         . implode(
             ' AND ',
             $where
         )
         . '
-        GROUP BY
-            `provider_key`,
-            `h3_index`
-        LIMIT '
+         LIMIT '
         . ($limit + 1);
 
     $stmt =
@@ -358,9 +402,11 @@ try {
     $stmt->execute($params);
 
     $coverage = [];
-    $asOfDates = [];
 
-    foreach ($providers as $provider) {
+    foreach (
+        array_keys($providerBits)
+        as $provider
+    ) {
         $coverage[$provider] = [];
     }
 
@@ -376,53 +422,103 @@ try {
             break;
         }
 
-        $provider =
-            (string) (
-                $row['provider_key']
-                ?? ''
-            );
-
         $h3Index =
-            trim(
-                (string) (
-                    $row['h3_index']
-                    ?? ''
-                )
+            llama_cell_binary_to_h3(
+                $row['h3_index']
+                ?? null
             );
 
-        if (
-            !isset($coverage[$provider])
-            || $h3Index === ''
-        ) {
+        if ($h3Index === '') {
             continue;
         }
 
-        $coverage[$provider][] =
-            $h3Index;
-
-        $asOfDate =
-            trim(
-                (string) (
-                    $row['as_of_date']
-                    ?? ''
-                )
+        $flags =
+            (int) (
+                $row['coverage_flags']
+                ?? 0
             );
 
-        if (
-            $asOfDate !== ''
-            && (
-                !isset(
-                    $asOfDates[$provider]
-                )
-                || $asOfDate
-                    > $asOfDates[$provider]
-            )
+        foreach (
+            $providerBits
+            as $provider => $bit
         ) {
-            $asOfDates[$provider] =
-                $asOfDate;
+            if (($flags & $bit) !== 0) {
+                $coverage[$provider][] =
+                    $h3Index;
+            }
         }
 
         $rowCount++;
+    }
+
+    $asOfDates = [];
+
+    $ledgerCheck =
+        $db->query(
+            "SHOW TABLES LIKE 'cell_coverage_datasets'"
+        );
+
+    if ($ledgerCheck->fetchColumn()) {
+        $providerPlaceholders =
+            implode(
+                ', ',
+                array_fill(
+                    0,
+                    count($providers),
+                    '?'
+                )
+            );
+
+        $ledgerStmt =
+            $db->prepare(
+                'SELECT
+                    provider_key,
+                    MAX(fcc_as_of_date)
+                        AS fcc_as_of_date
+                 FROM cell_coverage_datasets
+                 WHERE provider_key IN ('
+                    . $providerPlaceholders
+                    . ')
+                   AND technology = ?
+                   AND status = "current"
+                 GROUP BY provider_key'
+            );
+
+        $ledgerStmt->execute([
+            ...$providers,
+            $technology,
+        ]);
+
+        while (
+            $row =
+                $ledgerStmt->fetch(
+                    PDO::FETCH_ASSOC
+                )
+        ) {
+            $provider =
+                trim(
+                    (string) (
+                        $row['provider_key']
+                        ?? ''
+                    )
+                );
+
+            $date =
+                trim(
+                    (string) (
+                        $row['fcc_as_of_date']
+                        ?? ''
+                    )
+                );
+
+            if (
+                $provider !== ''
+                && $date !== ''
+            ) {
+                $asOfDates[$provider] =
+                    $date;
+            }
+        }
     }
 
     llama_cell_json(
@@ -442,7 +538,7 @@ try {
     $reference =
         llama_log_caught_exception(
             $e,
-            'api_cell_coverage'
+            'api_cell_coverage_v2'
         );
 
     llama_cell_json(
