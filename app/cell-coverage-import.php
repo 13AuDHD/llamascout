@@ -5,7 +5,9 @@ declare(strict_types=1);
 
 /* =========================================================
    LLAMA SCOUT
-   FCC MOBILE H3 IMPORTER
+   FCC MOBILE H3 IMPORTER V2
+
+   Writes directly to the dedicated compact cell database.
    ========================================================= */
 
 function llama_cell_import_directory(): string
@@ -72,8 +74,7 @@ function llama_cell_import_files(): array
 
 function llama_cell_import_safe_file(
     string $filename
-): string
-{
+): string {
     $filename =
         basename(
             trim($filename)
@@ -108,8 +109,7 @@ function llama_cell_import_safe_file(
 
 function llama_cell_sqlite_identifier(
     string $identifier
-): string
-{
+): string {
     return '"'
         . str_replace(
             '"',
@@ -122,8 +122,7 @@ function llama_cell_sqlite_identifier(
 
 function llama_cell_import_table_info(
     SQLite3 $sqlite
-): array
-{
+): array {
     $required = [
         'h3_res9_id',
         'providerid',
@@ -205,7 +204,9 @@ function llama_cell_import_table_info(
             array_filter(
                 $required,
                 static fn(string $name): bool =>
-                    !isset($columns[$name])
+                    !isset(
+                        $columns[$name]
+                    )
             );
 
         if ($missing) {
@@ -276,8 +277,7 @@ function llama_cell_import_table_info(
 function llama_cell_unpack_double(
     string $bytes,
     bool $littleEndian
-): float
-{
+): float {
     if (strlen($bytes) !== 8) {
         throw new RuntimeException(
             'Invalid GeoPackage geometry coordinate.'
@@ -302,8 +302,7 @@ function llama_cell_unpack_double(
 function llama_cell_unpack_uint32(
     string $bytes,
     bool $littleEndian
-): int
-{
+): int {
     if (strlen($bytes) !== 4) {
         throw new RuntimeException(
             'Invalid GeoPackage geometry integer.'
@@ -327,8 +326,7 @@ function llama_cell_unpack_uint32(
 
 function llama_cell_wkb_polygon_bounds(
     string $wkb
-): ?array
-{
+): ?array {
     $length = strlen($wkb);
 
     if ($length < 9) {
@@ -364,11 +362,6 @@ function llama_cell_wkb_polygon_bounds(
 
     $offset += 4;
 
-    /*
-     * FCC H3 downloads use ordinary 2D polygon geometries.
-     * Keep a small compatibility allowance for ISO SQL/MM
-     * dimensional type offsets.
-     */
     $baseType =
         $type >= 1000
             ? $type % 1000
@@ -403,11 +396,6 @@ function llama_cell_wkb_polygon_bounds(
 
     if (
         $type >= 1000
-        && $type < 2000
-    ) {
-        $coordinateSize = 24;
-    } elseif (
-        $type >= 2000
         && $type < 3000
     ) {
         $coordinateSize = 24;
@@ -469,10 +457,25 @@ function llama_cell_wkb_polygon_bounds(
                     $little
                 );
 
-            $minX = min($minX, $x);
-            $maxX = max($maxX, $x);
-            $minY = min($minY, $y);
-            $maxY = max($maxY, $y);
+            $minX = min(
+                $minX,
+                $x
+            );
+
+            $maxX = max(
+                $maxX,
+                $x
+            );
+
+            $minY = min(
+                $minY,
+                $y
+            );
+
+            $maxY = max(
+                $maxY,
+                $y
+            );
 
             $offset +=
                 $coordinateSize;
@@ -499,8 +502,7 @@ function llama_cell_wkb_polygon_bounds(
 
 function llama_cell_gpkg_center(
     mixed $geometry
-): ?array
-{
+): ?array {
     if (
         !is_string($geometry)
         || strlen($geometry) < 8
@@ -584,6 +586,7 @@ function llama_cell_gpkg_center(
         return [
             'lat' =>
                 ($minY + $maxY) / 2,
+
             'lng' =>
                 ($minX + $maxX) / 2,
         ];
@@ -620,8 +623,7 @@ function llama_cell_gpkg_center(
 function llama_cell_provider_key(
     int $providerId,
     string $brandName
-): ?string
-{
+): ?string {
     $byId = [
         130403 => 'tmobile',
         131425 => 'verizon',
@@ -677,6 +679,597 @@ function llama_cell_provider_key(
 }
 
 
+function llama_cell_state_name(
+    string $fips
+): string {
+    $states = [
+        '01' => 'Alabama',
+        '02' => 'Alaska',
+        '04' => 'Arizona',
+        '05' => 'Arkansas',
+        '06' => 'California',
+        '08' => 'Colorado',
+        '09' => 'Connecticut',
+        '10' => 'Delaware',
+        '11' => 'District of Columbia',
+        '12' => 'Florida',
+        '13' => 'Georgia',
+        '15' => 'Hawaii',
+        '16' => 'Idaho',
+        '17' => 'Illinois',
+        '18' => 'Indiana',
+        '19' => 'Iowa',
+        '20' => 'Kansas',
+        '21' => 'Kentucky',
+        '22' => 'Louisiana',
+        '23' => 'Maine',
+        '24' => 'Maryland',
+        '25' => 'Massachusetts',
+        '26' => 'Michigan',
+        '27' => 'Minnesota',
+        '28' => 'Mississippi',
+        '29' => 'Missouri',
+        '30' => 'Montana',
+        '31' => 'Nebraska',
+        '32' => 'Nevada',
+        '33' => 'New Hampshire',
+        '34' => 'New Jersey',
+        '35' => 'New Mexico',
+        '36' => 'New York',
+        '37' => 'North Carolina',
+        '38' => 'North Dakota',
+        '39' => 'Ohio',
+        '40' => 'Oklahoma',
+        '41' => 'Oregon',
+        '42' => 'Pennsylvania',
+        '44' => 'Rhode Island',
+        '45' => 'South Carolina',
+        '46' => 'South Dakota',
+        '47' => 'Tennessee',
+        '48' => 'Texas',
+        '49' => 'Utah',
+        '50' => 'Vermont',
+        '51' => 'Virginia',
+        '53' => 'Washington',
+        '54' => 'West Virginia',
+        '55' => 'Wisconsin',
+        '56' => 'Wyoming',
+        '60' => 'American Samoa',
+        '66' => 'Guam',
+        '69' => 'Northern Mariana Islands',
+        '72' => 'Puerto Rico',
+        '78' => 'U.S. Virgin Islands',
+    ];
+
+    return $states[$fips]
+        ?? ('FIPS ' . $fips);
+}
+
+
+function llama_cell_import_mask(
+    string $provider,
+    int $technologyCode
+): int {
+    return match (
+        $provider
+        . ':'
+        . $technologyCode
+    ) {
+        'tmobile:400' => 1 | 2,
+        'tmobile:500' => 4 | 8,
+        'verizon:400' => 16 | 32,
+        'verizon:500' => 64 | 128,
+        'att:400' => 256 | 512,
+        'att:500' => 1024 | 2048,
+        default => 0,
+    };
+}
+
+
+function llama_cell_import_row_flag(
+    string $provider,
+    int $technologyCode,
+    int $environment
+): int {
+    $mask =
+        llama_cell_import_mask(
+            $provider,
+            $technologyCode
+        );
+
+    if ($mask === 0) {
+        return 0;
+    }
+
+    /*
+     * In every provider/technology pair the first bit is
+     * outdoor coverage and the second bit is in-vehicle.
+     */
+    $outdoorBit =
+        $mask
+        & (-$mask);
+
+    $vehicleBit =
+        $mask ^ $outdoorBit;
+
+    if ($environment === 0) {
+        return $outdoorBit;
+    }
+
+    if ($environment === 1) {
+        return $outdoorBit
+            | $vehicleBit;
+    }
+
+    return 0;
+}
+
+
+function llama_cell_import_h3_binary(
+    string $h3
+): ?string {
+    $h3 =
+        strtolower(
+            trim($h3)
+        );
+
+    if (
+        !preg_match(
+            '/^[0-9a-f]{15}$/',
+            $h3
+        )
+    ) {
+        return null;
+    }
+
+    $binary =
+        hex2bin(
+            str_pad(
+                $h3,
+                16,
+                '0',
+                STR_PAD_LEFT
+            )
+        );
+
+    return $binary === false
+        ? null
+        : $binary;
+}
+
+
+function llama_cell_import_identity(
+    SQLite3 $sqlite,
+    array $info
+): array {
+    $columns =
+        $info['columns'];
+
+    $brandColumn =
+        $columns['brandname']
+        ?? null;
+
+    $select = [
+        llama_cell_sqlite_identifier(
+            $columns['providerid']
+        )
+            . ' AS providerid',
+
+        llama_cell_sqlite_identifier(
+            $columns['technology']
+        )
+            . ' AS technology',
+    ];
+
+    if ($brandColumn) {
+        $select[] =
+            llama_cell_sqlite_identifier(
+                $brandColumn
+            )
+            . ' AS brandname';
+    } else {
+        $select[] =
+            "'' AS brandname";
+    }
+
+    $query =
+        'SELECT DISTINCT '
+        . implode(
+            ', ',
+            $select
+        )
+        . '
+         FROM '
+        . llama_cell_sqlite_identifier(
+            $info['table']
+        )
+        . '
+         LIMIT 20';
+
+    $result =
+        $sqlite->query($query);
+
+    if (!$result) {
+        throw new RuntimeException(
+            'The FCC GeoPackage identity could not be read.'
+        );
+    }
+
+    $identities = [];
+
+    while (
+        $row =
+            $result->fetchArray(
+                SQLITE3_ASSOC
+            )
+    ) {
+        $provider =
+            llama_cell_provider_key(
+                (int) (
+                    $row['providerid']
+                    ?? 0
+                ),
+                (string) (
+                    $row['brandname']
+                    ?? ''
+                )
+            );
+
+        $technology =
+            (int) (
+                $row['technology']
+                ?? 0
+            );
+
+        if (
+            !$provider
+            || !in_array(
+                $technology,
+                [400, 500],
+                true
+            )
+        ) {
+            continue;
+        }
+
+        $key =
+            $provider
+            . ':'
+            . $technology;
+
+        $identities[$key] = [
+            'provider' => $provider,
+            'technology_code' =>
+                $technology,
+            'technology' =>
+                $technology === 500
+                    ? '5g'
+                    : '4g',
+        ];
+    }
+
+    if (count($identities) !== 1) {
+        throw new RuntimeException(
+            'The GeoPackage must contain one supported provider and one mobile technology.'
+        );
+    }
+
+    return array_values(
+        $identities
+    )[0];
+}
+
+
+function llama_cell_import_prepare_dataset(
+    PDO $db,
+    string $filename,
+    string $stateFips,
+    string $asOfDate,
+    array $identity,
+    int $sourceRows,
+    int $sourceBytes
+): void {
+    $provider =
+        $identity['provider'];
+
+    $technology =
+        $identity['technology'];
+
+    $technologyCode =
+        (int) $identity[
+            'technology_code'
+        ];
+
+    $mask =
+        llama_cell_import_mask(
+            $provider,
+            $technologyCode
+        );
+
+    $newerStmt =
+        $db->prepare(
+            'SELECT MAX(fcc_as_of_date)
+             FROM cell_coverage_datasets
+             WHERE state_fips = ?
+               AND provider_key = ?
+               AND technology = ?
+               AND status = "current"'
+        );
+
+    $newerStmt->execute([
+        $stateFips,
+        $provider,
+        $technology,
+    ]);
+
+    $newerDate =
+        trim(
+            (string) (
+                $newerStmt->fetchColumn()
+                ?: ''
+            )
+        );
+
+    if (
+        $newerDate !== ''
+        && $newerDate > $asOfDate
+    ) {
+        throw new InvalidArgumentException(
+            'A newer FCC dataset is already current for this state, provider, and technology.'
+        );
+    }
+
+    $db->beginTransaction();
+
+    try {
+        /*
+         * Remove only this provider/technology's old bits for the
+         * state. Other carriers and technologies remain untouched.
+         */
+        $clearMask =
+            65535 ^ $mask;
+
+        $clearStmt =
+            $db->prepare(
+                'UPDATE cell_coverage_cells
+                 SET coverage_flags =
+                        coverage_flags & ?
+                 WHERE state_fips = ?
+                   AND (
+                        coverage_flags & ?
+                   ) <> 0'
+            );
+
+        $clearStmt->execute([
+            $clearMask,
+            $stateFips,
+            $mask,
+        ]);
+
+        $deleteEmpty =
+            $db->prepare(
+                'DELETE FROM cell_coverage_cells
+                 WHERE state_fips = ?
+                   AND coverage_flags = 0'
+            );
+
+        $deleteEmpty->execute([
+            $stateFips,
+        ]);
+
+        $ledger =
+            $db->prepare(
+                'INSERT INTO cell_coverage_datasets (
+                    state_fips,
+                    state_name,
+                    provider_key,
+                    technology,
+                    fcc_as_of_date,
+                    source_filename,
+                    source_bytes,
+                    status,
+                    source_rows,
+                    cells_written,
+                    started_at,
+                    completed_at,
+                    error_message
+                ) VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    "importing",
+                    ?,
+                    0,
+                    UTC_TIMESTAMP(),
+                    NULL,
+                    NULL
+                )
+                ON DUPLICATE KEY UPDATE
+                    state_name =
+                        VALUES(state_name),
+                    source_filename =
+                        VALUES(source_filename),
+                    source_bytes =
+                        VALUES(source_bytes),
+                    status =
+                        "importing",
+                    source_rows =
+                        VALUES(source_rows),
+                    cells_written =
+                        0,
+                    started_at =
+                        UTC_TIMESTAMP(),
+                    completed_at =
+                        NULL,
+                    error_message =
+                        NULL'
+            );
+
+        $ledger->execute([
+            $stateFips,
+            llama_cell_state_name(
+                $stateFips
+            ),
+            $provider,
+            $technology,
+            $asOfDate,
+            $filename,
+            $sourceBytes,
+            $sourceRows,
+        ]);
+
+        $db->commit();
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $e;
+    }
+}
+
+
+function llama_cell_import_finish_dataset(
+    PDO $db,
+    string $stateFips,
+    string $asOfDate,
+    array $identity
+): int {
+    $provider =
+        $identity['provider'];
+
+    $technology =
+        $identity['technology'];
+
+    $mask =
+        llama_cell_import_mask(
+            $provider,
+            (int) $identity[
+                'technology_code'
+            ]
+        );
+
+    $countStmt =
+        $db->prepare(
+            'SELECT COUNT(*)
+             FROM cell_coverage_cells
+             WHERE state_fips = ?
+               AND (
+                    coverage_flags & ?
+               ) <> 0'
+        );
+
+    $countStmt->execute([
+        $stateFips,
+        $mask,
+    ]);
+
+    $cellCount =
+        (int) $countStmt
+            ->fetchColumn();
+
+    $db->beginTransaction();
+
+    try {
+        $supersede =
+            $db->prepare(
+                'UPDATE cell_coverage_datasets
+                 SET status = "superseded"
+                 WHERE state_fips = ?
+                   AND provider_key = ?
+                   AND technology = ?
+                   AND fcc_as_of_date <> ?
+                   AND status = "current"'
+            );
+
+        $supersede->execute([
+            $stateFips,
+            $provider,
+            $technology,
+            $asOfDate,
+        ]);
+
+        $finish =
+            $db->prepare(
+                'UPDATE cell_coverage_datasets
+                 SET status = "current",
+                     cells_written = ?,
+                     completed_at = UTC_TIMESTAMP(),
+                     error_message = NULL
+                 WHERE state_fips = ?
+                   AND provider_key = ?
+                   AND technology = ?
+                   AND fcc_as_of_date = ?'
+            );
+
+        $finish->execute([
+            $cellCount,
+            $stateFips,
+            $provider,
+            $technology,
+            $asOfDate,
+        ]);
+
+        $db->commit();
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $e;
+    }
+
+    return $cellCount;
+}
+
+
+function llama_cell_import_mark_error(
+    PDO $db,
+    string $stateFips,
+    string $asOfDate,
+    ?array $identity,
+    string $message
+): void {
+    if (!$identity) {
+        return;
+    }
+
+    try {
+        $stmt =
+            $db->prepare(
+                'UPDATE cell_coverage_datasets
+                 SET status = "error",
+                     error_message = ?,
+                     completed_at = UTC_TIMESTAMP()
+                 WHERE state_fips = ?
+                   AND provider_key = ?
+                   AND technology = ?
+                   AND fcc_as_of_date = ?'
+            );
+
+        $stmt->execute([
+            mb_substr(
+                $message,
+                0,
+                4000
+            ),
+            $stateFips,
+            $identity['provider'],
+            $identity['technology'],
+            $asOfDate,
+        ]);
+    } catch (Throwable) {
+        // Do not hide the original import error.
+    }
+}
+
+
 function llama_cell_import_batch(
     PDO $db,
     string $filename,
@@ -721,8 +1314,14 @@ function llama_cell_import_batch(
         );
     }
 
+    $asOfDate =
+        $date->format('Y-m-d');
+
     $offset =
-        max(0, $offset);
+        max(
+            0,
+            $offset
+        );
 
     $batchSize =
         max(
@@ -738,6 +1337,9 @@ function llama_cell_import_batch(
             $filename
         );
 
+    $sourceBytes =
+        (int) filesize($path);
+
     $sqlite =
         new SQLite3(
             $path,
@@ -746,10 +1348,18 @@ function llama_cell_import_batch(
 
     $sqlite->busyTimeout(3000);
 
+    $identity = null;
+
     try {
         $info =
             llama_cell_import_table_info(
                 $sqlite
+            );
+
+        $identity =
+            llama_cell_import_identity(
+                $sqlite,
+                $info
             );
 
         $table =
@@ -813,20 +1423,30 @@ function llama_cell_import_batch(
                 "'' AS brandname";
         }
 
-        $count =
-            $sqlite->querySingle(
-                'SELECT COUNT(*)
-                 FROM '
-                . llama_cell_sqlite_identifier(
-                    $table
-                )
-            );
-
         $totalRows =
             max(
                 0,
-                (int) $count
+                (int) $sqlite
+                    ->querySingle(
+                        'SELECT COUNT(*)
+                         FROM '
+                        . llama_cell_sqlite_identifier(
+                            $table
+                        )
+                    )
             );
+
+        if ($offset === 0) {
+            llama_cell_import_prepare_dataset(
+                $db,
+                basename($path),
+                $stateFips,
+                $asOfDate,
+                $identity,
+                $totalRows,
+                $sourceBytes
+            );
+        }
 
         $query =
             'SELECT '
@@ -855,27 +1475,168 @@ function llama_cell_import_batch(
             );
         }
 
+        $cells = [];
+
+        $read = 0;
+        $accepted = 0;
+        $skipped = 0;
+
+        while (
+            $row =
+                $rows->fetchArray(
+                    SQLITE3_ASSOC
+                )
+        ) {
+            $read++;
+
+            $h3 =
+                strtolower(
+                    trim(
+                        (string) (
+                            $row[
+                                'h3_res9_id'
+                            ]
+                            ?? ''
+                        )
+                    )
+                );
+
+            $binaryH3 =
+                llama_cell_import_h3_binary(
+                    $h3
+                );
+
+            if ($binaryH3 === null) {
+                $skipped++;
+                continue;
+            }
+
+            $provider =
+                llama_cell_provider_key(
+                    (int) (
+                        $row['providerid']
+                        ?? 0
+                    ),
+                    (string) (
+                        $row['brandname']
+                        ?? ''
+                    )
+                );
+
+            $technologyCode =
+                (int) (
+                    $row['technology']
+                    ?? 0
+                );
+
+            if (
+                $provider
+                    !== $identity['provider']
+                || $technologyCode
+                    !== (int) $identity[
+                        'technology_code'
+                    ]
+            ) {
+                $skipped++;
+                continue;
+            }
+
+            $mindown =
+                (float) (
+                    $row['mindown']
+                    ?? 0
+                );
+
+            $minup =
+                (float) (
+                    $row['minup']
+                    ?? 0
+                );
+
+            if ($technologyCode === 400) {
+                if (
+                    $mindown < 5
+                    || $minup < 1
+                ) {
+                    $skipped++;
+                    continue;
+                }
+            } elseif ($technologyCode === 500) {
+                if (
+                    $mindown < 7
+                    || $minup < 1
+                ) {
+                    $skipped++;
+                    continue;
+                }
+            } else {
+                $skipped++;
+                continue;
+            }
+
+            $environment =
+                (int) (
+                    $row['environmnt']
+                    ?? -1
+                );
+
+            $flag =
+                llama_cell_import_row_flag(
+                    $provider,
+                    $technologyCode,
+                    $environment
+                );
+
+            if ($flag === 0) {
+                $skipped++;
+                continue;
+            }
+
+            $center =
+                llama_cell_gpkg_center(
+                    $row['__geometry']
+                    ?? null
+                );
+
+            if (
+                !$center
+                || $center['lat'] < -90
+                || $center['lat'] > 90
+                || $center['lng'] < -180
+                || $center['lng'] > 180
+            ) {
+                $skipped++;
+                continue;
+            }
+
+            $key = $h3;
+
+            if (!isset($cells[$key])) {
+                $cells[$key] = [
+                    'h3' => $binaryH3,
+                    'lat' =>
+                        (float) $center['lat'],
+                    'lng' =>
+                        (float) $center['lng'],
+                    'flags' => 0,
+                ];
+            }
+
+            $cells[$key]['flags'] |=
+                $flag;
+
+            $accepted++;
+        }
+
         $insert =
             $db->prepare(
-                'INSERT INTO cell_coverage_h3 (
+                'INSERT INTO cell_coverage_cells (
+                    state_fips,
                     h3_index,
-                    provider_key,
-                    provider_id,
-                    technology_code,
-                    minimum_download,
-                    minimum_upload,
-                    environment,
                     center_lat,
                     center_lng,
-                    state_fips,
-                    as_of_date
+                    coverage_flags
                 ) VALUES (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
                     ?,
                     ?,
                     ?,
@@ -883,194 +1644,50 @@ function llama_cell_import_batch(
                     ?
                 )
                 ON DUPLICATE KEY UPDATE
-                    provider_id =
-                        VALUES(provider_id),
-                    minimum_download =
-                        GREATEST(
-                            minimum_download,
-                            VALUES(minimum_download)
-                        ),
-                    minimum_upload =
-                        GREATEST(
-                            minimum_upload,
-                            VALUES(minimum_upload)
-                        ),
                     center_lat =
                         VALUES(center_lat),
                     center_lng =
                         VALUES(center_lng),
-                    as_of_date =
-                        GREATEST(
-                            as_of_date,
-                            VALUES(as_of_date)
-                        ),
-                    imported_at =
+                    coverage_flags =
+                        coverage_flags
+                        | VALUES(coverage_flags),
+                    updated_at =
                         CURRENT_TIMESTAMP'
             );
-
-        $read = 0;
-        $imported = 0;
-        $skipped = 0;
 
         $db->beginTransaction();
 
         try {
-            while (
-                $row =
-                    $rows->fetchArray(
-                        SQLITE3_ASSOC
-                    )
-            ) {
-                $read++;
-
-                $h3 =
-                    strtolower(
-                        trim(
-                            (string) (
-                                $row[
-                                    'h3_res9_id'
-                                ]
-                                ?? ''
-                            )
-                        )
-                    );
-
-                if (
-                    !preg_match(
-                        '/^[0-9a-f]{15}$/',
-                        $h3
-                    )
-                ) {
-                    $skipped++;
-                    continue;
-                }
-
-                $providerId =
-                    (int) (
-                        $row['providerid']
-                        ?? 0
-                    );
-
-                $providerKey =
-                    llama_cell_provider_key(
-                        $providerId,
-                        (string) (
-                            $row['brandname']
-                            ?? ''
-                        )
-                    );
-
-                if (!$providerKey) {
-                    $skipped++;
-                    continue;
-                }
-
-                $technology =
-                    (int) (
-                        $row['technology']
-                        ?? 0
-                    );
-
-                $mindown =
-                    (float) (
-                        $row['mindown']
-                        ?? 0
-                    );
-
-                $minup =
-                    (float) (
-                        $row['minup']
-                        ?? 0
-                    );
-
-                $environment =
-                    (int) (
-                        $row['environmnt']
-                        ?? -1
-                    );
-
-                if (
-                    !in_array(
-                        $environment,
-                        [0, 1],
-                        true
-                    )
-                ) {
-                    $skipped++;
-                    continue;
-                }
-
-                if ($technology === 400) {
-                    if (
-                        $mindown < 5
-                        || $minup < 1
-                    ) {
-                        $skipped++;
-                        continue;
-                    }
-                } elseif (
-                    $technology === 500
-                ) {
-                    /*
-                     * Llama Scout's 5G toggle means
-                     * "at least the FCC 7/1 Mbps 5G tier."
-                     * Faster 35/3 coverage therefore still
-                     * counts as 5G coverage.
-                     */
-                    if (
-                        $mindown < 7
-                        || $minup < 1
-                    ) {
-                        $skipped++;
-                        continue;
-                    }
-                } else {
-                    $skipped++;
-                    continue;
-                }
-
-                $center =
-                    llama_cell_gpkg_center(
-                        $row['__geometry']
-                        ?? null
-                    );
-
-                if (
-                    !$center
-                    || $center['lat'] < -90
-                    || $center['lat'] > 90
-                    || $center['lng'] < -180
-                    || $center['lng'] > 180
-                ) {
-                    $skipped++;
-                    continue;
-                }
-
-                $insert->execute([
-                    $h3,
-                    $providerKey,
-                    $providerId > 0
-                        ? $providerId
-                        : null,
-                    $technology,
-                    (int) round($mindown),
-                    (int) round($minup),
-                    $environment,
-                    round(
-                        (float) $center['lat'],
-                        6
-                    ),
-                    round(
-                        (float) $center['lng'],
-                        6
-                    ),
+            foreach ($cells as $cell) {
+                $insert->bindValue(
+                    1,
                     $stateFips,
-                    $date->format(
-                        'Y-m-d'
-                    ),
-                ]);
+                    PDO::PARAM_STR
+                );
 
-                $imported++;
+                $insert->bindValue(
+                    2,
+                    $cell['h3'],
+                    PDO::PARAM_LOB
+                );
+
+                $insert->bindValue(
+                    3,
+                    $cell['lat']
+                );
+
+                $insert->bindValue(
+                    4,
+                    $cell['lng']
+                );
+
+                $insert->bindValue(
+                    5,
+                    $cell['flags'],
+                    PDO::PARAM_INT
+                );
+
+                $insert->execute();
             }
 
             $db->commit();
@@ -1086,19 +1703,78 @@ function llama_cell_import_batch(
         $nextOffset =
             $offset + $read;
 
+        $done =
+            $read === 0
+            || $nextOffset
+                >= $totalRows;
+
+        $datasetCells = null;
+
+        if ($done) {
+            $datasetCells =
+                llama_cell_import_finish_dataset(
+                    $db,
+                    $stateFips,
+                    $asOfDate,
+                    $identity
+                );
+        }
+
         return [
-            'filename' => basename($path),
-            'table' => $table,
-            'offset' => $offset,
-            'read' => $read,
-            'imported' => $imported,
-            'skipped' => $skipped,
-            'total_rows' => $totalRows,
-            'next_offset' => $nextOffset,
+            'filename' =>
+                basename($path),
+
+            'table' =>
+                $table,
+
+            'provider' =>
+                $identity['provider'],
+
+            'technology' =>
+                $identity['technology'],
+
+            'offset' =>
+                $offset,
+
+            'read' =>
+                $read,
+
+            /*
+             * Keep "imported" for the existing Admin progress JS.
+             * It means accepted source rows, not physical DB rows.
+             */
+            'imported' =>
+                $accepted,
+
+            'cells_written' =>
+                count($cells),
+
+            'dataset_cells' =>
+                $datasetCells,
+
+            'skipped' =>
+                $skipped,
+
+            'total_rows' =>
+                $totalRows,
+
+            'next_offset' =>
+                $nextOffset,
+
             'done' =>
-                $read === 0
-                || $nextOffset >= $totalRows,
+                $done,
         ];
+
+    } catch (Throwable $e) {
+        llama_cell_import_mark_error(
+            $db,
+            $stateFips,
+            $asOfDate,
+            $identity,
+            $e->getMessage()
+        );
+
+        throw $e;
 
     } finally {
         $sqlite->close();
