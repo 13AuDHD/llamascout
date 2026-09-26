@@ -93,18 +93,18 @@
     let control = null;
     let statusNode = null;
 
-    function createSourceState() {
-        return {
-            enabled: true,
-            layer: null,
-            loadedBounds: null,
-            zoomBucket: null,
-            controller: null,
-            requestNumber: 0,
-            loading: false,
-            error: false
-        };
-    }
+function createSourceState() {
+    return {
+        enabled: false,
+        layer: null,
+        loadedBounds: null,
+        zoomBucket: null,
+        controller: null,
+        requestNumber: 0,
+        loading: false,
+        error: false
+    };
+}
 
     function ensureStyles() {
         if (document.querySelector('link[data-map-land-overlays-style]')) {
@@ -174,7 +174,7 @@
                         <button
                             type="button"
                             data-land-layer="${key}"
-                            aria-pressed="true"
+                            aria-pressed="false"
                             title="${escapeHtml(source.label)} boundaries"
                         >
                             <span
@@ -196,9 +196,23 @@
             ></span>
         `;
 
-        mapCard.appendChild(control);
-        statusNode = control.querySelector('#map-land-status');
+const landSlot =
+    document.getElementById('map-tools-land-slot');
 
+const controlHost =
+    landSlot || mapCard;
+
+controlHost.appendChild(control);
+
+if (landSlot) {
+    control.classList.add(
+        'map-land-control-embedded'
+    );
+}
+
+statusNode =
+    control.querySelector('#map-land-status');
+        
         control
             .querySelectorAll('[data-land-layer]')
             .forEach((button) => {
