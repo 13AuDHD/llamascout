@@ -3,12 +3,13 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/cell-coverage-import.php';
+require_once dirname(__DIR__) . '/app/fcc-cell-sync.php';
 
 $adminUser =
     moderation_require_admin();
 
-$cellDb = cell_db();
+$cellDb =
+    cell_db();
 
 $adminPageTitle =
     'Cell Coverage';
@@ -17,22 +18,18 @@ $adminPageEyebrow =
     'Map Data';
 
 $adminActiveNav =
-    'system';
+    'cell-coverage';
 
-$files = [];
-$directoryError = '';
+$fccConfigured =
+    llama_fcc_sync_is_configured();
 
-try {
-    $files =
-        llama_cell_import_files();
-} catch (Throwable $e) {
-    $directoryError =
-        $e->getMessage();
-}
+$sync =
+    llama_fcc_sync_public_state();
 
 $coverageCells = 0;
 $coverageLatest = null;
 $datasets = [];
+$dbBytes = 0;
 
 try {
     $coverageCells =
@@ -56,6 +53,28 @@ try {
         $coverageLatest = null;
     }
 
+    $tableStatus =
+        $cellDb
+            ->query(
+                "SHOW TABLE STATUS
+                 LIKE 'cell_coverage_cells'"
+            )
+            ->fetch(
+                PDO::FETCH_ASSOC
+            );
+
+    if ($tableStatus) {
+        $dbBytes =
+            (int) (
+                $tableStatus['Data_length']
+                ?? 0
+            )
+            + (int) (
+                $tableStatus['Index_length']
+                ?? 0
+            );
+    }
+
     $datasets =
         $cellDb
             ->query(
@@ -65,6 +84,7 @@ try {
                     provider_key,
                     technology,
                     fcc_as_of_date,
+                    source_filename,
                     status,
                     source_rows,
                     cells_written,
@@ -74,8 +94,7 @@ try {
                     state_name,
                     provider_key,
                     technology,
-                    fcc_as_of_date DESC
-                 LIMIT 100'
+                    fcc_as_of_date DESC'
             )
             ->fetchAll(
                 PDO::FETCH_ASSOC
@@ -85,212 +104,484 @@ try {
     $coverageCells = 0;
     $coverageLatest = null;
     $datasets = [];
+    $dbBytes = 0;
 }
+
+$states =
+    llama_fcc_sync_states();
+
+$matrix = [];
+
+foreach ($states as $fips => $name) {
+    $matrix[$fips] = [
+        'state_name' => $name,
+        'tmobile' => [
+            '4g' => null,
+            '5g' => null,
+        ],
+        'verizon' => [
+            '4g' => null,
+            '5g' => null,
+        ],
+        'att' => [
+            '4g' => null,
+            '5g' => null,
+        ],
+    ];
+}
+
+foreach ($datasets as $dataset) {
+    $fips =
+        (string) (
+            $dataset['state_fips']
+            ?? ''
+        );
+
+    $provider =
+        (string) (
+            $dataset['provider_key']
+            ?? ''
+        );
+
+    $technology =
+        (string) (
+            $dataset['technology']
+            ?? ''
+        );
+
+    if (
+        !isset(
+            $matrix[$fips][$provider][$technology]
+        )
+        && !array_key_exists(
+            $technology,
+            $matrix[$fips][$provider]
+            ?? []
+        )
+    ) {
+        continue;
+    }
+
+    /*
+     * Rows are ordered newest first. Keep the first row for
+     * each state/provider/technology cell in the matrix.
+     */
+    if (
+        $matrix[$fips][$provider][$technology]
+        === null
+    ) {
+        $matrix[$fips][$provider][$technology] =
+            $dataset;
+    }
+}
+
+function admin_cell_status_label(
+    ?array $dataset
+): string {
+    if (!$dataset) {
+        return 'Missing';
+    }
+
+    return ucfirst(
+        (string) (
+            $dataset['status']
+            ?? 'unknown'
+        )
+    );
+}
+
+
+function admin_cell_status_class(
+    ?array $dataset
+): string {
+    if (!$dataset) {
+        return 'is-missing';
+    }
+
+    return match (
+        (string) (
+            $dataset['status']
+            ?? ''
+        )
+    ) {
+        'current' =>
+            'is-current',
+
+        'importing' =>
+            'is-importing',
+
+        'error' =>
+            'is-error',
+
+        'superseded' =>
+            'is-outdated',
+
+        default =>
+            'is-missing',
+    };
+}
+
 
 require __DIR__ . '/_header.php';
 ?>
 
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>FCC Mobile Broadband</p>
-            <h2>Cell Coverage Import</h2>
-        </div>
+<section class="cell-admin-summary">
 
-        <span>
+    <article class="cell-admin-metric">
+        <span>FCC vintage</span>
+        <strong>
+            <?= moderation_e(
+                (string) (
+                    $coverageLatest
+                    ?: 'None'
+                )
+            ) ?>
+        </strong>
+    </article>
+
+    <article class="cell-admin-metric">
+        <span>Coverage cells</span>
+        <strong>
             <?= number_format(
                 $coverageCells
             ) ?>
-            compact cell<?= $coverageCells === 1 ? '' : 's' ?>
-        </span>
-    </header>
+        </strong>
+    </article>
 
-    <?php if ($coverageLatest): ?>
-        <p>
-            Latest current FCC data:
-            <strong>
-                <?= moderation_e(
-                    (string) $coverageLatest
-                ) ?>
-            </strong>
-        </p>
-    <?php endif; ?>
-
-    <p>
-        GeoPackages are read from
-        <code>private/fcc-imports</code>.
-        Imports now write directly to the dedicated compact
-        cellular database.
-    </p>
-
-    <?php if (!class_exists('SQLite3')): ?>
-        <div class="admin-alert is-danger">
-            PHP SQLite3 is not enabled on this server.
-            Enable the SQLite3 PHP extension before importing GeoPackage files.
-        </div>
-    <?php endif; ?>
-
-    <?php if ($directoryError !== ''): ?>
-        <div class="admin-alert is-danger">
-            <?= moderation_e(
-                $directoryError
+    <article class="cell-admin-metric">
+        <span>Database size</span>
+        <strong>
+            <?= number_format(
+                $dbBytes
+                / 1048576,
+                1
             ) ?>
-        </div>
-    <?php endif; ?>
+            MB
+        </strong>
+    </article>
+
+    <article class="cell-admin-metric">
+        <span>Sync status</span>
+        <strong
+            id="cell-sync-summary-status"
+        >
+            <?= moderation_e(
+                ucfirst(
+                    (string) (
+                        $sync['status']
+                        ?? 'idle'
+                    )
+                )
+            ) ?>
+        </strong>
+    </article>
+
 </section>
 
 
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>Importer</p>
-            <h2>Import a GeoPackage</h2>
-        </div>
-    </header>
+<?php if (!$fccConfigured): ?>
 
-    <?php if (!$files): ?>
+    <section class="admin-panel">
+        <header class="admin-panel-header">
+            <div>
+                <p>Setup Required</p>
+                <h2>Connect the FCC Public Data API</h2>
+            </div>
+        </header>
 
-        <div class="admin-empty-state">
-            <h3>No GeoPackage files found.</h3>
+        <p>
+            Add your FCC Broadband Data Collection API username
+            and hash token to <code>private/config.php</code>.
+            The token is never sent to the browser.
+        </p>
 
-            <p>
-                Upload one FCC Hexagon Coverage
-                <code>.gpkg</code> file to
-                <code>private/fcc-imports</code>.
-            </p>
-        </div>
+        <pre class="cell-admin-code"><code>'fcc_bdc' =&gt; [
+    'username' =&gt; 'you@example.com',
+    'hash_value' =&gt; 'YOUR_FCC_API_TOKEN',
+],</code></pre>
+    </section>
 
-    <?php else: ?>
+<?php else: ?>
 
-        <form
-            id="cell-coverage-import-form"
-            method="post"
-            action="/cell-coverage-import-run.php"
-        >
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="<?= moderation_e(
-                    moderation_csrf_token()
-                ) ?>"
+    <section class="admin-panel cell-sync-panel">
+        <header class="admin-panel-header">
+            <div>
+                <p>Automatic Updates</p>
+                <h2>FCC Coverage Sync</h2>
+            </div>
+
+            <span>
+                50 states + D.C.
+            </span>
+        </header>
+
+        <p>
+            Llama Scout checks the latest FCC availability
+            catalog, downloads one H3 GeoPackage at a time,
+            installs it into the compact coverage database,
+            and deletes the source file before moving on.
+        </p>
+
+        <div class="cell-sync-actions">
+            <button
+                type="button"
+                class="admin-button is-primary"
+                id="cell-sync-start"
             >
+                Sync Latest FCC Coverage
+            </button>
 
-            <div class="admin-form-grid">
-
-                <label>
-                    <span>GeoPackage</span>
-
-                    <select
-                        name="filename"
-                        required
-                    >
-                        <?php foreach ($files as $file): ?>
-                            <option
-                                value="<?= moderation_e(
-                                    (string) $file['name']
-                                ) ?>"
-                            >
-                                <?= moderation_e(
-                                    (string) $file['name']
-                                ) ?>
-                                (<?= number_format(
-                                    ((int) $file['bytes'])
-                                    / 1048576,
-                                    1
-                                ) ?> MB)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label>
-                    <span>State FIPS</span>
-
-                    <input
-                        type="text"
-                        name="state_fips"
-                        inputmode="numeric"
-                        maxlength="2"
-                        pattern="\d{2}"
-                        placeholder="08"
-                        required
-                    >
-
-                    <small>
-                        Two digits, including a leading zero.
-                    </small>
-                </label>
-
-                <label>
-                    <span>FCC data as-of date</span>
-
-                    <input
-                        type="date"
-                        name="as_of_date"
-                        required
-                    >
-                </label>
-
-            </div>
-
-            <div class="admin-form-actions">
-                <button
-                    type="submit"
-                    class="admin-button is-primary"
-                    <?= !class_exists('SQLite3')
-                        ? 'disabled'
-                        : '' ?>
-                >
-                    Import Coverage
-                </button>
-            </div>
-        </form>
+            <button
+                type="button"
+                class="admin-button"
+                id="cell-sync-resume"
+                <?= in_array(
+                    (string) (
+                        $sync['status']
+                        ?? ''
+                    ),
+                    [
+                        'running',
+                        'error',
+                    ],
+                    true
+                )
+                    ? ''
+                    : 'hidden' ?>
+            >
+                Resume Sync
+            </button>
+        </div>
 
         <div
-            id="cell-coverage-import-progress"
-            hidden
-            aria-live="polite"
+            id="cell-sync-progress"
+            class="cell-sync-progress"
+            <?= ($sync['status'] ?? 'idle')
+                === 'idle'
+                    ? 'hidden'
+                    : '' ?>
+            data-endpoint="/cell-coverage-sync.php"
+            data-csrf="<?= moderation_e(
+                moderation_csrf_token()
+            ) ?>"
         >
-            <p>
-                <strong id="cell-import-status">
-                    Preparing import...
+            <div class="cell-sync-progress-header">
+                <strong id="cell-sync-message">
+                    <?= moderation_e(
+                        (string) (
+                            $sync['message']
+                            ?? 'Ready.'
+                        )
+                    ) ?>
                 </strong>
-            </p>
+
+                <span id="cell-sync-dataset-count">
+                    <?= number_format(
+                        (int) (
+                            $sync['completed']
+                            ?? 0
+                        )
+                    ) ?>
+                    /
+                    <?= number_format(
+                        (int) (
+                            $sync['total']
+                            ?? 0
+                        )
+                    ) ?>
+                </span>
+            </div>
 
             <progress
-                id="cell-import-progress-bar"
-                value="0"
-                max="100"
-                style="width:100%"
+                id="cell-sync-progress-bar"
+                max="<?= max(
+                    1,
+                    (int) (
+                        $sync['total']
+                        ?? 1
+                    )
+                ) ?>"
+                value="<?= min(
+                    (int) (
+                        $sync['completed']
+                        ?? 0
+                    ),
+                    max(
+                        1,
+                        (int) (
+                            $sync['total']
+                            ?? 1
+                        )
+                    )
+                ) ?>"
             ></progress>
 
-            <p id="cell-import-counts"></p>
-        </div>
+            <p
+                id="cell-sync-current"
+                class="cell-sync-current"
+            ></p>
 
-    <?php endif; ?>
-</section>
+            <p
+                id="cell-sync-row-progress"
+                class="cell-sync-row-progress"
+            ></p>
+
+            <p
+                id="cell-sync-error"
+                class="cell-sync-error"
+                <?= empty(
+                    $sync['error']
+                )
+                    ? 'hidden'
+                    : '' ?>
+            >
+                <?= moderation_e(
+                    (string) (
+                        $sync['error']
+                        ?? ''
+                    )
+                ) ?>
+            </p>
+        </div>
+    </section>
+
+<?php endif; ?>
 
 
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Dataset Ledger</p>
-            <h2>Imported Coverage</h2>
+            <p>Coverage Matrix</p>
+            <h2>State Dataset Status</h2>
         </div>
 
         <span>
-            <?= count($datasets) ?>
-            recent dataset<?= count($datasets) === 1 ? '' : 's' ?>
+            4G LTE + 5G
         </span>
+    </header>
+
+    <div class="cell-coverage-table-wrap">
+        <table class="cell-coverage-matrix">
+            <thead>
+                <tr>
+                    <th rowspan="2">State</th>
+
+                    <th colspan="2">
+                        T-Mobile
+                    </th>
+
+                    <th colspan="2">
+                        Verizon
+                    </th>
+
+                    <th colspan="2">
+                        AT&amp;T
+                    </th>
+                </tr>
+
+                <tr>
+                    <th>4G</th>
+                    <th>5G</th>
+                    <th>4G</th>
+                    <th>5G</th>
+                    <th>4G</th>
+                    <th>5G</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <?php foreach ($matrix as $row): ?>
+                    <tr>
+                        <th>
+                            <?= moderation_e(
+                                (string) $row[
+                                    'state_name'
+                                ]
+                            ) ?>
+                        </th>
+
+                        <?php foreach (
+                            [
+                                'tmobile',
+                                'verizon',
+                                'att',
+                            ]
+                            as $provider
+                        ): ?>
+
+                            <?php foreach (
+                                [
+                                    '4g',
+                                    '5g',
+                                ]
+                                as $technology
+                            ): ?>
+
+                                <?php
+                                $dataset =
+                                    $row[$provider][
+                                        $technology
+                                    ];
+                                ?>
+
+                                <td>
+                                    <span
+                                        class="cell-dataset-status <?= moderation_e(
+                                            admin_cell_status_class(
+                                                $dataset
+                                            )
+                                        ) ?>"
+                                        title="<?= moderation_e(
+                                            $dataset
+                                                ? (
+                                                    (
+                                                        $dataset[
+                                                            'fcc_as_of_date'
+                                                        ]
+                                                        ?? ''
+                                                    )
+                                                    . ' · '
+                                                    . (
+                                                        $dataset[
+                                                            'source_filename'
+                                                        ]
+                                                        ?? ''
+                                                    )
+                                                )
+                                                : 'Not installed'
+                                        ) ?>"
+                                    >
+                                        <?= moderation_e(
+                                            admin_cell_status_label(
+                                                $dataset
+                                            )
+                                        ) ?>
+                                    </span>
+                                </td>
+
+                            <?php endforeach; ?>
+
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Update History</p>
+            <h2>Recent FCC Datasets</h2>
+        </div>
     </header>
 
     <?php if (!$datasets): ?>
 
         <div class="admin-empty-state">
             <h3>No datasets recorded yet.</h3>
-            <p>
-                Completed V2 imports will appear here.
-            </p>
         </div>
 
     <?php else: ?>
@@ -304,19 +595,26 @@ require __DIR__ . '/_header.php';
                         <th>Coverage</th>
                         <th>FCC date</th>
                         <th>Status</th>
-                        <th>Source rows</th>
-                        <th>Cells</th>
+                        <th>Installed</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    <?php foreach ($datasets as $dataset): ?>
+                    <?php foreach (
+                        array_slice(
+                            $datasets,
+                            0,
+                            100
+                        )
+                        as $dataset
+                    ): ?>
                         <tr>
                             <td>
                                 <?= moderation_e(
                                     (string) (
-                                        $dataset['state_name']
-                                        ?? $dataset['state_fips']
+                                        $dataset[
+                                            'state_name'
+                                        ]
                                         ?? ''
                                     )
                                 ) ?>
@@ -326,16 +624,26 @@ require __DIR__ . '/_header.php';
                                 <?= moderation_e(
                                     match (
                                         (string) (
-                                            $dataset['provider_key']
+                                            $dataset[
+                                                'provider_key'
+                                            ]
                                             ?? ''
                                         )
                                     ) {
-                                        'tmobile' => 'T-Mobile',
-                                        'verizon' => 'Verizon',
-                                        'att' => 'AT&T',
+                                        'tmobile' =>
+                                            'T-Mobile',
+
+                                        'verizon' =>
+                                            'Verizon',
+
+                                        'att' =>
+                                            'AT&T',
+
                                         default =>
                                             (string) (
-                                                $dataset['provider_key']
+                                                $dataset[
+                                                    'provider_key'
+                                                ]
                                                 ?? ''
                                             ),
                                     }
@@ -346,7 +654,9 @@ require __DIR__ . '/_header.php';
                                 <?= moderation_e(
                                     strtoupper(
                                         (string) (
-                                            $dataset['technology']
+                                            $dataset[
+                                                'technology'
+                                            ]
                                             ?? ''
                                         )
                                     )
@@ -356,7 +666,9 @@ require __DIR__ . '/_header.php';
                             <td>
                                 <?= moderation_e(
                                     (string) (
-                                        $dataset['fcc_as_of_date']
+                                        $dataset[
+                                            'fcc_as_of_date'
+                                        ]
                                         ?? ''
                                     )
                                 ) ?>
@@ -366,7 +678,9 @@ require __DIR__ . '/_header.php';
                                 <?= moderation_e(
                                     ucfirst(
                                         (string) (
-                                            $dataset['status']
+                                            $dataset[
+                                                'status'
+                                            ]
                                             ?? ''
                                         )
                                     )
@@ -374,19 +688,12 @@ require __DIR__ . '/_header.php';
                             </td>
 
                             <td>
-                                <?= number_format(
-                                    (int) (
-                                        $dataset['source_rows']
-                                        ?? 0
-                                    )
-                                ) ?>
-                            </td>
-
-                            <td>
-                                <?= number_format(
-                                    (int) (
-                                        $dataset['cells_written']
-                                        ?? 0
+                                <?= moderation_e(
+                                    (string) (
+                                        $dataset[
+                                            'completed_at'
+                                        ]
+                                        ?? ''
                                     )
                                 ) ?>
                             </td>
@@ -400,26 +707,10 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>Supported Data</p>
-            <h2>What gets imported</h2>
-        </div>
-    </header>
-
-    <p>
-        The importer keeps AT&amp;T, T-Mobile, and Verizon
-        4G LTE coverage at 5/1 Mbps or better and
-        5G-NR coverage at 7/1 Mbps or better.
-        Both outdoor-only and in-vehicle coverage are retained.
-    </p>
-</section>
-
 <script
     src="<?= moderation_e(
         $siteUrl
-        . '/js/admin-cell-coverage-import.js?v=20260926-2'
+        . '/js/admin-cell-coverage-sync.js?v=20260926-1'
     ) ?>"
 ></script>
 
