@@ -109,23 +109,6 @@
         landControl.classList.add('map-land-control-embedded');
         landSlot.appendChild(landControl);
 
-        let hasSavedPreferences = false;
-
-        try {
-            hasSavedPreferences =
-                window.localStorage.getItem('llama-map-land-overlays') !== null;
-        } catch (error) {
-            hasSavedPreferences = true;
-        }
-
-        if (!hasSavedPreferences) {
-            landControl
-                .querySelectorAll('[data-land-layer][aria-pressed="true"]')
-                .forEach((button) => {
-                    button.click();
-                });
-        }
-
         landObserver?.disconnect();
         landObserver = new MutationObserver(syncLandCount);
 
