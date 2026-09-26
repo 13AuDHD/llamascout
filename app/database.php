@@ -90,3 +90,75 @@ function db(): PDO
 
     return $pdo;
 }
+
+
+/* =========================================================
+   CELL COVERAGE DATABASE
+
+   FCC mobile coverage is intentionally isolated from the
+   primary application database. This keeps the replaceable,
+   high-volume GIS dataset out of normal Llama Scout backups
+   and application-table maintenance.
+   ========================================================= */
+
+function cell_db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $config =
+        llama_config();
+
+    $database =
+        $config['cell_database']
+        ?? null;
+
+    if (
+        !is_array($database) ||
+        trim(
+            (string) (
+                $database['name']
+                ?? ''
+            )
+        ) === ''
+    ) {
+        throw new RuntimeException(
+            'Cell coverage database configuration is missing.'
+        );
+    }
+
+    $dsn = sprintf(
+        'mysql:host=%s;dbname=%s;charset=utf8mb4',
+        $database['host'] ?? 'localhost',
+        $database['name'] ?? ''
+    );
+
+    $pdo = new PDO(
+        $dsn,
+        $database['user'] ?? '',
+        $database['password'] ?? '',
+        [
+            PDO::ATTR_ERRMODE =>
+                PDO::ERRMODE_EXCEPTION,
+
+            PDO::ATTR_DEFAULT_FETCH_MODE =>
+                PDO::FETCH_ASSOC,
+
+            PDO::ATTR_EMULATE_PREPARES =>
+                false,
+        ]
+    );
+
+    $pdo->exec(
+        "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+    );
+
+    $pdo->exec(
+        "SET time_zone = '+00:00'"
+    );
+
+    return $pdo;
+}
