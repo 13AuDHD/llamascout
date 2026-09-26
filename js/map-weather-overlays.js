@@ -83,7 +83,10 @@
 
     let statusNode = null;
     let countNode = null;
+    let alertRequestController = null;
+    let alertRequestNumber = 0;
 
+    
 
     function ensureStyles() {
         if (
@@ -603,6 +606,389 @@
             });
     }
 
+    function formatAlertTime(
+    value
+) {
+    if (!value) {
+        return '';
+    }
+
+    const date =
+        new Date(value);
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return '';
+    }
+
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        }
+    ).format(date);
+}
+
+
+function shortenedText(
+    value,
+    maxLength = 420
+) {
+    const text =
+        String(value ?? '')
+            .trim()
+            .replace(/\s+/g, ' ');
+
+    if (
+        text.length <= maxLength
+    ) {
+        return text;
+    }
+
+    return (
+        text.slice(
+            0,
+            maxLength - 1
+        ).trim()
+        + '…'
+    );
+}
+
+
+function alertPopupHtml(
+    features
+) {
+    const alerts =
+        features.slice(0, 4);
+
+    return `
+        <article
+            class="
+                map-overlay-popup
+                map-weather-alert-popup
+            "
+        >
+
+            <button
+                type="button"
+                class="map-overlay-popup-close"
+                data-map-overlay-popup-close
+                aria-label="Close weather alert details"
+            >
+                ×
+            </button>
+
+            <p class="map-overlay-popup-eyebrow">
+                National Weather Service
+            </p>
+
+            <h3>
+                ${
+                    alerts.length === 1
+                        ? 'Active Weather Alert'
+                        : `${alerts.length} Active Weather Alerts`
+                }
+            </h3>
+
+            ${alerts
+                .map((feature) => {
+                    const props =
+                        feature?.properties
+                        || {};
+
+                    const event =
+                        props.event
+                        || 'Weather Alert';
+
+                    const headline =
+                        props.headline
+                        || '';
+
+                    const severity = [
+                        props.severity,
+                        props.urgency,
+                        props.certainty
+                    ]
+                        .filter(Boolean)
+                        .join(' · ');
+
+                    const expires =
+                        formatAlertTime(
+                            props.ends
+                            || props.expires
+                        );
+
+                    const area =
+                        props.areaDesc
+                        || '';
+
+                    const instruction =
+                        shortenedText(
+                            props.instruction
+                            || props.description
+                        );
+
+                    return `
+                        <section
+                            class="map-weather-alert-item"
+                        >
+
+                            <strong
+                                class="map-weather-alert-event"
+                            >
+                                ${escapeHtml(event)}
+                            </strong>
+
+                            ${
+                                headline
+                                    ? `
+                                        <p
+                                            class="map-overlay-popup-headline"
+                                        >
+                                            ${escapeHtml(headline)}
+                                        </p>
+                                    `
+                                    : ''
+                            }
+
+                            <div
+                                class="map-overlay-popup-meta"
+                            >
+
+                                ${
+                                    severity
+                                        ? `
+                                            <div
+                                                class="map-overlay-popup-row"
+                                            >
+                                                <strong>
+                                                    Status
+                                                </strong>
+
+                                                <span>
+                                                    ${escapeHtml(severity)}
+                                                </span>
+                                            </div>
+                                        `
+                                        : ''
+                                }
+
+                                ${
+                                    expires
+                                        ? `
+                                            <div
+                                                class="map-overlay-popup-row"
+                                            >
+                                                <strong>
+                                                    Until
+                                                </strong>
+
+                                                <span>
+                                                    ${escapeHtml(expires)}
+                                                </span>
+                                            </div>
+                                        `
+                                        : ''
+                                }
+
+                                ${
+                                    area
+                                        ? `
+                                            <div
+                                                class="map-overlay-popup-row"
+                                            >
+                                                <strong>
+                                                    Area
+                                                </strong>
+
+                                                <span>
+                                                    ${escapeHtml(area)}
+                                                </span>
+                                            </div>
+                                        `
+                                        : ''
+                                }
+
+                            </div>
+
+                            ${
+                                instruction
+                                    ? `
+                                        <p
+                                            class="map-overlay-popup-note"
+                                        >
+                                            ${escapeHtml(instruction)}
+                                        </p>
+                                    `
+                                    : ''
+                            }
+
+                        </section>
+                    `;
+                })
+                .join('')}
+
+            ${
+                features.length > alerts.length
+                    ? `
+                        <p
+                            class="map-overlay-popup-note"
+                        >
+                            ${
+                                features.length
+                                - alerts.length
+                            }
+                            additional alert(s)
+                            also apply here.
+                        </p>
+                    `
+                    : ''
+            }
+
+            <p class="map-overlay-popup-source">
+                Alert details:
+                National Weather Service
+            </p>
+
+        </article>
+    `;
+}
+
+
+async function showAlertsAtPoint(
+    latlng
+) {
+    if (
+        !state.alerts?.enabled
+    ) {
+        return;
+    }
+
+    alertRequestController
+        ?.abort();
+
+    alertRequestController =
+        new AbortController();
+
+    const requestNumber =
+        ++alertRequestNumber;
+
+    const latitude =
+        Number(
+            latlng.lat
+        ).toFixed(4);
+
+    const longitude =
+        Number(
+            latlng.lng
+        ).toFixed(4);
+
+    const url =
+        'https://api.weather.gov/alerts/active'
+        + '?point='
+        + encodeURIComponent(
+            `${latitude},${longitude}`
+        );
+
+    try {
+        const response =
+            await fetch(
+                url,
+                {
+                    method: 'GET',
+
+                    headers: {
+                        Accept:
+                            'application/geo+json'
+                    },
+
+                    cache:
+                        'no-store',
+
+                    signal:
+                        alertRequestController
+                            .signal
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                `NWS alerts returned HTTP ${response.status}.`
+            );
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            requestNumber
+            !== alertRequestNumber
+        ) {
+            return;
+        }
+
+        const features =
+            Array.isArray(
+                data?.features
+            )
+                ? data.features
+                : [];
+
+        if (!features.length) {
+            return;
+        }
+
+        L.popup(
+            {
+                maxWidth: 390,
+                closeButton: false,
+                className:
+                    'map-overlay-leaflet-popup'
+            }
+        )
+            .setLatLng(
+                latlng
+            )
+            .setContent(
+                alertPopupHtml(
+                    features
+                )
+            )
+            .openOn(map);
+
+    } catch (error) {
+        if (
+            error?.name
+            !== 'AbortError'
+        ) {
+            console.warn(
+                'Llama Scout NWS alert details:',
+                error
+            );
+        }
+    }
+}
+
+
+map.on(
+    'click',
+    (event) => {
+        if (
+            state.alerts?.enabled
+        ) {
+            showAlertsAtPoint(
+                event.latlng
+            );
+        }
+    }
+);
 
     ensureStyles();
     ensurePanes();
