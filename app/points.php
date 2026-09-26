@@ -852,6 +852,9 @@ function llama_points_place_update_categories(): array
     $fields =
         llama_place_report_fields();
 
+    $standaloneFields =
+        llama_points_standalone_place_fields();
+
     foreach ($categories as $slug => &$category) {
         $category['policy_key'] =
             'place_update_' . $slug;
@@ -862,6 +865,17 @@ function llama_points_place_update_categories(): array
         $category['fields'] = [];
 
         foreach ($fields as $fieldKey => $field) {
+            $fieldKey =
+                (string) $fieldKey;
+
+            /*
+             * Standalone fields have their own update point values.
+             * They must not also dilute or score inside a category.
+             */
+            if (isset($standaloneFields[$fieldKey])) {
+                continue;
+            }
+
             if (
                 in_array(
                     $slug,
@@ -871,13 +885,14 @@ function llama_points_place_update_categories(): array
                     ),
                     true
                 )
-                && (string) (
+                &&
+                (string) (
                     $field['type']
                     ?? ''
                 ) !== 'derived'
             ) {
                 $category['fields'][] =
-                    (string) $fieldKey;
+                    $fieldKey;
             }
         }
     }
@@ -899,6 +914,17 @@ function llama_points_place_update_max_points(
             llama_points_policy_required(
                 $db,
                 (string) $category['policy_key']
+            );
+    }
+
+    foreach (
+        llama_points_standalone_place_fields()
+        as $definition
+    ) {
+        $total +=
+            llama_points_policy_required(
+                $db,
+                (string) $definition['update_policy_key']
             );
     }
 
@@ -925,10 +951,18 @@ function llama_points_estimate_place_update(
 
     $scoredStorageLookup = [];
     $categoryRows = [];
+    $standaloneRows = [];
+
     $estimatedPoints = 0;
     $maxPoints = 0;
     $scoredChangedFields = 0;
 
+
+    /*
+     * =====================================================
+     * CATEGORY CHANGES
+     * =====================================================
+     */
     foreach (
         llama_points_place_update_categories()
         as $slug => $category
@@ -961,7 +995,8 @@ function llama_points_estimate_place_update(
 
             if (
                 $storage === ''
-                || str_starts_with(
+                ||
+                str_starts_with(
                     $storage,
                     'computed.'
                 )
@@ -977,7 +1012,9 @@ function llama_points_estimate_place_update(
 
             if (
                 isset(
-                    $changedStorageLookup[$storage]
+                    $changedStorageLookup[
+                        $storage
+                    ]
                 )
             ) {
                 $changed++;
@@ -1013,8 +1050,9 @@ function llama_points_estimate_place_update(
                 );
 
             /*
-             * A real, moderator-approved single-field improvement
-             * should still earn something even in a large category.
+             * One legitimate approved changed field should
+             * still earn at least one point when this category
+             * has a configured value.
              */
             $points =
                 max(
@@ -1038,28 +1076,134 @@ function llama_points_estimate_place_update(
         $categoryRows[] = [
             'slug' =>
                 (string) $slug,
+
             'label' =>
                 (string) (
                     $category['label']
                     ?? $slug
                 ),
+
             'policy_key' =>
                 (string) $category['policy_key'],
+
             'mode' =>
                 'weighted',
+
             'changed' =>
                 $changed,
+
             'total' =>
                 $fieldCount,
+
             'points' =>
                 $points,
+
             'max_points' =>
                 $categoryMax,
+
             'started' =>
                 $changed > 0,
         ];
     }
 
+
+    /*
+     * =====================================================
+     * STANDALONE FIELD CHANGES
+     * =====================================================
+     */
+    foreach (
+        llama_points_standalone_place_fields()
+        as $fieldKey => $definition
+    ) {
+        $field =
+            $fields[(string) $fieldKey]
+            ?? null;
+
+        $fieldMax =
+            llama_points_policy_required(
+                $db,
+                (string) $definition['update_policy_key']
+            );
+
+        $maxPoints +=
+            $fieldMax;
+
+        $storage = '';
+
+        if (is_array($field)) {
+            $storage =
+                trim(
+                    (string) (
+                        $field['storage']
+                        ?? ''
+                    )
+                );
+        }
+
+        $changed =
+            $storage !== ''
+            &&
+            !str_starts_with(
+                $storage,
+                'computed.'
+            )
+            &&
+            isset(
+                $changedStorageLookup[
+                    $storage
+                ]
+            );
+
+        if ($storage !== '') {
+            $scoredStorageLookup[$storage] =
+                true;
+        }
+
+        $points =
+            $changed
+                ? $fieldMax
+                : 0;
+
+        $estimatedPoints +=
+            $points;
+
+        if ($changed) {
+            $scoredChangedFields++;
+        }
+
+        $standaloneRows[] = [
+            'field' =>
+                (string) $fieldKey,
+
+            'label' =>
+                (string) $definition['label'],
+
+            'policy_key' =>
+                (string) $definition['update_policy_key'],
+
+            'changed' =>
+                $changed ? 1 : 0,
+
+            'total' =>
+                1,
+
+            'points' =>
+                $points,
+
+            'max_points' =>
+                $fieldMax,
+
+            'started' =>
+                $changed,
+        ];
+    }
+
+
+    /*
+     * Anything changed that belongs to neither a category nor
+     * one of the six standalone point fields remains unscored.
+     */
     $unscoredChangedFields = 0;
 
     foreach (
@@ -1078,6 +1222,7 @@ function llama_points_estimate_place_update(
             $unscoredChangedFields++;
         }
     }
+
 
     return [
         'estimated_points' =>
@@ -1123,5 +1268,8 @@ function llama_points_estimate_place_update(
 
         'categories' =>
             $categoryRows,
+
+        'standalone_fields' =>
+            $standaloneRows,
     ];
 }
