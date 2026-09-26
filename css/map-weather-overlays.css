@@ -11,17 +11,24 @@
 .map-weather-buttons button {
     min-width: 0;
     min-height: 54px;
+
     display: flex;
     align-items: center;
     gap: 9px;
+
     padding: 9px 10px;
+
     border: 1px solid var(--border);
     border-radius: 10px;
+
     background: transparent;
     color: var(--text-muted);
+
     font: inherit;
     text-align: left;
+
     cursor: pointer;
+
     transition:
         background-color .15s ease,
         border-color .15s ease,
@@ -43,12 +50,19 @@
 }
 
 .map-weather-buttons button.is-active {
-    background: color-mix(in srgb, var(--surface) 76%, var(--text) 8%);
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 76%,
+            var(--text) 8%
+        );
+
     color: var(--text);
 }
 
 .map-weather-button-copy {
     min-width: 0;
+
     display: grid;
     gap: 2px;
 }
@@ -71,32 +85,75 @@
     line-height: 1.25;
 }
 
+
+/* =========================================================
+   SWATCHES
+   ========================================================= */
+
 .map-weather-swatch {
     width: 13px;
     height: 13px;
     flex: 0 0 13px;
+
     border: 2px solid currentColor;
     border-radius: 999px;
 }
 
 .map-weather-swatch-radar {
     border-color: #3484c6;
-    background: linear-gradient(
-        135deg,
-        #4aa357 0 33%,
-        #e0b92c 33% 66%,
-        #c94747 66% 100%
-    );
+
+    background:
+        linear-gradient(
+            135deg,
+            #4aa357 0 33%,
+            #e0b92c 33% 66%,
+            #c94747 66% 100%
+        );
 }
 
 .map-weather-swatch-clouds {
     border-color: #747b86;
-    background: linear-gradient(135deg, #f4f4f4, #9aa0aa);
+
+    background:
+        linear-gradient(
+            135deg,
+            #f4f4f4,
+            #9aa0aa
+        );
 }
+
+.map-weather-swatch-lightning {
+    border-color: #7959c7;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f5e94b 0 45%,
+            #8b63d9 45% 100%
+        );
+}
+
+.map-weather-swatch-alerts {
+    border-color: #bd4c36;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f0b43a 0 50%,
+            #c64242 50% 100%
+        );
+}
+
+
+/* =========================================================
+   SOURCE + STATUS
+   ========================================================= */
 
 .map-weather-source {
     margin: 9px 2px 0;
+
     color: var(--text-muted);
+
     font-size: .65rem;
     font-weight: 700;
     line-height: 1.35;
@@ -104,13 +161,23 @@
 
 .map-weather-status {
     display: block;
+
     width: 100%;
     margin-top: 8px;
     padding: 7px 9px;
+
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
+
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 94%,
+            transparent
+        );
+
     color: var(--text-muted);
+
     font-size: .68rem;
     font-weight: 750;
     line-height: 1.35;
@@ -120,6 +187,11 @@
 .map-weather-status[hidden] {
     display: none;
 }
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
 @media (max-width: 520px) {
     .map-weather-buttons {
@@ -131,12 +203,14 @@
     }
 }
 
+
 @media (prefers-reduced-motion: reduce) {
     .map-weather-buttons button {
         transition: none;
     }
 }
 
-html[data-reduced-motion="true"] .map-weather-buttons button {
+html[data-reduced-motion="true"]
+.map-weather-buttons button {
     transition: none;
 }
