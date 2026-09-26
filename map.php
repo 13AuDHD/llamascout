@@ -38,6 +38,13 @@ require __DIR__ . '/partials/header.php';
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 >
 
+<?php if ($hasMapMemberAccess): ?>
+    <link
+        rel="stylesheet"
+        href="/css/map-tools.css?v=20260926-1"
+    >
+<?php endif; ?>
+
 <section class="map-page">
 
     <header class="map-hero">
@@ -212,28 +219,194 @@ require __DIR__ . '/partials/header.php';
                         class="map-card"
                         data-map-member="<?= $hasMapMemberAccess ? '1' : '0' ?>"
                     >
-                        <?php if ($hasMapMemberAccess): ?>
-                            <div
-                                id="map-layer-control"
-                                class="map-layer-control"
-                                aria-label="Map style"
-                            >
-                                <span class="map-layer-label">
-                                    <i aria-hidden="true"><?= llama_icon('layers-subtract') ?></i>
+                    <?php if ($hasMapMemberAccess): ?>
+                    
+                        <div
+                            id="map-layer-control"
+                            class="map-tools-control"
+                            aria-label="Map tools"
+                        >
+                    
+                            <div class="map-tools-bar">
+                    
+                                <button
+                                    type="button"
+                                    class="map-tool-trigger"
+                                    data-map-tool="map"
+                                    aria-expanded="false"
+                                    aria-controls="map-tools-panel-map"
+                                >
                                     Map
-                                </span>
-
-                                <div class="map-layer-buttons" role="group" aria-label="Choose map style">
-                                    <button type="button" data-map-layer="auto" class="is-active" aria-pressed="true">Auto</button>
-                                    <button type="button" data-map-layer="street" aria-pressed="false">Street</button>
-                                    <button type="button" data-map-layer="terrain" aria-pressed="false">Terrain</button>
-                                    <button type="button" data-map-layer="topo" aria-pressed="false">Topo</button>
-                                    <button type="button" data-map-layer="dark" aria-pressed="false">Dark</button>
-                                    <button type="button" data-map-layer="satellite" aria-pressed="false">Satellite</button>
+                    
+                                    <span
+                                        id="map-tool-map-value"
+                                        class="map-tool-value"
+                                    >
+                                        Auto
+                                    </span>
+                                </button>
+                    
+                    
+                                <button
+                                    type="button"
+                                    class="map-tool-trigger"
+                                    data-map-tool="land"
+                                    aria-expanded="false"
+                                    aria-controls="map-tools-panel-land"
+                                >
+                                    Land
+                    
+                                    <span
+                                        id="map-tool-land-count"
+                                        class="map-tool-count"
+                                        hidden
+                                    >
+                                        0
+                                    </span>
+                                </button>
+                    
+                    
+                                <button
+                                    type="button"
+                                    class="map-tool-trigger"
+                                    data-map-tool="weather"
+                                    aria-expanded="false"
+                                    aria-controls="map-tools-panel-weather"
+                                >
+                                    Weather
+                                </button>
+                    
+                    
+                                <button
+                                    type="button"
+                                    class="map-tool-trigger"
+                                    data-map-tool="cell"
+                                    aria-expanded="false"
+                                    aria-controls="map-tools-panel-cell"
+                                >
+                                    Cell
+                                </button>
+                    
+                            </div>
+                    
+                    
+                            <div
+                                id="map-tools-panel-map"
+                                class="map-tools-panel"
+                                data-map-tool-panel="map"
+                                hidden
+                            >
+                                <p class="map-tools-panel-title">
+                                    Map style
+                                </p>
+                    
+                                <div
+                                    class="map-tools-map-options"
+                                    role="group"
+                                    aria-label="Choose map style"
+                                >
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="auto"
+                                        class="is-active"
+                                        aria-pressed="true"
+                                    >
+                                        Auto
+                                    </button>
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="street"
+                                        aria-pressed="false"
+                                    >
+                                        Street
+                                    </button>
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="terrain"
+                                        aria-pressed="false"
+                                    >
+                                        Terrain
+                                    </button>
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="topo"
+                                        aria-pressed="false"
+                                    >
+                                        Topo
+                                    </button>
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="dark"
+                                        aria-pressed="false"
+                                    >
+                                        Dark
+                                    </button>
+                    
+                                    <button
+                                        type="button"
+                                        data-map-layer="satellite"
+                                        aria-pressed="false"
+                                    >
+                                        Satellite
+                                    </button>
+                    
                                 </div>
                             </div>
-                        <?php endif; ?>
-
+                    
+                    
+                            <div
+                                id="map-tools-panel-land"
+                                class="map-tools-panel"
+                                data-map-tool-panel="land"
+                                hidden
+                            >
+                                <p class="map-tools-panel-title">
+                                    Land layers
+                                </p>
+                    
+                                <div id="map-tools-land-slot"></div>
+                            </div>
+                    
+                    
+                            <div
+                                id="map-tools-panel-weather"
+                                class="map-tools-panel"
+                                data-map-tool-panel="weather"
+                                hidden
+                            >
+                                <p class="map-tools-panel-title">
+                                    Weather layers
+                                </p>
+                    
+                                <p class="map-tools-empty">
+                                    Weather overlays will appear here.
+                                </p>
+                            </div>
+                    
+                    
+                            <div
+                                id="map-tools-panel-cell"
+                                class="map-tools-panel"
+                                data-map-tool-panel="cell"
+                                hidden
+                            >
+                                <p class="map-tools-panel-title">
+                                    Cell coverage
+                                </p>
+                    
+                                <p class="map-tools-empty">
+                                    Carrier coverage layers will appear here.
+                                </p>
+                            </div>
+                    
+                        </div>
+                    
+                    <?php endif; ?>
                         <div
                             id="llama-map"
                             class="llama-map"
@@ -301,6 +474,7 @@ require __DIR__ . '/partials/header.php';
 
 <?php if ($hasMapMemberAccess): ?>
     <script src="/js/map-land-overlays.js"></script>
+    <script src="/js/map-tools.js?v=20260926-1"></script>
 <?php endif; ?>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
