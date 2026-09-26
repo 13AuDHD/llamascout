@@ -1,0 +1,142 @@
+/* =========================================================
+   LLAMA SCOUT WEATHER OVERLAYS
+   ========================================================= */
+
+.map-weather-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.map-weather-buttons button {
+    min-width: 0;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color .15s ease,
+        border-color .15s ease,
+        color .15s ease,
+        transform .15s ease;
+}
+
+.map-weather-buttons button:hover {
+    color: var(--text);
+}
+
+.map-weather-buttons button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.map-weather-buttons button:active {
+    transform: translateY(1px);
+}
+
+.map-weather-buttons button.is-active {
+    background: color-mix(in srgb, var(--surface) 76%, var(--text) 8%);
+    color: var(--text);
+}
+
+.map-weather-button-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.map-weather-button-copy strong,
+.map-weather-button-copy small {
+    display: block;
+}
+
+.map-weather-button-copy strong {
+    color: inherit;
+    font-size: .78rem;
+    font-weight: 900;
+}
+
+.map-weather-button-copy small {
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.map-weather-swatch {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+}
+
+.map-weather-swatch-radar {
+    border-color: #3484c6;
+    background: linear-gradient(
+        135deg,
+        #4aa357 0 33%,
+        #e0b92c 33% 66%,
+        #c94747 66% 100%
+    );
+}
+
+.map-weather-swatch-clouds {
+    border-color: #747b86;
+    background: linear-gradient(135deg, #f4f4f4, #9aa0aa);
+}
+
+.map-weather-source {
+    margin: 9px 2px 0;
+    color: var(--text-muted);
+    font-size: .65rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.map-weather-status {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 750;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.map-weather-status[hidden] {
+    display: none;
+}
+
+@media (max-width: 520px) {
+    .map-weather-buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .map-weather-buttons button {
+        min-height: 50px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-weather-buttons button {
+        transition: none;
+    }
+}
+
+html[data-reduced-motion="true"] .map-weather-buttons button {
+    transition: none;
+}
