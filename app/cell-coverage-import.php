@@ -1327,7 +1327,7 @@ function llama_cell_import_batch(
         max(
             100,
             min(
-                3000,
+                15000,
                 $batchSize
             )
         );
