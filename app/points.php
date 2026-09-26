@@ -452,11 +452,14 @@ function llama_points_estimate_new_place(
     array $data,
     int $photoCount
 ): array {
-    $categoryRows = [];
-    $standaloneRows = [];
+$categoryRows = [];
+$standaloneRows = [];
 
-    $estimatedPoints = 0;
-    $maxPoints = 0;
+$estimatedPoints = 0;
+$maxPoints = 0;
+
+$reportFields =
+    llama_place_report_fields();
 
     /*
      * =====================================================
@@ -479,18 +482,38 @@ function llama_points_estimate_new_place(
                 ?? []
             );
 
-        $answered = 0;
+$answered = 0;
+$missingFields = [];
 
-        foreach ($fields as $fieldKey) {
-            if (
-                llama_points_has_answer(
-                    $data,
-                    (string) $fieldKey
-                )
-            ) {
-                $answered++;
-            }
-        }
+foreach ($fields as $fieldKey) {
+    $fieldKey =
+        (string) $fieldKey;
+
+    if (
+        llama_points_has_answer(
+            $data,
+            $fieldKey
+        )
+    ) {
+        $answered++;
+        continue;
+    }
+
+    $fieldDefinition =
+        $reportFields[$fieldKey]
+        ?? [];
+
+    $missingFields[] = [
+        'field' =>
+            $fieldKey,
+
+        'label' =>
+            (string) (
+                $fieldDefinition['label']
+                ?? $fieldKey
+            ),
+    ];
+}
 
         $fieldCount =
             count($fields);
@@ -576,6 +599,9 @@ function llama_points_estimate_new_place(
 
             'max_points' =>
                 $categoryMax,
+
+            'missing_fields' =>
+                $missingFields,
 
             'started' =>
                 $answered > 0,
