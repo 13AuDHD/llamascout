@@ -29,6 +29,14 @@ $categories =
         ? $updatePointEstimate['categories']
         : [];
 
+$standaloneFields =
+    is_array(
+        $updatePointEstimate['standalone_fields']
+        ?? null
+    )
+        ? $updatePointEstimate['standalone_fields']
+        : [];
+
 $scoredChanged =
     (int) (
         $updatePointEstimate['scored_changed_fields']
@@ -82,7 +90,7 @@ $unscoredChanged =
     </header>
 
 
-    <?php if ($categories): ?>
+    <?php if ($categories || $standaloneFields): ?>
         <div class="admin-moderation-points-grid">
 
             <?php foreach ($categories as $category): ?>
@@ -143,6 +151,57 @@ $unscoredChanged =
                         </small>
                     </strong>
                 </div>
+            <?php endforeach; ?>
+
+                        <?php foreach ($standaloneFields as $field): ?>
+                <?php
+                $changed =
+                    !empty(
+                        $field['changed']
+                    );
+
+                if (!$changed) {
+                    continue;
+                }
+
+                $points =
+                    (int) (
+                        $field['points']
+                        ?? 0
+                    );
+
+                $fieldMax =
+                    (int) (
+                        $field['max_points']
+                        ?? 0
+                    );
+                ?>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            <?= moderation_e(
+                                (string) (
+                                    $field['label']
+                                    ?? ''
+                                )
+                            ) ?>
+                        </strong>
+
+                        <small>
+                            Field changed
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($points) ?>
+                        <small>
+                            /
+                            <?= number_format($fieldMax) ?>
+                        </small>
+                    </strong>
+                </div>
+
             <?php endforeach; ?>
 
         </div>
