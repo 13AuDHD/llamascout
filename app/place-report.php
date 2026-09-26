@@ -962,8 +962,6 @@ function llama_place_report_fields(): array
     foreach ([
         'experience_sunrise_view' => ['Sunrise view', 'experience.sunrise_view'],
         'experience_sunset_view' => ['Sunset view', 'experience.sunset_view'],
-        'experience_mountain_view' => ['Mountain view', 'experience.mountain_view'],
-        'experience_forest_view' => ['Forest view', 'experience.forest_view'],
         'experience_night_sky' => ['Night sky', 'experience.night_sky'],
         'experience_stargazing' => ['Stargazing', 'experience.stargazing'],
         'experience_quiet_evening' => ['Quiet evening', 'experience.quiet_evening'],
