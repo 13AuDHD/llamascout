@@ -1,0 +1,264 @@
+/* =========================================================
+   LLAMA SCOUT MAP TOOLS V2
+   ========================================================= */
+
+.map-tools-control {
+    position: absolute;
+    z-index: 800;
+    top: 10px;
+    left: 50%;
+    width: min(calc(100% - 24px), 760px);
+    transform: translateX(-50%);
+}
+
+.map-tools-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 5px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .14);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.map-tool-trigger {
+    min-width: 0;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.map-tool-trigger:hover,
+.map-tool-trigger:focus-visible,
+.map-tool-trigger.is-open {
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.map-tool-trigger:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.map-tool-trigger.is-open {
+    background: color-mix(in srgb, var(--surface) 74%, var(--text) 8%);
+}
+
+.map-tool-trigger.has-active {
+    color: var(--text);
+}
+
+.map-tool-value {
+    color: var(--text);
+    font-size: .7rem;
+    font-weight: 750;
+}
+
+.map-tool-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--text);
+    color: var(--background);
+    font-size: .65rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.map-tool-count[hidden] {
+    display: none;
+}
+
+.map-tools-panel {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 0;
+    right: 0;
+    max-height: min(55vh, 360px);
+    overflow: auto;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.map-tools-panel[hidden] {
+    display: none;
+}
+
+.map-tools-panel-title {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.map-tools-map-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.map-tools-map-options button {
+    min-height: 38px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.map-tools-map-options button:hover,
+.map-tools-map-options button:focus-visible {
+    color: var(--text);
+}
+
+.map-tools-map-options button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.map-tools-map-options button.is-active {
+    background: var(--text);
+    color: var(--background);
+}
+
+.map-tools-empty {
+    margin: 0;
+    padding: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.map-card .map-tools-panel .map-land-control {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    transform: none !important;
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+.map-card .map-tools-panel .map-land-label {
+    display: none !important;
+}
+
+.map-card .map-tools-panel .map-land-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+}
+
+.map-card .map-tools-panel .map-land-buttons button {
+    min-height: 40px !important;
+    border-color: var(--border) !important;
+}
+
+.map-card .map-tools-panel .map-land-status {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    margin-top: 8px !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 680px) {
+    .map-tools-control {
+        width: calc(100% - 20px);
+    }
+
+    .map-tool-trigger {
+        min-height: 40px;
+        padding-inline: 6px;
+        font-size: .74rem;
+    }
+
+    .map-tool-value {
+        display: none;
+    }
+
+    .map-tools-panel {
+        max-height: 300px;
+    }
+
+    .map-tools-map-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .map-page .llama-map {
+        height: 520px;
+        min-height: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .map-tools-control {
+        top: 8px;
+        width: calc(100% - 16px);
+    }
+
+    .map-tools-bar {
+        gap: 3px;
+        padding: 4px;
+    }
+
+    .map-tool-trigger {
+        gap: 4px;
+        min-height: 38px;
+        padding: 5px 4px;
+        font-size: .7rem;
+    }
+
+    .map-tool-count {
+        min-width: 17px;
+        height: 17px;
+        padding-inline: 4px;
+        font-size: .6rem;
+    }
+
+    .map-card .map-tools-panel .map-land-buttons {
+        grid-template-columns: 1fr !important;
+    }
+}
