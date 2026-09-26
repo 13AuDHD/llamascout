@@ -188,6 +188,32 @@
     display: none;
 }
 
+.map-weather-alert-popup {
+    max-width: 360px;
+}
+
+.map-weather-alert-item {
+    display: grid;
+    gap: 7px;
+
+    padding-top: 10px;
+
+    border-top:
+        1px solid var(--border);
+}
+
+.map-weather-alert-item:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.map-weather-alert-event {
+    color: var(--text);
+
+    font-size: .85rem;
+    font-weight: 900;
+}
+
 
 /* =========================================================
    MOBILE
@@ -214,3 +240,4 @@ html[data-reduced-motion="true"]
 .map-weather-buttons button {
     transition: none;
 }
+
