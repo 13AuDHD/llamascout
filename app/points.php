@@ -154,21 +154,46 @@ function llama_points_record(
    still loaded from Admin Points / points_policy.
    ========================================================= */
 
+function llama_points_standalone_place_fields(): array
+{
+    return [
+        'description' => [
+            'label' => 'Description',
+            'new_policy_key' => 'new_place_description',
+            'update_policy_key' => 'place_update_description',
+        ],
+        'access_summary' => [
+            'label' => 'Access Summary',
+            'new_policy_key' => 'new_place_access_summary',
+            'update_policy_key' => 'place_update_access_summary',
+        ],
+        'sensory_summary' => [
+            'label' => 'Sensory Summary',
+            'new_policy_key' => 'new_place_sensory_summary',
+            'update_policy_key' => 'place_update_sensory_summary',
+        ],
+        'not_recommended_for' => [
+            'label' => 'Not Recommended For',
+            'new_policy_key' => 'new_place_not_recommended_for',
+            'update_policy_key' => 'place_update_not_recommended_for',
+        ],
+        'seasonal_access_note' => [
+            'label' => 'Seasonal Access Notes',
+            'new_policy_key' => 'new_place_seasonal_access_note',
+            'update_policy_key' => 'place_update_seasonal_access_note',
+        ],
+        'current_fire_restrictions_url' => [
+            'label' => 'Current Fire Restrictions URL',
+            'new_policy_key' => 'new_place_current_fire_restrictions_url',
+            'update_policy_key' => 'place_update_current_fire_restrictions_url',
+        ],
+    ];
+}
+
 function llama_points_optional_new_place_fields(): array
 {
-    /*
-     * These are genuinely optional/conditional narrative fields. Leaving one
-     * blank must not make an otherwise complete Place less than 100% or reduce
-     * the contributor's maximum point award.
-     *
-     * Examples: a Starlink note is unnecessary when the structured Starlink
-     * answers already say what happened; "Not recommended for" can honestly
-     * have no answer; Scout notes are explicitly "up to" three observations.
-     */
     return [
         'connectivity_starlink_note' => true,
-        'seasonal_access_note' => true,
-        'not_recommended_for' => true,
         'scout_note_1' => true,
         'scout_note_2' => true,
         'scout_note_3' => true,
@@ -184,17 +209,28 @@ function llama_points_new_place_categories(): array
     $fields =
         llama_place_report_fields();
 
+    $standaloneFields =
+        llama_points_standalone_place_fields();
+
+    $optionalFields =
+        llama_points_optional_new_place_fields();
+
     foreach ($categories as $slug => &$category) {
         $category['fields'] = [];
 
         foreach ($fields as $fieldKey => $field) {
-            if (
-                isset(
-                    llama_points_optional_new_place_fields()[
-                        (string) $fieldKey
-                    ]
-                )
-            ) {
+            $fieldKey =
+                (string) $fieldKey;
+
+            /*
+             * Standalone point fields receive their own configured
+             * point values and must never dilute a category.
+             */
+            if (isset($standaloneFields[$fieldKey])) {
+                continue;
+            }
+
+            if (isset($optionalFields[$fieldKey])) {
                 continue;
             }
 
@@ -285,6 +321,17 @@ function llama_points_new_place_max_points(
             llama_points_policy_required(
                 $db,
                 (string) $category['policy_key']
+            );
+    }
+
+    foreach (
+        llama_points_standalone_place_fields()
+        as $field
+    ) {
+        $total +=
+            llama_points_policy_required(
+                $db,
+                (string) $field['new_policy_key']
             );
     }
 
