@@ -135,6 +135,36 @@ function admin_points_policy_definitions(): array
             'label' => 'Experience + Recommendations',
             'description' => 'Maximum points available from approved Experience + Recommendation changes.',
         ],
+                'place_update_description' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Description',
+            'description' => '',
+        ],
+        'place_update_access_summary' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Access Summary',
+            'description' => '',
+        ],
+        'place_update_sensory_summary' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Sensory Summary',
+            'description' => '',
+        ],
+        'place_update_not_recommended_for' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Not Recommended For',
+            'description' => '',
+        ],
+        'place_update_seasonal_access_note' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Seasonal Access Notes',
+            'description' => '',
+        ],
+        'place_update_current_fire_restrictions_url' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Current Fire Restrictions URL',
+            'description' => '',
+        ],
 
         'place_checkin' => [
             'group' => 'Other Contributions',
