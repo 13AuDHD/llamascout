@@ -524,7 +524,7 @@ function popupHtml(
                         feature?.properties || {}
                     ),
                     {
-                        maxWidth: 360,
+                        maxWidth: 290,
                         closeButton: false,
                         className:
                             'map-overlay-leaflet-popup'
