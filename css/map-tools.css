@@ -214,3 +214,137 @@
         font-size: .6rem;
     }
 }
+
+/* =========================================================
+   MAP OVERLAY DETAIL POPUPS
+   ========================================================= */
+
+.map-overlay-popup {
+    position: relative;
+
+    display: grid;
+    gap: 8px;
+
+    min-width: 220px;
+    max-width: 340px;
+
+    padding: 15px 16px 16px;
+}
+
+.map-overlay-popup-close {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+
+    width: 32px;
+    height: 32px;
+
+    display: grid;
+    place-items: center;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.map-overlay-popup-close:hover {
+    background: var(--background);
+}
+
+.map-overlay-popup-close:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.map-overlay-popup-eyebrow {
+    margin: 0;
+    padding-right: 38px;
+
+    color: var(--text-muted);
+
+    font-size: .66rem;
+    font-weight: 900;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.map-overlay-popup h3 {
+    margin: 0;
+    padding-right: 34px;
+
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+.map-overlay-popup-headline {
+    margin: 0;
+
+    font-size: .82rem;
+    font-weight: 750;
+    line-height: 1.4;
+}
+
+.map-overlay-popup-meta {
+    display: grid;
+    gap: 5px;
+}
+
+.map-overlay-popup-row {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
+
+    font-size: .75rem;
+    line-height: 1.35;
+}
+
+.map-overlay-popup-row strong {
+    color: var(--text-muted);
+    font-size: .68rem;
+}
+
+.map-overlay-popup-row span {
+    overflow-wrap: anywhere;
+}
+
+.map-overlay-popup-note {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.map-overlay-popup-source {
+    margin: 3px 0 0;
+
+    color: var(--text-muted);
+
+    font-size: .62rem;
+    line-height: 1.35;
+}
+
+.map-overlay-leaflet-popup .leaflet-popup-content {
+    margin: 0;
+}
+
+.map-overlay-leaflet-popup .leaflet-popup-content-wrapper {
+    overflow: hidden;
+}
+
+.map-overlay-leaflet-popup
+.leaflet-popup-close-button {
+    display: none;
+}
