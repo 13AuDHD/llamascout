@@ -271,18 +271,6 @@ require
         </span>
     </header>
 
-    <div class="admin-points-source-note">
-        <strong>
-            New Places and Place Updates have separate weighted policies.
-        </strong>
-
-        <span>
-            New Place points reward how much of the Place Report is supplied.
-            Update points reward only the specific approved fields that changed.
-            Historical ledger entries never change when these values are edited.
-        </span>
-    </div>
-
 
     <?php if ($categoryDefinitions): ?>
 
@@ -307,11 +295,7 @@ require
 
                 <header class="admin-points-category-header">
                     <div>
-                        <h3>Place Contribution Categories</h3>
-                        <p>
-                            The same Place Report categories are weighted independently
-                            for a new Place and for later updates.
-                        </p>
+                        <h3>Place Report Points</h3>
                     </div>
 
                     <div class="admin-points-policy-maxima">
@@ -377,15 +361,6 @@ require
                                         )
                                     ) ?>
                                 </strong>
-
-                                <small>
-                                    <?= moderation_e(
-                                        (string) (
-                                            $newRow['description']
-                                            ?? ''
-                                        )
-                                    ) ?>
-                                </small>
                             </span>
 
 
