@@ -199,6 +199,35 @@
             });
         });
 
+
+    document.addEventListener(
+        'click',
+        (event) => {
+            const target = event.target;
+    
+            if (!(target instanceof Element)) {
+                return;
+            }
+    
+            const closeButton =
+                target.closest(
+                    '[data-map-overlay-popup-close]'
+                );
+    
+            if (!closeButton) {
+                return;
+            }
+    
+            event.preventDefault();
+            event.stopPropagation();
+    
+            window.LlamaScoutMap
+                ?.map
+                ?.closePopup();
+        }
+    );
+
+    
     syncMapValue();
     findLandControl();
     closePanels();
