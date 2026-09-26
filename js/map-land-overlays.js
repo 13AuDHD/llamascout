@@ -508,9 +508,11 @@ function popupHtml(
     function makeGeoJsonLayer(key, data) {
         const source = sources[key];
 
-        return L.geoJSON(data, {
-            pane: 'llama-land-pane',
-
+    return L.geoJSON(data, {
+        pane: 'llama-land-pane',
+    
+        bubblingMouseEvents: false,
+    
             style: () => ({
                 ...source.style
             }),
@@ -522,7 +524,10 @@ function popupHtml(
                         feature?.properties || {}
                     ),
                     {
-                        maxWidth: 280
+                        maxWidth: 360,
+                        closeButton: false,
+                        className:
+                            'map-overlay-leaflet-popup'
                     }
                 );
             }
