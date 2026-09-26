@@ -106,6 +106,7 @@ if (
 $policyRows = [];
 $policyLookup = [];
 $categoryDefinitions = [];
+$standaloneDefinitions = [];
 $otherPolicyRows = [];
 $newPlaceMax = 0;
 $placeUpdateMax = 0;
@@ -135,6 +136,9 @@ try {
     $categoryDefinitions =
         llama_place_report_category_definitions();
 
+    $standaloneDefinitions =
+        llama_points_standalone_place_fields();
+
     $newPlaceMax =
         llama_points_new_place_max_points(
             $db
@@ -148,6 +152,7 @@ try {
     $policyRows = [];
     $policyLookup = [];
     $categoryDefinitions = [];
+    $standaloneDefinitions = [];
     $otherPolicyRows = [];
     $newPlaceMax = 0;
     $placeUpdateMax = 0;
@@ -424,6 +429,117 @@ require
                 </div>
 
             </section>
+
+            <?php if ($standaloneDefinitions): ?>
+
+                <section class="admin-points-policy-group admin-points-category-policy">
+
+                    <header class="admin-points-category-header">
+                        <div>
+                            <h3>Standalone Place Fields</h3>
+                        </div>
+                    </header>
+
+
+                    <div class="admin-points-category-table">
+
+                        <div
+                            class="admin-points-category-columns"
+                            aria-hidden="true"
+                        >
+                            <span>Field</span>
+                            <span>New Place</span>
+                            <span>Update</span>
+                        </div>
+
+
+                        <?php foreach (
+                            $standaloneDefinitions
+                            as $fieldKey => $definition
+                        ): ?>
+
+                            <?php
+                            $newKey =
+                                (string) (
+                                    $definition['new_policy_key']
+                                    ?? ''
+                                );
+
+                            $updateKey =
+                                (string) (
+                                    $definition['update_policy_key']
+                                    ?? ''
+                                );
+
+                            $newRow =
+                                $policyLookup[$newKey]
+                                ?? null;
+
+                            $updateRow =
+                                $policyLookup[$updateKey]
+                                ?? null;
+
+                            if (!$newRow || !$updateRow) {
+                                continue;
+                            }
+                            ?>
+
+                            <div class="admin-points-category-row">
+
+                                <span class="admin-points-category-copy">
+                                    <strong>
+                                        <?= moderation_e(
+                                            (string) (
+                                                $definition['label']
+                                                ?? $fieldKey
+                                            )
+                                        ) ?>
+                                    </strong>
+                                </span>
+
+
+                                <label>
+                                    <span>New Place</span>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        name="policy[<?= moderation_e($newKey) ?>]"
+                                        value="<?= (int) $newRow['points_value'] ?>"
+                                        <?= !$actorIsOwner
+                                            ? 'disabled'
+                                            : ''
+                                        ?>
+                                    >
+                                </label>
+
+
+                                <label>
+                                    <span>Update</span>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        name="policy[<?= moderation_e($updateKey) ?>]"
+                                        value="<?= (int) $updateRow['points_value'] ?>"
+                                        <?= !$actorIsOwner
+                                            ? 'disabled'
+                                            : ''
+                                        ?>
+                                    >
+                                </label>
+
+                            </div>
+
+                        <?php endforeach; ?>
+
+                    </div>
+
+                </section>
+
+            <?php endif; ?>
 
 
             <?php if ($otherPolicyRows): ?>
