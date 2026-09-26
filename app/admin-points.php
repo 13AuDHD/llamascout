@@ -55,7 +55,36 @@ function admin_points_policy_definitions(): array
             'label' => 'Experience + Recommendations',
             'description' => 'Maximum points available from experience ratings and recommendations.',
         ],
-
+        'new_place_description' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Description',
+            'description' => '',
+        ],
+        'new_place_access_summary' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Access Summary',
+            'description' => '',
+        ],
+        'new_place_sensory_summary' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Sensory Summary',
+            'description' => '',
+        ],
+        'new_place_not_recommended_for' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Not Recommended For',
+            'description' => '',
+        ],
+        'new_place_seasonal_access_note' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Seasonal Access Notes',
+            'description' => '',
+        ],
+        'new_place_current_fire_restrictions_url' => [
+            'group' => 'Standalone Place Fields',
+            'label' => 'Current Fire Restrictions URL',
+            'description' => '',
+        ],
         'place_update_site_vehicle' => [
             'group' => 'Place Update Categories',
             'label' => 'Site + Vehicle',
