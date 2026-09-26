@@ -62,7 +62,6 @@
 
 .map-weather-button-copy {
     min-width: 0;
-
     display: grid;
     gap: 2px;
 }
@@ -94,14 +93,12 @@
     width: 13px;
     height: 13px;
     flex: 0 0 13px;
-
     border: 2px solid currentColor;
     border-radius: 999px;
 }
 
 .map-weather-swatch-radar {
     border-color: #3484c6;
-
     background:
         linear-gradient(
             135deg,
@@ -113,7 +110,6 @@
 
 .map-weather-swatch-clouds {
     border-color: #747b86;
-
     background:
         linear-gradient(
             135deg,
@@ -124,7 +120,6 @@
 
 .map-weather-swatch-lightning {
     border-color: #7959c7;
-
     background:
         linear-gradient(
             135deg,
@@ -135,7 +130,6 @@
 
 .map-weather-swatch-alerts {
     border-color: #bd4c36;
-
     background:
         linear-gradient(
             135deg,
@@ -151,9 +145,7 @@
 
 .map-weather-source {
     margin: 9px 2px 0;
-
     color: var(--text-muted);
-
     font-size: .65rem;
     font-weight: 700;
     line-height: 1.35;
@@ -161,23 +153,18 @@
 
 .map-weather-status {
     display: block;
-
     width: 100%;
     margin-top: 8px;
     padding: 7px 9px;
-
     border: 1px solid var(--border);
     border-radius: 8px;
-
     background:
         color-mix(
             in srgb,
             var(--surface) 94%,
             transparent
         );
-
     color: var(--text-muted);
-
     font-size: .68rem;
     font-weight: 750;
     line-height: 1.35;
@@ -189,17 +176,14 @@
 }
 
 .map-weather-alert-popup {
-    max-width: 360px;
+    max-width: 280px;
 }
 
 .map-weather-alert-item {
     display: grid;
-    gap: 7px;
-
-    padding-top: 10px;
-
-    border-top:
-        1px solid var(--border);
+    gap: 5px;
+    padding-top: 7px;
+    border-top: 1px solid var(--border);
 }
 
 .map-weather-alert-item:first-of-type {
@@ -209,8 +193,7 @@
 
 .map-weather-alert-event {
     color: var(--text);
-
-    font-size: .85rem;
+    font-size: .76rem;
     font-weight: 900;
 }
 
@@ -240,4 +223,3 @@ html[data-reduced-motion="true"]
 .map-weather-buttons button {
     transition: none;
 }
-
