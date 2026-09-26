@@ -194,94 +194,6 @@
     max-height: 820px;
 }
 
-
-/* =========================================================
-   MEMBER MAP LAYERS
-   ========================================================= */
-
-.map-layer-control {
-    position: absolute;
-    z-index: 700;
-    top: 12px;
-    left: 50%;
-    width: min(calc(100% - 96px), 680px);
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px;
-    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-    box-shadow: 0 8px 26px rgba(0, 0, 0, .14);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-}
-
-.map-layer-control[hidden] {
-    display: none;
-}
-
-.map-layer-label {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 5px;
-    color: var(--text-muted);
-    font-size: .72rem;
-    font-weight: 900;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-}
-
-.map-layer-buttons {
-    flex: 1 1 auto;
-    display: flex;
-    gap: 4px;
-    min-width: 0;
-}
-
-.map-layer-buttons button {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 34px;
-    padding: 6px 8px;
-    border: 1px solid transparent;
-    border-radius: 9px;
-    background: transparent;
-    color: var(--text-muted);
-    font: inherit;
-    font-size: .72rem;
-    font-weight: 850;
-    cursor: pointer;
-    transition:
-        background-color .15s ease,
-        color .15s ease,
-        border-color .15s ease,
-        transform .15s ease;
-}
-
-.map-layer-buttons button:hover {
-    border-color: var(--border);
-    color: var(--text);
-}
-
-.map-layer-buttons button:focus-visible {
-    outline: 2px solid var(--text);
-    outline-offset: 2px;
-}
-
-.map-layer-buttons button.is-active {
-    border-color: var(--border);
-    background: var(--text);
-    color: var(--background);
-}
-
-.map-layer-buttons button:active {
-    transform: translateY(1px);
-}
-
 .map-card .leaflet-bar {
     border: 1px solid var(--border);
     border-radius: 11px;
@@ -617,37 +529,6 @@
 }
 
 
-@media (max-width: 760px) {
-    .map-layer-control {
-        top: 10px;
-        left: 58px;
-        right: 10px;
-        width: auto;
-        transform: none;
-        display: block;
-        padding: 6px;
-    }
-
-    .map-layer-label {
-        display: none;
-    }
-
-    .map-layer-buttons {
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .map-layer-buttons::-webkit-scrollbar {
-        display: none;
-    }
-
-    .map-layer-buttons button {
-        flex: 0 0 auto;
-        min-width: 60px;
-    }
-}
-
-
 @media (max-width: 680px) {
     .map-hero {
         padding-top: 34px;
@@ -684,16 +565,6 @@
     }
 }
 
-
-@media (prefers-reduced-motion: reduce) {
-    .map-layer-buttons button {
-        transition: none;
-    }
-}
-
-html[data-reduced-motion="true"] .map-layer-buttons button {
-    transition: none;
-}
 
 /* =========================================================
    MAP RESULT INTERACTIONS + LOCATION CONTROL
