@@ -956,10 +956,34 @@ function moderation_insert_place_child_row(
         }
 
         $columns[] = (string) $key;
-        $values[] =
-            is_bool($value)
-                ? ($value ? 1 : 0)
-                : $value;
+
+        if (is_bool($value)) {
+            $values[] =
+                $value
+                    ? 1
+                    : 0;
+
+            continue;
+        }
+
+        /*
+         * Structured Place Report fields such as Landscape details
+         * and Views are submitted as arrays. Store those arrays as
+         * JSON instead of passing a PHP array directly to PDO.
+         */
+        if (is_array($value)) {
+            $values[] =
+                json_encode(
+                    array_values($value),
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                );
+
+            continue;
+        }
+
+        $values[] = $value;
     }
 
     if (!$columns) {
