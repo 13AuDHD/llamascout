@@ -639,7 +639,7 @@
 
 function shortenedText(
     value,
-    maxLength = 420
+    maxLength = 240
 ) {
     const text =
         String(value ?? '')
@@ -947,7 +947,7 @@ async function showAlertsAtPoint(
 
         L.popup(
             {
-                maxWidth: 390,
+                maxWidth: 300,
                 closeButton: false,
                 className:
                     'map-overlay-leaflet-popup'
