@@ -119,25 +119,70 @@ $standaloneFields =
                             ) ?>
                         </strong>
 
-                        <small>
-                            <?php if (
-                                (string) (
-                                    $category['mode']
-                                    ?? ''
+                    <small>
+                        <?php if (
+                            (string) (
+                                $category['mode']
+                                ?? ''
+                            )
+                            === 'any'
+                        ): ?>
+                            <?= $answered > 0
+                                ? 'Information supplied'
+                                : 'No information supplied'
+                            ?>
+                        <?php else: ?>
+                            <?= number_format($answered) ?>
+                            of
+                            <?= number_format($fieldTotal) ?>
+                            scored fields answered
+                    
+                            <?php
+                            $missingFields =
+                                is_array(
+                                    $category['missing_fields']
+                                    ?? null
                                 )
-                                === 'any'
-                            ): ?>
-                                <?= $answered > 0
-                                    ? 'Information supplied'
-                                    : 'No information supplied'
-                                ?>
-                            <?php else: ?>
-                                <?= number_format($answered) ?>
-                                of
-                                <?= number_format($fieldTotal) ?>
-                                scored fields answered
+                                    ? $category['missing_fields']
+                                    : [];
+                    
+                            $missingLabels =
+                                array_values(
+                                    array_filter(
+                                        array_map(
+                                            static fn (
+                                                array $field
+                                            ): string =>
+                                                trim(
+                                                    (string) (
+                                                        $field['label']
+                                                        ?? ''
+                                                    )
+                                                ),
+                                            $missingFields
+                                        ),
+                                        static fn (
+                                            string $label
+                                        ): bool =>
+                                            $label !== ''
+                                    )
+                                );
+                            ?>
+                    
+                            <?php if ($missingLabels): ?>
+                                <br>
+                                Missing:
+                                <?= moderation_e(
+                                    implode(
+                                        ', ',
+                                        $missingLabels
+                                    )
+                                ) ?>
                             <?php endif; ?>
-                        </small>
+                    
+                        <?php endif; ?>
+                    </small>
+                        
                     </span>
 
                     <strong>
