@@ -453,25 +453,39 @@ function llama_points_estimate_new_place(
     int $photoCount
 ): array {
     $categoryRows = [];
+    $standaloneRows = [];
+
     $estimatedPoints = 0;
     $maxPoints = 0;
-    $answeredTotal = 0;
-    $fieldTotal = 0;
+
+    /*
+     * =====================================================
+     * NORMAL CATEGORY SCORING
+     * =====================================================
+     *
+     * Amenities and Connectivity retain their "any"
+     * behavior. Every other category is proportional.
+     */
+    $categories =
+        llama_points_new_place_categories();
 
     foreach (
-        llama_points_new_place_categories()
+        $categories
         as $slug => $category
     ) {
         $fields =
-            (array) $category['fields'];
+            (array) (
+                $category['fields']
+                ?? []
+            );
 
         $answered = 0;
 
-        foreach ($fields as $field) {
+        foreach ($fields as $fieldKey) {
             if (
                 llama_points_has_answer(
                     $data,
-                    (string) $field
+                    (string) $fieldKey
                 )
             ) {
                 $answered++;
@@ -480,12 +494,6 @@ function llama_points_estimate_new_place(
 
         $fieldCount =
             count($fields);
-
-        $fieldTotal +=
-            $fieldCount;
-
-        $answeredTotal +=
-            $answered;
 
         $categoryMax =
             llama_points_policy_required(
@@ -497,9 +505,18 @@ function llama_points_estimate_new_place(
             $categoryMax;
 
         if (
-            (string) $category['mode']
-            === 'any'
+            (string) (
+                $category['mode']
+                ?? 'weighted'
+            ) === 'any'
         ) {
+            /*
+             * Amenities:
+             * Any amenity OR No Amenities = full points.
+             *
+             * Connectivity:
+             * Any one tested carrier/service = full points.
+             */
             $points =
                 $answered > 0
                     ? $categoryMax
@@ -509,7 +526,10 @@ function llama_points_estimate_new_place(
                 $fieldCount > 0
                     ? (int) round(
                         $categoryMax
-                        * ($answered / $fieldCount)
+                        * (
+                            $answered
+                            / $fieldCount
+                        )
                     )
                     : 0;
         }
@@ -527,70 +547,177 @@ function llama_points_estimate_new_place(
             $points;
 
         $categoryRows[] = [
-            'slug' => $slug,
+            'slug' =>
+                (string) $slug,
+
             'label' =>
-                (string) $category['label'],
+                (string) (
+                    $category['label']
+                    ?? $slug
+                ),
+
             'policy_key' =>
                 (string) $category['policy_key'],
+
             'mode' =>
-                (string) $category['mode'],
+                (string) (
+                    $category['mode']
+                    ?? 'weighted'
+                ),
+
             'answered' =>
                 $answered,
+
             'total' =>
                 $fieldCount,
+
             'points' =>
                 $points,
+
             'max_points' =>
                 $categoryMax,
+
             'started' =>
                 $answered > 0,
         ];
     }
 
-    $pointFieldLookup = [];
 
+    /*
+     * =====================================================
+     * STANDALONE FIELD SCORING
+     * =====================================================
+     *
+     * These six fields have their own configured point
+     * values and are not divided into another category.
+     */
     foreach (
-        llama_points_new_place_categories()
-        as $category
+        llama_points_standalone_place_fields()
+        as $fieldKey => $definition
     ) {
+        $answered =
+            llama_points_has_answer(
+                $data,
+                (string) $fieldKey
+            );
+
+        $fieldMax =
+            llama_points_policy_required(
+                $db,
+                (string) $definition['new_policy_key']
+            );
+
+        $points =
+            $answered
+                ? $fieldMax
+                : 0;
+
+        $maxPoints +=
+            $fieldMax;
+
+        $estimatedPoints +=
+            $points;
+
+        $standaloneRows[] = [
+            'field' =>
+                (string) $fieldKey,
+
+            'label' =>
+                (string) $definition['label'],
+
+            'policy_key' =>
+                (string) $definition['new_policy_key'],
+
+            'answered' =>
+                $answered ? 1 : 0,
+
+            'total' =>
+                1,
+
+            'points' =>
+                $points,
+
+            'max_points' =>
+                $fieldMax,
+        ];
+    }
+
+
+    /*
+     * =====================================================
+     * COMPLETION PERCENTAGE
+     * =====================================================
+     *
+     * Count each actual form question only once even when a
+     * field participates in more than one point category.
+     */
+    $completionFields = [];
+
+    foreach ($categories as $category) {
         foreach (
-            (array) $category['fields']
+            (array) (
+                $category['fields']
+                ?? []
+            )
             as $fieldKey
         ) {
-            $pointFieldLookup[
+            $completionFields[
                 (string) $fieldKey
             ] = true;
         }
     }
 
     foreach (
+        llama_points_standalone_place_fields()
+        as $fieldKey => $_
+    ) {
+        $completionFields[
+            (string) $fieldKey
+        ] = true;
+    }
+
+    $optionalFields =
+        llama_points_optional_new_place_fields();
+
+    /*
+     * Fields outside the points system still count toward
+     * completion unless they are explicitly optional.
+     */
+    foreach (
         llama_place_report_fields()
         as $fieldKey => $field
     ) {
-        if (
-            isset(
-                $pointFieldLookup[$fieldKey]
-            )
-        ) {
-            continue;
-        }
+        $fieldKey =
+            (string) $fieldKey;
 
         if (
             isset(
-                llama_points_optional_new_place_fields()[
-                    (string) $fieldKey
+                $optionalFields[
+                    $fieldKey
                 ]
             )
         ) {
             continue;
         }
 
-        $fieldTotal++;
+        $completionFields[
+            $fieldKey
+        ] = true;
+    }
 
+    $fieldTotal =
+        count($completionFields);
+
+    $answeredTotal = 0;
+
+    foreach (
+        array_keys($completionFields)
+        as $fieldKey
+    ) {
         if (
             llama_points_has_answer(
                 $data,
-                $fieldKey
+                (string) $fieldKey
             )
         ) {
             $answeredTotal++;
@@ -598,8 +725,8 @@ function llama_points_estimate_new_place(
     }
 
     /*
-     * Photo presence is included in form completion, but not in
-     * contribution points.
+     * Photo presence counts once toward completion, but photos
+     * do not directly award contribution points.
      */
     $fieldTotal++;
 
@@ -607,6 +734,12 @@ function llama_points_estimate_new_place(
         $answeredTotal++;
     }
 
+
+    /*
+     * =====================================================
+     * MINIMUM SUBMISSION REQUIREMENTS
+     * =====================================================
+     */
     $missingMinimum = [];
 
     if (
@@ -638,6 +771,7 @@ function llama_points_estimate_new_place(
         $missingMinimum[] =
             '1 photo';
     }
+
 
     return [
         'completion_percent' =>
@@ -684,6 +818,9 @@ function llama_points_estimate_new_place(
         'categories' =>
             $categoryRows,
 
+        'standalone_fields' =>
+            $standaloneRows,
+
         'minimum_ready' =>
             !$missingMinimum,
 
@@ -691,7 +828,6 @@ function llama_points_estimate_new_place(
             $missingMinimum,
     ];
 }
-
 
 /* =========================================================
    PLACE UPDATE SCORING POLICY
