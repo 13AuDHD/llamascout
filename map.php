@@ -41,7 +41,7 @@ require __DIR__ . '/partials/header.php';
 <?php if ($hasMapMemberAccess): ?>
     <link
         rel="stylesheet"
-        href="/css/map-tools.css?v=20260926-1"
+        href="/css/map-tools.css"
     >
 <?php endif; ?>
 
@@ -474,8 +474,8 @@ require __DIR__ . '/partials/header.php';
 
 <?php if ($hasMapMemberAccess): ?>
     <script src="/js/map-land-overlays.js"></script>
-    <script src="/js/map-weather-overlays.js?v=20260926-1"></script>
-    <script src="/js/map-tools.js?v=20260926-1"></script>
+    <script src="/js/map-weather-overlays.js"></script>
+    <script src="/js/map-tools.js"></script>
 <?php endif; ?>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
