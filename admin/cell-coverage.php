@@ -8,7 +8,7 @@ require_once dirname(__DIR__) . '/app/cell-coverage-import.php';
 $adminUser =
     moderation_require_admin();
 
-$db = db();
+$cellDb = cell_db();
 
 $adminPageTitle =
     'Cell Coverage';
@@ -30,32 +30,61 @@ try {
         $e->getMessage();
 }
 
-$coverageRows = 0;
+$coverageCells = 0;
 $coverageLatest = null;
+$datasets = [];
 
 try {
-    $coverageRows =
-        (int) $db
+    $coverageCells =
+        (int) $cellDb
             ->query(
                 'SELECT COUNT(*)
-                 FROM cell_coverage_h3'
+                 FROM cell_coverage_cells'
             )
             ->fetchColumn();
 
     $coverageLatest =
-        $db
+        $cellDb
             ->query(
-                'SELECT MAX(as_of_date)
-                 FROM cell_coverage_h3'
+                'SELECT MAX(fcc_as_of_date)
+                 FROM cell_coverage_datasets
+                 WHERE status = "current"'
             )
             ->fetchColumn();
 
     if (!$coverageLatest) {
         $coverageLatest = null;
     }
+
+    $datasets =
+        $cellDb
+            ->query(
+                'SELECT
+                    state_fips,
+                    state_name,
+                    provider_key,
+                    technology,
+                    fcc_as_of_date,
+                    status,
+                    source_rows,
+                    cells_written,
+                    completed_at
+                 FROM cell_coverage_datasets
+                 ORDER BY
+                    state_name,
+                    provider_key,
+                    technology,
+                    fcc_as_of_date DESC
+                 LIMIT 100'
+            )
+            ->fetchAll(
+                PDO::FETCH_ASSOC
+            );
+
 } catch (Throwable $e) {
-    $coverageRows = 0;
+    $coverageCells = 0;
     $coverageLatest = null;
+    $datasets = [];
 }
 
 require __DIR__ . '/_header.php';
@@ -69,14 +98,16 @@ require __DIR__ . '/_header.php';
         </div>
 
         <span>
-            <?= number_format($coverageRows) ?>
-            stored hex<?= $coverageRows === 1 ? '' : 'es' ?>
+            <?= number_format(
+                $coverageCells
+            ) ?>
+            compact cell<?= $coverageCells === 1 ? '' : 's' ?>
         </span>
     </header>
 
     <?php if ($coverageLatest): ?>
         <p>
-            Latest imported FCC data:
+            Latest current FCC data:
             <strong>
                 <?= moderation_e(
                     (string) $coverageLatest
@@ -86,9 +117,10 @@ require __DIR__ . '/_header.php';
     <?php endif; ?>
 
     <p>
-        Place FCC H3 GeoPackage files in
-        <code>private/fcc-imports</code>,
-        then import them here.
+        GeoPackages are read from
+        <code>private/fcc-imports</code>.
+        Imports now write directly to the dedicated compact
+        cellular database.
     </p>
 
     <?php if (!class_exists('SQLite3')): ?>
@@ -100,7 +132,9 @@ require __DIR__ . '/_header.php';
 
     <?php if ($directoryError !== ''): ?>
         <div class="admin-alert is-danger">
-            <?= moderation_e($directoryError) ?>
+            <?= moderation_e(
+                $directoryError
+            ) ?>
         </div>
     <?php endif; ?>
 </section>
@@ -120,8 +154,8 @@ require __DIR__ . '/_header.php';
             <h3>No GeoPackage files found.</h3>
 
             <p>
-                Upload an FCC mobile broadband
-                H3 <code>.gpkg</code> file to
+                Upload one FCC Hexagon Coverage
+                <code>.gpkg</code> file to
                 <code>private/fcc-imports</code>.
             </p>
         </div>
@@ -240,6 +274,135 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
+            <p>Dataset Ledger</p>
+            <h2>Imported Coverage</h2>
+        </div>
+
+        <span>
+            <?= count($datasets) ?>
+            recent dataset<?= count($datasets) === 1 ? '' : 's' ?>
+        </span>
+    </header>
+
+    <?php if (!$datasets): ?>
+
+        <div class="admin-empty-state">
+            <h3>No datasets recorded yet.</h3>
+            <p>
+                Completed V2 imports will appear here.
+            </p>
+        </div>
+
+    <?php else: ?>
+
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Provider</th>
+                        <th>Coverage</th>
+                        <th>FCC date</th>
+                        <th>Status</th>
+                        <th>Source rows</th>
+                        <th>Cells</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <?php foreach ($datasets as $dataset): ?>
+                        <tr>
+                            <td>
+                                <?= moderation_e(
+                                    (string) (
+                                        $dataset['state_name']
+                                        ?? $dataset['state_fips']
+                                        ?? ''
+                                    )
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= moderation_e(
+                                    match (
+                                        (string) (
+                                            $dataset['provider_key']
+                                            ?? ''
+                                        )
+                                    ) {
+                                        'tmobile' => 'T-Mobile',
+                                        'verizon' => 'Verizon',
+                                        'att' => 'AT&T',
+                                        default =>
+                                            (string) (
+                                                $dataset['provider_key']
+                                                ?? ''
+                                            ),
+                                    }
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= moderation_e(
+                                    strtoupper(
+                                        (string) (
+                                            $dataset['technology']
+                                            ?? ''
+                                        )
+                                    )
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= moderation_e(
+                                    (string) (
+                                        $dataset['fcc_as_of_date']
+                                        ?? ''
+                                    )
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= moderation_e(
+                                    ucfirst(
+                                        (string) (
+                                            $dataset['status']
+                                            ?? ''
+                                        )
+                                    )
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= number_format(
+                                    (int) (
+                                        $dataset['source_rows']
+                                        ?? 0
+                                    )
+                                ) ?>
+                            </td>
+
+                            <td>
+                                <?= number_format(
+                                    (int) (
+                                        $dataset['cells_written']
+                                        ?? 0
+                                    )
+                                ) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+    <?php endif; ?>
+</section>
+
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
             <p>Supported Data</p>
             <h2>What gets imported</h2>
         </div>
@@ -256,7 +419,7 @@ require __DIR__ . '/_header.php';
 <script
     src="<?= moderation_e(
         $siteUrl
-        . '/js/admin-cell-coverage-import.js'
+        . '/js/admin-cell-coverage-import.js?v=20260926-2'
     ) ?>"
 ></script>
 

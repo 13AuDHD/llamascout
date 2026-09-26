@@ -62,7 +62,7 @@ try {
 
     $result =
         llama_cell_import_batch(
-            db(),
+            cell_db(),
             (string) (
                 $_POST['filename']
                 ?? ''
@@ -93,7 +93,7 @@ try {
     $reference =
         llama_log_caught_exception(
             $e,
-            'admin.cell_coverage_import'
+            'admin.cell_coverage_import_v2'
         );
 
     admin_cell_import_json(
