@@ -253,7 +253,12 @@ require __DIR__ . '/_header.php';
     </p>
 </section>
 
-<script src="/js/admin-cell-coverage-import.js?v=20260926-1"></script>
+<script
+    src="<?= moderation_e(
+        $siteUrl
+        . '/js/admin-cell-coverage-import.js'
+    ) ?>"
+></script>
 
 <?php
 require __DIR__ . '/_footer.php';
