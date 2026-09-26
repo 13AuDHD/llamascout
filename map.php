@@ -475,6 +475,7 @@ require __DIR__ . '/partials/header.php';
 <?php if ($hasMapMemberAccess): ?>
     <script src="/js/map-land-overlays.js"></script>
     <script src="/js/map-weather-overlays.js"></script>
+    <script src="https://unpkg.com/h3-js@4.2.1"></script>
     <script src="/js/map-cell-overlays.js"></script>
     <script src="/js/map-tools.js"></script>
 <?php endif; ?>
