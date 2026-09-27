@@ -26,6 +26,45 @@ function admin_cell_sync_json(
 }
 
 
+function admin_cell_sync_download_lock_path(): string
+{
+    return
+        llama_fcc_sync_directory()
+        . '/fcc-cell-sync-download.lock';
+}
+
+
+function admin_cell_sync_download_worker_active(): bool
+{
+    $lock =
+        fopen(
+            admin_cell_sync_download_lock_path(),
+            'c'
+        );
+
+    if (!$lock) {
+        return false;
+    }
+
+    $acquired =
+        flock(
+            $lock,
+            LOCK_EX | LOCK_NB
+        );
+
+    if ($acquired) {
+        flock(
+            $lock,
+            LOCK_UN
+        );
+    }
+
+    fclose($lock);
+
+    return !$acquired;
+}
+
+
 function admin_cell_sync_public_state(
     ?array $state
 ): array {
@@ -71,6 +110,16 @@ function admin_cell_sync_public_state(
                 ),
                 $remainingSeconds * 1000
             );
+
+        $public['download_worker_active'] =
+            (string) (
+                $state['phase']
+                ?? ''
+            ) === 'download'
+            && admin_cell_sync_download_worker_active();
+    } else {
+        $public['download_worker_active'] =
+            false;
     }
 
     return $public;
@@ -88,14 +137,6 @@ function admin_cell_sync_background_finisher(): ?string
     }
 
     return null;
-}
-
-
-function admin_cell_sync_download_lock_path(): string
-{
-    return
-        llama_fcc_sync_directory()
-        . '/fcc-cell-sync-download.lock';
 }
 
 
@@ -118,6 +159,16 @@ function admin_cell_sync_finish_response(
 
     http_response_code(200);
 
+    ignore_user_abort(true);
+    @set_time_limit(0);
+
+    if (
+        session_status()
+        === PHP_SESSION_ACTIVE
+    ) {
+        session_write_close();
+    }
+
     if (!headers_sent()) {
         header(
             'Content-Type: application/json; charset=UTF-8'
@@ -129,24 +180,25 @@ function admin_cell_sync_finish_response(
             'Content-Length: '
             . strlen($json)
         );
-    }
-
-    /*
-     * Release the PHP session before the background download.
-     * Otherwise the status-poll requests from Safari can block
-     * behind this worker for the entire file transfer.
-     */
-    if (
-        session_status()
-        === PHP_SESSION_ACTIVE
-    ) {
-        session_write_close();
+        header(
+            'Connection: close'
+        );
     }
 
     echo $json;
 
-    ignore_user_abort(true);
-    @set_time_limit(0);
+    /*
+     * Force the short JSON response out before the FCC transfer
+     * continues. LiteSpeed can otherwise leave Safari waiting on
+     * this request even though PHP has started the background job.
+     */
+    while (ob_get_level() > 0) {
+        if (!@ob_end_flush()) {
+            break;
+        }
+    }
+
+    flush();
 
     if ($finisher === 'litespeed_finish_request') {
         litespeed_finish_request();
@@ -169,11 +221,6 @@ function admin_cell_sync_prepare_download_state(
             )
         );
 
-    /*
-     * The old Range-based downloader may have left a partial
-     * file and retry timer behind. Clear those once when the
-     * full-file downloader takes over.
-     */
     if (
         (string) (
             $state['download_mode']
@@ -195,6 +242,103 @@ function admin_cell_sync_prepare_download_state(
     }
 
     return $state;
+}
+
+
+function admin_cell_sync_finalize_completed_file(
+    array $state
+): ?array {
+    if (
+        (string) (
+            $state['phase']
+            ?? ''
+        ) !== 'download'
+    ) {
+        return null;
+    }
+
+    $dataset =
+        llama_fcc_chunk_current_dataset(
+            $state
+        );
+
+    if (!$dataset) {
+        return null;
+    }
+
+    $paths =
+        llama_fcc_chunk_paths(
+            $state
+        );
+
+    if (!is_file($paths['partial'])) {
+        return null;
+    }
+
+    $expected =
+        max(
+            0,
+            (int) (
+                $state['download_total_bytes']
+                ?? 0
+            )
+        );
+
+    $reported =
+        max(
+            0,
+            (int) (
+                $state['downloaded_bytes']
+                ?? 0
+            )
+        );
+
+    $actual =
+        max(
+            0,
+            (int) filesize(
+                $paths['partial']
+            )
+        );
+
+    if (
+        $expected <= 0
+        || $reported < $expected
+        || $actual < $expected
+    ) {
+        return null;
+    }
+
+    $head =
+        file_get_contents(
+            $paths['partial'],
+            false,
+            null,
+            0,
+            16
+        );
+
+    $looksComplete =
+        is_string($head)
+        && (
+            str_starts_with(
+                $head,
+                'SQLite format 3'
+            )
+            || str_starts_with(
+                $head,
+                'PK'
+            )
+        );
+
+    if (!$looksComplete) {
+        return null;
+    }
+
+    return llama_fcc_chunk_finalize_download(
+        $state,
+        $dataset
+    );
 }
 
 
@@ -335,7 +479,7 @@ try {
                 [
                     'ok' => false,
                     'error' =>
-                        'This server does not expose fastcgi_finish_request() or litespeed_finish_request(), so the FCC download cannot be detached from the browser request.',
+                        'This server does not expose a supported background-response finisher.',
                 ],
                 500
             );
@@ -353,11 +497,6 @@ try {
             );
         }
 
-        /*
-         * Another request may already be downloading the current
-         * FCC file. In that case return the latest status instead
-         * of launching a second worker.
-         */
         if (
             !flock(
                 $lock,
@@ -381,18 +520,45 @@ try {
             );
         }
 
+        /*
+         * The transfer can reach 100% before the old worker manages
+         * to change the phase. If that worker is gone, finalize the
+         * already-downloaded file instead of downloading it again.
+         */
+        $state =
+            llama_fcc_sync_load_state()
+            ?? $state;
+
+        $recovered =
+            admin_cell_sync_finalize_completed_file(
+                $state
+            );
+
+        if (is_array($recovered)) {
+            flock(
+                $lock,
+                LOCK_UN
+            );
+            fclose($lock);
+
+            admin_cell_sync_json(
+                [
+                    'ok' => true,
+                    'sync' =>
+                        admin_cell_sync_public_state(
+                            $recovered
+                        ),
+                ]
+            );
+        }
+
         $state['message'] =
-            'FCC download started in the background.';
+            'FCC download is running in the background.';
 
         llama_fcc_sync_save_state(
             $state
         );
 
-        /*
-         * Return JSON to Safari NOW. The long FCC transfer keeps
-         * running in this PHP worker after the browser request has
-         * been completed by PHP-FPM/LiteSpeed.
-         */
         admin_cell_sync_finish_response(
             [
                 'ok' => true,
@@ -443,10 +609,6 @@ try {
         exit;
 
     } elseif ($action === 'step') {
-        /*
-         * Import work remains short and request-driven. Downloads
-         * are handled only by the detached "download" action.
-         */
         $state =
             llama_fcc_sync_load_state();
 
