@@ -66,31 +66,33 @@
     let running = false;
 
 
-    function showClientError(text) {
-        const clean =
-            String(text || '')
-                .trim();
-
-        if (clean !== '') {
-            box.hidden = false;
-        }
-
-        if (!errorNode) {
-            return;
-        }
-
-        errorNode.textContent =
-            clean;
-
-        errorNode.hidden =
-            clean === '';
-    }
-
-
     function number(value) {
         return (
             Number(value) || 0
         ).toLocaleString();
+    }
+
+
+    function bytes(value) {
+        let amount =
+            Math.max(
+                0,
+                Number(value) || 0
+            );
+
+        if (amount >= 1073741824) {
+            return `${(amount / 1073741824).toFixed(1)} GB`;
+        }
+
+        if (amount >= 1048576) {
+            return `${(amount / 1048576).toFixed(1)} MB`;
+        }
+
+        if (amount >= 1024) {
+            return `${(amount / 1024).toFixed(1)} KB`;
+        }
+
+        return `${number(amount)} B`;
     }
 
 
@@ -212,27 +214,61 @@
                             : ''
                     ]
                         .filter(Boolean)
-                        .join(' Â· ');
+                        .join(' \u00B7 ');
             } else {
                 current.textContent = '';
             }
         }
 
         if (rowProgress) {
-            const total =
+            const downloadTotal =
                 Number(
-                    sync.current_total_rows
+                    sync.download_total_bytes
                 ) || 0;
 
-            const imported =
+            const downloaded =
                 Number(
-                    sync.current_imported_rows
+                    sync.downloaded_bytes
                 ) || 0;
 
-            rowProgress.textContent =
-                total > 0
-                    ? `${number(imported)} of ${number(total)} source rows processed`
-                    : '';
+            const retryAfterMs =
+                Math.max(
+                    0,
+                    Number(
+                        sync.retry_after_ms
+                    ) || 0
+                );
+
+            if (
+                sync.phase === 'download'
+                && downloaded > 0
+            ) {
+                rowProgress.textContent =
+                    downloadTotal > 0
+                        ? `${bytes(downloaded)} of ${bytes(downloadTotal)} downloaded`
+                        : `${bytes(downloaded)} downloaded`;
+            } else if (
+                sync.phase === 'download'
+                && retryAfterMs > 0
+            ) {
+                rowProgress.textContent =
+                    `Next FCC request in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))} seconds`;
+            } else {
+                const total =
+                    Number(
+                        sync.current_total_rows
+                    ) || 0;
+
+                const imported =
+                    Number(
+                        sync.current_imported_rows
+                    ) || 0;
+
+                rowProgress.textContent =
+                    total > 0
+                        ? `${number(imported)} of ${number(total)} source rows processed`
+                        : '';
+            }
         }
 
         if (errorNode) {
@@ -298,14 +334,22 @@
                 render(sync);
 
                 /*
-                 * Yield briefly so Safari can repaint the progress
-                 * UI between local import batches.
+                 * Yield briefly so Safari can repaint between
+                 * download chunks and local import batches.
                  */
+                const retryDelay =
+                    Math.max(
+                        150,
+                        Number(
+                            sync?.retry_after_ms
+                        ) || 0
+                    );
+
                 await new Promise(
                     (resolve) =>
                         window.setTimeout(
                             resolve,
-                            80
+                            retryDelay
                         )
                 );
             }
@@ -323,10 +367,14 @@
             }
 
         } catch (error) {
-            showClientError(
-                error?.message
-                || 'FCC sync failed.'
-            );
+            if (errorNode) {
+                errorNode.textContent =
+                    error?.message
+                    || 'FCC sync failed.';
+
+                errorNode.hidden =
+                    false;
+            }
 
         } finally {
             running = false;
