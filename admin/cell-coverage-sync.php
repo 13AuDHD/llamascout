@@ -52,6 +52,25 @@ function admin_cell_sync_public_state(
                     ?? 0
                 )
             );
+
+        $remainingSeconds =
+            max(
+                0,
+                (int) (
+                    $state['fcc_next_request_at']
+                    ?? 0
+                )
+                - time()
+            );
+
+        $public['retry_after_ms'] =
+            max(
+                (int) (
+                    $state['retry_after_ms']
+                    ?? 0
+                ),
+                $remainingSeconds * 1000
+            );
     }
 
     return $public;
