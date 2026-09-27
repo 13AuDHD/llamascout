@@ -150,22 +150,18 @@ foreach ($datasets as $dataset) {
         );
 
     if (
-        !isset(
-            $matrix[$fips][$provider][$technology]
+        !isset($matrix[$fips])
+        || !isset(
+            $matrix[$fips][$provider]
         )
-        && !array_key_exists(
+        || !array_key_exists(
             $technology,
             $matrix[$fips][$provider]
-            ?? []
         )
     ) {
         continue;
     }
 
-    /*
-     * Rows are ordered newest first. Keep the first row for
-     * each state/provider/technology cell in the matrix.
-     */
     if (
         $matrix[$fips][$provider][$technology]
         === null
@@ -310,16 +306,16 @@ require __DIR__ . '/_header.php';
                 <h2>FCC Coverage Sync</h2>
             </div>
 
-            <span>
-                50 states + D.C.
-            </span>
+            <span>50 states + D.C.</span>
         </header>
 
         <p>
-            Llama Scout checks the latest FCC availability
-            catalog, downloads one H3 GeoPackage at a time,
-            installs it into the compact coverage database,
-            and deletes the source file before moving on.
+            No cron is required. Keep this page open while the
+            sync is running. Llama Scout downloads one FCC
+            GeoPackage at a time, installs it, deletes the source
+            file, and immediately continues to the next dataset.
+            If Safari closes, reopen this page and the saved sync
+            automatically resumes.
         </p>
 
         <div class="cell-sync-actions">
@@ -363,6 +359,12 @@ require __DIR__ . '/_header.php';
             data-endpoint="/cell-coverage-sync.php"
             data-csrf="<?= moderation_e(
                 moderation_csrf_token()
+            ) ?>"
+            data-initial-status="<?= moderation_e(
+                (string) (
+                    $sync['status']
+                    ?? 'idle'
+                )
             ) ?>"
         >
             <div class="cell-sync-progress-header">
@@ -455,9 +457,7 @@ require __DIR__ . '/_header.php';
             <h2>State Dataset Status</h2>
         </div>
 
-        <span>
-            4G LTE + 5G
-        </span>
+        <span>4G LTE + 5G</span>
     </header>
 
     <div class="cell-coverage-table-wrap">
@@ -465,18 +465,9 @@ require __DIR__ . '/_header.php';
             <thead>
                 <tr>
                     <th rowspan="2">State</th>
-
-                    <th colspan="2">
-                        T-Mobile
-                    </th>
-
-                    <th colspan="2">
-                        Verizon
-                    </th>
-
-                    <th colspan="2">
-                        AT&amp;T
-                    </th>
+                    <th colspan="2">T-Mobile</th>
+                    <th colspan="2">Verizon</th>
+                    <th colspan="2">AT&amp;T</th>
                 </tr>
 
                 <tr>
@@ -707,12 +698,367 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<script
-    src="<?= moderation_e(
-        $siteUrl
-        . '/js/admin-cell-coverage-sync.js?v=20260926-1'
-    ) ?>"
-></script>
+<?php if ($fccConfigured): ?>
+<script>
+(() => {
+    'use strict';
+
+    const box =
+        document.getElementById(
+            'cell-sync-progress'
+        );
+
+    const startButton =
+        document.getElementById(
+            'cell-sync-start'
+        );
+
+    const resumeButton =
+        document.getElementById(
+            'cell-sync-resume'
+        );
+
+    if (!box || !startButton) {
+        return;
+    }
+
+    const endpoint =
+        box.dataset.endpoint
+        || '/cell-coverage-sync.php';
+
+    const csrf =
+        box.dataset.csrf
+        || '';
+
+    const message =
+        document.getElementById(
+            'cell-sync-message'
+        );
+
+    const count =
+        document.getElementById(
+            'cell-sync-dataset-count'
+        );
+
+    const progress =
+        document.getElementById(
+            'cell-sync-progress-bar'
+        );
+
+    const current =
+        document.getElementById(
+            'cell-sync-current'
+        );
+
+    const rowProgress =
+        document.getElementById(
+            'cell-sync-row-progress'
+        );
+
+    const errorNode =
+        document.getElementById(
+            'cell-sync-error'
+        );
+
+    const summaryStatus =
+        document.getElementById(
+            'cell-sync-summary-status'
+        );
+
+    let running = false;
+
+
+    function formatted(value) {
+        return (
+            Number(value) || 0
+        ).toLocaleString();
+    }
+
+
+    function showClientError(text) {
+        const clean =
+            String(text || '')
+                .trim();
+
+        if (errorNode) {
+            errorNode.textContent =
+                clean;
+
+            errorNode.hidden =
+                clean === '';
+        }
+    }
+
+
+    async function request(action) {
+        const payload =
+            new FormData();
+
+        payload.set(
+            'csrf_token',
+            csrf
+        );
+
+        payload.set(
+            'action',
+            action
+        );
+
+        const response =
+            await fetch(
+                endpoint,
+                {
+                    method: 'POST',
+                    credentials:
+                        'same-origin',
+                    cache:
+                        'no-store',
+                    body:
+                        payload
+                }
+            );
+
+        const raw =
+            await response.text();
+
+        let data = null;
+
+        try {
+            data =
+                JSON.parse(raw);
+        } catch (error) {
+            throw new Error(
+                `Sync endpoint returned HTTP ${response.status} instead of JSON.`
+            );
+        }
+
+        if (
+            !response.ok
+            || data?.ok !== true
+        ) {
+            throw new Error(
+                data?.error
+                || `FCC sync failed with HTTP ${response.status}.`
+            );
+        }
+
+        return data.sync;
+    }
+
+
+    function render(sync) {
+        if (!sync) {
+            return;
+        }
+
+        box.hidden = false;
+
+        if (message) {
+            message.textContent =
+                sync.message
+                || 'Working...';
+        }
+
+        if (count) {
+            count.textContent =
+                `${formatted(sync.completed)} / ${formatted(sync.total)}`;
+        }
+
+        if (progress) {
+            progress.max =
+                Math.max(
+                    1,
+                    Number(sync.total)
+                    || 1
+                );
+
+            progress.value =
+                Math.min(
+                    Number(sync.completed)
+                    || 0,
+                    progress.max
+                );
+        }
+
+        if (summaryStatus) {
+            const status =
+                String(
+                    sync.status
+                    || 'idle'
+                );
+
+            summaryStatus.textContent =
+                status.charAt(0)
+                    .toUpperCase()
+                + status.slice(1);
+        }
+
+        if (current) {
+            current.textContent =
+                sync.current
+                    ? [
+                        sync.current.state_name,
+                        sync.current.provider_label,
+                        String(
+                            sync.current.technology
+                            || ''
+                        ).toUpperCase(),
+                        sync.phase
+                            ? `(${sync.phase})`
+                            : ''
+                    ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : '';
+        }
+
+        if (rowProgress) {
+            const total =
+                Number(
+                    sync.current_total_rows
+                ) || 0;
+
+            const imported =
+                Number(
+                    sync.current_imported_rows
+                ) || 0;
+
+            rowProgress.textContent =
+                total > 0
+                    ? `${formatted(imported)} of ${formatted(total)} source rows processed`
+                    : '';
+        }
+
+        showClientError(
+            sync.error
+            || ''
+        );
+
+        if (resumeButton) {
+            resumeButton.hidden =
+                ![
+                    'running',
+                    'error'
+                ].includes(
+                    String(
+                        sync.status
+                        || ''
+                    )
+                );
+        }
+    }
+
+
+    async function runLoop(initialAction) {
+        if (running) {
+            return;
+        }
+
+        running = true;
+        showClientError('');
+
+        startButton.disabled =
+            true;
+
+        if (resumeButton) {
+            resumeButton.disabled =
+                true;
+        }
+
+        try {
+            let sync =
+                await request(
+                    initialAction
+                );
+
+            render(sync);
+
+            while (
+                sync
+                && sync.status
+                    === 'running'
+            ) {
+                sync =
+                    await request(
+                        'step'
+                    );
+
+                render(sync);
+
+                await new Promise(
+                    (resolve) =>
+                        window.setTimeout(
+                            resolve,
+                            120
+                        )
+                );
+            }
+
+            if (
+                sync?.status
+                === 'complete'
+            ) {
+                window.setTimeout(
+                    () => {
+                        window.location.reload();
+                    },
+                    900
+                );
+            }
+
+        } catch (error) {
+            showClientError(
+                error?.message
+                || 'FCC sync failed.'
+            );
+
+        } finally {
+            running = false;
+
+            startButton.disabled =
+                false;
+
+            if (resumeButton) {
+                resumeButton.disabled =
+                    false;
+            }
+        }
+    }
+
+
+    startButton.addEventListener(
+        'click',
+        () => {
+            runLoop('plan');
+        }
+    );
+
+    resumeButton?.addEventListener(
+        'click',
+        () => {
+            runLoop('resume');
+        }
+    );
+
+    /*
+     * There is no cron on this hosting plan. If a sync was
+     * already active when this page was closed, simply opening
+     * the manager continues it automatically.
+     */
+    if (
+        box.dataset.initialStatus
+        === 'running'
+    ) {
+        window.setTimeout(
+            () => {
+                runLoop('resume');
+            },
+            350
+        );
+    }
+})();
+</script>
+<?php endif; ?>
 
 <?php
 require __DIR__ . '/_footer.php';

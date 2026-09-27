@@ -8,6 +8,9 @@ require_once dirname(__DIR__) . '/app/fcc-cell-sync.php';
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
 
+ignore_user_abort(true);
+@set_time_limit(0);
+
 
 function admin_cell_sync_json(
     array $payload,
@@ -116,9 +119,14 @@ try {
                 $e instanceof
                     InvalidArgumentException
                     ? $e->getMessage()
-                    : llama_error_message_with_reference(
-                        'The FCC cell coverage sync failed.',
-                        $reference
+                    : (
+                        $e->getMessage()
+                        !== ''
+                            ? $e->getMessage()
+                            : llama_error_message_with_reference(
+                                'The FCC cell coverage sync failed.',
+                                $reference
+                            )
                     ),
             'reference' =>
                 $reference,
