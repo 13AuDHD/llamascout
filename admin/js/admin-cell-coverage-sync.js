@@ -64,6 +64,7 @@
         );
 
     let running = false;
+    let lastSync = null;
 
 
     function number(value) {
@@ -107,7 +108,7 @@
     }
 
 
-    async function request(action) {
+    async function requestOnce(action) {
         const payload =
             new FormData();
 
@@ -121,27 +122,19 @@
             action
         );
 
-        let response;
-
-        try {
-            response =
-                await fetch(
-                    endpoint,
-                    {
-                        method: 'POST',
-                        credentials:
-                            'same-origin',
-                        cache:
-                            'no-store',
-                        body:
-                            payload
-                    }
-                );
-        } catch (error) {
-            throw new Error(
-                'The FCC sync request could not reach the server.'
+        const response =
+            await fetch(
+                endpoint,
+                {
+                    method: 'POST',
+                    credentials:
+                        'same-origin',
+                    cache:
+                        'no-store',
+                    body:
+                        payload
+                }
             );
-        }
 
         const raw =
             await response.text();
@@ -171,11 +164,49 @@
     }
 
 
+    async function request(
+        action,
+        attempts = 4
+    ) {
+        let lastError = null;
+
+        for (
+            let attempt = 1;
+            attempt <= attempts;
+            attempt++
+        ) {
+            try {
+                return await requestOnce(
+                    action
+                );
+
+            } catch (error) {
+                lastError = error;
+
+                if (attempt < attempts) {
+                    await sleep(
+                        Math.min(
+                            4000,
+                            750 * attempt
+                        )
+                    );
+                }
+            }
+        }
+
+        throw lastError
+            || new Error(
+                'FCC sync request failed.'
+            );
+    }
+
+
     function render(sync) {
         if (!sync) {
             return;
         }
 
+        lastSync = sync;
         box.hidden = false;
 
         if (message) {
@@ -260,24 +291,41 @@
 
             if (
                 sync.phase === 'download'
+                && downloadTotal > 0
+                && downloaded >= downloadTotal
+            ) {
+                rowProgress.textContent =
+                    sync.download_worker_active
+                        ? 'Download complete. Finalizing the file...'
+                        : 'Download complete. Preparing the next step...';
+
+            } else if (
+                sync.phase === 'download'
                 && downloaded > 0
             ) {
                 rowProgress.textContent =
                     downloadTotal > 0
                         ? `${bytes(downloaded)} of ${bytes(downloadTotal)} downloaded`
                         : `${bytes(downloaded)} downloaded`;
+
             } else if (
                 sync.phase === 'download'
                 && retryAfterMs > 0
             ) {
                 rowProgress.textContent =
                     `Retrying this FCC file in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))} seconds`;
+
             } else if (
                 sync.phase === 'download'
             ) {
                 rowProgress.textContent =
-                    'Downloading in the background...';
-            } else {
+                    sync.download_worker_active
+                        ? 'Downloading in the background...'
+                        : 'Preparing the download...';
+
+            } else if (
+                sync.phase === 'import'
+            ) {
                 const total =
                     Number(
                         sync.current_total_rows
@@ -291,7 +339,10 @@
                 rowProgress.textContent =
                     total > 0
                         ? `${number(imported)} of ${number(total)} source rows processed`
-                        : '';
+                        : 'Preparing the downloaded file for import...';
+
+            } else {
+                rowProgress.textContent = '';
             }
         }
 
@@ -324,6 +375,18 @@
     }
 
 
+    async function pollStatus() {
+        const sync =
+            await request(
+                'status'
+            );
+
+        render(sync);
+
+        return sync;
+    }
+
+
     async function runLoop(initialAction) {
         if (running) {
             return;
@@ -353,32 +416,73 @@
                     sync.phase
                     === 'download'
                 ) {
-                    /*
-                     * The server returns immediately, then performs
-                     * the actual FCC transfer in a detached PHP
-                     * worker. Repeating this request is safe because
-                     * the server lock allows only one worker.
-                     */
-                    sync =
-                        await request(
-                            'download'
-                        );
-
-                    render(sync);
-
                     const retryAfter =
                         Math.max(
                             0,
                             Number(
-                                sync?.retry_after_ms
+                                sync.retry_after_ms
                             ) || 0
                         );
 
-                    await sleep(
-                        retryAfter > 0
-                            ? retryAfter
-                            : 2000
-                    );
+                    if (retryAfter > 0) {
+                        await sleep(
+                            Math.min(
+                                retryAfter,
+                                5000
+                            )
+                        );
+
+                        sync =
+                            await pollStatus();
+
+                        continue;
+                    }
+
+                    if (
+                        !sync.download_worker_active
+                    ) {
+                        /*
+                         * Launch once. If Safari loses this short
+                         * response, do not stop the sync. The
+                         * LiteSpeed noabort rule lets the server job
+                         * continue, so recover by polling status.
+                         */
+                        try {
+                            sync =
+                                await requestOnce(
+                                    'download'
+                                );
+
+                            render(sync);
+
+                        } catch (error) {
+                            await sleep(1500);
+
+                            sync =
+                                await pollStatus();
+                        }
+                    }
+
+                    await sleep(2000);
+
+                    sync =
+                        await pollStatus();
+
+                    continue;
+                }
+
+                if (
+                    sync.phase
+                    === 'import'
+                ) {
+                    sync =
+                        await request(
+                            'step'
+                        );
+
+                    render(sync);
+
+                    await sleep(200);
 
                     continue;
                 }
@@ -390,7 +494,7 @@
 
                 render(sync);
 
-                await sleep(150);
+                await sleep(250);
             }
 
             if (
@@ -409,7 +513,7 @@
             if (errorNode) {
                 errorNode.textContent =
                     error?.message
-                    || 'FCC sync failed.';
+                    || 'FCC sync paused because the server could not be reached. Reloading the page will continue from the saved state.';
 
                 errorNode.hidden =
                     false;
@@ -427,6 +531,25 @@
     }
 
 
+    function continueRunningSync() {
+        if (running) {
+            return;
+        }
+
+        const status =
+            String(
+                summaryStatus?.textContent
+                || ''
+            )
+                .trim()
+                .toLowerCase();
+
+        if (status === 'running') {
+            runLoop('status');
+        }
+    }
+
+
     startButton.addEventListener(
         'click',
         () => {
@@ -440,4 +563,25 @@
             runLoop('resume');
         }
     );
+
+    /*
+     * A running sync should continue automatically after a page
+     * reload. Returning to the Safari tab also restarts polling if
+     * iPadOS suspended the page in the background.
+     */
+    window.addEventListener(
+        'pageshow',
+        continueRunningSync
+    );
+
+    document.addEventListener(
+        'visibilitychange',
+        () => {
+            if (!document.hidden) {
+                continueRunningSync();
+            }
+        }
+    );
+
+    continueRunningSync();
 })();
