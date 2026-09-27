@@ -356,6 +356,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => [],
             'features' => ['audit-console.css'],
         ],
+        'cell-coverage.php' => [
+            'pages' => ['cell-coverage.css'],
+            'features' => [],
+        ],
     ];
 
     $adminManifestEntry =
@@ -546,6 +550,24 @@ function admin_shell_nav_class(string $key, string $active): string
             <?php if (!empty($adminNavCounts['reports'])): ?>
                 <b><?= (int) $adminNavCounts['reports'] ?></b>
             <?php endif; ?>
+        </a>
+
+        <p class="admin-nav-label">Map Data</p>
+
+        <a
+            class="<?= admin_shell_nav_class(
+                'cell-coverage',
+                $adminActiveNav
+            ) ?>"
+            href="<?= moderation_e(
+                $adminUrl . '/cell-coverage.php'
+            ) ?>"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('map') ?>
+            </i>
+        
+            <span>Cell Coverage</span>
         </a>
 
         <p class="admin-nav-label">People</p>
