@@ -73,6 +73,29 @@
     }
 
 
+    function bytes(value) {
+        let amount =
+            Math.max(
+                0,
+                Number(value) || 0
+            );
+
+        if (amount >= 1073741824) {
+            return `${(amount / 1073741824).toFixed(1)} GB`;
+        }
+
+        if (amount >= 1048576) {
+            return `${(amount / 1048576).toFixed(1)} MB`;
+        }
+
+        if (amount >= 1024) {
+            return `${(amount / 1024).toFixed(1)} KB`;
+        }
+
+        return `${number(amount)} B`;
+    }
+
+
     async function request(action) {
         const payload =
             new FormData();
@@ -101,8 +124,19 @@
                 }
             );
 
-        const data =
-            await response.json();
+        const raw =
+            await response.text();
+
+        let data = null;
+
+        try {
+            data =
+                JSON.parse(raw);
+        } catch (error) {
+            throw new Error(
+                `Sync endpoint returned HTTP ${response.status} instead of JSON.`
+            );
+        }
 
         if (
             !response.ok
@@ -180,27 +214,47 @@
                             : ''
                     ]
                         .filter(Boolean)
-                        .join(' · ');
+                        .join(' \u00B7 ');
             } else {
                 current.textContent = '';
             }
         }
 
         if (rowProgress) {
-            const total =
+            const downloadTotal =
                 Number(
-                    sync.current_total_rows
+                    sync.download_total_bytes
                 ) || 0;
 
-            const imported =
+            const downloaded =
                 Number(
-                    sync.current_imported_rows
+                    sync.downloaded_bytes
                 ) || 0;
 
-            rowProgress.textContent =
-                total > 0
-                    ? `${number(imported)} of ${number(total)} source rows processed`
-                    : '';
+            if (
+                sync.phase === 'download'
+                && downloaded > 0
+            ) {
+                rowProgress.textContent =
+                    downloadTotal > 0
+                        ? `${bytes(downloaded)} of ${bytes(downloadTotal)} downloaded`
+                        : `${bytes(downloaded)} downloaded`;
+            } else {
+                const total =
+                    Number(
+                        sync.current_total_rows
+                    ) || 0;
+
+                const imported =
+                    Number(
+                        sync.current_imported_rows
+                    ) || 0;
+
+                rowProgress.textContent =
+                    total > 0
+                        ? `${number(imported)} of ${number(total)} source rows processed`
+                        : '';
+            }
         }
 
         if (errorNode) {
@@ -266,14 +320,14 @@
                 render(sync);
 
                 /*
-                 * Yield briefly so Safari can repaint the progress
-                 * UI between local import batches.
+                 * Yield briefly so Safari can repaint between
+                 * download chunks and local import batches.
                  */
                 await new Promise(
                     (resolve) =>
                         window.setTimeout(
                             resolve,
-                            80
+                            100
                         )
                 );
             }
