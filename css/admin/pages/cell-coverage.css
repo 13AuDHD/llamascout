@@ -1,3 +1,9 @@
+.cell-sync-actions [hidden],
+.cell-sync-progress[hidden],
+.cell-sync-error[hidden] {
+    display: none !important;
+}
+
 /* =========================================================
    ADMIN CELL COVERAGE MANAGER
    ========================================================= */
