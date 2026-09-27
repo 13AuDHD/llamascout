@@ -208,7 +208,16 @@
         );
 }
 
-.cell-dataset-status.is-missing,
+.cell-dataset-status.is-missing {
+    color: var(--text-muted);
+    border-color:
+        color-mix(
+            in srgb,
+            #c64242 70%,
+            var(--border)
+        );
+}
+
 .cell-dataset-status.is-outdated {
     color: var(--text-muted);
 }
