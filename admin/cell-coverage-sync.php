@@ -8,9 +8,6 @@ require_once dirname(__DIR__) . '/app/fcc-cell-sync.php';
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
 
-ignore_user_abort(true);
-@set_time_limit(0);
-
 
 function admin_cell_sync_json(
     array $payload,
@@ -87,6 +84,9 @@ try {
             'status' =>
                 llama_fcc_sync_load_state(),
 
+            'reset' =>
+                llama_fcc_sync_reset_state(),
+
             default =>
                 throw new InvalidArgumentException(
                     'Unknown FCC sync action.'
@@ -119,14 +119,9 @@ try {
                 $e instanceof
                     InvalidArgumentException
                     ? $e->getMessage()
-                    : (
-                        $e->getMessage()
-                        !== ''
-                            ? $e->getMessage()
-                            : llama_error_message_with_reference(
-                                'The FCC cell coverage sync failed.',
-                                $reference
-                            )
+                    : llama_error_message_with_reference(
+                        'The FCC cell coverage sync failed.',
+                        $reference
                     ),
             'reference' =>
                 $reference,

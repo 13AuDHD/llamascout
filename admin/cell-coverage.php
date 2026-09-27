@@ -23,150 +23,8 @@ $adminActiveNav =
 $fccConfigured =
     llama_fcc_sync_is_configured();
 
-$syncActionError = '';
-
-$autoRun =
-    (
-        (string) (
-            $_GET['sync']
-            ?? ''
-        )
-    ) === '1';
-
-$syncState =
-    llama_fcc_sync_load_state();
-
-
-/*
- * These controls use normal HTML form posts. There is no
- * JavaScript dependency for starting or resuming an FCC sync.
- */
-if (
-    $fccConfigured
-    && (
-        $_SERVER['REQUEST_METHOD']
-        ?? ''
-    ) === 'POST'
-) {
-    if (
-        !moderation_verify_csrf(
-            (string) (
-                $_POST['csrf_token']
-                ?? ''
-            )
-        )
-    ) {
-        $syncActionError =
-            'Your session token expired. Reload and try again.';
-    } else {
-        try {
-            $action =
-                trim(
-                    (string) (
-                        $_POST['sync_action']
-                        ?? ''
-                    )
-                );
-
-            if ($action === 'start') {
-                $syncState =
-                    llama_fcc_sync_create_plan();
-            } elseif ($action === 'resume') {
-                $syncState =
-                    llama_fcc_sync_resume();
-            } else {
-                throw new InvalidArgumentException(
-                    'Choose a valid FCC sync action.'
-                );
-            }
-
-            header(
-                'Location: /cell-coverage.php?sync=1'
-            );
-
-            exit;
-
-        } catch (Throwable $e) {
-            $syncActionError =
-                $e->getMessage() !== ''
-                    ? $e->getMessage()
-                    : 'The FCC sync could not be started.';
-        }
-    }
-}
-
-
-/*
- * Porkbun does not provide cron on this account. While
- * ?sync=1 is open, each request performs a chunk of work and
- * then the browser receives a Refresh header to continue.
- *
- * Closing the tab is safe because progress is persisted in
- * /private/fcc-imports/fcc-cell-sync-state.json.
- */
-if (
-    $fccConfigured
-    && $autoRun
-    && $syncActionError === ''
-) {
-    try {
-        ignore_user_abort(true);
-        @set_time_limit(0);
-
-        if (!$syncState) {
-            $syncState =
-                llama_fcc_sync_create_plan();
-        }
-
-        if (
-            (
-                $syncState['status']
-                ?? ''
-            ) === 'error'
-        ) {
-            $syncState =
-                llama_fcc_sync_resume();
-        }
-
-        if (
-            (
-                $syncState['status']
-                ?? ''
-            ) === 'running'
-        ) {
-            $syncState =
-                llama_fcc_sync_worker(
-                    20
-                );
-        }
-
-    } catch (Throwable $e) {
-        $syncActionError =
-            $e->getMessage() !== ''
-                ? $e->getMessage()
-                : 'The FCC sync stopped on an error.';
-    }
-}
-
 $sync =
-    llama_fcc_sync_public_state(
-        is_array($syncState)
-            ? $syncState
-            : null
-    );
-
-if (
-    $autoRun
-    && (
-        $sync['status']
-        ?? ''
-    ) === 'running'
-    && $syncActionError === ''
-) {
-    header(
-        'Refresh: 1; url=/cell-coverage.php?sync=1'
-    );
-}
+    llama_fcc_sync_public_state();
 
 $coverageCells = 0;
 $coverageLatest = null;
@@ -292,18 +150,22 @@ foreach ($datasets as $dataset) {
         );
 
     if (
-        !isset($matrix[$fips])
-        || !isset(
-            $matrix[$fips][$provider]
+        !isset(
+            $matrix[$fips][$provider][$technology]
         )
-        || !array_key_exists(
+        && !array_key_exists(
             $technology,
             $matrix[$fips][$provider]
+            ?? []
         )
     ) {
         continue;
     }
 
+    /*
+     * Rows are ordered newest first. Keep the first row for
+     * each state/provider/technology cell in the matrix.
+     */
     if (
         $matrix[$fips][$provider][$technology]
         === null
@@ -448,59 +310,34 @@ require __DIR__ . '/_header.php';
                 <h2>FCC Coverage Sync</h2>
             </div>
 
-            <span>50 states + D.C.</span>
+            <span>
+                50 states + D.C.
+            </span>
         </header>
 
         <p>
-            No cron or JavaScript is required. Keep this page open
-            while the sync is running. Llama Scout downloads one FCC
-            GeoPackage at a time, installs it, deletes the source
-            file, and continues automatically. The page refreshes
-            itself between work cycles. If Safari closes, reopen this
-            page and use Resume Sync to continue from the saved state.
+            Llama Scout checks the latest FCC availability
+            catalog, downloads one H3 GeoPackage at a time,
+            installs it into the compact coverage database,
+            and deletes the source file before moving on.
+            If the page closes, Resume Sync continues from the
+            last saved dataset and import offset.
         </p>
 
-        <?php if ($syncActionError !== ''): ?>
-            <p class="cell-sync-error">
-                <?= moderation_e(
-                    $syncActionError
-                ) ?>
-            </p>
-        <?php endif; ?>
-
         <div class="cell-sync-actions">
-
-            <form
-                method="post"
-                action="/cell-coverage.php"
+            <button
+                type="button"
+                class="admin-button is-primary"
+                id="cell-sync-start"
             >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= moderation_e(
-                        moderation_csrf_token()
-                    ) ?>"
-                >
+                Sync Latest FCC Coverage
+            </button>
 
-                <input
-                    type="hidden"
-                    name="sync_action"
-                    value="start"
-                >
-
-                <button
-                    type="submit"
-                    class="admin-button is-primary"
-                    <?= $autoRun
-                        ? 'disabled'
-                        : '' ?>
-                >
-                    Sync Latest FCC Coverage
-                </button>
-            </form>
-
-            <?php if (
-                in_array(
+            <button
+                type="button"
+                class="admin-button"
+                id="cell-sync-resume"
+                <?= in_array(
                     (string) (
                         $sync['status']
                         ?? ''
@@ -511,48 +348,11 @@ require __DIR__ . '/_header.php';
                     ],
                     true
                 )
-            ): ?>
-
-                <form
-                    method="post"
-                    action="/cell-coverage.php"
-                >
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="<?= moderation_e(
-                            moderation_csrf_token()
-                        ) ?>"
-                    >
-
-                    <input
-                        type="hidden"
-                        name="sync_action"
-                        value="resume"
-                    >
-
-                    <button
-                        type="submit"
-                        class="admin-button"
-                        <?= $autoRun
-                            ? 'disabled'
-                            : '' ?>
-                    >
-                        Resume Sync
-                    </button>
-                </form>
-
-            <?php endif; ?>
-
-            <?php if ($autoRun): ?>
-                <a
-                    class="admin-button"
-                    href="/cell-coverage.php"
-                >
-                    Stop Watching
-                </a>
-            <?php endif; ?>
-
+                    ? ''
+                    : 'hidden' ?>
+            >
+                Resume Sync
+            </button>
         </div>
 
         <div
@@ -565,12 +365,6 @@ require __DIR__ . '/_header.php';
             data-endpoint="/cell-coverage-sync.php"
             data-csrf="<?= moderation_e(
                 moderation_csrf_token()
-            ) ?>"
-            data-initial-status="<?= moderation_e(
-                (string) (
-                    $sync['status']
-                    ?? 'idle'
-                )
             ) ?>"
         >
             <div class="cell-sync-progress-header">
@@ -663,7 +457,9 @@ require __DIR__ . '/_header.php';
             <h2>State Dataset Status</h2>
         </div>
 
-        <span>4G LTE + 5G</span>
+        <span>
+            4G LTE + 5G
+        </span>
     </header>
 
     <div class="cell-coverage-table-wrap">
@@ -671,9 +467,18 @@ require __DIR__ . '/_header.php';
             <thead>
                 <tr>
                     <th rowspan="2">State</th>
-                    <th colspan="2">T-Mobile</th>
-                    <th colspan="2">Verizon</th>
-                    <th colspan="2">AT&amp;T</th>
+
+                    <th colspan="2">
+                        T-Mobile
+                    </th>
+
+                    <th colspan="2">
+                        Verizon
+                    </th>
+
+                    <th colspan="2">
+                        AT&amp;T
+                    </th>
                 </tr>
 
                 <tr>
@@ -737,7 +542,7 @@ require __DIR__ . '/_header.php';
                                                         ]
                                                         ?? ''
                                                     )
-                                                    . ' Â· '
+                                                    . ' · '
                                                     . (
                                                         $dataset[
                                                             'source_filename'
@@ -904,6 +709,7 @@ require __DIR__ . '/_header.php';
 </section>
 
 
+<script src="/js/admin-cell-coverage-sync.js?v=20260926-3"></script>
 
 <?php
 require __DIR__ . '/_footer.php';
