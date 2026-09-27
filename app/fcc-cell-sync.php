@@ -787,50 +787,110 @@ function llama_fcc_sync_manifest(
     string $asOfDate
 ): array {
     /*
-     * The FCC availability catalog is partitioned by download
-     * view. Llama Scout needs the same catalog shown under the
-     * National Broadband Map's "By Provider" tab because mobile
-     * H3 files are provider + state + technology datasets.
+     * The FCC Public Data API does not use `type=Provider`
+     * for this catalog. Its documented filter is `category`.
      *
-     * Calling listAvailabilityData without `type=Provider` can
-     * return a successful envelope with an empty data array.
+     * The National Broadband Map UI can surface the same mobile
+     * H3 products from different browsing views, so query both
+     * Provider and State categories and merge them. Restrict both
+     * requests to Mobile Broadband to keep the response small.
      */
-    $response =
-        llama_fcc_sync_json_request(
+    $queries = [
+        [
+            'category' =>
+                'Provider',
+
+            'technology_type' =>
+                'Mobile Broadband',
+        ],
+
+        [
+            'category' =>
+                'State',
+
+            'technology_type' =>
+                'Mobile Broadband',
+        ],
+    ];
+
+    $rowsByFileId = [];
+    $attempts = [];
+
+    foreach ($queries as $query) {
+        $path =
             'downloads/listAvailabilityData/'
             . rawurlencode($asOfDate)
-            . '?type=Provider'
-        );
-
-    $rows =
-        $response['data']
-        ?? null;
-
-    if (!is_array($rows)) {
-        throw new RuntimeException(
-            'The FCC provider catalog returned an unexpected response shape.'
-        );
-    }
-
-    if (!$rows) {
-        $resultCount =
-            (int) (
-                $response['result_count']
-                ?? 0
+            . '?'
+            . http_build_query(
+                $query,
+                '',
+                '&',
+                PHP_QUERY_RFC3986
             );
 
+        $response =
+            llama_fcc_sync_json_request(
+                $path
+            );
+
+        $rows =
+            is_array(
+                $response['data']
+                ?? null
+            )
+                ? $response['data']
+                : [];
+
+        $attempts[] =
+            $query['category']
+            . '='
+            . count($rows);
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $fileId =
+                trim(
+                    (string) (
+                        $row['file_id']
+                        ?? $row['fileId']
+                        ?? $row['id']
+                        ?? ''
+                    )
+                );
+
+            if ($fileId === '') {
+                continue;
+            }
+
+            /*
+             * A file may appear in more than one FCC browsing
+             * category. Keep one manifest record per file ID.
+             */
+            $rowsByFileId[$fileId] =
+                $row;
+        }
+    }
+
+    if (!$rowsByFileId) {
         throw new RuntimeException(
-            'The FCC provider catalog returned no rows for '
+            'The FCC Mobile Broadband catalog returned no rows for '
             . $asOfDate
-            . '. FCC result_count='
-            . $resultCount
+            . '. Catalog results: '
+            . implode(
+                ', ',
+                $attempts
+            )
             . '.'
         );
     }
 
-    return $rows;
+    return array_values(
+        $rowsByFileId
+    );
 }
-
 
 function llama_fcc_sync_row_value(
     array $row,
