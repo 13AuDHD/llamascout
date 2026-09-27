@@ -11,7 +11,7 @@ require_once __DIR__ . '/cell-coverage-import.php';
    ========================================================= */
 
 const LLAMA_FCC_PUBLIC_API_BASE =
-    'https://broadbandmap.fcc.gov/api/public/map';
+    'https://bdc.fcc.gov/api/public/map';
 
 const LLAMA_FCC_DOWNLOAD_FORMAT_GEOPACKAGE = 2;
 
@@ -136,6 +136,141 @@ function llama_fcc_sync_states(): array
         '55' => 'Wisconsin',
         '56' => 'Wyoming',
     ];
+}
+
+
+function llama_fcc_sync_state_abbreviations(): array
+{
+    return [
+        'AL' => '01',
+        'AK' => '02',
+        'AZ' => '04',
+        'AR' => '05',
+        'CA' => '06',
+        'CO' => '08',
+        'CT' => '09',
+        'DE' => '10',
+        'DC' => '11',
+        'FL' => '12',
+        'GA' => '13',
+        'HI' => '15',
+        'ID' => '16',
+        'IL' => '17',
+        'IN' => '18',
+        'IA' => '19',
+        'KS' => '20',
+        'KY' => '21',
+        'LA' => '22',
+        'ME' => '23',
+        'MD' => '24',
+        'MA' => '25',
+        'MI' => '26',
+        'MN' => '27',
+        'MS' => '28',
+        'MO' => '29',
+        'MT' => '30',
+        'NE' => '31',
+        'NV' => '32',
+        'NH' => '33',
+        'NJ' => '34',
+        'NM' => '35',
+        'NY' => '36',
+        'NC' => '37',
+        'ND' => '38',
+        'OH' => '39',
+        'OK' => '40',
+        'OR' => '41',
+        'PA' => '42',
+        'RI' => '44',
+        'SC' => '45',
+        'SD' => '46',
+        'TN' => '47',
+        'TX' => '48',
+        'UT' => '49',
+        'VT' => '50',
+        'VA' => '51',
+        'WA' => '53',
+        'WV' => '54',
+        'WI' => '55',
+        'WY' => '56',
+    ];
+}
+
+
+function llama_fcc_sync_state_fips_from_row(
+    array $row
+): string {
+    $direct =
+        llama_fcc_sync_normalize_fips(
+            llama_fcc_sync_row_value(
+                $row,
+                [
+                    'state_fips',
+                    'state_code',
+                ]
+            )
+        );
+
+    if ($direct !== '') {
+        return $direct;
+    }
+
+    $abbr =
+        strtoupper(
+            trim(
+                (string) (
+                    llama_fcc_sync_row_value(
+                        $row,
+                        [
+                            'state_abbr',
+                            'state_usps',
+                        ]
+                    )
+                    ?? ''
+                )
+            )
+        );
+
+    $byAbbr =
+        llama_fcc_sync_state_abbreviations();
+
+    if (
+        $abbr !== ''
+        && isset($byAbbr[$abbr])
+    ) {
+        return $byAbbr[$abbr];
+    }
+
+    $name =
+        strtolower(
+            trim(
+                (string) (
+                    llama_fcc_sync_row_value(
+                        $row,
+                        [
+                            'state_name',
+                        ]
+                    )
+                    ?? ''
+                )
+            )
+        );
+
+    if ($name !== '') {
+        foreach (
+            llama_fcc_sync_states()
+            as $fips => $stateName
+        ) {
+            if (
+                strtolower($stateName)
+                === $name
+            ) {
+                return $fips;
+            }
+        }
+    }
+
+    return '';
 }
 
 
@@ -606,39 +741,21 @@ function llama_fcc_sync_latest_date(): string
     $dates = [];
 
     foreach ($rows as $row) {
-        if (!is_array($row)) {
-            continue;
-        }
-
-        $dataType =
-            strtolower(
+        if (is_string($row)) {
+            $candidate =
+                trim($row);
+        } elseif (is_array($row)) {
+            $candidate =
                 trim(
                     (string) (
-                        $row['data_type']
-                        ?? $row['type']
+                        $row['as_of_date']
+                        ?? $row['date']
                         ?? ''
                     )
-                )
-            );
-
-        if (
-            $dataType !== ''
-            && !str_contains(
-                $dataType,
-                'availability'
-            )
-        ) {
+                );
+        } else {
             continue;
         }
-
-        $candidate =
-            trim(
-                (string) (
-                    $row['as_of_date']
-                    ?? $row['date']
-                    ?? ''
-                )
-            );
 
         if (
             preg_match(
@@ -665,7 +782,6 @@ function llama_fcc_sync_latest_date(): string
 
     return $dates[0];
 }
-
 
 function llama_fcc_sync_manifest(
     string $asOfDate
@@ -752,45 +868,80 @@ function llama_fcc_sync_manifest_candidate(
             ?? 0
         );
 
-    if (!isset($providers[$providerId])) {
+    $providerName =
+        strtolower(
+            trim(
+                (string) (
+                    llama_fcc_sync_row_value(
+                        $row,
+                        [
+                            'provider_name',
+                            'brand_name',
+                            'brandname',
+                        ]
+                    )
+                    ?? ''
+                )
+            )
+        );
+
+    $provider = null;
+
+    if (isset($providers[$providerId])) {
+        $provider =
+            $providers[$providerId];
+    } elseif (
+        str_contains(
+            $providerName,
+            't-mobile'
+        )
+        || str_contains(
+            $providerName,
+            'tmobile'
+        )
+    ) {
+        $provider = [
+            'key' => 'tmobile',
+            'label' => 'T-Mobile',
+        ];
+    } elseif (
+        str_contains(
+            $providerName,
+            'verizon'
+        )
+    ) {
+        $provider = [
+            'key' => 'verizon',
+            'label' => 'Verizon',
+        ];
+    } elseif (
+        str_contains(
+            $providerName,
+            'at&t'
+        )
+        || str_contains(
+            $providerName,
+            'att mobility'
+        )
+    ) {
+        $provider = [
+            'key' => 'att',
+            'label' => 'AT&T',
+        ];
+    }
+
+    if (!$provider) {
         return null;
     }
 
     $stateFips =
-        llama_fcc_sync_normalize_fips(
-            llama_fcc_sync_row_value(
-                $row,
-                [
-                    'state_fips',
-                    'state',
-                    'state_code',
-                ]
-            )
+        llama_fcc_sync_state_fips_from_row(
+            $row
         );
 
     if (
         $stateFips === ''
         || !isset($states[$stateFips])
-    ) {
-        return null;
-    }
-
-    $technologyCode =
-        (int) (
-            llama_fcc_sync_row_value(
-                $row,
-                [
-                    'technology_code',
-                    'technology',
-                    'technologyCode',
-                ]
-            )
-            ?? 0
-        );
-
-    if (
-        $technologyCode !== 400
-        && $technologyCode !== 500
     ) {
         return null;
     }
@@ -829,6 +980,24 @@ function llama_fcc_sync_manifest_candidate(
             )
         );
 
+    $technologyText =
+        strtolower(
+            trim(
+                (string) (
+                    llama_fcc_sync_row_value(
+                        $row,
+                        [
+                            'technology_type',
+                            'technology_name',
+                            'technology',
+                            'technology_code_desc',
+                        ]
+                    )
+                    ?? ''
+                )
+            )
+        );
+
     $searchText =
         strtolower(
             implode(
@@ -836,22 +1005,13 @@ function llama_fcc_sync_manifest_candidate(
                 array_filter(
                     [
                         $fileName,
+                        $technologyText,
                         (string) (
                             $row['category']
                             ?? ''
                         ),
                         (string) (
                             $row['subcategory']
-                            ?? ''
-                        ),
-                        (string) (
-                            $row[
-                                'technology_code_desc'
-                            ]
-                            ?? ''
-                        ),
-                        (string) (
-                            $row['technology_type']
                             ?? ''
                         ),
                         (string) (
@@ -862,10 +1022,6 @@ function llama_fcc_sync_manifest_candidate(
                             $row['speed_tier_desc']
                             ?? ''
                         ),
-                        (string) (
-                            $row['file_type']
-                            ?? ''
-                        ),
                     ],
                     static fn(string $value): bool =>
                         trim($value) !== ''
@@ -874,104 +1030,90 @@ function llama_fcc_sync_manifest_candidate(
         );
 
     /*
-     * We only want the H3/hexagon product. Never queue raw
-     * propagation polygons.
+     * Provider manifests describe mobile products differently
+     * across FCC vintages. Accept both explicit mobile wording
+     * and the known mobile technology names.
      */
-    if (
+    $looksMobile =
         str_contains(
             $searchText,
-            'raw coverage'
-        )
-        || preg_match(
-            '/(?:^|[_\-\s])raw(?:[_\-\s]|$)/',
-            $searchText
-        )
-    ) {
-        return null;
-    }
-
-    $looksHex =
-        str_contains(
-            $searchText,
-            'hexagon'
+            'mobile'
         )
         || str_contains(
             $searchText,
-            'h3'
-        );
-
-    if (!$looksHex) {
-        return null;
-    }
-
-    $mindown =
-        llama_fcc_sync_row_value(
-            $row,
-            [
-                'mindown',
-                'min_download',
-                'minimum_download_speed',
-            ]
-        );
-
-    $minup =
-        llama_fcc_sync_row_value(
-            $row,
-            [
-                'minup',
-                'min_upload',
-                'minimum_upload_speed',
-            ]
-        );
-
-    $score = 100;
-
-    if (
-        str_contains(
-            $searchText,
-            'geopackage'
+            '4g'
         )
         || str_contains(
             $searchText,
-            'gpkg'
+            'lte'
         )
-    ) {
-        $score += 20;
+        || str_contains(
+            $searchText,
+            '5g'
+        );
+
+    if (!$looksMobile) {
+        return null;
     }
 
-    if ($technologyCode === 500) {
-        /*
-         * Prefer the 7/1 Mbps 5G product. The 35/3 product is
-         * intentionally not a separate Llama Scout map option.
-         */
+    $technologyCode = 0;
+
+    $numericTechnology =
+        llama_fcc_sync_row_value(
+            $row,
+            [
+                'technology_code',
+                'technologyCode',
+            ]
+        );
+
+    if (is_numeric($numericTechnology)) {
+        $numericTechnology =
+            (int) $numericTechnology;
+
         if (
-            (
-                is_numeric($mindown)
-                && (float) $mindown >= 6.9
-                && (float) $mindown < 35
-            )
-            || str_contains(
+            $numericTechnology === 400
+            || $numericTechnology === 500
+        ) {
+            $technologyCode =
+                $numericTechnology;
+        }
+    }
+
+    if ($technologyCode === 0) {
+        if (
+            str_contains(
                 $searchText,
-                '7/1'
-            )
-            || str_contains(
-                $searchText,
-                '7_1'
-            )
-            || str_contains(
-                $searchText,
-                '7-1'
+                '5g'
             )
         ) {
-            $score += 100;
-        }
-
-        if (
-            (
-                is_numeric($mindown)
-                && (float) $mindown >= 35
+            $technologyCode = 500;
+        } elseif (
+            str_contains(
+                $searchText,
+                '4g'
             )
             || str_contains(
+                $searchText,
+                'lte'
+            )
+        ) {
+            $technologyCode = 400;
+        }
+    }
+
+    if ($technologyCode === 0) {
+        return null;
+    }
+
+    /*
+     * For 5G, Llama Scout wants the broader 7/1 product only.
+     * Do not queue the separate 35/3 fast-5G product.
+     */
+    if (
+        $technologyCode === 500
+        && (
+            str_contains(
                 $searchText,
                 '35/3'
             )
@@ -983,9 +1125,61 @@ function llama_fcc_sync_manifest_candidate(
                 $searchText,
                 '35-3'
             )
-        ) {
-            $score -= 100;
-        }
+        )
+    ) {
+        return null;
+    }
+
+    $score = 100;
+
+    if (
+        $technologyCode === 500
+        && (
+            str_contains(
+                $searchText,
+                '7/1'
+            )
+            || str_contains(
+                $searchText,
+                '7_1'
+            )
+            || str_contains(
+                $searchText,
+                '7-1'
+            )
+        )
+    ) {
+        $score += 100;
+    }
+
+    /*
+     * The manifest file ID identifies the coverage dataset.
+     * The download endpoint's file_type=2 chooses GeoPackage.
+     * Prefer entries explicitly labeled hexagon/H3 when the
+     * FCC manifest exposes both raw and hex products.
+     */
+    $looksRaw =
+        str_contains(
+            $searchText,
+            'raw coverage'
+        );
+
+    $looksHex =
+        str_contains(
+            $searchText,
+            'hexagon'
+        )
+        || str_contains(
+            $searchText,
+            'h3'
+        );
+
+    if ($looksRaw && !$looksHex) {
+        return null;
+    }
+
+    if ($looksHex) {
+        $score += 40;
     }
 
     return [
@@ -999,7 +1193,7 @@ function llama_fcc_sync_manifest_candidate(
                     'fcc_'
                     . $stateFips
                     . '_'
-                    . $providerId
+                    . $provider['key']
                     . '_'
                     . $technologyCode
                 ),
@@ -1014,10 +1208,10 @@ function llama_fcc_sync_manifest_candidate(
             $providerId,
 
         'provider_key' =>
-            $providers[$providerId]['key'],
+            $provider['key'],
 
         'provider_label' =>
-            $providers[$providerId]['label'],
+            $provider['label'],
 
         'technology_code' =>
             $technologyCode,
@@ -1034,7 +1228,6 @@ function llama_fcc_sync_manifest_candidate(
             $score,
     ];
 }
-
 
 function llama_fcc_sync_select_catalog(
     array $manifest,
@@ -1239,11 +1432,14 @@ function llama_fcc_sync_create_plan(): array
                 $needsSync = false;
             } elseif (
                 $installedDate === $asOfDate
-                && llama_fcc_sync_file_name_matches(
-                    $installedFile,
-                    $dataset['file_name']
-                )
             ) {
+                /*
+                 * Treat the installed filing vintage as current.
+                 * FCC can refresh a filing-period snapshot later,
+                 * and a future catalog-revision field can be used
+                 * to detect that without forcing every same-date
+                 * dataset to reinstall on each check.
+                 */
                 $needsSync = false;
             }
         }
