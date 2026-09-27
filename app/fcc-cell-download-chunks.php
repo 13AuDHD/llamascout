@@ -898,15 +898,68 @@ function llama_fcc_chunk_fetch(
                 )
             );
 
-        return llama_fcc_chunk_wait_state(
-            $state,
-            $delay,
-            'FCC download service is temporarily busy for '
-            . $label
-            . '. Retrying automatically in '
-            . $delay
-            . ' seconds.'
-        );
+         $diagnostic = [];
+         
+         if ($status > 0) {
+             $statusName =
+                 match ($status) {
+                     408 => 'Request Timeout',
+                     425 => 'Too Early',
+                     429 => 'Too Many Requests',
+                     500 => 'Internal Server Error',
+                     502 => 'Bad Gateway',
+                     503 => 'Service Unavailable',
+                     504 => 'Gateway Timeout',
+                     default => '',
+                 };
+         
+             $diagnostic[] =
+                 'HTTP '
+                 . $status
+                 . (
+                     $statusName !== ''
+                         ? ' ' . $statusName
+                         : ''
+                 );
+         }
+         
+         if ($curlErrno !== 0) {
+             $diagnostic[] =
+                 'cURL '
+                 . $curlErrno
+                 . (
+                     $curlError !== ''
+                         ? ': ' . $curlError
+                         : ''
+                 );
+         }
+         
+         if ($retryAfterHeader !== null) {
+             $diagnostic[] =
+                 'Retry-After '
+                 . $retryAfterHeader
+                 . ' seconds';
+         }
+         
+         if (!$diagnostic) {
+             $diagnostic[] =
+                 'unknown transport failure';
+         }
+         
+         return llama_fcc_chunk_wait_state(
+             $state,
+             $delay,
+             'FCC download retry for '
+             . $label
+             . ': '
+             . implode(
+                 ' | ',
+                 $diagnostic
+             )
+             . '. Retrying automatically in '
+             . $delay
+             . ' seconds.'
+         );
     }
 
     $totalBytes =
