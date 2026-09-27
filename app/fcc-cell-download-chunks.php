@@ -7,12 +7,21 @@ require_once __DIR__ . '/fcc-cell-sync.php';
 
 /* =========================================================
    LLAMA SCOUT
-   RESUMABLE FCC FILE DOWNLOADS
+   FCC FILE DOWNLOADS
+
+   The FCC binary download endpoint does not reliably support
+   HTTP Range requests. Each dataset is therefore downloaded as
+   one normal streaming GET. If a transfer is interrupted, only
+   that dataset restarts from byte zero. Completed datasets and
+   import offsets remain resumable through the sync state.
    ========================================================= */
 
-const LLAMA_FCC_DOWNLOAD_CHUNK_BYTES = 8388608; // 8 MiB
-const LLAMA_FCC_DOWNLOAD_STEP_TIMEOUT = 40;
-const LLAMA_FCC_MIN_REQUEST_INTERVAL = 7;
+const LLAMA_FCC_DOWNLOAD_TIMEOUT = 1800;
+const LLAMA_FCC_DOWNLOAD_LOW_SPEED_LIMIT = 1024;
+const LLAMA_FCC_DOWNLOAD_LOW_SPEED_TIME = 90;
+const LLAMA_FCC_PROGRESS_SAVE_SECONDS = 2.0;
+const LLAMA_FCC_HEARTBEAT_SECONDS = 5.0;
+const LLAMA_FCC_HEARTBEAT_BYTES = 2048;
 const LLAMA_FCC_RETRY_BASE_SECONDS = 10;
 const LLAMA_FCC_RETRY_MAX_SECONDS = 60;
 
@@ -20,28 +29,20 @@ const LLAMA_FCC_RETRY_MAX_SECONDS = 60;
 function llama_fcc_chunk_paths(
     array $state
 ): array {
-    $syncId =
-        preg_replace(
-            '/[^a-z0-9]/i',
-            '',
-            (string) (
-                $state['sync_id']
-                ?? 'sync'
-            )
-        );
+    $syncId = preg_replace(
+        '/[^a-z0-9]/i',
+        '',
+        (string) ($state['sync_id'] ?? 'sync')
+    );
 
     if ($syncId === '') {
         $syncId = 'sync';
     }
 
-    $index =
-        max(
-            0,
-            (int) (
-                $state['index']
-                ?? 0
-            )
-        );
+    $index = max(
+        0,
+        (int) ($state['index'] ?? 0)
+    );
 
     $prefix =
         'fccsync_'
@@ -49,29 +50,23 @@ function llama_fcc_chunk_paths(
         . '_'
         . $index;
 
-    $directory =
-        llama_fcc_sync_directory();
+    $directory = llama_fcc_sync_directory();
 
     return [
-        'prefix' =>
-            $prefix,
-
+        'prefix' => $prefix,
         'partial' =>
             $directory
             . '/'
             . $prefix
             . '.download',
-
         'gpkg_name' =>
             $prefix
             . '.gpkg',
-
         'gpkg' =>
             $directory
             . '/'
             . $prefix
             . '.gpkg',
-
         'extract' =>
             $directory
             . '/'
@@ -84,27 +79,16 @@ function llama_fcc_chunk_paths(
 function llama_fcc_chunk_current_dataset(
     array $state
 ): ?array {
-    $queue =
-        is_array(
-            $state['queue']
-            ?? null
-        )
-            ? $state['queue']
-            : [];
+    $queue = is_array($state['queue'] ?? null)
+        ? $state['queue']
+        : [];
 
-    $index =
-        max(
-            0,
-            (int) (
-                $state['index']
-                ?? 0
-            )
-        );
+    $index = max(
+        0,
+        (int) ($state['index'] ?? 0)
+    );
 
-    return is_array(
-        $queue[$index]
-        ?? null
-    )
+    return is_array($queue[$index] ?? null)
         ? $queue[$index]
         : null;
 }
@@ -113,13 +97,9 @@ function llama_fcc_chunk_current_dataset(
 function llama_fcc_chunk_download_url(
     array $dataset
 ): string {
-    $fileId =
-        trim(
-            (string) (
-                $dataset['file_id']
-                ?? ''
-            )
-        );
+    $fileId = trim(
+        (string) ($dataset['file_id'] ?? '')
+    );
 
     if ($fileId === '') {
         throw new RuntimeException(
@@ -128,11 +108,9 @@ function llama_fcc_chunk_download_url(
     }
 
     /*
-     * Use the National Broadband Map public-data host
-     * specifically for binary file downloads.
-     *
-     * Catalog discovery can continue using the configured
-     * BDC API base.
+     * Use the National Broadband Map public-data host specifically
+     * for binary downloads. Catalog discovery can continue using
+     * the configured BDC API base.
      */
     return
         'https://broadbandmap.fcc.gov/api/public/map'
@@ -142,6 +120,7 @@ function llama_fcc_chunk_download_url(
         . LLAMA_FCC_DOWNLOAD_FORMAT_GEOPACKAGE;
 }
 
+
 function llama_fcc_chunk_cleanup_state(
     ?array $state
 ): void {
@@ -149,15 +128,10 @@ function llama_fcc_chunk_cleanup_state(
         return;
     }
 
-    $paths =
-        llama_fcc_chunk_paths(
-            $state
-        );
+    $paths = llama_fcc_chunk_paths($state);
 
     if (is_file($paths['partial'])) {
-        @unlink(
-            $paths['partial']
-        );
+        @unlink($paths['partial']);
     }
 
     llama_fcc_sync_remove_tree(
@@ -194,37 +168,40 @@ function llama_fcc_chunk_format_bytes(
 }
 
 
+function llama_fcc_chunk_dataset_label(
+    array $dataset
+): string {
+    return trim(
+        (string) ($dataset['state_name'] ?? '')
+        . ' '
+        . (string) ($dataset['provider_label'] ?? '')
+        . ' '
+        . strtoupper(
+            (string) ($dataset['technology'] ?? '')
+        )
+    );
+}
+
+
 function llama_fcc_chunk_finalize_download(
     array $state,
     array $dataset
 ): array {
-    $paths =
-        llama_fcc_chunk_paths(
-            $state
-        );
-
-    $download =
-        $paths['partial'];
+    $paths = llama_fcc_chunk_paths($state);
+    $download = $paths['partial'];
 
     if (!is_file($download)) {
         throw new RuntimeException(
-            'The partial FCC download disappeared before it could be finalized.'
+            'The FCC download disappeared before it could be finalized.'
         );
     }
 
-    $expectedBytes =
-        max(
-            0,
-            (int) (
-                $state['download_total_bytes']
-                ?? 0
-            )
-        );
+    $expectedBytes = max(
+        0,
+        (int) ($state['download_total_bytes'] ?? 0)
+    );
 
-    $actualBytes =
-        (int) filesize(
-            $download
-        );
+    $actualBytes = (int) filesize($download);
 
     if (
         $expectedBytes > 0
@@ -235,20 +212,16 @@ function llama_fcc_chunk_finalize_download(
         );
     }
 
-    $head =
-        file_get_contents(
-            $download,
-            false,
-            null,
-            0,
-            16
-        );
+    $head = file_get_contents(
+        $download,
+        false,
+        null,
+        0,
+        16
+    );
 
-    $gpkgName =
-        $paths['gpkg_name'];
-
-    $gpkgPath =
-        $paths['gpkg'];
+    $gpkgName = $paths['gpkg_name'];
+    $gpkgPath = $paths['gpkg'];
 
     if (
         is_string($head)
@@ -259,10 +232,7 @@ function llama_fcc_chunk_finalize_download(
     ) {
         @unlink($gpkgPath);
 
-        if (!rename(
-            $download,
-            $gpkgPath
-        )) {
+        if (!rename($download, $gpkgPath)) {
             throw new RuntimeException(
                 'The downloaded GeoPackage could not be finalized.'
             );
@@ -270,10 +240,7 @@ function llama_fcc_chunk_finalize_download(
 
     } elseif (
         is_string($head)
-        && str_starts_with(
-            $head,
-            'PK'
-        )
+        && str_starts_with($head, 'PK')
     ) {
         if (!class_exists('ZipArchive')) {
             throw new RuntimeException(
@@ -281,8 +248,7 @@ function llama_fcc_chunk_finalize_download(
             );
         }
 
-        $extractDirectory =
-            $paths['extract'];
+        $extractDirectory = $paths['extract'];
 
         llama_fcc_sync_remove_tree(
             $extractDirectory
@@ -298,13 +264,8 @@ function llama_fcc_chunk_finalize_download(
             );
         }
 
-        $zip =
-            new ZipArchive();
-
-        $opened =
-            $zip->open(
-                $download
-            );
+        $zip = new ZipArchive();
+        $opened = $zip->open($download);
 
         if ($opened !== true) {
             llama_fcc_sync_remove_tree(
@@ -316,9 +277,7 @@ function llama_fcc_chunk_finalize_download(
             );
         }
 
-        if (!$zip->extractTo(
-            $extractDirectory
-        )) {
+        if (!$zip->extractTo($extractDirectory)) {
             $zip->close();
 
             llama_fcc_sync_remove_tree(
@@ -331,29 +290,24 @@ function llama_fcc_chunk_finalize_download(
         }
 
         $zip->close();
-
         @unlink($download);
 
         $sourceGpkg = null;
 
-        $iterator =
-            new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator(
-                    $extractDirectory,
-                    FilesystemIterator::SKIP_DOTS
-                )
-            );
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(
+                $extractDirectory,
+                FilesystemIterator::SKIP_DOTS
+            )
+        );
 
         foreach ($iterator as $file) {
             if (
                 $file->isFile()
-                && strtolower(
-                    $file->getExtension()
-                ) === 'gpkg'
+                && strtolower($file->getExtension())
+                    === 'gpkg'
             ) {
-                $sourceGpkg =
-                    $file->getPathname();
-
+                $sourceGpkg = $file->getPathname();
                 break;
             }
         }
@@ -370,10 +324,7 @@ function llama_fcc_chunk_finalize_download(
 
         @unlink($gpkgPath);
 
-        if (!rename(
-            $sourceGpkg,
-            $gpkgPath
-        )) {
+        if (!rename($sourceGpkg, $gpkgPath)) {
             llama_fcc_sync_remove_tree(
                 $extractDirectory
             );
@@ -393,21 +344,11 @@ function llama_fcc_chunk_finalize_download(
         );
     }
 
-    $state['local_filename'] =
-        $gpkgName;
-
-    $state['phase'] =
-        'import';
-
-    $state['offset'] =
-        0;
-
-    $state['current_total_rows'] =
-        0;
-
-    $state['current_imported_rows'] =
-        0;
-
+    $state['local_filename'] = $gpkgName;
+    $state['phase'] = 'import';
+    $state['offset'] = 0;
+    $state['current_total_rows'] = 0;
+    $state['current_imported_rows'] = 0;
     $state['message'] =
         'Download complete. Preparing import.';
 
@@ -417,12 +358,12 @@ function llama_fcc_chunk_finalize_download(
         $state['download_started_at'],
         $state['download_retry_count'],
         $state['retry_after_ms'],
-        $state['fcc_next_request_at']
+        $state['fcc_next_request_at'],
+        $state['download_mode'],
+        $state['download_index']
     );
 
-    llama_fcc_sync_save_state(
-        $state
-    );
+    llama_fcc_sync_save_state($state);
 
     return $state;
 }
@@ -431,11 +372,7 @@ function llama_fcc_chunk_finalize_download(
 function llama_fcc_chunk_retry_delay(
     int $attempt
 ): int {
-    $attempt =
-        max(
-            1,
-            $attempt
-        );
+    $attempt = max(1, $attempt);
 
     $delay =
         LLAMA_FCC_RETRY_BASE_SECONDS
@@ -456,30 +393,17 @@ function llama_fcc_chunk_wait_state(
     int $seconds,
     string $message
 ): array {
-    $seconds =
-        max(
-            1,
-            $seconds
-        );
+    $seconds = max(1, $seconds);
 
-    $state['status'] =
-        'running';
-
-    $state['error'] =
-        null;
-
+    $state['status'] = 'running';
+    $state['error'] = null;
     $state['fcc_next_request_at'] =
         time() + $seconds;
-
     $state['retry_after_ms'] =
         $seconds * 1000;
+    $state['message'] = $message;
 
-    $state['message'] =
-        $message;
-
-    llama_fcc_sync_save_state(
-        $state
-    );
+    llama_fcc_sync_save_state($state);
 
     return $state;
 }
@@ -488,14 +412,10 @@ function llama_fcc_chunk_wait_state(
 function llama_fcc_chunk_remaining_wait(
     array $state
 ): int {
-    $next =
-        max(
-            0,
-            (int) (
-                $state['fcc_next_request_at']
-                ?? 0
-            )
-        );
+    $next = max(
+        0,
+        (int) ($state['fcc_next_request_at'] ?? 0)
+    );
 
     if ($next <= 0) {
         return 0;
@@ -508,28 +428,147 @@ function llama_fcc_chunk_remaining_wait(
 }
 
 
+function llama_fcc_chunk_should_heartbeat(): bool
+{
+    if (PHP_SAPI === 'cli') {
+        return false;
+    }
+
+    $script = str_replace(
+        '\\',
+        '/',
+        (string) ($_SERVER['SCRIPT_NAME'] ?? '')
+    );
+
+    $action = strtolower(
+        trim(
+            (string) ($_POST['action'] ?? '')
+        )
+    );
+
+    return
+        $action === 'step'
+        && str_ends_with(
+            $script,
+            '/cell-coverage-sync.php'
+        );
+}
+
+
+function llama_fcc_chunk_prepare_heartbeat(): bool
+{
+    if (!llama_fcc_chunk_should_heartbeat()) {
+        return false;
+    }
+
+    @set_time_limit(0);
+    @ini_set('zlib.output_compression', '0');
+
+    if (!headers_sent()) {
+        header('X-Accel-Buffering: no');
+        header('Content-Encoding: identity');
+    }
+
+    /*
+     * PHP and the web server must be allowed to actually send the
+     * heartbeat bytes instead of holding them until the request is
+     * finished. This endpoint returns JSON only, so releasing output
+     * buffers here is safe. Leading whitespace remains valid JSON.
+     */
+    while (ob_get_level() > 0) {
+        if (!@ob_end_flush()) {
+            break;
+        }
+    }
+
+    return true;
+}
+
+
+function llama_fcc_chunk_emit_heartbeat(): void
+{
+    echo str_repeat(
+        ' ',
+        LLAMA_FCC_HEARTBEAT_BYTES
+    ) . "\n";
+
+    if (function_exists('ob_flush')) {
+        @ob_flush();
+    }
+
+    flush();
+}
+
+
+function llama_fcc_chunk_reset_download_state(
+    array $state
+): array {
+    $paths = llama_fcc_chunk_paths($state);
+
+    if (is_file($paths['partial'])) {
+        @unlink($paths['partial']);
+    }
+
+    unset(
+        $state['downloaded_bytes'],
+        $state['download_total_bytes'],
+        $state['download_started_at'],
+        $state['download_retry_count'],
+        $state['retry_after_ms'],
+        $state['fcc_next_request_at']
+    );
+
+    $state['download_mode'] = 'full-file';
+    $state['download_index'] =
+        max(
+            0,
+            (int) ($state['index'] ?? 0)
+        );
+
+    return $state;
+}
+
+
 function llama_fcc_chunk_fetch(
     array $state,
     array $dataset
 ): array {
-    $remainingWait =
-        llama_fcc_chunk_remaining_wait(
+    $index = max(
+        0,
+        (int) ($state['index'] ?? 0)
+    );
+
+    /*
+     * Any state created by the old byte-range downloader is cleared
+     * once. This removes stale retry timers and partial chunk files.
+     */
+    if (
+        (string) ($state['download_mode'] ?? '')
+            !== 'full-file'
+        || (int) ($state['download_index'] ?? -1)
+            !== $index
+    ) {
+        $state = llama_fcc_chunk_reset_download_state(
             $state
         );
+        llama_fcc_sync_save_state($state);
+    }
+
+    $remainingWait =
+        llama_fcc_chunk_remaining_wait($state);
 
     if ($remainingWait > 0) {
         $state['retry_after_ms'] =
             $remainingWait * 1000;
 
-        llama_fcc_sync_save_state(
-            $state
-        );
+        llama_fcc_sync_save_state($state);
 
         return $state;
     }
 
     unset(
-        $state['retry_after_ms']
+        $state['retry_after_ms'],
+        $state['fcc_next_request_at']
     );
 
     if (!function_exists('curl_init')) {
@@ -538,70 +577,49 @@ function llama_fcc_chunk_fetch(
         );
     }
 
-    $paths =
-        llama_fcc_chunk_paths(
-            $state
-        );
+    $paths = llama_fcc_chunk_paths($state);
+    $partial = $paths['partial'];
 
-    $partial =
-        $paths['partial'];
+    /*
+     * FCC does not honor Range consistently. Never append to a
+     * previous partial file. A resumed dataset starts this file over.
+     */
+    @unlink($partial);
 
-    $offset =
-        is_file($partial)
-            ? max(
-                0,
-                (int) filesize($partial)
-            )
-            : 0;
-
-    $chunkBytes =
-        LLAMA_FCC_DOWNLOAD_CHUNK_BYTES;
-
-    $rangeEnd =
-        $offset
-        + $chunkBytes
-        - 1;
-
-    $stream =
-        fopen(
-            $partial,
-            'c+b'
-        );
+    $stream = fopen($partial, 'wb');
 
     if (!$stream) {
         throw new RuntimeException(
-            'The partial FCC download file could not be opened.'
+            'The temporary FCC download file could not be created.'
         );
     }
 
-    if (fseek(
-        $stream,
-        $offset,
-        SEEK_SET
-    ) !== 0) {
-        fclose($stream);
+    $label = llama_fcc_chunk_dataset_label(
+        $dataset
+    );
 
-        throw new RuntimeException(
-            'The partial FCC download file could not be resumed.'
-        );
-    }
+    $state['downloaded_bytes'] = 0;
+    $state['download_total_bytes'] = 0;
+    $state['download_started_at'] = gmdate('c');
+    $state['message'] =
+        'Downloading '
+        . $label
+        . '...';
 
-    $config =
-        llama_fcc_sync_config();
+    llama_fcc_sync_save_state($state);
 
-    $curl =
-        llama_fcc_sync_curl_base(
-            llama_fcc_chunk_download_url(
-                $dataset
-            )
-        );
+    $heartbeatEnabled =
+        llama_fcc_chunk_prepare_heartbeat();
 
-    $httpStatus = 0;
-    $contentRange = '';
-    $contentLength = null;
+    $config = llama_fcc_sync_config();
+    $curl = llama_fcc_sync_curl_base(
+        llama_fcc_chunk_download_url($dataset)
+    );
+
     $retryAfterHeader = null;
-    $writtenThisRequest = 0;
-    $writeLimitReached = false;
+    $lastStateSave = microtime(true);
+    $lastHeartbeat = microtime(true);
+    $callbackError = null;
 
     curl_setopt_array(
         $curl,
@@ -611,86 +629,32 @@ function llama_fcc_chunk_fetch(
                 'username: ' . $config['username'],
                 'hash_value: ' . $config['hash_value'],
             ],
-
+            CURLOPT_FILE => $stream,
             CURLOPT_TIMEOUT =>
-                LLAMA_FCC_DOWNLOAD_STEP_TIMEOUT,
-
+                LLAMA_FCC_DOWNLOAD_TIMEOUT,
             CURLOPT_LOW_SPEED_LIMIT =>
-                1024,
-
+                LLAMA_FCC_DOWNLOAD_LOW_SPEED_LIMIT,
             CURLOPT_LOW_SPEED_TIME =>
-                15,
-
+                LLAMA_FCC_DOWNLOAD_LOW_SPEED_TIME,
+            CURLOPT_NOPROGRESS => false,
             CURLOPT_HEADERFUNCTION =>
                 static function (
                     CurlHandle $handle,
                     string $line
                 ) use (
-                    &$httpStatus,
-                    &$contentRange,
-                    &$contentLength,
                     &$retryAfterHeader
                 ): int {
-                    $length =
-                        strlen($line);
-
-                    $trimmed =
-                        trim($line);
+                    $length = strlen($line);
+                    $trimmed = trim($line);
 
                     if (
                         preg_match(
-                            '/^HTTP\\/\\S+\\s+(\\d{3})/i',
-                            $trimmed,
-                            $match
+                            '/^HTTP\\/\\S+\\s+\\d{3}/i',
+                            $trimmed
                         )
                     ) {
-                        $httpStatus =
-                            (int) $match[1];
-
-                        $contentRange = '';
-                        $contentLength = null;
                         $retryAfterHeader = null;
-
                         return $length;
-                    }
-
-                    if (
-                        stripos(
-                            $trimmed,
-                            'Content-Range:'
-                        ) === 0
-                    ) {
-                        $contentRange =
-                            trim(
-                                substr(
-                                    $trimmed,
-                                    strlen(
-                                        'Content-Range:'
-                                    )
-                                )
-                            );
-                    }
-
-                    if (
-                        stripos(
-                            $trimmed,
-                            'Content-Length:'
-                        ) === 0
-                    ) {
-                        $candidate =
-                            trim(
-                                substr(
-                                    $trimmed,
-                                    strlen(
-                                        'Content-Length:'
-                                    )
-                                )
-                            );
-
-                        if (ctype_digit($candidate)) {
-                            $contentLength =
-                                (int) $candidate;
-                        }
                     }
 
                     if (
@@ -699,116 +663,153 @@ function llama_fcc_chunk_fetch(
                             'Retry-After:'
                         ) === 0
                     ) {
-                        $candidate =
-                            trim(
-                                substr(
-                                    $trimmed,
-                                    strlen(
-                                        'Retry-After:'
-                                    )
-                                )
-                            );
+                        $candidate = trim(
+                            substr(
+                                $trimmed,
+                                strlen('Retry-After:')
+                            )
+                        );
 
                         if (ctype_digit($candidate)) {
-                            $retryAfterHeader =
-                                max(
-                                    1,
-                                    (int) $candidate
-                                );
+                            $retryAfterHeader = max(
+                                1,
+                                (int) $candidate
+                            );
                         }
                     }
 
                     return $length;
                 },
-
-            CURLOPT_WRITEFUNCTION =>
+            CURLOPT_XFERINFOFUNCTION =>
                 static function (
                     CurlHandle $handle,
-                    string $data
+                    $downloadTotal,
+                    $downloadNow,
+                    $uploadTotal,
+                    $uploadNow
                 ) use (
-                    $stream,
-                    $chunkBytes,
-                    &$writtenThisRequest,
-                    &$writeLimitReached
+                    &$state,
+                    $dataset,
+                    $heartbeatEnabled,
+                    &$lastStateSave,
+                    &$lastHeartbeat,
+                    &$callbackError
                 ): int {
-                    $remaining =
-                        $chunkBytes
-                        - $writtenThisRequest;
+                    $now = microtime(true);
 
-                    if ($remaining <= 0) {
-                        $writeLimitReached = true;
-                        return 0;
+                    $downloadedBytes = max(
+                        0,
+                        (int) round($downloadNow)
+                    );
+
+                    $totalBytes = max(
+                        0,
+                        (int) round($downloadTotal)
+                    );
+
+                    $state['downloaded_bytes'] =
+                        $downloadedBytes;
+
+                    if ($totalBytes > 0) {
+                        $state['download_total_bytes'] =
+                            $totalBytes;
                     }
 
-                    $dataLength =
-                        strlen($data);
+                    if (
+                        ($now - $lastStateSave)
+                        >= LLAMA_FCC_PROGRESS_SAVE_SECONDS
+                    ) {
+                        $state['message'] =
+                            'Downloading '
+                            . llama_fcc_chunk_dataset_label(
+                                $dataset
+                            )
+                            . ': '
+                            . llama_fcc_chunk_format_bytes(
+                                $downloadedBytes
+                            )
+                            . ($totalBytes > 0
+                                ? ' / '
+                                    . llama_fcc_chunk_format_bytes(
+                                        $totalBytes
+                                    )
+                                : '')
+                            . '.';
 
-                    $toWrite =
-                        min(
-                            $remaining,
-                            $dataLength
-                        );
+                        try {
+                            llama_fcc_sync_save_state(
+                                $state
+                            );
+                        } catch (Throwable $e) {
+                            $callbackError = $e;
+                            return 1;
+                        }
 
-                    $written =
-                        fwrite(
-                            $stream,
-                            $toWrite === $dataLength
-                                ? $data
-                                : substr(
-                                    $data,
-                                    0,
-                                    $toWrite
-                                )
-                        );
-
-                    if ($written === false) {
-                        return 0;
+                        $lastStateSave = $now;
                     }
 
-                    $writtenThisRequest +=
-                        $written;
-
-                    if ($written < $dataLength) {
-                        $writeLimitReached = true;
+                    if (
+                        $heartbeatEnabled
+                        && ($now - $lastHeartbeat)
+                            >= LLAMA_FCC_HEARTBEAT_SECONDS
+                    ) {
+                        llama_fcc_chunk_emit_heartbeat();
+                        $lastHeartbeat = $now;
                     }
 
-                    return $written;
+                    return 0;
                 },
         ]
     );
 
-    $ok =
-        curl_exec($curl);
+    $ok = curl_exec($curl);
 
-    $status =
-        (int) curl_getinfo(
+    $status = (int) curl_getinfo(
+        $curl,
+        CURLINFO_RESPONSE_CODE
+    );
+
+    $curlErrno = curl_errno($curl);
+    $curlError = curl_error($curl);
+
+    $reportedTotal = 0;
+
+    if (defined('CURLINFO_CONTENT_LENGTH_DOWNLOAD_T')) {
+        $candidateTotal = curl_getinfo(
             $curl,
-            CURLINFO_RESPONSE_CODE
+            CURLINFO_CONTENT_LENGTH_DOWNLOAD_T
         );
 
-    if ($status <= 0) {
-        $status =
-            $httpStatus;
+        if (is_int($candidateTotal)) {
+            $reportedTotal = max(
+                0,
+                $candidateTotal
+            );
+        }
     }
 
-    $curlErrno =
-        curl_errno($curl);
-
-    $curlError =
-        curl_error($curl);
-
     curl_close($curl);
-
     fflush($stream);
+    fclose($stream);
 
-    /*
-     * The BDC Public Data API has a small per-account request
-     * budget. Pace successful chunks and treat temporary upstream
-     * failures as retryable instead of stopping the entire sync.
-     */
-    $state['fcc_next_request_at'] =
-        time()
-        + LLAMA_FCC_MIN_REQUEST_INTERVAL;
+    if ($callbackError instanceof Throwable) {
+        @unlink($partial);
+        throw $callbackError;
+    }
+
+    clearstatcache(true, $partial);
+
+    $downloadedBytes = is_file($partial)
+        ? (int) filesize($partial)
+        : 0;
+
+    $state['downloaded_bytes'] =
+        $downloadedBytes;
+
+    if ($reportedTotal > 0) {
+        $state['download_total_bytes'] =
+            $reportedTotal;
+    }
 
     $transientStatuses = [
         408,
@@ -828,434 +829,156 @@ function llama_fcc_chunk_fetch(
         CURLE_PARTIAL_FILE,
     ];
 
-    $transientTransportFailure =
-        !in_array(
-            $status,
-            [
-                200,
-                206,
-            ],
-            true
-        )
-        && in_array(
-            $curlErrno,
-            $transientCurlErrors,
-            true
-        );
-
-    if (
+    $transientFailure =
         in_array(
             $status,
             $transientStatuses,
             true
         )
-        || $transientTransportFailure
-    ) {
-        ftruncate(
-            $stream,
-            $offset
+        || in_array(
+            $curlErrno,
+            $transientCurlErrors,
+            true
         );
 
-        fclose($stream);
+    if ($transientFailure) {
+        @unlink($partial);
 
-        $attempt =
-            max(
-                1,
-                (int) (
-                    $state['download_retry_count']
-                    ?? 0
-                ) + 1
-            );
+        $attempt = max(
+            1,
+            (int) ($state['download_retry_count'] ?? 0)
+                + 1
+        );
 
         $state['download_retry_count'] =
             $attempt;
 
+        unset(
+            $state['downloaded_bytes'],
+            $state['download_total_bytes'],
+            $state['download_started_at']
+        );
+
         $delay =
             $retryAfterHeader
-            ?? llama_fcc_chunk_retry_delay(
-                $attempt
-            );
+            ?? llama_fcc_chunk_retry_delay($attempt);
 
-        $label =
-            trim(
-                (string) (
-                    $dataset['state_name']
-                    ?? ''
-                )
-                . ' '
-                . (string) (
-                    $dataset['provider_label']
-                    ?? ''
-                )
-                . ' '
-                . strtoupper(
-                    (string) (
-                        $dataset['technology']
-                        ?? ''
-                    )
-                )
-            );
+        $diagnostic = [];
 
-         $diagnostic = [];
-         
-         if ($status > 0) {
-             $statusName =
-                 match ($status) {
-                     408 => 'Request Timeout',
-                     425 => 'Too Early',
-                     429 => 'Too Many Requests',
-                     500 => 'Internal Server Error',
-                     502 => 'Bad Gateway',
-                     503 => 'Service Unavailable',
-                     504 => 'Gateway Timeout',
-                     default => '',
-                 };
-         
-             $diagnostic[] =
-                 'HTTP '
-                 . $status
-                 . (
-                     $statusName !== ''
-                         ? ' ' . $statusName
-                         : ''
-                 );
-         }
-         
-         if ($curlErrno !== 0) {
-             $diagnostic[] =
-                 'cURL '
-                 . $curlErrno
-                 . (
-                     $curlError !== ''
-                         ? ': ' . $curlError
-                         : ''
-                 );
-         }
-         
-         if ($retryAfterHeader !== null) {
-             $diagnostic[] =
-                 'Retry-After '
-                 . $retryAfterHeader
-                 . ' seconds';
-         }
-         
-         if (!$diagnostic) {
-             $diagnostic[] =
-                 'unknown transport failure';
-         }
-         
-         return llama_fcc_chunk_wait_state(
-             $state,
-             $delay,
-             'FCC download retry for '
-             . $label
-             . ': '
-             . implode(
-                 ' | ',
-                 $diagnostic
-             )
-             . '. Retrying automatically in '
-             . $delay
-             . ' seconds.'
-         );
-    }
+        if ($status > 0) {
+            $statusName = match ($status) {
+                408 => 'Request Timeout',
+                425 => 'Too Early',
+                429 => 'Too Many Requests',
+                500 => 'Internal Server Error',
+                502 => 'Bad Gateway',
+                503 => 'Service Unavailable',
+                504 => 'Gateway Timeout',
+                default => '',
+            };
 
-    $totalBytes =
-        max(
-            0,
-            (int) (
-                $state['download_total_bytes']
-                ?? 0
-            )
+            $diagnostic[] =
+                'HTTP '
+                . $status
+                . ($statusName !== ''
+                    ? ' ' . $statusName
+                    : '');
+        }
+
+        if ($curlErrno !== 0) {
+            $diagnostic[] =
+                'cURL '
+                . $curlErrno
+                . ($curlError !== ''
+                    ? ': ' . $curlError
+                    : '');
+        }
+
+        if ($retryAfterHeader !== null) {
+            $diagnostic[] =
+                'Retry-After '
+                . $retryAfterHeader
+                . ' seconds';
+        }
+
+        if (!$diagnostic) {
+            $diagnostic[] =
+                'unknown transport failure';
+        }
+
+        return llama_fcc_chunk_wait_state(
+            $state,
+            $delay,
+            'FCC download retry for '
+            . $label
+            . ': '
+            . implode(' | ', $diagnostic)
+            . '. Restarting this file in '
+            . $delay
+            . ' seconds.'
         );
-
-    $rangeStart = null;
-    $rangeLast = null;
+    }
 
     if (
-        preg_match(
-            '/^bytes\\s+(\\d+)-(\\d+)\\/(\\d+|\\*)$/i',
-            $contentRange,
-            $match
-        )
+        $ok === false
+        || $status !== 200
     ) {
-        $rangeStart =
-            (int) $match[1];
-
-        $rangeLast =
-            (int) $match[2];
-
-        if ($match[3] !== '*') {
-            $totalBytes =
-                (int) $match[3];
-        }
-    } elseif (
-        preg_match(
-            '/^bytes\\s+\\*\\/(\\d+)$/i',
-            $contentRange,
-            $match
-        )
-    ) {
-        $totalBytes =
-            (int) $match[1];
-    }
-
-    $progressMade =
-        $writtenThisRequest > 0;
-
-    $intentionalWriteStop =
-        $writeLimitReached
-        && $writtenThisRequest >= $chunkBytes;
-
-    $recoverableTransportStop =
-        $progressMade
-        && in_array(
-            $curlErrno,
-            [
-                CURLE_OPERATION_TIMEDOUT,
-                CURLE_PARTIAL_FILE,
-                CURLE_RECV_ERROR,
-            ],
-            true
-        );
-
-    $valid = false;
-    $complete = false;
-
-    if ($status === 206) {
-        if (
-            $rangeStart !== null
-            && $rangeStart !== $offset
-        ) {
-            ftruncate(
-                $stream,
-                $offset
-            );
-
-            fclose($stream);
-
-            throw new RuntimeException(
-                'The FCC server returned the wrong byte range while resuming the download.'
-            );
-        }
-
-        $valid =
-            $ok !== false
-            || $intentionalWriteStop
-            || $recoverableTransportStop;
-
-    } elseif ($status === 200) {
-        if ($offset > 0) {
-            ftruncate(
-                $stream,
-                $offset
-            );
-
-            fclose($stream);
-
-            throw new RuntimeException(
-                'The FCC download server ignored the resume byte range.'
-            );
-        }
-
-        if (
-            $contentLength !== null
-            && $contentLength > 0
-        ) {
-            $totalBytes =
-                $contentLength;
-        }
-
-        if ($intentionalWriteStop) {
-            ftruncate(
-                $stream,
-                0
-            );
-
-            fclose($stream);
-
-            @unlink($partial);
-
-            throw new RuntimeException(
-                'The FCC download server did not provide a resumable byte range for this file.'
-            );
-        }
-
-        $valid =
-            $ok !== false
-            || $recoverableTransportStop;
-
-    } elseif ($status === 416) {
-        $currentSize =
-            (int) filesize(
-                $partial
-            );
-
-        $valid =
-            $totalBytes > 0
-            && $currentSize >= $totalBytes;
-
-        $complete =
-            $valid;
-    }
-
-    if (!$valid) {
-        ftruncate(
-            $stream,
-            $offset
-        );
-
-        fclose($stream);
+        @unlink($partial);
 
         throw new RuntimeException(
             'FCC file download failed'
             . ($status > 0
-                ? ' with HTTP '
-                    . $status
+                ? ' with HTTP ' . $status
                 : '')
-            . ($curlError !== ''
-                ? ': '
-                    . $curlError
-                : '.')
+            . ($status === 206
+                ? ': the FCC server returned an unexpected partial response.'
+                : ($curlError !== ''
+                    ? ': ' . $curlError
+                    : '.'))
         );
     }
 
-    $state['download_retry_count'] =
-        0;
-
-    fclose($stream);
-
-    clearstatcache(
-        true,
-        $partial
-    );
-
-    $downloadedBytes =
-        is_file($partial)
-            ? (int) filesize(
-                $partial
-            )
-            : 0;
-
-    if (
-        !$complete
-        && $totalBytes > 0
-        && $downloadedBytes >= $totalBytes
-    ) {
-        $complete = true;
-    }
-
-    if (
-        !$complete
-        && $status === 200
-        && $ok !== false
-        && !$intentionalWriteStop
-        && !$recoverableTransportStop
-    ) {
-        $complete = true;
-
-        if ($totalBytes <= 0) {
-            $totalBytes =
-                $downloadedBytes;
-        }
-    }
-
-    if (
-        !$complete
-        && $status === 206
-        && $ok !== false
-        && $totalBytes <= 0
-        && $writtenThisRequest < $chunkBytes
-    ) {
-        $complete = true;
-        $totalBytes =
-            $downloadedBytes;
-    }
-
-    unset(
-        $state['retry_after_ms']
-    );
-
+    $state['download_retry_count'] = 0;
     $state['downloaded_bytes'] =
         $downloadedBytes;
 
-    $state['download_total_bytes'] =
-        $totalBytes;
-
-    $state['download_started_at'] =
-        $state['download_started_at']
-        ?? gmdate('c');
-
-    if ($complete) {
-        llama_fcc_sync_save_state(
-            $state
-        );
-
-        return llama_fcc_chunk_finalize_download(
-            $state,
-            $dataset
-        );
+    if (
+        (int) ($state['download_total_bytes'] ?? 0)
+        <= 0
+    ) {
+        $state['download_total_bytes'] =
+            $downloadedBytes;
     }
 
-    $label =
-        trim(
-            (string) (
-                $dataset['state_name']
-                ?? ''
-            )
-            . ' '
-            . (string) (
-                $dataset['provider_label']
-                ?? ''
-            )
-            . ' '
-            . strtoupper(
-                (string) (
-                    $dataset['technology']
-                    ?? ''
-                )
-            )
-        );
-
     $state['message'] =
-        'Downloading '
+        'Downloaded '
         . $label
         . ': '
         . llama_fcc_chunk_format_bytes(
             $downloadedBytes
         )
-        . ($totalBytes > 0
-            ? ' / '
-                . llama_fcc_chunk_format_bytes(
-                    $totalBytes
-                )
-            : '')
         . '.';
 
-    llama_fcc_sync_save_state(
-        $state
-    );
+    llama_fcc_sync_save_state($state);
 
-    return $state;
+    return llama_fcc_chunk_finalize_download(
+        $state,
+        $dataset
+    );
 }
 
 
 function llama_fcc_chunked_download_step(): array
 {
-    $state =
-        llama_fcc_sync_load_state();
+    $state = llama_fcc_sync_load_state();
 
     if (!$state) {
-        $state =
-            llama_fcc_sync_create_plan();
+        $state = llama_fcc_sync_create_plan();
     }
 
     if (
         in_array(
-            (string) (
-                $state['status']
-                ?? ''
-            ),
+            (string) ($state['status'] ?? ''),
             [
                 'complete',
                 'error',
@@ -1267,33 +990,25 @@ function llama_fcc_chunked_download_step(): array
     }
 
     if (
-        (string) (
-            $state['phase']
-            ?? 'download'
-        ) !== 'download'
+        (string) ($state['phase'] ?? 'download')
+        !== 'download'
     ) {
         return llama_fcc_sync_step();
     }
 
-    $dataset =
-        llama_fcc_chunk_current_dataset(
-            $state
-        );
+    $dataset = llama_fcc_chunk_current_dataset(
+        $state
+    );
 
     if (!$dataset) {
         return llama_fcc_sync_step();
     }
 
     try {
-        $state['status'] =
-            'running';
+        $state['status'] = 'running';
+        $state['error'] = null;
 
-        $state['error'] =
-            null;
-
-        llama_fcc_sync_save_state(
-            $state
-        );
+        llama_fcc_sync_save_state($state);
 
         return llama_fcc_chunk_fetch(
             $state,
@@ -1301,18 +1016,12 @@ function llama_fcc_chunked_download_step(): array
         );
 
     } catch (Throwable $e) {
-        $state['status'] =
-            'error';
-
-        $state['error'] =
-            $e->getMessage();
-
+        $state['status'] = 'error';
+        $state['error'] = $e->getMessage();
         $state['message'] =
             'FCC sync stopped on an error.';
 
-        llama_fcc_sync_save_state(
-            $state
-        );
+        llama_fcc_sync_save_state($state);
 
         return $state;
     }
