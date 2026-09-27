@@ -723,7 +723,7 @@ function llama_fcc_sync_json_request(
    FCC CATALOG DISCOVERY
    ========================================================= */
 
-function llama_fcc_sync_latest_date(): string
+function llama_fcc_sync_availability_dates(): array
 {
     $response =
         llama_fcc_sync_json_request(
@@ -744,34 +744,37 @@ function llama_fcc_sync_latest_date(): string
         if (is_string($row)) {
             $candidate =
                 trim($row);
+
         } elseif (is_array($row)) {
             $candidate =
                 trim(
                     (string) (
                         $row['as_of_date']
-                        ?? $row['date']
                         ?? ''
                     )
                 );
+
         } else {
             continue;
         }
 
         if (
-            preg_match(
-                '/^\d{4}-\d{2}-\d{2}/',
-                $candidate,
-                $match
+            !preg_match(
+                '/^\d{4}-(06-30|12-31)$/',
+                $candidate
             )
         ) {
-            $dates[] =
-                $match[0];
+            continue;
         }
+
+        $dates[$candidate] =
+            $candidate;
     }
 
     if (!$dates) {
         throw new RuntimeException(
-            'The FCC API did not return an availability data date.'
+            'The FCC API did not return any biannual broadband '
+            . 'availability filing dates ending in June 30 or December 31.'
         );
     }
 
@@ -780,116 +783,36 @@ function llama_fcc_sync_latest_date(): string
         SORT_STRING
     );
 
-    return $dates[0];
+    return array_values(
+        $dates
+    );
 }
+
 
 function llama_fcc_sync_manifest(
     string $asOfDate
 ): array {
     /*
-     * The FCC Public Data API does not use `type=Provider`
-     * for this catalog. Its documented filter is `category`.
+     * Fetch the FCC availability manifest exactly as published.
+     * The FCC API returns the full download manifest for a valid
+     * availability filing date. Llama Scout filters that manifest
+     * locally for the three carriers and mobile H3 products.
      *
-     * The National Broadband Map UI can surface the same mobile
-     * H3 products from different browsing views, so query both
-     * Provider and State categories and merge them. Restrict both
-     * requests to Mobile Broadband to keep the response small.
+     * Do not add speculative category/type filters here. Those
+     * filters were the source of the previous zero-row failures.
      */
-    $queries = [
-        [
-            'category' =>
-                'Provider',
-
-            'technology_type' =>
-                'Mobile Broadband',
-        ],
-
-        [
-            'category' =>
-                'State',
-
-            'technology_type' =>
-                'Mobile Broadband',
-        ],
-    ];
-
-    $rowsByFileId = [];
-    $attempts = [];
-
-    foreach ($queries as $query) {
-        $path =
+    $response =
+        llama_fcc_sync_json_request(
             'downloads/listAvailabilityData/'
             . rawurlencode($asOfDate)
-            . '?'
-            . http_build_query(
-                $query,
-                '',
-                '&',
-                PHP_QUERY_RFC3986
-            );
-
-        $response =
-            llama_fcc_sync_json_request(
-                $path
-            );
-
-        $rows =
-            is_array(
-                $response['data']
-                ?? null
-            )
-                ? $response['data']
-                : [];
-
-        $attempts[] =
-            $query['category']
-            . '='
-            . count($rows);
-
-        foreach ($rows as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-
-            $fileId =
-                trim(
-                    (string) (
-                        $row['file_id']
-                        ?? $row['fileId']
-                        ?? $row['id']
-                        ?? ''
-                    )
-                );
-
-            if ($fileId === '') {
-                continue;
-            }
-
-            /*
-             * A file may appear in more than one FCC browsing
-             * category. Keep one manifest record per file ID.
-             */
-            $rowsByFileId[$fileId] =
-                $row;
-        }
-    }
-
-    if (!$rowsByFileId) {
-        throw new RuntimeException(
-            'The FCC Mobile Broadband catalog returned no rows for '
-            . $asOfDate
-            . '. Catalog results: '
-            . implode(
-                ', ',
-                $attempts
-            )
-            . '.'
         );
-    }
 
-    return array_values(
-        $rowsByFileId
-    );
+    return is_array(
+        $response['data']
+        ?? null
+    )
+        ? $response['data']
+        : [];
 }
 
 function llama_fcc_sync_row_value(
@@ -1513,57 +1436,111 @@ function llama_fcc_sync_create_plan(): array
         );
     }
 
-    $asOfDate =
-        llama_fcc_sync_latest_date();
+    /*
+     * listAsOfDates can include dates that are not usable
+     * broadband availability filing vintages. Availability data
+     * itself is reported biannually as of June 30 and December 31.
+     *
+     * Try those valid filing dates newest-first and use the first
+     * one that actually has supported mobile H3 downloads.
+     */
+    $candidateDates =
+        llama_fcc_sync_availability_dates();
 
-    $manifest =
-        llama_fcc_sync_manifest(
-            $asOfDate
-        );
+    $asOfDate = '';
+    $manifest = [];
+    $catalog = [];
+    $attempts = [];
+    $sampleNames = [];
 
-    $catalog =
-        llama_fcc_sync_select_catalog(
-            $manifest,
-            $asOfDate
-        );
+    foreach (
+        array_slice(
+            $candidateDates,
+            0,
+            6
+        )
+        as $candidateDate
+    ) {
+        $candidateManifest =
+            llama_fcc_sync_manifest(
+                $candidateDate
+            );
 
-    if (!$catalog) {
-        $sampleNames = [];
+        $attempts[] =
+            $candidateDate
+            . '='
+            . count(
+                $candidateManifest
+            );
 
-        foreach (
-            array_slice(
-                $manifest,
-                0,
-                8
-            )
-            as $row
-        ) {
-            if (!is_array($row)) {
-                continue;
-            }
-
-            $name =
-                trim(
-                    (string) (
-                        $row['file_name']
-                        ?? $row['filename']
-                        ?? $row['name']
-                        ?? ''
-                    )
-                );
-
-            if ($name !== '') {
-                $sampleNames[] = $name;
-            }
+        if (!$candidateManifest) {
+            continue;
         }
 
+        $candidateCatalog =
+            llama_fcc_sync_select_catalog(
+                $candidateManifest,
+                $candidateDate
+            );
+
+        if ($candidateCatalog) {
+            $asOfDate =
+                $candidateDate;
+
+            $manifest =
+                $candidateManifest;
+
+            $catalog =
+                $candidateCatalog;
+
+            break;
+        }
+
+        if (!$sampleNames) {
+            foreach (
+                array_slice(
+                    $candidateManifest,
+                    0,
+                    8
+                )
+                as $row
+            ) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $name =
+                    trim(
+                        (string) (
+                            $row['file_name']
+                            ?? $row['filename']
+                            ?? $row['name']
+                            ?? ''
+                        )
+                    );
+
+                if ($name !== '') {
+                    $sampleNames[] =
+                        $name;
+                }
+            }
+        }
+    }
+
+    if (
+        $asOfDate === ''
+        || !$catalog
+    ) {
         throw new RuntimeException(
-            'The FCC Provider catalog returned '
-            . count($manifest)
-            . ' rows, but none matched the supported '
-            . 'AT&T, T-Mobile, or Verizon mobile H3 datasets.'
+            'No published FCC biannual availability vintage '
+            . 'contained supported AT&T, T-Mobile, or Verizon '
+            . 'mobile H3 datasets. Tried: '
+            . implode(
+                ', ',
+                $attempts
+            )
             . ($sampleNames
-                ? ' Sample files: '
+                ? '. Sample files: '
                     . implode(
                         ' | ',
                         $sampleNames
