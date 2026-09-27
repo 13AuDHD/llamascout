@@ -67,13 +67,17 @@
 
 
     function showClientError(text) {
-        if (!errorNode) {
-            return;
-        }
-
         const clean =
             String(text || '')
                 .trim();
+
+        if (clean !== '') {
+            box.hidden = false;
+        }
+
+        if (!errorNode) {
+            return;
+        }
 
         errorNode.textContent =
             clean;
@@ -208,7 +212,7 @@
                             : ''
                     ]
                         .filter(Boolean)
-                        .join(' · ');
+                        .join(' Â· ');
             } else {
                 current.textContent = '';
             }
@@ -338,22 +342,7 @@
 
     startButton.addEventListener(
         'click',
-        async () => {
-            if (running) {
-                return;
-            }
-
-            try {
-                await request('reset');
-            } catch (error) {
-                showClientError(
-                    error?.message
-                    || 'Could not clear the previous FCC sync state.'
-                );
-
-                return;
-            }
-
+        () => {
             runLoop('plan');
         }
     );
