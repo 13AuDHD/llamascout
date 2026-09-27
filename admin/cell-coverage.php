@@ -709,7 +709,7 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<script src="/js/admin-cell-coverage-sync.js?v=20260926-3"></script>
+<script src="/js/admin-cell-coverage-sync.js"></script>
 
 <?php
 require __DIR__ . '/_footer.php';
