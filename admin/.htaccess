@@ -18,6 +18,15 @@ DirectoryIndex index.php
 </IfModule>
 
 
+# The FCC binary download can keep running after the short admin
+# request has been returned to Safari. Do not kill that PHP worker
+# if the browser closes, reloads, changes tabs, or drops the request.
+<IfModule LiteSpeed>
+    RewriteEngine On
+    RewriteRule ^cell-coverage-sync\.php$ - [E=noabort:1,E=noconntimeout:1]
+</IfModule>
+
+
 # Central Llama Scout safety pages.
 
 ErrorDocument 400 https://llamascout.com/safety.php?reason=400
