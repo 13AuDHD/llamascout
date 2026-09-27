@@ -74,7 +74,7 @@
 
 
     function bytes(value) {
-        let amount =
+        const amount =
             Math.max(
                 0,
                 Number(value) || 0
@@ -96,6 +96,17 @@
     }
 
 
+    function sleep(milliseconds) {
+        return new Promise(
+            (resolve) =>
+                window.setTimeout(
+                    resolve,
+                    milliseconds
+                )
+        );
+    }
+
+
     async function request(action) {
         const payload =
             new FormData();
@@ -110,19 +121,27 @@
             action
         );
 
-        const response =
-            await fetch(
-                endpoint,
-                {
-                    method: 'POST',
-                    credentials:
-                        'same-origin',
-                    cache:
-                        'no-store',
-                    body:
-                        payload
-                }
+        let response;
+
+        try {
+            response =
+                await fetch(
+                    endpoint,
+                    {
+                        method: 'POST',
+                        credentials:
+                            'same-origin',
+                        cache:
+                            'no-store',
+                        body:
+                            payload
+                    }
+                );
+        } catch (error) {
+            throw new Error(
+                'The FCC sync request could not reach the server.'
             );
+        }
 
         const raw =
             await response.text();
@@ -252,7 +271,12 @@
                 && retryAfterMs > 0
             ) {
                 rowProgress.textContent =
-                    `Next FCC request in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))} seconds`;
+                    `Retrying this FCC file in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))} seconds`;
+            } else if (
+                sync.phase === 'download'
+            ) {
+                rowProgress.textContent =
+                    'Downloading in the background...';
             } else {
                 const total =
                     Number(
@@ -306,7 +330,6 @@
         }
 
         running = true;
-
         startButton.disabled = true;
 
         if (resumeButton) {
@@ -326,6 +349,40 @@
                 && sync.status
                     === 'running'
             ) {
+                if (
+                    sync.phase
+                    === 'download'
+                ) {
+                    /*
+                     * The server returns immediately, then performs
+                     * the actual FCC transfer in a detached PHP
+                     * worker. Repeating this request is safe because
+                     * the server lock allows only one worker.
+                     */
+                    sync =
+                        await request(
+                            'download'
+                        );
+
+                    render(sync);
+
+                    const retryAfter =
+                        Math.max(
+                            0,
+                            Number(
+                                sync?.retry_after_ms
+                            ) || 0
+                        );
+
+                    await sleep(
+                        retryAfter > 0
+                            ? retryAfter
+                            : 2000
+                    );
+
+                    continue;
+                }
+
                 sync =
                     await request(
                         'step'
@@ -333,25 +390,7 @@
 
                 render(sync);
 
-                /*
-                 * Yield briefly so Safari can repaint between
-                 * download chunks and local import batches.
-                 */
-                const retryDelay =
-                    Math.max(
-                        150,
-                        Number(
-                            sync?.retry_after_ms
-                        ) || 0
-                    );
-
-                await new Promise(
-                    (resolve) =>
-                        window.setTimeout(
-                            resolve,
-                            retryDelay
-                        )
-                );
+                await sleep(150);
             }
 
             if (
