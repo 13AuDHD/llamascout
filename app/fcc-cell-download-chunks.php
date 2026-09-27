@@ -113,9 +113,6 @@ function llama_fcc_chunk_current_dataset(
 function llama_fcc_chunk_download_url(
     array $dataset
 ): string {
-    $config =
-        llama_fcc_sync_config();
-
     $fileId =
         trim(
             (string) (
@@ -130,14 +127,20 @@ function llama_fcc_chunk_download_url(
         );
     }
 
+    /*
+     * Use the National Broadband Map public-data host
+     * specifically for binary file downloads.
+     *
+     * Catalog discovery can continue using the configured
+     * BDC API base.
+     */
     return
-        $config['api_base']
+        'https://broadbandmap.fcc.gov/api/public/map'
         . '/downloads/downloadFile/availability/'
         . rawurlencode($fileId)
         . '/'
         . LLAMA_FCC_DOWNLOAD_FORMAT_GEOPACKAGE;
 }
-
 
 function llama_fcc_chunk_cleanup_state(
     ?array $state
