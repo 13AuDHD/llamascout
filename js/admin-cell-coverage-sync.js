@@ -231,6 +231,14 @@
                     sync.downloaded_bytes
                 ) || 0;
 
+            const retryAfterMs =
+                Math.max(
+                    0,
+                    Number(
+                        sync.retry_after_ms
+                    ) || 0
+                );
+
             if (
                 sync.phase === 'download'
                 && downloaded > 0
@@ -239,6 +247,12 @@
                     downloadTotal > 0
                         ? `${bytes(downloaded)} of ${bytes(downloadTotal)} downloaded`
                         : `${bytes(downloaded)} downloaded`;
+            } else if (
+                sync.phase === 'download'
+                && retryAfterMs > 0
+            ) {
+                rowProgress.textContent =
+                    `Next FCC request in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))} seconds`;
             } else {
                 const total =
                     Number(
@@ -323,11 +337,19 @@
                  * Yield briefly so Safari can repaint between
                  * download chunks and local import batches.
                  */
+                const retryDelay =
+                    Math.max(
+                        150,
+                        Number(
+                            sync?.retry_after_ms
+                        ) || 0
+                    );
+
                 await new Promise(
                     (resolve) =>
                         window.setTimeout(
                             resolve,
-                            100
+                            retryDelay
                         )
                 );
             }
