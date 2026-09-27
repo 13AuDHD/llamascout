@@ -612,11 +612,6 @@ function llama_fcc_chunk_fetch(
                 'hash_value: ' . $config['hash_value'],
             ],
 
-            CURLOPT_RANGE =>
-                $offset
-                . '-'
-                . $rangeEnd,
-
             CURLOPT_TIMEOUT =>
                 LLAMA_FCC_DOWNLOAD_STEP_TIMEOUT,
 
