@@ -23,8 +23,150 @@ $adminActiveNav =
 $fccConfigured =
     llama_fcc_sync_is_configured();
 
+$syncActionError = '';
+
+$autoRun =
+    (
+        (string) (
+            $_GET['sync']
+            ?? ''
+        )
+    ) === '1';
+
+$syncState =
+    llama_fcc_sync_load_state();
+
+
+/*
+ * These controls use normal HTML form posts. There is no
+ * JavaScript dependency for starting or resuming an FCC sync.
+ */
+if (
+    $fccConfigured
+    && (
+        $_SERVER['REQUEST_METHOD']
+        ?? ''
+    ) === 'POST'
+) {
+    if (
+        !moderation_verify_csrf(
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
+            )
+        )
+    ) {
+        $syncActionError =
+            'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            $action =
+                trim(
+                    (string) (
+                        $_POST['sync_action']
+                        ?? ''
+                    )
+                );
+
+            if ($action === 'start') {
+                $syncState =
+                    llama_fcc_sync_create_plan();
+            } elseif ($action === 'resume') {
+                $syncState =
+                    llama_fcc_sync_resume();
+            } else {
+                throw new InvalidArgumentException(
+                    'Choose a valid FCC sync action.'
+                );
+            }
+
+            header(
+                'Location: /cell-coverage.php?sync=1'
+            );
+
+            exit;
+
+        } catch (Throwable $e) {
+            $syncActionError =
+                $e->getMessage() !== ''
+                    ? $e->getMessage()
+                    : 'The FCC sync could not be started.';
+        }
+    }
+}
+
+
+/*
+ * Porkbun does not provide cron on this account. While
+ * ?sync=1 is open, each request performs a chunk of work and
+ * then the browser receives a Refresh header to continue.
+ *
+ * Closing the tab is safe because progress is persisted in
+ * /private/fcc-imports/fcc-cell-sync-state.json.
+ */
+if (
+    $fccConfigured
+    && $autoRun
+    && $syncActionError === ''
+) {
+    try {
+        ignore_user_abort(true);
+        @set_time_limit(0);
+
+        if (!$syncState) {
+            $syncState =
+                llama_fcc_sync_create_plan();
+        }
+
+        if (
+            (
+                $syncState['status']
+                ?? ''
+            ) === 'error'
+        ) {
+            $syncState =
+                llama_fcc_sync_resume();
+        }
+
+        if (
+            (
+                $syncState['status']
+                ?? ''
+            ) === 'running'
+        ) {
+            $syncState =
+                llama_fcc_sync_worker(
+                    20
+                );
+        }
+
+    } catch (Throwable $e) {
+        $syncActionError =
+            $e->getMessage() !== ''
+                ? $e->getMessage()
+                : 'The FCC sync stopped on an error.';
+    }
+}
+
 $sync =
-    llama_fcc_sync_public_state();
+    llama_fcc_sync_public_state(
+        is_array($syncState)
+            ? $syncState
+            : null
+    );
+
+if (
+    $autoRun
+    && (
+        $sync['status']
+        ?? ''
+    ) === 'running'
+    && $syncActionError === ''
+) {
+    header(
+        'Refresh: 1; url=/cell-coverage.php?sync=1'
+    );
+}
 
 $coverageCells = 0;
 $coverageLatest = null;
@@ -310,28 +452,55 @@ require __DIR__ . '/_header.php';
         </header>
 
         <p>
-            No cron is required. Keep this page open while the
-            sync is running. Llama Scout downloads one FCC
+            No cron or JavaScript is required. Keep this page open
+            while the sync is running. Llama Scout downloads one FCC
             GeoPackage at a time, installs it, deletes the source
-            file, and immediately continues to the next dataset.
-            If Safari closes, reopen this page and the saved sync
-            automatically resumes.
+            file, and continues automatically. The page refreshes
+            itself between work cycles. If Safari closes, reopen this
+            page and use Resume Sync to continue from the saved state.
         </p>
 
-        <div class="cell-sync-actions">
-            <button
-                type="button"
-                class="admin-button is-primary"
-                id="cell-sync-start"
-            >
-                Sync Latest FCC Coverage
-            </button>
+        <?php if ($syncActionError !== ''): ?>
+            <p class="cell-sync-error">
+                <?= moderation_e(
+                    $syncActionError
+                ) ?>
+            </p>
+        <?php endif; ?>
 
-            <button
-                type="button"
-                class="admin-button"
-                id="cell-sync-resume"
-                <?= in_array(
+        <div class="cell-sync-actions">
+
+            <form
+                method="post"
+                action="/cell-coverage.php"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= moderation_e(
+                        moderation_csrf_token()
+                    ) ?>"
+                >
+
+                <input
+                    type="hidden"
+                    name="sync_action"
+                    value="start"
+                >
+
+                <button
+                    type="submit"
+                    class="admin-button is-primary"
+                    <?= $autoRun
+                        ? 'disabled'
+                        : '' ?>
+                >
+                    Sync Latest FCC Coverage
+                </button>
+            </form>
+
+            <?php if (
+                in_array(
                     (string) (
                         $sync['status']
                         ?? ''
@@ -342,11 +511,48 @@ require __DIR__ . '/_header.php';
                     ],
                     true
                 )
-                    ? ''
-                    : 'hidden' ?>
-            >
-                Resume Sync
-            </button>
+            ): ?>
+
+                <form
+                    method="post"
+                    action="/cell-coverage.php"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= moderation_e(
+                            moderation_csrf_token()
+                        ) ?>"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="sync_action"
+                        value="resume"
+                    >
+
+                    <button
+                        type="submit"
+                        class="admin-button"
+                        <?= $autoRun
+                            ? 'disabled'
+                            : '' ?>
+                    >
+                        Resume Sync
+                    </button>
+                </form>
+
+            <?php endif; ?>
+
+            <?php if ($autoRun): ?>
+                <a
+                    class="admin-button"
+                    href="/cell-coverage.php"
+                >
+                    Stop Watching
+                </a>
+            <?php endif; ?>
+
         </div>
 
         <div
@@ -531,7 +737,7 @@ require __DIR__ . '/_header.php';
                                                         ]
                                                         ?? ''
                                                     )
-                                                    . ' · '
+                                                    . ' Â· '
                                                     . (
                                                         $dataset[
                                                             'source_filename'
@@ -698,367 +904,6 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<?php if ($fccConfigured): ?>
-<script>
-(() => {
-    'use strict';
-
-    const box =
-        document.getElementById(
-            'cell-sync-progress'
-        );
-
-    const startButton =
-        document.getElementById(
-            'cell-sync-start'
-        );
-
-    const resumeButton =
-        document.getElementById(
-            'cell-sync-resume'
-        );
-
-    if (!box || !startButton) {
-        return;
-    }
-
-    const endpoint =
-        box.dataset.endpoint
-        || '/cell-coverage-sync.php';
-
-    const csrf =
-        box.dataset.csrf
-        || '';
-
-    const message =
-        document.getElementById(
-            'cell-sync-message'
-        );
-
-    const count =
-        document.getElementById(
-            'cell-sync-dataset-count'
-        );
-
-    const progress =
-        document.getElementById(
-            'cell-sync-progress-bar'
-        );
-
-    const current =
-        document.getElementById(
-            'cell-sync-current'
-        );
-
-    const rowProgress =
-        document.getElementById(
-            'cell-sync-row-progress'
-        );
-
-    const errorNode =
-        document.getElementById(
-            'cell-sync-error'
-        );
-
-    const summaryStatus =
-        document.getElementById(
-            'cell-sync-summary-status'
-        );
-
-    let running = false;
-
-
-    function formatted(value) {
-        return (
-            Number(value) || 0
-        ).toLocaleString();
-    }
-
-
-    function showClientError(text) {
-        const clean =
-            String(text || '')
-                .trim();
-
-        if (errorNode) {
-            errorNode.textContent =
-                clean;
-
-            errorNode.hidden =
-                clean === '';
-        }
-    }
-
-
-    async function request(action) {
-        const payload =
-            new FormData();
-
-        payload.set(
-            'csrf_token',
-            csrf
-        );
-
-        payload.set(
-            'action',
-            action
-        );
-
-        const response =
-            await fetch(
-                endpoint,
-                {
-                    method: 'POST',
-                    credentials:
-                        'same-origin',
-                    cache:
-                        'no-store',
-                    body:
-                        payload
-                }
-            );
-
-        const raw =
-            await response.text();
-
-        let data = null;
-
-        try {
-            data =
-                JSON.parse(raw);
-        } catch (error) {
-            throw new Error(
-                `Sync endpoint returned HTTP ${response.status} instead of JSON.`
-            );
-        }
-
-        if (
-            !response.ok
-            || data?.ok !== true
-        ) {
-            throw new Error(
-                data?.error
-                || `FCC sync failed with HTTP ${response.status}.`
-            );
-        }
-
-        return data.sync;
-    }
-
-
-    function render(sync) {
-        if (!sync) {
-            return;
-        }
-
-        box.hidden = false;
-
-        if (message) {
-            message.textContent =
-                sync.message
-                || 'Working...';
-        }
-
-        if (count) {
-            count.textContent =
-                `${formatted(sync.completed)} / ${formatted(sync.total)}`;
-        }
-
-        if (progress) {
-            progress.max =
-                Math.max(
-                    1,
-                    Number(sync.total)
-                    || 1
-                );
-
-            progress.value =
-                Math.min(
-                    Number(sync.completed)
-                    || 0,
-                    progress.max
-                );
-        }
-
-        if (summaryStatus) {
-            const status =
-                String(
-                    sync.status
-                    || 'idle'
-                );
-
-            summaryStatus.textContent =
-                status.charAt(0)
-                    .toUpperCase()
-                + status.slice(1);
-        }
-
-        if (current) {
-            current.textContent =
-                sync.current
-                    ? [
-                        sync.current.state_name,
-                        sync.current.provider_label,
-                        String(
-                            sync.current.technology
-                            || ''
-                        ).toUpperCase(),
-                        sync.phase
-                            ? `(${sync.phase})`
-                            : ''
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')
-                    : '';
-        }
-
-        if (rowProgress) {
-            const total =
-                Number(
-                    sync.current_total_rows
-                ) || 0;
-
-            const imported =
-                Number(
-                    sync.current_imported_rows
-                ) || 0;
-
-            rowProgress.textContent =
-                total > 0
-                    ? `${formatted(imported)} of ${formatted(total)} source rows processed`
-                    : '';
-        }
-
-        showClientError(
-            sync.error
-            || ''
-        );
-
-        if (resumeButton) {
-            resumeButton.hidden =
-                ![
-                    'running',
-                    'error'
-                ].includes(
-                    String(
-                        sync.status
-                        || ''
-                    )
-                );
-        }
-    }
-
-
-    async function runLoop(initialAction) {
-        if (running) {
-            return;
-        }
-
-        running = true;
-        showClientError('');
-
-        startButton.disabled =
-            true;
-
-        if (resumeButton) {
-            resumeButton.disabled =
-                true;
-        }
-
-        try {
-            let sync =
-                await request(
-                    initialAction
-                );
-
-            render(sync);
-
-            while (
-                sync
-                && sync.status
-                    === 'running'
-            ) {
-                sync =
-                    await request(
-                        'step'
-                    );
-
-                render(sync);
-
-                await new Promise(
-                    (resolve) =>
-                        window.setTimeout(
-                            resolve,
-                            120
-                        )
-                );
-            }
-
-            if (
-                sync?.status
-                === 'complete'
-            ) {
-                window.setTimeout(
-                    () => {
-                        window.location.reload();
-                    },
-                    900
-                );
-            }
-
-        } catch (error) {
-            showClientError(
-                error?.message
-                || 'FCC sync failed.'
-            );
-
-        } finally {
-            running = false;
-
-            startButton.disabled =
-                false;
-
-            if (resumeButton) {
-                resumeButton.disabled =
-                    false;
-            }
-        }
-    }
-
-
-    startButton.addEventListener(
-        'click',
-        () => {
-            runLoop('plan');
-        }
-    );
-
-    resumeButton?.addEventListener(
-        'click',
-        () => {
-            runLoop('resume');
-        }
-    );
-
-    /*
-     * There is no cron on this hosting plan. If a sync was
-     * already active when this page was closed, simply opening
-     * the manager continues it automatically.
-     */
-    if (
-        box.dataset.initialStatus
-        === 'running'
-    ) {
-        window.setTimeout(
-            () => {
-                runLoop('resume');
-            },
-            350
-        );
-    }
-})();
-</script>
-<?php endif; ?>
 
 <?php
 require __DIR__ . '/_footer.php';
