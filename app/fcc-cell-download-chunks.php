@@ -10,8 +10,11 @@ require_once __DIR__ . '/fcc-cell-sync.php';
    RESUMABLE FCC FILE DOWNLOADS
    ========================================================= */
 
-const LLAMA_FCC_DOWNLOAD_CHUNK_BYTES = 4194304; // 4 MiB
-const LLAMA_FCC_DOWNLOAD_STEP_TIMEOUT = 25;
+const LLAMA_FCC_DOWNLOAD_CHUNK_BYTES = 8388608; // 8 MiB
+const LLAMA_FCC_DOWNLOAD_STEP_TIMEOUT = 40;
+const LLAMA_FCC_MIN_REQUEST_INTERVAL = 7;
+const LLAMA_FCC_RETRY_BASE_SECONDS = 10;
+const LLAMA_FCC_RETRY_MAX_SECONDS = 60;
 
 
 function llama_fcc_chunk_paths(
@@ -408,7 +411,10 @@ function llama_fcc_chunk_finalize_download(
     unset(
         $state['downloaded_bytes'],
         $state['download_total_bytes'],
-        $state['download_started_at']
+        $state['download_started_at'],
+        $state['download_retry_count'],
+        $state['retry_after_ms'],
+        $state['fcc_next_request_at']
     );
 
     llama_fcc_sync_save_state(
@@ -419,10 +425,110 @@ function llama_fcc_chunk_finalize_download(
 }
 
 
+function llama_fcc_chunk_retry_delay(
+    int $attempt
+): int {
+    $attempt =
+        max(
+            1,
+            $attempt
+        );
+
+    $delay =
+        LLAMA_FCC_RETRY_BASE_SECONDS
+        * (2 ** min(
+            3,
+            $attempt - 1
+        ));
+
+    return min(
+        LLAMA_FCC_RETRY_MAX_SECONDS,
+        (int) $delay
+    );
+}
+
+
+function llama_fcc_chunk_wait_state(
+    array $state,
+    int $seconds,
+    string $message
+): array {
+    $seconds =
+        max(
+            1,
+            $seconds
+        );
+
+    $state['status'] =
+        'running';
+
+    $state['error'] =
+        null;
+
+    $state['fcc_next_request_at'] =
+        time() + $seconds;
+
+    $state['retry_after_ms'] =
+        $seconds * 1000;
+
+    $state['message'] =
+        $message;
+
+    llama_fcc_sync_save_state(
+        $state
+    );
+
+    return $state;
+}
+
+
+function llama_fcc_chunk_remaining_wait(
+    array $state
+): int {
+    $next =
+        max(
+            0,
+            (int) (
+                $state['fcc_next_request_at']
+                ?? 0
+            )
+        );
+
+    if ($next <= 0) {
+        return 0;
+    }
+
+    return max(
+        0,
+        $next - time()
+    );
+}
+
+
 function llama_fcc_chunk_fetch(
     array $state,
     array $dataset
 ): array {
+    $remainingWait =
+        llama_fcc_chunk_remaining_wait(
+            $state
+        );
+
+    if ($remainingWait > 0) {
+        $state['retry_after_ms'] =
+            $remainingWait * 1000;
+
+        llama_fcc_sync_save_state(
+            $state
+        );
+
+        return $state;
+    }
+
+    unset(
+        $state['retry_after_ms']
+    );
+
     if (!function_exists('curl_init')) {
         throw new RuntimeException(
             'PHP cURL is required for automatic FCC downloads.'
@@ -490,6 +596,7 @@ function llama_fcc_chunk_fetch(
     $httpStatus = 0;
     $contentRange = '';
     $contentLength = null;
+    $retryAfterHeader = null;
     $writtenThisRequest = 0;
     $writeLimitReached = false;
 
@@ -523,7 +630,8 @@ function llama_fcc_chunk_fetch(
                 ) use (
                     &$httpStatus,
                     &$contentRange,
-                    &$contentLength
+                    &$contentLength,
+                    &$retryAfterHeader
                 ): int {
                     $length =
                         strlen($line);
@@ -543,6 +651,7 @@ function llama_fcc_chunk_fetch(
 
                         $contentRange = '';
                         $contentLength = null;
+                        $retryAfterHeader = null;
 
                         return $length;
                     }
@@ -583,6 +692,31 @@ function llama_fcc_chunk_fetch(
                         if (ctype_digit($candidate)) {
                             $contentLength =
                                 (int) $candidate;
+                        }
+                    }
+
+                    if (
+                        stripos(
+                            $trimmed,
+                            'Retry-After:'
+                        ) === 0
+                    ) {
+                        $candidate =
+                            trim(
+                                substr(
+                                    $trimmed,
+                                    strlen(
+                                        'Retry-After:'
+                                    )
+                                )
+                            );
+
+                        if (ctype_digit($candidate)) {
+                            $retryAfterHeader =
+                                max(
+                                    1,
+                                    (int) $candidate
+                                );
                         }
                     }
 
@@ -668,6 +802,112 @@ function llama_fcc_chunk_fetch(
     curl_close($curl);
 
     fflush($stream);
+
+    /*
+     * The BDC Public Data API has a small per-account request
+     * budget. Pace successful chunks and treat temporary upstream
+     * failures as retryable instead of stopping the entire sync.
+     */
+    $state['fcc_next_request_at'] =
+        time()
+        + LLAMA_FCC_MIN_REQUEST_INTERVAL;
+
+    $transientStatuses = [
+        408,
+        425,
+        429,
+        500,
+        502,
+        503,
+        504,
+    ];
+
+    $transientCurlErrors = [
+        CURLE_OPERATION_TIMEDOUT,
+        CURLE_COULDNT_CONNECT,
+        CURLE_COULDNT_RESOLVE_HOST,
+        CURLE_RECV_ERROR,
+        CURLE_PARTIAL_FILE,
+    ];
+
+    $transientTransportFailure =
+        !in_array(
+            $status,
+            [
+                200,
+                206,
+            ],
+            true
+        )
+        && in_array(
+            $curlErrno,
+            $transientCurlErrors,
+            true
+        );
+
+    if (
+        in_array(
+            $status,
+            $transientStatuses,
+            true
+        )
+        || $transientTransportFailure
+    ) {
+        ftruncate(
+            $stream,
+            $offset
+        );
+
+        fclose($stream);
+
+        $attempt =
+            max(
+                1,
+                (int) (
+                    $state['download_retry_count']
+                    ?? 0
+                ) + 1
+            );
+
+        $state['download_retry_count'] =
+            $attempt;
+
+        $delay =
+            $retryAfterHeader
+            ?? llama_fcc_chunk_retry_delay(
+                $attempt
+            );
+
+        $label =
+            trim(
+                (string) (
+                    $dataset['state_name']
+                    ?? ''
+                )
+                . ' '
+                . (string) (
+                    $dataset['provider_label']
+                    ?? ''
+                )
+                . ' '
+                . strtoupper(
+                    (string) (
+                        $dataset['technology']
+                        ?? ''
+                    )
+                )
+            );
+
+        return llama_fcc_chunk_wait_state(
+            $state,
+            $delay,
+            'FCC download service is temporarily busy for '
+            . $label
+            . '. Retrying automatically in '
+            . $delay
+            . ' seconds.'
+        );
+    }
 
     $totalBytes =
         max(
@@ -829,6 +1069,9 @@ function llama_fcc_chunk_fetch(
         );
     }
 
+    $state['download_retry_count'] =
+        0;
+
     fclose($stream);
 
     clearstatcache(
@@ -877,6 +1120,10 @@ function llama_fcc_chunk_fetch(
         $totalBytes =
             $downloadedBytes;
     }
+
+    unset(
+        $state['retry_after_ms']
+    );
 
     $state['downloaded_bytes'] =
         $downloadedBytes;
