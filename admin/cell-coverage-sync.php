@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/fcc-cell-sync.php';
+require_once dirname(__DIR__) . '/app/fcc-cell-download-chunks.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
@@ -22,6 +23,38 @@ function admin_cell_sync_json(
     );
 
     exit;
+}
+
+
+function admin_cell_sync_public_state(
+    ?array $state
+): array {
+    $public =
+        llama_fcc_sync_public_state(
+            $state
+        );
+
+    if (is_array($state)) {
+        $public['downloaded_bytes'] =
+            max(
+                0,
+                (int) (
+                    $state['downloaded_bytes']
+                    ?? 0
+                )
+            );
+
+        $public['download_total_bytes'] =
+            max(
+                0,
+                (int) (
+                    $state['download_total_bytes']
+                    ?? 0
+                )
+            );
+    }
+
+    return $public;
 }
 
 
@@ -70,34 +103,53 @@ try {
             )
         );
 
-    $state =
-        match ($action) {
-            'plan' =>
-                llama_fcc_sync_create_plan(),
+    if ($action === 'plan') {
+        $previous =
+            llama_fcc_sync_load_state();
 
-            'resume' =>
-                llama_fcc_sync_resume(),
+        llama_fcc_chunk_cleanup_state(
+            $previous
+        );
 
-            'step' =>
-                llama_fcc_sync_step(),
+        llama_fcc_sync_reset_state();
 
-            'status' =>
-                llama_fcc_sync_load_state(),
+        $state =
+            llama_fcc_sync_create_plan();
 
-            'reset' =>
-                llama_fcc_sync_reset_state(),
+    } elseif ($action === 'resume') {
+        $state =
+            llama_fcc_sync_resume();
 
-            default =>
-                throw new InvalidArgumentException(
-                    'Unknown FCC sync action.'
-                ),
-        };
+    } elseif ($action === 'step') {
+        $state =
+            llama_fcc_chunked_download_step();
+
+    } elseif ($action === 'status') {
+        $state =
+            llama_fcc_sync_load_state();
+
+    } elseif ($action === 'reset') {
+        $previous =
+            llama_fcc_sync_load_state();
+
+        llama_fcc_chunk_cleanup_state(
+            $previous
+        );
+
+        $state =
+            llama_fcc_sync_reset_state();
+
+    } else {
+        throw new InvalidArgumentException(
+            'Unknown FCC sync action.'
+        );
+    }
 
     admin_cell_sync_json(
         [
             'ok' => true,
             'sync' =>
-                llama_fcc_sync_public_state(
+                admin_cell_sync_public_state(
                     is_array($state)
                         ? $state
                         : null
