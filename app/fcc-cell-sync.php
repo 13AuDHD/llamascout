@@ -786,18 +786,49 @@ function llama_fcc_sync_latest_date(): string
 function llama_fcc_sync_manifest(
     string $asOfDate
 ): array {
+    /*
+     * The FCC availability catalog is partitioned by download
+     * view. Llama Scout needs the same catalog shown under the
+     * National Broadband Map's "By Provider" tab because mobile
+     * H3 files are provider + state + technology datasets.
+     *
+     * Calling listAvailabilityData without `type=Provider` can
+     * return a successful envelope with an empty data array.
+     */
     $response =
         llama_fcc_sync_json_request(
             'downloads/listAvailabilityData/'
             . rawurlencode($asOfDate)
-    );
+            . '?type=Provider'
+        );
 
-    return is_array(
+    $rows =
         $response['data']
-        ?? null
-    )
-        ? $response['data']
-        : [];
+        ?? null;
+
+    if (!is_array($rows)) {
+        throw new RuntimeException(
+            'The FCC provider catalog returned an unexpected response shape.'
+        );
+    }
+
+    if (!$rows) {
+        $resultCount =
+            (int) (
+                $response['result_count']
+                ?? 0
+            );
+
+        throw new RuntimeException(
+            'The FCC provider catalog returned no rows for '
+            . $asOfDate
+            . '. FCC result_count='
+            . $resultCount
+            . '.'
+        );
+    }
+
+    return $rows;
 }
 
 
@@ -1467,12 +1498,12 @@ function llama_fcc_sync_create_plan(): array
         }
 
         throw new RuntimeException(
-            'The FCC catalog was reached successfully, but no supported '
-            . 'AT&T, T-Mobile, or Verizon mobile H3 datasets matched. '
-            . 'Manifest rows returned: '
+            'The FCC Provider catalog returned '
             . count($manifest)
+            . ' rows, but none matched the supported '
+            . 'AT&T, T-Mobile, or Verizon mobile H3 datasets.'
             . ($sampleNames
-                ? '. Sample files: '
+                ? ' Sample files: '
                     . implode(
                         ' | ',
                         $sampleNames
