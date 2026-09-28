@@ -40,10 +40,11 @@ function admin_cell_v2_status_label(string $state): string
     return match ($state) {
         'current' => 'Current',
         'downloading' => 'Downloading',
-        'processing', 'process_queued' => 'Processing',
-        'unpacking', 'unpack_queued' => 'Unpacking',
-        'importing' => 'Importing',
-        'cleanup', 'cleanup_queued' => 'Cleanup',
+        'waiting_download', 'download_queued' => 'Preparing',
+        'processing', 'process_waiting', 'process_queued' => 'Processing',
+        'unpacking', 'unpack_waiting', 'unpack_queued' => 'Unpacking',
+        'importing', 'import_waiting', 'import_queued' => 'Importing',
+        'cleanup', 'cleanup_waiting', 'cleanup_queued' => 'Cleanup',
         'error' => 'Error',
         'missing' => 'Missing',
         'outdated' => 'Outdated',
@@ -113,10 +114,10 @@ require __DIR__ . '/_header.php';
                 <button type="button" class="admin-button is-primary" id="cell-v2-latest-button">
                     FCC Latest
                 </button>
-                <button type="button" class="admin-button" id="cell-v2-sync-button" disabled title="Worker engine comes in the next V2 package">
+                <button type="button" class="admin-button" id="cell-v2-sync-button">
                     Sync Coverage
                 </button>
-                <button type="button" class="admin-button" id="cell-v2-errors-button" disabled title="Recovery engine comes in the next V2 package">
+                <button type="button" class="admin-button" id="cell-v2-errors-button">
                     Check Errors
                 </button>
             </div>
@@ -129,7 +130,7 @@ require __DIR__ . '/_header.php';
                 >
                 <span>
                     <strong>Map update banner</strong>
-                    <small>Stored now. Public map hook will be connected with the V2 activation package.</small>
+                    <small>Stored now. Public map hook will be connected in the activation package.</small>
                 </span>
             </label>
         </div>
@@ -139,7 +140,7 @@ require __DIR__ . '/_header.php';
         <div class="cell-v2-overall-progress">
             <div>
                 <strong>Overall progress</strong>
-                <span id="cell-v2-progress-text">V2 worker engine not started</span>
+                <span id="cell-v2-progress-text">No V2 sync has been started</span>
             </div>
             <progress id="cell-v2-progress" max="306" value="0"></progress>
         </div>
@@ -237,7 +238,7 @@ window.LLAMA_CELL_V2_INITIAL = <?= json_encode(
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
 ) ?>;
 </script>
-<script src="/js/admin-cell-coverage-v2.js?v=20260928-1"></script>
+<script src="/js/admin-cell-coverage-v2.js?v=20260928-2"></script>
 
 <?php endif; ?>
 
