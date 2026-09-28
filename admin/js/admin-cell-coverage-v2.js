@@ -19,12 +19,37 @@
     const completenessNode = document.getElementById('cell-v2-completeness');
     const logNode = document.getElementById('cell-v2-log');
     const latestButton = document.getElementById('cell-v2-latest-button');
+    const syncButton = document.getElementById('cell-v2-sync-button');
+    const errorsButton = document.getElementById('cell-v2-errors-button');
     const bannerToggle = document.getElementById('cell-v2-banner-toggle');
 
     let polling = false;
     let snapshot = window.LLAMA_CELL_V2_INITIAL || null;
+    const startingWorkers = new Set();
 
     const number = (value) => new Intl.NumberFormat().format(Number(value) || 0);
+
+    const dateTimeMs = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return 0;
+        const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T') + 'Z';
+        const stamp = Date.parse(normalized);
+        return Number.isFinite(stamp) ? stamp : 0;
+    };
+
+    const duration = (seconds) => {
+        let remaining = Math.max(0, Math.round(Number(seconds) || 0));
+        const days = Math.floor(remaining / 86400);
+        remaining %= 86400;
+        const hours = Math.floor(remaining / 3600);
+        remaining %= 3600;
+        const minutes = Math.floor(remaining / 60);
+        const parts = [];
+        if (days) parts.push(`${days}d`);
+        if (hours || days) parts.push(`${hours}h`);
+        parts.push(`${minutes}m`);
+        return parts.join(' ');
+    };
 
     const bytes = (value) => {
         const amount = Math.max(0, Number(value) || 0);
@@ -69,19 +94,47 @@
 
         if (value === 'current') return ['is-current', 'Current'];
         if (value === 'downloading') return ['is-downloading', 'Downloading'];
-        if (value === 'importing') return ['is-importing', 'Importing'];
+        if (value === 'importing' || value === 'import_queued' || value === 'import_waiting') {
+            return ['is-importing', 'Importing'];
+        }
         if (value === 'error') return ['is-error', 'Error'];
         if (value === 'missing') return ['is-missing', 'Missing'];
         if (value === 'outdated') return ['is-outdated', 'Outdated'];
-        if (value === 'processing' || value === 'process_queued') return ['is-working', 'Processing'];
-        if (value === 'unpacking' || value === 'unpack_queued') return ['is-working', 'Unpacking'];
-        if (value === 'cleanup' || value === 'cleanup_queued') return ['is-working', 'Cleanup'];
+        if (value === 'processing' || value === 'process_queued' || value === 'process_waiting') {
+            return ['is-working', 'Processing'];
+        }
+        if (value === 'unpacking' || value === 'unpack_queued' || value === 'unpack_waiting') {
+            return ['is-working', 'Unpacking'];
+        }
+        if (value === 'cleanup' || value === 'cleanup_queued' || value === 'cleanup_waiting') {
+            return ['is-working', 'Cleanup'];
+        }
         return ['is-working', 'Preparing'];
+    };
+
+    const heartbeatTime = (worker) => {
+        const raw = String(worker?.heartbeat_at || '').trim();
+        if (!raw) return 0;
+        const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T') + 'Z';
+        const stamp = Date.parse(normalized);
+        return Number.isFinite(stamp) ? stamp : 0;
+    };
+
+    const workerAlive = (worker) => {
+        if (!worker || !['starting', 'working', 'waiting'].includes(String(worker.status || ''))) {
+            return false;
+        }
+
+        const heartbeat = heartbeatTime(worker);
+        if (!heartbeat) return false;
+
+        return (Date.now() - heartbeat) < 45000;
     };
 
     const renderWorkers = (data) => {
         const configured = data.worker_config || {};
         const workers = Array.isArray(data.workers) ? data.workers : [];
+        const runId = Number(data.run?.id || 0);
         const roles = ['download', 'process', 'unpack', 'import', 'cleanup'];
         const labels = {
             download: 'Download',
@@ -93,7 +146,9 @@
 
         const parts = roles.map((role) => {
             const active = workers.filter((worker) =>
-                worker.role === role && ['starting', 'working'].includes(worker.status)
+                Number(worker.run_id || 0) === runId
+                && worker.role === role
+                && workerAlive(worker)
             ).length;
             return `${labels[role]} ${active}/${Number(configured[role]) || 0}`;
         });
@@ -103,7 +158,12 @@
         const queues = data.queues || {};
         const queueParts = Object.entries(queues)
             .filter(([, total]) => Number(total) > 0)
-            .map(([stage, total]) => `${stage.replaceAll('_', ' ')}: ${number(total)}`);
+            .map(([stage, total]) => {
+                const label = stage
+                    .replaceAll('_', ' ')
+                    .replace(/\b\w/g, (char) => char.toUpperCase());
+                return `${label}: ${number(total)}`;
+            });
 
         queuesNode.textContent = queueParts.length
             ? queueParts.join(' · ')
@@ -144,7 +204,9 @@
         latestNode.textContent = data.fcc_latest || 'Not checked';
         cellsNode.textContent = number(data.coverage_cells);
         dbNode.textContent = bytes(data.database_bytes);
-        statusNode.textContent = String(data.sync_status || 'idle')
+
+        const runStatus = String(data.sync_status || 'idle');
+        statusNode.textContent = runStatus
             .replaceAll('_', ' ')
             .replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -176,14 +238,48 @@
         const run = data.run || null;
         const total = run ? Math.max(1, Number(run.expected_jobs) || 306) : 306;
         const complete = run ? Math.max(0, Number(run.completed_jobs) || 0) : 0;
+        const errors = run ? Math.max(0, Number(run.error_jobs) || 0) : 0;
         progressNode.max = total;
         progressNode.value = Math.min(complete, total);
 
         if (run) {
             const percent = Math.round((complete / total) * 100);
-            progressText.textContent = `${number(complete)} / ${number(total)} complete · ${percent}%`;
+            const work = data.work_progress || {};
+            const workTotal = Math.max(0, Number(work.work_total) || 0);
+            const workFinished = Math.max(0, Number(work.work_complete) || 0)
+                + Math.max(0, Number(work.work_errors) || 0);
+            const started = dateTimeMs(run.started_at);
+            const elapsedSeconds = started > 0
+                ? Math.max(0, (Date.now() - started) / 1000)
+                : 0;
+            let timing = '';
+
+            if (started > 0 && ['planning', 'running'].includes(runStatus)) {
+                if (workFinished > 0 && workTotal > workFinished) {
+                    const etaSeconds = (elapsedSeconds / workFinished)
+                        * (workTotal - workFinished);
+                    timing = ` · Elapsed ${duration(elapsedSeconds)} · ETA ${duration(etaSeconds)}`;
+                } else {
+                    timing = ` · Elapsed ${duration(elapsedSeconds)} · ETA estimating`;
+                }
+            } else if (started > 0) {
+                const ended = dateTimeMs(run.completed_at) || Date.now();
+                timing = ` · Time ${duration(Math.max(0, (ended - started) / 1000))}`;
+            }
+
+            progressText.textContent = errors > 0
+                ? `${number(complete)} / ${number(total)} current · ${number(errors)} errors · ${percent}%${timing}`
+                : `${number(complete)} / ${number(total)} current · ${percent}%${timing}`;
         } else {
             progressText.textContent = 'No V2 sync has been started';
+        }
+
+        if (syncButton) {
+            syncButton.disabled = ['planning', 'running'].includes(runStatus);
+        }
+
+        if (errorsButton) {
+            errorsButton.disabled = runStatus !== 'error' && errors <= 0;
         }
 
         renderWorkers(data);
@@ -195,6 +291,61 @@
         messageNode.classList.toggle('is-error', Boolean(isError));
     };
 
+    const startWorker = async (runId, role, workerSlot, quiet = true) => {
+        const key = `${runId}:${role}:${workerSlot}`;
+        if (startingWorkers.has(key)) return;
+
+        startingWorkers.add(key);
+
+        try {
+            await post('worker', {
+                run_id: String(runId),
+                role,
+                worker_slot: String(workerSlot),
+            });
+        } catch (error) {
+            if (!quiet) {
+                setMessage(error.message || `Could not start ${role} worker ${workerSlot}.`, true);
+            }
+        } finally {
+            window.setTimeout(() => startingWorkers.delete(key), 2500);
+        }
+    };
+
+    const ensureWorkers = async (data, quiet = true) => {
+        if (!data || document.hidden) return;
+
+        const run = data.run || null;
+        if (!run || String(run.status || '') !== 'running') return;
+
+        const runId = Number(run.id || 0);
+        if (!runId) return;
+
+        const configured = data.worker_config || {};
+        const workers = Array.isArray(data.workers) ? data.workers : [];
+        const starts = [];
+
+        for (const role of ['download', 'process', 'unpack', 'import', 'cleanup']) {
+            const limit = Math.max(0, Number(configured[role]) || 0);
+
+            for (let slot = 1; slot <= limit; slot++) {
+                const existing = workers.find((worker) =>
+                    Number(worker.run_id || 0) === runId
+                    && worker.role === role
+                    && Number(worker.worker_slot || 0) === slot
+                );
+
+                if (!workerAlive(existing)) {
+                    starts.push(startWorker(runId, role, slot, quiet));
+                }
+            }
+        }
+
+        if (starts.length) {
+            await Promise.allSettled(starts);
+        }
+    };
+
     const poll = async () => {
         if (polling || document.hidden) return;
         polling = true;
@@ -202,6 +353,7 @@
         try {
             const data = await post('status');
             render(data.snapshot);
+            await ensureWorkers(data.snapshot, true);
         } catch (error) {
             setMessage(error.message || 'Unable to refresh V2 status.', true);
         } finally {
@@ -227,6 +379,51 @@
             setMessage(error.message || 'FCC Latest check failed.', true);
         } finally {
             latestButton.disabled = false;
+        }
+    });
+
+    syncButton?.addEventListener('click', async () => {
+        syncButton.disabled = true;
+        setMessage('Building the V2 sync run and starting the background factory...');
+
+        try {
+            const data = await post('sync');
+            render(data.snapshot);
+            await ensureWorkers(data.snapshot, false);
+
+            const run = data.snapshot?.run || {};
+            const already = Boolean(data.run_result?.already_running);
+            setMessage(
+                already
+                    ? `V2 run ${run.id || ''} was already running. Missing workers have been restarted.`
+                    : `V2 run ${run.id || ''} started. The background workers now own the sync; this page may be closed.`
+            );
+        } catch (error) {
+            setMessage(error.message || 'V2 sync could not be started.', true);
+        } finally {
+            if (snapshot) render(snapshot);
+        }
+    });
+
+    errorsButton?.addEventListener('click', async () => {
+        errorsButton.disabled = true;
+        setMessage('Checking failed, stale, and unresolved V2 datasets...');
+
+        try {
+            const data = await post('check_errors');
+            render(data.snapshot);
+            await ensureWorkers(data.snapshot, false);
+
+            const result = data.recovery || {};
+            setMessage(
+                `Recovered ${number(result.recovered)} dataset(s), `
+                + `requeued ${number(result.stale_requeued)} stale worker assignment(s), `
+                + `${number(result.still_missing)} FCC catalog slot(s) remain unresolved.`
+            );
+        } catch (error) {
+            setMessage(error.message || 'V2 error recovery failed.', true);
+        } finally {
+            if (snapshot) render(snapshot);
         }
     });
 
@@ -256,5 +453,6 @@
     });
 
     render(snapshot);
+    ensureWorkers(snapshot, true);
     window.setInterval(poll, 2000);
 })();
