@@ -415,9 +415,33 @@ function llama_fcc_v2_refresh_run_counts(int $runId): array
         /*
          * Missing means FCC did not provide/resolve an expected slot.
          * It is a completed audit result, not a broken worker.
+         *
+         * IMPORTANT: do not stamp a new completion time on every status
+         * poll. The old behavior made the completed-run timer keep
+         * counting forever. Derive the terminal time from the jobs so an
+         * already-completed run also repairs itself after this update.
          */
         $status = $errors > 0 ? 'error' : 'complete';
-        $completedAt = gmdate('Y-m-d H:i:s');
+
+        $completionStmt = $db->prepare(
+            'SELECT MAX(completed_at)
+             FROM cell_coverage_v2_jobs
+             WHERE run_id = ?
+               AND stage IN ("complete", "error", "missing")'
+        );
+        $completionStmt->execute([$runId]);
+
+        $jobCompletedAt = trim(
+            (string) ($completionStmt->fetchColumn() ?: '')
+        );
+
+        $completedAt = $jobCompletedAt !== ''
+            ? $jobCompletedAt
+            : (
+                trim((string) ($run['completed_at'] ?? '')) !== ''
+                    ? trim((string) $run['completed_at'])
+                    : gmdate('Y-m-d H:i:s')
+            );
     }
 
     $update = $db->prepare(
@@ -1854,6 +1878,207 @@ function llama_fcc_v2_file_signature(string $path): string
     return '';
 }
 
+function llama_fcc_v2_manifest_diagnostic(
+    array $manifest,
+    array $job,
+    string $targetDate
+): array {
+    $expectedState = trim((string) ($job['state_fips'] ?? ''));
+    $expectedProvider = trim((string) ($job['provider_key'] ?? ''));
+    $expectedTechnology = trim((string) ($job['technology'] ?? ''));
+    $stateName = trim((string) ($job['state_name'] ?? $expectedState));
+    $providerLabel = trim((string) ($job['provider_label'] ?? $expectedProvider));
+
+    $providers = llama_fcc_v2_providers();
+    $expectedProviderId = (int) ($providers[$expectedProvider]['provider_id'] ?? 0);
+    $expectedTechnologyCode = $expectedTechnology === '5g' ? 500 : 400;
+
+    $dimensionRows = 0;
+    $mobileRows = 0;
+    $h3Rows = 0;
+    $sampleFiles = [];
+
+    foreach ($manifest as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $fileName = trim((string) (
+            llama_fcc_sync_row_value($row, ['file_name', 'filename', 'name'])
+            ?? ''
+        ));
+
+        $stateFips = llama_fcc_sync_state_fips_from_row($row);
+        if (
+            $stateFips === ''
+            && preg_match('/(?:^|[^0-9])bdc[_-](\\d{2})[_-]/i', $fileName, $match)
+        ) {
+            $stateFips = $match[1];
+        }
+
+        if ($stateFips !== $expectedState) {
+            continue;
+        }
+
+        $providerId = (int) (
+            llama_fcc_sync_row_value(
+                $row,
+                ['provider_id', 'providerid', 'providerId']
+            )
+            ?? 0
+        );
+
+        if (
+            $providerId <= 0
+            && preg_match('/(?:^|[^0-9])bdc[_-]\\d{2}[_-](\\d{6})[_-]/i', $fileName, $match)
+        ) {
+            $providerId = (int) $match[1];
+        }
+
+        $providerName = strtolower(trim((string) (
+            llama_fcc_sync_row_value(
+                $row,
+                ['provider_name', 'brand_name', 'brandname']
+            )
+            ?? ''
+        )));
+
+        $providerMatches = $providerId === $expectedProviderId;
+
+        if (!$providerMatches && $expectedProvider === 'tmobile') {
+            $providerMatches = str_contains($providerName, 't-mobile')
+                || str_contains($providerName, 'tmobile');
+        } elseif (!$providerMatches && $expectedProvider === 'verizon') {
+            $providerMatches = str_contains($providerName, 'verizon');
+        } elseif (!$providerMatches && $expectedProvider === 'att') {
+            $providerMatches = str_contains($providerName, 'at&t')
+                || str_contains($providerName, 'att mobility');
+        }
+
+        if (!$providerMatches) {
+            continue;
+        }
+
+        $searchText = strtolower(implode(' ', array_filter([
+            $fileName,
+            (string) ($row['category'] ?? ''),
+            (string) ($row['subcategory'] ?? ''),
+            (string) ($row['technology_type'] ?? ''),
+            (string) ($row['technology_name'] ?? ''),
+            (string) ($row['technology_code_desc'] ?? ''),
+            (string) ($row['speed_tier'] ?? ''),
+            (string) ($row['speed_tier_desc'] ?? ''),
+        ], static fn(string $value): bool => trim($value) !== '')));
+
+        $technologyCode = 0;
+        $numericTechnology = llama_fcc_sync_row_value(
+            $row,
+            ['technology_code', 'technologyCode']
+        );
+
+        if (is_numeric($numericTechnology)) {
+            $value = (int) $numericTechnology;
+            if ($value === 400 || $value === 500) {
+                $technologyCode = $value;
+            }
+        }
+
+        if ($technologyCode === 0) {
+            if (
+                str_contains($searchText, '5gnr')
+                || str_contains($searchText, '5g-nr')
+                || str_contains($searchText, '5g nr')
+            ) {
+                $technologyCode = 500;
+            } elseif (
+                str_contains($searchText, '4glte')
+                || str_contains($searchText, '4g lte')
+                || str_contains($searchText, '4g-lte')
+            ) {
+                $technologyCode = 400;
+            }
+        }
+
+        if ($technologyCode !== $expectedTechnologyCode) {
+            continue;
+        }
+
+        $dimensionRows++;
+
+        if ($fileName !== '' && count($sampleFiles) < 3) {
+            $sampleFiles[] = $fileName;
+        }
+
+        $looksMobile = str_contains($searchText, 'mobile_broadband')
+            || str_contains($searchText, 'mobile broadband');
+        $looksH3 = str_contains($searchText, '_h3_')
+            || str_contains($searchText, ' h3 ')
+            || str_contains($searchText, 'hexagon');
+
+        if ($looksMobile) {
+            $mobileRows++;
+        }
+
+        if ($looksMobile && $looksH3) {
+            $h3Rows++;
+        }
+    }
+
+    if ($dimensionRows === 0) {
+        return [
+            'code' => 'not_published',
+            'message' => sprintf(
+                'FCC did not publish a %s %s dataset for %s for %s.',
+                $providerLabel,
+                strtoupper($expectedTechnology),
+                $stateName,
+                $targetDate
+            ),
+            'dimension_rows' => 0,
+            'mobile_rows' => 0,
+            'h3_rows' => 0,
+            'sample_files' => [],
+        ];
+    }
+
+    if ($h3Rows === 0) {
+        return [
+            'code' => 'no_mobile_h3',
+            'message' => sprintf(
+                'FCC published %d related %s %s record%s for %s, but no mobile broadband H3 file for %s.',
+                $dimensionRows,
+                $providerLabel,
+                strtoupper($expectedTechnology),
+                $dimensionRows === 1 ? '' : 's',
+                $stateName,
+                $targetDate
+            ),
+            'dimension_rows' => $dimensionRows,
+            'mobile_rows' => $mobileRows,
+            'h3_rows' => 0,
+            'sample_files' => $sampleFiles,
+        ];
+    }
+
+    return [
+        'code' => 'no_supported_product',
+        'message' => sprintf(
+            'FCC published %d mobile H3 candidate%s for %s %s in %s, but none match the FCC product Llama Scout imports for %s.',
+            $h3Rows,
+            $h3Rows === 1 ? '' : 's',
+            $providerLabel,
+            strtoupper($expectedTechnology),
+            $stateName,
+            $targetDate
+        ),
+        'dimension_rows' => $dimensionRows,
+        'mobile_rows' => $mobileRows,
+        'h3_rows' => $h3Rows,
+        'sample_files' => $sampleFiles,
+    ];
+}
+
+
 function llama_fcc_v2_recover_errors(int $startedBy): array
 {
     llama_fcc_v2_require_schema();
@@ -1862,8 +2087,12 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
     if (!$run) {
         return [
             'run' => null,
+            'checked' => 0,
             'recovered' => 0,
             'still_missing' => 0,
+            'not_published' => 0,
+            'no_mobile_h3' => 0,
+            'no_supported_product' => 0,
             'stale_requeued' => 0,
         ];
     }
@@ -1947,8 +2176,13 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
 
     $recovered = 0;
     $stillMissing = 0;
+    $checked = 0;
+    $notPublished = 0;
+    $noMobileH3 = 0;
+    $noSupportedProduct = 0;
 
     foreach ($errorJobs as $job) {
+        $checked++;
         $key = llama_fcc_v2_slot_key(
             (string) $job['state_fips'],
             (string) $job['provider_key'],
@@ -1990,6 +2224,17 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
                 (int) $job['slot_id'],
             ]);
             $recovered++;
+
+            llama_fcc_v2_log_event(
+                $runId,
+                (int) $job['id'],
+                'success',
+                'error_check_already_current',
+                (string) $job['state_name']
+                    . ' · ' . (string) $job['provider_label']
+                    . ' · ' . strtoupper((string) $job['technology'])
+                    . ' is already current.'
+            );
             continue;
         }
 
@@ -1998,7 +2243,21 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
         if (!is_array($candidate)) {
             $stillMissing++;
             $display = $installedDate !== '' ? 'outdated' : 'missing';
-            $message = 'FCC catalog still has no recognized file for this expected dataset.';
+            $diagnostic = llama_fcc_v2_manifest_diagnostic(
+                $manifest,
+                $job,
+                $targetDate
+            );
+            $message = (string) ($diagnostic['message'] ?? 'FCC file is not available.');
+            $diagnosticCode = (string) ($diagnostic['code'] ?? 'not_published');
+
+            if ($diagnosticCode === 'not_published') {
+                $notPublished++;
+            } elseif ($diagnosticCode === 'no_mobile_h3') {
+                $noMobileH3++;
+            } else {
+                $noSupportedProduct++;
+            }
 
             $jobUpdate = $db->prepare(
                 'UPDATE cell_coverage_v2_jobs
@@ -2008,14 +2267,13 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
                      needs_work = 0,
                      worker_role = NULL,
                      worker_slot = NULL,
-                     last_error = ?,
+                     last_error = NULL,
                      diagnostic = ?,
                      completed_at = COALESCE(completed_at, UTC_TIMESTAMP())
                  WHERE id = ?'
             );
             $jobUpdate->execute([
                 $message,
-                'Check Errors rechecked FCC ' . $targetDate . ' and the file is still unresolved.',
                 (int) $job['id'],
             ]);
 
@@ -2025,7 +2283,7 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
                      catalog_available = 0,
                      target_file_id = NULL,
                      target_file_name = NULL,
-                     last_error = ?,
+                     last_error = NULL,
                      last_diagnostic = ?,
                      state_changed_at = UTC_TIMESTAMP()
                  WHERE id = ?'
@@ -2033,9 +2291,17 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
             $slotUpdate->execute([
                 $display,
                 $message,
-                'FCC catalog still unresolved.',
                 (int) $job['slot_id'],
             ]);
+
+            llama_fcc_v2_log_event(
+                $runId,
+                (int) $job['id'],
+                'warning',
+                'missing_rechecked',
+                $message,
+                $diagnostic
+            );
             continue;
         }
 
@@ -2134,6 +2400,17 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
         ]);
 
         $recovered++;
+
+        llama_fcc_v2_log_event(
+            $runId,
+            (int) $job['id'],
+            'success',
+            'error_check_recovered',
+            (string) $job['state_name']
+                . ' · ' . (string) $job['provider_label']
+                . ' · ' . strtoupper((string) $job['technology'])
+                . ' is now available from FCC and was returned to the factory.'
+        );
     }
 
     llama_fcc_v2_fill_queues($runId);
@@ -2144,25 +2421,33 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
         null,
         $stillMissing > 0 ? 'warning' : 'info',
         'error_check',
-        'Check Errors recovered '
+        'Check Errors checked '
+            . $checked
+            . ' unresolved dataset'
+            . ($checked === 1 ? '' : 's')
+            . ': '
             . $recovered
-            . ' dataset'
-            . ($recovered === 1 ? '' : 's')
-            . ', requeued '
+            . ' recovered, '
+            . $notPublished
+            . ' not published by FCC, '
+            . $noMobileH3
+            . ' without a mobile H3 file, '
+            . $noSupportedProduct
+            . ' without the supported FCC product, and '
             . $staleRequeued
             . ' stale worker assignment'
             . ($staleRequeued === 1 ? '' : 's')
-            . ', and found '
-            . $stillMissing
-            . ' FCC catalog slot'
-            . ($stillMissing === 1 ? '' : 's')
-            . ' still unresolved.'
+            . ' requeued.'
     );
 
     return [
         'run' => llama_fcc_v2_run_row($runId),
+        'checked' => $checked,
         'recovered' => $recovered,
         'still_missing' => $stillMissing,
+        'not_published' => $notPublished,
+        'no_mobile_h3' => $noMobileH3,
+        'no_supported_product' => $noSupportedProduct,
         'stale_requeued' => $staleRequeued,
         'counts' => $counts,
     ];
