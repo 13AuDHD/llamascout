@@ -5,7 +5,7 @@ DirectoryIndex index.php
 <IfModule mod_headers.c>
 
     # Admin must never appear in search results.
-    Header always set X-Robots-Tag "noindex, nofollow, noarchive"
+    Header always set X-Robots-Tag "noindex, nofollow,noarchive"
 
     # Browser security baseline.
     Header always set X-Content-Type-Options "nosniff"
@@ -18,12 +18,12 @@ DirectoryIndex index.php
 </IfModule>
 
 
-# The FCC binary download can keep running after the short admin
-# request has been returned to Safari. Do not kill that PHP worker
-# if the browser closes, reloads, changes tabs, or drops the request.
+# FCC background workers continue after the short Admin response is
+# returned to Safari. Do not kill V1 or V2 workers when the browser
+# closes, reloads, changes tabs, or drops the request.
 <IfModule LiteSpeed>
     RewriteEngine On
-    RewriteRule ^cell-coverage-sync\.php$ - [E=noabort:1,E=noconntimeout:1]
+    RewriteRule ^cell-coverage-(sync|v2-api)\.php$ - [E=noabort:1,E=noconntimeout:1]
 </IfModule>
 
 
