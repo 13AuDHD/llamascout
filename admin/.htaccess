@@ -18,12 +18,12 @@ DirectoryIndex index.php
 </IfModule>
 
 
-# FCC background workers continue after the short Admin response is
-# returned to Safari. Do not kill V1 or V2 workers when the browser
-# closes, reloads, changes tabs, or drops the request.
+# Cell Coverage background factory workers continue after the short
+# Admin response is returned to Safari. Keep both endpoint names here
+# during the V2-to-production transition so an already-open V2 tab is safe.
 <IfModule LiteSpeed>
     RewriteEngine On
-    RewriteRule ^cell-coverage-(sync|v2-api)\.php$ - [E=noabort:1,E=noconntimeout:1]
+    RewriteRule ^cell-coverage-(api|v2-api)\.php$ - [E=noabort:1,E=noconntimeout:1]
 </IfModule>
 
 
