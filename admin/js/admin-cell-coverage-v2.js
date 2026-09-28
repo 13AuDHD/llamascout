@@ -239,11 +239,13 @@
         const total = run ? Math.max(1, Number(run.expected_jobs) || 306) : 306;
         const complete = run ? Math.max(0, Number(run.completed_jobs) || 0) : 0;
         const errors = run ? Math.max(0, Number(run.error_jobs) || 0) : 0;
+        const missing = run ? Math.max(0, Number(run.missing_jobs) || 0) : 0;
+        const finished = Math.min(total, complete + errors + missing);
         progressNode.max = total;
-        progressNode.value = Math.min(complete, total);
+        progressNode.value = finished;
 
         if (run) {
-            const percent = Math.round((complete / total) * 100);
+            const percent = Math.round((finished / total) * 100);
             const work = data.work_progress || {};
             const workTotal = Math.max(0, Number(work.work_total) || 0);
             const workFinished = Math.max(0, Number(work.work_complete) || 0)
@@ -267,9 +269,20 @@
                 timing = ` · Time ${duration(Math.max(0, (ended - started) / 1000))}`;
             }
 
-            progressText.textContent = errors > 0
-                ? `${number(complete)} / ${number(total)} current · ${number(errors)} errors · ${percent}%${timing}`
-                : `${number(complete)} / ${number(total)} current · ${percent}%${timing}`;
+            const progressParts = [
+                `${number(complete)} / ${number(total)} current`,
+            ];
+
+            if (errors > 0) {
+                progressParts.push(`${number(errors)} error${errors === 1 ? '' : 's'}`);
+            }
+
+            if (missing > 0) {
+                progressParts.push(`${number(missing)} missing`);
+            }
+
+            progressParts.push(`${percent}% checked`);
+            progressText.textContent = progressParts.join(' · ') + timing;
         } else {
             progressText.textContent = 'No V2 sync has been started';
         }
@@ -279,7 +292,7 @@
         }
 
         if (errorsButton) {
-            errorsButton.disabled = runStatus !== 'error' && errors <= 0;
+            errorsButton.disabled = errors <= 0 && missing <= 0;
         }
 
         renderWorkers(data);
