@@ -238,7 +238,7 @@ window.LLAMA_CELL_V2_INITIAL = <?= json_encode(
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
 ) ?>;
 </script>
-<script src="/js/admin-cell-coverage-v2.js?v=20260928-2"></script>
+<script src="/js/admin-cell-coverage-v2.js?v=20260928-3"></script>
 
 <?php endif; ?>
 
