@@ -588,6 +588,7 @@ function llama_fcc_v2_worker_snapshot(): array
         return cell_db()->query(
             'SELECT
                 worker_key,
+                run_id,
                 role,
                 worker_slot,
                 status,
@@ -627,6 +628,47 @@ function llama_fcc_v2_queue_snapshot(?int $runId): array
     }
 
     return $counts;
+}
+
+
+function llama_fcc_v2_run_work_progress(?int $runId): array
+{
+    if (!$runId) {
+        return [
+            'work_total' => 0,
+            'work_complete' => 0,
+            'work_errors' => 0,
+            'work_pending' => 0,
+        ];
+    }
+
+    try {
+        $stmt = cell_db()->prepare(
+            'SELECT
+                SUM(needs_work = 1) AS work_total,
+                SUM(needs_work = 1 AND stage = "complete") AS work_complete,
+                SUM(needs_work = 1 AND stage = "error") AS work_errors,
+                SUM(needs_work = 1 AND stage NOT IN ("complete", "error")) AS work_pending
+             FROM cell_coverage_v2_jobs
+             WHERE run_id = ?'
+        );
+        $stmt->execute([$runId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'work_total' => (int) ($row['work_total'] ?? 0),
+            'work_complete' => (int) ($row['work_complete'] ?? 0),
+            'work_errors' => (int) ($row['work_errors'] ?? 0),
+            'work_pending' => (int) ($row['work_pending'] ?? 0),
+        ];
+    } catch (Throwable) {
+        return [
+            'work_total' => 0,
+            'work_complete' => 0,
+            'work_errors' => 0,
+            'work_pending' => 0,
+        ];
+    }
 }
 
 function llama_fcc_v2_recent_events(int $limit = 80): array
@@ -762,6 +804,7 @@ function llama_fcc_v2_snapshot(): array
         'run' => $run,
         'workers' => llama_fcc_v2_worker_snapshot(),
         'queues' => llama_fcc_v2_queue_snapshot($runId ?: null),
+        'work_progress' => llama_fcc_v2_run_work_progress($runId ?: null),
         'events' => llama_fcc_v2_recent_events(80),
         'worker_config' => [
             'download' => (int) llama_fcc_v2_setting('download_workers', '1'),
