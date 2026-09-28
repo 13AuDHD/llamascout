@@ -244,7 +244,7 @@ require __DIR__ . '/_header.php';
     </article>
 
     <article class="cell-admin-metric">
-        <span>Coverage cells (approx.)</span>
+        <span>Coverage cells</span>
         <strong>
             <?= number_format(
                 $coverageCells
