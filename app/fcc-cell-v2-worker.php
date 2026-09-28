@@ -365,13 +365,34 @@ function llama_fcc_v2_refresh_run_counts(int $runId): array
 {
     $db = cell_db();
 
+    /*
+     * A catalog slot that has no FCC file is not a worker failure.
+     * V2 originally stored those terminal "Missing" slots as stage=error,
+     * which left a finished 303/306 run looking stuck at 99%.
+     *
+     * Normalize old V2 runs in place so this hotfix repairs the current
+     * run automatically the next time the dashboard polls status.
+     */
+    $normalizeMissing = $db->prepare(
+        'UPDATE cell_coverage_v2_jobs
+         SET stage = "missing",
+             needs_work = 0,
+             worker_role = NULL,
+             worker_slot = NULL,
+             completed_at = COALESCE(completed_at, UTC_TIMESTAMP())
+         WHERE run_id = ?
+           AND stage = "error"
+           AND fcc_file_id IS NULL'
+    );
+    $normalizeMissing->execute([$runId]);
+
     $stmt = $db->prepare(
         'SELECT
             COUNT(*) AS total,
             SUM(stage = "complete") AS completed,
             SUM(stage = "error") AS errors,
-            SUM(stage = "error" AND fcc_file_id IS NULL) AS missing,
-            SUM(stage NOT IN ("complete", "error")) AS pending
+            SUM(stage = "missing") AS missing,
+            SUM(stage NOT IN ("complete", "error", "missing")) AS pending
          FROM cell_coverage_v2_jobs
          WHERE run_id = ?'
     );
@@ -391,6 +412,10 @@ function llama_fcc_v2_refresh_run_counts(int $runId): array
         $status = 'running';
         $completedAt = null;
     } else {
+        /*
+         * Missing means FCC did not provide/resolve an expected slot.
+         * It is a completed audit result, not a broken worker.
+         */
         $status = $errors > 0 ? 'error' : 'complete';
         $completedAt = gmdate('Y-m-d H:i:s');
     }
@@ -424,10 +449,23 @@ function llama_fcc_v2_refresh_run_counts(int $runId): array
             llama_fcc_v2_log_event(
                 $runId,
                 null,
-                'success',
-                'run_complete',
-                'Cell Coverage V2 sync completed successfully: '
-                    . $completed . ' of ' . $total . ' datasets current.'
+                $missing > 0 ? 'warning' : 'success',
+                $missing > 0
+                    ? 'run_complete_with_missing'
+                    : 'run_complete',
+                $missing > 0
+                    ? (
+                        'Cell Coverage V2 finished: '
+                        . $completed . ' of ' . $total
+                        . ' datasets current, '
+                        . $missing . ' FCC catalog slot'
+                        . ($missing === 1 ? '' : 's')
+                        . ' unresolved.'
+                    )
+                    : (
+                        'Cell Coverage V2 sync completed successfully: '
+                        . $completed . ' of ' . $total . ' datasets current.'
+                    )
             );
         } elseif ($status === 'error' && $pending === 0) {
             llama_fcc_v2_log_event(
@@ -438,6 +476,10 @@ function llama_fcc_v2_refresh_run_counts(int $runId): array
                 'Cell Coverage V2 finished with '
                     . $errors . ' dataset error'
                     . ($errors === 1 ? '' : 's')
+                    . ($missing > 0
+                        ? ' and ' . $missing . ' unresolved FCC catalog slot'
+                            . ($missing === 1 ? '' : 's')
+                        : '')
                     . '. Use Check Errors to retry them.'
             );
         }
@@ -1698,11 +1740,11 @@ function llama_fcc_v2_create_run(int $startedBy): array
                 $completedAt = gmdate('Y-m-d H:i:s');
                 $displayState = 'current';
             } elseif (!is_array($candidate)) {
-                $stage = 'error';
-                $needsWork = 1;
+                $stage = 'missing';
+                $needsWork = 0;
                 $error = 'No matching FCC file was recognized for this expected dataset.';
                 $diagnostic = 'Catalog audit could not resolve this slot.';
-                $completedAt = null;
+                $completedAt = gmdate('Y-m-d H:i:s');
                 $displayState = $installedDate !== '' ? 'outdated' : 'missing';
             } else {
                 $stage = 'waiting_download';
@@ -1747,8 +1789,8 @@ function llama_fcc_v2_create_run(int $startedBy): array
                 is_array($candidate) ? 1 : 0,
                 $fileId !== '' ? $fileId : null,
                 $fileName !== '' ? $fileName : null,
-                $stage === 'complete' ? null : $runId,
-                $stage === 'complete' ? null : $jobId,
+                in_array($stage, ['complete', 'missing'], true) ? null : $runId,
+                in_array($stage, ['complete', 'missing'], true) ? null : $jobId,
                 $error,
                 $diagnostic,
                 (int) $slot['id'],
@@ -1897,7 +1939,7 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
         'SELECT *
          FROM cell_coverage_v2_jobs
          WHERE run_id = ?
-           AND stage = "error"
+           AND stage IN ("error", "missing")
          ORDER BY queue_order'
     );
     $errorsStmt->execute([$runId]);
@@ -1922,6 +1964,7 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
             $complete = $db->prepare(
                 'UPDATE cell_coverage_v2_jobs
                  SET stage = "complete",
+                     needs_work = 0,
                      worker_role = NULL,
                      worker_slot = NULL,
                      last_error = NULL,
@@ -1961,8 +2004,13 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
                 'UPDATE cell_coverage_v2_jobs
                  SET fcc_file_id = NULL,
                      fcc_file_name = NULL,
+                     stage = "missing",
+                     needs_work = 0,
+                     worker_role = NULL,
+                     worker_slot = NULL,
                      last_error = ?,
-                     diagnostic = ?
+                     diagnostic = ?,
+                     completed_at = COALESCE(completed_at, UTC_TIMESTAMP())
                  WHERE id = ?'
             );
             $jobUpdate->execute([
@@ -2020,10 +2068,12 @@ function llama_fcc_v2_recover_errors(int $startedBy): array
              SET fcc_file_id = ?,
                  fcc_file_name = ?,
                  stage = ?,
+                 needs_work = 1,
                  worker_role = NULL,
                  worker_slot = NULL,
                  last_error = NULL,
                  diagnostic = ?,
+                 completed_at = NULL,
                  download_filename = CASE
                     WHEN ? = "waiting_download" THEN NULL
                     ELSE download_filename
