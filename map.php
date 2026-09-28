@@ -31,6 +31,7 @@ $pageDescription = 'Browse Llama Scout Places by location, type, land manager, e
 $canonicalUrl = 'https://llamascout.com/map.php';
 
 require __DIR__ . '/partials/header.php';
+require __DIR__ . '/partials/cell-coverage-update-banner.php';
 ?>
 
 <link
