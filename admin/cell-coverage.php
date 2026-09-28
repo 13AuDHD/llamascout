@@ -32,14 +32,6 @@ $datasets = [];
 $dbBytes = 0;
 
 try {
-    $coverageCells =
-        (int) $cellDb
-            ->query(
-                'SELECT COUNT(*)
-                 FROM cell_coverage_cells'
-            )
-            ->fetchColumn();
-
     $coverageLatest =
         $cellDb
             ->query(
@@ -64,6 +56,18 @@ try {
             );
 
     if ($tableStatus) {
+        /*
+         * InnoDB's SHOW TABLE STATUS row count is an estimate.
+         * It is intentionally used here instead of COUNT(*)
+         * because this table can contain tens of millions of
+         * rows while an FCC import is actively writing to it.
+         */
+        $coverageCells =
+            (int) (
+                $tableStatus['Rows']
+                ?? 0
+            );
+
         $dbBytes =
             (int) (
                 $tableStatus['Data_length']
@@ -240,7 +244,7 @@ require __DIR__ . '/_header.php';
     </article>
 
     <article class="cell-admin-metric">
-        <span>Coverage cells</span>
+        <span>Coverage cells (approx.)</span>
         <strong>
             <?= number_format(
                 $coverageCells
@@ -542,7 +546,7 @@ require __DIR__ . '/_header.php';
                                                         ]
                                                         ?? ''
                                                     )
-                                                    . ' · '
+                                                    . ' Âˇ '
                                                     . (
                                                         $dataset[
                                                             'source_filename'
@@ -709,7 +713,7 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<script src="/js/admin-cell-coverage-sync.js"></script>
+<script src="/js/admin-cell-coverage-sync.js?v=20260926-7"></script>
 
 <?php
 require __DIR__ . '/_footer.php';
