@@ -428,10 +428,16 @@
             await ensureWorkers(data.snapshot, false);
 
             const result = data.recovery || {};
+            const unavailable = Math.max(0, Number(result.not_published) || 0)
+                + Math.max(0, Number(result.no_mobile_h3) || 0)
+                + Math.max(0, Number(result.no_supported_product) || 0);
+
             setMessage(
-                `Recovered ${number(result.recovered)} dataset(s), `
-                + `requeued ${number(result.stale_requeued)} stale worker assignment(s), `
-                + `${number(result.still_missing)} FCC catalog slot(s) remain unresolved.`
+                `Checked ${number(result.checked)} unresolved dataset(s): `
+                + `${number(result.recovered)} recovered, `
+                + `${number(unavailable)} confirmed unavailable in the FCC catalog for this vintage, `
+                + `${number(result.stale_requeued)} stale worker assignment(s) requeued. `
+                + `See Activity Log for each dataset.`
             );
         } catch (error) {
             setMessage(error.message || 'V2 error recovery failed.', true);
