@@ -122,7 +122,37 @@ function llama_fcc_v2_seed_slots(): void
     llama_fcc_v2_require_schema();
 
     $db = cell_db();
-    $stmt = $db->prepare(
+
+    /*
+     * Do not use INSERT ... ON DUPLICATE KEY UPDATE here. InnoDB
+     * reserves an AUTO_INCREMENT value even when the insert resolves
+     * to the duplicate-key UPDATE path. Because the V2 dashboard polls
+     * frequently, that behavior exhausted the original SMALLINT id
+     * counter even though only 306 slot rows actually exist.
+     *
+     * Read the existing slots first, then INSERT only genuinely missing
+     * rows and UPDATE only metadata that has actually changed.
+     */
+    $existingRows = $db->query(
+        'SELECT
+            slot_key,
+            state_name,
+            provider_label,
+            display_order
+         FROM cell_coverage_v2_slots'
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $existing = [];
+
+    foreach ($existingRows as $row) {
+        $key = trim((string) ($row['slot_key'] ?? ''));
+
+        if ($key !== '') {
+            $existing[$key] = $row;
+        }
+    }
+
+    $insert = $db->prepare(
         'INSERT INTO cell_coverage_v2_slots (
             slot_key,
             state_fips,
@@ -133,23 +163,47 @@ function llama_fcc_v2_seed_slots(): void
             display_order,
             display_state,
             state_changed_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, "missing", UTC_TIMESTAMP())
-         ON DUPLICATE KEY UPDATE
-            state_name = VALUES(state_name),
-            provider_label = VALUES(provider_label),
-            display_order = VALUES(display_order)'
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, "missing", UTC_TIMESTAMP())'
+    );
+
+    $update = $db->prepare(
+        'UPDATE cell_coverage_v2_slots
+         SET state_name = ?,
+             provider_label = ?,
+             display_order = ?
+         WHERE slot_key = ?'
     );
 
     foreach (llama_fcc_v2_expected_slots() as $slot) {
-        $stmt->execute([
-            $slot['slot_key'],
-            $slot['state_fips'],
-            $slot['state_name'],
-            $slot['provider_key'],
-            $slot['provider_label'],
-            $slot['technology'],
-            $slot['display_order'],
-        ]);
+        $key = (string) $slot['slot_key'];
+        $current = $existing[$key] ?? null;
+
+        if (!$current) {
+            $insert->execute([
+                $key,
+                $slot['state_fips'],
+                $slot['state_name'],
+                $slot['provider_key'],
+                $slot['provider_label'],
+                $slot['technology'],
+                $slot['display_order'],
+            ]);
+
+            continue;
+        }
+
+        if (
+            (string) ($current['state_name'] ?? '') !== (string) $slot['state_name']
+            || (string) ($current['provider_label'] ?? '') !== (string) $slot['provider_label']
+            || (int) ($current['display_order'] ?? 0) !== (int) $slot['display_order']
+        ) {
+            $update->execute([
+                $slot['state_name'],
+                $slot['provider_label'],
+                $slot['display_order'],
+                $key,
+            ]);
+        }
     }
 }
 
@@ -360,7 +414,17 @@ function llama_fcc_v2_refresh_slots(
     $current = llama_fcc_v2_current_ledger();
 
     $select = $db->query(
-        'SELECT id, slot_key, active_job_id, display_state
+        'SELECT
+            id,
+            slot_key,
+            active_job_id,
+            display_state,
+            installed_as_of_date,
+            target_as_of_date,
+            catalog_available,
+            target_file_id,
+            target_file_name,
+            last_diagnostic
          FROM cell_coverage_v2_slots
          ORDER BY display_order'
     );
@@ -451,26 +515,53 @@ function llama_fcc_v2_refresh_slots(
             continue;
         }
 
+        $desiredInstalledDate =
+            $installedDate !== '' ? $installedDate : null;
+
+        $desiredTargetDate =
+            $targetDate !== '' ? $targetDate : null;
+
         if ($catalogProvided) {
-            $updateWithCatalog->execute([
-                $state,
-                $installedDate !== '' ? $installedDate : null,
-                $targetDate !== '' ? $targetDate : null,
-                is_array($candidate) ? 1 : 0,
-                $fileId,
-                $fileName,
-                $diagnostic,
-                $state,
-                (int) $row['id'],
-            ]);
+            $desiredCatalogAvailable =
+                is_array($candidate) ? 1 : 0;
+
+            $needsUpdate =
+                (string) ($row['display_state'] ?? '') !== $state
+                || (($row['installed_as_of_date'] ?? null) ?: null) !== $desiredInstalledDate
+                || (($row['target_as_of_date'] ?? null) ?: null) !== $desiredTargetDate
+                || (int) ($row['catalog_available'] ?? 0) !== $desiredCatalogAvailable
+                || (($row['target_file_id'] ?? null) ?: null) !== $fileId
+                || (($row['target_file_name'] ?? null) ?: null) !== $fileName
+                || (($row['last_diagnostic'] ?? null) ?: null) !== $diagnostic;
+
+            if ($needsUpdate) {
+                $updateWithCatalog->execute([
+                    $state,
+                    $desiredInstalledDate,
+                    $desiredTargetDate,
+                    $desiredCatalogAvailable,
+                    $fileId,
+                    $fileName,
+                    $diagnostic,
+                    $state,
+                    (int) $row['id'],
+                ]);
+            }
         } else {
-            $updateBaseline->execute([
-                $state,
-                $installedDate !== '' ? $installedDate : null,
-                $targetDate !== '' ? $targetDate : null,
-                $state,
-                (int) $row['id'],
-            ]);
+            $needsUpdate =
+                (string) ($row['display_state'] ?? '') !== $state
+                || (($row['installed_as_of_date'] ?? null) ?: null) !== $desiredInstalledDate
+                || (($row['target_as_of_date'] ?? null) ?: null) !== $desiredTargetDate;
+
+            if ($needsUpdate) {
+                $updateBaseline->execute([
+                    $state,
+                    $desiredInstalledDate,
+                    $desiredTargetDate,
+                    $state,
+                    (int) $row['id'],
+                ]);
+            }
         }
     }
 
@@ -482,7 +573,6 @@ function llama_fcc_v2_refresh_slots(
 function llama_fcc_v2_check_latest(): array
 {
     llama_fcc_v2_require_schema();
-    llama_fcc_v2_seed_slots();
 
     $latest = llama_fcc_v2_latest_catalog();
     $asOfDate = (string) $latest['as_of_date'];
@@ -766,7 +856,6 @@ function llama_fcc_v2_slot_counts(array $slots): array
 function llama_fcc_v2_snapshot(): array
 {
     llama_fcc_v2_require_schema();
-    llama_fcc_v2_seed_slots();
 
     $latestDate = trim(
         llama_fcc_v2_setting('fcc_latest_date', '')
