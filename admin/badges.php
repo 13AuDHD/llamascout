@@ -551,7 +551,7 @@ require __DIR__ .
                         type="text"
                         name="reason"
                         maxlength="500"
-                        placeholder="Cheating/fraud reason required"
+                        placeholder="Reason required"
                         required
                     >
                 </label>
@@ -737,10 +737,6 @@ require __DIR__ .
 </article>
 <?php endforeach; ?>
 </div>
-
-<p class="admin-muted-copy">
-    This audit is intentionally non-destructive. Review the member history before removing any legacy badge.
-</p>
 
 </section>
 <?php endif; ?>
