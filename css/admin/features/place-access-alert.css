@@ -1,0 +1,136 @@
+/* Admin Place access warning controls injected on moderate-report.php. */
+
+.admin-place-access-alert-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-place-access-alert-state {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .64rem;
+    font-weight: 850;
+}
+
+.admin-place-access-alert-state.is-active {
+    border-color: color-mix(in srgb, #d3a842 65%, var(--border));
+    color: #d3a842;
+}
+
+.admin-place-access-alert-form {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+}
+
+.admin-place-access-alert-toggle {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 12px 13px;
+    border: 1px solid color-mix(in srgb, #d3a842 45%, var(--border));
+    border-radius: 10px;
+    background: color-mix(in srgb, #d3a842 5%, var(--surface));
+}
+
+.admin-place-access-alert-toggle input {
+    margin-top: 2px;
+}
+
+.admin-place-access-alert-toggle strong,
+.admin-place-access-alert-toggle small {
+    display: block;
+}
+
+.admin-place-access-alert-toggle strong {
+    font-size: .75rem;
+}
+
+.admin-place-access-alert-toggle small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: .66rem;
+    line-height: 1.45;
+}
+
+.admin-place-access-alert-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-place-access-alert-fields label {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-place-access-alert-fields label.is-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-place-access-alert-fields label > span {
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 850;
+}
+
+.admin-place-access-alert-fields select,
+.admin-place-access-alert-fields input,
+.admin-place-access-alert-fields textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.admin-place-access-alert-fields textarea {
+    resize: vertical;
+}
+
+.admin-place-access-alert-note {
+    padding: 10px 12px;
+    border-left: 3px solid #d3a842;
+    color: var(--text-muted);
+    font-size: .66rem;
+    line-height: 1.5;
+}
+
+.admin-place-access-alert-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-place-access-alert-message {
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 750;
+}
+
+.admin-place-access-alert-message.is-success {
+    color: #58a66a;
+}
+
+.admin-place-access-alert-message.is-error {
+    color: #c94f4f;
+}
+
+@media (max-width: 800px) {
+    .admin-place-access-alert-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-place-access-alert-fields label.is-wide {
+        grid-column: auto;
+    }
+}
