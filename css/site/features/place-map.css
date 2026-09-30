@@ -1,0 +1,184 @@
+/* =========================================================
+   PLACE PAGE: COMPACT SINGLE-PLACE MAP
+   ========================================================= */
+
+.place-map-section {
+    width: min(1120px, calc(100% - 36px));
+    margin: 30px auto 0;
+}
+
+.place-map-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 12px;
+}
+
+.place-map-heading .eyebrow,
+.place-map-heading h2 {
+    margin-top: 0;
+}
+
+.place-map-heading .eyebrow {
+    margin-bottom: 4px;
+}
+
+.place-map-heading h2 {
+    margin-bottom: 0;
+    font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+}
+
+.place-map-precision {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.place-map-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.place-inline-map {
+    width: 100%;
+    height: 370px;
+    min-height: 300px;
+    background: var(--surface);
+}
+
+.place-map-note {
+    margin: 9px 0 0;
+    color: var(--text-muted);
+    font-size: .76rem;
+    line-height: 1.5;
+}
+
+/* Keep the compact map controls clear of the top tool bar. */
+.place-map-card .leaflet-control-zoom {
+    margin-right: 12px;
+    margin-bottom: 12px;
+}
+
+.place-map-card .leaflet-control-zoom a {
+    color: #222;
+}
+
+.place-map-card .leaflet-control-attribution {
+    max-width: min(80%, 560px);
+    font-size: .56rem;
+    line-height: 1.2;
+}
+
+.place-map-card .leaflet-popup-content-wrapper {
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.place-map-card .leaflet-popup-content {
+    margin: 0;
+}
+
+.place-map-popup {
+    display: grid;
+    gap: 4px;
+    min-width: 165px;
+    padding: 11px 13px;
+}
+
+.place-map-popup strong {
+    color: #1d1d1d;
+    font-size: .88rem;
+}
+
+.place-map-popup span {
+    color: #666;
+    font-size: .7rem;
+}
+
+/* Same Place-pin language used by the full map without loading map.css. */
+.place-map-marker-shell {
+    border: 0;
+    background: transparent;
+}
+
+.place-map-marker {
+    position: relative;
+    display: block;
+    width: 34px;
+    height: 34px;
+    border: 3px solid #fff;
+    border-radius: 50% 50% 50% 0;
+    background: #2b2b2b;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, .35);
+    transform: rotate(-45deg);
+}
+
+.place-map-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #fff;
+    transform: translate(-50%, -50%);
+}
+
+/*
+ * Place-specific contributor access is intentionally kept near that Place.
+ * Global Complete Access is not bounded.
+ */
+.place-map-card[data-map-scoped="1"]::after {
+    content: 'Place access area';
+    position: absolute;
+    z-index: 650;
+    right: 10px;
+    bottom: 10px;
+    pointer-events: none;
+    padding: 4px 7px;
+    border: 1px solid rgba(255, 255, 255, .42);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .58);
+    color: #fff;
+    font-size: .58rem;
+    font-weight: 850;
+    line-height: 1;
+    backdrop-filter: blur(8px);
+}
+
+@media (max-width: 680px) {
+    .place-map-section {
+        width: min(100% - 24px, 1120px);
+    }
+
+    .place-map-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .place-inline-map {
+        height: 320px;
+        min-height: 280px;
+    }
+
+    .place-map-card .map-tools-panel {
+        max-height: 235px;
+    }
+}
+
+@media (max-width: 440px) {
+    .place-inline-map {
+        height: 300px;
+    }
+}
