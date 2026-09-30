@@ -659,7 +659,7 @@ require __DIR__ . '/_header.php';
                     >
                 </label>
 
-                <label class="is-wide">
+                <label>
                     <span>Email</span>
                     <input
                         type="email"
