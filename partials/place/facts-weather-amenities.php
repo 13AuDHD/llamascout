@@ -159,6 +159,10 @@ $onxMapsUrl =
     <?php endif; ?>
 </section>
 
+<?php
+require __DIR__ . '/map.php';
+?>
+
 <section
     class="place-section place-weather"
     aria-labelledby="weather-heading"

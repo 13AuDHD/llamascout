@@ -82,29 +82,5 @@
             <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <p>Thanks. Your report has been submitted for review.</p>
         </div>
-
-        <script>
-            (() => {
-                'use strict';
-
-                const url = new URL(window.location.href);
-
-                if (url.searchParams.get('reported') !== '1') {
-                    return;
-                }
-
-                url.searchParams.delete('reported');
-
-                const query = url.searchParams.toString();
-
-                window.history.replaceState(
-                    window.history.state,
-                    '',
-                    url.pathname
-                    + (query !== '' ? '?' + query : '')
-                    + url.hash
-                );
-            })();
-        </script>
     <?php endif; ?>
 </section>
