@@ -1,0 +1,101 @@
+/* Public Place access-condition warning. */
+
+.place-access-alert {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    width: min(1180px, calc(100% - 32px));
+    box-sizing: border-box;
+    margin: 16px auto 0;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, #d3a842 70%, var(--border));
+    border-radius: 14px;
+    background: color-mix(in srgb, #d3a842 8%, var(--surface));
+}
+
+.place-access-alert > i {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: color-mix(in srgb, #d3a842 16%, var(--surface));
+}
+
+.place-access-alert-copy {
+    min-width: 0;
+}
+
+.place-access-alert-copy p,
+.place-access-alert-copy h2 {
+    margin: 0;
+}
+
+.place-access-alert-eyebrow {
+    color: #a47b17;
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.place-access-alert-copy h2 {
+    margin-top: 2px;
+    font-size: 1rem;
+}
+
+.place-access-alert-copy > p:last-child {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+.place-access-alert-meta {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 800;
+}
+
+.place-access-alert-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.place-access-alert-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.place-access-alert-actions a:hover,
+.place-access-alert-actions a:focus-visible {
+    border-color: color-mix(in srgb, #d3a842 70%, var(--border));
+}
+
+@media (max-width: 760px) {
+    .place-access-alert {
+        grid-template-columns: auto minmax(0, 1fr);
+        width: min(100% - 20px, 1180px);
+        gap: 10px;
+    }
+
+    .place-access-alert-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}
