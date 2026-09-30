@@ -235,10 +235,4 @@
     }
 }
 
-@media (max-width: 620px) {
 
-    .admin-user-filters {
-        grid-template-columns: 1fr;
-    }
-
-}
