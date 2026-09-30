@@ -83,6 +83,58 @@
     text-transform: uppercase;
 }
 
+/* Account status */
+
+.admin-user-table .admin-status-pill {
+    justify-content: center;
+    min-width: 78px;
+    color: var(--text);
+}
+
+.admin-user-table .admin-status-pill.is-active {
+    border-color: color-mix(
+        in srgb,
+        #42a866 72%,
+        var(--border)
+    );
+    background: color-mix(
+        in srgb,
+        #42a866 15%,
+        var(--surface)
+    );
+}
+
+.admin-user-table .admin-status-pill.is-pending {
+    border-color: color-mix(
+        in srgb,
+        #d6a537 78%,
+        var(--border)
+    );
+    background: color-mix(
+        in srgb,
+        #d6a537 16%,
+        var(--surface)
+    );
+}
+
+.admin-user-table .admin-status-pill.is-suspended,
+.admin-user-table .admin-status-pill.is-disabled {
+    border-color: color-mix(
+        in srgb,
+        #c64242 80%,
+        var(--border)
+    );
+    background: color-mix(
+        in srgb,
+        #c64242 16%,
+        var(--surface)
+    );
+}
+
+.admin-user-table .admin-status-pill.is-anonymized,
+.admin-user-table .admin-status-pill.is-neutral {
+    color: var(--text-muted);
+}
 
 /* Role chips */
 
@@ -104,7 +156,6 @@
     font-weight: 800;
 }
 
-
 /* Membership state */
 
 .admin-membership-label {
@@ -124,8 +175,6 @@
     color: var(--text-muted);
     font-weight: 650;
 }
-
-
 
 /* Responsive */
 
@@ -155,8 +204,11 @@
 
     .admin-user-table tr {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px 18px;
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(0, 1fr);
+        grid-template-rows: auto auto auto auto;
+        gap: 14px 20px;
 
         width: 100%;
         box-sizing: border-box;
@@ -182,24 +234,46 @@
         white-space: normal;
     }
 
+    /* Account identity stays full width across the card. */
     .admin-user-table td:first-child {
         grid-column: 1 / -1;
+        grid-row: 1;
         display: block;
         padding-bottom: 2px;
     }
 
-    .admin-user-table td:nth-child(6) {
-        grid-column: 1 / -1;
+    /*
+     * Requested card order:
+     * Status        Roles
+     * Points        Membership
+     * Last Login
+     */
+    .admin-user-table td:nth-child(2) {
+        grid-column: 1;
+        grid-row: 2;
     }
 
-    .admin-user-table td:nth-child(2),
-    .admin-user-table td:nth-child(3),
-    .admin-user-table td:nth-child(4),
+    .admin-user-table td:nth-child(3) {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .admin-user-table td:nth-child(4) {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
     .admin-user-table td:nth-child(5) {
-        align-self: start;
+        grid-column: 2;
+        grid-row: 3;
     }
 
-    .admin-user-table td:nth-child(3) .admin-status-pill {
+    .admin-user-table td:nth-child(6) {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .admin-user-table td:nth-child(2) .admin-status-pill {
         justify-self: start;
         width: auto;
     }
@@ -226,13 +300,16 @@
 @media (max-width: 450px) {
 
     .admin-user-table tr {
-        grid-template-columns: 1fr;
+        gap: 12px 14px;
+        padding: 14px;
     }
 
-    .admin-user-table td,
-    .admin-user-table td:nth-child(6) {
-        grid-column: 1;
+    .admin-role-chips {
+        gap: 4px;
+    }
+
+    .admin-role-chips span {
+        padding: 3px 6px;
+        font-size: .64rem;
     }
 }
-
-
