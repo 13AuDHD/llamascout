@@ -412,10 +412,10 @@ require __DIR__ . '/_header.php';
                 <thead>
                     <tr>
                         <th>Account</th>
-                        <th>Roles</th>
                         <th>Status</th>
-                        <th>Membership</th>
+                        <th>Roles</th>
                         <th>Points</th>
+                        <th>Membership</th>
                         <th>Last login</th>
                     </tr>
                 </thead>
@@ -440,6 +440,42 @@ require __DIR__ . '/_header.php';
                     $membershipKind(
                         $user
                     );
+
+                $isAnonymized =
+                    !empty(
+                        $user['anonymized_at']
+                    );
+
+                $accountStatus =
+                    $isAnonymized
+                        ? 'anonymized'
+                        : strtolower(
+                            trim(
+                                (string) (
+                                    $user['status']
+                                    ?? ''
+                                )
+                            )
+                        );
+
+                $accountStatusLabel =
+                    $isAnonymized
+                        ? 'Anonymized'
+                        : (
+                            $accountStatus !== ''
+                                ? ucfirst($accountStatus)
+                                : 'Unknown'
+                        );
+
+                $accountStatusClass =
+                    match ($accountStatus) {
+                        'active' => 'is-active',
+                        'pending' => 'is-pending',
+                        'suspended' => 'is-suspended',
+                        'disabled' => 'is-disabled',
+                        'anonymized' => 'is-anonymized',
+                        default => 'is-neutral',
+                    };
                 ?>
 
                 <tr>
@@ -479,11 +515,7 @@ require __DIR__ . '/_header.php';
                                     </a>
                                 </strong>
 
-                                <?php if (
-                                    !empty(
-                                        $user['anonymized_at']
-                                    )
-                                ): ?>
+                                <?php if ($isAnonymized): ?>
 
                                     <span>
                                         Former member
@@ -514,6 +546,12 @@ require __DIR__ . '/_header.php';
                         </div>
                     </td>
 
+                    <td data-label="Status">
+                        <span class="admin-status-pill <?= moderation_e($accountStatusClass) ?>">
+                            <?= moderation_e($accountStatusLabel) ?>
+                        </span>
+                    </td>
+
                     <td data-label="Roles">
                         <div class="admin-role-chips">
 
@@ -537,24 +575,10 @@ require __DIR__ . '/_header.php';
                         </div>
                     </td>
 
-                    <td data-label="Status">
-                        <?php if (
-                            !empty($user['anonymized_at'])
-                        ): ?>
-                            <span class="admin-status-pill">
-                                Anonymized
-                            </span>
-                        <?php else: ?>
-                            <span class="admin-status-pill">
-                                <?= moderation_e(
-                                    ucfirst(
-                                        (string) $user[
-                                            'status'
-                                        ]
-                                    )
-                                ) ?>
-                            </span>
-                        <?php endif; ?>
+                    <td data-label="Points">
+                        <?= number_format(
+                            (int) ($user['points_total'] ?? 0)
+                        ) ?>
                     </td>
 
                     <td data-label="Membership">
@@ -596,12 +620,6 @@ require __DIR__ . '/_header.php';
                                 Free
                             </span>
                         <?php endif; ?>
-                    </td>
-
-                    <td data-label="Points">
-                        <?= number_format(
-                            (int) ($user['points_total'] ?? 0)
-                        ) ?>
                     </td>
 
                     <td data-label="Last login">
