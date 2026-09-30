@@ -1,0 +1,38 @@
+/* =========================================================
+   PLACE REPORT SUCCESS STATE
+   ========================================================= */
+
+.place-report-message.is-success {
+    border-color:
+        color-mix(
+            in srgb,
+            #58a66a 72%,
+            var(--border)
+        );
+
+    background:
+        color-mix(
+            in srgb,
+            #58a66a 8%,
+            var(--surface)
+        );
+}
+
+.place-report-message.is-success > i,
+.place-report-message.is-success > i svg {
+    color: #58a66a;
+}
+
+.place-report-persistent-success {
+    margin-top: 10px;
+}
+
+/*
+ * Native <details> hides its body when collapsed. Keep a second success
+ * confirmation directly below the report card so the acknowledgement remains
+ * visible after the form is rolled back up. When the form is expanded, the
+ * in-form confirmation is visible instead.
+ */
+.place-report[open] + .place-report-persistent-success {
+    display: none;
+}
