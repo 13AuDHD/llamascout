@@ -127,6 +127,10 @@ if (
     <script src="https://llamascout.com/js/photo-uploader.js"></script>
 <?php endif; ?>
 
+<?php if ($adminFooterScript === 'moderate-report.php'): ?>
+    <script src="/js/admin-place-access-alert.js"></script>
+<?php endif; ?>
+
 
 </body>
 </html>
