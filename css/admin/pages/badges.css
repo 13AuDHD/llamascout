@@ -159,6 +159,29 @@
 }
 
 
+/* Eligibility review rows do not have a badge-art column.
+   Let the copy consume the art + text columns instead of being
+   squeezed into the 56px art slot. */
+
+.admin-member-badge-row > .admin-member-badge-copy:first-child {
+    grid-column: 1 / 3;
+}
+
+.admin-member-badge-row >
+.admin-member-badge-copy:first-child +
+.admin-member-badge-actions {
+    grid-column: 3;
+    justify-self: end;
+}
+
+.admin-member-badge-list + .admin-muted-copy {
+    margin: 0;
+    padding: 14px 16px;
+
+    border-top: 1px solid var(--border);
+}
+
+
 /* Manual award */
 
 .admin-member-badge-award {
@@ -442,6 +465,19 @@
         flex-wrap: wrap;
     }
 
+    .admin-member-badge-row > .admin-member-badge-copy:first-child,
+    .admin-member-badge-row >
+    .admin-member-badge-copy:first-child +
+    .admin-member-badge-actions {
+        grid-column: 1 / -1;
+    }
+
+    .admin-member-badge-row >
+    .admin-member-badge-copy:first-child +
+    .admin-member-badge-actions {
+        justify-self: stretch;
+    }
+
     .admin-badge-definition-grid {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
@@ -456,7 +492,7 @@
         repeat(2, minmax(0, 1fr));
     gap: 10px;
    }
-   
+
     .admin-member-badge-summary,
     .admin-member-badge-award form,
     .admin-badge-definition-grid {
