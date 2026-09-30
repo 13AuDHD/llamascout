@@ -37,6 +37,7 @@ require_once __DIR__ . '/contributor-attribution.php';
 require_once __DIR__ . '/profile-images.php';
 require_once __DIR__ . '/shop-images.php';
 require_once __DIR__ . '/place-reports.php';
+require_once __DIR__ . '/place-access-alerts.php';
 require_once __DIR__ . '/community-contributions.php';
 require_once __DIR__ . '/moderation.php';
 require_once __DIR__ . '/automatic-badges.php';
