@@ -1,3 +1,7 @@
+<?php
+require __DIR__ . '/access-alert.php';
+?>
+
 <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
 
     <?php if ($heroImage): ?>
