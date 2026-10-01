@@ -23,7 +23,7 @@
         return;
     }
 
-    const STYLE_HREF = '/css/map-weather-overlays.css';
+    const STYLE_HREF = '/css/map-weather-overlays.css?v=20260930-2';
     const STORAGE_KEY = 'llama-map-weather-overlays';
 
     /*
@@ -331,7 +331,11 @@
                         class="map-radar-loop-button"
                         aria-pressed="false"
                     >
-                        &#9654; Play
+                        <span
+                            class="map-radar-loop-icon map-radar-loop-icon-play"
+                            aria-hidden="true"
+                        ></span>
+                        <span>Play</span>
                     </button>
 
                     <button
@@ -821,13 +825,29 @@
 
         if (radarPlayButton) {
             if (radarPreparing) {
-                radarPlayButton.innerHTML =
-                    '&#8987; Loading';
+                radarPlayButton.innerHTML = `
+                    <span
+                        class="map-radar-loop-spinner"
+                        aria-hidden="true"
+                    ></span>
+                    <span>Loading</span>
+                `;
+            } else if (radarPlaying) {
+                radarPlayButton.innerHTML = `
+                    <span
+                        class="map-radar-loop-icon map-radar-loop-icon-pause"
+                        aria-hidden="true"
+                    ></span>
+                    <span>Pause</span>
+                `;
             } else {
-                radarPlayButton.innerHTML =
-                    radarPlaying
-                        ? '&#9208; Pause'
-                        : '&#9654; Play';
+                radarPlayButton.innerHTML = `
+                    <span
+                        class="map-radar-loop-icon map-radar-loop-icon-play"
+                        aria-hidden="true"
+                    ></span>
+                    <span>Play</span>
+                `;
             }
 
             radarPlayButton.setAttribute(
