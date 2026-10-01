@@ -6,7 +6,7 @@
     --border: rgba(0, 0, 0, .18);
     --floating: rgba(255, 255, 255, .94);
     --shadow: rgba(0, 0, 0, .18);
-    --submitted: #e0aa22;
+    --submitted: #58a66a;
     --current: #2f7dd1;
     --draft: #747474;
     --unlisted: #7457a6;
@@ -21,7 +21,7 @@ html[data-theme="dark"] {
     --border: rgba(255, 255, 255, .20);
     --floating: rgba(25, 25, 25, .94);
     --shadow: rgba(0, 0, 0, .42);
-    --submitted: #f0bd35;
+    --submitted: #72c48a;
     --current: #68a8eb;
     --draft: #a3a3a3;
     --unlisted: #a98bd4;
