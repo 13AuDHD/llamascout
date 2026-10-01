@@ -8,7 +8,14 @@
     const panel = document.getElementById('map-tools-panel-weather');
     const trigger = document.querySelector('[data-map-tool="weather"]');
 
-    if (!map || !mapElement || !mapCard || !panel || !trigger || typeof L === 'undefined') {
+    if (
+        !map ||
+        !mapElement ||
+        !mapCard ||
+        !panel ||
+        !trigger ||
+        typeof L === 'undefined'
+    ) {
         return;
     }
 
@@ -16,44 +23,63 @@
         return;
     }
 
-    const STYLE_HREF = '/css/map-weather-overlays.css?v=20260926-2';
+    const STYLE_HREF = '/css/map-weather-overlays.css?v=20260930-1';
     const STORAGE_KEY = 'llama-map-weather-overlays';
+
+    const RADAR_TIME_QUERY =
+        'https://mapservices.weather.noaa.gov/eventdriven/rest/services/'
+        + 'radar/radar_base_reflectivity_time/ImageServer/query';
+
+    const RADAR_WINDOW_MS = 60 * 60 * 1000;
+    const RADAR_FALLBACK_STEP_MS = 5 * 60 * 1000;
+    const RADAR_FRAME_DELAY_MS = 900;
+    const RADAR_LATEST_HOLD_MS = 1600;
+    const RADAR_FRAME_CACHE_MS = 4 * 60 * 1000;
 
     const sources = {
         radar: {
             label: 'Radar',
             detail: 'MRMS base reflectivity',
-            url: 'https://nowcoast.noaa.gov/geoserver/observations/weather_radar/ows',
-            layers: 'conus_base_reflectivity_mosaic',
-            styles: 'weather_radar_base_reflectivity',
+            url:
+                'https://mapservices.weather.noaa.gov/eventdriven/services/'
+                + 'radar/radar_base_reflectivity_time/ImageServer/WMSServer',
+            layers: '0',
+            styles: 'default',
             opacity: 0.68,
             pane: 'llama-weather-radar-pane',
             zIndex: 335,
-            refreshMs: 4 * 60 * 1000
+            refreshMs: 5 * 60 * 1000,
+            attribution: 'NOAA / National Weather Service'
         },
 
         clouds: {
             label: 'Clouds',
             detail: 'GOES longwave infrared',
-            url: 'https://nowcoast.noaa.gov/geoserver/observations/satellite/ows',
+            url:
+                'https://nowcoast.noaa.gov/geoserver/observations/'
+                + 'satellite/ows',
             layers: 'goes_longwave_imagery',
             styles: '',
             opacity: 0.48,
             pane: 'llama-weather-clouds-pane',
             zIndex: 325,
-            refreshMs: 5 * 60 * 1000
+            refreshMs: 5 * 60 * 1000,
+            attribution: 'NOAA nowCOAST'
         },
 
         lightning: {
             label: 'Lightning',
             detail: '15-minute strike density',
-            url: 'https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows',
+            url:
+                'https://nowcoast.noaa.gov/geoserver/observations/'
+                + 'lightning_detection/ows',
             layers: 'ldn_lightning_strike_density',
             styles: 'lightning_density',
             opacity: 0.76,
             pane: 'llama-weather-lightning-pane',
             zIndex: 340,
-            refreshMs: 10 * 60 * 1000
+            refreshMs: 10 * 60 * 1000,
+            attribution: 'NOAA nowCOAST'
         },
 
         alerts: {
@@ -65,7 +91,8 @@
             opacity: 0.58,
             pane: 'llama-weather-alerts-pane',
             zIndex: 345,
-            refreshMs: 2 * 60 * 1000
+            refreshMs: 2 * 60 * 1000,
+            attribution: 'NOAA nowCOAST'
         }
     };
 
@@ -83,10 +110,21 @@
 
     let statusNode = null;
     let countNode = null;
+
+    let radarLoopNode = null;
+    let radarPlayButton = null;
+    let radarLatestButton = null;
+    let radarTimeNode = null;
+
+    let radarPlaying = false;
+    let radarLoopTimer = null;
+    let radarFrames = [];
+    let radarFrameIndex = 0;
+    let radarFramesLoadedAt = 0;
+    let radarFrameRequest = null;
+
     let alertRequestController = null;
     let alertRequestNumber = 0;
-
-    
 
     function ensureStyles() {
         if (
@@ -104,7 +142,6 @@
         document.head.appendChild(link);
     }
 
-
     function ensurePanes() {
         Object.values(sources).forEach((source) => {
             if (!map.getPane(source.pane)) {
@@ -120,44 +157,31 @@
         });
     }
 
-
     function loadPreferences() {
         try {
-            const saved =
-                JSON.parse(
-                    window.localStorage.getItem(STORAGE_KEY)
-                    || 'null'
-                );
+            const saved = JSON.parse(
+                window.localStorage.getItem(STORAGE_KEY) || 'null'
+            );
 
-            if (
-                !saved ||
-                typeof saved !== 'object'
-            ) {
+            if (!saved || typeof saved !== 'object') {
                 return;
             }
 
             Object.keys(state).forEach((key) => {
-                if (
-                    typeof saved[key]
-                    === 'boolean'
-                ) {
-                    state[key].enabled =
-                        saved[key];
+                if (typeof saved[key] === 'boolean') {
+                    state[key].enabled = saved[key];
                 }
             });
-
         } catch (error) {
             // Local storage is optional.
         }
     }
 
-
     function savePreferences() {
         const payload = {};
 
         Object.keys(state).forEach((key) => {
-            payload[key] =
-                state[key].enabled;
+            payload[key] = state[key].enabled;
         });
 
         try {
@@ -170,43 +194,29 @@
         }
     }
 
-
     function escapeHtml(value) {
-        const node =
-            document.createElement('div');
-
-        node.textContent =
-            String(value ?? '');
-
+        const node = document.createElement('div');
+        node.textContent = String(value ?? '');
         return node.innerHTML;
     }
 
-
     function createCountNode() {
-        countNode =
-            document.getElementById(
-                'map-tool-weather-count'
-            );
+        countNode = document.getElementById(
+            'map-tool-weather-count'
+        );
 
         if (countNode) {
             return;
         }
 
-        countNode =
-            document.createElement('span');
-
-        countNode.id =
-            'map-tool-weather-count';
-
-        countNode.className =
-            'map-tool-count';
-
+        countNode = document.createElement('span');
+        countNode.id = 'map-tool-weather-count';
+        countNode.className = 'map-tool-count';
         countNode.hidden = true;
         countNode.textContent = '0';
 
         trigger.appendChild(countNode);
     }
-
 
     function createControls() {
         panel.innerHTML = `
@@ -245,8 +255,42 @@
                     .join('')}
             </div>
 
+            <div
+                id="map-radar-loop"
+                class="map-radar-loop"
+                hidden
+            >
+                <div class="map-radar-loop-copy">
+                    <strong>1-hour radar loop</strong>
+                    <span id="map-radar-loop-time">Latest</span>
+                </div>
+
+                <div
+                    class="map-radar-loop-actions"
+                    role="group"
+                    aria-label="Radar playback"
+                >
+                    <button
+                        type="button"
+                        id="map-radar-loop-play"
+                        class="map-radar-loop-button"
+                        aria-pressed="false"
+                    >
+                        ▶ Play
+                    </button>
+
+                    <button
+                        type="button"
+                        id="map-radar-loop-latest"
+                        class="map-radar-loop-button"
+                    >
+                        Latest
+                    </button>
+                </div>
+            </div>
+
             <p class="map-weather-source">
-                Weather data from NOAA nowCOAST.
+                Weather data from NOAA nowCOAST and the National Weather Service.
             </p>
 
             <span
@@ -258,81 +302,61 @@
             ></span>
         `;
 
-        statusNode =
-            panel.querySelector(
-                '#map-weather-status'
-            );
+        statusNode = panel.querySelector('#map-weather-status');
+        radarLoopNode = panel.querySelector('#map-radar-loop');
+        radarPlayButton = panel.querySelector('#map-radar-loop-play');
+        radarLatestButton = panel.querySelector('#map-radar-loop-latest');
+        radarTimeNode = panel.querySelector('#map-radar-loop-time');
 
         panel
-            .querySelectorAll(
-                '[data-weather-layer]'
-            )
+            .querySelectorAll('[data-weather-layer]')
             .forEach((button) => {
-                button.addEventListener(
-                    'click',
-                    () => {
-                        const key =
-                            button.dataset
-                                .weatherLayer;
+                button.addEventListener('click', () => {
+                    const key = button.dataset.weatherLayer;
 
-                        if (
-                            !key ||
-                            !state[key]
-                        ) {
-                            return;
-                        }
-
-                        setEnabled(
-                            key,
-                            !state[key].enabled
-                        );
+                    if (!key || !state[key]) {
+                        return;
                     }
-                );
+
+                    setEnabled(
+                        key,
+                        !state[key].enabled
+                    );
+                });
             });
 
+        radarPlayButton?.addEventListener(
+            'click',
+            handleRadarPlayClick
+        );
+
+        radarLatestButton?.addEventListener(
+            'click',
+            showLatestRadar
+        );
+
         syncButtons();
+        syncRadarControls();
     }
 
-
     function createLayer(key) {
-        const source =
-            sources[key];
+        const source = sources[key];
 
-        const layer =
-            L.tileLayer.wms(
-                source.url,
-                {
-                    layers:
-                        source.layers,
-
-                    styles:
-                        source.styles,
-
-                    format:
-                        'image/png',
-
-                    transparent:
-                        true,
-
-                    version:
-                        '1.1.1',
-
-                    opacity:
-                        source.opacity,
-
-                    pane:
-                        source.pane,
-
-                    attribution:
-                        'NOAA nowCOAST',
-
-                    updateWhenIdle:
-                        true,
-
-                    keepBuffer:
-                        2
-                }
-            );
+        const layer = L.tileLayer.wms(
+            source.url,
+            {
+                layers: source.layers,
+                styles: source.styles,
+                format: 'image/png',
+                transparent: true,
+                version: '1.1.1',
+                opacity: source.opacity,
+                pane: source.pane,
+                attribution: source.attribution,
+                updateWhenIdle: true,
+                keepBuffer: 2
+            }
+        );
 
         layer.on('loading', () => {
             state[key].loading = true;
@@ -355,10 +379,8 @@
         return layer;
     }
 
-
     function refreshLayer(key) {
-        const sourceState =
-            state[key];
+        const sourceState = state[key];
 
         if (
             !sourceState.enabled ||
@@ -369,8 +391,7 @@
 
         sourceState.layer.setParams(
             {
-                llama_refresh:
-                    Date.now()
+                llama_refresh: Date.now()
             },
             false
         );
@@ -378,86 +399,82 @@
         sourceState.layer.redraw();
     }
 
-
     function clearRefreshTimer(key) {
-        if (
-            state[key].refreshTimer
-            !== null
-        ) {
+        if (state[key].refreshTimer !== null) {
             window.clearInterval(
                 state[key].refreshTimer
             );
 
-            state[key].refreshTimer =
-                null;
+            state[key].refreshTimer = null;
         }
     }
-
 
     function startRefreshTimer(key) {
         clearRefreshTimer(key);
 
-        state[key].refreshTimer =
-            window.setInterval(
-                () => {
-                    refreshLayer(key);
-                },
-                sources[key].refreshMs
-            );
+        state[key].refreshTimer = window.setInterval(
+            () => {
+                if (
+                    key === 'radar' &&
+                    radarPlaying
+                ) {
+                    return;
+                }
+
+                refreshLayer(key);
+            },
+            sources[key].refreshMs
+        );
     }
 
-
     function showLayer(key) {
-        const sourceState =
-            state[key];
+        const sourceState = state[key];
 
         if (!sourceState.layer) {
-            sourceState.layer =
-                createLayer(key);
+            sourceState.layer = createLayer(key);
         }
 
-        if (
-            !map.hasLayer(
-                sourceState.layer
-            )
-        ) {
+        if (!map.hasLayer(sourceState.layer)) {
             sourceState.layer.addTo(map);
+        }
+
+        if (key === 'radar') {
+            clearRadarTime(false);
+            setRadarTimeLabel('Latest');
         }
 
         refreshLayer(key);
         startRefreshTimer(key);
     }
 
-
     function hideLayer(key) {
-        const sourceState =
-            state[key];
+        const sourceState = state[key];
 
         clearRefreshTimer(key);
+
+        if (key === 'radar') {
+            stopRadarLoop(false);
+            clearRadarTime(false);
+            setRadarTimeLabel('Latest');
+        }
 
         sourceState.loading = false;
         sourceState.error = false;
 
         if (
             sourceState.layer &&
-            map.hasLayer(
-                sourceState.layer
-            )
+            map.hasLayer(sourceState.layer)
         ) {
-            map.removeLayer(
-                sourceState.layer
-            );
+            map.removeLayer(sourceState.layer);
         }
     }
-
 
     function setEnabled(
         key,
         enabled,
         save = true
     ) {
-        state[key].enabled =
-            enabled === true;
+        state[key].enabled = enabled === true;
 
         if (state[key].enabled) {
             showLayer(key);
@@ -470,34 +487,23 @@
         }
 
         syncButtons();
+        syncRadarControls();
         updateStatus();
     }
 
-
     function enabledKeys() {
         return Object.keys(state)
-            .filter(
-                (key) =>
-                    state[key].enabled
-            );
+            .filter((key) => state[key].enabled);
     }
-
 
     function syncButtons() {
         panel
-            .querySelectorAll(
-                '[data-weather-layer]'
-            )
+            .querySelectorAll('[data-weather-layer]')
             .forEach((button) => {
-                const key =
-                    button.dataset
-                        .weatherLayer;
-
-                const active =
-                    Boolean(
-                        key &&
-                        state[key]?.enabled
-                    );
+                const key = button.dataset.weatherLayer;
+                const active = Boolean(
+                    key && state[key]?.enabled
+                );
 
                 button.classList.toggle(
                     'is-active',
@@ -506,21 +512,15 @@
 
                 button.setAttribute(
                     'aria-pressed',
-                    active
-                        ? 'true'
-                        : 'false'
+                    active ? 'true' : 'false'
                 );
             });
 
-        const enabled =
-            enabledKeys().length;
+        const enabled = enabledKeys().length;
 
         if (countNode) {
-            countNode.textContent =
-                String(enabled);
-
-            countNode.hidden =
-                enabled === 0;
+            countNode.textContent = String(enabled);
+            countNode.hidden = enabled === 0;
         }
 
         trigger.classList.toggle(
@@ -529,14 +529,12 @@
         );
     }
 
-
     function updateStatus() {
         if (!statusNode) {
             return;
         }
 
-        const enabled =
-            enabledKeys();
+        const enabled = enabledKeys();
 
         if (!enabled.length) {
             statusNode.hidden = true;
@@ -544,11 +542,13 @@
             return;
         }
 
-        const loading =
-            enabled.filter(
-                (key) =>
-                    state[key].loading
-            );
+        const loading = enabled.filter((key) => {
+            if (key === 'radar' && radarPlaying) {
+                return false;
+            }
+
+            return state[key].loading;
+        });
 
         if (loading.length) {
             statusNode.hidden = false;
@@ -561,11 +561,9 @@
             return;
         }
 
-        const failed =
-            enabled.filter(
-                (key) =>
-                    state[key].error
-            );
+        const failed = enabled.filter(
+            (key) => state[key].error
+        );
 
         if (failed.length) {
             statusNode.hidden = false;
@@ -582,413 +580,640 @@
         statusNode.textContent = '';
     }
 
-
     function restoreEnabledLayers() {
-        Object.keys(state)
-            .forEach((key) => {
-                setEnabled(
-                    key,
-                    state[key].enabled,
-                    false
-                );
-            });
+        Object.keys(state).forEach((key) => {
+            setEnabled(
+                key,
+                state[key].enabled,
+                false
+            );
+        });
     }
 
+    function setRadarTimeLabel(value) {
+        if (radarTimeNode) {
+            radarTimeNode.textContent = value;
+        }
+    }
 
-    function handleVisibilityChange() {
-        if (document.hidden) {
+    function formatRadarTime(value) {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return 'Radar frame';
+        }
+
+        return new Intl.DateTimeFormat(
+            undefined,
+            {
+                hour: 'numeric',
+                minute: '2-digit'
+            }
+        ).format(date);
+    }
+
+    function syncRadarControls() {
+        if (!radarLoopNode) {
             return;
         }
 
+        const enabled = Boolean(state.radar?.enabled);
+        radarLoopNode.hidden = !enabled;
+
+        if (radarPlayButton) {
+            radarPlayButton.textContent =
+                radarPlaying
+                    ? '❚❚ Pause'
+                    : '▶ Play';
+
+            radarPlayButton.setAttribute(
+                'aria-pressed',
+                radarPlaying ? 'true' : 'false'
+            );
+        }
+
+        if (radarLatestButton) {
+            radarLatestButton.disabled = !enabled;
+        }
+    }
+
+    function clearRadarLoopTimer() {
+        if (radarLoopTimer !== null) {
+            window.clearTimeout(radarLoopTimer);
+            radarLoopTimer = null;
+        }
+    }
+
+    function clearRadarTime(redraw = true) {
+        const layer = state.radar?.layer;
+
+        if (!layer?.wmsParams) {
+            return;
+        }
+
+        delete layer.wmsParams.TIME;
+        delete layer.wmsParams.time;
+
+        if (redraw) {
+            layer.redraw();
+        }
+    }
+
+    function setRadarFrame(timeMs) {
+        const layer = state.radar?.layer;
+
+        if (!layer?.wmsParams) {
+            return;
+        }
+
+        layer.wmsParams.TIME =
+            new Date(timeMs).toISOString();
+
+        layer.redraw();
+
+        setRadarTimeLabel(
+            formatRadarTime(timeMs)
+        );
+    }
+
+    function fallbackRadarFrames() {
+        const latestSafe =
+            Date.now() - (10 * 60 * 1000);
+
+        const roundedLatest =
+            Math.floor(
+                latestSafe /
+                RADAR_FALLBACK_STEP_MS
+            ) * RADAR_FALLBACK_STEP_MS;
+
+        const frames = [];
+
+        for (
+            let time = roundedLatest - RADAR_WINDOW_MS;
+            time <= roundedLatest;
+            time += RADAR_FALLBACK_STEP_MS
+        ) {
+            frames.push(time);
+        }
+
+        return frames;
+    }
+
+    async function fetchRadarFrames() {
+        const now = Date.now();
+
+        if (
+            radarFrames.length >= 4 &&
+            now - radarFramesLoadedAt < RADAR_FRAME_CACHE_MS
+        ) {
+            return radarFrames;
+        }
+
+        if (radarFrameRequest) {
+            return radarFrameRequest;
+        }
+
+        radarFrameRequest = (async () => {
+            const params = new URLSearchParams({
+                where: '1=1',
+                outFields: 'idp_validtime',
+                returnGeometry: 'false',
+                orderByFields: 'idp_validtime ASC',
+                resultRecordCount: '200',
+                f: 'json'
+            });
+
+            try {
+                const response = await fetch(
+                    `${RADAR_TIME_QUERY}?${params.toString()}`,
+                    {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-store',
+                        headers: {
+                            Accept: 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `NOAA radar times returned HTTP ${response.status}.`
+                    );
+                }
+
+                const data = await response.json();
+
+                const times = Array.from(
+                    new Set(
+                        (Array.isArray(data?.features)
+                            ? data.features
+                            : []
+                        )
+                            .map((feature) => {
+                                const value =
+                                    feature?.attributes?.idp_validtime
+                                    ?? feature?.attributes?.IDP_VALIDTIME;
+
+                                const numeric = Number(value);
+
+                                if (Number.isFinite(numeric)) {
+                                    return numeric;
+                                }
+
+                                const parsed = Date.parse(value);
+                                return Number.isFinite(parsed)
+                                    ? parsed
+                                    : null;
+                            })
+                            .filter(Number.isFinite)
+                    )
+                ).sort((a, b) => a - b);
+
+                if (times.length < 4) {
+                    throw new Error(
+                        'NOAA did not return enough radar frames.'
+                    );
+                }
+
+                const latest = times[times.length - 1];
+                const cutoff = latest - RADAR_WINDOW_MS;
+
+                radarFrames = times
+                    .filter((time) => time >= cutoff)
+                    .slice(-13);
+
+                if (radarFrames.length < 4) {
+                    throw new Error(
+                        'NOAA returned too few one-hour radar frames.'
+                    );
+                }
+
+                radarFramesLoadedAt = Date.now();
+                return radarFrames;
+
+            } catch (error) {
+                console.warn(
+                    'Llama Scout radar frame times:',
+                    error
+                );
+
+                radarFrames = fallbackRadarFrames();
+                radarFramesLoadedAt = Date.now();
+                return radarFrames;
+            } finally {
+                radarFrameRequest = null;
+            }
+        })();
+
+        return radarFrameRequest;
+    }
+
+    function stopRadarLoop(resetButton = true) {
+        radarPlaying = false;
+        clearRadarLoopTimer();
+
+        if (resetButton) {
+            syncRadarControls();
+        }
+    }
+
+    function scheduleNextRadarFrame(delay) {
+        clearRadarLoopTimer();
+
+        radarLoopTimer = window.setTimeout(
+            advanceRadarLoop,
+            delay
+        );
+    }
+
+    function advanceRadarLoop() {
+        if (
+            !radarPlaying ||
+            !state.radar?.enabled ||
+            !radarFrames.length
+        ) {
+            return;
+        }
+
+        const time = radarFrames[radarFrameIndex];
+        setRadarFrame(time);
+
+        const isLast =
+            radarFrameIndex === radarFrames.length - 1;
+
+        radarFrameIndex = isLast
+            ? 0
+            : radarFrameIndex + 1;
+
+        scheduleNextRadarFrame(
+            isLast
+                ? RADAR_LATEST_HOLD_MS
+                : RADAR_FRAME_DELAY_MS
+        );
+    }
+
+    async function startRadarLoop() {
+        if (!state.radar?.enabled) {
+            return;
+        }
+
+        stopRadarLoop(false);
+        setRadarTimeLabel('Loading frames...');
+
+        const frames = await fetchRadarFrames();
+
+        if (
+            !state.radar?.enabled ||
+            !frames.length
+        ) {
+            setRadarTimeLabel('Latest');
+            return;
+        }
+
+        radarPlaying = true;
+        radarFrameIndex = 0;
+        syncRadarControls();
+        advanceRadarLoop();
+    }
+
+    function showLatestRadar() {
+        stopRadarLoop(false);
+        clearRadarTime(false);
+        setRadarTimeLabel('Latest');
+
+        if (state.radar?.enabled) {
+            refreshLayer('radar');
+        }
+
+        syncRadarControls();
+    }
+
+    function handleRadarPlayClick() {
+        if (radarPlaying) {
+            stopRadarLoop();
+            return;
+        }
+
+        startRadarLoop();
+    }
+
+    function handleVisibilityChange() {
+        if (document.hidden) {
+            if (radarPlaying) {
+                stopRadarLoop();
+            }
+
+            return;
+        }
+
+        if (state.radar?.enabled) {
+            showLatestRadar();
+        }
+
         enabledKeys()
+            .filter((key) => key !== 'radar')
             .forEach((key) => {
                 refreshLayer(key);
             });
     }
 
-    function formatAlertTime(
-    value
-) {
-    if (!value) {
-        return '';
-    }
-
-    const date =
-        new Date(value);
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return '';
-    }
-
-    return new Intl.DateTimeFormat(
-        undefined,
-        {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZoneName: 'short'
+    function formatAlertTime(value) {
+        if (!value) {
+            return '';
         }
-    ).format(date);
-}
 
+        const date = new Date(value);
 
-function shortenedText(
-    value,
-    maxLength = 240
-) {
-    const text =
-        String(value ?? '')
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        return new Intl.DateTimeFormat(
+            undefined,
+            {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            }
+        ).format(date);
+    }
+
+    function shortenedText(
+        value,
+        maxLength = 240
+    ) {
+        const text = String(value ?? '')
             .trim()
             .replace(/\s+/g, ' ');
 
-    if (
-        text.length <= maxLength
-    ) {
-        return text;
-    }
+        if (text.length <= maxLength) {
+            return text;
+        }
 
-    return (
-        text.slice(
-            0,
-            maxLength - 1
-        ).trim()
-        + '…'
-    );
-}
-
-
-function alertPopupHtml(
-    features
-) {
-    const alerts =
-        features.slice(0, 4);
-
-    return `
-        <article
-            class="
-                map-overlay-popup
-                map-weather-alert-popup
-            "
-        >
-
-            <button
-                type="button"
-                class="map-overlay-popup-close"
-                data-map-overlay-popup-close
-                aria-label="Close weather alert details"
-            >
-                ×
-            </button>
-
-            <p class="map-overlay-popup-eyebrow">
-                National Weather Service
-            </p>
-
-            <h3>
-                ${
-                    alerts.length === 1
-                        ? 'Active Weather Alert'
-                        : `${alerts.length} Active Weather Alerts`
-                }
-            </h3>
-
-            ${alerts
-                .map((feature) => {
-                    const props =
-                        feature?.properties
-                        || {};
-
-                    const event =
-                        props.event
-                        || 'Weather Alert';
-
-                    const headline =
-                        props.headline
-                        || '';
-
-                    const severity = [
-                        props.severity,
-                        props.urgency,
-                        props.certainty
-                    ]
-                        .filter(Boolean)
-                        .join(' · ');
-
-                    const expires =
-                        formatAlertTime(
-                            props.ends
-                            || props.expires
-                        );
-
-                    const area =
-                        props.areaDesc
-                        || '';
-
-                    const instruction =
-                        shortenedText(
-                            props.instruction
-                            || props.description
-                        );
-
-                    return `
-                        <section
-                            class="map-weather-alert-item"
-                        >
-
-                            <strong
-                                class="map-weather-alert-event"
-                            >
-                                ${escapeHtml(event)}
-                            </strong>
-
-                            ${
-                                headline
-                                    ? `
-                                        <p
-                                            class="map-overlay-popup-headline"
-                                        >
-                                            ${escapeHtml(headline)}
-                                        </p>
-                                    `
-                                    : ''
-                            }
-
-                            <div
-                                class="map-overlay-popup-meta"
-                            >
-
-                                ${
-                                    severity
-                                        ? `
-                                            <div
-                                                class="map-overlay-popup-row"
-                                            >
-                                                <strong>
-                                                    Status
-                                                </strong>
-
-                                                <span>
-                                                    ${escapeHtml(severity)}
-                                                </span>
-                                            </div>
-                                        `
-                                        : ''
-                                }
-
-                                ${
-                                    expires
-                                        ? `
-                                            <div
-                                                class="map-overlay-popup-row"
-                                            >
-                                                <strong>
-                                                    Until
-                                                </strong>
-
-                                                <span>
-                                                    ${escapeHtml(expires)}
-                                                </span>
-                                            </div>
-                                        `
-                                        : ''
-                                }
-
-                                ${
-                                    area
-                                        ? `
-                                            <div
-                                                class="map-overlay-popup-row"
-                                            >
-                                                <strong>
-                                                    Area
-                                                </strong>
-
-                                                <span>
-                                                    ${escapeHtml(area)}
-                                                </span>
-                                            </div>
-                                        `
-                                        : ''
-                                }
-
-                            </div>
-
-                            ${
-                                instruction
-                                    ? `
-                                        <p
-                                            class="map-overlay-popup-note"
-                                        >
-                                            ${escapeHtml(instruction)}
-                                        </p>
-                                    `
-                                    : ''
-                            }
-
-                        </section>
-                    `;
-                })
-                .join('')}
-
-            ${
-                features.length > alerts.length
-                    ? `
-                        <p
-                            class="map-overlay-popup-note"
-                        >
-                            ${
-                                features.length
-                                - alerts.length
-                            }
-                            additional alert(s)
-                            also apply here.
-                        </p>
-                    `
-                    : ''
-            }
-
-            <p class="map-overlay-popup-source">
-                Alert details:
-                National Weather Service
-            </p>
-
-        </article>
-    `;
-}
-
-
-async function showAlertsAtPoint(
-    latlng
-) {
-    if (
-        !state.alerts?.enabled
-    ) {
-        return;
-    }
-
-    alertRequestController
-        ?.abort();
-
-    alertRequestController =
-        new AbortController();
-
-    const requestNumber =
-        ++alertRequestNumber;
-
-    const latitude =
-        Number(
-            latlng.lat
-        ).toFixed(4);
-
-    const longitude =
-        Number(
-            latlng.lng
-        ).toFixed(4);
-
-    const url =
-        'https://api.weather.gov/alerts/active'
-        + '?point='
-        + encodeURIComponent(
-            `${latitude},${longitude}`
+        return (
+            text.slice(0, maxLength - 1).trim()
+            + '…'
         );
+    }
 
-    try {
-        const response =
-            await fetch(
+    function alertPopupHtml(features) {
+        const alerts = features.slice(0, 4);
+
+        return `
+            <article
+                class="
+                    map-overlay-popup
+                    map-weather-alert-popup
+                "
+            >
+
+                <button
+                    type="button"
+                    class="map-overlay-popup-close"
+                    data-map-overlay-popup-close
+                    aria-label="Close weather alert details"
+                >
+                    ×
+                </button>
+
+                <p class="map-overlay-popup-eyebrow">
+                    National Weather Service
+                </p>
+
+                <h3>
+                    ${
+                        alerts.length === 1
+                            ? 'Active Weather Alert'
+                            : `${alerts.length} Active Weather Alerts`
+                    }
+                </h3>
+
+                ${alerts
+                    .map((feature) => {
+                        const props = feature?.properties || {};
+
+                        const event =
+                            props.event || 'Weather Alert';
+
+                        const headline =
+                            props.headline || '';
+
+                        const severity = [
+                            props.severity,
+                            props.urgency,
+                            props.certainty
+                        ]
+                            .filter(Boolean)
+                            .join(' · ');
+
+                        const expires = formatAlertTime(
+                            props.ends || props.expires
+                        );
+
+                        const area = props.areaDesc || '';
+
+                        const instruction = shortenedText(
+                            props.instruction || props.description
+                        );
+
+                        return `
+                            <section
+                                class="map-weather-alert-item"
+                            >
+
+                                <strong
+                                    class="map-weather-alert-event"
+                                >
+                                    ${escapeHtml(event)}
+                                </strong>
+
+                                ${
+                                    headline
+                                        ? `
+                                            <p
+                                                class="map-overlay-popup-headline"
+                                            >
+                                                ${escapeHtml(headline)}
+                                            </p>
+                                        `
+                                        : ''
+                                }
+
+                                <div
+                                    class="map-overlay-popup-meta"
+                                >
+
+                                    ${
+                                        severity
+                                            ? `
+                                                <div
+                                                    class="map-overlay-popup-row"
+                                                >
+                                                    <strong>Status</strong>
+                                                    <span>
+                                                        ${escapeHtml(severity)}
+                                                    </span>
+                                                </div>
+                                            `
+                                            : ''
+                                    }
+
+                                    ${
+                                        expires
+                                            ? `
+                                                <div
+                                                    class="map-overlay-popup-row"
+                                                >
+                                                    <strong>Until</strong>
+                                                    <span>
+                                                        ${escapeHtml(expires)}
+                                                    </span>
+                                                </div>
+                                            `
+                                            : ''
+                                    }
+
+                                    ${
+                                        area
+                                            ? `
+                                                <div
+                                                    class="map-overlay-popup-row"
+                                                >
+                                                    <strong>Area</strong>
+                                                    <span>
+                                                        ${escapeHtml(area)}
+                                                    </span>
+                                                </div>
+                                            `
+                                            : ''
+                                    }
+
+                                </div>
+
+                                ${
+                                    instruction
+                                        ? `
+                                            <p
+                                                class="map-overlay-popup-note"
+                                            >
+                                                ${escapeHtml(instruction)}
+                                            </p>
+                                        `
+                                        : ''
+                                }
+
+                            </section>
+                        `;
+                    })
+                    .join('')}
+
+                ${
+                    features.length > alerts.length
+                        ? `
+                            <p
+                                class="map-overlay-popup-note"
+                            >
+                                ${features.length - alerts.length}
+                                additional alert(s) also apply here.
+                            </p>
+                        `
+                        : ''
+                }
+
+                <p class="map-overlay-popup-source">
+                    Alert details: National Weather Service
+                </p>
+
+            </article>
+        `;
+    }
+
+    async function showAlertsAtPoint(latlng) {
+        if (!state.alerts?.enabled) {
+            return;
+        }
+
+        alertRequestController?.abort();
+
+        alertRequestController = new AbortController();
+
+        const requestNumber = ++alertRequestNumber;
+
+        const latitude = Number(latlng.lat).toFixed(4);
+        const longitude = Number(latlng.lng).toFixed(4);
+
+        const url =
+            'https://api.weather.gov/alerts/active'
+            + '?point='
+            + encodeURIComponent(
+                `${latitude},${longitude}`
+            );
+
+        try {
+            const response = await fetch(
                 url,
                 {
                     method: 'GET',
-
                     headers: {
-                        Accept:
-                            'application/geo+json'
+                        Accept: 'application/geo+json'
                     },
-
-                    cache:
-                        'no-store',
-
-                    signal:
-                        alertRequestController
-                            .signal
+                    cache: 'no-store',
+                    signal: alertRequestController.signal
                 }
             );
 
-        if (!response.ok) {
-            throw new Error(
-                `NWS alerts returned HTTP ${response.status}.`
-            );
-        }
+            if (!response.ok) {
+                throw new Error(
+                    `NWS alerts returned HTTP ${response.status}.`
+                );
+            }
 
-        const data =
-            await response.json();
+            const data = await response.json();
 
-        if (
-            requestNumber
-            !== alertRequestNumber
-        ) {
-            return;
-        }
+            if (requestNumber !== alertRequestNumber) {
+                return;
+            }
 
-        const features =
-            Array.isArray(
-                data?.features
-            )
+            const features = Array.isArray(data?.features)
                 ? data.features
                 : [];
 
-        if (!features.length) {
-            return;
-        }
-
-        L.popup(
-            {
-                maxWidth: 300,
-                closeButton: false,
-                className:
-                    'map-overlay-leaflet-popup'
+            if (!features.length) {
+                return;
             }
-        )
-            .setLatLng(
-                latlng
+
+            L.popup(
+                {
+                    maxWidth: 300,
+                    closeButton: false,
+                    className:
+                        'map-overlay-leaflet-popup'
+                }
             )
-            .setContent(
-                alertPopupHtml(
-                    features
+                .setLatLng(latlng)
+                .setContent(
+                    alertPopupHtml(features)
                 )
-            )
-            .openOn(map);
+                .openOn(map);
 
-    } catch (error) {
-        if (
-            error?.name
-            !== 'AbortError'
-        ) {
-            console.warn(
-                'Llama Scout NWS alert details:',
-                error
-            );
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                console.warn(
+                    'Llama Scout NWS alert details:',
+                    error
+                );
+            }
         }
     }
-}
 
-
-map.on(
-    'click',
-    (event) => {
-        if (
-            state.alerts?.enabled
-        ) {
-            showAlertsAtPoint(
-                event.latlng
-            );
+    map.on('click', (event) => {
+        if (state.alerts?.enabled) {
+            showAlertsAtPoint(event.latlng);
         }
-    }
-);
+    });
 
     ensureStyles();
     ensurePanes();
