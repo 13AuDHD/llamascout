@@ -37,8 +37,13 @@
     const RADAR_SAFE_LAG_MS = 6 * 60 * 1000;
     const RADAR_FRAME_DELAY_MS = 550;
     const RADAR_LATEST_HOLD_MS = 1200;
-    const RADAR_CROSSFADE_MS = 220;
-    const RADAR_FRAME_LOAD_TIMEOUT_MS = 8000;
+    const RADAR_CROSSFADE_MS = 180;
+    const RADAR_FRAME_LOAD_TIMEOUT_MS = 12000;
+    const RADAR_LOOP_CACHE_MS = 3 * 60 * 1000;
+    const RADAR_LOOP_PAD = 0.12;
+    const RADAR_LOOP_MAX_WIDTH = 1024;
+    const RADAR_LOOP_MAX_HEIGHT = 1024;
+    const RADAR_LOOP_LOAD_CONCURRENCY = 2;
 
     const sources = {
         radar: {
@@ -122,20 +127,22 @@
     let radarTimeNode = null;
 
     let radarPlaying = false;
+    let radarPreparing = false;
     let radarLoopTimer = null;
     let radarFrames = [];
     let radarFrameIndex = 0;
 
     /*
-     * Radar uses two WMS tile layers while looping:
-     * one visible and one hidden preload buffer. The next frame
-     * is fully loaded while the current frame remains visible,
-     * then the two layers crossfade. This prevents the blank
-     * flash caused by redrawing a single tile layer in place.
+     * Loop frames are single WMS images, not tiled radar layers.
+     * Each frame therefore costs one NOAA image request instead of
+     * many tile requests. Frames are loaded once, kept in memory,
+     * and then animated locally without repeatedly hitting NOAA.
      */
-    let radarBufferLayer = null;
-    let radarFrameLoadToken = 0;
-    let radarFrameLoadTimer = null;
+    let radarLoopLayers = [];
+    let radarLoopViewKey = '';
+    let radarLoopBuiltAt = 0;
+    let radarLoopBuildToken = 0;
+    let radarCurrentLoopIndex = -1;
 
     let alertRequestController = null;
     let alertRequestNumber = 0;
@@ -597,8 +604,8 @@
 
         if (key === 'radar') {
             stopRadarLoop(false);
+            cleanupRadarLoopLayers();
             clearRadarTime(false);
-            removeRadarBufferLayer();
             setRadarTimeLabel('Latest');
         }
 
@@ -813,10 +820,15 @@
             !enabled;
 
         if (radarPlayButton) {
-            radarPlayButton.innerHTML =
-                radarPlaying
-                    ? '&#9208; Pause'
-                    : '&#9654; Play';
+            if (radarPreparing) {
+                radarPlayButton.innerHTML =
+                    '&#8987; Loading';
+            } else {
+                radarPlayButton.innerHTML =
+                    radarPlaying
+                        ? '&#9208; Pause'
+                        : '&#9654; Play';
+            }
 
             radarPlayButton.setAttribute(
                 'aria-pressed',
@@ -826,7 +838,8 @@
             );
 
             radarPlayButton.disabled =
-                !enabled;
+                !enabled ||
+                radarPreparing;
         }
 
         if (radarLatestButton) {
@@ -875,7 +888,7 @@
     }
 
 
-    function prepareRadarLayer(
+    function prepareRadarOverlay(
         layer,
         opacity
     ) {
@@ -885,88 +898,21 @@
 
         layer.setOpacity(opacity);
 
-        const container =
-            layer.getContainer?.();
+        const element =
+            layer.getElement?.();
 
-        if (container) {
+        if (element) {
             const duration =
                 radarTransitionDuration();
 
-            container.style.transition =
+            element.style.transition =
                 duration > 0
                     ? `opacity ${duration}ms linear`
                     : 'none';
 
-            container.style.willChange =
+            element.style.willChange =
                 'opacity';
         }
-    }
-
-
-    function ensureRadarBufferLayer() {
-        if (!radarBufferLayer) {
-            radarBufferLayer =
-                createLayer('radar');
-
-            radarBufferLayer
-                .setOpacity(0);
-        }
-
-        if (
-            !map.hasLayer(
-                radarBufferLayer
-            )
-        ) {
-            radarBufferLayer
-                .addTo(map);
-        }
-
-        prepareRadarLayer(
-            radarBufferLayer,
-            0
-        );
-
-        return radarBufferLayer;
-    }
-
-
-    function removeRadarBufferLayer() {
-        if (!radarBufferLayer) {
-            return;
-        }
-
-        if (
-            map.hasLayer(
-                radarBufferLayer
-            )
-        ) {
-            map.removeLayer(
-                radarBufferLayer
-            );
-        }
-
-        radarBufferLayer = null;
-    }
-
-
-    function clearRadarFrameLoadTimer() {
-        if (
-            radarFrameLoadTimer
-            !== null
-        ) {
-            window.clearTimeout(
-                radarFrameLoadTimer
-            );
-
-            radarFrameLoadTimer =
-                null;
-        }
-    }
-
-
-    function cancelPendingRadarFrame() {
-        radarFrameLoadToken += 1;
-        clearRadarFrameLoadTimer();
     }
 
 
@@ -989,156 +935,551 @@
     }
 
 
-    function preloadRadarFrame(
-        timeMs,
-        callback
-    ) {
-        const layer =
-            ensureRadarBufferLayer();
+    function radarLoopView() {
+        const bounds =
+            map.getBounds()
+                .pad(
+                    RADAR_LOOP_PAD
+                );
 
-        if (!layer?.wmsParams) {
-            callback(false);
-            return;
-        }
+        const mapSize =
+            map.getSize();
 
-        const token =
-            ++radarFrameLoadToken;
-
-        let finished = false;
-
-        const cleanup = () => {
-            clearRadarFrameLoadTimer();
-
-            layer.off(
-                'load',
-                handleLoad
+        const rawWidth =
+            Math.max(
+                320,
+                Math.round(
+                    mapSize.x
+                )
             );
 
-            layer.off(
-                'tileerror',
-                handleError
-            );
-        };
-
-        const finish = (
-            success
-        ) => {
-            if (finished) {
-                return;
-            }
-
-            finished = true;
-            cleanup();
-
-            if (
-                token
-                !== radarFrameLoadToken
-            ) {
-                return;
-            }
-
-            callback(success);
-        };
-
-        const handleLoad = () => {
-            finish(true);
-        };
-
-        const handleError = () => {
-            /*
-             * Keep the current visible frame in place and
-             * skip this historical frame if NOAA cannot
-             * provide every requested tile.
-             */
-            finish(false);
-        };
-
-        layer.on(
-            'load',
-            handleLoad
-        );
-
-        layer.on(
-            'tileerror',
-            handleError
-        );
-
-        radarFrameLoadTimer =
-            window.setTimeout(
-                () => finish(false),
-                RADAR_FRAME_LOAD_TIMEOUT_MS
+        const rawHeight =
+            Math.max(
+                240,
+                Math.round(
+                    mapSize.y
+                )
             );
 
-        const iso =
-            new Date(
-                timeMs
-            ).toISOString();
+        const scale =
+            Math.min(
+                1,
+                RADAR_LOOP_MAX_WIDTH
+                    / rawWidth,
+                RADAR_LOOP_MAX_HEIGHT
+                    / rawHeight
+            );
 
-        layer.setOpacity(0);
+        const width =
+            Math.max(
+                320,
+                Math.round(
+                    rawWidth
+                    * scale
+                )
+            );
 
-        layer.setParams(
-            {
-                time: iso,
-                llama_refresh:
-                    Date.now()
-            },
-            false
-        );
+        const height =
+            Math.max(
+                240,
+                Math.round(
+                    rawHeight
+                    * scale
+                )
+            );
 
-        layer.redraw();
+        const box = {
+            west:
+                Math.max(
+                    -180,
+                    bounds.getWest()
+                ),
+            south:
+                Math.max(
+                    -90,
+                    bounds.getSouth()
+                ),
+            east:
+                Math.min(
+                    180,
+                    bounds.getEast()
+                ),
+            north:
+                Math.min(
+                    90,
+                    bounds.getNorth()
+                )
+        };
+
+        const key = [
+            box.west.toFixed(3),
+            box.south.toFixed(3),
+            box.east.toFixed(3),
+            box.north.toFixed(3),
+            width,
+            height
+        ].join(':');
+
+        return {
+            bounds:
+                L.latLngBounds(
+                    [box.south, box.west],
+                    [box.north, box.east]
+                ),
+            box,
+            width,
+            height,
+            key
+        };
     }
 
 
-    function showPreloadedRadarFrame(
-        timeMs
+    function radarFrameUrl(
+        timeMs,
+        view
     ) {
-        const oldVisible =
-            state.radar?.layer;
+        const source =
+            sources.radar;
 
-        const nextVisible =
-            radarBufferLayer;
+        const params =
+            new URLSearchParams({
+                service:
+                    'WMS',
+                version:
+                    '1.1.1',
+                request:
+                    'GetMap',
+                layers:
+                    source.layers,
+                styles:
+                    source.styles,
+                format:
+                    'image/png',
+                transparent:
+                    'true',
+                srs:
+                    'EPSG:4326',
+                bbox: [
+                    view.box.west,
+                    view.box.south,
+                    view.box.east,
+                    view.box.north
+                ].join(','),
+                width:
+                    String(
+                        view.width
+                    ),
+                height:
+                    String(
+                        view.height
+                    ),
+                time:
+                    new Date(
+                        timeMs
+                    ).toISOString()
+            });
+
+        return (
+            source.url
+            + '?'
+            + params.toString()
+        );
+    }
+
+
+    function cleanupRadarLoopLayers() {
+        radarLoopBuildToken += 1;
+
+        radarLoopLayers
+            .forEach((frame) => {
+                const layer =
+                    frame?.layer;
+
+                if (
+                    layer &&
+                    map.hasLayer(
+                        layer
+                    )
+                ) {
+                    map.removeLayer(
+                        layer
+                    );
+                }
+            });
+
+        radarLoopLayers = [];
+        radarLoopViewKey = '';
+        radarLoopBuiltAt = 0;
+        radarCurrentLoopIndex = -1;
+        radarPreparing = false;
+    }
+
+
+    function radarLoopCacheValid(
+        view
+    ) {
+        return (
+            radarLoopLayers.length >= 4
+            &&
+            radarLoopViewKey
+                === view.key
+            &&
+            Date.now()
+                - radarLoopBuiltAt
+                < RADAR_LOOP_CACHE_MS
+        );
+    }
+
+
+    function loadRadarImageFrame(
+        timeMs,
+        view,
+        token
+    ) {
+        return new Promise(
+            (resolve) => {
+                if (
+                    token
+                    !== radarLoopBuildToken
+                ) {
+                    resolve(null);
+                    return;
+                }
+
+                const url =
+                    radarFrameUrl(
+                        timeMs,
+                        view
+                    );
+
+                const layer =
+                    L.imageOverlay(
+                        url,
+                        view.bounds,
+                        {
+                            pane:
+                                sources.radar.pane,
+                            opacity:
+                                0,
+                            interactive:
+                                false,
+                            attribution:
+                                sources.radar
+                                    .attribution
+                        }
+                    );
+
+                let finished =
+                    false;
+
+                let timeout =
+                    null;
+
+                const finish = (
+                    success
+                ) => {
+                    if (finished) {
+                        return;
+                    }
+
+                    finished =
+                        true;
+
+                    if (
+                        timeout
+                        !== null
+                    ) {
+                        window.clearTimeout(
+                            timeout
+                        );
+                    }
+
+                    layer.off(
+                        'load',
+                        handleLoad
+                    );
+
+                    layer.off(
+                        'error',
+                        handleError
+                    );
+
+                    if (
+                        token
+                        !== radarLoopBuildToken
+                    ) {
+                        if (
+                            map.hasLayer(
+                                layer
+                            )
+                        ) {
+                            map.removeLayer(
+                                layer
+                            );
+                        }
+
+                        resolve(null);
+                        return;
+                    }
+
+                    if (!success) {
+                        if (
+                            map.hasLayer(
+                                layer
+                            )
+                        ) {
+                            map.removeLayer(
+                                layer
+                            );
+                        }
+
+                        resolve(null);
+                        return;
+                    }
+
+                    prepareRadarOverlay(
+                        layer,
+                        0
+                    );
+
+                    resolve({
+                        time:
+                            timeMs,
+                        layer
+                    });
+                };
+
+                const handleLoad =
+                    () => {
+                        finish(true);
+                    };
+
+                const handleError =
+                    () => {
+                        finish(false);
+                    };
+
+                layer.on(
+                    'load',
+                    handleLoad
+                );
+
+                layer.on(
+                    'error',
+                    handleError
+                );
+
+                timeout =
+                    window.setTimeout(
+                        () => {
+                            finish(false);
+                        },
+                        RADAR_FRAME_LOAD_TIMEOUT_MS
+                    );
+
+                layer.addTo(map);
+            }
+        );
+    }
+
+
+    async function buildRadarLoopLayers(
+        frames,
+        view
+    ) {
+        cleanupRadarLoopLayers();
+
+        const token =
+            radarLoopBuildToken;
+
+        radarPreparing = true;
+        syncRadarControls();
+
+        const loaded = [];
+        let completed = 0;
+
+        for (
+            let index = 0;
+            index < frames.length;
+            index +=
+                RADAR_LOOP_LOAD_CONCURRENCY
+        ) {
+            if (
+                token
+                !== radarLoopBuildToken
+                ||
+                !state.radar?.enabled
+            ) {
+                break;
+            }
+
+            const batch =
+                frames.slice(
+                    index,
+                    index
+                    + RADAR_LOOP_LOAD_CONCURRENCY
+                );
+
+            const results =
+                await Promise.all(
+                    batch.map(
+                        (timeMs) =>
+                            loadRadarImageFrame(
+                                timeMs,
+                                view,
+                                token
+                            )
+                    )
+                );
+
+            results
+                .filter(Boolean)
+                .forEach(
+                    (frame) => {
+                        loaded.push(
+                            frame
+                        );
+                    }
+                );
+
+            completed +=
+                batch.length;
+
+            setRadarTimeLabel(
+                `Loading loop ${Math.min(
+                    completed,
+                    frames.length
+                )}/${frames.length}`
+            );
+        }
 
         if (
-            !oldVisible ||
-            !nextVisible
+            token
+            !== radarLoopBuildToken
+            ||
+            !state.radar?.enabled
         ) {
+            radarPreparing = false;
+            syncRadarControls();
             return false;
         }
 
-        prepareRadarLayer(
-            oldVisible,
-            sources.radar.opacity
-        );
+        radarLoopLayers =
+            loaded.sort(
+                (a, b) =>
+                    a.time
+                    - b.time
+            );
 
-        prepareRadarLayer(
-            nextVisible,
+        radarLoopViewKey =
+            view.key;
+
+        radarLoopBuiltAt =
+            Date.now();
+
+        radarPreparing = false;
+        syncRadarControls();
+
+        return (
+            radarLoopLayers.length
+            >= 4
+        );
+    }
+
+
+    function showRadarLoopFrame(
+        index
+    ) {
+        const frame =
+            radarLoopLayers[
+                index
+            ];
+
+        if (!frame?.layer) {
+            return false;
+        }
+
+        const previous =
+            radarCurrentLoopIndex >= 0
+                ? radarLoopLayers[
+                    radarCurrentLoopIndex
+                ]
+                : null;
+
+        const previousLayer =
+            previous?.layer
+            || state.radar?.layer;
+
+        const nextLayer =
+            frame.layer;
+
+        prepareRadarOverlay(
+            nextLayer,
             0
         );
 
-        /*
-         * The new frame is already completely loaded.
-         * Crossfade the two tile layers instead of redrawing
-         * the visible layer and exposing the basemap beneath it.
-         */
-        window.requestAnimationFrame(
-            () => {
-                nextVisible.setOpacity(
+        if (
+            previous?.layer
+            &&
+            previous.layer
+                !== nextLayer
+        ) {
+            prepareRadarOverlay(
+                previous.layer,
+                sources.radar.opacity
+            );
+        }
+
+        if (
+            radarCurrentLoopIndex < 0
+            &&
+            state.radar?.layer
+        ) {
+            state.radar.layer
+                .setOpacity(
                     sources.radar.opacity
                 );
+        }
 
-                oldVisible.setOpacity(0);
+        window.requestAnimationFrame(
+            () => {
+                window.requestAnimationFrame(
+                    () => {
+                        nextLayer
+                            .setOpacity(
+                                sources.radar.opacity
+                            );
+
+                        if (
+                            previous?.layer
+                            &&
+                            previous.layer
+                                !== nextLayer
+                        ) {
+                            previous.layer
+                                .setOpacity(0);
+                        }
+
+                        if (
+                            radarCurrentLoopIndex
+                                < 0
+                            &&
+                            state.radar?.layer
+                        ) {
+                            state.radar.layer
+                                .setOpacity(0);
+                        }
+                    }
+                );
             }
         );
 
-        state.radar.layer =
-            nextVisible;
-
-        radarBufferLayer =
-            oldVisible;
+        radarCurrentLoopIndex =
+            index;
 
         setRadarTimeLabel(
             formatRadarTime(
-                timeMs
+                frame.time
             )
         );
 
@@ -1185,7 +1526,6 @@
     ) {
         radarPlaying = false;
         clearRadarLoopTimer();
-        cancelPendingRadarFrame();
 
         if (resetButton) {
             syncRadarControls();
@@ -1210,88 +1550,106 @@
         if (
             !radarPlaying ||
             !state.radar?.enabled ||
-            !radarFrames.length
+            !radarLoopLayers.length
         ) {
             return;
         }
 
-        const time =
-            radarFrames[
-                radarFrameIndex
-            ];
+        const index =
+            radarFrameIndex;
 
         const isLast =
-            radarFrameIndex ===
-            radarFrames.length - 1;
+            index ===
+            radarLoopLayers.length - 1;
 
-        preloadRadarFrame(
-            time,
-            (loaded) => {
-                if (
-                    !radarPlaying ||
-                    !state.radar?.enabled
-                ) {
-                    return;
-                }
+        showRadarLoopFrame(
+            index
+        );
 
-                radarFrameIndex =
-                    isLast
-                        ? 0
-                        : radarFrameIndex + 1;
+        radarFrameIndex =
+            isLast
+                ? 0
+                : index + 1;
 
-                if (!loaded) {
-                    /*
-                     * Do not flash or clear the visible radar.
-                     * Just move on to the next frame.
-                     */
-                    scheduleNextRadarFrame(
-                        120
-                    );
-
-                    return;
-                }
-
-                showPreloadedRadarFrame(
-                    time
-                );
-
-                scheduleNextRadarFrame(
-                    isLast
-                        ? RADAR_LATEST_HOLD_MS
-                        : RADAR_FRAME_DELAY_MS
-                );
-            }
+        scheduleNextRadarFrame(
+            isLast
+                ? RADAR_LATEST_HOLD_MS
+                : RADAR_FRAME_DELAY_MS
         );
     }
 
 
-    function startRadarLoop() {
-        if (!state.radar?.enabled) {
+    async function startRadarLoop() {
+        if (
+            !state.radar?.enabled ||
+            radarPreparing
+        ) {
             return;
         }
 
         stopRadarLoop(false);
 
-        radarFrames =
-            buildRadarFrames();
+        const view =
+            radarLoopView();
 
-        if (!radarFrames.length) {
-            showLatestRadar();
-            return;
+        if (
+            !radarLoopCacheValid(
+                view
+            )
+        ) {
+            radarFrames =
+                buildRadarFrames();
+
+            const ready =
+                await buildRadarLoopLayers(
+                    radarFrames,
+                    view
+                );
+
+            if (
+                !ready ||
+                !state.radar?.enabled
+            ) {
+                cleanupRadarLoopLayers();
+
+                setRadarTimeLabel(
+                    'Loop unavailable'
+                );
+
+                if (
+                    state.radar?.layer
+                ) {
+                    state.radar.layer
+                        .setOpacity(
+                            sources.radar.opacity
+                        );
+                }
+
+                syncRadarControls();
+                return;
+            }
+        }
+
+        radarPlaying = true;
+
+        if (
+            radarCurrentLoopIndex
+            < 0
+            ||
+            radarCurrentLoopIndex
+            >= radarLoopLayers.length
+        ) {
+            radarFrameIndex = 0;
+        } else {
+            radarFrameIndex =
+                (
+                    radarCurrentLoopIndex
+                    + 1
+                )
+                % radarLoopLayers.length;
         }
 
         state.radar.error = false;
-        radarPlaying = true;
-        radarFrameIndex = 0;
-
-        /*
-         * Keep the currently visible Latest image on screen
-         * while the first historical frame preloads.
-         */
-        prepareRadarLayer(
-            state.radar.layer,
-            sources.radar.opacity
-        );
 
         syncRadarControls();
         updateStatus();
@@ -1301,28 +1659,22 @@
 
     function showLatestRadar() {
         stopRadarLoop(false);
-
-        /*
-         * The active layer remains visible while it reloads the
-         * current radar. The hidden second buffer is discarded.
-         */
-        removeRadarBufferLayer();
-
-        const layer =
-            state.radar?.layer;
-
-        if (layer) {
-            prepareRadarLayer(
-                layer,
-                sources.radar.opacity
-            );
-        }
-
-        clearRadarTime(false);
+        cleanupRadarLoopLayers();
 
         setRadarTimeLabel(
             'Latest'
         );
+
+        const latest =
+            state.radar?.layer;
+
+        if (latest) {
+            latest.setOpacity(
+                sources.radar.opacity
+            );
+
+            clearRadarTime(false);
+        }
 
         if (
             state.radar?.enabled
@@ -1753,6 +2105,22 @@
     createCountNode();
     createControls();
     restoreEnabledLayers();
+
+    map.on(
+        'moveend',
+        () => {
+            if (
+                radarLoopLayers.length
+                &&
+                !radarPlaying
+            ) {
+                cleanupRadarLoopLayers();
+                setRadarTimeLabel(
+                    'Latest'
+                );
+            }
+        }
+    );
 
     document.addEventListener(
         'visibilitychange',
