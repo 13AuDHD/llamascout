@@ -78,6 +78,12 @@ foreach ($items as $reportItem) {
             $placeGroups[$placeId]
         )
     ) {
+        $fieldFreshness =
+            llama_place_freshness_summary(
+                $db,
+                $placeId
+            );
+
         $placeGroups[$placeId] = [
             'place_id' =>
                 $placeId,
@@ -93,9 +99,16 @@ foreach ($items as $reportItem) {
                 $reportItem['county'] ?? null,
             'state' =>
                 $reportItem['state'] ?? null,
-            'latest_verification_at' =>
-                $reportItem['latest_verification_at']
-                ?? null,
+            'field_freshness_state' =>
+                (string) (
+                    $fieldFreshness['state']
+                    ?? 'never'
+                ),
+            'field_freshness_relative' =>
+                (string) (
+                    $fieldFreshness['overall_relative']
+                    ?? 'Never checked'
+                ),
             'llama_scouted_count' =>
                 (int) (
                     $reportItem['llama_scouted_count']
@@ -389,66 +402,37 @@ $published =
         true
     );
 
-$verifiedAt =
+$fieldFreshnessState =
+    (string) (
+        $group['field_freshness_state']
+        ?? 'never'
+    );
+
+$verificationState =
+    match ($fieldFreshnessState) {
+        'fresh' => 'current',
+        'aging' => 'attention',
+        'attention' => 'overdue',
+        default => 'never',
+    };
+
+$fieldFreshnessRelative =
     trim(
         (string) (
-            $group['latest_verification_at']
+            $group['field_freshness_relative']
             ?? ''
         )
     );
 
-$verificationState =
-    'never';
-
 $verificationLabel =
-    'Never verified';
-
-if ($verifiedAt !== '') {
-    try {
-        $verifiedDate =
-            new DateTimeImmutable(
-                $verifiedAt,
-                new DateTimeZone('UTC')
+    $fieldFreshnessState === 'never'
+        ? 'No field check recorded'
+        : 'Field checked ' .
+            (
+                $fieldFreshnessRelative !== ''
+                    ? $fieldFreshnessRelative
+                    : 'date unavailable'
             );
-
-        $verificationDays =
-            max(
-                0,
-                (int) floor(
-                    (
-                        time()
-                        - $verifiedDate->getTimestamp()
-                    ) / 86400
-                )
-            );
-
-        $verificationState =
-            $verificationDays > 730
-                ? 'overdue'
-                : (
-                    $verificationDays > 365
-                        ? 'attention'
-                        : 'current'
-                );
-
-        $verificationLabel =
-            $verificationState === 'current'
-                ? 'Verified ' .
-                    number_format($verificationDays) .
-                    ' days ago'
-                : (
-                    $verificationState === 'overdue'
-                        ? 'Verification over 2 years old'
-                        : 'Verification over 1 year old'
-                );
-    } catch (Throwable) {
-        $verificationState =
-            'attention';
-
-        $verificationLabel =
-            'Verification date needs review';
-    }
-}
 ?>
 
 <section
