@@ -114,6 +114,21 @@
     background: rgba(154, 83, 111, .30);
 }
 
+.map-land-swatch-fishWildlife {
+    border-color: #2f6fa3;
+    background: rgba(47, 111, 163, .30);
+}
+
+.map-land-swatch-nps {
+    border-color: #7a5a3a;
+    background: rgba(122, 90, 58, .30);
+}
+
+.map-land-swatch-local {
+    border-color: #d97706;
+    background: rgba(217, 119, 6, .30);
+}
+
 
 /* =========================================================
    STATUS
@@ -186,7 +201,7 @@
 
 @media (max-width: 520px) {
     .map-land-buttons {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .map-land-buttons button {
