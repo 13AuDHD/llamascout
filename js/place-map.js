@@ -58,6 +58,9 @@
         return;
     }
 
+    const initialZoom =
+        Math.min(15, maxZoom);
+
     const map =
         L.map(
             mapElement,
@@ -67,7 +70,7 @@
             }
         ).setView(
             [latitude, longitude],
-            maxZoom
+            initialZoom
         );
 
     /*
