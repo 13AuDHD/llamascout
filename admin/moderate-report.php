@@ -184,6 +184,44 @@ $placeContext =
         (int) $item['place_id']
     );
 
+$placeFreshness =
+    llama_place_freshness_summary(
+        $db,
+        (int) $item['place_id']
+    );
+
+$fieldFreshnessState =
+    (string) (
+        $placeFreshness['state']
+        ?? 'never'
+    );
+
+$fieldFreshnessClass =
+    match ($fieldFreshnessState) {
+        'fresh' => 'current',
+        'aging' => 'attention',
+        'attention' => 'overdue',
+        default => 'never',
+    };
+
+$fieldFreshnessRelative =
+    trim(
+        (string) (
+            $placeFreshness['overall_relative']
+            ?? ''
+        )
+    );
+
+$fieldFreshnessLabel =
+    $fieldFreshnessState === 'never'
+        ? 'No field check recorded'
+        : 'Last field checked ' .
+            (
+                $fieldFreshnessRelative !== ''
+                    ? $fieldFreshnessRelative
+                    : 'date unavailable'
+            );
+
 $recentUpdates =
     admin_report_recent_updates(
         $db,
@@ -333,13 +371,10 @@ require __DIR__ . '/_header.php';
 </div>
 
 <div>
-    <span>Verification</span>
+    <span>Field freshness</span>
     <strong
         class="is-<?= moderation_e(
-            (string) (
-                $placeContext['verification_freshness']
-                ?? 'attention'
-            )
+            $fieldFreshnessClass
         ) ?>"
     >
         <i
@@ -348,17 +383,7 @@ require __DIR__ . '/_header.php';
         ></i>
 
         <?= moderation_e(
-            admin_report_freshness_label(
-                (string) (
-                    $placeContext['verification_freshness']
-                    ?? 'attention'
-                ),
-                isset(
-                    $placeContext['verification_age_days']
-                )
-                    ? (int) $placeContext['verification_age_days']
-                    : null
-            )
+            $fieldFreshnessLabel
         ) ?>
     </strong>
 </div>
@@ -411,12 +436,12 @@ require __DIR__ . '/_header.php';
 </div>
 
 <div>
-    <span>Total verifications</span>
+    <span>Last field observation</span>
     <strong>
-        <?= number_format(
-            (int) (
-                $placeContext['verification_count']
-                ?? 0
+        <?= moderation_e(
+            (string) (
+                $placeFreshness['overall_date_label']
+                ?? 'No field check recorded'
             )
         ) ?>
     </strong>
@@ -905,8 +930,8 @@ $openMeta =
         aria-hidden="true"
     ><?= llama_icon('shield') ?></i>
     <span>
-        <strong>Verification</strong>
-        <small>Review freshness or record a new verification.</small>
+        <strong>Field freshness</strong>
+        <small>Review field-check history or record a new field check.</small>
     </span>
 </a>
 
