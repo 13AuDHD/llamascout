@@ -74,7 +74,7 @@
         minZoom: 3,
         maxZoom: 20,
         zoomSnap: .5
-    }).setView([latitude, longitude], 17);
+    }).setView([latitude, longitude], 18);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -274,7 +274,7 @@
     if (places.length > 0) {
         map.fitBounds(bounds, {
             padding: [44, 44],
-            maxZoom: 17,
+            maxZoom: 18,
             animate: false
         });
     }
