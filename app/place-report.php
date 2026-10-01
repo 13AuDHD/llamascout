@@ -865,7 +865,6 @@ function llama_place_report_fields(): array
         $add($key, $label, 'environment_accessibility', 'tri', $storage, [
             'allow_unknown' => true,
             'hide_form' => true,
-            'points_categories' => ['environment'],
         ]);
     }
 
@@ -1097,7 +1096,6 @@ function llama_place_report_fields(): array
             'allow_unknown' => true,
             'low' => 'Poor',
             'high' => 'Excellent',
-            'points_categories' => ['experience_recommendations'],
         ]);
     }
 
