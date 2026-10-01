@@ -23,15 +23,20 @@
         return;
     }
 
-    const STYLE_HREF = '/css/map-weather-overlays.css?v=20260930-1';
+    const STYLE_HREF = '/css/map-weather-overlays.css';
     const STORAGE_KEY = 'llama-map-weather-overlays';
 
-    const RADAR_TIMES_URL =
-        '/api/weather-radar-times.php';
-
-    const RADAR_FRAME_DELAY_MS = 900;
-    const RADAR_LATEST_HOLD_MS = 1600;
-    const RADAR_FRAME_CACHE_MS = 2 * 60 * 1000;
+    /*
+     * nowCOAST's radar WMS advertises nearestValue="1" for its
+     * time dimension. We can request evenly spaced five-minute
+     * targets and GeoServer will select the nearest real MRMS
+     * observation. That keeps the loop entirely in the browser.
+     */
+    const RADAR_WINDOW_MS = 60 * 60 * 1000;
+    const RADAR_FRAME_STEP_MS = 5 * 60 * 1000;
+    const RADAR_SAFE_LAG_MS = 6 * 60 * 1000;
+    const RADAR_FRAME_DELAY_MS = 1100;
+    const RADAR_LATEST_HOLD_MS = 1800;
 
     const sources = {
         radar: {
@@ -118,8 +123,6 @@
     let radarLoopTimer = null;
     let radarFrames = [];
     let radarFrameIndex = 0;
-    let radarFramesLoadedAt = 0;
-    let radarFrameRequest = null;
 
     let alertRequestController = null;
     let alertRequestNumber = 0;
@@ -308,7 +311,7 @@
                         class="map-radar-loop-button"
                         aria-pressed="false"
                     >
-                        â¶ Play
+                        Play
                     </button>
 
                     <button
@@ -798,8 +801,8 @@
         if (radarPlayButton) {
             radarPlayButton.textContent =
                 radarPlaying
-                    ? 'ââ Pause'
-                    : 'â¶ Play';
+                    ? 'Pause'
+                    : 'Play';
 
             radarPlayButton.setAttribute(
                 'aria-pressed',
@@ -866,9 +869,9 @@
             ).toISOString();
 
         /*
-         * nowCOAST advertises exact ISO8601 radar
-         * observation times. Asking for those exact
-         * values avoids nearest-frame ambiguity.
+         * nowCOAST's time dimension uses nearestValue,
+         * so each five-minute target resolves to the
+         * nearest available MRMS observation.
          */
         layer.setParams(
             {
@@ -887,91 +890,37 @@
     }
 
 
-    async function fetchRadarFrames() {
-        const now =
-            Date.now();
+    function buildRadarFrames() {
+        /*
+         * Stay a few minutes behind wall-clock time so we do
+         * not ask for a frame NOAA has not published yet.
+         * Thirteen five-minute targets cover the previous hour.
+         */
+        const latestSafe =
+            Date.now()
+            - RADAR_SAFE_LAG_MS;
 
-        if (
-            radarFrames.length >= 4 &&
-            now - radarFramesLoadedAt
-                < RADAR_FRAME_CACHE_MS
+        const latest =
+            Math.floor(
+                latestSafe
+                / RADAR_FRAME_STEP_MS
+            )
+            * RADAR_FRAME_STEP_MS;
+
+        const frames = [];
+
+        for (
+            let time =
+                latest
+                - RADAR_WINDOW_MS;
+            time <= latest;
+            time +=
+                RADAR_FRAME_STEP_MS
         ) {
-            return radarFrames;
+            frames.push(time);
         }
 
-        if (radarFrameRequest) {
-            return radarFrameRequest;
-        }
-
-        radarFrameRequest =
-            (async () => {
-                const response =
-                    await fetch(
-                        RADAR_TIMES_URL,
-                        {
-                            method: 'GET',
-                            cache: 'no-store',
-                            headers: {
-                                Accept:
-                                    'application/json'
-                            }
-                        }
-                    );
-
-                if (!response.ok) {
-                    throw new Error(
-                        `Radar times returned HTTP ${response.status}.`
-                    );
-                }
-
-                const payload =
-                    await response.json();
-
-                const rawTimes =
-                    Array.isArray(
-                        payload?.times
-                    )
-                        ? payload.times
-                        : [];
-
-                const times =
-                    Array.from(
-                        new Set(
-                            rawTimes
-                                .map((value) =>
-                                    Date.parse(
-                                        String(value)
-                                    )
-                                )
-                                .filter(
-                                    Number.isFinite
-                                )
-                        )
-                    )
-                        .sort(
-                            (a, b) =>
-                                a - b
-                        )
-                        .slice(-13);
-
-                if (times.length < 4) {
-                    throw new Error(
-                        'Not enough advertised radar frames were returned.'
-                    );
-                }
-
-                radarFrames = times;
-                radarFramesLoadedAt =
-                    Date.now();
-
-                return radarFrames;
-            })()
-                .finally(() => {
-                    radarFrameRequest =
-                        null;
-                });
-
-        return radarFrameRequest;
+        return frames;
     }
 
 
@@ -1033,64 +982,28 @@
     }
 
 
-    async function startRadarLoop() {
+    function startRadarLoop() {
         if (!state.radar?.enabled) {
             return;
         }
 
         stopRadarLoop(false);
 
-        setRadarTimeLabel(
-            'Loading frames...'
-        );
+        radarFrames =
+            buildRadarFrames();
 
-        try {
-            const frames =
-                await fetchRadarFrames();
-
-            if (
-                !state.radar?.enabled ||
-                !frames.length
-            ) {
-                showLatestRadar();
-                return;
-            }
-
-            state.radar.error = false;
-            radarPlaying = true;
-            radarFrameIndex = 0;
-
-            syncRadarControls();
-            updateStatus();
-            advanceRadarLoop();
-
-        } catch (error) {
-            console.warn(
-                'Llama Scout radar loop:',
-                error
-            );
-
-            /*
-             * Loop metadata failing must never take
-             * the working latest radar image down.
-             */
-            stopRadarLoop(false);
-            clearRadarTime(false);
-            setRadarTimeLabel(
-                'Loop unavailable'
-            );
-
-            state.radar.error = false;
-
-            if (
-                state.radar?.enabled
-            ) {
-                refreshLayer('radar');
-            }
-
-            syncRadarControls();
-            updateStatus();
+        if (!radarFrames.length) {
+            showLatestRadar();
+            return;
         }
+
+        state.radar.error = false;
+        radarPlaying = true;
+        radarFrameIndex = 0;
+
+        syncRadarControls();
+        updateStatus();
+        advanceRadarLoop();
     }
 
 
@@ -1203,7 +1116,7 @@
                 0,
                 maxLength - 1
             ).trim()
-            + 'â¦'
+            + '...'
         );
     }
 
@@ -1230,7 +1143,7 @@
                     data-map-overlay-popup-close
                     aria-label="Close weather alert details"
                 >
-                    Ã
+                    x
                 </button>
 
                 <p class="map-overlay-popup-eyebrow">
@@ -1265,7 +1178,7 @@
                             props.certainty
                         ]
                             .filter(Boolean)
-                            .join(' Â· ');
+                            .join(' / ');
 
                         const expires =
                             formatAlertTime(
