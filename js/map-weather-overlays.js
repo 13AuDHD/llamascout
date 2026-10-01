@@ -35,8 +35,10 @@
     const RADAR_WINDOW_MS = 60 * 60 * 1000;
     const RADAR_FRAME_STEP_MS = 5 * 60 * 1000;
     const RADAR_SAFE_LAG_MS = 6 * 60 * 1000;
-    const RADAR_FRAME_DELAY_MS = 1100;
-    const RADAR_LATEST_HOLD_MS = 1800;
+    const RADAR_FRAME_DELAY_MS = 550;
+    const RADAR_LATEST_HOLD_MS = 1200;
+    const RADAR_CROSSFADE_MS = 220;
+    const RADAR_FRAME_LOAD_TIMEOUT_MS = 8000;
 
     const sources = {
         radar: {
@@ -123,6 +125,17 @@
     let radarLoopTimer = null;
     let radarFrames = [];
     let radarFrameIndex = 0;
+
+    /*
+     * Radar uses two WMS tile layers while looping:
+     * one visible and one hidden preload buffer. The next frame
+     * is fully loaded while the current frame remains visible,
+     * then the two layers crossfade. This prevents the blank
+     * flash caused by redrawing a single tile layer in place.
+     */
+    let radarBufferLayer = null;
+    let radarFrameLoadToken = 0;
+    let radarFrameLoadTimer = null;
 
     let alertRequestController = null;
     let alertRequestNumber = 0;
@@ -311,7 +324,7 @@
                         class="map-radar-loop-button"
                         aria-pressed="false"
                     >
-                        Play
+                        &#9654; Play
                     </button>
 
                     <button
@@ -585,6 +598,7 @@
         if (key === 'radar') {
             stopRadarLoop(false);
             clearRadarTime(false);
+            removeRadarBufferLayer();
             setRadarTimeLabel('Latest');
         }
 
@@ -799,10 +813,10 @@
             !enabled;
 
         if (radarPlayButton) {
-            radarPlayButton.textContent =
+            radarPlayButton.innerHTML =
                 radarPlaying
-                    ? 'Pause'
-                    : 'Play';
+                    ? '&#9208; Pause'
+                    : '&#9654; Play';
 
             radarPlayButton.setAttribute(
                 'aria-pressed',
@@ -836,6 +850,126 @@
     }
 
 
+    function reducedMotionEnabled() {
+        return (
+            document.documentElement
+                .dataset.reducedMotion
+                === 'true'
+            ||
+            (
+                typeof window.matchMedia
+                === 'function'
+                &&
+                window.matchMedia(
+                    '(prefers-reduced-motion: reduce)'
+                ).matches
+            )
+        );
+    }
+
+
+    function radarTransitionDuration() {
+        return reducedMotionEnabled()
+            ? 0
+            : RADAR_CROSSFADE_MS;
+    }
+
+
+    function prepareRadarLayer(
+        layer,
+        opacity
+    ) {
+        if (!layer) {
+            return;
+        }
+
+        layer.setOpacity(opacity);
+
+        const container =
+            layer.getContainer?.();
+
+        if (container) {
+            const duration =
+                radarTransitionDuration();
+
+            container.style.transition =
+                duration > 0
+                    ? `opacity ${duration}ms linear`
+                    : 'none';
+
+            container.style.willChange =
+                'opacity';
+        }
+    }
+
+
+    function ensureRadarBufferLayer() {
+        if (!radarBufferLayer) {
+            radarBufferLayer =
+                createLayer('radar');
+
+            radarBufferLayer
+                .setOpacity(0);
+        }
+
+        if (
+            !map.hasLayer(
+                radarBufferLayer
+            )
+        ) {
+            radarBufferLayer
+                .addTo(map);
+        }
+
+        prepareRadarLayer(
+            radarBufferLayer,
+            0
+        );
+
+        return radarBufferLayer;
+    }
+
+
+    function removeRadarBufferLayer() {
+        if (!radarBufferLayer) {
+            return;
+        }
+
+        if (
+            map.hasLayer(
+                radarBufferLayer
+            )
+        ) {
+            map.removeLayer(
+                radarBufferLayer
+            );
+        }
+
+        radarBufferLayer = null;
+    }
+
+
+    function clearRadarFrameLoadTimer() {
+        if (
+            radarFrameLoadTimer
+            !== null
+        ) {
+            window.clearTimeout(
+                radarFrameLoadTimer
+            );
+
+            radarFrameLoadTimer =
+                null;
+        }
+    }
+
+
+    function cancelPendingRadarFrame() {
+        radarFrameLoadToken += 1;
+        clearRadarFrameLoadTimer();
+    }
+
+
     function clearRadarTime(
         redraw = true
     ) {
@@ -855,24 +989,93 @@
     }
 
 
-    function setRadarFrame(timeMs) {
+    function preloadRadarFrame(
+        timeMs,
+        callback
+    ) {
         const layer =
-            state.radar?.layer;
+            ensureRadarBufferLayer();
 
         if (!layer?.wmsParams) {
+            callback(false);
             return;
         }
+
+        const token =
+            ++radarFrameLoadToken;
+
+        let finished = false;
+
+        const cleanup = () => {
+            clearRadarFrameLoadTimer();
+
+            layer.off(
+                'load',
+                handleLoad
+            );
+
+            layer.off(
+                'tileerror',
+                handleError
+            );
+        };
+
+        const finish = (
+            success
+        ) => {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+            cleanup();
+
+            if (
+                token
+                !== radarFrameLoadToken
+            ) {
+                return;
+            }
+
+            callback(success);
+        };
+
+        const handleLoad = () => {
+            finish(true);
+        };
+
+        const handleError = () => {
+            /*
+             * Keep the current visible frame in place and
+             * skip this historical frame if NOAA cannot
+             * provide every requested tile.
+             */
+            finish(false);
+        };
+
+        layer.on(
+            'load',
+            handleLoad
+        );
+
+        layer.on(
+            'tileerror',
+            handleError
+        );
+
+        radarFrameLoadTimer =
+            window.setTimeout(
+                () => finish(false),
+                RADAR_FRAME_LOAD_TIMEOUT_MS
+            );
 
         const iso =
             new Date(
                 timeMs
             ).toISOString();
 
-        /*
-         * nowCOAST's time dimension uses nearestValue,
-         * so each five-minute target resolves to the
-         * nearest available MRMS observation.
-         */
+        layer.setOpacity(0);
+
         layer.setParams(
             {
                 time: iso,
@@ -883,10 +1086,63 @@
         );
 
         layer.redraw();
+    }
+
+
+    function showPreloadedRadarFrame(
+        timeMs
+    ) {
+        const oldVisible =
+            state.radar?.layer;
+
+        const nextVisible =
+            radarBufferLayer;
+
+        if (
+            !oldVisible ||
+            !nextVisible
+        ) {
+            return false;
+        }
+
+        prepareRadarLayer(
+            oldVisible,
+            sources.radar.opacity
+        );
+
+        prepareRadarLayer(
+            nextVisible,
+            0
+        );
+
+        /*
+         * The new frame is already completely loaded.
+         * Crossfade the two tile layers instead of redrawing
+         * the visible layer and exposing the basemap beneath it.
+         */
+        window.requestAnimationFrame(
+            () => {
+                nextVisible.setOpacity(
+                    sources.radar.opacity
+                );
+
+                oldVisible.setOpacity(0);
+            }
+        );
+
+        state.radar.layer =
+            nextVisible;
+
+        radarBufferLayer =
+            oldVisible;
 
         setRadarTimeLabel(
-            formatRadarTime(timeMs)
+            formatRadarTime(
+                timeMs
+            )
         );
+
+        return true;
     }
 
 
@@ -929,6 +1185,7 @@
     ) {
         radarPlaying = false;
         clearRadarLoopTimer();
+        cancelPendingRadarFrame();
 
         if (resetButton) {
             syncRadarControls();
@@ -963,21 +1220,47 @@
                 radarFrameIndex
             ];
 
-        setRadarFrame(time);
-
         const isLast =
             radarFrameIndex ===
             radarFrames.length - 1;
 
-        radarFrameIndex =
-            isLast
-                ? 0
-                : radarFrameIndex + 1;
+        preloadRadarFrame(
+            time,
+            (loaded) => {
+                if (
+                    !radarPlaying ||
+                    !state.radar?.enabled
+                ) {
+                    return;
+                }
 
-        scheduleNextRadarFrame(
-            isLast
-                ? RADAR_LATEST_HOLD_MS
-                : RADAR_FRAME_DELAY_MS
+                radarFrameIndex =
+                    isLast
+                        ? 0
+                        : radarFrameIndex + 1;
+
+                if (!loaded) {
+                    /*
+                     * Do not flash or clear the visible radar.
+                     * Just move on to the next frame.
+                     */
+                    scheduleNextRadarFrame(
+                        120
+                    );
+
+                    return;
+                }
+
+                showPreloadedRadarFrame(
+                    time
+                );
+
+                scheduleNextRadarFrame(
+                    isLast
+                        ? RADAR_LATEST_HOLD_MS
+                        : RADAR_FRAME_DELAY_MS
+                );
+            }
         );
     }
 
@@ -1001,6 +1284,15 @@
         radarPlaying = true;
         radarFrameIndex = 0;
 
+        /*
+         * Keep the currently visible Latest image on screen
+         * while the first historical frame preloads.
+         */
+        prepareRadarLayer(
+            state.radar.layer,
+            sources.radar.opacity
+        );
+
         syncRadarControls();
         updateStatus();
         advanceRadarLoop();
@@ -1009,6 +1301,23 @@
 
     function showLatestRadar() {
         stopRadarLoop(false);
+
+        /*
+         * The active layer remains visible while it reloads the
+         * current radar. The hidden second buffer is discarded.
+         */
+        removeRadarBufferLayer();
+
+        const layer =
+            state.radar?.layer;
+
+        if (layer) {
+            prepareRadarLayer(
+                layer,
+                sources.radar.opacity
+            );
+        }
+
         clearRadarTime(false);
 
         setRadarTimeLabel(
