@@ -19,50 +19,60 @@
         return;
     }
 
-    const STYLE_HREF = '/css/map-land-overlays.css?v=20260924-1';
+    const STYLE_HREF = '/css/map-land-overlays.css?v=20260930-1';
     const STORAGE_KEY = 'llama-map-land-overlays';
     const MIN_ZOOM = 7;
     const VIEWPORT_PADDING = 0.35;
     const RETRY_DELAY_MS = 350;
 
-    const sources = {
-        usfs: {
-            label: 'U.S. Forest Service',
-            endpoints: [
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_LimitedScale/MapServer/24/query',
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/23/query'
-            ],
-            fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
-            nameField: 'ADMIN_UNIT_NAME',
-            detailField: 'ADMIN_UNIT_TYPE',
-            sourceText: 'BLM National Surface Management Agency',
-            style: {
-                color: '#4f8f46',
-                weight: 1.3,
-                opacity: 0.52,
-                fillColor: '#4f8f46',
-                fillOpacity: 0.10
-            }
-        },
+    const BLM_SMA_LIMITED =
+        'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_LimitedScale/MapServer';
 
-        blm: {
-            label: 'Bureau of Land Management',
-            endpoints: [
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_LimitedScale/MapServer/22/query',
-                'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/21/query'
-            ],
-            fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
-            nameField: 'ADMIN_UNIT_NAME',
-            detailField: 'ADMIN_UNIT_TYPE',
-            sourceText: 'BLM National Surface Management Agency',
-            style: {
-                color: '#c59a27',
-                weight: 1.3,
-                opacity: 0.54,
-                fillColor: '#c59a27',
-                fillOpacity: 0.11
-            }
-        },
+    const BLM_SMA_CACHED =
+        'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer';
+
+    const smaSource = (
+        label,
+        limitedLayer,
+        cachedLayer,
+        color,
+        opacity = 0.54,
+        fillOpacity = 0.11
+    ) => ({
+        label,
+        endpoints: [
+            `${BLM_SMA_LIMITED}/${limitedLayer}/query`,
+            `${BLM_SMA_CACHED}/${cachedLayer}/query`
+        ],
+        fields: 'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_ST',
+        nameField: 'ADMIN_UNIT_NAME',
+        detailField: 'ADMIN_UNIT_TYPE',
+        sourceText: 'BLM National Surface Management Agency',
+        style: {
+            color,
+            weight: 1.3,
+            opacity,
+            fillColor: color,
+            fillOpacity
+        }
+    });
+
+    const sources = {
+        usfs: smaSource(
+            'U.S. Forest Service',
+            24,
+            23,
+            '#4f8f46',
+            0.52,
+            0.10
+        ),
+
+        blm: smaSource(
+            'Bureau of Land Management',
+            22,
+            21,
+            '#c59a27'
+        ),
 
         tribal: {
             label: 'Tribal land',
@@ -80,31 +90,53 @@
                 fillColor: '#9a536f',
                 fillOpacity: 0.11
             }
-        }
+        },
+
+        fishWildlife: smaSource(
+            'U.S. Fish & Wildlife Service',
+            25,
+            24,
+            '#2f6fa3'
+        ),
+
+        nps: smaSource(
+            'National Park Service',
+            23,
+            22,
+            '#7a5a3a'
+        ),
+
+        local: smaSource(
+            'Local land',
+            30,
+            29,
+            '#d97706'
+        )
     };
 
-    const state = {
-        usfs: createSourceState(),
-        blm: createSourceState(),
-        tribal: createSourceState()
-    };
+    const state = Object.fromEntries(
+        Object.keys(sources).map((key) => [
+            key,
+            createSourceState()
+        ])
+    );
 
     let refreshTimer = null;
     let control = null;
     let statusNode = null;
 
-function createSourceState() {
-    return {
-        enabled: false,
-        layer: null,
-        loadedBounds: null,
-        zoomBucket: null,
-        controller: null,
-        requestNumber: 0,
-        loading: false,
-        error: false
-    };
-}
+    function createSourceState() {
+        return {
+            enabled: false,
+            layer: null,
+            loadedBounds: null,
+            zoomBucket: null,
+            controller: null,
+            requestNumber: 0,
+            loading: false,
+            error: false
+        };
+    }
 
     function ensureStyles() {
         if (document.querySelector('link[data-map-land-overlays-style]')) {
@@ -196,23 +228,23 @@ function createSourceState() {
             ></span>
         `;
 
-const landSlot =
-    document.getElementById('map-tools-land-slot');
+        const landSlot =
+            document.getElementById('map-tools-land-slot');
 
-const controlHost =
-    landSlot || mapCard;
+        const controlHost =
+            landSlot || mapCard;
 
-controlHost.appendChild(control);
+        controlHost.appendChild(control);
 
-if (landSlot) {
-    control.classList.add(
-        'map-land-control-embedded'
-    );
-}
+        if (landSlot) {
+            control.classList.add(
+                'map-land-control-embedded'
+            );
+        }
 
-statusNode =
-    control.querySelector('#map-land-status');
-        
+        statusNode =
+            control.querySelector('#map-land-status');
+
         control
             .querySelectorAll('[data-land-layer]')
             .forEach((button) => {
@@ -252,9 +284,15 @@ statusNode =
             .querySelectorAll('[data-land-layer]')
             .forEach((button) => {
                 const key = button.dataset.landLayer;
-                const active = Boolean(key && state[key]?.enabled);
+                const active = Boolean(
+                    key && state[key]?.enabled
+                );
 
-                button.classList.toggle('is-active', active);
+                button.classList.toggle(
+                    'is-active',
+                    active
+                );
+
                 button.setAttribute(
                     'aria-pressed',
                     active ? 'true' : 'false'
@@ -322,7 +360,8 @@ statusNode =
             returnGeometry: 'true',
             outSR: '4326',
             geometryPrecision: '5',
-            maxAllowableOffset: String(maxAllowableOffset()),
+            maxAllowableOffset:
+                String(maxAllowableOffset()),
             resultRecordCount: '2000',
             f: 'geojson'
         });
@@ -343,8 +382,12 @@ statusNode =
         const current = map.getBounds();
 
         return (
-            sourceState.loadedBounds.contains(current.getNorthWest()) &&
-            sourceState.loadedBounds.contains(current.getSouthEast())
+            sourceState.loadedBounds.contains(
+                current.getNorthWest()
+            ) &&
+            sourceState.loadedBounds.contains(
+                current.getSouthEast()
+            )
         );
     }
 
@@ -382,137 +425,129 @@ statusNode =
         }
     }
 
-function popupRow(
-    label,
-    value
-) {
-    const clean =
-        String(value ?? '').trim();
+    function popupRow(label, value) {
+        const clean =
+            String(value ?? '').trim();
 
-    if (!clean) {
-        return '';
-    }
+        if (!clean) {
+            return '';
+        }
 
-    return `
-        <div class="map-overlay-popup-row">
-            <strong>
-                ${escapeHtml(label)}
-            </strong>
+        return `
+            <div class="map-overlay-popup-row">
+                <strong>
+                    ${escapeHtml(label)}
+                </strong>
 
-            <span>
-                ${escapeHtml(clean)}
-            </span>
-        </div>
-    `;
-}
-
-
-function popupHtml(
-    key,
-    properties
-) {
-    const source =
-        sources[key];
-
-    const name =
-        String(
-            properties?.[
-                source.nameField
-            ] || ''
-        ).trim();
-
-    const detail =
-        String(
-            properties?.[
-                source.detailField
-            ] || ''
-        ).trim();
-
-    let extraRows = '';
-
-    if (key === 'tribal') {
-        extraRows +=
-            popupRow(
-                'Region',
-                properties?.REGION
-            );
-
-        extraRows +=
-            popupRow(
-                'Agency',
-                properties?.AGENCY
-            );
-    } else {
-        extraRows +=
-            popupRow(
-                'State',
-                properties?.ADMIN_ST
-            );
-    }
-
-    return `
-        <article
-            class="
-                map-overlay-popup
-                map-land-popup
-            "
-        >
-
-            <button
-                type="button"
-                class="map-overlay-popup-close"
-                data-map-overlay-popup-close
-                aria-label="Close boundary details"
-            >
-                ×
-            </button>
-
-            <p class="map-overlay-popup-eyebrow">
-                ${escapeHtml(source.label)}
-            </p>
-
-            <h3>
-                ${escapeHtml(
-                    name ||
-                    source.label
-                )}
-            </h3>
-
-            <div class="map-overlay-popup-meta">
-
-                ${
-                    detail &&
-                    detail !== name
-                        ? popupRow(
-                            'Type',
-                            detail
-                        )
-                        : ''
-                }
-
-                ${extraRows}
-
+                <span>
+                    ${escapeHtml(clean)}
+                </span>
             </div>
+        `;
+    }
 
-            <p class="map-overlay-popup-source">
-                Boundary data:
-                ${escapeHtml(
-                    source.sourceText
-                )}
-            </p>
+    function popupHtml(key, properties) {
+        const source = sources[key];
 
-        </article>
-    `;
-}
+        const name =
+            String(
+                properties?.[
+                    source.nameField
+                ] || ''
+            ).trim();
+
+        const detail =
+            String(
+                properties?.[
+                    source.detailField
+                ] || ''
+            ).trim();
+
+        let extraRows = '';
+
+        if (key === 'tribal') {
+            extraRows +=
+                popupRow(
+                    'Region',
+                    properties?.REGION
+                );
+
+            extraRows +=
+                popupRow(
+                    'Agency',
+                    properties?.AGENCY
+                );
+        } else {
+            extraRows +=
+                popupRow(
+                    'State',
+                    properties?.ADMIN_ST
+                );
+        }
+
+        return `
+            <article
+                class="
+                    map-overlay-popup
+                    map-land-popup
+                "
+            >
+
+                <button
+                    type="button"
+                    class="map-overlay-popup-close"
+                    data-map-overlay-popup-close
+                    aria-label="Close boundary details"
+                >
+                    ×
+                </button>
+
+                <p class="map-overlay-popup-eyebrow">
+                    ${escapeHtml(source.label)}
+                </p>
+
+                <h3>
+                    ${escapeHtml(
+                        name ||
+                        source.label
+                    )}
+                </h3>
+
+                <div class="map-overlay-popup-meta">
+
+                    ${
+                        detail &&
+                        detail !== name
+                            ? popupRow(
+                                'Type',
+                                detail
+                            )
+                            : ''
+                    }
+
+                    ${extraRows}
+
+                </div>
+
+                <p class="map-overlay-popup-source">
+                    Boundary data:
+                    ${escapeHtml(
+                        source.sourceText
+                    )}
+                </p>
+
+            </article>
+        `;
+    }
 
     function makeGeoJsonLayer(key, data) {
         const source = sources[key];
 
-    return L.geoJSON(data, {
-        pane: 'llama-land-pane',
-    
-        bubblingMouseEvents: false,
-    
+        return L.geoJSON(data, {
+            pane: 'llama-land-pane',
+
+            bubblingMouseEvents: false,
+
             style: () => ({
                 ...source.style
             }),
@@ -536,7 +571,8 @@ function popupHtml(
 
     function sleep(ms, signal) {
         return new Promise((resolve, reject) => {
-            const timer = window.setTimeout(resolve, ms);
+            const timer =
+                window.setTimeout(resolve, ms);
 
             signal?.addEventListener(
                 'abort',
@@ -563,7 +599,11 @@ function popupHtml(
         signal
     ) {
         const response = await fetch(
-            buildQueryUrl(endpoint, key, bounds),
+            buildQueryUrl(
+                endpoint,
+                key,
+                bounds
+            ),
             {
                 method: 'GET',
                 mode: 'cors',
@@ -609,9 +649,14 @@ function popupHtml(
             endpointIndex < endpoints.length;
             endpointIndex++
         ) {
-            const endpoint = endpoints[endpointIndex];
+            const endpoint =
+                endpoints[endpointIndex];
 
-            for (let attempt = 0; attempt < 2; attempt++) {
+            for (
+                let attempt = 0;
+                attempt < 2;
+                attempt++
+            ) {
                 try {
                     return await requestGeoJson(
                         endpoint,
@@ -661,7 +706,9 @@ function popupHtml(
         const requestNumber =
             sourceState.requestNumber + 1;
 
-        sourceState.requestNumber = requestNumber;
+        sourceState.requestNumber =
+            requestNumber;
+
         sourceState.loading = true;
         sourceState.error = false;
         sourceState.controller =
@@ -670,24 +717,30 @@ function popupHtml(
         updateStatus();
 
         const bounds = queryBounds();
-        const zoomBucket = currentZoomBucket();
+        const zoomBucket =
+            currentZoomBucket();
 
         try {
-            const data = await fetchWithRetry(
-                key,
-                bounds,
-                sourceState.controller.signal
-            );
+            const data =
+                await fetchWithRetry(
+                    key,
+                    bounds,
+                    sourceState.controller.signal
+                );
 
             if (
                 !state[key].enabled ||
-                requestNumber !== state[key].requestNumber
+                requestNumber !==
+                    state[key].requestNumber
             ) {
                 return;
             }
 
             const nextLayer =
-                makeGeoJsonLayer(key, data);
+                makeGeoJsonLayer(
+                    key,
+                    data
+                );
 
             /*
              * Only replace the existing successful layer after
@@ -699,7 +752,8 @@ function popupHtml(
 
             sourceState.layer = nextLayer;
             sourceState.loadedBounds = bounds;
-            sourceState.zoomBucket = zoomBucket;
+            sourceState.zoomBucket =
+                zoomBucket;
             sourceState.error = false;
 
             nextLayer.addTo(map);
@@ -720,7 +774,8 @@ function popupHtml(
             }
         } finally {
             if (
-                requestNumber === sourceState.requestNumber
+                requestNumber ===
+                sourceState.requestNumber
             ) {
                 sourceState.loading = false;
                 sourceState.controller = null;
@@ -732,13 +787,40 @@ function popupHtml(
 
     function enabledKeys() {
         return Object.keys(state)
-            .filter((key) => state[key].enabled);
+            .filter(
+                (key) => state[key].enabled
+            );
     }
 
     function failedLabels() {
         return enabledKeys()
-            .filter((key) => state[key].error)
-            .map((key) => sources[key].label);
+            .filter(
+                (key) => state[key].error
+            )
+            .map(
+                (key) => sources[key].label
+            );
+    }
+
+    function formatLabelList(labels) {
+        if (labels.length <= 1) {
+            return labels[0] || '';
+        }
+
+        if (
+            typeof Intl !== 'undefined' &&
+            typeof Intl.ListFormat === 'function'
+        ) {
+            return new Intl.ListFormat(
+                undefined,
+                {
+                    style: 'long',
+                    type: 'conjunction'
+                }
+            ).format(labels);
+        }
+
+        return labels.join(', ');
     }
 
     function updateStatus() {
@@ -762,7 +844,9 @@ function popupHtml(
         }
 
         const loading =
-            enabled.some((key) => state[key].loading);
+            enabled.some(
+                (key) => state[key].loading
+            );
 
         if (loading) {
             statusNode.hidden = false;
@@ -781,7 +865,7 @@ function popupHtml(
                     `${failed[0]} boundaries are temporarily unavailable.`;
             } else {
                 statusNode.textContent =
-                    `${failed.join(' and ')} boundaries are temporarily unavailable.`;
+                    `${formatLabelList(failed)} boundaries are temporarily unavailable.`;
             }
 
             return;
@@ -817,7 +901,9 @@ function popupHtml(
         });
 
         Object.keys(state)
-            .filter((key) => !state[key].enabled)
+            .filter(
+                (key) => !state[key].enabled
+            )
             .forEach(removeSourceLayer);
 
         updateStatus();
@@ -826,10 +912,11 @@ function popupHtml(
     function scheduleRefresh(delay = 120) {
         window.clearTimeout(refreshTimer);
 
-        refreshTimer = window.setTimeout(
-            refresh,
-            delay
-        );
+        refreshTimer =
+            window.setTimeout(
+                refresh,
+                delay
+            );
     }
 
     ensureStyles();
