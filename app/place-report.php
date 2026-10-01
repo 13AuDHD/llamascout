@@ -119,9 +119,19 @@ function llama_place_report_sections(): array
             'description' => 'Day, night, noise, traffic, people, smells, and exposure',
             'icon' => 'at-brain',
         ],
+        'landscape_setting' => [
+            'label' => 'Landscape and setting',
+            'description' => 'Setting, nearby features, views, exposure, wildlife, and other conditions',
+            'icon' => 'at-landscape',
+        ],
+        'accessibility' => [
+            'label' => 'Accessibility',
+            'description' => 'Mobility access, walking surface, facilities, and distance from the vehicle',
+            'icon' => 'wheelchair',
+        ],
         'environment_accessibility' => [
-            'label' => 'Environment and accessibility',
-            'description' => 'Forest, mountain, water, desert, exposure, mobility, and walking distance',
+            'label' => 'Environment details',
+            'description' => 'Earlier forest, mountain, water, and desert observations',
             'icon' => 'at-landscape',
         ],
         'safety' => [
@@ -328,11 +338,15 @@ function llama_place_report_field_icon(
         'connectivity_starlink_note' => 'at-satellite-signal',
         'warning_no_cell_service' => 'antenna-bars-off',
 
+        'landscape_primary' => 'at-landscape',
+        'landscape_details' => 'at-landscape',
+        'landscape_views' => 'eye',
+        'critter_activity' => 'deer',
         'environment_forest' => 'trees',
         'environment_forest_view' => 'trees',
         'environment_mountains' => 'mountain',
         'environment_mountain_view' => 'mountain',
-        'environment_water_nearby' => 'ripple',
+        'environment_water_nearby' => 'water-waves',
         'environment_water_view' => 'ripple',
         'environment_desert' => 'cactus',
         'environment_desert_view' => 'cactus',
@@ -349,7 +363,7 @@ function llama_place_report_field_icon(
         'felt_safe_daytime' => 'sun',
         'felt_safe_nighttime' => 'moon-stars',
         'flash_flood_risk' => 'flood',
-        'wildfire_risk' => 'flame',
+        'wildfire_risk' => 'wildfire',
         'fall_hazard' => 'trip-fall-hazard',
         'cliff_exposure' => 'cliff-jumping',
         'rockfall_risk' => 'falling-rocks',
@@ -374,6 +388,7 @@ function llama_place_report_field_icon(
         'snow_risk' => 'at-snowing',
         'mud_season_risk' => 'at-shovel',
         'monsoon_risk' => 'at-heavy-rain',
+        'hurricane_risk' => 'hurricane',
         'seasonal_access_note' => 'file-text',
         'overnight_camping_allowed' => 'moon-stars',
         'dispersed_camping_allowed' => 'tent',
@@ -428,6 +443,8 @@ function llama_place_report_field_icon(
     return match ((string) ($field['section'] ?? '')) {
         'connectivity' => 'antenna-bars-5',
         'sensory' => 'at-ear',
+        'landscape_setting' => 'at-landscape',
+        'accessibility' => 'wheelchair',
         'environment_accessibility' => 'at-landscape',
         'safety' => 'shield',
         'rules' => 'at-directions-post',
@@ -573,6 +590,7 @@ function llama_place_report_fields(): array
     ]);
     $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle', 'select', 'details.max_trailer_length_feet', [
         'options' => [
+            'not-recommended' => 'Not recommended',
             '10' => 'About 10 ft', '15' => 'About 15 ft', '20' => 'About 20 ft',
             '25' => 'About 25 ft', '30' => 'About 30 ft', '35' => 'About 35 ft',
             '40' => 'About 40 ft', '45' => 'About 45 ft', '50' => 'About 50 ft',
@@ -734,14 +752,14 @@ function llama_place_report_fields(): array
     foreach ([
         'daytime_noise' => ['Noise', 'Very quiet', 'Very loud', 'sensory.daytime.noise', 'Daytime'],
         'daytime_traffic' => ['Traffic', 'None', 'Heavy', 'sensory.daytime.traffic', 'Daytime'],
-        'daytime_crowds' => ['Crowds', 'Empty', 'Crowded', 'sensory.daytime.crowds', 'Daytime'],
+        'daytime_crowds' => ['People', 'None', 'Many', 'sensory.daytime.crowds', 'Daytime'],
         'daytime_privacy' => ['Privacy', 'None', 'Excellent', 'sensory.daytime.privacy', 'Daytime'],
         'daytime_light_pollution' => ['Natural light', 'Low', 'Full sun', 'sensory.daytime.light_pollution', 'Daytime'],
         'daytime_sensory_comfort' => ['Sensory comfort', 'Difficult', 'Excellent', 'sensory.daytime.sensory_comfort', 'Daytime'],
         'daytime_social_interaction' => ['Chance of social interaction', 'Very low', 'Very high', 'sensory.daytime.social_interaction_likelihood', 'Daytime'],
         'nighttime_noise' => ['Noise', 'Very quiet', 'Very loud', 'sensory.nighttime.noise', 'Nighttime'],
         'nighttime_traffic' => ['Traffic', 'None', 'Heavy', 'sensory.nighttime.traffic', 'Nighttime'],
-        'nighttime_crowds' => ['Crowds', 'Empty', 'Crowded', 'sensory.nighttime.crowds', 'Nighttime'],
+        'nighttime_crowds' => ['People', 'None', 'Many', 'sensory.nighttime.crowds', 'Nighttime'],
         'nighttime_privacy' => ['Privacy', 'None', 'Excellent', 'sensory.nighttime.privacy', 'Nighttime'],
         'nighttime_light_pollution' => ['Light pollution', 'Dark', 'Bright', 'sensory.nighttime.light_pollution', 'Nighttime'],
         'nighttime_sensory_comfort' => ['Sensory comfort', 'Difficult', 'Excellent', 'sensory.nighttime.sensory_comfort', 'Nighttime'],
@@ -749,6 +767,8 @@ function llama_place_report_fields(): array
         'sensory_dust_from_traffic' => ['Dust from traffic', 'Low', 'High', 'sensory.details.dust_from_traffic', 'Specific sensory conditions'],
         'sensory_generator_noise' => ['Generator noise', 'Low', 'High', 'sensory.details.generator_noise', 'Specific sensory conditions'],
         'sensory_aircraft_noise' => ['Aircraft noise', 'Low', 'High', 'sensory.details.aircraft_noise', 'Specific sensory conditions'],
+        'sensory_train_noise' => ['Train noise', 'Low', 'High', 'sensory.details.train_noise', 'Specific sensory conditions'],
+        'sensory_dog_barking' => ['Dog barking', 'Low', 'High', 'sensory.details.dog_barking', 'Specific sensory conditions'],
         'sensory_road_noise' => ['Road noise', 'Low', 'High', 'sensory.details.road_noise', 'Specific sensory conditions'],
         'sensory_human_activity' => ['Human activity', 'Low', 'High', 'sensory.details.human_activity', 'Specific sensory conditions'],
         'sensory_wildlife_noise' => ['Wildlife noise', 'Low', 'High', 'sensory.details.wildlife_noise', 'Specific sensory conditions'],
@@ -767,28 +787,96 @@ function llama_place_report_fields(): array
         ]);
     }
 
-    /* Environment and accessibility */
+    /* Landscape and setting */
+    $add('landscape_primary', 'Primary setting', 'landscape_setting', 'select', 'details.landscape_primary', [
+        'wide' => true,
+        'options' => [
+            'forest-woodland' => 'Forest / woodland',
+            'mountain-alpine' => 'Mountain / alpine',
+            'canyon' => 'Canyon',
+            'grassland-prairie' => 'Grassland / prairie',
+            'shrubland-scrubland' => 'Shrubland / scrubland',
+            'high-desert' => 'High desert',
+            'low-desert' => 'Low desert',
+            'wetland' => 'Wetland / swamp / bog',
+            'beach-coastal' => 'Beach / coastal',
+            'lakeside-reservoir' => 'Lakeside / reservoir',
+            'riverside-creekside' => 'Riverside / creekside',
+            'urban-city' => 'Urban / city',
+            'suburban' => 'Suburban',
+            'farmland-ranchland' => 'Farmland / ranchland',
+            'mixed-transitional' => 'Mixed / transitional',
+            'other' => 'Other',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['environment'],
+    ]);
+
+    $add('landscape_details', 'Setting details', 'landscape_setting', 'multiselect', 'details.landscape_details', [
+        'wide' => true,
+        'summary' => '+ Add setting detail',
+        'search_placeholder' => 'Search setting details...',
+        'options' => [
+            'rocky' => 'Rocky',
+            'sandy' => 'Sandy',
+            'mud-prone' => 'Mud-prone',
+            'tree-cover' => 'Tree cover',
+            'open-meadow' => 'Open meadow',
+            'riparian' => 'Riparian',
+            'dunes' => 'Dunes',
+            'cliffs-dropoffs' => 'Cliffs / drop-offs',
+            'agricultural-nearby' => 'Agricultural nearby',
+            'residential-nearby' => 'Residential nearby',
+            'industrial-nearby' => 'Industrial nearby',
+        ],
+        'points_categories' => ['environment'],
+    ]);
+
+    $add('landscape_views', 'Views', 'landscape_setting', 'multiselect', 'details.landscape_views', [
+        'wide' => true,
+        'summary' => '+ Add view',
+        'search_placeholder' => 'Search views...',
+        'options' => [
+            'forest-woodland' => 'Forest / woodland',
+            'mountain' => 'Mountain',
+            'water' => 'Water',
+            'high-desert' => 'High desert',
+            'low-desert' => 'Low desert',
+            'canyon' => 'Canyon',
+            'grassland-prairie' => 'Grassland / prairie',
+            'wetland' => 'Wetland',
+            'beach-coast' => 'Beach / coast',
+            'city-urban' => 'City / urban',
+            'night-sky' => 'Night sky',
+        ],
+        'points_categories' => ['environment'],
+    ]);
+
+    /* Preserve old classifiers for historical reports without showing them on new forms. */
     foreach ([
-        'environment_forest' => ['Forest environment?', 'details.forest', 'environment'],
-        'environment_forest_view' => ['Forest view?', 'details.forest_view', 'environment'],
-        'environment_mountains' => ['Mountain environment?', 'details.mountains', 'environment'],
-        'environment_mountain_view' => ['Mountain view?', 'details.mountain_view', 'environment'],
-        'environment_water_nearby' => ['Water nearby?', 'details.water_nearby', 'environment'],
-        'environment_water_view' => ['Water view?', 'details.water_view', 'environment'],
-        'environment_desert' => ['Desert environment?', 'details.desert', 'environment'],
-        'environment_desert_view' => ['Desert view?', 'details.desert_view', 'environment'],
-        'environment_wildlife' => ['Wildlife common?', 'details.wildlife', 'environment'],
-        'environment_bugs' => ['Bugs significant?', 'details.bugs', 'environment'],
-        'wheelchair_friendly' => ['Wheelchair friendly?', 'details.wheelchair_friendly', 'accessibility'],
-        'mobility_device_friendly' => ['Outdoor mobility device friendly?', 'details.mobility_device_friendly', 'accessibility'],
-        'flat_walking_surface' => ['Flat walking surface?', 'details.flat_walking_surface', 'accessibility'],
-        'step_free_access' => ['Step-free access?', 'details.step_free_access', 'accessibility'],
-        'accessible_toilet' => ['Accessible toilet?', 'details.accessible_toilet', 'accessibility'],
-        'accessible_picnic_table' => ['Accessible picnic table?', 'details.accessible_picnic_table', 'accessibility'],
-    ] as $key => [$label, $storage, $category]) {
+        'environment_forest' => ['Forest environment?', 'details.forest'],
+        'environment_forest_view' => ['Forest view?', 'details.forest_view'],
+        'environment_mountains' => ['Mountain environment?', 'details.mountains'],
+        'environment_mountain_view' => ['Mountain view?', 'details.mountain_view'],
+        'environment_water_view' => ['Water view?', 'details.water_view'],
+        'environment_desert' => ['Desert environment?', 'details.desert'],
+        'environment_desert_view' => ['Desert view?', 'details.desert_view'],
+    ] as $key => [$label, $storage]) {
         $add($key, $label, 'environment_accessibility', 'tri', $storage, [
             'allow_unknown' => true,
-            'points_categories' => [$category],
+            'hide_form' => true,
+            'points_categories' => ['environment'],
+        ]);
+    }
+
+    foreach ([
+        'environment_water_nearby' => ['Water nearby?', 'details.water_nearby'],
+        'environment_wildlife' => ['Wildlife common?', 'details.wildlife'],
+        'environment_bugs' => ['Bugs significant?', 'details.bugs'],
+    ] as $key => [$label, $storage]) {
+        $add($key, $label, 'landscape_setting', 'tri', $storage, [
+            'allow_unknown' => true,
+            'points_categories' => ['environment'],
         ]);
     }
 
@@ -797,15 +885,32 @@ function llama_place_report_fields(): array
         'environment_sun_exposure' => ['Sun exposure', 'Low', 'Full sun', 'details.sun_exposure'],
         'environment_shade' => ['Environment shade', 'None', 'Heavy', 'details.environment_shade'],
         'environment_open_sky' => ['Open sky', 'Low', 'Wide open', 'details.environment_open_sky'],
+        'critter_activity' => ['Critter activity', 'None noticed', 'Heavy / persistent', 'details.critter_activity'],
     ] as $key => [$label, $low, $high, $storage]) {
-        $add($key, $label, 'environment_accessibility', 'rating', $storage, [
+        $add($key, $label, 'landscape_setting', 'rating', $storage, [
             'allow_unknown' => true,
             'low' => $low,
             'high' => $high,
             'points_categories' => ['environment'],
         ]);
     }
-    $add('walking_distance_from_vehicle', 'Walking distance from vehicle', 'environment_accessibility', 'select', 'details.walking_distance_from_vehicle', [
+
+    /* Accessibility */
+    foreach ([
+        'wheelchair_friendly' => ['Wheelchair friendly?', 'details.wheelchair_friendly'],
+        'mobility_device_friendly' => ['Outdoor mobility device friendly?', 'details.mobility_device_friendly'],
+        'flat_walking_surface' => ['Flat walking surface?', 'details.flat_walking_surface'],
+        'step_free_access' => ['Step-free access?', 'details.step_free_access'],
+        'accessible_toilet' => ['Accessible toilet?', 'details.accessible_toilet'],
+        'accessible_picnic_table' => ['Accessible picnic table?', 'details.accessible_picnic_table'],
+    ] as $key => [$label, $storage]) {
+        $add($key, $label, 'accessibility', 'tri', $storage, [
+            'allow_unknown' => true,
+            'points_categories' => ['accessibility'],
+        ]);
+    }
+
+    $add('walking_distance_from_vehicle', 'Walking distance from vehicle', 'accessibility', 'select', 'details.walking_distance_from_vehicle', [
         'allow_unknown' => true,
         'options' => [
             'at-vehicle' => 'At / beside vehicle',
@@ -866,6 +971,10 @@ function llama_place_report_fields(): array
         'points_categories' => ['seasons_rules_services'],
     ]);
     $add('winter_access', 'Winter access?', 'rules', 'tri', 'rules.winter_access', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('hurricane_risk', 'Hurricane risk?', 'rules', 'tri', 'rules.hurricane_risk', [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
     ]);
@@ -962,6 +1071,7 @@ function llama_place_report_fields(): array
     foreach ([
         'experience_sunrise_view' => ['Sunrise view', 'experience.sunrise_view'],
         'experience_sunset_view' => ['Sunset view', 'experience.sunset_view'],
+        'experience_overall_scenery' => ['Overall scenery', 'experience.overall_scenery'],
         'experience_night_sky' => ['Night sky', 'experience.night_sky'],
         'experience_stargazing' => ['Stargazing', 'experience.stargazing'],
         'experience_quiet_evening' => ['Quiet evening', 'experience.quiet_evening'],
@@ -969,7 +1079,6 @@ function llama_place_report_fields(): array
         'experience_extended_stay_comfort' => ['Extended-stay comfort', 'experience.extended_stay_comfort'],
         'experience_sensory_retreat' => ['Sensory retreat', 'experience.sensory_retreat'],
         'experience_remote_work' => ['Remote work', 'experience.remote_work'],
-        'experience_overall_scenery' => ['Overall scenery', 'experience.overall_scenery'],
     ] as $key => [$label, $storage]) {
         $add($key, $label, 'experience', 'rating', $storage, [
             'allow_unknown' => true,
@@ -978,6 +1087,20 @@ function llama_place_report_fields(): array
             'points_categories' => ['experience_recommendations'],
         ]);
     }
+
+    /* Preserve the retired duplicate ratings in historical data. */
+    foreach ([
+        'experience_mountain_view' => ['Mountain view', 'experience.mountain_view'],
+        'experience_forest_view' => ['Forest view', 'experience.forest_view'],
+    ] as $key => [$label, $storage]) {
+        $add($key, $label, 'legacy_experience_views', 'rating', $storage, [
+            'allow_unknown' => true,
+            'low' => 'Poor',
+            'high' => 'Excellent',
+            'points_categories' => ['experience_recommendations'],
+        ]);
+    }
+
     foreach ([
         'recommended_overnight_stop' => 'Recommended for overnight stop?',
         'recommended_quiet_evening' => 'Recommended for a quiet evening?',
@@ -1085,9 +1208,15 @@ function llama_place_report_fields(): array
         'sensory_strong_odors' =>
             'Rate the likelihood or intensity of strong unpleasant odors at the site. Examples include animal waste, dumpsters, sewage, factories or industrial activity, livestock, or other persistent smells.',
         'daytime_sensory_comfort' =>
-            'Give an overall daytime sensory rating using what you observed: noise, traffic, crowds, light, smells, movement, and unpredictability. This is broader than any one sensory question.',
+            'Give an overall daytime sensory rating using what you observed: noise, traffic, people, light, smells, movement, and unpredictability. This is broader than any one sensory question.',
         'nighttime_sensory_comfort' =>
-            'Give an overall nighttime sensory rating using what you observed: noise, traffic, crowds, lighting, smells, movement, and unpredictability. Day and night can be very different.',
+            'Give an overall nighttime sensory rating using what you observed: noise, traffic, people, lighting, smells, movement, and unpredictability. Day and night can be very different.',
+        'landscape_primary' =>
+            'Choose the one setting that best describes the Place itself. Use Mixed / transitional when two major settings genuinely overlap.',
+        'critter_activity' =>
+            'Rate rodents and other small animals that are likely to get into vehicles, food, trash, or gear. This is separate from dangerous wildlife risk.',
+        'hurricane_risk' =>
+            'Choose Yes when hurricanes or hurricane-force tropical systems are a realistic seasonal concern for this Place or its access routes.',
         'sensory_visual_exposure' =>
             'How visually exposed does the site feel to roads, neighboring campers, pedestrians, homes, or businesses? A high rating means people can easily see into or through the site.',
         'sensory_predictability' =>
@@ -1289,16 +1418,25 @@ function llama_place_report_quick_warnings(array $data): array
         );
     }
 
-    if (
-        $state('max_trailer_length_feet') === 'answered'
-        && is_numeric($value('max_trailer_length_feet'))
-        && (float) $value('max_trailer_length_feet') <= 25
-    ) {
-        $add(
-            'warning_limited_trailer_length',
-            'Limited trailer length',
-            'warning_limited_trailer_length'
-        );
+    if ($state('max_trailer_length_feet') === 'answered') {
+        $maxTrailer = $value('max_trailer_length_feet');
+
+        if ((string) $maxTrailer === 'not-recommended') {
+            $add(
+                'warning_limited_trailer_length',
+                'Trailers not recommended',
+                'warning_limited_trailer_length'
+            );
+        } elseif (
+            is_numeric($maxTrailer)
+            && (float) $maxTrailer <= 25
+        ) {
+            $add(
+                'warning_limited_trailer_length',
+                'Limited trailer length',
+                'warning_limited_trailer_length'
+            );
+        }
     }
 
     return $warnings;
@@ -1402,6 +1540,12 @@ function llama_place_report_answer_state(array $data, string $fieldKey): string
             : 'unanswered';
     }
 
+    if ((string) $field['type'] === 'multiselect') {
+        return is_array($value) && count($value) > 0
+            ? 'answered'
+            : 'unanswered';
+    }
+
     if ($value === null || $value === '') {
         return 'unanswered';
     }
@@ -1470,6 +1614,13 @@ function llama_place_report_form_input_from_data(array $data): array
             continue;
         }
 
+        if ((string) $field['type'] === 'multiselect') {
+            $input[$key] = is_array($value)
+                ? array_values($value)
+                : [];
+            continue;
+        }
+
         if ($value !== null) {
             $input[$key] = (string) $value;
         }
@@ -1500,6 +1651,31 @@ function llama_place_report_parse_field(
 
     if ($type === 'checkbox') {
         return (string) $raw === '1';
+    }
+
+    if ($type === 'multiselect') {
+        $options = (array) ($field['options'] ?? []);
+        $rawValues = is_array($raw)
+            ? $raw
+            : (($raw === null || $raw === '') ? [] : [$raw]);
+        $values = [];
+
+        foreach ($rawValues as $rawValue) {
+            if (!is_scalar($rawValue)) {
+                continue;
+            }
+
+            $cleanValue = trim((string) $rawValue);
+
+            if (
+                $cleanValue !== ''
+                && array_key_exists($cleanValue, $options)
+            ) {
+                $values[$cleanValue] = true;
+            }
+        }
+
+        return array_keys($values);
     }
 
     if ($type === 'tri') {
@@ -1806,6 +1982,21 @@ function llama_place_report_display_value(
 
     if ($type === 'checkbox') {
         return $value ? 'Yes' : null;
+    }
+
+    if ($type === 'multiselect') {
+        $options = (array) ($field['options'] ?? []);
+        $labels = [];
+
+        foreach ((array) $value as $selected) {
+            $selectedKey = (string) $selected;
+
+            if (array_key_exists($selectedKey, $options)) {
+                $labels[] = (string) $options[$selectedKey];
+            }
+        }
+
+        return $labels ? implode(', ', $labels) : null;
     }
 
     if ($type === 'select') {
