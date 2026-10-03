@@ -129,11 +129,6 @@ function llama_place_report_sections(): array
             'description' => 'Mobility access, walking surface, facilities, and distance from the vehicle',
             'icon' => 'wheelchair',
         ],
-        'environment_accessibility' => [
-            'label' => 'Environment details',
-            'description' => 'Earlier forest, mountain, water, and desert observations',
-            'icon' => 'at-landscape',
-        ],
         'safety' => [
             'label' => 'Safety and warnings',
             'description' => 'Hazards and conditions people should see quickly',
@@ -343,14 +338,7 @@ function llama_place_report_field_icon(
         'landscape_details' => 'at-landscape',
         'landscape_views' => 'eye',
         'critter_activity' => 'deer',
-        'environment_forest' => 'trees',
-        'environment_forest_view' => 'trees',
-        'environment_mountains' => 'mountain',
-        'environment_mountain_view' => 'mountain',
         'environment_water_nearby' => 'water-waves',
-        'environment_water_view' => 'ripple',
-        'environment_desert' => 'cactus',
-        'environment_desert_view' => 'cactus',
         'environment_wildlife' => 'deer',
         'environment_bugs' => 'bug',
         'wheelchair_friendly' => 'wheelchair',
@@ -446,7 +434,6 @@ function llama_place_report_field_icon(
         'sensory' => 'at-ear',
         'landscape_setting' => 'at-landscape',
         'accessibility' => 'wheelchair',
-        'environment_accessibility' => 'at-landscape',
         'safety' => 'shield',
         'rules' => 'at-directions-post',
         'experience' => 'star',
@@ -853,22 +840,6 @@ function llama_place_report_fields(): array
         'points_categories' => ['environment'],
     ]);
 
-    /* Preserve old classifiers for historical reports without showing them on new forms. */
-    foreach ([
-        'environment_forest' => ['Forest environment?', 'details.forest'],
-        'environment_forest_view' => ['Forest view?', 'details.forest_view'],
-        'environment_mountains' => ['Mountain environment?', 'details.mountains'],
-        'environment_mountain_view' => ['Mountain view?', 'details.mountain_view'],
-        'environment_water_view' => ['Water view?', 'details.water_view'],
-        'environment_desert' => ['Desert environment?', 'details.desert'],
-        'environment_desert_view' => ['Desert view?', 'details.desert_view'],
-    ] as $key => [$label, $storage]) {
-        $add($key, $label, 'environment_accessibility', 'tri', $storage, [
-            'allow_unknown' => true,
-            'hide_form' => true,
-        ]);
-    }
-
     foreach ([
         'environment_water_nearby' => ['Water nearby?', 'details.water_nearby'],
         'environment_wildlife' => ['Wildlife common?', 'details.wildlife'],
@@ -1085,18 +1056,6 @@ function llama_place_report_fields(): array
             'low' => 'Poor',
             'high' => 'Excellent',
             'points_categories' => ['experience_recommendations'],
-        ]);
-    }
-
-    /* Preserve the retired duplicate ratings in historical data. */
-    foreach ([
-        'experience_mountain_view' => ['Mountain view', 'experience.mountain_view'],
-        'experience_forest_view' => ['Forest view', 'experience.forest_view'],
-    ] as $key => [$label, $storage]) {
-        $add($key, $label, 'legacy_experience_views', 'rating', $storage, [
-            'allow_unknown' => true,
-            'low' => 'Poor',
-            'high' => 'Excellent',
         ]);
     }
 
