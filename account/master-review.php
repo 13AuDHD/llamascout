@@ -155,7 +155,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <p>
             Submitted by
             <strong><?= htmlspecialchars($contributorName, ENT_QUOTES, 'UTF-8') ?></strong>
-            · <?= htmlspecialchars(llama_contribution_level_short_label($contributorLevel), ENT_QUOTES, 'UTF-8') ?> contributor
+            Â· <?= htmlspecialchars(llama_contribution_level_short_label($contributorLevel), ENT_QUOTES, 'UTF-8') ?> contributor
         </p>
     </div>
 
@@ -176,17 +176,34 @@ require dirname(__DIR__) . '/partials/header.php';
     $data = is_array($item['data'] ?? null) ? $item['data'] : [];
     $photos = is_array($data['photos'] ?? null) ? $data['photos'] : [];
     $fields = llama_place_report_fields();
+    $pointInput = llama_place_report_scoring_input_from_data($data);
+    $optionalFields = llama_points_optional_new_place_fields();
     $answered = 0;
-    foreach (array_keys($fields) as $fieldKey) {
-        if (llama_place_report_answer_state($data, $fieldKey) !== 'unanswered') {
+    $totalFields = 0;
+
+    foreach ($fields as $fieldKey => $field) {
+        $fieldKey = (string) $fieldKey;
+
+        if (isset($optionalFields[$fieldKey])) {
+            continue;
+        }
+
+        $totalFields++;
+
+        if (llama_points_has_answer($pointInput, $fieldKey)) {
             $answered++;
         }
     }
-    $totalFields = count($fields);
-    $unknownCount = count(llama_place_report_unknown_fields($data));
+
+    $unknownCount = count(
+        array_filter(
+            llama_place_report_unknown_fields($data),
+            static fn (string $fieldKey): bool => isset($fields[$fieldKey])
+        )
+    );
     $estimate = llama_points_estimate_new_place(
         $db,
-        llama_place_report_scoring_input_from_data($data),
+        $pointInput,
         count($photos)
     );
     $estimatedPoints = (int) ($estimate['estimated_points'] ?? 0);
