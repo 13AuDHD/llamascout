@@ -404,7 +404,7 @@ $canResume =
 <?php else: ?>
 
 <span>
-    —
+    â
 </span>
 
 <?php endif; ?>
@@ -427,7 +427,7 @@ $canResume =
 
 
 <script
-    src="/js/admin/pad-us-sync.js"
+    src="https://llamascout.com/js/admin/pad-us-sync.js"
 ></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
