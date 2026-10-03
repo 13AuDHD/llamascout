@@ -401,12 +401,6 @@
         );
     };
 
-    /*
-     * Staged photos live outside the ordinary form controls. The shared
-     * uploader creates these hidden fields after this script loads, so they
-     * need an explicit recovery snapshot rather than going through
-     * serializeForm().
-     */
     const photoRecoveryState = (form) => {
         const token =
             String(
@@ -611,13 +605,733 @@
         return status;
     };
 
-    forms.forEach((form) => {
-        /*
-         * =====================================================
-         * EXISTING PLACE REPORT CONTROL BEHAVIOR
-         * =====================================================
-         */
 
+    const TAXONOMY_OTHER_VALUES =
+        new Set([
+            'Other',
+            'other',
+        ]);
+
+    const TAXONOMY_BASE_MANAGERS = [
+        'U.S. Forest Service',
+        'Bureau of Land Management',
+        'National Park Service',
+        'U.S. Fish and Wildlife Service',
+        'U.S. Army Corps of Engineers',
+        'Bureau of Reclamation',
+        'Tennessee Valley Authority',
+        'State government',
+        'County / regional government',
+        'City / municipal government',
+        'Special district / public authority',
+        'Public utility / power authority',
+        'Tribal government',
+        'Land trust / conservation organization',
+        'Private landowner / business',
+        'Other',
+    ];
+
+    const TAXONOMY_NATIONAL_MANAGERS = {
+        'National Forest': [
+            'U.S. Forest Service',
+        ],
+        'National Grassland': [
+            'U.S. Forest Service',
+        ],
+        'BLM Land': [
+            'Bureau of Land Management',
+        ],
+        'National Conservation Area': [
+            'Bureau of Land Management',
+            'National Park Service',
+            'Other',
+        ],
+        'National Park': [
+            'National Park Service',
+        ],
+        'National Preserve / Reserve': [
+            'National Park Service',
+            'Other',
+        ],
+        'National Monument': [
+            'National Park Service',
+            'Bureau of Land Management',
+            'U.S. Forest Service',
+            'U.S. Fish and Wildlife Service',
+            'Other',
+        ],
+        'National Recreation Area': [
+            'National Park Service',
+            'U.S. Forest Service',
+            'Bureau of Reclamation',
+            'U.S. Army Corps of Engineers',
+            'Other',
+        ],
+        'National Seashore / Lakeshore': [
+            'National Park Service',
+        ],
+        'National River / Scenic Riverway': [
+            'National Park Service',
+            'U.S. Forest Service',
+            'Bureau of Land Management',
+            'Other',
+        ],
+        'National Wildlife Refuge': [
+            'U.S. Fish and Wildlife Service',
+        ],
+        'Federal Water Project / Recreation Land': [
+            'U.S. Army Corps of Engineers',
+            'Bureau of Reclamation',
+            'Tennessee Valley Authority',
+            'Other',
+        ],
+        'County / Regional Park': [
+            'County / regional government',
+            'Other',
+        ],
+        'City / Municipal Land': [
+            'City / municipal government',
+            'Other',
+        ],
+        'Public Utility / Reservoir Land': [
+            'Public utility / power authority',
+            'Bureau of Reclamation',
+            'U.S. Army Corps of Engineers',
+            'Other',
+        ],
+        'Public Parking / Civic Property': [
+            'City / municipal government',
+            'County / regional government',
+            'State government',
+            'Other',
+        ],
+        'Rest Area / Transportation Facility': [
+            'State government',
+            'County / regional government',
+            'Other',
+        ],
+        'Roadside / Highway Right-of-Way': [
+            'State government',
+            'County / regional government',
+            'City / municipal government',
+            'Other',
+        ],
+        'Tribal Land': [
+            'Tribal government',
+            'Other',
+        ],
+        'Land Trust / Conservation Preserve': [
+            'Land trust / conservation organization',
+            'Other',
+        ],
+        'Membership / Hosted Property': [
+            'Harvest Hosts',
+            'Boondockers Welcome',
+            'Other',
+        ],
+        'Travel Center / Truck Stop Property': [
+            "Love's Travel Stops",
+            'Pilot / Flying J',
+            'TA / Petro',
+            'Maverik',
+            "Buc-ee's",
+            'Other',
+        ],
+        'Retail / Commercial Property': [
+            'Walmart',
+            'Home Depot',
+            "Lowe's",
+            "Cabela's / Bass Pro Shops",
+            'Camping World',
+            'Private landowner / business',
+            'Other',
+        ],
+        'Restaurant Property': [
+            'Cracker Barrel',
+            'Private landowner / business',
+            'Other',
+        ],
+        'Medical / Healthcare Property': [
+            'Private landowner / business',
+            'City / municipal government',
+            'County / regional government',
+            'State government',
+            'Other',
+        ],
+        'Religious / Community Property': [
+            'Private landowner / business',
+            'Other',
+        ],
+        'Casino / Gaming Property': [
+            'Private landowner / business',
+            'Tribal government',
+            'Other',
+        ],
+        'Private Land': [
+            'Private landowner / business',
+            'Other',
+        ],
+        'Fairgrounds / Event Property': [
+            'County / regional government',
+            'City / municipal government',
+            'State government',
+            'Private landowner / business',
+            'Other',
+        ],
+    };
+
+    const TAXONOMY_STATE_MANAGERS = {
+        Colorado: {
+            'State Park': [
+                'Colorado Parks & Wildlife',
+            ],
+            'State Recreation Area': [
+                'Colorado Parks & Wildlife',
+                'Other',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Colorado Parks & Wildlife',
+            ],
+            'State Trust Land': [
+                'Colorado State Land Board',
+            ],
+        },
+        Florida: {
+            'Water Management District': [
+                'South Florida Water Management District',
+                'Southwest Florida Water Management District',
+                'St. Johns River Water Management District',
+                'Suwannee River Water Management District',
+                'Northwest Florida Water Management District',
+            ],
+            'State Park': [
+                'Florida State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Florida Fish and Wildlife Conservation Commission',
+                'Other',
+            ],
+        },
+        Arizona: {
+            'State Park': [
+                'Arizona State Parks & Trails',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Arizona Game and Fish Department',
+            ],
+            'State Trust Land': [
+                'Arizona State Land Department',
+            ],
+        },
+        Utah: {
+            'State Park': [
+                'Utah Division of State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Utah Division of Wildlife Resources',
+            ],
+            'State Trust Land': [
+                'Utah Trust Lands Administration',
+            ],
+        },
+        Nevada: {
+            'State Park': [
+                'Nevada State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Nevada Department of Wildlife',
+            ],
+        },
+        'New Mexico': {
+            'State Park': [
+                'New Mexico State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'New Mexico Department of Game and Fish',
+            ],
+            'State Trust Land': [
+                'New Mexico State Land Office',
+            ],
+        },
+        Wyoming: {
+            'State Park': [
+                'Wyoming State Parks, Historic Sites & Trails',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Wyoming Game and Fish Department',
+            ],
+        },
+        Montana: {
+            'State Park': [
+                'Montana Fish, Wildlife & Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Montana Fish, Wildlife & Parks',
+            ],
+        },
+        Idaho: {
+            'State Park': [
+                'Idaho Parks and Recreation',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Idaho Department of Fish and Game',
+            ],
+            'State Trust Land': [
+                'Idaho Department of Lands',
+            ],
+        },
+        Oregon: {
+            'State Park': [
+                'Oregon Parks and Recreation Department',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Oregon Department of Fish and Wildlife',
+            ],
+        },
+        Washington: {
+            'State Park': [
+                'Washington State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Washington Department of Fish and Wildlife',
+            ],
+            'State Trust Land': [
+                'Washington Department of Natural Resources',
+            ],
+        },
+        California: {
+            'State Park': [
+                'California State Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'California Department of Fish and Wildlife',
+            ],
+        },
+        Texas: {
+            'State Park': [
+                'Texas Parks and Wildlife Department',
+            ],
+            'Wildlife Management / Game Lands': [
+                'Texas Parks and Wildlife Department',
+            ],
+        },
+        'South Dakota': {
+            'State Park': [
+                'South Dakota Game, Fish and Parks',
+            ],
+            'Wildlife Management / Game Lands': [
+                'South Dakota Game, Fish and Parks',
+            ],
+        },
+    };
+
+    const TAXONOMY_PLACE_TYPE_MANAGERS = {
+        'travel-center': [
+            "Love's Travel Stops",
+            'Pilot / Flying J',
+            'TA / Petro',
+            'Maverik',
+            "Buc-ee's",
+            'Other',
+        ],
+        'truck-stop': [
+            "Love's Travel Stops",
+            'Pilot / Flying J',
+            'TA / Petro',
+            'Maverik',
+            "Buc-ee's",
+            'Other',
+        ],
+        'retail-parking': [
+            'Walmart',
+            'Home Depot',
+            "Lowe's",
+            "Cabela's / Bass Pro Shops",
+            'Camping World',
+            'Other',
+        ],
+        'restaurant-parking': [
+            'Cracker Barrel',
+            'Other',
+        ],
+        'membership-host': [
+            'Harvest Hosts',
+            'Boondockers Welcome',
+            'Other',
+        ],
+    };
+
+    const setupTaxonomy = (form) => {
+        const state =
+            form.querySelector(
+                'select[name="state"]'
+            );
+
+        const placeType =
+            form.querySelector(
+                'select[name="type"]'
+            );
+
+        const landType =
+            form.querySelector(
+                'select[name="land_type"]'
+            );
+
+        const manager =
+            form.querySelector(
+                'select[name="land_manager"]'
+            );
+
+        if (!landType || !manager) {
+            return;
+        }
+
+        const originalManager =
+            String(manager.value || '');
+
+        const makeOtherInput = (
+            select,
+            label
+        ) => {
+            if (!select) {
+                return null;
+            }
+
+            const wrapper =
+                select.closest(
+                    '.contribution-field'
+                )
+                || select.parentElement;
+
+            if (!wrapper) {
+                return null;
+            }
+
+            const input =
+                document.createElement(
+                    'input'
+                );
+
+            input.type = 'text';
+            input.autocomplete = 'off';
+            input.placeholder = label;
+            input.hidden = true;
+            input.dataset.taxonomyOtherInput =
+                select.name;
+
+            select.insertAdjacentElement(
+                'afterend',
+                input
+            );
+
+            const sync = () => {
+                const isOther =
+                    TAXONOMY_OTHER_VALUES.has(
+                        String(
+                            select.value
+                            || ''
+                        )
+                    );
+
+                input.hidden = !isOther;
+                input.required = isOther;
+
+                if (!isOther) {
+                    input.value = '';
+                }
+            };
+
+            select.addEventListener(
+                'change',
+                sync
+            );
+
+            sync();
+
+            return input;
+        };
+
+        const typeOther =
+            makeOtherInput(
+                placeType,
+                'Describe this Place type'
+            );
+
+        const landTypeOther =
+            makeOtherInput(
+                landType,
+                'Enter the property / land type'
+            );
+
+        const managerOther =
+            makeOtherInput(
+                manager,
+                'Enter the manager, operator, owner, business, or membership program'
+            );
+
+        const setOptions = (
+            select,
+            values,
+            current
+        ) => {
+            const unknown =
+                [
+                    ...select.options,
+                ].find(
+                    (option) =>
+                        option.textContent
+                            ?.includes(
+                                'Unknown / could not determine'
+                            )
+                );
+
+            select.innerHTML = '';
+
+            const blank =
+                new Option(
+                    'Select...',
+                    ''
+                );
+
+            select.add(blank);
+
+            if (unknown) {
+                select.add(
+                    new Option(
+                        unknown.textContent,
+                        unknown.value
+                    )
+                );
+            }
+
+            const unique = [
+                ...new Set(values),
+            ];
+
+            unique.forEach((value) => {
+                select.add(
+                    new Option(
+                        value,
+                        value
+                    )
+                );
+            });
+
+            if (
+                current
+                && ![
+                    ...select.options,
+                ].some(
+                    (option) =>
+                        option.value
+                            === current
+                )
+            ) {
+                const previous =
+                    new Option(
+                        current
+                        + ' (previous entry)',
+                        current
+                    );
+
+                select.add(previous);
+            }
+
+            select.value =
+                current || '';
+        };
+
+        const managerChoices = () => {
+            const selectedState =
+                String(
+                    state?.value
+                    || ''
+                );
+
+            const selectedLandType =
+                String(
+                    landType.value
+                    || ''
+                );
+
+            const selectedPlaceType =
+                String(
+                    placeType?.value
+                    || ''
+                );
+
+            const values = [];
+
+            const add = (items) => {
+                (
+                    Array.isArray(items)
+                        ? items
+                        : []
+                ).forEach((item) => {
+                    if (!values.includes(item)) {
+                        values.push(item);
+                    }
+                });
+            };
+
+            add(
+                TAXONOMY_STATE_MANAGERS[
+                    selectedState
+                ]?.[
+                    selectedLandType
+                ]
+            );
+
+            add(
+                TAXONOMY_NATIONAL_MANAGERS[
+                    selectedLandType
+                ]
+            );
+
+            add(
+                TAXONOMY_PLACE_TYPE_MANAGERS[
+                    selectedPlaceType
+                ]
+            );
+
+            if (!values.length) {
+                add(TAXONOMY_BASE_MANAGERS);
+            } else if (
+                !values.includes('Other')
+            ) {
+                values.push('Other');
+            }
+
+            return values;
+        };
+
+        const syncManager = (
+            preserve = true
+        ) => {
+            const current =
+                preserve
+                    ? String(
+                        manager.value
+                        || ''
+                    )
+                    : '';
+
+            setOptions(
+                manager,
+                managerChoices(),
+                current
+            );
+
+            manager.dispatchEvent(
+                new Event(
+                    'change',
+                    {
+                        bubbles: false,
+                    }
+                )
+            );
+        };
+
+        state?.addEventListener(
+            'change',
+            () => syncManager(false)
+        );
+
+        placeType?.addEventListener(
+            'change',
+            () => syncManager(false)
+        );
+
+        landType.addEventListener(
+            'change',
+            () => syncManager(false)
+        );
+
+        syncManager(true);
+
+        if (
+            originalManager
+            && manager.value === ''
+        ) {
+            manager.value =
+                originalManager;
+        }
+
+        form.addEventListener(
+            'submit',
+            () => {
+                const applyOther = (
+                    select,
+                    input
+                ) => {
+                    if (
+                        !select
+                        || !input
+                        || !TAXONOMY_OTHER_VALUES.has(
+                            String(
+                                select.value
+                                || ''
+                            )
+                        )
+                    ) {
+                        return;
+                    }
+
+                    const custom =
+                        String(
+                            input.value
+                            || ''
+                        ).trim();
+
+                    if (!custom) {
+                        return;
+                    }
+
+                    let stored = custom;
+
+                    if (
+                        select.name === 'type'
+                    ) {
+                        stored =
+                            'Other: ' + custom;
+                    }
+
+                    const option =
+                        new Option(
+                            stored,
+                            stored,
+                            true,
+                            true
+                        );
+
+                    select.add(option);
+                    select.value = stored;
+                };
+
+                applyOther(
+                    placeType,
+                    typeOther
+                );
+
+                applyOther(
+                    landType,
+                    landTypeOther
+                );
+
+                applyOther(
+                    manager,
+                    managerOther
+                );
+            },
+            {
+                capture: true,
+            }
+        );
+    };
+
+
+    forms.forEach((form) => {
+        setupTaxonomy(form);
         form
             .querySelectorAll(
                 '[data-place-report-clear]'
@@ -707,13 +1421,6 @@
                 }
             );
         }
-
-
-        /*
-         * =====================================================
-         * LOCAL RECOVERY BACKUP
-         * =====================================================
-         */
 
         const key =
             formRecoveryKey(form);
@@ -868,15 +1575,6 @@
                             payload.data
                         );
 
-                    /*
-                     * Photo recovery version 2 could outlive a successful
-                     * Save for Later because that save bypassed the normal
-                     * form submit event. Those stale tokens had already been
-                     * consumed on the server and were the reason a draft could
-                     * open with no photos until the next refresh. Keep the
-                     * ordinary form-field recovery from v1/v2, but only trust
-                     * photo-stage recovery written by the coordinated v3 flow.
-                     */
                     const hasRecoveredPhotos =
                         payload?.version === 3
                         && payload.photoStage
@@ -943,11 +1641,6 @@
                         removeRecovery();
                     }
                 } else {
-                    /*
-                     * The server-side form has changed since this
-                     * recovery copy was made, or the copy is old.
-                     * Do not overwrite newer server data.
-                     */
                     removeRecovery();
                 }
             }
@@ -965,27 +1658,10 @@
             queueRecovery
         );
 
-        /*
-         * Programmatic photo uploads/removals do not emit ordinary input or
-         * change events. The shared uploader sends this event whenever its
-         * staged batch changes so photo-only edits receive the same crash
-         * recovery protection as the rest of the report.
-         */
         form.addEventListener(
             'llama:photo-staging-changed',
             queueRecovery
         );
-
-
-        /*
-         * =====================================================
-         * SAVE / RECOVERY COORDINATION
-         * =====================================================
-         *
-         * js/admin/place-report-save.js is the only live Admin
-         * AJAX save implementation. This shared script owns only
-         * browser recovery and the save-success handshake.
-         */
 
         const isAdminReport =
             form.id === 'place-report'
@@ -1034,11 +1710,6 @@
         };
 
         if (isAdminReport) {
-            /*
-             * The dedicated Admin saver emits this immediately
-             * before it builds FormData. Force the latest browser
-             * recovery copy to disk first, including photo staging.
-             */
             form.addEventListener(
                 'llama:admin-place-report-save-starting',
                 () => {
@@ -1050,10 +1721,6 @@
                 }
             );
         } else {
-            /*
-             * Contributor/moderator submission forms keep their
-             * normal navigation-based submit behavior.
-             */
             form.addEventListener(
                 'submit',
                 () => {
@@ -1068,13 +1735,6 @@
             );
         }
 
-
-        /*
-         * Save for Later is an AJAX action and therefore does not fire the
-         * form's submit event. Coordinate that path explicitly so the local
-         * crash-recovery layer cannot keep a staging token after the server has
-         * consumed it.
-         */
         form.addEventListener(
             'llama:place-draft-save-starting',
             () => {
@@ -1113,17 +1773,6 @@
             }
         );
 
-
-        /*
-         * A dedicated Admin save script owns the live AJAX save.
-         * When that script confirms a database save, make the
-         * browser-recovery copy agree with the newly saved state.
-         *
-         * Without this handshake, local recovery continues to use
-         * the page-load state as its baseline and can later treat
-         * already-saved answers as unsaved or restore the wrong
-         * version after a reload/crash.
-         */
         window.addEventListener(
             'llama:admin-place-report-saved',
             (event) => {
@@ -1167,8 +1816,6 @@
                 removeRecovery();
             }
         );
-
-
 
         window.addEventListener(
             'beforeunload',
