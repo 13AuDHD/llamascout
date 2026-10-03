@@ -1419,16 +1419,15 @@
             return false;
         }
 
+        const switchingFromLatest =
+            radarCurrentLoopIndex < 0;
+
         const previous =
             radarCurrentLoopIndex >= 0
                 ? radarLoopLayers[
                     radarCurrentLoopIndex
                 ]
                 : null;
-
-        const previousLayer =
-            previous?.layer
-            || state.radar?.layer;
 
         const nextLayer =
             frame.layer;
@@ -1451,7 +1450,7 @@
         }
 
         if (
-            radarCurrentLoopIndex < 0
+            switchingFromLatest
             &&
             state.radar?.layer
         ) {
@@ -1481,8 +1480,7 @@
                         }
 
                         if (
-                            radarCurrentLoopIndex
-                                < 0
+                            switchingFromLatest
                             &&
                             state.radar?.layer
                         ) {
