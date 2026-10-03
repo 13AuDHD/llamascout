@@ -388,6 +388,10 @@ function llama_place_report_completion_summary(
             continue;
         }
 
+        if (!empty($field['hide_form'])) {
+            continue;
+        }
+
         if (
             isset(
                 llama_points_optional_new_place_fields()[
