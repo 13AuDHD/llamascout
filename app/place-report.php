@@ -217,6 +217,7 @@ function llama_place_report_land_types(): array
 {
     return [
         'National Forest' => 'National Forest',
+        'National Grassland' => 'National Grassland',
         'BLM Land' => 'BLM Land',
         'National Park' => 'National Park',
         'National Monument' => 'National Monument',
