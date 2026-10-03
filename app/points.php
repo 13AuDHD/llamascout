@@ -713,27 +713,31 @@ foreach ($fields as $fieldKey) {
      * Fields outside the points system still count toward
      * completion unless they are explicitly optional.
      */
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        $fieldKey =
-            (string) $fieldKey;
-
-        if (
-            isset(
-                $optionalFields[
-                    $fieldKey
-                ]
-            )
-        ) {
-            continue;
-        }
-
-        $completionFields[
-            $fieldKey
-        ] = true;
-    }
+   foreach (
+       llama_place_report_fields()
+       as $fieldKey => $field
+   ) {
+       $fieldKey =
+           (string) $fieldKey;
+   
+       if (!empty($field['hide_form'])) {
+           continue;
+       }
+   
+       if (
+           isset(
+               $optionalFields[
+                   $fieldKey
+               ]
+           )
+       ) {
+           continue;
+       }
+   
+       $completionFields[
+           $fieldKey
+       ] = true;
+   }
 
     $fieldTotal =
         count($completionFields);
