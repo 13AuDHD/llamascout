@@ -199,12 +199,43 @@ function llama_place_report_land_managers(): array
         'U.S. Fish and Wildlife Service' => 'U.S. Fish and Wildlife Service',
         'U.S. Army Corps of Engineers' => 'U.S. Army Corps of Engineers',
         'Bureau of Reclamation' => 'Bureau of Reclamation',
-        'State government' => 'State government',
+        'Tennessee Valley Authority' => 'Tennessee Valley Authority (TVA)',
+
+        'Colorado Parks & Wildlife' => 'Colorado Parks & Wildlife',
+        'Colorado State Land Board' => 'Colorado State Land Board',
+
+        'South Florida Water Management District' => 'South Florida Water Management District',
+        'Southwest Florida Water Management District' => 'Southwest Florida Water Management District',
+        'St. Johns River Water Management District' => 'St. Johns River Water Management District',
+        'Suwannee River Water Management District' => 'Suwannee River Water Management District',
+        'Northwest Florida Water Management District' => 'Northwest Florida Water Management District',
+        'Florida State Parks' => 'Florida State Parks',
+        'Florida Fish and Wildlife Conservation Commission' => 'Florida Fish and Wildlife Conservation Commission',
+
+        'Love\'s Travel Stops' => 'Love\'s Travel Stops',
+        'Pilot / Flying J' => 'Pilot / Flying J',
+        'TA / Petro' => 'TA / Petro',
+        'Maverik' => 'Maverik',
+        'Buc-ee\'s' => 'Buc-ee\'s',
+        'Walmart' => 'Walmart',
+        'Home Depot' => 'Home Depot',
+        'Lowe\'s' => 'Lowe\'s',
+        'Cracker Barrel' => 'Cracker Barrel',
+        'Cabela\'s / Bass Pro Shops' => 'Cabela\'s / Bass Pro Shops',
+        'Camping World' => 'Camping World',
+
+        'Harvest Hosts' => 'Harvest Hosts',
+        'Boondockers Welcome' => 'Boondockers Welcome',
+
+        'State government' => 'State government / agency',
         'County / regional government' => 'County / regional government',
         'City / municipal government' => 'City / municipal government',
+        'Special district / public authority' => 'Special district / public authority',
+        'Public utility / power authority' => 'Public utility / power authority',
         'Tribal government' => 'Tribal government',
-        'Private' => 'Private',
-        'Other' => 'Other / mixed management',
+        'Land trust / conservation organization' => 'Land trust / conservation organization',
+        'Private landowner / business' => 'Private landowner / business',
+        'Other' => 'Other',
     ];
 }
 
@@ -214,23 +245,90 @@ function llama_place_report_land_types(): array
         'National Forest' => 'National Forest',
         'National Grassland' => 'National Grassland',
         'BLM Land' => 'BLM Land',
+        'National Conservation Area' => 'National Conservation Area',
         'National Park' => 'National Park',
+        'National Preserve / Reserve' => 'National Preserve / Reserve',
         'National Monument' => 'National Monument',
         'National Recreation Area' => 'National Recreation Area',
+        'National Seashore / Lakeshore' => 'National Seashore / Lakeshore',
+        'National River / Scenic Riverway' => 'National River / Scenic Riverway',
         'National Wildlife Refuge' => 'National Wildlife Refuge',
+        'Federal Water Project / Recreation Land' => 'Federal Water Project / Recreation Land',
+
         'State Forest' => 'State Forest',
         'State Park' => 'State Park',
+        'State Recreation Area' => 'State Recreation Area',
+        'State Natural Area / Preserve' => 'State Natural Area / Preserve',
         'State Trust Land' => 'State Trust Land',
-        'Wildlife Management Area' => 'Wildlife Management Area',
+        'Wildlife Management / Game Lands' => 'Wildlife Management / Game Lands',
+        'Water Management District' => 'Water Management District',
+
         'County / Regional Park' => 'County / Regional Park',
         'City / Municipal Land' => 'City / Municipal Land',
-        'Army Corps of Engineers' => 'Army Corps of Engineers',
-        'Bureau of Reclamation' => 'Bureau of Reclamation',
-        'Tribal Land' => 'Tribal Land',
-        'Private Land' => 'Private Land',
+        'Public Utility / Reservoir Land' => 'Public Utility / Reservoir Land',
+        'Public Parking / Civic Property' => 'Public Parking / Civic Property',
+        'Rest Area / Transportation Facility' => 'Rest Area / Transportation Facility',
         'Roadside / Highway Right-of-Way' => 'Roadside / Highway Right-of-Way',
+        'Fairgrounds / Event Property' => 'Fairgrounds / Event Property',
+
+        'Tribal Land' => 'Tribal Land',
+        'Land Trust / Conservation Preserve' => 'Land Trust / Conservation Preserve',
+
+        'Travel Center / Truck Stop Property' => 'Travel Center / Truck Stop Property',
+        'Retail / Commercial Property' => 'Retail / Commercial Property',
+        'Restaurant Property' => 'Restaurant Property',
+        'Medical / Healthcare Property' => 'Medical / Healthcare Property',
+        'Religious / Community Property' => 'Religious / Community Property',
+        'Casino / Gaming Property' => 'Casino / Gaming Property',
+        'Membership / Hosted Property' => 'Membership / Hosted Property',
+        'Private Land' => 'Private Land',
+
         'Other' => 'Other',
     ];
+}
+
+function llama_place_report_place_types(): array
+{
+    $types =
+        function_exists('community_place_types')
+            ? community_place_types()
+            : [];
+
+    $expanded = [
+        'dispersed-camping' => 'Dispersed camping',
+        'developed-campground' => 'Developed campground',
+        'camping-area' => 'Camping area',
+        'rv-park-resort' => 'RV park / resort',
+
+        'rest-area' => 'Rest area',
+        'scenic-overlook' => 'Scenic overlook / viewpoint',
+        'vehicle-pulloff' => 'Roadside / vehicle pull-off',
+        'trailhead' => 'Trailhead',
+        'day-use' => 'Day-use area',
+        'public-parking' => 'Public / civic parking',
+
+        'travel-center' => 'Travel center',
+        'truck-stop' => 'Truck stop',
+        'retail-parking' => 'Retail parking',
+        'restaurant-parking' => 'Restaurant parking',
+        'casino-parking' => 'Casino parking',
+        'medical-office-parking' => 'Medical office / clinic parking',
+        'hospital-parking' => 'Hospital / healthcare parking',
+        'church-parking' => 'Church / religious property parking',
+        'fairgrounds' => 'Fairgrounds / event grounds',
+        'street-parking' => 'Street parking',
+        'other-parking' => 'Other parking',
+
+        'membership-host' => 'Membership / hosted stay',
+        'private-property' => 'Private property',
+
+        'other' => 'Other',
+    ];
+
+    return array_replace(
+        $types,
+        $expanded
+    );
 }
 
 function llama_place_report_surface_options(bool $allowGrass = true): array
@@ -480,26 +578,7 @@ function llama_place_report_fields(): array
     ]);
     $add('type', 'Place type', 'basic', 'select', 'type', [
         'default' => 'dispersed-camping',
-        'options' =>
-            function_exists('community_place_types')
-                ? community_place_types()
-                : [
-                    'dispersed-camping' => 'Dispersed camping',
-                    'developed-campground' => 'Developed campground',
-                    'camping-area' => 'Camping area',
-                    'rv-park-resort' => 'RV park / resort',
-                    'rest-area' => 'Rest area',
-                    'travel-center' => 'Travel center',
-                    'truck-stop' => 'Truck stop',
-                    'retail-parking' => 'Retail parking',
-                    'street-parking' => 'Street parking',
-                    'other-parking' => 'Other parking',
-                    'private-property' => 'Private property',
-                    'vehicle-pulloff' => 'Vehicle pull-off',
-                    'trailhead' => 'Trailhead',
-                    'day-use' => 'Day-use area',
-                    'other' => 'Other',
-                ],
+        'options' => llama_place_report_place_types(),
     ]);
     $add('visited_at', 'Date visited', 'basic', 'date', 'visited_at');
     $add('description', 'Description', 'basic', 'textarea', 'description', [
@@ -547,7 +626,7 @@ function llama_place_report_fields(): array
     $add('region', 'Region / ranger district', 'location', 'text', 'region', [
         'allow_unknown' => true,
     ]);
-    $add('land_manager', 'Land manager', 'location', 'select', 'land_manager', [
+    $add('land_manager', 'Manager / operator / owner', 'location', 'select', 'land_manager', [
         'options' => llama_place_report_land_managers(),
         'allow_unknown' => true,
     ]);
@@ -1140,9 +1219,9 @@ function llama_place_report_fields(): array
         'region' =>
             'Use the local administrative area when one exists. Examples include Pagosa Ranger District, Moab Field Office, a national park district, or a named city neighborhood. For an urban place with no useful region, leave this blank.',
         'land_manager' =>
-            'Who manages or controls the land? Examples include BLM, U.S. Forest Service, National Park Service, state, county, city, tribal land, or private property.',
+            'Choose the specific agency, business, membership program, organization, or owner that manages or operates this Place. The available choices narrow automatically from the state, Place type, and property type. Choose Other when the correct organization is not listed.',
         'land_type' =>
-            'Describe what kind of land or facility the Place is on, rather than the agency that manages it. The land manager and land type may be different.',
+            'Describe the property or land system the Place is on. Examples include National Forest, State Park, Water Management District, retail property, travel center property, medical property, hosted membership property, roadside right-of-way, or private land.',
         'vehicle_capacity' =>
             'Estimate how many normal vehicles can fit without blocking the road, entrance, turnaround, or neighboring sites. Do not count sketchy edge parking just because a vehicle could technically squeeze there.',
         'max_vehicle_length_feet' =>
@@ -2593,4 +2672,3 @@ function llama_place_report_published_answer_state(
         )
     );
 }
-
