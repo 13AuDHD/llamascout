@@ -764,6 +764,14 @@ function llama_pad_us_property_type_slug(
             'national-river-scenic-riverway',
         'scenic riverway' =>
             'national-river-scenic-riverway',
+        'national wild and scenic river' =>
+            'national-river-scenic-riverway',
+        'federal recreation area' =>
+            'federal-water-project',
+        'water project' =>
+            'federal-water-project',
+        'reservoir recreation area' =>
+            'federal-water-project',
         'wildlife refuge' =>
             'national-wildlife-refuge',
         'state forest' =>
@@ -776,11 +784,19 @@ function llama_pad_us_property_type_slug(
             'state-natural-area',
         'state preserve' =>
             'state-natural-area',
+        'natural area' =>
+            'state-natural-area',
+        'nature preserve' =>
+            'state-natural-area',
         'state trust land' =>
             'state-trust-land',
         'wildlife management area' =>
             'wildlife-management-game-land',
         'game land' =>
+            'wildlife-management-game-land',
+        'game management area' =>
+            'wildlife-management-game-land',
+        'wildlife area' =>
             'wildlife-management-game-land',
         'county park' =>
             'county-regional-park',
@@ -811,6 +827,54 @@ function llama_pad_us_property_type_slug(
     }
 
     return null;
+}
+
+
+function llama_pad_us_designation_is_nonprimary(
+    string $decoded,
+    string $localDesignation,
+    string $category
+): bool {
+    $text =
+        mb_strtolower(
+            trim(
+                $decoded
+                . ' '
+                . $localDesignation
+                . ' '
+                . $category
+            )
+        );
+
+    foreach (
+        [
+            'easement',
+            'wilderness study area',
+            'wilderness area',
+            'area of critical environmental concern',
+            'research natural area',
+            'national scenic trail',
+            'national historic trail',
+            'wild and scenic river',
+            'critical habitat',
+            'roadless area',
+            'conservation easement',
+            'proclamation boundary',
+            'planning boundary',
+        ]
+        as $needle
+    ) {
+        if (
+            str_contains(
+                $text,
+                $needle
+            )
+        ) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -885,6 +949,54 @@ function llama_pad_us_issue(
             | JSON_UNESCAPED_UNICODE
         ),
     ]);
+}
+
+
+function llama_pad_us_issue_once(
+    PDO $db,
+    int $runId,
+    ?string $sourceRecordId,
+    string $stateCode,
+    string $severity,
+    string $issueType,
+    string $message,
+    array $sourceData
+): bool {
+    $check =
+        $db->prepare(
+            'SELECT id
+             FROM place_taxonomy_import_issues
+             WHERE import_run_id = ?
+               AND issue_type = ?
+               AND message = ?
+             LIMIT 1'
+        );
+
+    $check->execute([
+        $runId,
+        $issueType,
+        $message,
+    ]);
+
+    if (
+        $check->fetchColumn()
+        !== false
+    ) {
+        return false;
+    }
+
+    llama_pad_us_issue(
+        $db,
+        $runId,
+        $sourceRecordId,
+        $stateCode,
+        $severity,
+        $issueType,
+        $message,
+        $sourceData
+    );
+
+    return true;
 }
 
 
@@ -1110,61 +1222,89 @@ function llama_pad_us_organization(
 }
 
 
-function llama_pad_us_source_record_id(
-    array $attributes
+function llama_pad_us_canonical_key_part(
+    string $value
 ): string {
-    $gisSource =
+    $value =
+        mb_strtolower(
+            trim(
+                $value
+            )
+        );
+
+    $value =
+        preg_replace(
+            '/\s+/u',
+            ' ',
+            $value
+        )
+        ?? $value;
+
+    return $value;
+}
+
+
+function llama_pad_us_logical_unit_id(
+    array $attributes,
+    string $stateCode,
+    string $decodedManager,
+    string $decodedDesignation
+): string {
+    $name =
+        llama_pad_us_location_name(
+            $attributes
+        );
+
+    $manager =
         trim(
             (string) (
-                $attributes['GIS_Src']
+                $attributes['Loc_Mang']
                 ?? ''
             )
         );
 
-    $sourcePaid =
-        trim(
-            (string) (
-                $attributes['Source_PAID']
-                ?? ''
-            )
-        );
-
-    if (
-        $gisSource !== ''
-        && $sourcePaid !== ''
-    ) {
-        return
-            'src-'
-            . sha1(
-                $gisSource
-                . '|'
-                . $sourcePaid
+    if ($manager === '') {
+        $manager =
+            trim(
+                $decodedManager
             );
     }
 
-    $objectId =
+    $designation =
         trim(
             (string) (
-                $attributes['OBJECTID']
+                $attributes['Loc_Ds']
                 ?? ''
             )
         );
 
-    if ($objectId !== '') {
-        return
-            'oid-'
-            . $objectId;
+    if ($designation === '') {
+        $designation =
+            trim(
+                $decodedDesignation
+            );
     }
 
     return
-        'hash-'
+        'unit-'
         . sha1(
-            json_encode(
-                $attributes,
-                JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
+            implode(
+                '|',
+                [
+                    llama_pad_us_canonical_key_part(
+                        $stateCode
+                    ),
+                    llama_pad_us_canonical_key_part(
+                        $manager
+                    ),
+                    llama_pad_us_canonical_key_part(
+                        $name
+                    ),
+                    llama_pad_us_canonical_key_part(
+                        $designation
+                    ),
+                ]
             )
-            ?: ''
         );
 }
 
@@ -1574,11 +1714,6 @@ function llama_pad_us_import_batch(
 
             $processed++;
 
-            $sourceRecordId =
-                llama_pad_us_source_record_id(
-                    $attributes
-                );
-
             $decodedState =
                 llama_pad_us_decode(
                     $domains,
@@ -1629,6 +1764,14 @@ function llama_pad_us_import_batch(
                     'Des_Tp',
                     $attributes['Des_Tp']
                         ?? ''
+                );
+
+            $sourceRecordId =
+                llama_pad_us_logical_unit_id(
+                    $attributes,
+                    $recordState,
+                    $decodedManager,
+                    $decodedDesignation
                 );
 
             $decodedAccess =
@@ -1703,35 +1846,70 @@ function llama_pad_us_import_batch(
             }
 
             if ($propertyTypeId === null) {
-                $propertyTypeId =
-                    llama_pad_us_property_type_id(
-                        $db,
-                        'other'
+                $category =
+                    llama_pad_us_decode(
+                        $domains,
+                        'Category',
+                        $attributes['Category']
+                            ?? ''
                     );
 
-                $warnings++;
+                if (
+                    llama_pad_us_designation_is_nonprimary(
+                        $decodedDesignation,
+                        (string) (
+                            $attributes['Loc_Ds']
+                            ?? ''
+                        ),
+                        $category
+                    )
+                ) {
+                    $skipped++;
+                    continue;
+                }
 
-                llama_pad_us_issue(
-                    $db,
-                    $runId,
-                    $sourceRecordId,
-                    $recordState,
-                    'warning',
-                    'unmapped_designation',
+                $designationLabel =
+                    trim(
+                        $decodedDesignation
+                    );
+
+                if ($designationLabel === '') {
+                    $designationLabel =
+                        trim(
+                            (string) (
+                                $attributes['Loc_Ds']
+                                ?? $attributes['Des_Tp']
+                                ?? 'Unknown'
+                            )
+                        );
+                }
+
+                $message =
                     'PAD-US designation "'
                     . (
-                        $decodedDesignation !== ''
-                            ? $decodedDesignation
-                            : (
-                                (string) (
-                                    $attributes['Des_Tp']
-                                    ?? 'Unknown'
-                                )
-                            )
+                        $designationLabel !== ''
+                            ? $designationLabel
+                            : 'Unknown'
                     )
-                    . '" is not mapped to a Llama Scout property type.',
-                    $attributes
-                );
+                    . '" is not mapped to a Llama Scout property type.';
+
+                if (
+                    llama_pad_us_issue_once(
+                        $db,
+                        $runId,
+                        $sourceRecordId,
+                        $recordState,
+                        'warning',
+                        'unmapped_designation',
+                        $message,
+                        $attributes
+                    )
+                ) {
+                    $warnings++;
+                }
+
+                $skipped++;
+                continue;
             }
 
             if (
@@ -1758,18 +1936,20 @@ function llama_pad_us_import_batch(
                 );
 
             if ($locationName === '') {
-                $warnings++;
-
-                llama_pad_us_issue(
-                    $db,
-                    $runId,
-                    $sourceRecordId,
-                    $recordState,
-                    'warning',
-                    'missing_location_name',
-                    'PAD-US record has no usable unit or local name.',
-                    $attributes
-                );
+                if (
+                    llama_pad_us_issue_once(
+                        $db,
+                        $runId,
+                        $sourceRecordId,
+                        $recordState,
+                        'warning',
+                        'missing_location_name',
+                        'PAD-US contains records with no usable unit or local name.',
+                        $attributes
+                    )
+                ) {
+                    $warnings++;
+                }
 
                 $skipped++;
                 continue;
@@ -1855,9 +2035,30 @@ function llama_pad_us_import_batch(
                             'state_code' =>
                                 $recordState,
                             'name' =>
-                                $locationName,
-                            'metadata' =>
-                                $metadata,
+                                llama_pad_us_canonical_key_part(
+                                    $locationName
+                                ),
+                            'manager' =>
+                                llama_pad_us_canonical_key_part(
+                                    $localManager !== ''
+                                        ? $localManager
+                                        : $decodedManager
+                                ),
+                            'designation' =>
+                                llama_pad_us_canonical_key_part(
+                                    trim(
+                                        (string) (
+                                            $attributes['Loc_Ds']
+                                            ?? ''
+                                        )
+                                    ) !== ''
+                                        ? (string) $attributes['Loc_Ds']
+                                        : $decodedDesignation
+                                ),
+                            'public_access' =>
+                                llama_pad_us_canonical_key_part(
+                                    $decodedAccess
+                                ),
                         ],
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
@@ -1984,7 +2185,7 @@ function llama_pad_us_import_batch(
                     $organizationId,
                     $propertyTypeId,
                     $locationName,
-                    $sourceRecordId,
+                    'pad-us:' . $sourceRecordId,
                     $recordState,
                     $sourceRecordId,
                     json_encode(
