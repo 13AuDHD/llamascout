@@ -404,7 +404,7 @@ $canResume =
 <?php else: ?>
 
 <span>
-    â
+    - 
 </span>
 
 <?php endif; ?>
