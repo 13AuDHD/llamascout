@@ -272,23 +272,19 @@
                     + states.length
                     + ')';
 
-                const overall =
-                    (
-                        allStateIndex
-                        + (
-                            sourceRows > 0
-                                ? processed
-                                    / sourceRows
-                                : 0
-                        )
-                    )
-                    / states.length
-                    * 100;
-
                 progressBar.value =
                     Math.min(
                         100,
-                        overall
+                        (
+                            allStateIndex
+                            + (
+                                sourceRows > 0
+                                    ? processed / sourceRows
+                                    : 0
+                            )
+                        )
+                        / states.length
+                        * 100
                     );
             } else {
                 progressTitle.textContent =
@@ -303,22 +299,22 @@
                 processed.toLocaleString()
                 + ' of '
                 + sourceRows.toLocaleString()
-                + ' source rows, '
+                + ' PAD-US rows, '
                 + Number(
-                    result.locations_created
+                    result.units_created
                     || 0
                 ).toLocaleString()
-                + ' new named units, '
+                + ' new reference units, '
                 + Number(
-                    result.locations_updated
+                    result.units_updated
                     || 0
                 ).toLocaleString()
-                + ' units updated, '
+                + ' updated, '
                 + Number(
-                    result.warning_count
+                    result.rows_skipped
                     || 0
                 ).toLocaleString()
-                + ' warnings.';
+                + ' skipped.';
 
             if (result.done) {
                 return {
@@ -349,9 +345,7 @@
         setRunning(true);
 
         try {
-            if (
-                selectedState === 'ALL'
-            ) {
+            if (selectedState === 'ALL') {
                 for (
                     let index = 0;
                     index < states.length;
@@ -370,13 +364,13 @@
 
                 if (stopRequested) {
                     showSuccess(
-                        'Synchronization stopped after the current batch. Any incomplete state can be resumed from Recent PAD-US Runs.'
+                        'Synchronization stopped after the current batch.'
                     );
                 } else {
                     progressBar.value = 100;
 
                     showSuccess(
-                        'PAD-US synchronization completed for all 50 states. Reload this page to see the final run history.'
+                        'PAD-US reference synchronization completed for all 50 states.'
                     );
                 }
             } else {
@@ -391,14 +385,14 @@
                     || stopRequested
                 ) {
                     showSuccess(
-                        'Synchronization stopped after the current batch. Use Resume in Recent PAD-US Runs to continue.'
+                        'Synchronization stopped after the current batch.'
                     );
                 } else {
                     progressBar.value = 100;
 
                     showSuccess(
                         selectedState
-                        + ' PAD-US synchronization completed. Reload this page to refresh the history and unresolved issue count.'
+                        + ' PAD-US reference synchronization completed.'
                     );
                 }
             }
@@ -432,9 +426,7 @@
                 return;
             }
 
-            begin(
-                selected
-            );
+            begin(selected);
         }
     );
 
@@ -468,15 +460,13 @@
                 () => {
                     const stateCode =
                         String(
-                            button.dataset
-                                .stateCode
+                            button.dataset.stateCode
                             || ''
                         );
 
                     const runId =
                         Number(
-                            button.dataset
-                                .runId
+                            button.dataset.runId
                             || 0
                         );
 
