@@ -233,6 +233,22 @@ require __DIR__ . '/_header.php';
     silently creating inaccurate property types.
 </p>
 
+<div class="admin-user-form-actions">
+    <a
+        class="admin-button"
+        href="/pad-us-issues.php"
+    >
+        Review import issues
+    </a>
+
+    <a
+        class="admin-button is-secondary"
+        href="/pad-us-units.php?state=CO"
+    >
+        Browse named units
+    </a>
+</div>
+
 </div>
 
 </section>
@@ -404,7 +420,7 @@ $canResume =
 <?php else: ?>
 
 <span>
-    - 
+    None
 </span>
 
 <?php endif; ?>
