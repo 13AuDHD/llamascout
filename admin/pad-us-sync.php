@@ -83,13 +83,13 @@ require __DIR__ . '/_header.php';
 <div class="admin-user-action-box">
 
 <p>
-    Import public-land unit names, managers, designation types,
+    Import and normalize public-land unit names, managers, designation types,
     source information, and public-access metadata from PAD-US.
     Polygon geometry is not downloaded.
 </p>
 
 <p>
-    Existing imported rows are updated instead of duplicated.
+    PAD-US polygons are grouped into logical named units before Llama Scout records are created. Existing imported units are updated instead of duplicated.
     Unknown designation types are sent to the taxonomy review queue
     rather than guessed.
 </p>
@@ -264,7 +264,7 @@ require __DIR__ . '/_header.php';
     <th>State</th>
     <th>Status</th>
     <th>Progress</th>
-    <th>Locations</th>
+    <th>Named units</th>
     <th>Warnings</th>
     <th>Last message</th>
     <th></th>
@@ -349,7 +349,7 @@ $canResume =
     ) ?>
 </td>
 
-<td data-label="Locations">
+<td data-label="Named units">
     +
     <?= number_format(
         (int) (
@@ -404,7 +404,7 @@ $canResume =
 <?php else: ?>
 
 <span>
-    â
+    —
 </span>
 
 <?php endif; ?>
@@ -427,7 +427,7 @@ $canResume =
 
 
 <script
-    src="https://llamascout.com/js/admin/pad-us-sync.js"
+    src="/js/admin/pad-us-sync.js"
 ></script>
 
 <?php require __DIR__ . '/_footer.php'; ?>
