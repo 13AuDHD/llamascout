@@ -14,6 +14,7 @@ require_once
     dirname(__DIR__)
     . '/app/pad-us-location.php';
 
+
 header(
     'Content-Type: application/json; charset=UTF-8'
 );
@@ -21,6 +22,7 @@ header(
 header(
     'Cache-Control: no-store, max-age=0'
 );
+
 
 $latRaw =
     trim(
@@ -37,6 +39,7 @@ $lngRaw =
             ?? ''
         )
     );
+
 
 if (
     $latRaw === ''
@@ -55,11 +58,13 @@ if (
     exit;
 }
 
+
 $lat =
     (float) $latRaw;
 
 $lng =
     (float) $lngRaw;
+
 
 if (
     $lat < -90
@@ -78,6 +83,12 @@ if (
     exit;
 }
 
+
+/*
+ * =========================================================
+ * SHARED JSON LOOKUP
+ * =========================================================
+ */
 
 function location_lookup_json(
     string $url,
@@ -150,11 +161,18 @@ function location_lookup_json(
             true
         );
 
-    return is_array($decoded)
-        ? $decoded
-        : null;
+    return
+        is_array($decoded)
+            ? $decoded
+            : null;
 }
 
+
+/*
+ * =========================================================
+ * DISTANCE
+ * =========================================================
+ */
 
 function location_haversine_meters(
     float $lat1,
@@ -198,24 +216,22 @@ function location_haversine_meters(
             sqrt(1 - $a)
         );
 
-    return $earthRadius * $c;
+    return
+        $earthRadius
+        * $c;
 }
 
+
+/*
+ * =========================================================
+ * NEAREST NAMED ROAD
+ * =========================================================
+ */
 
 function location_nearest_named_road(
     float $lat,
     float $lng
 ): ?array {
-    /*
-     * Nominatim is excellent for an address-like reverse lookup,
-     * but it can sometimes attach a coordinate in a parking lot
-     * or large parcel to a nearby higher-ranked road.
-     *
-     * Overpass lets us inspect the actual named highway geometry
-     * close to the GPS point. We keep the search radius small so
-     * a farther arterial does not win over a nearby local road.
-     */
-
     $radiusMeters =
         120;
 
@@ -263,7 +279,8 @@ function location_nearest_named_road(
             ? $result['elements']
             : [];
 
-    $best = null;
+    $best =
+        null;
 
     foreach ($elements as $element) {
         if (!is_array($element)) {
@@ -336,9 +353,12 @@ function location_nearest_named_road(
                 < $best['distance_meters']
         ) {
             $best = [
-                'name' => $name,
+                'name' =>
+                    $name,
+
                 'distance_meters' =>
                     $nearestDistance,
+
                 'highway' =>
                     trim(
                         (string) (
@@ -350,15 +370,10 @@ function location_nearest_named_road(
         }
     }
 
-    /*
-     * Do not replace Nominatim's road with something that is
-     * not actually close to the device. 80 m is enough for
-     * parking lots and roadside properties but prevents a
-     * nearby arterial several blocks away from taking over.
-     */
     if (
         $best === null
-        || $best['distance_meters'] > 80
+        || $best['distance_meters']
+            > 80
     ) {
         return null;
     }
@@ -366,6 +381,12 @@ function location_nearest_named_road(
     return $best;
 }
 
+
+/*
+ * =========================================================
+ * NEAREST USEFUL TOWN / CITY
+ * =========================================================
+ */
 
 function location_nearest_locality(
     float $lat,
@@ -380,9 +401,19 @@ function location_nearest_locality(
         . 'node(around:'
         . $radiusMeters
         . ','
-        . number_format($lat, 7, '.', '')
+        . number_format(
+            $lat,
+            7,
+            '.',
+            ''
+        )
         . ','
-        . number_format($lng, 7, '.', '')
+        . number_format(
+            $lng,
+            7,
+            '.',
+            ''
+        )
         . ')[place~"^(city|town|village)$"][name];'
         . ');'
         . 'out tags center;';
@@ -409,16 +440,21 @@ function location_nearest_locality(
             : [];
 
     /*
-     * These are distance penalties, not absolute priorities.
+     * Distance remains the main factor.
      *
-     * A nearby town should beat a farther city.
-     * A very small village has to be meaningfully closer
-     * before it beats a town.
+     * Towns get a small penalty compared with cities.
+     * Villages get a larger penalty so a tiny settlement
+     * must be substantially closer to win.
      */
     $typePenaltyMeters = [
-        'city' => 0,
-        'town' => 2500,
-        'village' => 12000,
+        'city' =>
+            0,
+
+        'town' =>
+            2500,
+
+        'village' =>
+            12000,
     ];
 
     $candidates = [];
@@ -447,7 +483,9 @@ function location_nearest_locality(
         if (
             $name === ''
             || !isset(
-                $typePenaltyMeters[$placeType]
+                $typePenaltyMeters[
+                    $placeType
+                ]
             )
             || !is_numeric(
                 $element['lat']
@@ -471,7 +509,8 @@ function location_nearest_locality(
 
         $score =
             $distance
-            + $typePenaltyMeters[
+            +
+            $typePenaltyMeters[
                 $placeType
             ];
 
@@ -501,7 +540,8 @@ function location_nearest_locality(
             array $b
         ): int =>
             $a['score']
-            <=> $b['score']
+            <=>
+            $b['score']
     );
 
     $best =
@@ -515,6 +555,12 @@ function location_nearest_locality(
 }
 
 
+/*
+ * =========================================================
+ * USFS RANGER DISTRICT
+ * =========================================================
+ */
+
 function location_usfs_ranger_district(
     float $lat,
     float $lng
@@ -522,18 +568,53 @@ function location_usfs_ranger_district(
     $url =
         'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RangerDistricts_03/MapServer/1/query?'
         . http_build_query([
-            'f' => 'json',
-            'where' => '1=1',
+            'f' =>
+                'json',
+
+            'where' =>
+                '1=1',
+
             'geometry' =>
-                number_format($lng, 7, '.', '')
+                number_format(
+                    $lng,
+                    7,
+                    '.',
+                    ''
+                )
                 . ','
-                . number_format($lat, 7, '.', ''),
-            'geometryType' => 'esriGeometryPoint',
-            'inSR' => '4326',
-            'spatialRel' => 'esriSpatialRelIntersects',
+                . number_format(
+                    $lat,
+                    7,
+                    '.',
+                    ''
+                ),
+
+            'geometryType' =>
+                'esriGeometryPoint',
+
+            'inSR' =>
+                '4326',
+
+            'spatialRel' =>
+                'esriSpatialRelIntersects',
+
             'outFields' =>
-                'forestname,districtname,region,districtorgcode',
-            'returnGeometry' => 'false',
+                implode(
+                    ',',
+                    [
+                        'RANGERDISTRICTID',
+                        'REGION',
+                        'FORESTNUMBER',
+                        'DISTRICTNUMBER',
+                        'DISTRICTORGCODE',
+                        'FORESTNAME',
+                        'DISTRICTNAME',
+                        'GIS_ACRES',
+                    ]
+                ),
+
+            'returnGeometry' =>
+                'false',
         ]);
 
     $result =
@@ -566,15 +647,7 @@ function location_usfs_ranger_district(
     $district =
         trim(
             (string) (
-                $attributes['districtname']
-                ?? ''
-            )
-        );
-
-    $forest =
-        trim(
-            (string) (
-                $attributes['forestname']
+                $attributes['DISTRICTNAME']
                 ?? ''
             )
         );
@@ -584,19 +657,53 @@ function location_usfs_ranger_district(
     }
 
     return [
-        'district' => $district,
-        'forest' => $forest,
-        'region' =>
+        'district' =>
+            $district,
+
+        'forest' =>
             trim(
                 (string) (
-                    $attributes['region']
+                    $attributes['FORESTNAME']
                     ?? ''
                 )
             ),
+
+        'region' =>
+            trim(
+                (string) (
+                    $attributes['REGION']
+                    ?? ''
+                )
+            ),
+
         'district_org_code' =>
             trim(
                 (string) (
-                    $attributes['districtorgcode']
+                    $attributes['DISTRICTORGCODE']
+                    ?? ''
+                )
+            ),
+
+        'district_number' =>
+            trim(
+                (string) (
+                    $attributes['DISTRICTNUMBER']
+                    ?? ''
+                )
+            ),
+
+        'forest_number' =>
+            trim(
+                (string) (
+                    $attributes['FORESTNUMBER']
+                    ?? ''
+                )
+            ),
+
+        'ranger_district_id' =>
+            trim(
+                (string) (
+                    $attributes['RANGERDISTRICTID']
                     ?? ''
                 )
             ),
@@ -604,36 +711,41 @@ function location_usfs_ranger_district(
 }
 
 
+/*
+ * =========================================================
+ * ADDRESS / ROAD LOOKUP
+ * =========================================================
+ */
+
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
-    . http_build_query(
-        [
-            'format' =>
-                'jsonv2',
+    . http_build_query([
+        'format' =>
+            'jsonv2',
 
-            'lat' =>
-                number_format(
-                    $lat,
-                    7,
-                    '.',
-                    ''
-                ),
+        'lat' =>
+            number_format(
+                $lat,
+                7,
+                '.',
+                ''
+            ),
 
-            'lon' =>
-                number_format(
-                    $lng,
-                    7,
-                    '.',
-                    ''
-                ),
+        'lon' =>
+            number_format(
+                $lng,
+                7,
+                '.',
+                ''
+            ),
 
-            'zoom' =>
-                18,
+        'zoom' =>
+            18,
 
-            'addressdetails' =>
-                1,
-        ]
-    );
+        'addressdetails' =>
+            1,
+    ]);
+
 
 $reverse =
     location_lookup_json(
@@ -643,6 +755,7 @@ $reverse =
         ]
     );
 
+
 $address =
     is_array(
         $reverse['address']
@@ -650,6 +763,7 @@ $address =
     )
         ? $reverse['address']
         : [];
+
 
 $nominatimRoad =
     $address['road']
@@ -659,11 +773,13 @@ $nominatimRoad =
     ?? $address['highway']
     ?? null;
 
+
 $nearestRoad =
     location_nearest_named_road(
         $lat,
         $lng
     );
+
 
 $road =
     is_array($nearestRoad)
@@ -678,6 +794,13 @@ $road =
         )
         : $nominatimRoad;
 
+
+/*
+ * =========================================================
+ * CITY / TOWN
+ * =========================================================
+ */
+
 $city =
     $address['city']
     ?? $address['town']
@@ -687,11 +810,16 @@ $city =
     ?? $address['locality']
     ?? null;
 
-$nearestLocality = null;
+
+$nearestLocality =
+    null;
+
 
 if (
     $city === null
-    || trim((string) $city) === ''
+    || trim(
+        (string) $city
+    ) === ''
 ) {
     $nearestLocality =
         location_nearest_locality(
@@ -715,15 +843,24 @@ if (
     }
 }
 
+
+/*
+ * =========================================================
+ * COUNTY
+ * =========================================================
+ */
+
 $nominatimCounty =
     $address['county']
     ?? null;
+
 
 $censusCounty =
     llama_official_county_from_coordinates(
         $lat,
         $lng
     );
+
 
 $county =
     is_array($censusCounty)
@@ -738,40 +875,49 @@ $county =
         )
         : $nominatimCounty;
 
+
 $state =
     $address['state']
     ?? $address['region']
     ?? null;
 
 
+/*
+ * =========================================================
+ * ELEVATION
+ * =========================================================
+ */
+
 $elevationUrl =
     'https://api.open-meteo.com/v1/elevation?'
-    . http_build_query(
-        [
-            'latitude' =>
-                number_format(
-                    $lat,
-                    7,
-                    '.',
-                    ''
-                ),
+    . http_build_query([
+        'latitude' =>
+            number_format(
+                $lat,
+                7,
+                '.',
+                ''
+            ),
 
-            'longitude' =>
-                number_format(
-                    $lng,
-                    7,
-                    '.',
-                    ''
-                ),
-        ]
-    );
+        'longitude' =>
+            number_format(
+                $lng,
+                7,
+                '.',
+                ''
+            ),
+    ]);
+
 
 $elevationData =
     location_lookup_json(
         $elevationUrl
     );
 
-$meters = null;
+
+$meters =
+    null;
+
 
 if (
     isset(
@@ -784,13 +930,18 @@ if (
         )
     ) {
         $meters =
-            $elevationData['elevation'][0]
+            $elevationData[
+                'elevation'
+            ][0]
             ?? null;
     } else {
         $meters =
-            $elevationData['elevation'];
+            $elevationData[
+                'elevation'
+            ];
     }
 }
+
 
 $elevationFeet =
     is_numeric($meters)
@@ -800,58 +951,20 @@ $elevationFeet =
         )
         : null;
 
+
+/*
+ * =========================================================
+ * PAD-US LAND LOOKUP
+ * =========================================================
+ */
+
 $padUs = [
-    'best_match' => null,
-    'matches' => [],
+    'best_match' =>
+        null,
+
+    'matches' =>
+        [],
 ];
-
-
-$usfsDistrict = null;
-
-$padUsBest =
-    is_array(
-        $padUs['best_match']
-        ?? null
-    )
-        ? $padUs['best_match']
-        : null;
-
-if (
-    is_array($padUsBest)
-    && (
-        strcasecmp(
-            (string) (
-                $padUsBest['property_type']
-                ?? ''
-            ),
-            'National Forest'
-        ) === 0
-        || stripos(
-            (string) (
-                $padUsBest['manager']
-                ?? ''
-            ),
-            'Forest Service'
-        ) !== false
-    )
-) {
-    try {
-        $usfsDistrict =
-            location_usfs_ranger_district(
-                $lat,
-                $lng
-            );
-    } catch (Throwable $exception) {
-        llama_log_caught_exception(
-            $exception,
-            'location_lookup.usfs_ranger_district',
-            [
-                'latitude' => $lat,
-                'longitude' => $lng,
-            ]
-        );
-    }
-}
 
 
 try {
@@ -867,11 +980,99 @@ try {
         $exception,
         'location_lookup.pad_us',
         [
-            'latitude' => $lat,
-            'longitude' => $lng,
+            'latitude' =>
+                $lat,
+
+            'longitude' =>
+                $lng,
         ]
     );
 }
+
+
+/*
+ * =========================================================
+ * USFS RANGER DISTRICT
+ *
+ * Important:
+ * PAD-US must run FIRST.
+ *
+ * Only query the Forest Service ranger-district layer when
+ * the land result tells us this point is National Forest /
+ * Forest Service land.
+ * =========================================================
+ */
+
+$usfsDistrict =
+    null;
+
+
+$padUsBest =
+    is_array(
+        $padUs['best_match']
+        ?? null
+    )
+        ? $padUs['best_match']
+        : null;
+
+
+$isForestServiceLand =
+    is_array($padUsBest)
+    && (
+        strcasecmp(
+            trim(
+                (string) (
+                    $padUsBest[
+                        'property_type'
+                    ]
+                    ?? ''
+                )
+            ),
+            'National Forest'
+        ) === 0
+
+        ||
+
+        stripos(
+            (string) (
+                $padUsBest[
+                    'manager'
+                ]
+                ?? ''
+            ),
+            'Forest Service'
+        ) !== false
+    );
+
+
+if ($isForestServiceLand) {
+    try {
+        $usfsDistrict =
+            location_usfs_ranger_district(
+                $lat,
+                $lng
+            );
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'location_lookup.usfs_ranger_district',
+            [
+                'latitude' =>
+                    $lat,
+
+                'longitude' =>
+                    $lng,
+            ]
+        );
+    }
+}
+
+
+/*
+ * =========================================================
+ * RESPONSE
+ * =========================================================
+ */
 
 echo json_encode(
     [
@@ -901,7 +1102,9 @@ echo json_encode(
                 $city,
 
             'city_lookup' =>
-                is_array($nearestLocality)
+                is_array(
+                    $nearestLocality
+                )
                     ? 'nearest_locality'
                     : 'reverse_geocode',
 
@@ -912,32 +1115,39 @@ echo json_encode(
                 $state,
 
             'road_lookup' =>
-                is_array($nearestRoad)
+                is_array(
+                    $nearestRoad
+                )
                     ? 'nearest_named_road'
                     : 'reverse_geocode',
 
             'county_lookup' =>
-                is_array($censusCounty)
+                is_array(
+                    $censusCounty
+                )
                     ? 'us_census'
                     : 'reverse_geocode',
 
             'county_geoid' =>
-                is_array($censusCounty)
+                is_array(
+                    $censusCounty
+                )
                     ? (
-                        $censusCounty['geoid']
+                        $censusCounty[
+                            'geoid'
+                        ]
                         ?? null
                     )
                     : null,
         ],
 
-    'pad_us' =>
-        $padUs,
+        'pad_us' =>
+            $padUs,
 
-    'usfs' => [
-    'ranger_district' =>
-        $usfsDistrict,
-    ],
-    
+        'usfs' => [
+            'ranger_district' =>
+                $usfsDistrict,
+        ],
     ],
     JSON_UNESCAPED_SLASHES
     | JSON_UNESCAPED_UNICODE
