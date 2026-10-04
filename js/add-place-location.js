@@ -141,6 +141,75 @@ document.addEventListener("DOMContentLoaded", () => {
     setField("city", location.city);
     setField("county", location.county);
     setField("state", location.state);
+
+    const padUs = result.pad_us || {};
+    const land = padUs.best_match || null;
+    
+    if (land && land.mapped) {
+      if (land.property_type) {
+        setField("land_type", land.property_type);
+      }
+    
+      const managerRaw = String(
+        land.manager || ""
+      ).toLowerCase();
+    
+      let manager = "";
+    
+      if (managerRaw.includes("forest service")) {
+        manager = "U.S. Forest Service";
+      } else if (
+        managerRaw.includes("bureau of land management") ||
+        managerRaw.includes("blm")
+      ) {
+        manager = "Bureau of Land Management";
+      } else if (managerRaw.includes("national park service")) {
+        manager = "National Park Service";
+      } else if (
+        managerRaw.includes("fish and wildlife")
+      ) {
+        manager = "U.S. Fish and Wildlife Service";
+      } else if (
+        managerRaw.includes("army corps")
+      ) {
+        manager = "U.S. Army Corps of Engineers";
+      } else if (
+        managerRaw.includes("bureau of reclamation")
+      ) {
+        manager = "Bureau of Reclamation";
+      } else if (
+        managerRaw.includes("tennessee valley authority")
+      ) {
+        manager = "Tennessee Valley Authority";
+      } else if (
+        managerRaw.includes("county")
+      ) {
+        manager = "County / regional government";
+      } else if (
+        managerRaw.includes("city") ||
+        managerRaw.includes("municipal")
+      ) {
+        manager = "City / municipal government";
+      } else if (
+        managerRaw.includes("state")
+      ) {
+        manager = "State government";
+      } else if (
+        managerRaw.includes("tribal")
+      ) {
+        manager = "Tribal government";
+      }
+    
+      /*
+       * Changing land type causes place-report-form.js to rebuild
+       * the manager choices, so set the manager after that happens.
+       */
+      if (manager) {
+        window.setTimeout(() => {
+          setField("land_manager", manager);
+        }, 0);
+      }
+    }
   };
 
   const resolveCoordinates = async parsed => {
