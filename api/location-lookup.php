@@ -400,13 +400,20 @@ function location_nearest_locality(
     float $lat,
     float $lng
 ): ?array {
+    /*
+     * First try the lightweight OSM place-node lookup.
+     *
+     * Do not use nwr here. Searching every node, way and relation
+     * across a large radius made this request much slower and caused
+     * frequent Overpass timeouts.
+     */
     $radiusMeters =
-        80000;
+        60000;
 
     $query =
-        '[out:json][timeout:10];'
+        '[out:json][timeout:7];'
         . '('
-        . 'nwr(around:'
+        . 'node(around:'
         . $radiusMeters
         . ','
         . number_format(
@@ -424,7 +431,7 @@ function location_nearest_locality(
         )
         . ')[place~"^(city|town|village)$"][name];'
         . ');'
-        . 'out tags center;';
+        . 'out tags;';
 
     $url =
         'https://overpass-api.de/api/interpreter?'
@@ -437,7 +444,7 @@ function location_nearest_locality(
         location_lookup_json(
             $url,
             [],
-            12
+            9
         );
 
     $elements =
@@ -456,7 +463,7 @@ function location_nearest_locality(
             0,
 
         'village' =>
-            7000,
+            9000,
     ];
 
     $candidates = [];
@@ -497,56 +504,14 @@ function location_nearest_locality(
                     $placeType
                 ]
             )
-        ) {
-            continue;
-        }
-
-        $candidateLat =
-            null;
-
-        $candidateLng =
-            null;
-
-        if (
-            is_numeric(
+            || !is_numeric(
                 $element['lat']
                 ?? null
             )
-            && is_numeric(
+            || !is_numeric(
                 $element['lon']
                 ?? null
             )
-        ) {
-            $candidateLat =
-                (float) $element['lat'];
-
-            $candidateLng =
-                (float) $element['lon'];
-
-        } elseif (
-            is_array(
-                $element['center']
-                ?? null
-            )
-            && is_numeric(
-                $element['center']['lat']
-                ?? null
-            )
-            && is_numeric(
-                $element['center']['lon']
-                ?? null
-            )
-        ) {
-            $candidateLat =
-                (float) $element['center']['lat'];
-
-            $candidateLng =
-                (float) $element['center']['lon'];
-        }
-
-        if (
-            $candidateLat === null
-            || $candidateLng === null
         ) {
             continue;
         }
@@ -555,14 +520,10 @@ function location_nearest_locality(
             location_haversine_meters(
                 $lat,
                 $lng,
-                $candidateLat,
-                $candidateLng
+                (float) $element['lat'],
+                (float) $element['lon']
             );
 
-        /*
-         * Population is used only as a small tie-breaker.
-         * Distance remains the dominant factor.
-         */
         $population =
             0;
 
@@ -585,17 +546,21 @@ function location_nearest_locality(
                 (int) $populationRaw;
         }
 
+        /*
+         * Population only nudges close candidates.
+         * Distance is still the dominant factor.
+         */
         $populationBonus =
             $population > 0
                 ? min(
-                    5000,
+                    4000,
                     log10(
                         max(
                             10,
                             $population
                         )
                     )
-                    * 1000
+                    * 800
                 )
                 : 0;
 
@@ -623,34 +588,130 @@ function location_nearest_locality(
                     ? $population
                     : null,
 
+            'lookup' =>
+                'overpass',
+
             'score' =>
                 $score,
         ];
     }
 
-    if (!$candidates) {
+    if ($candidates) {
+        usort(
+            $candidates,
+            static fn (
+                array $a,
+                array $b
+            ): int =>
+                $a['score']
+                <=>
+                $b['score']
+        );
+
+        $best =
+            $candidates[0];
+
+        unset(
+            $best['score']
+        );
+
+        return $best;
+    }
+
+    /*
+     * Overpass occasionally times out.
+     *
+     * Ask Nominatim for a city-level reverse lookup as a fallback.
+     * zoom=10 intentionally asks for locality-level information
+     * instead of a road/building address.
+     */
+    $fallbackUrl =
+        'https://nominatim.openstreetmap.org/reverse?'
+        . http_build_query([
+            'format' =>
+                'jsonv2',
+
+            'lat' =>
+                number_format(
+                    $lat,
+                    7,
+                    '.',
+                    ''
+                ),
+
+            'lon' =>
+                number_format(
+                    $lng,
+                    7,
+                    '.',
+                    ''
+                ),
+
+            'zoom' =>
+                10,
+
+            'addressdetails' =>
+                1,
+        ]);
+
+    $fallback =
+        location_lookup_json(
+            $fallbackUrl,
+            [
+                'Accept-Language: en-US,en;q=0.9',
+            ],
+            8
+        );
+
+    $fallbackAddress =
+        is_array(
+            $fallback['address']
+            ?? null
+        )
+            ? $fallback['address']
+            : [];
+
+    $fallbackName =
+        trim(
+            (string) (
+                $fallbackAddress['city']
+                ?? $fallbackAddress['town']
+                ?? $fallbackAddress['village']
+                ?? $fallbackAddress['municipality']
+                ?? ''
+            )
+        );
+
+    if ($fallbackName === '') {
         return null;
     }
 
-    usort(
-        $candidates,
-        static fn (
-            array $a,
-            array $b
-        ): int =>
-            $a['score']
-            <=>
-            $b['score']
-    );
+    return [
+        'name' =>
+            $fallbackName,
 
-    $best =
-        $candidates[0];
+        'place_type' =>
+            isset(
+                $fallbackAddress['city']
+            )
+                ? 'city'
+                : (
+                    isset(
+                        $fallbackAddress['town']
+                    )
+                        ? 'town'
+                        : 'locality'
+                ),
 
-    unset(
-        $best['score']
-    );
+        'distance_meters' =>
+            null,
 
-    return $best;
+        'population' =>
+            null,
+
+        'lookup' =>
+            'nominatim_city_level',
+    ];
 }
 
 
