@@ -553,6 +553,34 @@ $city =
     ?? $address['locality']
     ?? null;
 
+$nearestLocality = null;
+
+if (
+    $city === null
+    || trim((string) $city) === ''
+) {
+    $nearestLocality =
+        location_nearest_locality(
+            $lat,
+            $lng
+        );
+
+    if (
+        is_array($nearestLocality)
+        && trim(
+            (string) (
+                $nearestLocality['name']
+                ?? ''
+            )
+        ) !== ''
+    ) {
+        $city =
+            trim(
+                (string) $nearestLocality['name']
+            );
+    }
+}
+
 $nominatimCounty =
     $address['county']
     ?? null;
@@ -688,6 +716,11 @@ echo json_encode(
 
             'city' =>
                 $city,
+
+            'city_lookup' =>
+                is_array($nearestLocality)
+                    ? 'nearest_locality'
+                    : 'reverse_geocode',
 
             'county' =>
                 $county,
