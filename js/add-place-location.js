@@ -124,8 +124,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (parsed.empty) {
       coordinateInput.value = "";
-      setField("latitude", "");
-      setField("longitude", "");
+
+      setField(
+        "latitude",
+        ""
+      );
+
+      setField(
+        "longitude",
+        ""
+      );
+
       return;
     }
 
@@ -220,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     /*
-     * Clear values from the previous coordinate lookup first.
+     * Clear values from the previous lookup first.
      */
     setField(
       "land_type",
@@ -236,6 +245,12 @@ document.addEventListener("DOMContentLoaded", () => {
       "region",
       ""
     );
+
+    /*
+     * =====================================================
+     * PAD-US LAND TYPE + MANAGER
+     * =====================================================
+     */
 
     const padUs =
       result.pad_us || {};
@@ -359,8 +374,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       /*
-       * Land type changes can rebuild the manager options.
-       * Set manager afterward.
+       * Changing Land Type may rebuild Manager choices.
+       * Set Manager just afterward.
        */
       if (manager) {
         window.setTimeout(
@@ -376,22 +391,62 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /*
-     * Ranger district is returned separately from PAD-US.
+     * =====================================================
+     * LOCAL MANAGEMENT AREA
+     *
+     * Backend decides whether this is:
+     * USFS Ranger District
+     * BLM Field Office
+     * or nothing
+     * =====================================================
      */
-    const usfs =
-      result.usfs || {};
 
-    const ranger =
-      usfs.ranger_district || null;
+    const localManagementArea =
+      result.local_management_area || null;
 
     if (
-      ranger &&
-      ranger.district
+      localManagementArea &&
+      localManagementArea.name
     ) {
       setField(
         "region",
-        ranger.district
+        localManagementArea.name
       );
+
+    } else {
+      /*
+       * Backward-compatible fallbacks.
+       */
+      const usfs =
+        result.usfs || {};
+
+      const ranger =
+        usfs.ranger_district || null;
+
+      const blm =
+        result.blm || {};
+
+      const fieldOffice =
+        blm.field_office || null;
+
+      if (
+        ranger &&
+        ranger.district
+      ) {
+        setField(
+          "region",
+          ranger.district
+        );
+
+      } else if (
+        fieldOffice &&
+        fieldOffice.field_office
+      ) {
+        setField(
+          "region",
+          fieldOffice.field_office
+        );
+      }
     }
 
     return result;
@@ -404,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "PLEASE WAIT. Looking up elevation, road, town, land, and management information..."
+        "PLEASE WAIT! Looking up elevation, road, town, land, and management information..."
       );
 
       await lookupLocation(
