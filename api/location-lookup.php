@@ -366,7 +366,109 @@ function location_nearest_named_road(
     return $best;
 }
 
+function location_nearest_locality(
+    float $lat,
+    float $lng
+): ?array {
+    $radiusMeters =
+        25000;
 
+    $query =
+        '[out:json][timeout:7];'
+        . '('
+        . 'node(around:'
+        . $radiusMeters
+        . ','
+        . number_format($lat, 7, '.', '')
+        . ','
+        . number_format($lng, 7, '.', '')
+        . ')[place~"^(city|town|village|hamlet|locality)$"][name];'
+        . ');'
+        . 'out tags center;';
+
+    $url =
+        'https://overpass-api.de/api/interpreter?'
+        . http_build_query([
+            'data' => $query,
+        ]);
+
+    $result =
+        location_lookup_json(
+            $url,
+            [],
+            9
+        );
+
+    $elements =
+        is_array(
+            $result['elements']
+            ?? null
+        )
+            ? $result['elements']
+            : [];
+
+    $best = null;
+
+    foreach ($elements as $element) {
+        if (!is_array($element)) {
+            continue;
+        }
+
+        $name =
+            trim(
+                (string) (
+                    $element['tags']['name']
+                    ?? ''
+                )
+            );
+
+        if (
+            $name === ''
+            || !is_numeric(
+                $element['lat']
+                ?? null
+            )
+            || !is_numeric(
+                $element['lon']
+                ?? null
+            )
+        ) {
+            continue;
+        }
+
+        $distance =
+            location_haversine_meters(
+                $lat,
+                $lng,
+                (float) $element['lat'],
+                (float) $element['lon']
+            );
+
+        if (
+            $best === null
+            || $distance
+                < $best['distance_meters']
+        ) {
+            $best = [
+                'name' =>
+                    $name,
+
+                'place_type' =>
+                    trim(
+                        (string) (
+                            $element['tags']['place']
+                            ?? ''
+                        )
+                    ),
+
+                'distance_meters' =>
+                    $distance,
+            ];
+        }
+    }
+
+    return $best;
+}
 
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
