@@ -41,6 +41,11 @@ $rows =
         $stateCode
     );
 
+$propertyTypes =
+    llama_pad_us_review_property_types(
+        $mainDb
+    );
+
 $stats =
     admin_dashboard_stats(
         $mainDb
@@ -70,6 +75,43 @@ $adminActiveNav =
 
 require __DIR__ . '/_header.php';
 ?>
+
+
+<?php if (
+    isset(
+        $_GET['saved']
+    )
+): ?>
+
+<div
+    class="admin-user-notice is-success"
+    role="status"
+>
+    Classification saved.
+</div>
+
+<?php endif; ?>
+
+
+<?php if (
+    trim(
+        (string) (
+            $_GET['error']
+            ?? ''
+        )
+    ) !== ''
+): ?>
+
+<div
+    class="admin-user-notice is-error"
+    role="alert"
+>
+    <?= moderation_e(
+        (string) $_GET['error']
+    ) ?>
+</div>
+
+<?php endif; ?>
 
 
 <section class="admin-panel">
@@ -160,8 +202,7 @@ require __DIR__ . '/_header.php';
     <th>PAD-US designation</th>
     <th>Units</th>
     <th>Unmapped</th>
-    <th>Llama Scout mapping</th>
-    <th>Review status</th>
+    <th>Classification</th>
 </tr>
 </thead>
 
@@ -171,6 +212,36 @@ require __DIR__ . '/_header.php';
     $rows
     as $row
 ): ?>
+
+<?php
+$currentSlug =
+    trim(
+        (string) (
+            $row['property_type_slug']
+            ?? ''
+        )
+    );
+
+$currentReviewed =
+    $row['reviewed']
+    !== null
+    && (int) $row['reviewed'] === 1;
+
+$currentSurface =
+    (int) (
+        $row['surface_in_place_form']
+        ?? 0
+    ) === 1;
+
+$currentMode =
+    !$currentReviewed
+        ? 'pending'
+        : (
+            $currentSlug !== ''
+                ? 'mapped'
+                : 'reference_only'
+        );
+?>
 
 <tr>
 
@@ -223,58 +294,156 @@ require __DIR__ . '/_header.php';
     ) ?>
 </td>
 
-<td data-label="Llama Scout mapping">
-    <?= moderation_e(
-        trim(
+<td data-label="Classification">
+
+<form
+    method="post"
+    action="/pad-us-classification-save.php"
+    class="admin-user-action-box"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(
+        moderation_csrf_token()
+    ) ?>"
+>
+
+<input
+    type="hidden"
+    name="state"
+    value="<?= moderation_e(
+        $stateCode
+    ) ?>"
+>
+
+<input
+    type="hidden"
+    name="designation"
+    value="<?= moderation_e(
+        (string) (
+            $row['source_designation']
+            ?? ''
+        )
+    ) ?>"
+>
+
+<input
+    type="hidden"
+    name="designation_code"
+    value="<?= moderation_e(
+        (string) (
+            $row['source_designation_code']
+            ?? ''
+        )
+    ) ?>"
+>
+
+<label>
+    <span>Action</span>
+
+    <select name="mode">
+        <option
+            value="pending"
+            <?= $currentMode === 'pending'
+                ? 'selected'
+                : '' ?>
+        >
+            Not reviewed
+        </option>
+
+        <option
+            value="reference_only"
+            <?= $currentMode === 'reference_only'
+                ? 'selected'
+                : '' ?>
+        >
+            Keep reference-only
+        </option>
+
+        <option
+            value="mapped"
+            <?= $currentMode === 'mapped'
+                ? 'selected'
+                : '' ?>
+        >
+            Map to Llama Scout property type
+        </option>
+    </select>
+</label>
+
+<label>
+    <span>Property type</span>
+
+    <select name="property_type_slug">
+        <option value="">
+            Choose a property type...
+        </option>
+
+        <?php foreach (
+            $propertyTypes
+            as $type
+        ): ?>
+
+        <option
+            value="<?= moderation_e(
+                (string) $type['slug']
+            ) ?>"
+            <?= $currentSlug === (string) $type['slug']
+                ? 'selected'
+                : '' ?>
+        >
+            <?= moderation_e(
+                (string) $type['name']
+            ) ?>
+        </option>
+
+        <?php endforeach; ?>
+    </select>
+</label>
+
+<label>
+    <input
+        type="checkbox"
+        name="surface_in_place_form"
+        value="1"
+        <?= $currentSurface
+            ? 'checked'
+            : '' ?>
+    >
+
+    <span>
+        Allow this classification to surface in the Llama Scout place form
+    </span>
+</label>
+
+<label>
+    <span>Notes</span>
+
+    <input
+        type="text"
+        name="notes"
+        value="<?= moderation_e(
             (string) (
-                $row['property_type_slug']
+                $row['notes']
                 ?? ''
             )
-        ) !== ''
-            ? (string) $row['property_type_slug']
-            : 'Reference only / not mapped'
-    ) ?>
-</td>
+        ) ?>"
+        placeholder="Optional internal note"
+    >
+</label>
 
-<td data-label="Review status">
+<div class="admin-user-form-actions">
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Save classification
+    </button>
+</div>
 
-<?php if (
-    $row['reviewed']
-    === null
-): ?>
-
-    Not reviewed
-
-<?php elseif (
-    (int) $row['reviewed'] === 1
-): ?>
-
-    Reviewed
-
-    <?php if (
-        (int) (
-            $row['surface_in_place_form']
-            ?? 0
-        ) === 1
-    ): ?>
-
-    <small>
-        Available for Llama Scout taxonomy
-    </small>
-
-    <?php else: ?>
-
-    <small>
-        Reference only
-    </small>
-
-    <?php endif; ?>
-
-<?php else: ?>
-
-    Pending review
-
-<?php endif; ?>
+</form>
 
 </td>
 
