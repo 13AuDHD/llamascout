@@ -602,14 +602,14 @@ function location_usfs_ranger_district(
                 implode(
                     ',',
                     [
-                        'RANGERDISTRICTID',
-                        'REGION',
-                        'FORESTNUMBER',
-                        'DISTRICTNUMBER',
-                        'DISTRICTORGCODE',
-                        'FORESTNAME',
-                        'DISTRICTNAME',
-                        'GIS_ACRES',
+                        'rangerdistrictid',
+                        'region',
+                        'forestnumber',
+                        'districtnumber',
+                        'districtorgcode',
+                        'forestname',
+                        'districtname',
+                        'gis_acres',
                     ]
                 ),
 
@@ -647,7 +647,7 @@ function location_usfs_ranger_district(
     $district =
         trim(
             (string) (
-                $attributes['DISTRICTNAME']
+                $attributes['districtname']
                 ?? ''
             )
         );
@@ -663,7 +663,7 @@ function location_usfs_ranger_district(
         'forest' =>
             trim(
                 (string) (
-                    $attributes['FORESTNAME']
+                    $attributes['forestname']
                     ?? ''
                 )
             ),
@@ -671,7 +671,7 @@ function location_usfs_ranger_district(
         'region' =>
             trim(
                 (string) (
-                    $attributes['REGION']
+                    $attributes['region']
                     ?? ''
                 )
             ),
@@ -679,7 +679,7 @@ function location_usfs_ranger_district(
         'district_org_code' =>
             trim(
                 (string) (
-                    $attributes['DISTRICTORGCODE']
+                    $attributes['districtorgcode']
                     ?? ''
                 )
             ),
@@ -687,7 +687,7 @@ function location_usfs_ranger_district(
         'district_number' =>
             trim(
                 (string) (
-                    $attributes['DISTRICTNUMBER']
+                    $attributes['districtnumber']
                     ?? ''
                 )
             ),
@@ -695,7 +695,7 @@ function location_usfs_ranger_district(
         'forest_number' =>
             trim(
                 (string) (
-                    $attributes['FORESTNUMBER']
+                    $attributes['forestnumber']
                     ?? ''
                 )
             ),
@@ -703,13 +703,12 @@ function location_usfs_ranger_district(
         'ranger_district_id' =>
             trim(
                 (string) (
-                    $attributes['RANGERDISTRICTID']
+                    $attributes['rangerdistrictid']
                     ?? ''
                 )
             ),
     ];
 }
-
 
 /*
  * =========================================================
