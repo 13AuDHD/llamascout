@@ -616,7 +616,7 @@ function llama_place_report_fields(): array
         'location_field' => true,
         'placeholder' => 'Example Creek Rd. / FR 813',
     ]);
-    $add('city', 'Nearest city / locality', 'location', 'text', 'city', [
+    $add('city', 'Nearest city / town', 'location', 'text', 'city', [
         'location_field' => true,
     ]);
     $add('county', 'County / Parish / Municipality', 'location', 'text', 'county', [
@@ -630,13 +630,13 @@ function llama_place_report_fields(): array
     $add('region', 'Region / ranger district', 'location', 'text', 'region', [
         'allow_unknown' => true,
     ]);
-    $add('land_manager', 'Manager / operator / owner', 'location', 'select', 'land_manager', [
-        'options' => llama_place_report_land_managers(),
+        $add('land_type', 'Land type', 'location', 'select', 'land_type', [
+        'options' => llama_place_report_land_types(),
         'allow_unknown' => true,
         'location_field' => true,
     ]);
-    $add('land_type', 'Land type', 'location', 'select', 'land_type', [
-        'options' => llama_place_report_land_types(),
+    $add('land_manager', 'Manager / operator / owner', 'location', 'select', 'land_manager', [
+        'options' => llama_place_report_land_managers(),
         'allow_unknown' => true,
         'location_field' => true,
     ]);
