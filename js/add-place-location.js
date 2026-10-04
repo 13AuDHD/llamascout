@@ -404,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "Coordinates accepted. Looking up elevation, road, town, land, and management information..."
+        "PLEASE WAIT. Looking up elevation, road, town, land, and management information..."
       );
 
       await lookupLocation(
@@ -413,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "Location information filled in. Check the results before submitting because map and government data can occasionally be imperfect.",
+        "Location information populated. Check the results before submitting because map and data can occasionally be imperfect.",
         "is-success"
       );
     };
@@ -630,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "GPS found. Looking up elevation, road, town, land, and management information..."
+                "GPS found. Please wait. Looking up elevation, road, town, land, and management information..."
               );
 
               await lookupLocation(
@@ -639,7 +639,7 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "Location information filled in. Check the results before submitting because map and government data can occasionally be imperfect.",
+                "Location information populated. Check the results before submitting because map and data can occasionally be imperfect.",
                 "is-success"
               );
 
