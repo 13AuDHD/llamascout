@@ -207,6 +207,46 @@ require __DIR__ . '/_header.php';
 </section>
 
 
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Review</p>
+        <h2>Reference Data</h2>
+    </div>
+</header>
+
+<div class="admin-user-action-box">
+
+<p>
+    Browse the imported PAD-US reference catalog or review
+    which source classifications have Llama Scout mappings.
+</p>
+
+<div class="admin-user-form-actions">
+
+<a
+    class="admin-button"
+    href="/pad-us-units.php?state=CO"
+>
+    Browse reference units
+</a>
+
+<a
+    class="admin-button is-secondary"
+    href="/pad-us-classifications.php?state=CO"
+>
+    Review classifications
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+
 <section class="admin-panel">
 
 <header class="admin-panel-header">

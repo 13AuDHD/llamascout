@@ -10,7 +10,8 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser =
     moderation_require_admin();
 
-$db = db();
+$mainDb = db();
+$referenceDb = reference_db();
 
 $filters =
     llama_pad_us_review_unit_filters(
@@ -29,7 +30,7 @@ if (
 
 $result =
     llama_pad_us_review_units(
-        $db,
+        $referenceDb,
         $filters
     );
 
@@ -37,25 +38,35 @@ $states =
     llama_pad_us_states();
 
 $propertyTypes =
-    llama_pad_us_review_property_types(
-        $db
+    llama_pad_us_review_distinct(
+        $referenceDb,
+        'property_type_slug',
+        (string) $filters['state']
     );
 
-$organizations =
-    llama_pad_us_review_organizations(
-        $db,
+$designations =
+    llama_pad_us_review_distinct(
+        $referenceDb,
+        'source_designation',
         (string) $filters['state']
     );
 
 $accessValues =
-    llama_pad_us_review_access_values(
-        $db,
+    llama_pad_us_review_distinct(
+        $referenceDb,
+        'public_access',
+        (string) $filters['state']
+    );
+
+$organizations =
+    llama_pad_us_review_organizations(
+        $referenceDb,
         (string) $filters['state']
     );
 
 $stats =
     admin_dashboard_stats(
-        $db
+        $mainDb
     );
 
 $adminNavCounts = [
@@ -72,7 +83,7 @@ $adminNavCounts = [
 ];
 
 $adminPageTitle =
-    'PAD-US Named Units';
+    'PAD-US Reference Units';
 
 $adminPageEyebrow =
     'Integrations';
@@ -88,13 +99,13 @@ require __DIR__ . '/_header.php';
 
 <header class="admin-panel-header">
     <div>
-        <p>Imported taxonomy</p>
+        <p>Reference database</p>
 
         <h2>
             <?= number_format(
                 (int) $result['total']
             ) ?>
-            named unit<?= (int) $result['total'] === 1 ? '' : 's' ?>
+            unit<?= (int) $result['total'] === 1 ? '' : 's' ?>
         </h2>
     </div>
 
@@ -109,11 +120,11 @@ require __DIR__ . '/_header.php';
 
         <a
             class="admin-button"
-            href="/pad-us-issues.php?state=<?= rawurlencode(
+            href="/pad-us-classifications.php?state=<?= rawurlencode(
                 (string) $filters['state']
             ) ?>"
         >
-            Review import issues
+            Review classifications
         </a>
 
     </div>
@@ -136,7 +147,7 @@ require __DIR__ . '/_header.php';
         value="<?= moderation_e(
             (string) $filters['q']
         ) ?>"
-        placeholder="Unit, property type, manager..."
+        placeholder="Unit, manager, designation..."
     >
 </label>
 
@@ -167,28 +178,25 @@ require __DIR__ . '/_header.php';
 </label>
 
 <label>
-    <span>Property type</span>
+    <span>Llama Scout property type</span>
 
-    <select name="property_type_id">
-        <option value="0">
-            All property types
+    <select name="property_type_slug">
+        <option value="">
+            All mappings
         </option>
 
         <?php foreach (
             $propertyTypes
-            as $type
+            as $slug
         ): ?>
 
         <option
-            value="<?= (int) $type['id'] ?>"
-            <?= (int) $filters['property_type_id']
-                === (int) $type['id']
-                    ? 'selected'
-                    : '' ?>
+            value="<?= moderation_e($slug) ?>"
+            <?= $filters['property_type_slug'] === $slug
+                ? 'selected'
+                : '' ?>
         >
-            <?= moderation_e(
-                (string) $type['name']
-            ) ?>
+            <?= moderation_e($slug) ?>
         </option>
 
         <?php endforeach; ?>
@@ -196,7 +204,33 @@ require __DIR__ . '/_header.php';
 </label>
 
 <label>
-    <span>Manager / organization</span>
+    <span>PAD-US designation</span>
+
+    <select name="designation">
+        <option value="">
+            All designations
+        </option>
+
+        <?php foreach (
+            $designations
+            as $designation
+        ): ?>
+
+        <option
+            value="<?= moderation_e($designation) ?>"
+            <?= $filters['designation'] === $designation
+                ? 'selected'
+                : '' ?>
+        >
+            <?= moderation_e($designation) ?>
+        </option>
+
+        <?php endforeach; ?>
+    </select>
+</label>
+
+<label>
+    <span>Manager</span>
 
     <select name="organization_id">
         <option value="0">
@@ -285,11 +319,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$result['rows']): ?>
 
 <div class="admin-empty-state">
-    <h3>No matching PAD-US named units.</h3>
-
-    <p>
-        Change the filters or synchronize another state first.
-    </p>
+    <h3>No matching PAD-US reference units.</h3>
 </div>
 
 <?php else: ?>
@@ -300,12 +330,12 @@ require __DIR__ . '/_header.php';
 
 <thead>
 <tr>
-    <th>Named unit</th>
-    <th>Property type</th>
+    <th>Reference unit</th>
+    <th>PAD-US designation</th>
+    <th>Llama Scout mapping</th>
     <th>Manager</th>
-    <th>State</th>
-    <th>Public access</th>
-    <th>Source</th>
+    <th>Access</th>
+    <th>Size</th>
 </tr>
 </thead>
 
@@ -316,53 +346,9 @@ require __DIR__ . '/_header.php';
     as $row
 ): ?>
 
-<?php
-$metadata =
-    llama_pad_us_review_metadata(
-        $row['metadata_json']
-        ?? null
-    );
-
-$padUs =
-    is_array(
-        $metadata['pad_us']
-        ?? null
-    )
-        ? $metadata['pad_us']
-        : [];
-
-$publicAccess =
-    trim(
-        (string) (
-            $padUs['public_access']
-            ?? ''
-        )
-    );
-
-$localDesignation =
-    trim(
-        (string) (
-            $padUs['local_designation']
-            ?? ''
-        )
-    );
-
-$gisAcres =
-    $padUs['gis_acres']
-    ?? null;
-
-$sourceDate =
-    trim(
-        (string) (
-            $padUs['source_date']
-            ?? ''
-        )
-    );
-?>
-
 <tr>
 
-<td data-label="Named unit">
+<td data-label="Reference unit">
     <strong>
         <?= moderation_e(
             (string) (
@@ -372,45 +358,95 @@ $sourceDate =
         ) ?>
     </strong>
 
-    <?php if ($localDesignation !== ''): ?>
     <small>
-        PAD-US designation:
         <?= moderation_e(
-            $localDesignation
+            (string) (
+                $row['state_code']
+                ?? ''
+            )
         ) ?>
     </small>
+
+    <?php if (
+        trim(
+            (string) (
+                $row['source_local_name']
+                ?? ''
+            )
+        ) !== ''
+        && trim(
+            (string) (
+                $row['source_local_name']
+                ?? ''
+            )
+        ) !== trim(
+            (string) (
+                $row['name']
+                ?? ''
+            )
+        )
+    ): ?>
+
+    <small>
+        Local name:
+        <?= moderation_e(
+            (string) $row['source_local_name']
+        ) ?>
+    </small>
+
     <?php endif; ?>
 
     <details>
         <summary>
-            Stored PAD-US metadata
+            Source details
         </summary>
 
-        <pre style="white-space: pre-wrap; overflow-wrap: anywhere;"><?= moderation_e(
-            json_encode(
-                $padUs,
-                JSON_PRETTY_PRINT
-                | JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
-            )
-            ?: '{}'
-        ) ?></pre>
+        <div>
+            <strong>External ID:</strong>
+            <?= moderation_e(
+                (string) (
+                    $row['external_id']
+                    ?? ''
+                )
+            ) ?>
+        </div>
+
+        <div>
+            <strong>Local designation:</strong>
+            <?= moderation_e(
+                (string) (
+                    $row['source_local_designation']
+                    ?? ''
+                )
+            ) ?>
+        </div>
+
+        <div>
+            <strong>Category:</strong>
+            <?= moderation_e(
+                (string) (
+                    $row['source_category']
+                    ?? ''
+                )
+            ) ?>
+        </div>
+
+        <div>
+            <strong>Source manager:</strong>
+            <?= moderation_e(
+                (string) (
+                    $row['source_manager_name']
+                    ?? ''
+                )
+            ) ?>
+        </div>
     </details>
 </td>
 
-<td data-label="Property type">
+<td data-label="PAD-US designation">
     <?= moderation_e(
         (string) (
-            $row['property_type_name']
-            ?? 'Unmapped'
-        )
-    ) ?>
-</td>
-
-<td data-label="Manager">
-    <?= moderation_e(
-        (string) (
-            $row['organization_name']
+            $row['source_designation']
             ?? 'Unknown'
         )
     ) ?>
@@ -418,61 +454,80 @@ $sourceDate =
     <?php if (
         trim(
             (string) (
-                $row[
-                    'organization_short_name'
-                ]
+                $row['source_designation_code']
                 ?? ''
             )
         ) !== ''
     ): ?>
+
     <small>
+        Code:
         <?= moderation_e(
             (string) $row[
-                'organization_short_name'
+                'source_designation_code'
             ]
         ) ?>
     </small>
+
     <?php endif; ?>
 </td>
 
-<td data-label="State">
+<td data-label="Llama Scout mapping">
+    <?= moderation_e(
+        trim(
+            (string) (
+                $row['property_type_slug']
+                ?? ''
+            )
+        ) !== ''
+            ? (string) $row['property_type_slug']
+            : 'Unmapped'
+    ) ?>
+</td>
+
+<td data-label="Manager">
     <?= moderation_e(
         (string) (
-            $row['state_code']
-            ?? ''
+            $row['organization_name']
+            ?? $row['source_local_manager']
+            ?? $row['source_manager_name']
+            ?? 'Unknown'
         )
     ) ?>
 </td>
 
-<td data-label="Public access">
+<td data-label="Access">
     <?= moderation_e(
-        $publicAccess !== ''
-            ? $publicAccess
+        trim(
+            (string) (
+                $row['public_access']
+                ?? ''
+            )
+        ) !== ''
+            ? (string) $row['public_access']
             : 'Unknown'
     ) ?>
 </td>
 
-<td data-label="Source">
-    PAD-US
+<td data-label="Size">
 
-    <?php if ($gisAcres !== null): ?>
-    <small>
-        <?= number_format(
-            (float) $gisAcres,
-            1
-        ) ?>
-        GIS acres
-    </small>
-    <?php endif; ?>
+<?php if (
+    $row['acreage']
+    !== null
+): ?>
 
-    <?php if ($sourceDate !== ''): ?>
-    <small>
-        Source date:
-        <?= moderation_e(
-            $sourceDate
-        ) ?>
-    </small>
-    <?php endif; ?>
+    <?= number_format(
+        (float) $row['acreage'],
+        1
+    ) ?>
+    acres
+
+<?php else: ?>
+
+    Unknown
+
+<?php endif; ?>
+
 </td>
 
 </tr>
@@ -488,7 +543,7 @@ $sourceDate =
 
 <nav
     class="admin-user-form-actions"
-    aria-label="Named unit pages"
+    aria-label="Reference unit pages"
 >
 
 <?php if (
