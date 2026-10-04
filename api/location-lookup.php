@@ -366,12 +366,13 @@ function location_nearest_named_road(
     return $best;
 }
 
+
 function location_nearest_locality(
     float $lat,
     float $lng
 ): ?array {
     $radiusMeters =
-        25000;
+        40000;
 
     $query =
         '[out:json][timeout:7];'
@@ -407,7 +408,13 @@ function location_nearest_locality(
             ? $result['elements']
             : [];
 
-    $best = null;
+    $priorities = [
+        'city' => 1,
+        'town' => 2,
+        'village' => 3,
+    ];
+
+    $candidates = [];
 
     foreach ($elements as $element) {
         if (!is_array($element)) {
@@ -422,8 +429,19 @@ function location_nearest_locality(
                 )
             );
 
+        $placeType =
+            trim(
+                (string) (
+                    $element['tags']['place']
+                    ?? ''
+                )
+            );
+
         if (
             $name === ''
+            || !isset(
+                $priorities[$placeType]
+            )
             || !is_numeric(
                 $element['lat']
                 ?? null
@@ -444,31 +462,55 @@ function location_nearest_locality(
                 (float) $element['lon']
             );
 
-        if (
-            $best === null
-            || $distance
-                < $best['distance_meters']
-        ) {
-            $best = [
-                'name' =>
-                    $name,
+        $candidates[] = [
+            'name' =>
+                $name,
 
-                'place_type' =>
-                    trim(
-                        (string) (
-                            $element['tags']['place']
-                            ?? ''
-                        )
-                    ),
+            'place_type' =>
+                $placeType,
 
-                'distance_meters' =>
-                    $distance,
-            ];
-        }
+            'distance_meters' =>
+                $distance,
+
+            'priority' =>
+                $priorities[$placeType],
+        ];
     }
+
+    if (!$candidates) {
+        return null;
+    }
+
+    usort(
+        $candidates,
+        static function (
+            array $a,
+            array $b
+        ): int {
+            $priorityCompare =
+                $a['priority']
+                <=> $b['priority'];
+
+            if ($priorityCompare !== 0) {
+                return $priorityCompare;
+            }
+
+            return
+                $a['distance_meters']
+                <=> $b['distance_meters'];
+        }
+    );
+
+    $best =
+        $candidates[0];
+
+    unset(
+        $best['priority']
+    );
 
     return $best;
 }
+
 
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
