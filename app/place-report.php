@@ -242,6 +242,7 @@ function llama_place_report_land_managers(): array
 function llama_place_report_land_types(): array
 {
     return [
+        'Federal Public Land' => 'Federal Public Land',
         'National Forest' => 'National Forest',
         'National Grassland' => 'National Grassland',
         'BLM Land' => 'BLM Land',
@@ -254,7 +255,9 @@ function llama_place_report_land_types(): array
         'National River / Scenic Riverway' => 'National River / Scenic Riverway',
         'National Wildlife Refuge' => 'National Wildlife Refuge',
         'Federal Water Project / Recreation Land' => 'Federal Water Project / Recreation Land',
+        'Military Land' => 'Military Land',
 
+        'State Public Land' => 'State Public Land',
         'State Forest' => 'State Forest',
         'State Park' => 'State Park',
         'State Recreation Area' => 'State Recreation Area',
@@ -263,6 +266,7 @@ function llama_place_report_land_types(): array
         'Wildlife Management / Game Lands' => 'Wildlife Management / Game Lands',
         'Water Management District' => 'Water Management District',
 
+        'Local Public Land' => 'Local Public Land',
         'County / Regional Park' => 'County / Regional Park',
         'City / Municipal Land' => 'City / Municipal Land',
         'Public Utility / Reservoir Land' => 'Public Utility / Reservoir Land',
