@@ -10,6 +10,10 @@ require_once
     dirname(__DIR__)
     . '/app/geography.php';
 
+require_once
+    dirname(__DIR__)
+    . '/app/pad-us-location.php';
+
 header(
     'Content-Type: application/json; charset=UTF-8'
 );
@@ -532,6 +536,29 @@ $elevationFeet =
         )
         : null;
 
+$padUs = [
+    'best_match' => null,
+    'matches' => [],
+];
+
+try {
+    $padUs =
+        llama_pad_us_point_lookup(
+            reference_db(),
+            db(),
+            $lat,
+            $lng
+        );
+} catch (Throwable $exception) {
+    llama_log_caught_exception(
+        $exception,
+        'location_lookup.pad_us',
+        [
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ]
+    );
+}
 
 echo json_encode(
     [
@@ -584,6 +611,10 @@ echo json_encode(
                     )
                     : null,
         ],
+
+    'pad_us' =>
+    $padUs,
+    
     ],
     JSON_UNESCAPED_SLASHES
     | JSON_UNESCAPED_UNICODE
