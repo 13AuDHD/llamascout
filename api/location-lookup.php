@@ -514,6 +514,96 @@ function location_nearest_locality(
     return $best;
 }
 
+
+function location_usfs_ranger_district(
+    float $lat,
+    float $lng
+): ?array {
+    $url =
+        'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RangerDistricts_03/MapServer/1/query?'
+        . http_build_query([
+            'f' => 'json',
+            'where' => '1=1',
+            'geometry' =>
+                number_format($lng, 7, '.', '')
+                . ','
+                . number_format($lat, 7, '.', ''),
+            'geometryType' => 'esriGeometryPoint',
+            'inSR' => '4326',
+            'spatialRel' => 'esriSpatialRelIntersects',
+            'outFields' =>
+                'forestname,districtname,region,districtorgcode',
+            'returnGeometry' => 'false',
+        ]);
+
+    $result =
+        location_lookup_json(
+            $url,
+            [],
+            10
+        );
+
+    $features =
+        is_array(
+            $result['features']
+            ?? null
+        )
+            ? $result['features']
+            : [];
+
+    if (!$features) {
+        return null;
+    }
+
+    $attributes =
+        is_array(
+            $features[0]['attributes']
+            ?? null
+        )
+            ? $features[0]['attributes']
+            : [];
+
+    $district =
+        trim(
+            (string) (
+                $attributes['districtname']
+                ?? ''
+            )
+        );
+
+    $forest =
+        trim(
+            (string) (
+                $attributes['forestname']
+                ?? ''
+            )
+        );
+
+    if ($district === '') {
+        return null;
+    }
+
+    return [
+        'district' => $district,
+        'forest' => $forest,
+        'region' =>
+            trim(
+                (string) (
+                    $attributes['region']
+                    ?? ''
+                )
+            ),
+        'district_org_code' =>
+            trim(
+                (string) (
+                    $attributes['districtorgcode']
+                    ?? ''
+                )
+            ),
+    ];
+}
+
+
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
     . http_build_query(
@@ -715,6 +805,55 @@ $padUs = [
     'matches' => [],
 ];
 
+
+$usfsDistrict = null;
+
+$padUsBest =
+    is_array(
+        $padUs['best_match']
+        ?? null
+    )
+        ? $padUs['best_match']
+        : null;
+
+if (
+    is_array($padUsBest)
+    && (
+        strcasecmp(
+            (string) (
+                $padUsBest['property_type']
+                ?? ''
+            ),
+            'National Forest'
+        ) === 0
+        || stripos(
+            (string) (
+                $padUsBest['manager']
+                ?? ''
+            ),
+            'Forest Service'
+        ) !== false
+    )
+) {
+    try {
+        $usfsDistrict =
+            location_usfs_ranger_district(
+                $lat,
+                $lng
+            );
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'location_lookup.usfs_ranger_district',
+            [
+                'latitude' => $lat,
+                'longitude' => $lng,
+            ]
+        );
+    }
+}
+
+
 try {
     $padUs =
         llama_pad_us_point_lookup(
@@ -792,7 +931,12 @@ echo json_encode(
         ],
 
     'pad_us' =>
-    $padUs,
+        $padUs,
+
+    'usfs' => [
+    'ranger_district' =>
+        $usfsDistrict,
+    ],
     
     ],
     JSON_UNESCAPED_SLASHES
