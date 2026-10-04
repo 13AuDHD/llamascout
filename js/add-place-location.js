@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!match) {
       throw new Error(
-        "Enter coordinates as latitude, longitude in decimal degrees, for example 37.2522200, -107.2192000."
+        "Enter coordinates as latitude, longitude in decimal degrees, for example 37.2722978, -107.8824169."
       );
     }
 
