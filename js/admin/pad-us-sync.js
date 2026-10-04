@@ -308,12 +308,12 @@
                     result.locations_created
                     || 0
                 ).toLocaleString()
-                + ' new locations, '
+                + ' new named units, '
                 + Number(
                     result.locations_updated
                     || 0
                 ).toLocaleString()
-                + ' updated, '
+                + ' units updated, '
                 + Number(
                     result.warning_count
                     || 0
