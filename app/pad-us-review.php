@@ -15,10 +15,12 @@ function llama_pad_us_review_limit(
     int $default = 50,
     int $max = 200
 ): int {
-    $limit = (int) $value;
+    $limit =
+        (int) $value;
 
     if ($limit < 1) {
-        $limit = $default;
+        $limit =
+            $default;
     }
 
     return min(
@@ -221,7 +223,8 @@ function llama_pad_us_review_units(
             '%' . $query . '%';
 
         for ($i = 0; $i < 8; $i++) {
-            $params[] = $like;
+            $params[] =
+                $like;
         }
     }
 
@@ -466,11 +469,36 @@ function llama_pad_us_review_distinct(
             );
 
         if ($value !== '') {
-            $values[] = $value;
+            $values[] =
+                $value;
         }
     }
 
     return $values;
+}
+
+
+function llama_pad_us_review_property_types(
+    PDO $mainDb
+): array {
+    $stmt =
+        $mainDb->query(
+            'SELECT
+                slug,
+                name
+             FROM place_property_types
+             WHERE active = 1
+             ORDER BY
+                sort_order ASC,
+                name ASC'
+        );
+
+    return
+        $stmt
+            ? $stmt->fetchAll(
+                PDO::FETCH_ASSOC
+            )
+            : [];
 }
 
 
@@ -516,12 +544,7 @@ function llama_pad_us_review_classifications(
                         ELSE 0
                     END
                 ) AS unmapped_count,
-                MIN(
-                    NULLIF(
-                        u.property_type_slug,
-                        ""
-                    )
-                ) AS property_type_slug,
+                m.property_type_slug,
                 m.reviewed,
                 m.surface_in_place_form,
                 m.notes
@@ -536,6 +559,7 @@ function llama_pad_us_review_classifications(
              . '
              GROUP BY
                 u.source_designation,
+                m.property_type_slug,
                 m.reviewed,
                 m.surface_in_place_form,
                 m.notes
@@ -553,6 +577,143 @@ function llama_pad_us_review_classifications(
         $stmt->fetchAll(
             PDO::FETCH_ASSOC
         );
+}
+
+
+function llama_pad_us_save_classification_mapping(
+    PDO $referenceDb,
+    string $designation,
+    string $designationCode,
+    string $mode,
+    string $propertyTypeSlug,
+    bool $surfaceInPlaceForm,
+    string $notes
+): void {
+    $designation =
+        trim(
+            $designation
+        );
+
+    if ($designation === '') {
+        throw new InvalidArgumentException(
+            'PAD-US designation is required.'
+        );
+    }
+
+    $source =
+        llama_pad_us_source(
+            $referenceDb
+        );
+
+    $sourceId =
+        (int) $source['id'];
+
+    if ($mode === 'pending') {
+        $delete =
+            $referenceDb->prepare(
+                'DELETE FROM reference_property_type_mappings
+                 WHERE source_id = ?
+                   AND source_designation = ?'
+            );
+
+        $delete->execute([
+            $sourceId,
+            $designation,
+        ]);
+
+        $clear =
+            $referenceDb->prepare(
+                'UPDATE reference_units
+                 SET property_type_slug = NULL
+                 WHERE source_id = ?
+                   AND source_designation = ?'
+            );
+
+        $clear->execute([
+            $sourceId,
+            $designation,
+        ]);
+
+        return;
+    }
+
+    if ($mode === 'reference_only') {
+        $propertyTypeSlug = '';
+        $surfaceInPlaceForm = false;
+    } elseif ($mode !== 'mapped') {
+        throw new InvalidArgumentException(
+            'Choose a valid classification action.'
+        );
+    }
+
+    if (
+        $mode === 'mapped'
+        && $propertyTypeSlug === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a Llama Scout property type.'
+        );
+    }
+
+    $stmt =
+        $referenceDb->prepare(
+            'INSERT INTO reference_property_type_mappings (
+                source_id,
+                source_designation_code,
+                source_designation,
+                property_type_slug,
+                surface_in_place_form,
+                reviewed,
+                notes,
+                active
+             ) VALUES (
+                ?, ?, ?, ?, ?, 1, ?, 1
+             )
+             ON DUPLICATE KEY UPDATE
+                source_designation_code =
+                    VALUES(source_designation_code),
+                property_type_slug =
+                    VALUES(property_type_slug),
+                surface_in_place_form =
+                    VALUES(surface_in_place_form),
+                reviewed = 1,
+                notes =
+                    VALUES(notes),
+                active = 1'
+        );
+
+    $stmt->execute([
+        $sourceId,
+        $designationCode !== ''
+            ? $designationCode
+            : null,
+        $designation,
+        $propertyTypeSlug !== ''
+            ? $propertyTypeSlug
+            : null,
+        $surfaceInPlaceForm
+            ? 1
+            : 0,
+        $notes !== ''
+            ? $notes
+            : null,
+    ]);
+
+    $update =
+        $referenceDb->prepare(
+            'UPDATE reference_units
+             SET property_type_slug = ?
+             WHERE source_id = ?
+               AND source_designation = ?'
+        );
+
+    $update->execute([
+        $propertyTypeSlug !== ''
+            ? $propertyTypeSlug
+            : null,
+        $sourceId,
+        $designation,
+    ]);
 }
 
 
