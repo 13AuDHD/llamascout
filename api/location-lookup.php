@@ -384,7 +384,15 @@ function location_nearest_named_road(
 
 /*
  * =========================================================
- * NEAREST USEFUL TOWN / CITY
+ * NEAREST USEFUL CITY / TOWN
+ *
+ * Search OSM nodes, ways and relations. Some incorporated
+ * towns are represented by areas/relations rather than nodes,
+ * which is why the previous lookup could return nothing.
+ *
+ * Cities and towns compete primarily on distance. Villages
+ * get a modest penalty so a tiny settlement has to be
+ * meaningfully closer before it wins.
  * =========================================================
  */
 
@@ -393,12 +401,12 @@ function location_nearest_locality(
     float $lng
 ): ?array {
     $radiusMeters =
-        50000;
+        80000;
 
     $query =
-        '[out:json][timeout:7];'
+        '[out:json][timeout:10];'
         . '('
-        . 'node(around:'
+        . 'nwr(around:'
         . $radiusMeters
         . ','
         . number_format(
@@ -421,14 +429,15 @@ function location_nearest_locality(
     $url =
         'https://overpass-api.de/api/interpreter?'
         . http_build_query([
-            'data' => $query,
+            'data' =>
+                $query,
         ]);
 
     $result =
         location_lookup_json(
             $url,
             [],
-            9
+            12
         );
 
     $elements =
@@ -439,22 +448,15 @@ function location_nearest_locality(
             ? $result['elements']
             : [];
 
-    /*
-     * Distance remains the main factor.
-     *
-     * Towns get a small penalty compared with cities.
-     * Villages get a larger penalty so a tiny settlement
-     * must be substantially closer to win.
-     */
     $typePenaltyMeters = [
         'city' =>
             0,
 
         'town' =>
-            2500,
+            0,
 
         'village' =>
-            12000,
+            7000,
     ];
 
     $candidates = [];
@@ -464,10 +466,18 @@ function location_nearest_locality(
             continue;
         }
 
+        $tags =
+            is_array(
+                $element['tags']
+                ?? null
+            )
+                ? $element['tags']
+                : [];
+
         $name =
             trim(
                 (string) (
-                    $element['tags']['name']
+                    $tags['name']
                     ?? ''
                 )
             );
@@ -475,7 +485,7 @@ function location_nearest_locality(
         $placeType =
             trim(
                 (string) (
-                    $element['tags']['place']
+                    $tags['place']
                     ?? ''
                 )
             );
@@ -487,14 +497,56 @@ function location_nearest_locality(
                     $placeType
                 ]
             )
-            || !is_numeric(
+        ) {
+            continue;
+        }
+
+        $candidateLat =
+            null;
+
+        $candidateLng =
+            null;
+
+        if (
+            is_numeric(
                 $element['lat']
                 ?? null
             )
-            || !is_numeric(
+            && is_numeric(
                 $element['lon']
                 ?? null
             )
+        ) {
+            $candidateLat =
+                (float) $element['lat'];
+
+            $candidateLng =
+                (float) $element['lon'];
+
+        } elseif (
+            is_array(
+                $element['center']
+                ?? null
+            )
+            && is_numeric(
+                $element['center']['lat']
+                ?? null
+            )
+            && is_numeric(
+                $element['center']['lon']
+                ?? null
+            )
+        ) {
+            $candidateLat =
+                (float) $element['center']['lat'];
+
+            $candidateLng =
+                (float) $element['center']['lon'];
+        }
+
+        if (
+            $candidateLat === null
+            || $candidateLng === null
         ) {
             continue;
         }
@@ -503,16 +555,58 @@ function location_nearest_locality(
             location_haversine_meters(
                 $lat,
                 $lng,
-                (float) $element['lat'],
-                (float) $element['lon']
+                $candidateLat,
+                $candidateLng
             );
+
+        /*
+         * Population is used only as a small tie-breaker.
+         * Distance remains the dominant factor.
+         */
+        $population =
+            0;
+
+        $populationRaw =
+            preg_replace(
+                '/[^0-9]/',
+                '',
+                (string) (
+                    $tags['population']
+                    ?? ''
+                )
+            );
+
+        if (
+            is_string($populationRaw)
+            && $populationRaw !== ''
+            && is_numeric($populationRaw)
+        ) {
+            $population =
+                (int) $populationRaw;
+        }
+
+        $populationBonus =
+            $population > 0
+                ? min(
+                    5000,
+                    log10(
+                        max(
+                            10,
+                            $population
+                        )
+                    )
+                    * 1000
+                )
+                : 0;
 
         $score =
             $distance
             +
             $typePenaltyMeters[
                 $placeType
-            ];
+            ]
+            -
+            $populationBonus;
 
         $candidates[] = [
             'name' =>
@@ -523,6 +617,11 @@ function location_nearest_locality(
 
             'distance_meters' =>
                 $distance,
+
+            'population' =>
+                $population > 0
+                    ? $population
+                    : null,
 
             'score' =>
                 $score,
@@ -710,9 +809,169 @@ function location_usfs_ranger_district(
     ];
 }
 
+
 /*
  * =========================================================
- * ADDRESS / ROAD LOOKUP
+ * BLM FIELD OFFICE
+ *
+ * Official national BLM Administrative Unit Field Boundary
+ * layer. The field-office polygons are the smallest BLM
+ * administrative land units.
+ * =========================================================
+ */
+
+function location_blm_field_office(
+    float $lat,
+    float $lng
+): ?array {
+    $url =
+        'https://gis.blm.gov/arcgis/rest/services/admin_boundaries/BLM_Natl_AdminUnit/MapServer/3/query?'
+        . http_build_query([
+            'f' =>
+                'json',
+
+            'where' =>
+                '1=1',
+
+            'geometry' =>
+                number_format(
+                    $lng,
+                    7,
+                    '.',
+                    ''
+                )
+                . ','
+                . number_format(
+                    $lat,
+                    7,
+                    '.',
+                    ''
+                ),
+
+            'geometryType' =>
+                'esriGeometryPoint',
+
+            'inSR' =>
+                '4326',
+
+            'spatialRel' =>
+                'esriSpatialRelIntersects',
+
+            'outFields' =>
+                implode(
+                    ',',
+                    [
+                        'ADM_UNIT_CD',
+                        'ADMU_NAME',
+                        'BLM_ORG_TYPE',
+                        'PARENT_CD',
+                        'PARENT_NAME',
+                        'ADMIN_ST',
+                        'ADMU_ST_URL',
+                    ]
+                ),
+
+            'returnGeometry' =>
+                'false',
+        ]);
+
+    $result =
+        location_lookup_json(
+            $url,
+            [],
+            10
+        );
+
+    $features =
+        is_array(
+            $result['features']
+            ?? null
+        )
+            ? $result['features']
+            : [];
+
+    if (!$features) {
+        return null;
+    }
+
+    $attributes =
+        is_array(
+            $features[0]['attributes']
+            ?? null
+        )
+            ? $features[0]['attributes']
+            : [];
+
+    $fieldOffice =
+        trim(
+            (string) (
+                $attributes['ADMU_NAME']
+                ?? ''
+            )
+        );
+
+    if ($fieldOffice === '') {
+        return null;
+    }
+
+    return [
+        'field_office' =>
+            $fieldOffice,
+
+        'administrative_unit_code' =>
+            trim(
+                (string) (
+                    $attributes['ADM_UNIT_CD']
+                    ?? ''
+                )
+            ),
+
+        'organization_type' =>
+            trim(
+                (string) (
+                    $attributes['BLM_ORG_TYPE']
+                    ?? ''
+                )
+            ),
+
+        'parent_name' =>
+            trim(
+                (string) (
+                    $attributes['PARENT_NAME']
+                    ?? ''
+                )
+            ),
+
+        'parent_code' =>
+            trim(
+                (string) (
+                    $attributes['PARENT_CD']
+                    ?? ''
+                )
+            ),
+
+        'administrative_state' =>
+            trim(
+                (string) (
+                    $attributes['ADMIN_ST']
+                    ?? ''
+                )
+            ),
+
+        'state_office_url' =>
+            trim(
+                (string) (
+                    $attributes['ADMU_ST_URL']
+                    ?? ''
+                )
+            ),
+    ];
+}
+
+
+/*
+ * =========================================================
+ * ADDRESS / ROAD
  * =========================================================
  */
 
@@ -796,56 +1055,54 @@ $road =
 
 /*
  * =========================================================
- * CITY / TOWN
+ * NEAREST CITY / TOWN
+ *
+ * Always run the useful-locality lookup now. Reverse geocode
+ * is retained only as a fallback if Overpass cannot return a
+ * usable city/town/village.
  * =========================================================
  */
 
-$city =
-    $address['city']
-    ?? $address['town']
-    ?? $address['village']
-    ?? $address['hamlet']
-    ?? $address['municipality']
-    ?? $address['locality']
-    ?? null;
-
-
 $nearestLocality =
-    null;
+    location_nearest_locality(
+        $lat,
+        $lng
+    );
 
 
 if (
-    $city === null
-    || trim(
-        (string) $city
-    ) === ''
+    is_array($nearestLocality)
+    && trim(
+        (string) (
+            $nearestLocality['name']
+            ?? ''
+        )
+    ) !== ''
 ) {
-    $nearestLocality =
-        location_nearest_locality(
-            $lat,
-            $lng
+    $city =
+        trim(
+            (string) $nearestLocality['name']
         );
 
-    if (
-        is_array($nearestLocality)
-        && trim(
-            (string) (
-                $nearestLocality['name']
-                ?? ''
-            )
-        ) !== ''
-    ) {
-        $city =
-            trim(
-                (string) $nearestLocality['name']
-            );
-    }
+    $cityLookup =
+        'nearest_locality';
+
+} else {
+    $city =
+        $address['city']
+        ?? $address['town']
+        ?? $address['village']
+        ?? $address['municipality']
+        ?? null;
+
+    $cityLookup =
+        'reverse_geocode';
 }
 
 
 /*
  * =========================================================
- * COUNTY
+ * COUNTY / STATE
  * =========================================================
  */
 
@@ -974,6 +1231,7 @@ try {
             $lat,
             $lng
         );
+
 } catch (Throwable $exception) {
     llama_log_caught_exception(
         $exception,
@@ -989,23 +1247,6 @@ try {
 }
 
 
-/*
- * =========================================================
- * USFS RANGER DISTRICT
- *
- * Important:
- * PAD-US must run FIRST.
- *
- * Only query the Forest Service ranger-district layer when
- * the land result tells us this point is National Forest /
- * Forest Service land.
- * =========================================================
- */
-
-$usfsDistrict =
-    null;
-
-
 $padUsBest =
     is_array(
         $padUs['best_match']
@@ -1015,33 +1256,86 @@ $padUsBest =
         : null;
 
 
+/*
+ * =========================================================
+ * DETERMINE MANAGING AGENCY
+ * =========================================================
+ */
+
+$propertyType =
+    trim(
+        (string) (
+            $padUsBest['property_type']
+            ?? ''
+        )
+    );
+
+
+$managerName =
+    trim(
+        (string) (
+            $padUsBest['manager']
+            ?? ''
+        )
+    );
+
+
 $isForestServiceLand =
     is_array($padUsBest)
     && (
         strcasecmp(
-            trim(
-                (string) (
-                    $padUsBest[
-                        'property_type'
-                    ]
-                    ?? ''
-                )
-            ),
+            $propertyType,
             'National Forest'
         ) === 0
 
         ||
 
+        strcasecmp(
+            $propertyType,
+            'National Grassland'
+        ) === 0
+
+        ||
+
         stripos(
-            (string) (
-                $padUsBest[
-                    'manager'
-                ]
-                ?? ''
-            ),
+            $managerName,
             'Forest Service'
         ) !== false
     );
+
+
+$isBlmLand =
+    is_array($padUsBest)
+    && (
+        strcasecmp(
+            $propertyType,
+            'BLM Land'
+        ) === 0
+
+        ||
+
+        stripos(
+            $managerName,
+            'Bureau of Land Management'
+        ) !== false
+
+        ||
+
+        preg_match(
+            '/\bBLM\b/i',
+            $managerName
+        ) === 1
+    );
+
+
+/*
+ * =========================================================
+ * USFS RANGER DISTRICT
+ * =========================================================
+ */
+
+$usfsDistrict =
+    null;
 
 
 if ($isForestServiceLand) {
@@ -1051,6 +1345,7 @@ if ($isForestServiceLand) {
                 $lat,
                 $lng
             );
+
     } catch (Throwable $exception) {
         llama_log_caught_exception(
             $exception,
@@ -1064,6 +1359,102 @@ if ($isForestServiceLand) {
             ]
         );
     }
+}
+
+
+/*
+ * =========================================================
+ * BLM FIELD OFFICE
+ * =========================================================
+ */
+
+$blmFieldOffice =
+    null;
+
+
+if ($isBlmLand) {
+    try {
+        $blmFieldOffice =
+            location_blm_field_office(
+                $lat,
+                $lng
+            );
+
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'location_lookup.blm_field_office',
+            [
+                'latitude' =>
+                    $lat,
+
+                'longitude' =>
+                    $lng,
+            ]
+        );
+    }
+}
+
+
+/*
+ * =========================================================
+ * UNIFIED LOCAL MANAGEMENT AREA
+ * =========================================================
+ */
+
+$localManagementArea =
+    null;
+
+
+if (
+    is_array($usfsDistrict)
+    && trim(
+        (string) (
+            $usfsDistrict['district']
+            ?? ''
+        )
+    ) !== ''
+) {
+    $localManagementArea =
+        [
+            'name' =>
+                trim(
+                    (string) $usfsDistrict[
+                        'district'
+                    ]
+                ),
+
+            'type' =>
+                'ranger_district',
+
+            'agency' =>
+                'U.S. Forest Service',
+        ];
+
+} elseif (
+    is_array($blmFieldOffice)
+    && trim(
+        (string) (
+            $blmFieldOffice['field_office']
+            ?? ''
+        )
+    ) !== ''
+) {
+    $localManagementArea =
+        [
+            'name' =>
+                trim(
+                    (string) $blmFieldOffice[
+                        'field_office'
+                    ]
+                ),
+
+            'type' =>
+                'field_office',
+
+            'agency' =>
+                'Bureau of Land Management',
+        ];
 }
 
 
@@ -1101,11 +1492,10 @@ echo json_encode(
                 $city,
 
             'city_lookup' =>
-                is_array(
-                    $nearestLocality
-                )
-                    ? 'nearest_locality'
-                    : 'reverse_geocode',
+                $cityLookup,
+
+            'city_details' =>
+                $nearestLocality,
 
             'county' =>
                 $county,
@@ -1147,6 +1537,14 @@ echo json_encode(
             'ranger_district' =>
                 $usfsDistrict,
         ],
+
+        'blm' => [
+            'field_office' =>
+                $blmFieldOffice,
+        ],
+
+        'local_management_area' =>
+            $localManagementArea,
     ],
     JSON_UNESCAPED_SLASHES
     | JSON_UNESCAPED_UNICODE
