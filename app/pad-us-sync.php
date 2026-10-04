@@ -5,10 +5,11 @@ declare(strict_types=1);
 
 /*
  * =========================================================
- * PAD-US TAXONOMY SYNCHRONIZATION
+ * PAD-US REFERENCE DATABASE SYNCHRONIZATION
  *
- * Imports attribute-only PAD-US records into the normalized
- * Llama Scout taxonomy tables.
+ * PAD-US is external reference data. It is stored in the
+ * dedicated reference database and is not inserted into the
+ * primary Llama Scout places/taxonomy tables.
  *
  * Geometry is intentionally not requested.
  * =========================================================
@@ -77,7 +78,7 @@ function llama_pad_us_source(PDO $db): array
     $stmt =
         $db->prepare(
             'SELECT *
-             FROM place_taxonomy_sources
+             FROM reference_sources
              WHERE source_key = ?
              LIMIT 1'
         );
@@ -93,19 +94,18 @@ function llama_pad_us_source(PDO $db): array
 
     if (!$row) {
         throw new RuntimeException(
-            'PAD-US is not registered in place_taxonomy_sources.'
+            'PAD-US is not registered in reference_sources.'
         );
     }
 
-    $baseUrl =
+    if (
         trim(
             (string) (
                 $row['base_url']
                 ?? ''
             )
-        );
-
-    if ($baseUrl === '') {
+        ) === ''
+    ) {
         throw new RuntimeException(
             'The PAD-US source URL is missing.'
         );
@@ -141,10 +141,7 @@ function llama_pad_us_http_json(
     $status = 0;
 
     if (function_exists('curl_init')) {
-        $curl =
-            curl_init(
-                $url
-            );
+        $curl = curl_init($url);
 
         if ($curl === false) {
             throw new RuntimeException(
@@ -164,7 +161,7 @@ function llama_pad_us_http_json(
                 CURLOPT_TIMEOUT =>
                     60,
                 CURLOPT_USERAGENT =>
-                    'LlamaScout/1.0 PAD-US Taxonomy Sync',
+                    'LlamaScout/1.0 PAD-US Reference Sync',
                 CURLOPT_HTTPHEADER =>
                     [
                         'Accept: application/json',
@@ -172,20 +169,13 @@ function llama_pad_us_http_json(
             ]
         );
 
-        $response =
-            curl_exec(
-                $curl
-            );
+        $response = curl_exec($curl);
 
         if ($response === false) {
             $message =
-                curl_error(
-                    $curl
-                );
+                curl_error($curl);
 
-            curl_close(
-                $curl
-            );
+            curl_close($curl);
 
             throw new RuntimeException(
                 'PAD-US request failed: '
@@ -199,9 +189,7 @@ function llama_pad_us_http_json(
                 CURLINFO_RESPONSE_CODE
             );
 
-        curl_close(
-            $curl
-        );
+        curl_close($curl);
 
         $body =
             (string) $response;
@@ -218,7 +206,7 @@ function llama_pad_us_http_json(
                             true,
                         'header' =>
                             "Accept: application/json\r\n"
-                            . "User-Agent: LlamaScout/1.0 PAD-US Taxonomy Sync\r\n",
+                            . "User-Agent: LlamaScout/1.0 PAD-US Reference Sync\r\n",
                     ],
                 ]
             );
@@ -281,12 +269,8 @@ function llama_pad_us_http_json(
     }
 
     if (
-        isset(
-            $decoded['error']
-        )
-        && is_array(
-            $decoded['error']
-        )
+        isset($decoded['error'])
+        && is_array($decoded['error'])
     ) {
         $message =
             trim(
@@ -296,14 +280,13 @@ function llama_pad_us_http_json(
                 )
             );
 
-        if ($message === '') {
-            $message =
-                'Unknown ArcGIS error.';
-        }
-
         throw new RuntimeException(
             'PAD-US ArcGIS error: '
-            . $message
+            . (
+                $message !== ''
+                    ? $message
+                    : 'Unknown ArcGIS error.'
+            )
         );
     }
 
@@ -321,9 +304,7 @@ function llama_pad_us_domain_maps(
     }
 
     $source =
-        llama_pad_us_source(
-            $db
-        );
+        llama_pad_us_source($db);
 
     $metadata =
         llama_pad_us_http_json(
@@ -332,8 +313,7 @@ function llama_pad_us_domain_maps(
                 '/'
             ),
             [
-                'f' =>
-                    'json',
+                'f' => 'json',
             ]
         );
 
@@ -360,32 +340,30 @@ function llama_pad_us_domain_maps(
                 )
             );
 
-        if ($name === '') {
-            continue;
-        }
-
-        $codedValues =
+        $coded =
             $field['domain']['codedValues']
             ?? null;
 
-        if (!is_array($codedValues)) {
+        if (
+            $name === ''
+            || !is_array($coded)
+        ) {
             continue;
         }
 
         $maps[$name] = [];
 
-        foreach (
-            $codedValues
-            as $entry
-        ) {
+        foreach ($coded as $entry) {
             if (!is_array($entry)) {
                 continue;
             }
 
             $code =
-                (string) (
-                    $entry['code']
-                    ?? ''
+                trim(
+                    (string) (
+                        $entry['code']
+                        ?? ''
+                    )
                 );
 
             $label =
@@ -397,15 +375,12 @@ function llama_pad_us_domain_maps(
                 );
 
             if (
-                $code === ''
-                || $label === ''
+                $code !== ''
+                && $label !== ''
             ) {
-                continue;
+                $maps[$name][$code] =
+                    $label;
             }
-
-            $maps[$name][
-                $code
-            ] = $label;
         }
     }
 
@@ -442,19 +417,13 @@ function llama_pad_us_state_code(
 ): string {
     $value =
         strtoupper(
-            trim(
-                $value
-            )
+            trim($value)
         );
 
     $states =
         llama_pad_us_states();
 
-    if (
-        isset(
-            $states[$value]
-        )
-    ) {
+    if (isset($states[$value])) {
         return $value;
     }
 
@@ -476,267 +445,93 @@ function llama_pad_us_state_code(
 }
 
 
-function llama_pad_us_slug(
+function llama_pad_us_canonical_text(
     string $value
 ): string {
     $value =
-        strtolower(
-            trim(
-                $value
-            )
+        mb_strtolower(
+            trim($value)
         );
 
-    $value =
+    return
         preg_replace(
-            '/[^a-z0-9]+/',
-            '-',
+            '/\s+/u',
+            ' ',
             $value
         )
-        ?? '';
-
-    return trim(
-        $value,
-        '-'
-    );
+        ?? $value;
 }
 
 
-function llama_pad_us_manager_type(
-    string $raw,
-    string $decoded
+function llama_pad_us_location_name(
+    array $attributes
 ): string {
-    $code =
-        strtoupper(
-            trim(
-                $raw
-            )
-        );
-
-    $label =
-        strtolower(
-            trim(
-                $decoded
-            )
-        );
-
-    if (
-        $code === 'FED'
-        || str_contains(
-            $label,
-            'federal'
-        )
-    ) {
-        return 'federal_agency';
-    }
-
-    if (
-        $code === 'TRIB'
-        || str_contains(
-            $label,
-            'american indian'
-        )
-        || str_contains(
-            $label,
-            'tribal'
-        )
-    ) {
-        return 'tribal_government';
-    }
-
-    if (
-        $code === 'STAT'
-        || str_contains(
-            $label,
-            'state'
-        )
-    ) {
-        return 'state_agency';
-    }
-
-    if (
-        $code === 'NGO'
-        || str_contains(
-            $label,
-            'non-government'
-        )
-    ) {
-        return 'nonprofit';
-    }
-
-    if (
-        $code === 'PVT'
-        || str_contains(
-            $label,
-            'private'
-        )
-    ) {
-        return 'private_owner';
-    }
-
-    if (
-        $code === 'CNTY'
-        || str_contains(
-            $label,
-            'county'
-        )
-    ) {
-        return 'county_government';
-    }
-
-    if (
-        $code === 'CITY'
-        || str_contains(
-            $label,
-            'city'
-        )
-        || str_contains(
-            $label,
-            'municipal'
-        )
-    ) {
-        return 'municipal_government';
-    }
-
-    return 'other';
-}
-
-
-function llama_pad_us_seeded_manager_slug(
-    string $rawCode,
-    string $decodedName,
-    string $localManager
-): ?string {
-    $code =
-        strtoupper(
-            trim(
-                $rawCode
-            )
-        );
-
-    $map = [
-        'USFS' =>
-            'us-forest-service',
-        'BLM' =>
-            'bureau-land-management',
-        'NPS' =>
-            'national-park-service',
-        'FWS' =>
-            'us-fish-wildlife-service',
-        'USFWS' =>
-            'us-fish-wildlife-service',
-        'USACE' =>
-            'us-army-corps-engineers',
-        'USBR' =>
-            'bureau-reclamation',
-        'BOR' =>
-            'bureau-reclamation',
-        'TVA' =>
-            'tennessee-valley-authority',
-    ];
-
-    if (isset($map[$code])) {
-        return $map[$code];
-    }
-
-    $names = [
-        'u.s. forest service' =>
-            'us-forest-service',
-        'forest service' =>
-            'us-forest-service',
-        'bureau of land management' =>
-            'bureau-land-management',
-        'national park service' =>
-            'national-park-service',
-        'u.s. fish and wildlife service' =>
-            'us-fish-wildlife-service',
-        'us fish and wildlife service' =>
-            'us-fish-wildlife-service',
-        'u.s. army corps of engineers' =>
-            'us-army-corps-engineers',
-        'bureau of reclamation' =>
-            'bureau-reclamation',
-        'tennessee valley authority' =>
-            'tennessee-valley-authority',
-    ];
-
     foreach (
         [
-            $decodedName,
-            $localManager,
+            'Unit_Nm',
+            'Loc_Nm',
+            'Loc_Ds',
         ]
-        as $candidate
+        as $field
     ) {
-        $normalized =
-            strtolower(
-                trim(
-                    $candidate
+        $value =
+            trim(
+                (string) (
+                    $attributes[$field]
+                    ?? ''
                 )
             );
 
-        if (
-            isset(
-                $names[$normalized]
-            )
-        ) {
-            return
-                $names[$normalized];
+        if ($value !== '') {
+            return $value;
         }
     }
 
-    return null;
+    return '';
+}
+
+
+function llama_pad_us_logical_unit_id(
+    array $attributes,
+    string $stateCode,
+    string $manager,
+    string $designation
+): string {
+    return
+        'unit-'
+        . sha1(
+            implode(
+                '|',
+                [
+                    llama_pad_us_canonical_text(
+                        $stateCode
+                    ),
+                    llama_pad_us_canonical_text(
+                        $manager
+                    ),
+                    llama_pad_us_canonical_text(
+                        llama_pad_us_location_name(
+                            $attributes
+                        )
+                    ),
+                    llama_pad_us_canonical_text(
+                        $designation
+                    ),
+                ]
+            )
+        );
 }
 
 
 function llama_pad_us_property_type_slug(
-    string $rawCode,
-    string $decoded,
+    string $decodedDesignation,
     string $localDesignation
 ): ?string {
-    $code =
-        strtoupper(
-            trim(
-                $rawCode
-            )
-        );
-
-    $map = [
-        'NF' =>
-            'national-forest',
-        'NG' =>
-            'national-grassland',
-        'NP' =>
-            'national-park',
-        'NM' =>
-            'national-monument',
-        'NCA' =>
-            'national-conservation-area',
-        'NRA' =>
-            'national-recreation-area',
-        'NWR' =>
-            'national-wildlife-refuge',
-        'SP' =>
-            'state-park',
-        'SRA' =>
-            'state-recreation-area',
-        'WMA' =>
-            'wildlife-management-game-land',
-    ];
-
-    if (
-        isset(
-            $map[$code]
-        )
-    ) {
-        return $map[$code];
-    }
-
     $text =
-        strtolower(
-            trim(
-                $decoded
-                . ' '
-                . $localDesignation
-            )
+        llama_pad_us_canonical_text(
+            $decodedDesignation
+            . ' '
+            . $localDesignation
         );
 
     $patterns = [
@@ -764,14 +559,8 @@ function llama_pad_us_property_type_slug(
             'national-river-scenic-riverway',
         'scenic riverway' =>
             'national-river-scenic-riverway',
-        'national wild and scenic river' =>
-            'national-river-scenic-riverway',
-        'federal recreation area' =>
-            'federal-water-project',
-        'water project' =>
-            'federal-water-project',
-        'reservoir recreation area' =>
-            'federal-water-project',
+        'national wildlife refuge' =>
+            'national-wildlife-refuge',
         'wildlife refuge' =>
             'national-wildlife-refuge',
         'state forest' =>
@@ -784,19 +573,13 @@ function llama_pad_us_property_type_slug(
             'state-natural-area',
         'state preserve' =>
             'state-natural-area',
-        'natural area' =>
-            'state-natural-area',
-        'nature preserve' =>
-            'state-natural-area',
         'state trust land' =>
             'state-trust-land',
         'wildlife management area' =>
             'wildlife-management-game-land',
-        'game land' =>
-            'wildlife-management-game-land',
         'game management area' =>
             'wildlife-management-game-land',
-        'wildlife area' =>
+        'game land' =>
             'wildlife-management-game-land',
         'county park' =>
             'county-regional-park',
@@ -830,646 +613,344 @@ function llama_pad_us_property_type_slug(
 }
 
 
-function llama_pad_us_designation_is_nonprimary(
-    string $decoded,
-    string $localDesignation,
-    string $category
-): bool {
-    $text =
-        mb_strtolower(
-            trim(
-                $decoded
-                . ' '
-                . $localDesignation
-                . ' '
-                . $category
-            )
-        );
+function llama_pad_us_source_value(
+    PDO $db,
+    int $sourceId,
+    string $fieldName,
+    string $sourceCode,
+    string $sourceValue
+): void {
+    $sourceValue =
+        trim($sourceValue);
 
-    foreach (
-        [
-            'easement',
-            'wilderness study area',
-            'wilderness area',
-            'area of critical environmental concern',
-            'research natural area',
-            'national scenic trail',
-            'national historic trail',
-            'wild and scenic river',
-            'critical habitat',
-            'roadless area',
-            'conservation easement',
-            'proclamation boundary',
-            'planning boundary',
-        ]
-        as $needle
-    ) {
-        if (
-            str_contains(
-                $text,
-                $needle
-            )
-        ) {
-            return true;
-        }
+    if ($sourceValue === '') {
+        return;
     }
 
-    return false;
+    $stmt =
+        $db->prepare(
+            'INSERT INTO reference_source_values (
+                source_id,
+                field_name,
+                source_code,
+                source_value,
+                first_seen_at,
+                last_seen_at,
+                occurrence_count
+             ) VALUES (
+                ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), 1
+             )
+             ON DUPLICATE KEY UPDATE
+                source_code =
+                    CASE
+                        WHEN VALUES(source_code) <> ""
+                        THEN VALUES(source_code)
+                        ELSE source_code
+                    END,
+                last_seen_at =
+                    UTC_TIMESTAMP(),
+                occurrence_count =
+                    occurrence_count + 1'
+        );
+
+    $stmt->execute([
+        $sourceId,
+        $fieldName,
+        $sourceCode !== ''
+            ? $sourceCode
+            : null,
+        $sourceValue,
+    ]);
 }
 
 
-function llama_pad_us_property_type_id(
+function llama_pad_us_mapping_slug(
     PDO $db,
-    string $slug
-): ?int {
+    int $sourceId,
+    string $sourceDesignation,
+    ?string $fallback
+): ?string {
     $stmt =
         $db->prepare(
-            'SELECT id
-             FROM place_property_types
-             WHERE slug = ?
+            'SELECT property_type_slug
+             FROM reference_property_type_mappings
+             WHERE source_id = ?
+               AND source_designation = ?
                AND active = 1
              LIMIT 1'
         );
 
     $stmt->execute([
-        $slug,
+        $sourceId,
+        $sourceDesignation,
     ]);
 
     $value =
         $stmt->fetchColumn();
 
-    return
-        $value === false
-            ? null
-            : (int) $value;
+    if ($value !== false) {
+        $slug =
+            trim(
+                (string) $value
+            );
+
+        return
+            $slug !== ''
+                ? $slug
+                : null;
+    }
+
+    return $fallback;
 }
 
 
-function llama_pad_us_issue(
+function llama_pad_us_upsert_organization(
     PDO $db,
-    int $runId,
-    ?string $sourceRecordId,
+    int $sourceId,
     string $stateCode,
-    string $severity,
-    string $issueType,
-    string $message,
-    array $sourceData
-): void {
+    string $managerCode,
+    string $managerName,
+    string $managerType
+): ?int {
+    $managerName =
+        trim($managerName);
+
+    if ($managerName === '') {
+        return null;
+    }
+
+    $externalId =
+        'manager-'
+        . sha1(
+            llama_pad_us_canonical_text(
+                $managerName
+            )
+        );
+
+    $find =
+        $db->prepare(
+            'SELECT id
+             FROM reference_organizations
+             WHERE source_id = ?
+               AND external_id = ?
+             LIMIT 1'
+        );
+
+    $find->execute([
+        $sourceId,
+        $externalId,
+    ]);
+
+    $existing =
+        $find->fetchColumn();
+
+    if ($existing !== false) {
+        $stmt =
+            $db->prepare(
+                'UPDATE reference_organizations
+                 SET
+                    name = ?,
+                    organization_type = ?,
+                    state_code =
+                        COALESCE(
+                            state_code,
+                            ?
+                        ),
+                    active = 1,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?'
+            );
+
+        $stmt->execute([
+            $managerName,
+            $managerType !== ''
+                ? $managerType
+                : null,
+            $stateCode !== ''
+                ? $stateCode
+                : null,
+            (int) $existing,
+        ]);
+
+        return
+            (int) $existing;
+    }
+
     $stmt =
         $db->prepare(
-            'INSERT INTO place_taxonomy_import_issues (
-                import_run_id,
-                source_record_id,
+            'INSERT INTO reference_organizations (
+                source_id,
+                external_id,
+                name,
+                organization_type,
                 state_code,
-                severity,
-                issue_type,
-                message,
-                source_data_json
+                nationwide,
+                active,
+                metadata_json
              ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, 0, 1, ?
              )'
         );
 
     $stmt->execute([
-        $runId,
-        $sourceRecordId,
+        $sourceId,
+        $externalId,
+        $managerName,
+        $managerType !== ''
+            ? $managerType
+            : null,
         $stateCode !== ''
             ? $stateCode
             : null,
-        $severity,
-        $issueType,
-        mb_substr(
-            $message,
-            0,
-            5000
-        ),
         json_encode(
-            $sourceData,
+            [
+                'pad_us' => [
+                    'manager_code' =>
+                        $managerCode,
+                ],
+            ],
             JSON_UNESCAPED_SLASHES
             | JSON_UNESCAPED_UNICODE
         ),
     ]);
-}
-
-
-function llama_pad_us_issue_once(
-    PDO $db,
-    int $runId,
-    ?string $sourceRecordId,
-    string $stateCode,
-    string $severity,
-    string $issueType,
-    string $message,
-    array $sourceData
-): bool {
-    $check =
-        $db->prepare(
-            'SELECT id
-             FROM place_taxonomy_import_issues
-             WHERE import_run_id = ?
-               AND issue_type = ?
-               AND message = ?
-             LIMIT 1'
-        );
-
-    $check->execute([
-        $runId,
-        $issueType,
-        $message,
-    ]);
-
-    if (
-        $check->fetchColumn()
-        !== false
-    ) {
-        return false;
-    }
-
-    llama_pad_us_issue(
-        $db,
-        $runId,
-        $sourceRecordId,
-        $stateCode,
-        $severity,
-        $issueType,
-        $message,
-        $sourceData
-    );
-
-    return true;
-}
-
-
-function llama_pad_us_organization(
-    PDO $db,
-    string $rawManagerCode,
-    string $decodedManager,
-    string $localManager,
-    string $rawManagerType,
-    string $decodedManagerType,
-    string $stateCode
-): array {
-    $seededSlug =
-        llama_pad_us_seeded_manager_slug(
-            $rawManagerCode,
-            $decodedManager,
-            $localManager
-        );
-
-    if ($seededSlug !== null) {
-        $stmt =
-            $db->prepare(
-                'SELECT id, name
-                 FROM place_organizations
-                 WHERE slug = ?
-                 LIMIT 1'
-            );
-
-        $stmt->execute([
-            $seededSlug,
-        ]);
-
-        $row =
-            $stmt->fetch(
-                PDO::FETCH_ASSOC
-            );
-
-        if ($row) {
-            return [
-                'id' =>
-                    (int) $row['id'],
-                'created' =>
-                    false,
-                'name' =>
-                    (string) $row['name'],
-            ];
-        }
-    }
-
-    $name =
-        trim(
-            $localManager
-        );
-
-    if ($name === '') {
-        $name =
-            trim(
-                $decodedManager
-            );
-    }
-
-    if ($name === '') {
-        return [
-            'id' =>
-                null,
-            'created' =>
-                false,
-            'name' =>
-                '',
-        ];
-    }
-
-    $lookup =
-        $db->prepare(
-            'SELECT id, name
-             FROM place_organizations
-             WHERE name = ?
-             LIMIT 1'
-        );
-
-    $lookup->execute([
-        $name,
-    ]);
-
-    $existing =
-        $lookup->fetch(
-            PDO::FETCH_ASSOC
-        );
-
-    if ($existing) {
-        $organizationId =
-            (int) $existing['id'];
-
-        if ($stateCode !== '') {
-            $stateStmt =
-                $db->prepare(
-                    'INSERT IGNORE INTO place_organization_states (
-                        organization_id,
-                        state_code
-                     ) VALUES (?, ?)'
-                );
-
-            $stateStmt->execute([
-                $organizationId,
-                $stateCode,
-            ]);
-        }
-
-        return [
-            'id' =>
-                $organizationId,
-            'created' =>
-                false,
-            'name' =>
-                (string) $existing['name'],
-        ];
-    }
-
-    $slugBase =
-        llama_pad_us_slug(
-            $name
-        );
-
-    if ($slugBase === '') {
-        $slugBase =
-            'organization';
-    }
-
-    $slug =
-        'padus-'
-        . (
-            $stateCode !== ''
-                ? strtolower(
-                    $stateCode
-                )
-                . '-'
-                : ''
-        )
-        . $slugBase;
-
-    $candidate =
-        $slug;
-
-    $suffix = 2;
-
-    $slugCheck =
-        $db->prepare(
-            'SELECT id
-             FROM place_organizations
-             WHERE slug = ?
-             LIMIT 1'
-        );
-
-    while (true) {
-        $slugCheck->execute([
-            $candidate,
-        ]);
-
-        if (
-            $slugCheck->fetchColumn()
-            === false
-        ) {
-            break;
-        }
-
-        $candidate =
-            $slug
-            . '-'
-            . $suffix;
-
-        $suffix++;
-    }
-
-    $insert =
-        $db->prepare(
-            'INSERT INTO place_organizations (
-                slug,
-                name,
-                organization_type,
-                nationwide,
-                active,
-                sort_order
-             ) VALUES (
-                ?, ?, ?, 0, 1, 500
-             )'
-        );
-
-    $insert->execute([
-        $candidate,
-        $name,
-        llama_pad_us_manager_type(
-            $rawManagerType,
-            $decodedManagerType
-        ),
-    ]);
-
-    $organizationId =
-        (int) $db->lastInsertId();
-
-    if ($stateCode !== '') {
-        $stateStmt =
-            $db->prepare(
-                'INSERT IGNORE INTO place_organization_states (
-                    organization_id,
-                    state_code
-                 ) VALUES (?, ?)'
-            );
-
-        $stateStmt->execute([
-            $organizationId,
-            $stateCode,
-        ]);
-    }
-
-    return [
-        'id' =>
-            $organizationId,
-        'created' =>
-            true,
-        'name' =>
-            $name,
-    ];
-}
-
-
-function llama_pad_us_canonical_key_part(
-    string $value
-): string {
-    $value =
-        mb_strtolower(
-            trim(
-                $value
-            )
-        );
-
-    $value =
-        preg_replace(
-            '/\s+/u',
-            ' ',
-            $value
-        )
-        ?? $value;
-
-    return $value;
-}
-
-
-function llama_pad_us_logical_unit_id(
-    array $attributes,
-    string $stateCode,
-    string $decodedManager,
-    string $decodedDesignation
-): string {
-    $name =
-        llama_pad_us_location_name(
-            $attributes
-        );
-
-    $manager =
-        trim(
-            (string) (
-                $attributes['Loc_Mang']
-                ?? ''
-            )
-        );
-
-    if ($manager === '') {
-        $manager =
-            trim(
-                $decodedManager
-            );
-    }
-
-    $designation =
-        trim(
-            (string) (
-                $attributes['Loc_Ds']
-                ?? ''
-            )
-        );
-
-    if ($designation === '') {
-        $designation =
-            trim(
-                $decodedDesignation
-            );
-    }
 
     return
-        'unit-'
-        . sha1(
-            implode(
-                '|',
-                [
-                    llama_pad_us_canonical_key_part(
-                        $stateCode
-                    ),
-                    llama_pad_us_canonical_key_part(
-                        $manager
-                    ),
-                    llama_pad_us_canonical_key_part(
-                        $name
-                    ),
-                    llama_pad_us_canonical_key_part(
-                        $designation
-                    ),
-                ]
-            )
-        );
+        (int) $db->lastInsertId();
 }
 
 
-function llama_pad_us_location_name(
-    array $attributes
+function llama_pad_us_manager_type(
+    string $managerCode,
+    string $managerName
 ): string {
-    foreach (
-        [
-            'Unit_Nm',
-            'Loc_Nm',
-            'Loc_Ds',
-        ]
-        as $field
-    ) {
-        $value =
-            trim(
-                (string) (
-                    $attributes[$field]
-                    ?? ''
-                )
-            );
+    $code =
+        strtoupper(
+            trim($managerCode)
+        );
 
-        if ($value !== '') {
-            return $value;
-        }
-    }
-
-    return '';
-}
-
-
-function llama_pad_us_run_start(
-    PDO $db,
-    int $actorUserId,
-    string $stateCode
-): array {
-    $states =
-        llama_pad_us_states();
+    $name =
+        llama_pad_us_canonical_text(
+            $managerName
+        );
 
     if (
-        !isset(
-            $states[$stateCode]
+        $code === 'FED'
+        || str_contains(
+            $name,
+            'federal'
         )
     ) {
-        throw new InvalidArgumentException(
-            'Choose a valid U.S. state.'
-        );
+        return 'federal_agency';
     }
 
-    $source =
-        llama_pad_us_source(
-            $db
-        );
+    if (
+        $code === 'STAT'
+        || str_contains(
+            $name,
+            'state'
+        )
+    ) {
+        return 'state_agency';
+    }
 
-    $baseUrl =
-        rtrim(
-            (string) $source['base_url'],
-            '/'
-        );
+    if (
+        $code === 'TRIB'
+        || str_contains(
+            $name,
+            'tribal'
+        )
+    ) {
+        return 'tribal_government';
+    }
 
-    $count =
-        llama_pad_us_http_json(
-            $baseUrl
-            . '/query',
-            [
-                'where' =>
-                    "State_Nm='"
-                    . $stateCode
-                    . "'",
-                'returnCountOnly' =>
-                    'true',
-                'f' =>
-                    'json',
-            ]
-        );
+    if (
+        $code === 'CNTY'
+        || str_contains(
+            $name,
+            'county'
+        )
+    ) {
+        return 'county_government';
+    }
 
-    $totalRows =
-        max(
-            0,
-            (int) (
-                $count['count']
-                ?? 0
-            )
-        );
+    if (
+        $code === 'CITY'
+        || str_contains(
+            $name,
+            'city'
+        )
+        || str_contains(
+            $name,
+            'municipal'
+        )
+    ) {
+        return 'municipal_government';
+    }
 
+    if (
+        $code === 'NGO'
+        || str_contains(
+            $name,
+            'nonprofit'
+        )
+    ) {
+        return 'nonprofit';
+    }
+
+    if ($code === 'PVT') {
+        return 'private_owner';
+    }
+
+    return 'other';
+}
+
+
+function llama_pad_us_start_run(
+    PDO $db,
+    int $sourceId,
+    int $userId,
+    string $stateCode,
+    int $sourceRows
+): int {
     $stmt =
         $db->prepare(
-            'INSERT INTO place_taxonomy_import_runs (
-                source_key,
-                source_name,
-                source_version,
+            'INSERT INTO reference_sync_runs (
+                source_id,
                 state_code,
                 status,
                 cursor_value,
                 source_rows,
-                started_by,
-                started_at
+                rows_processed,
+                started_by_user_id,
+                started_at,
+                last_message
              ) VALUES (
-                ?, ?, ?, ?, "running", "0", ?, ?, UTC_TIMESTAMP()
+                ?, ?, "running", "0", ?, 0, ?, UTC_TIMESTAMP(), ?
              )'
         );
 
     $stmt->execute([
-        'pad-us',
-        (string) (
-            $source['name']
-            ?? 'PAD-US'
-        ),
-        (string) (
-            $source['version']
-            ?? ''
-        ),
+        $sourceId,
         $stateCode,
-        $totalRows,
-        $actorUserId > 0
-            ? $actorUserId
+        $sourceRows,
+        $userId > 0
+            ? $userId
             : null,
+        'PAD-US synchronization started.',
     ]);
-
-    return [
-        'id' =>
-            (int) $db->lastInsertId(),
-        'state_code' =>
-            $stateCode,
-        'source_rows' =>
-            $totalRows,
-        'offset' =>
-            0,
-    ];
-}
-
-
-function llama_pad_us_run(
-    PDO $db,
-    int $runId
-): ?array {
-    $stmt =
-        $db->prepare(
-            'SELECT *
-             FROM place_taxonomy_import_runs
-             WHERE id = ?
-               AND source_key = "pad-us"
-             LIMIT 1'
-        );
-
-    $stmt->execute([
-        $runId,
-    ]);
-
-    $row =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
 
     return
-        $row
-            ?: null;
+        (int) $db->lastInsertId();
 }
 
 
 function llama_pad_us_recent_runs(
     PDO $db,
-    int $limit = 25
+    int $limit = 40
 ): array {
+    $source =
+        llama_pad_us_source($db);
+
     $limit =
         max(
             1,
@@ -1480,90 +961,156 @@ function llama_pad_us_recent_runs(
         );
 
     $stmt =
-        $db->query(
+        $db->prepare(
             'SELECT *
-             FROM place_taxonomy_import_runs
-             WHERE source_key = "pad-us"
+             FROM reference_sync_runs
+             WHERE source_id = ?
              ORDER BY id DESC
              LIMIT '
-            . $limit
+             . $limit
         );
 
+    $stmt->execute([
+        (int) $source['id'],
+    ]);
+
     return
-        $stmt
-            ? $stmt->fetchAll(
-                PDO::FETCH_ASSOC
-            )
-            : [];
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
 }
 
 
 function llama_pad_us_issue_count(
     PDO $db
 ): int {
+    $source =
+        llama_pad_us_source($db);
+
+    $stmt =
+        $db->prepare(
+            'SELECT COUNT(*)
+             FROM reference_sync_issues i
+             INNER JOIN reference_sync_runs r
+                ON r.id = i.sync_run_id
+             WHERE r.source_id = ?
+               AND i.resolved = 0'
+        );
+
+    $stmt->execute([
+        (int) $source['id'],
+    ]);
+
     return
-        (int) $db
-            ->query(
-                'SELECT COUNT(*)
-                 FROM place_taxonomy_import_issues
-                 WHERE resolved = 0'
+        (int) $stmt->fetchColumn();
+}
+
+
+function llama_pad_us_source_count(
+    PDO $db,
+    array $source,
+    string $stateCode
+): int {
+    $response =
+        llama_pad_us_http_json(
+            rtrim(
+                (string) $source['base_url'],
+                '/'
             )
-            ->fetchColumn();
+            . '/query',
+            [
+                'f' =>
+                    'json',
+                'where' =>
+                    "State_Nm='"
+                    . str_replace(
+                        "'",
+                        "''",
+                        $stateCode
+                    )
+                    . "'",
+                'returnCountOnly' =>
+                    'true',
+            ]
+        );
+
+    return
+        max(
+            0,
+            (int) (
+                $response['count']
+                ?? 0
+            )
+        );
 }
 
 
 function llama_pad_us_import_batch(
     PDO $db,
-    int $actorUserId,
+    int $userId,
     string $stateCode,
     int $runId = 0,
     ?int $offset = null,
     int $batchSize = 500
 ): array {
-    $states =
-        llama_pad_us_states();
+    $stateCode =
+        strtoupper(
+            trim($stateCode)
+        );
 
     if (
         !isset(
-            $states[$stateCode]
+            llama_pad_us_states()[
+                $stateCode
+            ]
         )
     ) {
         throw new InvalidArgumentException(
-            'Choose a valid U.S. state.'
+            'Choose a valid state.'
         );
     }
 
     $batchSize =
         max(
-            50,
+            100,
             min(
                 1000,
                 $batchSize
             )
         );
 
-    if ($runId < 1) {
-        $run =
-            llama_pad_us_run_start(
-                $db,
-                $actorUserId,
-                $stateCode
+    $source =
+        llama_pad_us_source($db);
+
+    $sourceId =
+        (int) $source['id'];
+
+    $domains =
+        llama_pad_us_domain_maps($db);
+
+    if ($runId > 0) {
+        $runStmt =
+            $db->prepare(
+                'SELECT *
+                 FROM reference_sync_runs
+                 WHERE id = ?
+                   AND source_id = ?
+                 LIMIT 1'
             );
 
-        $runId =
-            (int) $run['id'];
+        $runStmt->execute([
+            $runId,
+            $sourceId,
+        ]);
 
-        $offset = 0;
-    } else {
         $run =
-            llama_pad_us_run(
-                $db,
-                $runId
+            $runStmt->fetch(
+                PDO::FETCH_ASSOC
             );
 
         if (!$run) {
             throw new RuntimeException(
-                'The PAD-US sync run could not be found.'
+                'The PAD-US synchronization run was not found.'
             );
         }
 
@@ -1575,7 +1122,7 @@ function llama_pad_us_import_batch(
             !== $stateCode
         ) {
             throw new RuntimeException(
-                'The PAD-US sync run belongs to another state.'
+                'The PAD-US synchronization state does not match this run.'
             );
         }
 
@@ -1589,6 +1136,30 @@ function llama_pad_us_import_batch(
                     )
                 );
         }
+
+        $sourceRows =
+            (int) (
+                $run['source_rows']
+                ?? 0
+            );
+    } else {
+        $sourceRows =
+            llama_pad_us_source_count(
+                $db,
+                $source,
+                $stateCode
+            );
+
+        $runId =
+            llama_pad_us_start_run(
+                $db,
+                $sourceId,
+                $userId,
+                $stateCode,
+                $sourceRows
+            );
+
+        $offset = 0;
     }
 
     $offset =
@@ -1597,17 +1168,7 @@ function llama_pad_us_import_batch(
             (int) $offset
         );
 
-    $source =
-        llama_pad_us_source(
-            $db
-        );
-
-    $domains =
-        llama_pad_us_domain_maps(
-            $db
-        );
-
-    $query =
+    $response =
         llama_pad_us_http_json(
             rtrim(
                 (string) $source['base_url'],
@@ -1615,902 +1176,695 @@ function llama_pad_us_import_batch(
             )
             . '/query',
             [
+                'f' =>
+                    'json',
                 'where' =>
                     "State_Nm='"
-                    . $stateCode
+                    . str_replace(
+                        "'",
+                        "''",
+                        $stateCode
+                    )
                     . "'",
                 'outFields' =>
                     implode(
                         ',',
                         [
                             'OBJECTID',
-                            'FeatClass',
-                            'Category',
-                            'Own_Type',
-                            'Own_Name',
-                            'Loc_Own',
-                            'Mang_Type',
-                            'Mang_Name',
-                            'Loc_Mang',
-                            'Des_Tp',
-                            'Loc_Ds',
                             'Unit_Nm',
                             'Loc_Nm',
+                            'Loc_Ds',
+                            'Loc_Mang',
+                            'Mang_Name',
+                            'Mang_Type',
+                            'Des_Tp',
+                            'Category',
                             'State_Nm',
-                            'Agg_Src',
+                            'Source_PAID',
+                            'Pub_Access',
                             'GIS_Src',
                             'Src_Date',
                             'GIS_Acres',
-                            'Source_PAID',
-                            'Pub_Access',
-                            'Comments',
                         ]
                     ),
                 'returnGeometry' =>
                     'false',
-                'orderByFields' =>
-                    'OBJECTID ASC',
                 'resultOffset' =>
                     $offset,
                 'resultRecordCount' =>
                     $batchSize,
-                'f' =>
-                    'json',
+                'orderByFields' =>
+                    'OBJECTID ASC',
             ]
         );
 
     $features =
         is_array(
-            $query['features']
+            $response['features']
             ?? null
         )
-            ? $query['features']
+            ? $response['features']
             : [];
 
-    $createdOrganizations = 0;
-    $updatedOrganizations = 0;
-    $createdLocations = 0;
-    $updatedLocations = 0;
+    $rowsRead = 0;
+    $unitsCreated = 0;
+    $unitsUpdated = 0;
+    $organizationsCreated = 0;
+    $organizationsUpdated = 0;
     $skipped = 0;
-    $warnings = 0;
-    $processed = 0;
 
-    $sourceVersion =
-        trim(
-            (string) (
-                $source['version']
-                ?? ''
+    foreach ($features as $feature) {
+        if (!is_array($feature)) {
+            $skipped++;
+            continue;
+        }
+
+        $attributes =
+            is_array(
+                $feature['attributes']
+                ?? null
             )
-        );
+                ? $feature['attributes']
+                : [];
 
-    $db->beginTransaction();
+        $rowsRead++;
 
-    try {
-        foreach (
-            $features
-            as $feature
-        ) {
-            if (
-                !is_array(
-                    $feature
-                )
-            ) {
-                $skipped++;
-                continue;
-            }
-
-            $attributes =
-                is_array(
-                    $feature['attributes']
-                    ?? null
-                )
-                    ? $feature['attributes']
-                    : [];
-
-            if (!$attributes) {
-                $skipped++;
-                continue;
-            }
-
-            $processed++;
-
-            $decodedState =
+        $recordState =
+            llama_pad_us_state_code(
                 llama_pad_us_decode(
                     $domains,
                     'State_Nm',
                     $attributes['State_Nm']
-                        ?? ''
-                );
+                        ?? $stateCode
+                )
+            );
 
+        if ($recordState === '') {
             $recordState =
-                llama_pad_us_state_code(
-                    (string) (
-                        $attributes['State_Nm']
-                        ?? $decodedState
-                    )
-                );
+                $stateCode;
+        }
 
-            if ($recordState === '') {
-                $recordState =
-                    llama_pad_us_state_code(
-                        $decodedState
-                    );
-            }
+        $unitName =
+            llama_pad_us_location_name(
+                $attributes
+            );
 
-            if ($recordState === '') {
-                $recordState =
-                    $stateCode;
-            }
+        if ($unitName === '') {
+            $skipped++;
+            continue;
+        }
 
-            $decodedManager =
-                llama_pad_us_decode(
-                    $domains,
-                    'Mang_Name',
-                    $attributes['Mang_Name']
-                        ?? ''
-                );
-
-            $decodedManagerType =
-                llama_pad_us_decode(
-                    $domains,
-                    'Mang_Type',
+        $managerCode =
+            trim(
+                (string) (
                     $attributes['Mang_Type']
-                        ?? ''
-                );
+                    ?? ''
+                )
+            );
 
-            $decodedDesignation =
-                llama_pad_us_decode(
-                    $domains,
-                    'Des_Tp',
+        $decodedManager =
+            llama_pad_us_decode(
+                $domains,
+                'Mang_Name',
+                $attributes['Mang_Name']
+                    ?? ''
+            );
+
+        $localManager =
+            trim(
+                (string) (
+                    $attributes['Loc_Mang']
+                    ?? ''
+                )
+            );
+
+        $managerName =
+            $localManager !== ''
+                ? $localManager
+                : $decodedManager;
+
+        $managerType =
+            llama_pad_us_manager_type(
+                $managerCode,
+                $managerName
+            );
+
+        $organizationId =
+            llama_pad_us_upsert_organization(
+                $db,
+                $sourceId,
+                $recordState,
+                $managerCode,
+                $managerName,
+                $managerType
+            );
+
+        $rawDesignation =
+            trim(
+                (string) (
                     $attributes['Des_Tp']
-                        ?? ''
-                );
-
-            $sourceRecordId =
-                llama_pad_us_logical_unit_id(
-                    $attributes,
-                    $recordState,
-                    $decodedManager,
-                    $decodedDesignation
-                );
-
-            $decodedAccess =
-                llama_pad_us_decode(
-                    $domains,
-                    'Pub_Access',
-                    $attributes['Pub_Access']
-                        ?? ''
-                );
-
-            $localManager =
-                trim(
-                    (string) (
-                        $attributes['Loc_Mang']
-                        ?? ''
-                    )
-                );
-
-            $organization =
-                llama_pad_us_organization(
-                    $db,
-                    (string) (
-                        $attributes['Mang_Name']
-                        ?? ''
-                    ),
-                    $decodedManager,
-                    $localManager,
-                    (string) (
-                        $attributes['Mang_Type']
-                        ?? ''
-                    ),
-                    $decodedManagerType,
-                    $recordState
-                );
-
-            $organizationId =
-                isset(
-                    $organization['id']
+                    ?? ''
                 )
-                    ? (int) $organization['id']
-                    : null;
+            );
 
-            if (
-                !empty(
-                    $organization['created']
+        $decodedDesignation =
+            llama_pad_us_decode(
+                $domains,
+                'Des_Tp',
+                $rawDesignation
+            );
+
+        $localDesignation =
+            trim(
+                (string) (
+                    $attributes['Loc_Ds']
+                    ?? ''
                 )
-            ) {
-                $createdOrganizations++;
-            }
+            );
 
-            $propertySlug =
-                llama_pad_us_property_type_slug(
-                    (string) (
-                        $attributes['Des_Tp']
-                        ?? ''
-                    ),
+        $categoryRaw =
+            trim(
+                (string) (
+                    $attributes['Category']
+                    ?? ''
+                )
+            );
+
+        $decodedCategory =
+            llama_pad_us_decode(
+                $domains,
+                'Category',
+                $categoryRaw
+            );
+
+        $publicAccess =
+            llama_pad_us_decode(
+                $domains,
+                'Pub_Access',
+                $attributes['Pub_Access']
+                    ?? ''
+            );
+
+        foreach (
+            [
+                [
+                    'designation',
+                    $rawDesignation,
                     $decodedDesignation,
-                    (string) (
-                        $attributes['Loc_Ds']
-                        ?? ''
-                    )
-                );
-
-            $propertyTypeId = null;
-
-            if ($propertySlug !== null) {
-                $propertyTypeId =
-                    llama_pad_us_property_type_id(
-                        $db,
-                        $propertySlug
-                    );
-            }
-
-            if ($propertyTypeId === null) {
-                $category =
-                    llama_pad_us_decode(
-                        $domains,
-                        'Category',
-                        $attributes['Category']
-                            ?? ''
-                    );
-
-                if (
-                    llama_pad_us_designation_is_nonprimary(
-                        $decodedDesignation,
-                        (string) (
-                            $attributes['Loc_Ds']
-                            ?? ''
-                        ),
-                        $category
-                    )
-                ) {
-                    $skipped++;
-                    continue;
-                }
-
-                $designationLabel =
-                    trim(
-                        $decodedDesignation
-                    );
-
-                if ($designationLabel === '') {
-                    $designationLabel =
-                        trim(
-                            (string) (
-                                $attributes['Loc_Ds']
-                                ?? $attributes['Des_Tp']
-                                ?? 'Unknown'
-                            )
-                        );
-                }
-
-                $message =
-                    'PAD-US designation "'
-                    . (
-                        $designationLabel !== ''
-                            ? $designationLabel
-                            : 'Unknown'
-                    )
-                    . '" is not mapped to a Llama Scout property type.';
-
-                if (
-                    llama_pad_us_issue_once(
-                        $db,
-                        $runId,
-                        $sourceRecordId,
-                        $recordState,
-                        'warning',
-                        'unmapped_designation',
-                        $message,
-                        $attributes
-                    )
-                ) {
-                    $warnings++;
-                }
-
-                $skipped++;
-                continue;
-            }
-
-            if (
-                $organizationId !== null
-                && $propertyTypeId !== null
-            ) {
-                $relation =
-                    $db->prepare(
-                        'INSERT IGNORE INTO place_organization_property_types (
-                            organization_id,
-                            property_type_id
-                         ) VALUES (?, ?)'
-                    );
-
-                $relation->execute([
-                    $organizationId,
-                    $propertyTypeId,
-                ]);
-            }
-
-            $locationName =
-                llama_pad_us_location_name(
-                    $attributes
-                );
-
-            if ($locationName === '') {
-                if (
-                    llama_pad_us_issue_once(
-                        $db,
-                        $runId,
-                        $sourceRecordId,
-                        $recordState,
-                        'warning',
-                        'missing_location_name',
-                        'PAD-US contains records with no usable unit or local name.',
-                        $attributes
-                    )
-                ) {
-                    $warnings++;
-                }
-
-                $skipped++;
-                continue;
-            }
-
-            $metadata = [
-                'pad_us' => [
-                    'object_id' =>
-                        $attributes['OBJECTID']
-                        ?? null,
-                    'feature_class' =>
-                        $attributes['FeatClass']
-                        ?? null,
-                    'category' =>
-                        $attributes['Category']
-                        ?? null,
-                    'owner_type' =>
-                        llama_pad_us_decode(
-                            $domains,
-                            'Own_Type',
-                            $attributes['Own_Type']
-                                ?? ''
-                        ),
-                    'owner_name' =>
-                        llama_pad_us_decode(
-                            $domains,
-                            'Own_Name',
-                            $attributes['Own_Name']
-                                ?? ''
-                        ),
-                    'local_owner' =>
-                        $attributes['Loc_Own']
-                        ?? null,
-                    'manager_type' =>
-                        $decodedManagerType,
-                    'manager_name' =>
-                        $decodedManager,
-                    'local_manager' =>
-                        $localManager,
-                    'designation_type' =>
-                        $decodedDesignation,
-                    'local_designation' =>
-                        $attributes['Loc_Ds']
-                        ?? null,
-                    'unit_name' =>
-                        $attributes['Unit_Nm']
-                        ?? null,
-                    'local_name' =>
-                        $attributes['Loc_Nm']
-                        ?? null,
-                    'public_access' =>
-                        $decodedAccess,
-                    'aggregator_source' =>
-                        $attributes['Agg_Src']
-                        ?? null,
-                    'gis_source' =>
-                        $attributes['GIS_Src']
-                        ?? null,
-                    'source_date' =>
-                        $attributes['Src_Date']
-                        ?? null,
-                    'gis_acres' =>
-                        $attributes['GIS_Acres']
-                        ?? null,
-                    'source_paid' =>
-                        $attributes['Source_PAID']
-                        ?? null,
-                    'comments' =>
-                        $attributes['Comments']
-                        ?? null,
                 ],
-            ];
-
-            $contentHash =
-                hash(
-                    'sha256',
-                    json_encode(
-                        [
-                            'organization_id' =>
-                                $organizationId,
-                            'property_type_id' =>
-                                $propertyTypeId,
-                            'state_code' =>
-                                $recordState,
-                            'name' =>
-                                llama_pad_us_canonical_key_part(
-                                    $locationName
-                                ),
-                            'manager' =>
-                                llama_pad_us_canonical_key_part(
-                                    $localManager !== ''
-                                        ? $localManager
-                                        : $decodedManager
-                                ),
-                            'designation' =>
-                                llama_pad_us_canonical_key_part(
-                                    trim(
-                                        (string) (
-                                            $attributes['Loc_Ds']
-                                            ?? ''
-                                        )
-                                    ) !== ''
-                                        ? (string) $attributes['Loc_Ds']
-                                        : $decodedDesignation
-                                ),
-                            'public_access' =>
-                                llama_pad_us_canonical_key_part(
-                                    $decodedAccess
-                                ),
-                        ],
-                        JSON_UNESCAPED_SLASHES
-                        | JSON_UNESCAPED_UNICODE
-                    )
-                    ?: ''
-                );
-
-            $ledgerStmt =
-                $db->prepare(
-                    'SELECT *
-                     FROM place_taxonomy_source_records
-                     WHERE source_key = "pad-us"
-                       AND source_record_id = ?
-                     LIMIT 1'
-                );
-
-            $ledgerStmt->execute([
-                $sourceRecordId,
-            ]);
-
-            $ledger =
-                $ledgerStmt->fetch(
-                    PDO::FETCH_ASSOC
-                );
-
-            if (
-                $ledger
-                && hash_equals(
-                    (string) (
-                        $ledger['content_hash']
-                        ?? ''
+                [
+                    'local_designation',
+                    '',
+                    $localDesignation,
+                ],
+                [
+                    'category',
+                    $categoryRaw,
+                    $decodedCategory,
+                ],
+                [
+                    'manager',
+                    $managerCode,
+                    $managerName,
+                ],
+                [
+                    'public_access',
+                    trim(
+                        (string) (
+                            $attributes['Pub_Access']
+                            ?? ''
+                        )
                     ),
-                    $contentHash
+                    $publicAccess,
+                ],
+            ]
+            as $sourceValue
+        ) {
+            llama_pad_us_source_value(
+                $db,
+                $sourceId,
+                $sourceValue[0],
+                $sourceValue[1],
+                $sourceValue[2]
+            );
+        }
+
+        $fallbackSlug =
+            llama_pad_us_property_type_slug(
+                $decodedDesignation,
+                $localDesignation
+            );
+
+        $propertyTypeSlug =
+            llama_pad_us_mapping_slug(
+                $db,
+                $sourceId,
+                $decodedDesignation !== ''
+                    ? $decodedDesignation
+                    : $localDesignation,
+                $fallbackSlug
+            );
+
+        $externalId =
+            llama_pad_us_logical_unit_id(
+                $attributes,
+                $recordState,
+                $managerName,
+                $decodedDesignation !== ''
+                    ? $decodedDesignation
+                    : $localDesignation
+            );
+
+        $metadata = [
+            'pad_us' => [
+                'object_id' =>
+                    $attributes['OBJECTID']
+                    ?? null,
+                'source_paid' =>
+                    $attributes['Source_PAID']
+                    ?? null,
+                'gis_source' =>
+                    $attributes['GIS_Src']
+                    ?? null,
+                'source_date' =>
+                    $attributes['Src_Date']
+                    ?? null,
+                'gis_acres' =>
+                    $attributes['GIS_Acres']
+                    ?? null,
+                'public_access' =>
+                    $publicAccess,
+                'raw_attributes' =>
+                    $attributes,
+            ],
+        ];
+
+        $contentHash =
+            hash(
+                'sha256',
+                json_encode(
+                    [
+                        'organization_id' =>
+                            $organizationId,
+                        'name' =>
+                            llama_pad_us_canonical_text(
+                                $unitName
+                            ),
+                        'property_type_slug' =>
+                            $propertyTypeSlug,
+                        'designation' =>
+                            $decodedDesignation,
+                        'local_designation' =>
+                            $localDesignation,
+                        'category' =>
+                            $decodedCategory,
+                        'manager' =>
+                            $managerName,
+                        'access' =>
+                            $publicAccess,
+                    ],
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
                 )
+                ?: ''
+            );
+
+        $find =
+            $db->prepare(
+                'SELECT
+                    id,
+                    content_hash
+                 FROM reference_units
+                 WHERE source_id = ?
+                   AND external_id = ?
+                 LIMIT 1'
+            );
+
+        $find->execute([
+            $sourceId,
+            $externalId,
+        ]);
+
+        $existing =
+            $find->fetch(
+                PDO::FETCH_ASSOC
+            );
+
+        $sourceDate =
+            trim(
+                (string) (
+                    $attributes['Src_Date']
+                    ?? ''
+                )
+            );
+
+        $sourceUpdatedAt = null;
+
+        if (
+            $sourceDate !== ''
+            && preg_match(
+                '/^\d{4}-\d{2}-\d{2}/',
+                $sourceDate,
+                $match
+            )
+        ) {
+            $sourceUpdatedAt =
+                $match[0]
+                . ' 00:00:00';
+        }
+
+        if ($existing) {
+            if (
+                (string) (
+                    $existing['content_hash']
+                    ?? ''
+                )
+                !== $contentHash
             ) {
-                $touch =
+                $stmt =
                     $db->prepare(
-                        'UPDATE place_taxonomy_source_records
-                         SET
-                            source_version = ?,
-                            state_code = ?,
-                            last_seen_at = UTC_TIMESTAMP()
-                         WHERE id = ?'
-                    );
-
-                $touch->execute([
-                    $sourceVersion,
-                    $recordState,
-                    (int) $ledger['id'],
-                ]);
-
-                $skipped++;
-                continue;
-            }
-
-            $locationId =
-                $ledger
-                    ? (int) (
-                        $ledger[
-                            'organization_location_id'
-                        ]
-                        ?? 0
-                    )
-                    : 0;
-
-            if ($locationId > 0) {
-                $update =
-                    $db->prepare(
-                        'UPDATE place_organization_locations
+                        'UPDATE reference_units
                          SET
                             organization_id = ?,
-                            property_type_id = ?,
                             name = ?,
+                            source_unit_name = ?,
+                            source_local_name = ?,
+                            source_designation = ?,
+                            source_designation_code = ?,
+                            source_local_designation = ?,
+                            source_category = ?,
+                            source_manager_name = ?,
+                            source_manager_code = ?,
+                            source_local_manager = ?,
+                            property_type_slug = ?,
                             state_code = ?,
-                            source_type = "public_dataset",
-                            source_name = "PAD-US",
-                            source_external_id = ?,
-                            source_last_verified_at = UTC_TIMESTAMP(),
-                            source_last_synced_at = UTC_TIMESTAMP(),
+                            public_access = ?,
+                            acreage = ?,
+                            content_hash = ?,
+                            source_updated_at = ?,
+                            source_last_seen_at = UTC_TIMESTAMP(),
                             active = 1,
                             metadata_json = ?
                          WHERE id = ?'
                     );
 
-                $update->execute([
+                $stmt->execute([
                     $organizationId,
-                    $propertyTypeId,
-                    $locationName,
+                    $unitName,
+                    trim(
+                        (string) (
+                            $attributes['Unit_Nm']
+                            ?? ''
+                        )
+                    ),
+                    trim(
+                        (string) (
+                            $attributes['Loc_Nm']
+                            ?? ''
+                        )
+                    ),
+                    $decodedDesignation !== ''
+                        ? $decodedDesignation
+                        : null,
+                    $rawDesignation !== ''
+                        ? $rawDesignation
+                        : null,
+                    $localDesignation !== ''
+                        ? $localDesignation
+                        : null,
+                    $decodedCategory !== ''
+                        ? $decodedCategory
+                        : null,
+                    $decodedManager !== ''
+                        ? $decodedManager
+                        : null,
+                    $managerCode !== ''
+                        ? $managerCode
+                        : null,
+                    $localManager !== ''
+                        ? $localManager
+                        : null,
+                    $propertyTypeSlug,
                     $recordState,
-                    $sourceRecordId,
+                    $publicAccess !== ''
+                        ? $publicAccess
+                        : null,
+                    is_numeric(
+                        $attributes['GIS_Acres']
+                        ?? null
+                    )
+                        ? (float) $attributes['GIS_Acres']
+                        : null,
+                    $contentHash,
+                    $sourceUpdatedAt,
                     json_encode(
                         $metadata,
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
                     ),
-                    $locationId,
+                    (int) $existing['id'],
                 ]);
 
-                $updatedLocations++;
+                $unitsUpdated++;
             } else {
-                $insert =
+                $touch =
                     $db->prepare(
-                        'INSERT INTO place_organization_locations (
-                            organization_id,
-                            property_type_id,
-                            name,
-                            external_id,
-                            state_code,
-                            source_type,
-                            source_name,
-                            source_external_id,
-                            source_last_verified_at,
-                            source_last_synced_at,
-                            active,
-                            metadata_json
-                         ) VALUES (
-                            ?, ?, ?, ?, ?, "public_dataset",
-                            "PAD-US", ?, UTC_TIMESTAMP(),
-                            UTC_TIMESTAMP(), 1, ?
-                         )'
-                    );
-
-                $insert->execute([
-                    $organizationId,
-                    $propertyTypeId,
-                    $locationName,
-                    'pad-us:' . $sourceRecordId,
-                    $recordState,
-                    $sourceRecordId,
-                    json_encode(
-                        $metadata,
-                        JSON_UNESCAPED_SLASHES
-                        | JSON_UNESCAPED_UNICODE
-                    ),
-                ]);
-
-                $locationId =
-                    (int) $db->lastInsertId();
-
-                $createdLocations++;
-            }
-
-            if ($ledger) {
-                $ledgerUpdate =
-                    $db->prepare(
-                        'UPDATE place_taxonomy_source_records
+                        'UPDATE reference_units
                          SET
-                            source_version = ?,
-                            state_code = ?,
-                            organization_id = ?,
-                            organization_location_id = ?,
-                            property_type_id = ?,
-                            content_hash = ?,
-                            last_seen_at = UTC_TIMESTAMP()
+                            source_last_seen_at = UTC_TIMESTAMP(),
+                            active = 1
                          WHERE id = ?'
                     );
 
-                $ledgerUpdate->execute([
-                    $sourceVersion,
-                    $recordState,
-                    $organizationId,
-                    $locationId,
-                    $propertyTypeId,
-                    $contentHash,
-                    (int) $ledger['id'],
-                ]);
-            } else {
-                $ledgerInsert =
-                    $db->prepare(
-                        'INSERT INTO place_taxonomy_source_records (
-                            source_key,
-                            source_record_id,
-                            source_version,
-                            state_code,
-                            organization_id,
-                            organization_location_id,
-                            property_type_id,
-                            content_hash,
-                            last_seen_at
-                         ) VALUES (
-                            "pad-us", ?, ?, ?, ?, ?, ?, ?,
-                            UTC_TIMESTAMP()
-                         )'
-                    );
-
-                $ledgerInsert->execute([
-                    $sourceRecordId,
-                    $sourceVersion,
-                    $recordState,
-                    $organizationId,
-                    $locationId,
-                    $propertyTypeId,
-                    $contentHash,
+                $touch->execute([
+                    (int) $existing['id'],
                 ]);
             }
-        }
+        } else {
+            $stmt =
+                $db->prepare(
+                    'INSERT INTO reference_units (
+                        source_id,
+                        organization_id,
+                        external_id,
+                        name,
+                        source_unit_name,
+                        source_local_name,
+                        source_designation,
+                        source_designation_code,
+                        source_local_designation,
+                        source_category,
+                        source_manager_name,
+                        source_manager_code,
+                        source_local_manager,
+                        property_type_slug,
+                        state_code,
+                        public_access,
+                        acreage,
+                        content_hash,
+                        source_updated_at,
+                        source_last_seen_at,
+                        active,
+                        metadata_json
+                     ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), 1, ?
+                     )'
+                );
 
-        $read =
-            count(
-                $features
-            );
-
-        $nextOffset =
-            $offset
-            + $read;
-
-        $runNow =
-            llama_pad_us_run(
-                $db,
-                $runId
-            );
-
-        $sourceRows =
-            max(
-                0,
-                (int) (
-                    $runNow['source_rows']
-                    ?? 0
+            $stmt->execute([
+                $sourceId,
+                $organizationId,
+                $externalId,
+                $unitName,
+                trim(
+                    (string) (
+                        $attributes['Unit_Nm']
+                        ?? ''
+                    )
+                ),
+                trim(
+                    (string) (
+                        $attributes['Loc_Nm']
+                        ?? ''
+                    )
+                ),
+                $decodedDesignation !== ''
+                    ? $decodedDesignation
+                    : null,
+                $rawDesignation !== ''
+                    ? $rawDesignation
+                    : null,
+                $localDesignation !== ''
+                    ? $localDesignation
+                    : null,
+                $decodedCategory !== ''
+                    ? $decodedCategory
+                    : null,
+                $decodedManager !== ''
+                    ? $decodedManager
+                    : null,
+                $managerCode !== ''
+                    ? $managerCode
+                    : null,
+                $localManager !== ''
+                    ? $localManager
+                    : null,
+                $propertyTypeSlug,
+                $recordState,
+                $publicAccess !== ''
+                    ? $publicAccess
+                    : null,
+                is_numeric(
+                    $attributes['GIS_Acres']
+                    ?? null
                 )
-            );
+                    ? (float) $attributes['GIS_Acres']
+                    : null,
+                $contentHash,
+                $sourceUpdatedAt,
+                json_encode(
+                    $metadata,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                ),
+            ]);
 
-        $done =
-            $read === 0
-            || $nextOffset
-                >= $sourceRows;
+            $unitsCreated++;
+        }
+    }
 
-        $runUpdate =
+    $nextOffset =
+        $offset
+        + $rowsRead;
+
+    $done =
+        $rowsRead === 0
+        || $nextOffset >= $sourceRows;
+
+    $status =
+        $done
+            ? 'completed'
+            : 'running';
+
+    $message =
+        $done
+            ? 'PAD-US synchronization completed.'
+            : 'PAD-US synchronization batch completed.';
+
+    $update =
+        $db->prepare(
+            'UPDATE reference_sync_runs
+             SET
+                status = ?,
+                cursor_value = ?,
+                rows_processed =
+                    LEAST(
+                        source_rows,
+                        rows_processed + ?
+                    ),
+                organizations_created =
+                    organizations_created + ?,
+                organizations_updated =
+                    organizations_updated + ?,
+                units_created =
+                    units_created + ?,
+                units_updated =
+                    units_updated + ?,
+                rows_skipped =
+                    rows_skipped + ?,
+                last_message = ?,
+                completed_at =
+                    CASE
+                        WHEN ? = "completed"
+                        THEN UTC_TIMESTAMP()
+                        ELSE completed_at
+                    END
+             WHERE id = ?'
+        );
+
+    $update->execute([
+        $status,
+        (string) $nextOffset,
+        $rowsRead,
+        $organizationsCreated,
+        $organizationsUpdated,
+        $unitsCreated,
+        $unitsUpdated,
+        $skipped,
+        $message,
+        $status,
+        $runId,
+    ]);
+
+    if ($done) {
+        $sourceUpdate =
             $db->prepare(
-                'UPDATE place_taxonomy_import_runs
-                 SET
-                    status = ?,
-                    cursor_value = ?,
-                    rows_processed =
-                        rows_processed + ?,
-                    organizations_created =
-                        organizations_created + ?,
-                    organizations_updated =
-                        organizations_updated + ?,
-                    locations_created =
-                        locations_created + ?,
-                    locations_updated =
-                        locations_updated + ?,
-                    rows_skipped =
-                        rows_skipped + ?,
-                    warning_count =
-                        warning_count + ?,
-                    last_message = ?,
-                    completed_at =
-                        CASE
-                            WHEN ? = 1
-                                THEN UTC_TIMESTAMP()
-                            ELSE NULL
-                        END
+                'UPDATE reference_sources
+                 SET last_successful_sync_at = UTC_TIMESTAMP()
                  WHERE id = ?'
             );
 
-        $message =
-            $done
-                ? 'PAD-US '
-                    . $stateCode
-                    . ' synchronization completed.'
-                : 'Processed PAD-US '
-                    . $stateCode
-                    . ' rows '
-                    . number_format(
-                        $offset + 1
-                    )
-                    . ' through '
-                    . number_format(
-                        $nextOffset
-                    )
-                    . '.';
-
-        $runUpdate->execute([
-            $done
-                ? 'completed'
-                : 'running',
-            (string) $nextOffset,
-            $processed,
-            $createdOrganizations,
-            $updatedOrganizations,
-            $createdLocations,
-            $updatedLocations,
-            $skipped,
-            $warnings,
-            $message,
-            $done
-                ? 1
-                : 0,
-            $runId,
+        $sourceUpdate->execute([
+            $sourceId,
         ]);
-
-        if ($done) {
-            $sourceTouch =
-                $db->prepare(
-                    'UPDATE place_taxonomy_sources
-                     SET last_successful_sync_at =
-                            UTC_TIMESTAMP()
-                     WHERE source_key = "pad-us"'
-                );
-
-            $sourceTouch->execute();
-        }
-
-        $db->commit();
-
-    } catch (Throwable $exception) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
-
-        try {
-            $currentRun =
-                llama_pad_us_run(
-                    $db,
-                    $runId
-                );
-
-            $partial =
-                (int) (
-                    $currentRun[
-                        'rows_processed'
-                    ]
-                    ?? 0
-                ) > 0;
-
-            $fail =
-                $db->prepare(
-                    'UPDATE place_taxonomy_import_runs
-                     SET
-                        status = ?,
-                        last_message = ?,
-                        error_count =
-                            error_count + 1
-                     WHERE id = ?'
-                );
-
-            $fail->execute([
-                $partial
-                    ? 'partial'
-                    : 'failed',
-                mb_substr(
-                    $exception->getMessage(),
-                    0,
-                    5000
-                ),
-                $runId,
-            ]);
-        } catch (Throwable) {
-        }
-
-        throw $exception;
     }
 
-    $finishedRun =
-        llama_pad_us_run(
-            $db,
-            $runId
+    $runStmt =
+        $db->prepare(
+            'SELECT *
+             FROM reference_sync_runs
+             WHERE id = ?
+             LIMIT 1'
+        );
+
+    $runStmt->execute([
+        $runId,
+    ]);
+
+    $run =
+        $runStmt->fetch(
+            PDO::FETCH_ASSOC
         )
-        ?? [];
+        ?: [];
 
     return [
         'run_id' =>
             $runId,
         'state_code' =>
             $stateCode,
-        'offset' =>
-            $offset,
-        'next_offset' =>
-            (int) (
-                $finishedRun[
-                    'cursor_value'
-                ]
-                ?? (
-                    $offset
-                    + count(
-                        $features
-                    )
-                )
-            ),
         'source_rows' =>
             (int) (
-                $finishedRun[
-                    'source_rows'
-                ]
-                ?? 0
+                $run['source_rows']
+                ?? $sourceRows
             ),
         'rows_processed' =>
             (int) (
-                $finishedRun[
-                    'rows_processed'
-                ]
+                $run['rows_processed']
+                ?? $nextOffset
+            ),
+        'units_created' =>
+            (int) (
+                $run['units_created']
                 ?? 0
             ),
-        'locations_created' =>
+        'units_updated' =>
             (int) (
-                $finishedRun[
-                    'locations_created'
-                ]
-                ?? 0
-            ),
-        'locations_updated' =>
-            (int) (
-                $finishedRun[
-                    'locations_updated'
-                ]
-                ?? 0
-            ),
-        'organizations_created' =>
-            (int) (
-                $finishedRun[
-                    'organizations_created'
-                ]
+                $run['units_updated']
                 ?? 0
             ),
         'rows_skipped' =>
             (int) (
-                $finishedRun[
-                    'rows_skipped'
-                ]
+                $run['rows_skipped']
                 ?? 0
             ),
         'warning_count' =>
             (int) (
-                $finishedRun[
-                    'warning_count'
-                ]
+                $run['warning_count']
                 ?? 0
             ),
-        'status' =>
-            (string) (
-                $finishedRun[
-                    'status'
-                ]
-                ?? ''
-            ),
+        'next_offset' =>
+            $nextOffset,
         'done' =>
-            (
-                (string) (
-                    $finishedRun[
-                        'status'
-                    ]
-                    ?? ''
-                )
-            )
-            === 'completed',
-        'message' =>
-            (string) (
-                $finishedRun[
-                    'last_message'
-                ]
-                ?? ''
-            ),
+            $done,
     ];
 }
