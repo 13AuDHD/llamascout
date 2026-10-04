@@ -372,7 +372,7 @@ function location_nearest_locality(
     float $lng
 ): ?array {
     $radiusMeters =
-        40000;
+        50000;
 
     $query =
         '[out:json][timeout:7];'
@@ -408,10 +408,17 @@ function location_nearest_locality(
             ? $result['elements']
             : [];
 
-    $priorities = [
-        'city' => 1,
-        'town' => 2,
-        'village' => 3,
+    /*
+     * These are distance penalties, not absolute priorities.
+     *
+     * A nearby town should beat a farther city.
+     * A very small village has to be meaningfully closer
+     * before it beats a town.
+     */
+    $typePenaltyMeters = [
+        'city' => 0,
+        'town' => 2500,
+        'village' => 12000,
     ];
 
     $candidates = [];
@@ -440,7 +447,7 @@ function location_nearest_locality(
         if (
             $name === ''
             || !isset(
-                $priorities[$placeType]
+                $typePenaltyMeters[$placeType]
             )
             || !is_numeric(
                 $element['lat']
@@ -462,6 +469,12 @@ function location_nearest_locality(
                 (float) $element['lon']
             );
 
+        $score =
+            $distance
+            + $typePenaltyMeters[
+                $placeType
+            ];
+
         $candidates[] = [
             'name' =>
                 $name,
@@ -472,8 +485,8 @@ function location_nearest_locality(
             'distance_meters' =>
                 $distance,
 
-            'priority' =>
-                $priorities[$placeType],
+            'score' =>
+                $score,
         ];
     }
 
@@ -483,34 +496,23 @@ function location_nearest_locality(
 
     usort(
         $candidates,
-        static function (
+        static fn (
             array $a,
             array $b
-        ): int {
-            $priorityCompare =
-                $a['priority']
-                <=> $b['priority'];
-
-            if ($priorityCompare !== 0) {
-                return $priorityCompare;
-            }
-
-            return
-                $a['distance_meters']
-                <=> $b['distance_meters'];
-        }
+        ): int =>
+            $a['score']
+            <=> $b['score']
     );
 
     $best =
         $candidates[0];
 
     unset(
-        $best['priority']
+        $best['score']
     );
 
     return $best;
 }
-
 
 $reverseUrl =
     'https://nominatim.openstreetmap.org/reverse?'
