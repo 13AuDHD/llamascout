@@ -629,6 +629,7 @@ function llama_place_report_fields(): array
     ]);
     $add('region', 'Region / ranger district', 'location', 'text', 'region', [
         'allow_unknown' => true,
+        'location_field' => true,
     ]);
         $add('land_type', 'Land type', 'location', 'select', 'land_type', [
         'options' => llama_place_report_land_types(),
