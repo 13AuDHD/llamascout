@@ -523,96 +523,6 @@ function llama_pad_us_logical_unit_id(
 }
 
 
-function llama_pad_us_property_type_slug(
-    string $decodedDesignation,
-    string $localDesignation
-): ?string {
-    $text =
-        llama_pad_us_canonical_text(
-            $decodedDesignation
-            . ' '
-            . $localDesignation
-        );
-
-    $patterns = [
-        'national forest' =>
-            'national-forest',
-        'national grassland' =>
-            'national-grassland',
-        'national conservation area' =>
-            'national-conservation-area',
-        'national park' =>
-            'national-park',
-        'national preserve' =>
-            'national-preserve-reserve',
-        'national reserve' =>
-            'national-preserve-reserve',
-        'national monument' =>
-            'national-monument',
-        'national recreation area' =>
-            'national-recreation-area',
-        'national seashore' =>
-            'national-seashore-lakeshore',
-        'national lakeshore' =>
-            'national-seashore-lakeshore',
-        'national river' =>
-            'national-river-scenic-riverway',
-        'scenic riverway' =>
-            'national-river-scenic-riverway',
-        'national wildlife refuge' =>
-            'national-wildlife-refuge',
-        'wildlife refuge' =>
-            'national-wildlife-refuge',
-        'state forest' =>
-            'state-forest',
-        'state park' =>
-            'state-park',
-        'state recreation area' =>
-            'state-recreation-area',
-        'state natural area' =>
-            'state-natural-area',
-        'state preserve' =>
-            'state-natural-area',
-        'state trust land' =>
-            'state-trust-land',
-        'wildlife management area' =>
-            'wildlife-management-game-land',
-        'game management area' =>
-            'wildlife-management-game-land',
-        'game land' =>
-            'wildlife-management-game-land',
-        'county park' =>
-            'county-regional-park',
-        'regional park' =>
-            'county-regional-park',
-        'municipal park' =>
-            'city-municipal-land',
-        'city park' =>
-            'city-municipal-land',
-        'land trust' =>
-            'land-trust-preserve',
-        'conservation preserve' =>
-            'land-trust-preserve',
-    ];
-
-    foreach (
-        $patterns
-        as $needle => $slug
-    ) {
-        if (
-            str_contains(
-                $text,
-                $needle
-            )
-        ) {
-            return $slug;
-        }
-    }
-
-    return null;
-}
-
-
 function llama_pad_us_source_value(
     PDO $db,
     int $sourceId,
@@ -667,9 +577,17 @@ function llama_pad_us_source_value(
 function llama_pad_us_mapping_slug(
     PDO $db,
     int $sourceId,
-    string $sourceDesignation,
-    ?string $fallback
+    string $sourceDesignation
 ): ?string {
+    $sourceDesignation =
+        trim(
+            $sourceDesignation
+        );
+
+    if ($sourceDesignation === '') {
+        return null;
+    }
+
     $stmt =
         $db->prepare(
             'SELECT property_type_slug
@@ -677,6 +595,7 @@ function llama_pad_us_mapping_slug(
              WHERE source_id = ?
                AND source_designation = ?
                AND active = 1
+               AND reviewed = 1
              LIMIT 1'
         );
 
@@ -688,19 +607,19 @@ function llama_pad_us_mapping_slug(
     $value =
         $stmt->fetchColumn();
 
-    if ($value !== false) {
-        $slug =
-            trim(
-                (string) $value
-            );
-
-        return
-            $slug !== ''
-                ? $slug
-                : null;
+    if ($value === false) {
+        return null;
     }
 
-    return $fallback;
+    $slug =
+        trim(
+            (string) $value
+        );
+
+    return
+        $slug !== ''
+            ? $slug
+            : null;
 }
 
 
@@ -1409,20 +1328,16 @@ function llama_pad_us_import_batch(
             );
         }
 
-        $fallbackSlug =
-            llama_pad_us_property_type_slug(
-                $decodedDesignation,
-                $localDesignation
-            );
+        $mappingDesignation =
+            $decodedDesignation !== ''
+                ? $decodedDesignation
+                : $localDesignation;
 
         $propertyTypeSlug =
             llama_pad_us_mapping_slug(
                 $db,
                 $sourceId,
-                $decodedDesignation !== ''
-                    ? $decodedDesignation
-                    : $localDesignation,
-                $fallbackSlug
+                $mappingDesignation
             );
 
         $externalId =
