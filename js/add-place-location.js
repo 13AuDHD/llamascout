@@ -144,7 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const padUs = result.pad_us || {};
     const land = padUs.best_match || null;
-    
+
+
     /*
      * Always clear the previous land result first.
      * Otherwise a new lookup with no PAD-US match can leave
@@ -217,6 +218,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   };
+
+  const usfs = result.usfs || {};
+  const ranger = usfs.ranger_district || null;
+  
+  setField("region", "");
+  
+  if (ranger && ranger.district) {
+    setField("region", ranger.district);
+  }
 
   const resolveCoordinates = async parsed => {
     syncCoordinates(parsed);
