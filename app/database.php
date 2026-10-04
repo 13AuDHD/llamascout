@@ -162,3 +162,83 @@ function cell_db(): PDO
 
     return $pdo;
 }
+
+
+/* =========================================================
+   REFERENCE DATABASE
+
+   Large external reference catalogs are intentionally isolated
+   from the primary application database.
+
+   Examples:
+   - PAD-US
+   - government land directories
+   - state park / DOT datasets
+   - corporate partner location feeds
+   - future large external catalogs
+
+   Configuration lives in private/config.php under:
+       reference_database
+   ========================================================= */
+
+function reference_db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $config =
+        llama_config();
+
+    $database =
+        $config['reference_database']
+        ?? null;
+
+    if (
+        !is_array($database) ||
+        trim(
+            (string) (
+                $database['name']
+                ?? ''
+            )
+        ) === ''
+    ) {
+        throw new RuntimeException(
+            'Reference database configuration is missing.'
+        );
+    }
+
+    $dsn = sprintf(
+        'mysql:host=%s;dbname=%s;charset=utf8mb4',
+        $database['host'] ?? 'localhost',
+        $database['name'] ?? ''
+    );
+
+    $pdo = new PDO(
+        $dsn,
+        $database['user'] ?? '',
+        $database['password'] ?? '',
+        [
+            PDO::ATTR_ERRMODE =>
+                PDO::ERRMODE_EXCEPTION,
+
+            PDO::ATTR_DEFAULT_FETCH_MODE =>
+                PDO::FETCH_ASSOC,
+
+            PDO::ATTR_EMULATE_PREPARES =>
+                false,
+        ]
+    );
+
+    $pdo->exec(
+        "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+    );
+
+    $pdo->exec(
+        "SET time_zone = '+00:00'"
+    );
+
+    return $pdo;
+}
