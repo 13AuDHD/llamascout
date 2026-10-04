@@ -145,6 +145,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const padUs = result.pad_us || {};
     const land = padUs.best_match || null;
     
+    /*
+     * Always clear the previous land result first.
+     * Otherwise a new lookup with no PAD-US match can leave
+     * stale land information from the previous coordinates.
+     */
+    setField("land_type", "");
+    setField("land_manager", "");
+    
     if (land && land.mapped) {
       if (land.property_type) {
         setField("land_type", land.property_type);
@@ -163,7 +171,9 @@ document.addEventListener("DOMContentLoaded", () => {
         managerRaw.includes("blm")
       ) {
         manager = "Bureau of Land Management";
-      } else if (managerRaw.includes("national park service")) {
+      } else if (
+        managerRaw.includes("national park service")
+      ) {
         manager = "National Park Service";
       } else if (
         managerRaw.includes("fish and wildlife")
@@ -200,10 +210,6 @@ document.addEventListener("DOMContentLoaded", () => {
         manager = "Tribal government";
       }
     
-      /*
-       * Changing land type causes place-report-form.js to rebuild
-       * the manager choices, so set the manager after that happens.
-       */
       if (manager) {
         window.setTimeout(() => {
           setField("land_manager", manager);
