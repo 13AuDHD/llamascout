@@ -470,7 +470,7 @@ function admin_shell_nav_class(string $key, string $active): string
             <i aria-hidden="true"><?= llama_icon('chart-bar') ?></i>
             <span>Analytics</span>
         </a>
-        
+
         <?php endif; ?>
 
         <a
@@ -566,7 +566,7 @@ function admin_shell_nav_class(string $key, string $active): string
             <i aria-hidden="true">
                 <?= llama_icon('map') ?>
             </i>
-        
+
             <span>Cell Coverage</span>
         </a>
 
@@ -681,6 +681,14 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i  aria-hidden="true"><?= llama_icon('plug') ?></i>
             <span>Integrations</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('reference-data', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/reference-data.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('map') ?></i>
+            <span>Reference Data</span>
         </a>
 
         <a

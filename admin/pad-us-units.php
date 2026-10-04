@@ -89,7 +89,7 @@ $adminPageEyebrow =
     'Integrations';
 
 $adminActiveNav =
-    'integrations';
+    'reference-data';
 
 require __DIR__ . '/_header.php';
 ?>
