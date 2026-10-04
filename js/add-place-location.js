@@ -459,7 +459,8 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "PLEASE WAIT! Looking up elevation, road, town, land, and management information..."
+        "Please wait. Resolving location, land, and management information. This can take up to a minute...",
+        "is-warning"
       );
 
       await lookupLocation(
@@ -656,7 +657,8 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         setStatus(
-          "Finding your current GPS position..."
+          "Finding your current GPS position...",
+          "is-warning"
         );
 
         navigator.geolocation.getCurrentPosition(
@@ -685,7 +687,8 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "GPS found. Please wait. Looking up elevation, road, town, land, and management information..."
+                "GPS found. Please wait while Llama Scout resolves the location, land, and management information. This can take up to a minute...",
+                "is-warning"
               );
 
               await lookupLocation(
