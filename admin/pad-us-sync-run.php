@@ -18,9 +18,7 @@ function admin_pad_us_sync_json(
     array $payload,
     int $status = 200
 ): never {
-    http_response_code(
-        $status
-    );
+    http_response_code($status);
 
     echo json_encode(
         $payload,
@@ -42,10 +40,8 @@ try {
     ) {
         admin_pad_us_sync_json(
             [
-                'ok' =>
-                    false,
-                'error' =>
-                    'POST is required.',
+                'ok' => false,
+                'error' => 'POST is required.',
             ],
             405
         );
@@ -61,8 +57,7 @@ try {
     ) {
         admin_pad_us_sync_json(
             [
-                'ok' =>
-                    false,
+                'ok' => false,
                 'error' =>
                     'Your session token expired. Reload and try again.',
             ],
@@ -102,7 +97,7 @@ try {
 
     $result =
         llama_pad_us_import_batch(
-            db(),
+            reference_db(),
             (int) (
                 $adminUser['id']
                 ?? 0
@@ -115,10 +110,8 @@ try {
 
     admin_pad_us_sync_json(
         [
-            'ok' =>
-                true,
-            'result' =>
-                $result,
+            'ok' => true,
+            'result' => $result,
         ]
     );
 
@@ -126,7 +119,7 @@ try {
     $reference =
         llama_log_caught_exception(
             $exception,
-            'admin.pad_us_sync',
+            'admin.pad_us_reference_sync',
             [
                 'state_code' =>
                     $stateCode
@@ -143,8 +136,7 @@ try {
 
     admin_pad_us_sync_json(
         [
-            'ok' =>
-                false,
+            'ok' => false,
             'error' =>
                 $reference === null
                     ? $exception->getMessage()

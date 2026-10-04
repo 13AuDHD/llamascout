@@ -9,30 +9,31 @@ require_once __DIR__ . '/_dashboard.php';
 $adminUser =
     moderation_require_admin();
 
-$db = db();
+$mainDb = db();
+$referenceDb = reference_db();
 
 $states =
     llama_pad_us_states();
 
 $runs =
     llama_pad_us_recent_runs(
-        $db,
+        $referenceDb,
         40
     );
 
 $issueCount =
     llama_pad_us_issue_count(
-        $db
+        $referenceDb
     );
 
 $source =
     llama_pad_us_source(
-        $db
+        $referenceDb
     );
 
 $stats =
     admin_dashboard_stats(
-        $db
+        $mainDb
     );
 
 $adminNavCounts = [
@@ -65,7 +66,7 @@ require __DIR__ . '/_header.php';
 
 <header class="admin-panel-header">
     <div>
-        <p>National taxonomy</p>
+        <p>Reference data</p>
         <h2>PAD-US Synchronization</h2>
     </div>
 
@@ -83,15 +84,14 @@ require __DIR__ . '/_header.php';
 <div class="admin-user-action-box">
 
 <p>
-    Import and normalize public-land unit names, managers, designation types,
-    source information, and public-access metadata from PAD-US.
-    Polygon geometry is not downloaded.
+    PAD-US is imported into the dedicated reference database.
+    These records are external reference units, not Llama Scout Places.
 </p>
 
 <p>
-    PAD-US polygons are grouped into logical named units before Llama Scout records are created. Existing imported units are updated instead of duplicated.
-    Unknown designation types are sent to the taxonomy review queue
-    rather than guessed.
+    Original PAD-US designations are preserved even when Llama Scout
+    does not yet have a matching property type. Duplicate polygons are
+    normalized into logical named units.
 </p>
 
 </div>
@@ -134,9 +134,7 @@ require __DIR__ . '/_header.php';
         <option
             value="<?= moderation_e($code) ?>"
         >
-            <?= moderation_e(
-                $name
-            ) ?>
+            <?= moderation_e($name) ?>
         </option>
 
         <?php endforeach; ?>
@@ -213,51 +211,6 @@ require __DIR__ . '/_header.php';
 
 <header class="admin-panel-header">
     <div>
-        <p>Review</p>
-        <h2>Import Issues</h2>
-    </div>
-
-    <span class="admin-status-pill">
-        <?= number_format(
-            $issueCount
-        ) ?>
-        unresolved
-    </span>
-</header>
-
-<div class="admin-user-action-box">
-
-<p>
-    These are records Llama Scout refused to guess about.
-    They remain available for later taxonomy mapping instead of
-    silently creating inaccurate property types.
-</p>
-
-<div class="admin-user-form-actions">
-    <a
-        class="admin-button"
-        href="/pad-us-issues.php"
-    >
-        Review import issues
-    </a>
-
-    <a
-        class="admin-button is-secondary"
-        href="/pad-us-units.php?state=CO"
-    >
-        Browse named units
-    </a>
-</div>
-
-</div>
-
-</section>
-
-
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
         <p>History</p>
         <h2>Recent PAD-US Runs</h2>
     </div>
@@ -266,7 +219,7 @@ require __DIR__ . '/_header.php';
 <?php if (!$runs): ?>
 
 <div class="admin-empty-state">
-    <h3>No PAD-US synchronization has run yet.</h3>
+    <h3>No PAD-US synchronization has run in the reference database yet.</h3>
 </div>
 
 <?php else: ?>
@@ -280,8 +233,8 @@ require __DIR__ . '/_header.php';
     <th>State</th>
     <th>Status</th>
     <th>Progress</th>
-    <th>Named units</th>
-    <th>Warnings</th>
+    <th>Reference units</th>
+    <th>Skipped</th>
     <th>Last message</th>
     <th></th>
 </tr>
@@ -365,28 +318,28 @@ $canResume =
     ) ?>
 </td>
 
-<td data-label="Named units">
+<td data-label="Reference units">
     +
     <?= number_format(
         (int) (
-            $run['locations_created']
+            $run['units_created']
             ?? 0
         )
     ) ?>
     new,
     <?= number_format(
         (int) (
-            $run['locations_updated']
+            $run['units_updated']
             ?? 0
         )
     ) ?>
     updated
 </td>
 
-<td data-label="Warnings">
+<td data-label="Skipped">
     <?= number_format(
         (int) (
-            $run['warning_count']
+            $run['rows_skipped']
             ?? 0
         )
     ) ?>
