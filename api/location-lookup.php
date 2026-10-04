@@ -382,7 +382,7 @@ function location_nearest_locality(
         . number_format($lat, 7, '.', '')
         . ','
         . number_format($lng, 7, '.', '')
-        . ')[place~"^(city|town|village|hamlet|locality)$"][name];'
+        . ')[place~"^(city|town|village)$"][name];'
         . ');'
         . 'out tags center;';
 
