@@ -633,10 +633,12 @@ function llama_place_report_fields(): array
     $add('land_manager', 'Manager / operator / owner', 'location', 'select', 'land_manager', [
         'options' => llama_place_report_land_managers(),
         'allow_unknown' => true,
+        'location_field' => true,
     ]);
     $add('land_type', 'Land type', 'location', 'select', 'land_type', [
         'options' => llama_place_report_land_types(),
         'allow_unknown' => true,
+        'location_field' => true,
     ]);
 
     /* Site and vehicle */
