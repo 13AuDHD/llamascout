@@ -642,6 +642,14 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <a
+            class="<?= admin_shell_nav_class('partners', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/partners.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('users') ?></i>
+            <span>Partners</span>
+        </a>
+
+        <a
             class="<?= admin_shell_nav_class('printful-orders', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/printful-orders.php') ?>"
         >
