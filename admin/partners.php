@@ -366,6 +366,7 @@ require __DIR__ . '/_header.php';
     <th>Status</th>
     <th>Map markers</th>
     <th>Branding</th>
+    <th>Manage</th>
 </tr>
 </thead>
 
@@ -457,6 +458,18 @@ $category =
     Not approved
 
 <?php endif; ?>
+
+</td>
+
+
+<td data-label="Manage">
+
+<a
+    class="admin-button"
+    href="/partner.php?id=<?= (int) $partner['id'] ?>"
+>
+    Manage partner
+</a>
 
 </td>
 

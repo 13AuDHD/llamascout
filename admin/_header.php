@@ -284,6 +284,14 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['memberships.css'],
             'features' => [],
         ],
+        'partners.php' => [
+            'pages' => ['partners.css'],
+            'features' => [],
+        ],
+        'partner.php' => [
+            'pages' => ['partner.css'],
+            'features' => [],
+        ],
         'promotion-codes.php' => [
             'pages' => ['promotion-codes.css'],
             'features' => [],
