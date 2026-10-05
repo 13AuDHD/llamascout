@@ -1,0 +1,80 @@
+/* =========================================================
+   ADMIN PAGE: PARTNERS
+   Only admin/partners.php belongs here.
+   ========================================================= */
+
+
+/* =========================================================
+   PARTNER SUMMARY CARDS
+
+   Desktop/tablet portrait:
+   4 columns
+
+   Phones:
+   2 columns
+
+   Very narrow screens:
+   1 column
+   ========================================================= */
+
+.admin-commerce-stat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 12px;
+
+    margin-bottom: var(--admin-panel-gap);
+}
+
+.admin-commerce-stat-card {
+    min-width: 0;
+
+    padding: 16px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--surface);
+}
+
+.admin-commerce-stat-card span,
+.admin-commerce-stat-card strong {
+    display: block;
+}
+
+.admin-commerce-stat-card span {
+    color: var(--text-muted);
+
+    font-size: .73rem;
+    font-weight: 800;
+}
+
+.admin-commerce-stat-card strong {
+    margin-top: 7px;
+
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+
+/* Phones */
+
+@media (max-width: 620px) {
+
+    .admin-commerce-stat-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* Very narrow phones */
+
+@media (max-width: 340px) {
+
+    .admin-commerce-stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
