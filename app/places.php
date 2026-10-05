@@ -9,18 +9,6 @@ require_once __DIR__ . '/geography.php';
    COUNTY DISPLAY NORMALIZATION
    ========================================================= */
 
-/**
- * Prefer the most complete county-equivalent label when several
- * stored variants represent the same jurisdiction.
- *
- * Example:
- * La Plata
- * La Plata Co.
- * La Plata County
- *
- * becomes:
- * La Plata County
- */
 function places_preferred_county_label(
     array $labels
 ): ?string {
@@ -79,12 +67,6 @@ function places_preferred_county_label(
 }
 
 
-/**
- * Normalize county labels across a group of Place rows.
- *
- * State is included in the grouping key so identically named
- * counties in different states are never merged.
- */
 function places_normalize_county_rows(
     array $rows
 ): array {
@@ -168,9 +150,6 @@ function places_normalize_county_rows(
 }
 
 
-/**
- * Clean a county value on a single Place response.
- */
 function places_normalize_single_county(
     array $place
 ): array {
@@ -192,8 +171,135 @@ function places_normalize_single_county(
 }
 
 
-function places_public(): array
-{
+/* =========================================================
+   PARTNER DEMO VISIBILITY
+
+   Demo Places are represented by a place_partners relationship_type
+   of "demo". They remain Draft publicly, but Owners and Admins can
+   view them on the normal map and Place page.
+
+   This helper is intentionally centralized so partner preview grants
+   can be added later without rewriting every Place query again.
+   ========================================================= */
+
+function llama_partner_demo_viewer_can_access(
+    ?int $userId = null
+): bool {
+    if ($userId === null) {
+        $user =
+            current_user();
+
+        $userId =
+            is_array($user)
+                ? (int) (
+                    $user['id']
+                    ?? 0
+                )
+                : 0;
+    }
+
+    if ($userId < 1) {
+        return false;
+    }
+
+    return
+        user_has_role(
+            'owner',
+            $userId
+        )
+        || user_has_role(
+            'admin',
+            $userId
+        );
+}
+
+
+function llama_partner_demo_exists_sql(
+    string $placeAlias = 'p'
+): string {
+    $placeAlias =
+        preg_replace(
+            '/[^a-zA-Z0-9_]/',
+            '',
+            $placeAlias
+        )
+        ?: 'p';
+
+    return
+        'EXISTS (
+            SELECT 1
+            FROM place_partners pp_demo
+            WHERE pp_demo.place_id = '
+        . $placeAlias
+        . '.id
+              AND pp_demo.relationship_type = "demo"
+        )';
+}
+
+
+function llama_partner_demo_visibility_sql(
+    bool $canViewDemo,
+    string $placeAlias = 'p'
+): string {
+    $demoExists =
+        llama_partner_demo_exists_sql(
+            $placeAlias
+        );
+
+    if ($canViewDemo) {
+        return
+            '(
+                (
+                    '
+            . $placeAlias
+            . '.status IN ("active", "featured")
+                    AND NOT '
+            . $demoExists
+            . '
+                )
+                OR
+                (
+                    '
+            . $placeAlias
+            . '.status NOT IN ("removed", "archived")
+                    AND '
+            . $demoExists
+            . '
+                )
+            )';
+    }
+
+    return
+        '(
+            '
+        . $placeAlias
+        . '.status IN ("active", "featured")
+            AND NOT '
+        . $demoExists
+        . '
+        )';
+}
+
+
+function places_public(
+    ?int $viewerUserId = null
+): array {
+    $canViewDemo =
+        llama_partner_demo_viewer_can_access(
+            $viewerUserId
+        );
+
+    $visibilitySql =
+        llama_partner_demo_visibility_sql(
+            $canViewDemo,
+            'p'
+        );
+
+    $demoExistsSql =
+        llama_partner_demo_exists_sql(
+            'p'
+        );
+
     $stmt = db()->query(
         "
         SELECT
@@ -215,6 +321,12 @@ function places_public(): array
             p.last_verified_at,
             p.last_field_checked_on,
             p.published_at,
+
+            CASE
+                WHEN $demoExistsSql
+                THEN 1
+                ELSE 0
+            END AS is_demo,
 
             pi.src AS featured_image,
             pi.alt_text AS featured_image_alt,
@@ -240,7 +352,7 @@ function places_public(): array
         LEFT JOIN place_amenities pa
             ON pa.place_id = p.id
 
-        WHERE p.status IN ('active', 'featured')
+        WHERE $visibilitySql
 
         ORDER BY
             CASE
@@ -251,7 +363,10 @@ function places_public(): array
         "
     );
 
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows =
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
 
     $rows =
         places_normalize_county_rows(
@@ -259,6 +374,12 @@ function places_public(): array
         );
 
     foreach ($rows as &$row) {
+        $row['is_demo'] =
+            (int) (
+                $row['is_demo']
+                ?? 0
+            );
+
         $row['amenities'] = [
             'toilets' => isset($row['toilets']) ? (int) $row['toilets'] : 0,
             'potable_water' => isset($row['potable_water']) ? (int) $row['potable_water'] : 0,
@@ -302,12 +423,24 @@ function places_public(): array
  * Member coordinates are merged only after server-side access has already
  * been confirmed by api/places.php. This keeps exact coordinates completely
  * out of free-user responses instead of merely hiding them in JavaScript.
+ *
+ * Owners/Admins also receive exact coordinates for Demo Places so they can
+ * review the demo exactly where it will appear when a future partner-preview
+ * grant is active.
  */
 function places_map(
     bool $includeExactCoordinates = false,
     ?int $viewerUserId = null
 ): array {
-    $places = places_public();
+    $canViewDemo =
+        llama_partner_demo_viewer_can_access(
+            $viewerUserId
+        );
+
+    $places =
+        places_public(
+            $viewerUserId
+        );
 
     if (!$places) {
         return $places;
@@ -319,17 +452,19 @@ function places_map(
         !$includeExactCoordinates
         && ($viewerUserId ?? 0) > 0
     ) {
-        $contributedPlaceLookup = array_fill_keys(
-            user_original_contributed_place_ids(
-                (int) $viewerUserId
-            ),
-            true
-        );
+        $contributedPlaceLookup =
+            array_fill_keys(
+                user_original_contributed_place_ids(
+                    (int) $viewerUserId
+                ),
+                true
+            );
     }
 
     if (
         !$includeExactCoordinates
         && !$contributedPlaceLookup
+        && !$canViewDemo
     ) {
         return $places;
     }
@@ -343,13 +478,21 @@ function places_map(
 
         FROM places
 
-        WHERE status IN ('active', 'featured')
+        WHERE status NOT IN (
+            'removed',
+            'archived'
+        )
         "
     );
 
     $exactById = [];
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    foreach (
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        as $row
+    ) {
         $exactById[(int) $row['id']] = [
             'latitude' => $row['latitude'],
             'longitude' => $row['longitude'],
@@ -357,32 +500,60 @@ function places_map(
     }
 
     foreach ($places as &$place) {
-        $placeId = (int) ($place['id'] ?? 0);
+        $placeId =
+            (int) (
+                $place['id']
+                ?? 0
+            );
+
+        $isDemo =
+            (int) (
+                $place['is_demo']
+                ?? 0
+            ) === 1;
 
         if (
             !$includeExactCoordinates
-            && !isset($contributedPlaceLookup[$placeId])
+            && !isset(
+                $contributedPlaceLookup[
+                    $placeId
+                ]
+            )
+            && !(
+                $canViewDemo
+                && $isDemo
+            )
         ) {
             continue;
         }
 
-        $exact = $exactById[$placeId] ?? null;
+        $exact =
+            $exactById[
+                $placeId
+            ]
+            ?? null;
 
         if (!$exact) {
             continue;
         }
 
-        $latitude = $exact['latitude'];
-        $longitude = $exact['longitude'];
+        $latitude =
+            $exact['latitude'];
+
+        $longitude =
+            $exact['longitude'];
 
         if (
-            $latitude !== null &&
-            $longitude !== null &&
-            is_numeric($latitude) &&
-            is_numeric($longitude)
+            $latitude !== null
+            && $longitude !== null
+            && is_numeric($latitude)
+            && is_numeric($longitude)
         ) {
-            $place['latitude'] = (float) $latitude;
-            $place['longitude'] = (float) $longitude;
+            $place['latitude'] =
+                (float) $latitude;
+
+            $place['longitude'] =
+                (float) $longitude;
         }
     }
     unset($place);
@@ -391,8 +562,23 @@ function places_map(
 }
 
 
-function place_public_by_slug(string $slug): ?array
-{
+function place_public_by_slug(
+    string $slug
+): ?array {
+    $canViewDemo =
+        llama_partner_demo_viewer_can_access();
+
+    $visibilitySql =
+        llama_partner_demo_visibility_sql(
+            $canViewDemo,
+            'p'
+        );
+
+    $demoExistsSql =
+        llama_partner_demo_exists_sql(
+            'p'
+        );
+
     $stmt = db()->prepare(
         "
         SELECT
@@ -414,20 +600,31 @@ function place_public_by_slug(string $slug): ?array
             p.land_type,
             p.last_verified_at,
             p.last_field_checked_on,
-            p.published_at
+            p.published_at,
+
+            CASE
+                WHEN $demoExistsSql
+                THEN 1
+                ELSE 0
+            END AS is_demo
 
         FROM places p
 
         WHERE p.slug = ?
-          AND p.status IN ('active', 'featured')
+          AND $visibilitySql
 
         LIMIT 1
         "
     );
 
-    $stmt->execute([$slug]);
+    $stmt->execute([
+        $slug,
+    ]);
 
-    $place = $stmt->fetch(PDO::FETCH_ASSOC);
+    $place =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
 
     if (!$place) {
         return null;
@@ -438,15 +635,29 @@ function place_public_by_slug(string $slug): ?array
             $place
         );
 
-    $place['featured_image'] = place_public_featured_image((int) $place['id']);
-    $place['amenities'] = place_public_amenities((int) $place['id']);
+    $place['is_demo'] =
+        (int) (
+            $place['is_demo']
+            ?? 0
+        );
+
+    $place['featured_image'] =
+        place_public_featured_image(
+            (int) $place['id']
+        );
+
+    $place['amenities'] =
+        place_public_amenities(
+            (int) $place['id']
+        );
 
     return $place;
 }
 
 
-function place_public_featured_image(int $placeId): ?array
-{
+function place_public_featured_image(
+    int $placeId
+): ?array {
     $stmt = db()->prepare(
         "
         SELECT
@@ -466,16 +677,24 @@ function place_public_featured_image(int $placeId): ?array
         "
     );
 
-    $stmt->execute([$placeId]);
+    $stmt->execute([
+        $placeId,
+    ]);
 
-    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+    $image =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
 
-    return $image ?: null;
+    return
+        $image
+        ?: null;
 }
 
 
-function place_public_amenities(int $placeId): array
-{
+function place_public_amenities(
+    int $placeId
+): array {
     $stmt = db()->prepare(
         "
         SELECT
@@ -499,15 +718,38 @@ function place_public_amenities(int $placeId): array
         "
     );
 
-    $stmt->execute([$placeId]);
+    $stmt->execute([
+        $placeId,
+    ]);
 
-    $amenities = $stmt->fetch(PDO::FETCH_ASSOC);
+    $amenities =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
 
-    return $amenities ?: [];
+    return
+        $amenities
+        ?: [];
 }
 
-function place_member_by_slug(string $slug): ?array
-{
+
+function place_member_by_slug(
+    string $slug
+): ?array {
+    $canViewDemo =
+        llama_partner_demo_viewer_can_access();
+
+    $visibilitySql =
+        llama_partner_demo_visibility_sql(
+            $canViewDemo,
+            'p'
+        );
+
+    $demoExistsSql =
+        llama_partner_demo_exists_sql(
+            'p'
+        );
+
     $stmt = db()->prepare(
         "
         SELECT
@@ -536,20 +778,31 @@ function place_member_by_slug(string $slug): ?array
 
             p.last_verified_at,
             p.last_field_checked_on,
-            p.published_at
+            p.published_at,
+
+            CASE
+                WHEN $demoExistsSql
+                THEN 1
+                ELSE 0
+            END AS is_demo
 
         FROM places p
 
         WHERE p.slug = ?
-          AND p.status IN ('active', 'featured')
+          AND $visibilitySql
 
         LIMIT 1
         "
     );
 
-    $stmt->execute([$slug]);
+    $stmt->execute([
+        $slug,
+    ]);
 
-    $place = $stmt->fetch(PDO::FETCH_ASSOC);
+    $place =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
 
     if (!$place) {
         return null;
@@ -560,24 +813,67 @@ function place_member_by_slug(string $slug): ?array
             $place
         );
 
-    $placeId = (int) $place['id'];
+    $place['is_demo'] =
+        (int) (
+            $place['is_demo']
+            ?? 0
+        );
 
-    $place['images'] = place_member_images($placeId);
-    $place['amenities'] = place_public_amenities($placeId);
-    $place['details'] = place_member_row('place_details', $placeId);
-    $place['connectivity'] = place_member_row('place_connectivity', $placeId);
-    $place['sensory_details'] = place_member_row('place_sensory_details', $placeId);
-    $place['rules'] = place_member_row('place_rules', $placeId);
-    $place['experience'] = place_member_row('place_experience', $placeId);
+    $placeId =
+        (int) $place['id'];
 
-    $place['sensory'] = place_member_sensory($placeId);
+    $place['images'] =
+        place_member_images(
+            $placeId
+        );
+
+    $place['amenities'] =
+        place_public_amenities(
+            $placeId
+        );
+
+    $place['details'] =
+        place_member_row(
+            'place_details',
+            $placeId
+        );
+
+    $place['connectivity'] =
+        place_member_row(
+            'place_connectivity',
+            $placeId
+        );
+
+    $place['sensory_details'] =
+        place_member_row(
+            'place_sensory_details',
+            $placeId
+        );
+
+    $place['rules'] =
+        place_member_row(
+            'place_rules',
+            $placeId
+        );
+
+    $place['experience'] =
+        place_member_row(
+            'place_experience',
+            $placeId
+        );
+
+    $place['sensory'] =
+        place_member_sensory(
+            $placeId
+        );
 
     return $place;
 }
 
 
-function place_member_images(int $placeId): array
-{
+function place_member_images(
+    int $placeId
+): array {
     $stmt = db()->prepare(
         "
         SELECT
@@ -597,14 +893,21 @@ function place_member_images(int $placeId): array
         "
     );
 
-    $stmt->execute([$placeId]);
+    $stmt->execute([
+        $placeId,
+    ]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
 }
 
 
-function place_member_row(string $table, int $placeId): array
-{
+function place_member_row(
+    string $table,
+    int $placeId
+): array {
     $allowedTables = [
         'place_details',
         'place_connectivity',
@@ -613,8 +916,16 @@ function place_member_row(string $table, int $placeId): array
         'place_experience',
     ];
 
-    if (!in_array($table, $allowedTables, true)) {
-        throw new InvalidArgumentException('Invalid place data table.');
+    if (
+        !in_array(
+            $table,
+            $allowedTables,
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid place data table.'
+        );
     }
 
     $stmt = db()->prepare(
@@ -624,16 +935,24 @@ function place_member_row(string $table, int $placeId): array
          LIMIT 1"
     );
 
-    $stmt->execute([$placeId]);
+    $stmt->execute([
+        $placeId,
+    ]);
 
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $row =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
 
-    return $row ?: [];
+    return
+        $row
+        ?: [];
 }
 
 
-function place_member_sensory(int $placeId): array
-{
+function place_member_sensory(
+    int $placeId
+): array {
     $stmt = db()->prepare(
         "
         SELECT
@@ -659,17 +978,27 @@ function place_member_sensory(int $placeId): array
         "
     );
 
-    $stmt->execute([$placeId]);
+    $stmt->execute([
+        $placeId,
+    ]);
 
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows =
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
 
     $sensory = [];
 
     foreach ($rows as $row) {
-        $period = (string) $row['period'];
-        unset($row['period']);
+        $period =
+            (string) $row['period'];
 
-        $sensory[$period] = $row;
+        unset(
+            $row['period']
+        );
+
+        $sensory[$period] =
+            $row;
     }
 
     return $sensory;
