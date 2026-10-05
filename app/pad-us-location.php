@@ -11,7 +11,7 @@ require_once __DIR__ . '/pad-us-sync.php';
  * =========================================================
  */
 
-function llama_pad_us_canonical_text(
+function llama_pad_us_location_canonical_text(
     mixed $value
 ): string {
     $value =
@@ -103,17 +103,17 @@ function llama_pad_us_normalize_property_type(
     }
 
     $managerCanonical =
-        llama_pad_us_canonical_text(
+        llama_pad_us_location_canonical_text(
             $manager
         );
 
     $designationCanonical =
-        llama_pad_us_canonical_text(
+        llama_pad_us_location_canonical_text(
             $designation
         );
 
     $localDesignationCanonical =
-        llama_pad_us_canonical_text(
+        llama_pad_us_location_canonical_text(
             $localDesignation
         );
 
