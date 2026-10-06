@@ -2123,6 +2123,11 @@ box.querySelector(
 '[data-place-report-completion-count]'
 );
 
+const minimumNode =
+box.querySelector(
+'[data-place-report-minimum-status]'
+);
+
 const panel =
 form.querySelector(
 '[data-place-report-missing-panel]'
@@ -2406,6 +2411,74 @@ summary.answered.toLocaleString()
 + ' applicable completion items addressed.'
 )
 : 'Start filling out the report to track completion.';
+}
+
+if (minimumNode) {
+const name =
+String(
+form.querySelector(
+'[name="name"]'
+)?.value
+|| ''
+).trim();
+
+const latitude =
+String(
+form.querySelector(
+'[name="latitude"]'
+)?.value
+|| ''
+).trim();
+
+const longitude =
+String(
+form.querySelector(
+'[name="longitude"]'
+)?.value
+|| ''
+).trim();
+
+const hasPhoto =
+completionPhotoCount(form) > 0;
+
+const minimumReady =
+name !== ''
+&& latitude !== ''
+&& longitude !== ''
+&& hasPhoto;
+
+if (minimumReady) {
+minimumNode.textContent =
+'Minimum requirements met.';
+} else {
+const missing = [];
+
+if (name === '') {
+missing.push(
+'name'
+);
+}
+
+if (
+latitude === ''
+|| longitude === ''
+) {
+missing.push(
+'exact location'
+);
+}
+
+if (!hasPhoto) {
+missing.push(
+'1 current photo'
+);
+}
+
+minimumNode.textContent =
+'Minimum to submit: '
++ missing.join(', ')
++ '.';
+}
 }
 
 const canShowMissing =
