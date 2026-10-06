@@ -1244,6 +1244,34 @@ function llama_place_report_fields(): array
             'points_categories' => ['experience_recommendations'],
         ]);
     }
+
+    /*
+     * These six recommendation flags are derived from the paired 1â5
+     * experience rating instead of asking the contributor the same thing twice.
+     *
+     * 4â5 = recommended
+     * 1â2 = not recommended
+     * 3   = neutral / no derived recommendation
+     */
+    $derivedRecommendations = [
+        'recommended_overnight_stop' => 'experience_overnight_comfort',
+        'recommended_quiet_evening' => 'experience_quiet_evening',
+        'recommended_extended_stay' => 'experience_extended_stay_comfort',
+        'recommended_sensory_retreat' => 'experience_sensory_retreat',
+        'recommended_stargazing' => 'experience_stargazing',
+        'recommended_remote_work' => 'experience_remote_work',
+    ];
+
+    foreach ($derivedRecommendations as $derivedKey => $sourceKey) {
+        if (!isset($f[$derivedKey])) {
+            continue;
+        }
+
+        $f[$derivedKey]['derived'] = true;
+        $f[$derivedKey]['derived_from'] = $sourceKey;
+        $f[$derivedKey]['counts_toward_completion'] = false;
+        $f[$derivedKey]['points_categories'] = [];
+    }
     $add('not_recommended_for', 'Not recommended for', 'experience', 'textarea', 'experience.not_recommended_for', [
         'wide' => true,
         'rows' => 3,
@@ -1476,6 +1504,48 @@ function llama_place_report_fields(): array
         'vehicle-pulloff',
     ];
 
+    /*
+     * Rough-road questions are useful for outdoor/camping access but are
+     * noise on ordinary commercial and civic parking Places such as a
+     * Love's Travel Stop, Walmart, hospital lot, or street parking.
+     */
+    $roughAccessPlaceTypes =
+        array_values(
+            array_unique(
+                array_merge(
+                    $campingPlaceTypes,
+                    $naturalUsePlaceTypes
+                )
+            )
+        );
+
+    $setApplicable(
+        $f,
+        [
+            'ground_condition',
+            'sedan_accessible',
+            'high_clearance_recommended',
+            'four_wheel_drive_recommended',
+            'water_crossings',
+            'downed_tree_risk',
+            'seasonal_closure',
+            'site_access_difficulty',
+            'road_overall_difficulty',
+            'road_stress',
+            'rocks',
+            'washboards',
+            'potholes',
+            'mud_risk',
+            'steep_grades',
+            'drop_off_exposure',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $roughAccessPlaceTypes,
+        ]]
+    );
+
     $setApplicable(
         $f,
         ['tent_camping_suitable'],
@@ -1570,6 +1640,27 @@ function llama_place_report_fields(): array
     $setApplicable(
         $f,
         [
+            'amenity_fire_ring',
+            'amenity_bear_box',
+            'pack_it_in_pack_it_out',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => array_values(
+                array_unique(
+                    array_merge(
+                        $campingPlaceTypes,
+                        $naturalUsePlaceTypes
+                    )
+                )
+            ),
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
             'designated_sites_only',
             'food_storage_required',
         ],
@@ -1653,8 +1744,6 @@ function llama_place_report_fields(): array
             'experience_quiet_evening',
             'experience_overnight_comfort',
             'experience_extended_stay_comfort',
-            'recommended_overnight_stop',
-            'recommended_extended_stay',
         ],
         [[
             'field' => 'overnight_camping_allowed',
@@ -2352,6 +2441,52 @@ function llama_place_report_build_data(
         $data['rules']['recommended_travel_season'] =
             $data['rules']['best_months']
             ?? null;
+    }
+
+    /*
+     * Derived experience recommendations intentionally mirror the paired
+     * rating instead of asking the contributor for the same judgment twice.
+     * Keep the stored compatibility fields current for downstream consumers.
+     */
+    if (!isset($data['experience']) || !is_array($data['experience'])) {
+        $data['experience'] = [];
+    }
+
+    $deriveRecommendation =
+        static function (mixed $rating): ?bool {
+            if (!is_numeric($rating)) {
+                return null;
+            }
+
+            $rating = (int) $rating;
+
+            if ($rating >= 4) {
+                return true;
+            }
+
+            if ($rating <= 2 && $rating >= 1) {
+                return false;
+            }
+
+            return null;
+        };
+
+    foreach (
+        [
+            'recommended_overnight_stop' => 'overnight_comfort',
+            'recommended_quiet_evening' => 'quiet_evening',
+            'recommended_extended_stay' => 'extended_stay_comfort',
+            'recommended_sensory_retreat' => 'sensory_retreat',
+            'recommended_stargazing' => 'stargazing',
+            'recommended_remote_work' => 'remote_work',
+        ]
+        as $derivedKey => $ratingKey
+    ) {
+        $data['experience'][$derivedKey] =
+            $deriveRecommendation(
+                $data['experience'][$ratingKey]
+                ?? null
+            );
     }
 
     /*
@@ -3598,6 +3733,48 @@ function llama_place_report_data_from_published_place(
             $storage,
             llama_place_report_multiselect_values($value)
         );
+    }
+
+    /*
+     * Recompute derived recommendation flags at read time as well so older
+     * published rows cannot display a stale recommendation that conflicts
+     * with the current 1â5 experience rating.
+     */
+    $deriveRecommendation =
+        static function (mixed $rating): ?bool {
+            if (!is_numeric($rating)) {
+                return null;
+            }
+
+            $rating = (int) $rating;
+
+            if ($rating >= 4) {
+                return true;
+            }
+
+            if ($rating >= 1 && $rating <= 2) {
+                return false;
+            }
+
+            return null;
+        };
+
+    foreach (
+        [
+            'recommended_overnight_stop' => 'overnight_comfort',
+            'recommended_quiet_evening' => 'quiet_evening',
+            'recommended_extended_stay' => 'extended_stay_comfort',
+            'recommended_sensory_retreat' => 'sensory_retreat',
+            'recommended_stargazing' => 'stargazing',
+            'recommended_remote_work' => 'remote_work',
+        ]
+        as $derivedKey => $ratingKey
+    ) {
+        $data['experience'][$derivedKey] =
+            $deriveRecommendation(
+                $data['experience'][$ratingKey]
+                ?? null
+            );
     }
 
     $data['_answer_state'] = array_values($unknownFields);
