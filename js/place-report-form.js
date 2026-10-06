@@ -1781,19 +1781,28 @@ panel,
 })
 .filter(Boolean);
 
-const isOpen = (entry) => {
-const nativeOpen =
+const nativePopoverOpen = (entry) => {
+if (
 typeof entry.panel.matches
-=== 'function'
-&& entry.panel.matches(
+!== 'function'
+) {
+return false;
+}
+
+try {
+return entry.panel.matches(
 ':popover-open'
 );
+} catch (_) {
+return false;
+}
+};
 
-return nativeOpen
+const isOpen = (entry) =>
+nativePopoverOpen(entry)
 || entry.panel.classList.contains(
 'is-open'
 );
-};
 
 const syncExpanded = (entry) => {
 entry.toggle.setAttribute(
@@ -1808,9 +1817,7 @@ const closeEntry = (entry) => {
 if (
 typeof entry.panel.hidePopover
 === 'function'
-&& entry.panel.matches(
-':popover-open'
-)
+&& nativePopoverOpen(entry)
 ) {
 try {
 entry.panel.hidePopover();
