@@ -696,7 +696,6 @@ function llama_place_report_fields(): array
         'name_suggestion' => true,
     ]);
     $add('type', 'Place type', 'basic', 'select', 'type', [
-        'default' => 'dispersed-camping',
         'options' => llama_place_report_place_types(),
     ]);
     $add('visited_at', 'Date visited', 'basic', 'date', 'visited_at');
