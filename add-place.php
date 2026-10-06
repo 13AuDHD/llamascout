@@ -756,6 +756,8 @@ $placeReportCompletionConfig = [
                     applicable questions addressed.
                 </span>
 
+                <br />
+
                 <span class="place-report-minimum-status">
                     <strong>Minimum to submit:</strong>
                     name, exact location, 1 current photo.
