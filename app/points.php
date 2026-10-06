@@ -405,7 +405,7 @@ function llama_place_report_completion_summary(
    Base formula:
 
        completion percentage
-       × configured points per percent
+       Ã configured points per percent
 
    The result is capped at new_place_max_points.
 
@@ -708,7 +708,8 @@ function llama_points_completion_storage_lookup(
  */
 function llama_points_changed_completion_items(
     array $finalInput,
-    array $proposedChanges
+    array $proposedChanges,
+    int $photoCount = 0
 ): array {
     $storageLookup =
         llama_points_completion_storage_lookup(
@@ -747,6 +748,11 @@ function llama_points_changed_completion_items(
             true;
     }
 
+    if ($photoCount > 0) {
+        $changedItems['evidence:photo'] =
+            true;
+    }
+
     return
         array_values(
             array_keys(
@@ -762,21 +768,44 @@ function llama_points_changed_completion_items(
 
  * $proposedChanges is the approved update submission's storage
  * path => proposed value map.
+ *
+ * $photoCount is the number of photos contributed by this update.
+ * Photo evidence is one canonical completion item regardless of
+ * how many photos were added.
 
  * This separation is intentional:
  * - finalInput determines which questions are applicable;
  * - proposedChanges determines which questions this contributor
- *   actually changed.
+ *   actually changed;
+ * - photoCount determines whether this update changed the single
+ *   photo-evidence completion item.
  */
 function llama_points_estimate_place_update(
     PDO $db,
     array $finalInput,
-    array $proposedChanges
+    array $proposedChanges,
+    int $photoCount = 0
 ): array {
     $applicableItems =
         llama_place_report_completion_items(
             $finalInput
         );
+
+    /*
+     * Photo evidence is part of the canonical Place Report
+     * completion model even though it is not a normal field.
+     * It therefore always belongs in the update denominator.
+     */
+    $applicableItems[] = [
+        'key' =>
+            'evidence:photo',
+        'label' =>
+            '1 current photo',
+        'fields' =>
+            [],
+        'answered' =>
+            $photoCount > 0,
+    ];
 
     $applicableItemCount =
         count(
@@ -786,7 +815,8 @@ function llama_points_estimate_place_update(
     $changedItems =
         llama_points_changed_completion_items(
             $finalInput,
-            $proposedChanges
+            $proposedChanges,
+            $photoCount
         );
 
     $changedItemCount =
@@ -823,12 +853,13 @@ function llama_points_estimate_place_update(
         );
 
     /*
-     * "For every 2%" means only complete configured increments
-     * earn a point. floor() avoids awarding a point for less
-     * than one complete increment.
+     * Convert the changed percentage to points and round to the
+     * nearest whole point. This keeps the configured
+     * percent-per-point rule while avoiding systematic
+     * under-awarding from fractional results.
      */
     $rawBasePoints =
-        (int) floor(
+        (int) round(
             $changedPercent
             / $percentPerPoint
         );
