@@ -381,6 +381,7 @@ function llama_place_report_field_icon(
         'vehicle_capacity' => 'camper',
         'max_vehicle_length_feet' => 'ruler-measure',
         'max_trailer_length_feet' => 'ruler-measure',
+        'max_rv_length_feet' => 'ruler-measure',
         'campsite_count' => 'numbers',
         'site_number' => 'hash',
         'site_hookups_available' => 'plug-connected',
@@ -758,9 +759,14 @@ function llama_place_report_fields(): array
         'points_categories' => ['site_vehicle'],
     ]);
 
+    /* Each length question follows its own suitability answer. */
+    $add('trailer_suitable', 'Trailer suitable?', 'site_vehicle', 'tri', 'details.trailer_suitable', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
     $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle', 'select', 'details.max_trailer_length_feet', [
         'options' => [
-            'not-recommended' => 'Not recommended',
             '10' => 'About 10 ft', '15' => 'About 15 ft', '20' => 'About 20 ft',
             '25' => 'About 25 ft', '30' => 'About 30 ft', '35' => 'About 35 ft',
             '40' => 'About 40 ft', '45' => 'About 45 ft', '50' => 'About 50 ft',
@@ -770,9 +776,22 @@ function llama_place_report_fields(): array
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $add('rv_suitable', 'RV suitable?', 'site_vehicle', 'tri', 'details.rv_suitable', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('max_rv_length_feet', 'Maximum RV length', 'site_vehicle', 'select', 'details.max_rv_length_feet', [
+        'options' => [
+            '15' => 'About 15 ft', '20' => 'About 20 ft', '25' => 'About 25 ft',
+            '30' => 'About 30 ft', '35' => 'About 35 ft', '40' => 'About 40 ft',
+            '45' => 'About 45 ft', '50' => 'About 50 ft', '60' => '50+ ft',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
     foreach ([
-        'trailer_suitable' => 'Trailer suitable?',
-        'rv_suitable' => 'RV suitable?',
         'tent_camping_suitable' => 'Tent camping suitable?',
         'turnaround_space' => 'Turnaround space?',
         'pull_through' => 'Pull-through site?',
@@ -1517,6 +1536,8 @@ function llama_place_report_fields(): array
             'Choose Yes when the campsite has its own sewer connection. A shared campground dump station belongs in Amenities instead.',
         'max_vehicle_length_feet' =>
             'Estimate the longest single vehicle that could reasonably enter, park, and maneuver here. Think about the entire approach and parking area, not just whether a long vehicle physically fits in one spot.',
+        'max_rv_length_feet' =>
+            'Enter the longest self-propelled RV or motorhome that can safely use this location. This can differ from the maximum trailer length and general vehicle length.',
         'max_trailer_length_feet' =>
             'Estimate the longest trailer that could reasonably reach the Place and maneuver into position. Consider tight turns, backing room, turnaround space, and the approach road.',
         'ground_condition' =>
@@ -1777,6 +1798,16 @@ function llama_place_report_fields(): array
         ['max_trailer_length_feet'],
         [[
             'field' => 'trailer_suitable',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['max_rv_length_feet'],
+        [[
+            'field' => 'rv_suitable',
             'operator' => 'equals',
             'value' => '1',
         ]]
@@ -2274,6 +2305,123 @@ function llama_place_report_fields(): array
             'field' => 'type',
             'operator' => 'not_in',
             'value' => $travelCenterPlaceTypes,
+        ]]
+    );
+
+    /*
+     * =========================================================
+     * PARKING AND ROADSIDE PROFILES
+     * =========================================================
+     * Differentiate commercial parking from rest areas, which can
+     * have real picnic facilities, seasonal closures, hazards and
+     * occasionally dump stations. Never infer that amenities are absent.
+     * The site/road surface and RV/trailer fit questions stay available.
+     */
+    $commercialParkingPlaceTypes = [
+        'retail-parking',
+        'restaurant-parking',
+        'casino-parking',
+        'medical-office-parking',
+        'hospital-parking',
+        'church-parking',
+        'other-parking',
+        'public-parking',
+        'street-parking',
+    ];
+
+    $roadsideParkingPlaceTypes = [
+        'rest-area',
+        'vehicle-pulloff',
+    ];
+
+    /* Parking lots and roadside stops are not numbered campgrounds. */
+    $appendApplicable(
+        $f,
+        [
+            'vehicle_capacity',
+            'designated_sites_only',
+            'existing_sites_encouraged',
+            'dispersed_camping_allowed',
+            'collecting_firewood',
+            'target_shooting_allowed',
+            'food_storage_required',
+            'warning_possible_downed_trees',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => array_merge(
+                $commercialParkingPlaceTypes,
+                $roadsideParkingPlaceTypes
+            ),
+        ]]
+    );
+
+    /*
+     * Commercial and civic parking is not a campsite or natural-use
+     * inventory. Keep traffic, surfaces, hazards that affect vehicles,
+     * overnight comfort, fees, restroom/accessibility, and services.
+     */
+    $appendApplicable(
+        $f,
+        [
+            'region',
+            'tree_cover',
+            'environment_wildlife',
+            'environment_bugs',
+            'critter_activity',
+            'sensory_wildlife_noise',
+            'cliff_exposure',
+            'rockfall_risk',
+            'wildlife_risk',
+            'warning_motorized_recreation_traffic',
+            'warning_passing_vehicle_dust',
+            'current_fire_restrictions_url',
+            'campfire_allowed',
+            'drone_use_legal',
+            'experience_sensory_retreat',
+            'experience_extended_stay_comfort',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => $commercialParkingPlaceTypes,
+        ]]
+    );
+
+    /*
+     * Seasonal campground-style ratings are normally irrelevant to
+     * an operating retail/business lot. A closure still belongs in
+     * the Place status and Scout notes when exceptional.
+     * Rest areas retain these questions: some close seasonally.
+     */
+    $appendApplicable(
+        $f,
+        [
+            'best_months',
+            'winter_access',
+            'mud_season_risk',
+            'snow_risk',
+            'monsoon_risk',
+            'hurricane_risk',
+            'heat_season_risk',
+            'seasonal_access_note',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => $commercialParkingPlaceTypes,
+        ]]
+    );
+
+    /* Street parking has no private internal driveway/turnaround. */
+    $appendApplicable(
+        $f,
+        ['turnaround_space', 'pull_through', 'back_in'],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'street-parking',
         ]]
     );
 
