@@ -153,11 +153,52 @@ require dirname(__DIR__) . '/partials/header.php';
                 $draftPhotos = is_array($draft['photos'] ?? null)
                     ? $draft['photos']
                     : [];
-                $progress = llama_place_draft_progress($db, $draftData, count($draftPhotos));
+                $progress = llama_place_draft_progress(
+                    $db,
+                    $draftData,
+                    count($draftPhotos)
+                );
                 $draftName = trim((string) ($draft['draft_name'] ?? 'Untitled Place'));
+
                 if ($draftName === '') {
                     $draftName = 'Untitled Place';
                 }
+
+                $completionPercent =
+                    max(
+                        0,
+                        min(
+                            100,
+                            (int) (
+                                $progress['completion_percent']
+                                ?? 0
+                            )
+                        )
+                    );
+
+                $completionAnswered =
+                    (int) (
+                        $progress['completion_answered']
+                        ?? 0
+                    );
+
+                $completionTotal =
+                    (int) (
+                        $progress['completion_total']
+                        ?? 0
+                    );
+
+                $estimatedPoints =
+                    (int) (
+                        $progress['estimated_points']
+                        ?? 0
+                    );
+
+                $maxPoints =
+                    (int) (
+                        $progress['max_points']
+                        ?? 0
+                    );
                 ?>
 
                 <article
@@ -183,31 +224,33 @@ require dirname(__DIR__) . '/partials/header.php';
                             </div>
 
                             <span class="saved-later-percent">
-                                <?= (int) $progress['completion_percent'] ?>%
+                                <?= $completionPercent ?>%
                             </span>
                         </div>
 
-                        <div
+                        <progress
                             class="saved-later-progress"
-                            aria-label="<?= (int) $progress['completion_percent'] ?> percent of the Place form completed"
+                            max="100"
+                            value="<?= $completionPercent ?>"
+                            aria-label="<?= $completionPercent ?> percent of the Place report completed"
                         >
-                            <span style="width: <?= (int) $progress['completion_percent'] ?>%;"></span>
-                        </div>
+                            <?= $completionPercent ?>%
+                        </progress>
 
                         <div class="saved-later-stats">
                             <div>
-                                <span>Form completed</span>
-                                <strong><?= (int) $progress['completion_percent'] ?>%</strong>
+                                <span>Report completed</span>
+                                <strong><?= $completionPercent ?>%</strong>
                             </div>
 
                             <div>
-                                <span>Point estimate</span>
-                                <strong><?= (int) $progress['estimated_points'] ?>/<?= (int) $progress['max_points'] ?></strong>
+                                <span>Estimated points</span>
+                                <strong><?= $estimatedPoints ?>/<?= $maxPoints ?></strong>
                             </div>
 
                             <div>
-                                <span>Point categories started</span>
-                                <strong><?= (int) $progress['categories_started'] ?>/<?= (int) $progress['category_count'] ?></strong>
+                                <span>Questions addressed</span>
+                                <strong><?= $completionAnswered ?>/<?= $completionTotal ?></strong>
                             </div>
 
                             <div>
@@ -226,7 +269,13 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
                                 Still needed for the minimum:
                                 <?= htmlspecialchars(
-                                    implode(', ', (array) ($progress['missing_minimum'] ?? [])),
+                                    implode(
+                                        ', ',
+                                        (array) (
+                                            $progress['missing_minimum']
+                                            ?? []
+                                        )
+                                    ),
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ) ?>.
@@ -269,7 +318,11 @@ require dirname(__DIR__) . '/partials/header.php';
                                     'UTF-8'
                                 ) ?>"
                             >
-                            <input type="hidden" name="draft_id" value="<?= $draftId ?>">
+                            <input
+                                type="hidden"
+                                name="draft_id"
+                                value="<?= $draftId ?>"
+                            >
 
                             <button
                                 type="submit"
@@ -287,7 +340,8 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
 
         <p class="saved-later-estimate-note">
-            All point categories are weighted by how much has been answered. The llamas hid the algorithm, somewhere.
+            Estimated points follow Place Report completion. Each applicable
+            completed question contributes equally to the report percentage.
         </p>
     <?php endif; ?>
 </section>
