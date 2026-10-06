@@ -2407,44 +2407,80 @@ function llama_place_report_question_applicable(
             $rule['value']
             ?? null;
 
+        $actualValues =
+            is_array($actual)
+                ? array_map('strval', $actual)
+                : [(string) ($actual ?? '')];
+
+        $expectedValues =
+            array_map(
+                'strval',
+                (array) $expected
+            );
+
+        $primaryExpected =
+            $expectedValues[0]
+            ?? '';
+
+        $specialFalseValues = [
+            '',
+            '0',
+            'false',
+            llama_place_report_unanswered_token(),
+            llama_place_report_unknown_token(),
+        ];
+
+        $actualTruthy =
+            count($actualValues) > 0
+            && array_filter(
+                $actualValues,
+                static fn (string $value): bool =>
+                    !in_array(
+                        strtolower($value),
+                        array_map(
+                            'strtolower',
+                            $specialFalseValues
+                        ),
+                        true
+                    )
+            ) !== [];
+
         $matches =
             match ($operator) {
                 'equals' =>
-                    (string) $actual
-                    === (string) $expected,
+                    in_array(
+                        $primaryExpected,
+                        $actualValues,
+                        true
+                    ),
 
                 'not_equals' =>
-                    (string) $actual
-                    !== (string) $expected,
+                    !in_array(
+                        $primaryExpected,
+                        $actualValues,
+                        true
+                    ),
 
                 'in' =>
-                    in_array(
-                        (string) $actual,
-                        array_map(
-                            'strval',
-                            (array) $expected
-                        ),
-                        true
-                    ),
+                    array_intersect(
+                        $actualValues,
+                        $expectedValues
+                    ) !== [],
 
                 'not_in' =>
-                    !in_array(
-                        (string) $actual,
-                        array_map(
-                            'strval',
-                            (array) $expected
-                        ),
-                        true
-                    ),
+                    array_intersect(
+                        $actualValues,
+                        $expectedValues
+                    ) === [],
 
                 'truthy' =>
-                    !empty($actual),
+                    $actualTruthy,
 
                 'falsy' =>
-                    empty($actual),
+                    !$actualTruthy,
 
                 'answered' =>
-                    llama_place_report_is_answered_input(
+                    llama_place_report_question_answered(
                         $input,
                         $dependsOn
                     ),
