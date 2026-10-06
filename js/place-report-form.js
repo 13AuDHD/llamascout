@@ -1518,6 +1518,11 @@ wrapper.hidden ? '1' : '0';
 
 if (!applicable) {
 wrapper.hidden = true;
+wrapper.style.setProperty(
+'display',
+'none',
+'important'
+);
 wrapper.dataset.placeReportApplicabilityHidden =
 '1';
 return;
@@ -1530,6 +1535,18 @@ wrapper.dataset.placeReportApplicabilityHidden
 wrapper.hidden =
 wrapper.dataset.placeReportOriginalHidden
 === '1';
+
+if (wrapper.hidden) {
+wrapper.style.setProperty(
+'display',
+'none',
+'important'
+);
+} else {
+wrapper.style.removeProperty(
+'display'
+);
+}
 
 delete wrapper.dataset.placeReportApplicabilityHidden;
 }
