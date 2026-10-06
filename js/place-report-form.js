@@ -1781,26 +1781,8 @@ panel,
 })
 .filter(Boolean);
 
-const nativePopoverOpen = (entry) => {
-if (
-typeof entry.panel.matches
-!== 'function'
-) {
-return false;
-}
-
-try {
-return entry.panel.matches(
-':popover-open'
-);
-} catch (_) {
-return false;
-}
-};
-
 const isOpen = (entry) =>
-nativePopoverOpen(entry)
-|| entry.panel.classList.contains(
+entry.panel.classList.contains(
 'is-open'
 );
 
@@ -1814,17 +1796,6 @@ isOpen(entry)
 };
 
 const closeEntry = (entry) => {
-if (
-typeof entry.panel.hidePopover
-=== 'function'
-&& nativePopoverOpen(entry)
-) {
-try {
-entry.panel.hidePopover();
-} catch (_) {
-}
-}
-
 entry.panel.classList.remove(
 'is-open'
 );
@@ -1843,25 +1814,9 @@ closeEntry(entry);
 const openEntry = (entry) => {
 closeOthers(entry);
 
-let openedNatively = false;
-
-if (
-typeof entry.panel.showPopover
-=== 'function'
-) {
-try {
-entry.panel.showPopover();
-openedNatively = true;
-} catch (_) {
-openedNatively = false;
-}
-}
-
-if (!openedNatively) {
 entry.panel.classList.add(
 'is-open'
 );
-}
 
 syncExpanded(entry);
 };
@@ -1902,13 +1857,6 @@ toggleEntry(entry);
 }
 );
 
-entry.panel.addEventListener(
-'toggle',
-() => {
-syncExpanded(entry);
-}
-);
-
 syncExpanded(entry);
 });
 
@@ -1943,6 +1891,7 @@ closeEntry
 }
 );
 };
+  
 
 const setupMultiselectControls = (form) => {
 form
