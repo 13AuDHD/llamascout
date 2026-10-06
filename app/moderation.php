@@ -1221,6 +1221,33 @@ $points =
         ?? 0
     );
 
+$minimumApprovalPercent =
+    llama_points_policy_required(
+        $db,
+        'new_place_minimum_approval_percent'
+    );
+
+$completionPercent =
+    (int) (
+        $newPlacePointEstimate[
+            'completion_percent'
+        ]
+        ?? 0
+    );
+
+if (
+    $completionPercent
+    < $minimumApprovalPercent
+) {
+    throw new RuntimeException(
+        'This Place is only '
+        . $completionPercent
+        . '% complete. It must be at least '
+        . $minimumApprovalPercent
+        . '% complete before approval.'
+    );
+}
+
 $name = trim(
     (string) (
         $data['name']
@@ -1691,209 +1718,6 @@ function moderation_apply_update_field(
             $storedValue,
         ]);
     }
-}
-
-function moderation_approve_update(
-    PDO $db,
-    int $updateId,
-    int $reviewedBy,
-    string $reviewNotes,
-    int $points = 0
-): int {
-    if (!$db->inTransaction()) {
-        throw new RuntimeException(
-            'Place update approval requires an active database transaction.'
-        );
-    }
-
-   $points =
-    llama_points_policy_required(
-        $db,
-        'approved_place_update'
-    );
-
-    $update =
-        moderation_update(
-            $db,
-            $updateId,
-            true
-        );
-
-    if (!$update) {
-        throw new RuntimeException(
-            'The Place update could not be found.'
-        );
-    }
-
-    if (
-        !in_array(
-            (string) $update['status'],
-            [
-                'pending',
-                'needs-changes',
-            ],
-            true
-        )
-    ) {
-        throw new RuntimeException(
-            'This Place update is no longer awaiting review.'
-        );
-    }
-
-    $placeId =
-        (int) $update['place_id'];
-
-    $proposed =
-        $update['proposed'];
-
-    $original =
-        $update['original'];
-
-    $definitions =
-        moderation_place_update_definitions();
-
-    foreach ($proposed as $path => $value) {
-        if (!isset($definitions[$path])) {
-            throw new RuntimeException(
-                'This update contains an unsupported field: ' .
-                $path
-            );
-        }
-
-        if (!array_key_exists($path, $original)) {
-            throw new RuntimeException(
-                'This update is missing its original value for ' .
-                $path .
-                '.'
-            );
-        }
-
-        $current =
-            moderation_current_update_value(
-                $db,
-                $placeId,
-                $path,
-                true
-            );
-
-        if (
-            !moderation_values_match(
-                $current,
-                $original[$path]
-            )
-        ) {
-            throw new RuntimeException(
-                'This Place changed after the contribution was submitted. Review the current value of "' .
-                str_replace(
-                    [
-                        '.',
-                        '_',
-                    ],
-                    ' ',
-                    $path
-                ) .
-                '" before approving.'
-            );
-        }
-    }
-
-    if (
-        !$proposed
-        && empty($update['photo_list'])
-    ) {
-        throw new RuntimeException(
-            'This update does not contain any changes.'
-        );
-    }
-
-    foreach ($proposed as $path => $value) {
-        moderation_apply_update_field(
-            $db,
-            $placeId,
-            $path,
-            $value
-        );
-    }
-
-    moderation_attach_place_photos(
-        $db,
-        $placeId,
-        (int) $update['user_id'],
-        $update['photo_list'],
-        '/uploads/place-updates/' .
-            $updateId .
-            '/'
-    );
-
-    $contributionId =
-        moderation_insert_contribution(
-            $db,
-            $placeId,
-            (int) $update['user_id'],
-            null,
-            (string) (
-                $update['update_type']
-                ?? 'update'
-            ),
-            trim(
-                (string) (
-                    $update['role_at_submission']
-                    ?? 'user'
-                )
-            ),
-            !empty($update['visited_at'])
-                ? (string) $update['visited_at']
-                : null,
-            $reviewedBy,
-            $points,
-            array_keys($proposed),
-            $reviewNotes !== ''
-                ? $reviewNotes
-                : null
-        );
-
-    moderation_award_badge(
-        $db,
-        (int) $update['user_id'],
-        'first-contribution'
-    );
-
-    moderation_award_badge(
-        $db,
-        (int) $update['user_id'],
-        'helpful-editor'
-    );
-
-    $stmt = $db->prepare(
-        'UPDATE place_update_submissions
-         SET
-            status = ?,
-            reviewed_by = ?,
-            review_notes = ?,
-            reviewed_at = CURRENT_TIMESTAMP,
-            contribution_id = ?,
-            points_awarded = ?
-         WHERE id = ?'
-    );
-
-    $stmt->execute([
-        'approved',
-        $reviewedBy,
-        $reviewNotes !== ''
-            ? $reviewNotes
-            : null,
-        $contributionId,
-        max(0, $points),
-        $updateId,
-    ]);
-
-    moderation_remove_tree(
-        dirname(__DIR__) .
-        '/uploads/place-updates/' .
-        $updateId
-    );
-
-    return $contributionId;
 }
 
 function moderation_set_update_status(
