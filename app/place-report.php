@@ -503,6 +503,9 @@ function llama_place_report_field_icon(
         'dogs_required_to_be_leashed' => 'dog-leash',
         'food_storage_required' => 'bear-paw',
         'generator_restrictions' => 'generator',
+        'generator_quiet_hours' => 'moon-stars',
+        'generator_quiet_hours_begin' => 'clock-hour-9',
+        'generator_quiet_hours_end' => 'sunrise',
         'pack_it_in_pack_it_out' => 'trash',
         'existing_sites_encouraged' => 'at-directions-post',
         'residential_use_prohibited' => 'home-off',
@@ -1106,7 +1109,6 @@ function llama_place_report_fields(): array
         'pets_allowed' => 'Pets allowed?',
         'dogs_required_to_be_leashed' => 'Dogs require leash?',
         'food_storage_required' => 'Food storage required?',
-        'generator_restrictions' => 'Generator restrictions?',
         'existing_sites_encouraged' => 'Existing sites encouraged?',
         'pack_it_in_pack_it_out' => 'Pack it in / pack it out?',
         'residential_use_prohibited' => 'Residential use prohibited?',
@@ -1116,6 +1118,42 @@ function llama_place_report_fields(): array
             'points_categories' => ['seasons_rules_services'],
         ]);
     }
+    $add('generator_restrictions', 'Generator restrictions?', 'rules', 'tri', 'rules.generator_restrictions', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
+    $add('generator_quiet_hours', 'Generator quiet hours?', 'rules', 'tri', 'rules.generator_quiet_hours', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
+    $add('generator_quiet_hours_begin', 'Generator quiet hours begin', 'rules', 'select', 'rules.generator_quiet_hours_begin', [
+        'allow_unknown' => true,
+        'options' => [
+            'sunset' => 'Sunset',
+            '19:00' => '7 PM',
+            '20:00' => '8 PM',
+            '21:00' => '9 PM',
+            '22:00' => '10 PM',
+            '23:00' => '11 PM',
+        ],
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
+    $add('generator_quiet_hours_end', 'Generator quiet hours end', 'rules', 'select', 'rules.generator_quiet_hours_end', [
+        'allow_unknown' => true,
+        'options' => [
+            'sunrise' => 'Sunrise',
+            '06:00' => '6 AM',
+            '07:00' => '7 AM',
+            '08:00' => '8 AM',
+            '09:00' => '9 AM',
+            '10:00' => '10 AM',
+        ],
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
     $add('stay_limit_days', 'Stay limit', 'rules', 'select', 'rules.stay_limit_days', [
         'allow_unknown' => true,
         'options' => [
@@ -1427,7 +1465,13 @@ function llama_place_report_fields(): array
         'food_storage_required' =>
             'Choose Yes when food, trash, coolers, toiletries, or other scented items must be stored in a specific way, such as a bear box, approved bear-resistant container, or hard-sided vehicle.',
         'generator_restrictions' =>
-            'Choose Yes when generator use has any special restriction, such as quiet hours, limited operating hours, generator-free loops, seasonal limits, or a complete prohibition. Put the exact rule in Seasonal access notes or Scout Notes.',
+            'Choose Yes when generator use has any special restriction, such as quiet hours, limited operating hours, generator-free loops, seasonal limits, or a complete prohibition.',
+        'generator_quiet_hours' =>
+            'Choose Yes when generator use is specifically restricted during a recurring quiet-hours window. Choose No when the generator restriction is something else, such as a generator-free loop or seasonal prohibition.',
+        'generator_quiet_hours_begin' =>
+            'Choose when generator quiet hours normally begin. Use Sunset when the rule begins at sunset rather than a fixed clock time.',
+        'generator_quiet_hours_end' =>
+            'Choose when generator quiet hours normally end. Use Sunrise when the rule ends at sunrise rather than a fixed clock time.',
         'existing_sites_encouraged' =>
             'Choose Yes when the land manager asks campers to use already-disturbed or established sites when possible, but does not strictly require camping in marked designated sites.',
         'residential_use_prohibited' =>
@@ -1764,6 +1808,29 @@ function llama_place_report_fields(): array
         ]]
     );
 
+
+    $setApplicable(
+        $f,
+        ['generator_quiet_hours'],
+        [[
+            'field' => 'generator_restrictions',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'generator_quiet_hours_begin',
+            'generator_quiet_hours_end',
+        ],
+        [[
+            'field' => 'generator_quiet_hours',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
 
     $setApplicable(
         $f,
