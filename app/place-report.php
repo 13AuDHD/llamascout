@@ -1003,6 +1003,7 @@ function llama_place_report_fields(): array
             'sandy' => 'Sandy',
             'mud-prone' => 'Mud-prone',
             'tree-cover' => 'Tree cover',
+            'wooded' => 'Wooded',
             'open-meadow' => 'Open meadow',
             'riparian' => 'Riparian',
             'dunes' => 'Dunes',
