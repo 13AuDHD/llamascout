@@ -2593,6 +2593,27 @@ function llama_place_report_question_answered(
         return true;
     }
 
+    /*
+     * Checkbox questions are affirmative observations. An unchecked
+     * checkbox may be serialized as 0 by moderator/admin forms, but
+     * that must not turn a grouped checkbox section into an answered
+     * completion item. Only an explicitly checked value answers it.
+     */
+    if (
+        (string) ($field['type'] ?? '')
+        === 'checkbox'
+    ) {
+        return in_array(
+            $value,
+            [
+                true,
+                1,
+                '1',
+            ],
+            true
+        );
+    }
+
     $minimumCharacters =
         max(
             0,
