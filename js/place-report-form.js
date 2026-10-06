@@ -1814,6 +1814,21 @@ closeEntry(entry);
 const openEntry = (entry) => {
 closeOthers(entry);
 
+const bounds =
+entry.toggle.getBoundingClientRect();
+
+const openRight =
+bounds.left > window.innerWidth / 2;
+
+entry.toggle
+.closest(
+'.place-report-field-help'
+)
+?.classList.toggle(
+'is-align-right',
+openRight
+);
+
 entry.panel.classList.add(
 'is-open'
 );
