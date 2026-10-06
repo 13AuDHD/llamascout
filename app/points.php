@@ -342,113 +342,30 @@ function llama_points_new_place_max_points(
 /* =========================================================
    PLACE REPORT COMPLETENESS
 
-   This measures how much of the shared structured report has
-   actually been answered. Deliberate Unknown answers count as
-   completed observations. Photo presence counts once. Fields
-   excluded from new-Place scoring remain excluded here too so
-   the percentage matches the contribution system members see.
+   Completion is owned by app/place-report.php.
+
+   This wrapper is retained because other Llama Scout code may
+   already call llama_place_report_completion_summary(). It now
+   delegates to the canonical deterministic completion engine.
+
+   Important:
+   - applicability is handled by the Place Report schema;
+   - grouped questions such as Amenities count once;
+   - explicitly optional fields do not count;
+   - Unknown / Not observed count as completed observations;
+   - minimum character requirements are enforced centrally;
+   - photo evidence counts once.
    ========================================================= */
 
 function llama_place_report_completion_summary(
     array $data,
     int $photoCount = 0
 ): array {
-    $answeredTotal = 0;
-    $fieldTotal = 0;
-    $pointFieldLookup = [];
-
-    foreach (
-        llama_points_new_place_categories()
-        as $category
-    ) {
-        foreach (
-            (array) $category['fields']
-            as $fieldKey
-        ) {
-            $fieldKey = (string) $fieldKey;
-            $pointFieldLookup[$fieldKey] = true;
-            $fieldTotal++;
-
-            if (
-                llama_points_has_answer(
-                    $data,
-                    $fieldKey
-                )
-            ) {
-                $answeredTotal++;
-            }
-        }
-    }
-
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        if (isset($pointFieldLookup[$fieldKey])) {
-            continue;
-        }
-
-        if (!empty($field['hide_form'])) {
-            continue;
-        }
-
-        if (
-            isset(
-                llama_points_optional_new_place_fields()[
-                    (string) $fieldKey
-                ]
-            )
-        ) {
-            continue;
-        }
-
-        $fieldTotal++;
-
-        if (
-            llama_points_has_answer(
-                $data,
-                (string) $fieldKey
-            )
-        ) {
-            $answeredTotal++;
-        }
-    }
-
-    $fieldTotal++;
-
-    if ($photoCount > 0) {
-        $answeredTotal++;
-    }
-
-    $missingMinimum = [];
-
-    if (!llama_points_has_answer($data, 'name')) {
-        $missingMinimum[] = 'Place name';
-    }
-
-    if (
-        !llama_points_has_answer($data, 'latitude')
-        || !llama_points_has_answer($data, 'longitude')
-    ) {
-        $missingMinimum[] = 'Exact location';
-    }
-
-    if ($photoCount < 1) {
-        $missingMinimum[] = '1 current photo';
-    }
-
-    return [
-        'answered' => $answeredTotal,
-        'total' => $fieldTotal,
-        'percent' =>
-            $fieldTotal > 0
-                ? (int) round(
-                    100 * ($answeredTotal / $fieldTotal)
-                )
-                : 0,
-        'missing_minimum' => $missingMinimum,
-        'minimum_met' => !$missingMinimum,
-    ];
+    return
+        llama_place_report_question_completion_summary(
+            $data,
+            $photoCount
+        );
 }
 
 function llama_points_estimate_new_place(
@@ -456,14 +373,14 @@ function llama_points_estimate_new_place(
     array $data,
     int $photoCount
 ): array {
-$categoryRows = [];
-$standaloneRows = [];
+    $categoryRows = [];
+    $standaloneRows = [];
 
-$estimatedPoints = 0;
-$maxPoints = 0;
+    $estimatedPoints = 0;
+    $maxPoints = 0;
 
-$reportFields =
-    llama_place_report_fields();
+    $reportFields =
+        llama_place_report_fields();
 
     /*
      * =====================================================
@@ -472,6 +389,9 @@ $reportFields =
      *
      * Amenities and Connectivity retain their "any"
      * behavior. Every other category is proportional.
+     *
+     * Point scoring intentionally remains separate from the
+     * completion engine in this change.
      */
     $categories =
         llama_points_new_place_categories();
@@ -486,38 +406,38 @@ $reportFields =
                 ?? []
             );
 
-$answered = 0;
-$missingFields = [];
+        $answered = 0;
+        $missingFields = [];
 
-foreach ($fields as $fieldKey) {
-    $fieldKey =
-        (string) $fieldKey;
+        foreach ($fields as $fieldKey) {
+            $fieldKey =
+                (string) $fieldKey;
 
-    if (
-        llama_points_has_answer(
-            $data,
-            $fieldKey
-        )
-    ) {
-        $answered++;
-        continue;
-    }
+            if (
+                llama_points_has_answer(
+                    $data,
+                    $fieldKey
+                )
+            ) {
+                $answered++;
+                continue;
+            }
 
-    $fieldDefinition =
-        $reportFields[$fieldKey]
-        ?? [];
+            $fieldDefinition =
+                $reportFields[$fieldKey]
+                ?? [];
 
-    $missingFields[] = [
-        'field' =>
-            $fieldKey,
+            $missingFields[] = [
+                'field' =>
+                    $fieldKey,
 
-        'label' =>
-            (string) (
-                $fieldDefinition['label']
-                ?? $fieldKey
-            ),
-    ];
-}
+                'label' =>
+                    (string) (
+                        $fieldDefinition['label']
+                        ?? $fieldKey
+                    ),
+            ];
+        }
 
         $fieldCount =
             count($fields);
@@ -675,149 +595,47 @@ foreach ($fields as $fieldKey) {
 
     /*
      * =====================================================
-     * COMPLETION PERCENTAGE
+     * CANONICAL COMPLETION
      * =====================================================
      *
-     * Count each actual form question only once even when a
-     * field participates in more than one point category.
+     * No field counting is duplicated here anymore.
+     * app/place-report.php decides what is applicable, what
+     * counts, which fields are grouped, and whether an answer
+     * satisfies any minimum-character requirement.
      */
-    $completionFields = [];
-
-    foreach ($categories as $category) {
-        foreach (
-            (array) (
-                $category['fields']
-                ?? []
-            )
-            as $fieldKey
-        ) {
-            $completionFields[
-                (string) $fieldKey
-            ] = true;
-        }
-    }
-
-    foreach (
-        llama_points_standalone_place_fields()
-        as $fieldKey => $_
-    ) {
-        $completionFields[
-            (string) $fieldKey
-        ] = true;
-    }
-
-    $optionalFields =
-        llama_points_optional_new_place_fields();
-
-    /*
-     * Fields outside the points system still count toward
-     * completion unless they are explicitly optional.
-     */
-   foreach (
-       llama_place_report_fields()
-       as $fieldKey => $field
-   ) {
-       $fieldKey =
-           (string) $fieldKey;
-   
-       if (!empty($field['hide_form'])) {
-           continue;
-       }
-   
-       if (
-           isset(
-               $optionalFields[
-                   $fieldKey
-               ]
-           )
-       ) {
-           continue;
-       }
-   
-       $completionFields[
-           $fieldKey
-       ] = true;
-   }
-
-    $fieldTotal =
-        count($completionFields);
-
-    $answeredTotal = 0;
-
-    foreach (
-        array_keys($completionFields)
-        as $fieldKey
-    ) {
-        if (
-            llama_points_has_answer(
-                $data,
-                (string) $fieldKey
-            )
-        ) {
-            $answeredTotal++;
-        }
-    }
-
-    /*
-     * Photo presence counts once toward completion, but photos
-     * do not directly award contribution points.
-     */
-    $fieldTotal++;
-
-    if ($photoCount > 0) {
-        $answeredTotal++;
-    }
-
-
-    /*
-     * =====================================================
-     * MINIMUM SUBMISSION REQUIREMENTS
-     * =====================================================
-     */
-    $missingMinimum = [];
-
-    if (
-        !llama_points_has_answer(
+    $completion =
+        llama_place_report_question_completion_summary(
             $data,
-            'name'
-        )
-    ) {
-        $missingMinimum[] =
-            'Basic information';
-    }
-
-    if (
-        !llama_points_has_answer(
-            $data,
-            'latitude'
-        )
-        ||
-        !llama_points_has_answer(
-            $data,
-            'longitude'
-        )
-    ) {
-        $missingMinimum[] =
-            'Location';
-    }
-
-    if ($photoCount < 1) {
-        $missingMinimum[] =
-            '1 photo';
-    }
+            $photoCount
+        );
 
 
     return [
         'completion_percent' =>
-            $fieldTotal > 0
-                ? (int) round(
-                    100
-                    * (
-                        $answeredTotal
-                        / $fieldTotal
-                    )
+            (int) (
+                $completion['percent']
+                ?? 0
+            ),
+
+        'completion_answered' =>
+            (int) (
+                $completion['answered']
+                ?? 0
+            ),
+
+        'completion_total' =>
+            (int) (
+                $completion['total']
+                ?? 0
+            ),
+
+        'completion_missing' =>
+            array_values(
+                (array) (
+                    $completion['missing']
+                    ?? []
                 )
-                : 0,
+            ),
 
         'estimated_points' =>
             max(
@@ -856,10 +674,17 @@ foreach ($fields as $fieldKey) {
             $standaloneRows,
 
         'minimum_ready' =>
-            !$missingMinimum,
+            !empty(
+                $completion['minimum_met']
+            ),
 
         'missing_minimum' =>
-            $missingMinimum,
+            array_values(
+                (array) (
+                    $completion['missing_minimum']
+                    ?? []
+                )
+            ),
     ];
 }
 
