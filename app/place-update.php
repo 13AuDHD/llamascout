@@ -3117,9 +3117,27 @@ function llama_place_update_approve(
     );
 
 
+    $finalCurrentValues =
+        llama_place_update_current_values(
+            $db,
+            $placeId,
+            true
+        );
+
+
+    $finalInput =
+        llama_place_update_shared_form_values(
+            $finalCurrentValues,
+            array_keys(
+                $newUnknownLookup
+            )
+        );
+
+
     $pointEstimate =
         llama_points_estimate_place_update(
             $db,
+            $finalInput,
             $proposed
         );
 
