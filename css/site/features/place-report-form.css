@@ -424,7 +424,6 @@
     white-space: normal;
 }
 
-.place-report-field-help-panel:popover-open,
 .place-report-field-help-panel.is-open {
     display: block;
 }
