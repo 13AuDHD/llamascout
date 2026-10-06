@@ -2454,7 +2454,7 @@ li.textContent =
 item.label
 + (
 item.details.length
-? ' Ã¢ÂÂ '
+? ' - '
 + item.details.join(', ')
 : ''
 );
