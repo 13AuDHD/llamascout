@@ -352,6 +352,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['policies.css'],
             'features' => ['policy-forms.css'],
         ],
+        'forms.php' => [
+            'pages' => ['forms.css'],
+            'features' => [],
+        ],
         'points.php' => [
             'pages' => ['points.css'],
             'features' => ['policy-forms.css'],
