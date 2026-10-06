@@ -1353,8 +1353,7 @@ field,
 config
 ) => {
 if (
-field.hide_form
-|| field.derived
+field.derived
 || field.counts_toward_completion
 === false
 ) {
@@ -1566,7 +1565,59 @@ form.querySelector(
 '[data-place-report-missing-toggle]'
 );
 
+const syncApplicabilityVisibility = () => {
+config.fields.forEach((field) => {
+const applicable =
+completionFieldApplicable(
+form,
+field,
+config
+);
+
+const controls = [
+...form.querySelectorAll(
+`[name="${CSS.escape(String(field.key))}"]`
+),
+];
+
+controls.forEach((control) => {
+const wrapper =
+control.closest(
+'.contribution-field, .contribution-check'
+);
+
+if (!wrapper) {
+return;
+}
+
+if (!wrapper.dataset.placeReportOriginalHidden) {
+wrapper.dataset.placeReportOriginalHidden =
+wrapper.hidden ? '1' : '0';
+}
+
+if (!applicable) {
+wrapper.hidden = true;
+wrapper.dataset.placeReportApplicabilityHidden =
+'1';
+return;
+}
+
+if (
+wrapper.dataset.placeReportApplicabilityHidden
+=== '1'
+) {
+wrapper.hidden =
+wrapper.dataset.placeReportOriginalHidden
+=== '1';
+
+delete wrapper.dataset.placeReportApplicabilityHidden;
+}
+});
+});
+};
+
 const calculate = () => {
+syncApplicabilityVisibility();
 const items = new Map();
 
 config.fields.forEach((field) => {
