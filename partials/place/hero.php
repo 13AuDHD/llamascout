@@ -59,12 +59,25 @@ require __DIR__ . '/access-alert.php';
 
                     <div
                         class="place-report-completeness"
-                        title="How much of the structured Place Report currently has an observed answer."
+                        title="How many currently applicable Place Report questions have been addressed. Known, Unknown, and Not Observed responses count as addressed."
                     >
                         <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
                         <span>
                             Report completeness
                             <?= (int) ($reportCompleteness['percent'] ?? 0) ?>%
+                            <?php if (
+                                isset(
+                                    $reportCompleteness['answered'],
+                                    $reportCompleteness['total']
+                                )
+                                && (int) $reportCompleteness['total'] > 0
+                            ): ?>
+                                Â·
+                                <?= (int) $reportCompleteness['answered'] ?>
+                                /
+                                <?= (int) $reportCompleteness['total'] ?>
+                                applicable
+                            <?php endif; ?>
                         </span>
                     </div>
 
