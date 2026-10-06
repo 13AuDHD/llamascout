@@ -304,6 +304,60 @@ form {
 
 
 /* =========================================================
+   SERVICE ISSUE BANNER
+   ========================================================= */
+
+.site-service-issue-banner {
+    width: 100%;
+
+    border-bottom: 1px solid #8a6511;
+
+    color: #241800;
+    background: #f7d978;
+}
+
+.site-service-issue-banner-inner {
+    width: min(1200px, calc(100% - 32px));
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    margin: 0 auto;
+    padding: 10px 0;
+
+    font-size: .9rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.site-service-issue-banner-inner .llama-icon {
+    flex: 0 0 auto;
+}
+
+.site-service-issue-banner-inner strong {
+    flex: 0 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .site-service-issue-banner {
+        border-bottom-color: #c09325;
+
+        color: #fff3c9;
+        background: #5a430d;
+    }
+}
+
+:root[data-theme="dark"] .site-service-issue-banner {
+    border-bottom-color: #c09325;
+
+    color: #fff3c9;
+    background: #5a430d;
+}
+
+
+/* =========================================================
    SHARED SITE HEADER
    ========================================================= */
 
@@ -593,6 +647,20 @@ form {
 }
 
 @media (max-width: 700px) {
+    .site-service-issue-banner-inner {
+        align-items: flex-start;
+        justify-content: flex-start;
+
+        padding: 10px 0;
+
+        font-size: .82rem;
+        text-align: left;
+    }
+
+    .site-service-issue-banner-inner strong {
+        display: none;
+    }
+
     .site-main {
         padding-top: 32px;
     }
