@@ -1834,6 +1834,46 @@ function admin_place_normalize_value(
         return (string) $raw;
     }
 
+    if ($type === 'json') {
+        if (is_string($raw)) {
+            $decoded =
+                json_decode(
+                    $raw,
+                    true
+                );
+
+            $raw =
+                is_array($decoded)
+                    ? $decoded
+                    : [];
+        }
+
+        $values = [];
+
+        if (is_array($raw)) {
+            foreach ($raw as $item) {
+                if (!is_scalar($item)) {
+                    continue;
+                }
+
+                $item = trim((string) $item);
+
+                if ($item !== '') {
+                    $values[$item] = true;
+                }
+            }
+        }
+
+        return $values
+            ? json_encode(
+                array_keys($values),
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            )
+            : null;
+    }
+
     return trim((string) $raw) !== ''
         ? trim((string) $raw)
         : null;
@@ -1943,6 +1983,7 @@ function admin_place_save_details(
     $fields = [
         'vehicle_capacity' => 'int',
         'max_vehicle_length_feet' => 'int',
+        'max_trailer_length_feet' => 'text',
         'tent_camping_suitable' => 'bool',
         'rv_suitable' => 'bool',
         'trailer_suitable' => 'bool',
@@ -1976,6 +2017,9 @@ function admin_place_save_details(
         'seasonal_closure' => 'bool',
         'forest' => 'bool',
         'mountains' => 'bool',
+        'landscape_primary' => 'text',
+        'landscape_details' => 'json',
+        'landscape_views' => 'json',
         'water_nearby' => 'bool',
         'water_view' => 'bool',
         'mountain_view' => 'bool',
@@ -1986,6 +2030,7 @@ function admin_place_save_details(
         'sun_exposure' => 'rating',
         'environment_shade' => 'rating',
         'environment_open_sky' => 'rating',
+        'critter_activity' => 'rating',
         'wheelchair_friendly' => 'bool',
         'mobility_device_friendly' => 'bool',
         'flat_walking_surface' => 'bool',
@@ -2008,6 +2053,7 @@ function admin_place_save_details(
         'warning_no_amenities' => 'bool',
         'warning_motorized_recreation_traffic' => 'bool',
         'warning_blind_turn_traffic_nearby' => 'bool',
+        'road_exposure' => 'rating',
     ];
 
     admin_place_save_child_row(
@@ -2038,6 +2084,8 @@ function admin_place_save_sensory_details(
         'dust_from_traffic' => 'rating',
         'generator_noise' => 'rating',
         'aircraft_noise' => 'rating',
+        'train_noise' => 'rating',
+        'dog_barking' => 'rating',
         'road_noise' => 'rating',
         'human_activity' => 'rating',
         'wildlife_noise' => 'rating',
@@ -2154,6 +2202,7 @@ function admin_place_save_rules(
     $fields = [
         'best_months' => 'text',
         'winter_access' => 'bool',
+        'hurricane_risk' => 'bool',
         'snow_risk' => 'rating',
         'mud_season_risk' => 'rating',
         'monsoon_risk' => 'rating',
@@ -2165,7 +2214,15 @@ function admin_place_save_rules(
         'stay_limit_days' => 'text',
         'maximum_days_per_60_day_period' => 'int',
         'move_distance_after_stay_miles' => 'decimal',
+        'reservation_required' => 'bool',
+        'membership_required' => 'bool',
+        'check_in_required' => 'bool',
+        'reservation_url' => 'text',
+        'check_in_begins' => 'text',
+        'checkout_ends' => 'text',
         'fee' => 'decimal',
+        'entrance_facility_fee' => 'decimal',
+        'parking_fee' => 'decimal',
         'campfire_allowed' => 'permission',
         'drone_use_legal' => 'permission',
         'target_shooting_allowed' => 'permission',
