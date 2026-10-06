@@ -485,7 +485,15 @@ function llama_place_report_field_icon(
         'dispersed_camping_allowed' => 'tent',
         'stay_limit_days' => 'calendar',
         'collecting_firewood' => 'wood',
+        'reservation_required' => 'calendar-check',
+        'membership_required' => 'id-badge-2',
+        'check_in_required' => 'door-enter',
+        'reservation_url' => 'link',
+        'check_in_begins' => 'clock-hour-3',
+        'checkout_ends' => 'clock-hour-11',
         'fee' => 'receipt',
+        'entrance_facility_fee' => 'ticket',
+        'parking_fee' => 'parking',
         'campfire_allowed' => 'campfire',
         'drone_use_legal' => 'at-drone-tech',
         'target_shooting_allowed' => 'bullseye',
@@ -1102,7 +1110,72 @@ function llama_place_report_fields(): array
         ],
         'points_categories' => ['seasons_rules_services'],
     ]);
-    $add('fee', 'Fee', 'rules', 'number', 'rules.fee', [
+    $add('reservation_required', 'Reservation required?', 'rules', 'tri', 'rules.reservation_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('membership_required', 'Membership required?', 'rules', 'tri', 'rules.membership_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('check_in_required', 'Check-in required?', 'rules', 'tri', 'rules.check_in_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('reservation_url', 'Reservation URL', 'rules', 'url', 'rules.reservation_url', [
+        'wide' => true,
+        'placeholder' => 'https://...',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('check_in_begins', 'Check-in begins', 'rules', 'select', 'rules.check_in_begins', [
+        'allow_unknown' => true,
+        'options' => [
+            'none' => 'No set check-in time',
+            'anytime' => 'Anytime',
+            '10:00' => '10 AM',
+            '11:00' => '11 AM',
+            '12:00' => '12 PM',
+            '13:00' => '1 PM',
+            '14:00' => '2 PM',
+            '15:00' => '3 PM',
+            '16:00' => '4 PM',
+            '17:00' => '5 PM',
+        ],
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('checkout_ends', 'Checkout ends', 'rules', 'select', 'rules.checkout_ends', [
+        'allow_unknown' => true,
+        'options' => [
+            'none' => 'No set checkout time',
+            'anytime' => 'Anytime',
+            '06:00' => '6 AM',
+            '07:00' => '7 AM',
+            '08:00' => '8 AM',
+            '09:00' => '9 AM',
+            '10:00' => '10 AM',
+            '11:00' => '11 AM',
+            '12:00' => '12 PM',
+            '13:00' => '1 PM',
+        ],
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('fee', 'Camping fee', 'rules', 'number', 'rules.fee', [
+        'step' => '.01',
+        'min' => '0',
+        'max' => '100000',
+        'placeholder' => '0.00',
+        'format' => 'currency',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('entrance_facility_fee', 'Entrance / day-use / facility fee', 'rules', 'number', 'rules.entrance_facility_fee', [
+        'step' => '.01',
+        'min' => '0',
+        'max' => '100000',
+        'placeholder' => '0.00',
+        'format' => 'currency',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('parking_fee', 'Parking fee / pass', 'rules', 'number', 'rules.parking_fee', [
         'step' => '.01',
         'min' => '0',
         'max' => '100000',
@@ -1308,8 +1381,24 @@ function llama_place_report_fields(): array
             'During monsoon season or other intense summer storms, consider whether heavy rain could flood the site or access road, create washes, turn the road to mud, or leave a vehicle stuck or unable to get out.',
         'stay_limit_days' =>
             'Choose the normal stay limit that applies here. Use Permit Limit when the permit itself controls how long someone may remain, or Varies by season when the limit changes during the year.',
+        'reservation_required' =>
+            'Choose Yes when a reservation must be made before staying overnight. Choose No when overnight use is first-come, first-served or otherwise does not require a reservation.',
+        'membership_required' =>
+            'Choose Yes when overnight use requires membership in a program, club, campground network, hosted-stay service, or similar organization.',
+        'check_in_required' =>
+            'Choose Yes when someone must formally check in with a host, office, kiosk, desk, app, or other process before using the overnight space.',
+        'reservation_url' =>
+            'Use the official reservation or booking page for this Place when a reservation is required.',
+        'check_in_begins' =>
+            'Choose the earliest normal check-in time. Use Anytime when arrival is allowed at any hour, or No set check-in time when there is no formal check-in window.',
+        'checkout_ends' =>
+            'Choose the latest normal checkout time. Use Anytime when departure is unrestricted, or No set checkout time when there is no formal checkout deadline.',
         'fee' =>
-            'Enter the fee required to stay or camp at this Place. Do not include an unrelated entrance fee unless paying it is required in order to stay here.',
+            'Enter the camping or overnight-stay fee. Enter 0.00 when overnight camping is free. Do not include entrance, facility, or parking fees here.',
+        'entrance_facility_fee' =>
+            'Enter any separate entrance, day-use, access, or facility fee. Enter 0.00 when there is no such fee.',
+        'parking_fee' =>
+            'Enter any separate parking fee or pass cost. Enter 0.00 when parking does not require a paid fee or pass.',
     ];
 
     foreach ($fieldHelp as $fieldKey => $helpText) {
@@ -1489,6 +1578,33 @@ function llama_place_report_fields(): array
                 'dispersed-camping',
                 'camping-area',
             ],
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'reservation_required',
+            'membership_required',
+            'check_in_required',
+            'check_in_begins',
+            'checkout_ends',
+            'fee',
+        ],
+        [[
+            'field' => 'overnight_camping_allowed',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['reservation_url'],
+        [[
+            'field' => 'reservation_required',
+            'operator' => 'equals',
+            'value' => '1',
         ]]
     );
 
