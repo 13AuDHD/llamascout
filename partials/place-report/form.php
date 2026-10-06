@@ -1113,6 +1113,7 @@ foreach (
                     ?? $field['section']
                     ?? ''
                 ) === $sectionKey
+                && empty($field['derived'])
         );
 
     $combinedCoordinates = '';
