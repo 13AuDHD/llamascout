@@ -885,27 +885,22 @@ require __DIR__ . '/_header.php';
     value="service_issue"
 >
 
-<div class="admin-system-maintenance-toggle">
+<div class="admin-system-service-issue-status">
 
     <div>
         <strong>
             <?= $serviceIssueEnabled
-                ? 'Service issue banner is ON'
-                : 'Service issue banner is OFF' ?>
+                ? 'Service issue banner is enabled'
+                : 'Service issue banner is disabled' ?>
         </strong>
-
-        <span>
-            Use this when Llama Scout remains available but the
-            site, host, server, or an upstream service is causing
-            intermittent problems. This does not restrict access.
-        </span>
     </div>
 
-    <label class="admin-system-service-issue-switch">
+    <label class="admin-system-toggle">
         <input
             type="checkbox"
             name="enabled"
             value="1"
+            aria-label="Enable service issue banner"
             <?= $serviceIssueEnabled
                 ? 'checked'
                 : '' ?>
@@ -914,22 +909,29 @@ require __DIR__ . '/_header.php';
                 : '' ?>
         >
 
-        <span>
+        <span
+            class="admin-system-toggle-track"
+            aria-hidden="true"
+        >
+            <span></span>
+        </span>
+
+        <span class="admin-system-toggle-label">
             <?= $serviceIssueEnabled
-                ? 'On'
-                : 'Off' ?>
+                ? 'Enabled'
+                : 'Disabled' ?>
         </span>
     </label>
 
 </div>
 
 
-<label>
+<label class="admin-system-service-issue-message">
     <span>Public banner message</span>
 
     <textarea
         name="message"
-        rows="3"
+        rows="6"
         maxlength="500"
         <?= !$actorIsOwner
             ? 'disabled'
@@ -937,11 +939,6 @@ require __DIR__ . '/_header.php';
     ><?= moderation_e(
         $serviceIssueMessage
     ) ?></textarea>
-
-    <small>
-        Shown persistently at the top of the public site while
-        the banner is enabled.
-    </small>
 </label>
 
 
