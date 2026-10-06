@@ -382,6 +382,170 @@ $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoTitle = 'Photos of this Place';
 $placeReportPhotoHelp =
     'Add up to 10 current photos. Signs, gates, washouts, road conditions, parking areas, and obstructions are especially useful. Location metadata is removed before permanent storage.';
+
+
+/*
+ * =========================================================
+ * PLACE REPORT COMPLETION BRIDGE
+ *
+ * PHP remains the source of truth. The browser receives only
+ * the metadata needed to mirror the same completion rules live.
+ * No question list or applicability rule is hard-coded here.
+ * =========================================================
+ */
+
+$placeReportCompletionFields = [];
+
+foreach (
+    llama_place_report_fields()
+    as $fieldKey => $field
+) {
+    $placeReportCompletionFields[] = [
+        'key' =>
+            (string) $fieldKey,
+
+        'label' =>
+            (string) (
+                $field['label']
+                ?? $fieldKey
+            ),
+
+        'type' =>
+            (string) (
+                $field['type']
+                ?? ''
+            ),
+
+        'completion_group' =>
+            (
+                isset($field['completion_group'])
+                && $field['completion_group'] !== null
+            )
+                ? (string) $field['completion_group']
+                : null,
+
+        'min_characters' =>
+            max(
+                0,
+                (int) (
+                    $field['min_characters']
+                    ?? 0
+                )
+            ),
+
+        'counts_toward_completion' =>
+            !array_key_exists(
+                'counts_toward_completion',
+                $field
+            )
+            || (bool) $field['counts_toward_completion'],
+
+        'applicable_if' =>
+            array_values(
+                (array) (
+                    $field['applicable_if']
+                    ?? []
+                )
+            ),
+
+        'derived' =>
+            !empty(
+                $field['derived']
+            ),
+
+        'hide_form' =>
+            !empty(
+                $field['hide_form']
+            ),
+    ];
+}
+
+$stagedPhotoData =
+    json_decode(
+        (string) (
+            $_POST['photos_json']
+            ?? '[]'
+        ),
+        true
+    );
+
+$stagedPhotoCount =
+    is_array($stagedPhotoData)
+        ? count($stagedPhotoData)
+        : 0;
+
+$removedExistingPhotos =
+    is_array(
+        $_POST['remove_existing_photos']
+        ?? null
+    )
+        ? array_values(
+            array_filter(
+                array_map(
+                    'strval',
+                    $_POST['remove_existing_photos']
+                ),
+                static fn (string $value): bool =>
+                    trim($value) !== ''
+            )
+        )
+        : [];
+
+$existingPhotoCount = 0;
+
+foreach ($existingSubmissionPhotos as $photo) {
+    $path =
+        llama_place_report_photo_path(
+            $photo
+        );
+
+    if (
+        $path !== ''
+        && !in_array(
+            $path,
+            $removedExistingPhotos,
+            true
+        )
+    ) {
+        $existingPhotoCount++;
+    }
+}
+
+$placeReportInitialPhotoCount =
+    $existingPhotoCount
+    + $stagedPhotoCount;
+
+$placeReportInitialCompletion =
+    llama_place_report_question_completion_summary(
+        $placeReportValues,
+        $placeReportInitialPhotoCount
+    );
+
+$placeReportCompletionConfig = [
+    'unknown_token' =>
+        llama_place_report_unknown_token(),
+
+    'unanswered_token' =>
+        llama_place_report_unanswered_token(),
+
+    'not_observed_token' =>
+        function_exists(
+            'llama_place_report_not_observed_token'
+        )
+            ? llama_place_report_not_observed_token()
+            : '__LLAMA_NOT_OBSERVED__',
+
+    'fields' =>
+        $placeReportCompletionFields,
+
+    'photo_item' => [
+        'key' => 'evidence:photo',
+        'label' => '1 current photo',
+    ],
+
+    'initial' =>
+        $placeReportInitialCompletion,
+];
 ?>
 
 <section class="contribution-page add-place-page">
@@ -534,6 +698,7 @@ $placeReportPhotoHelp =
     <form
         method="post"
         class="contribution-form add-place-form place-report-form"
+        data-place-report-completion-form
     >
         <input
             type="hidden"
@@ -590,6 +755,100 @@ $placeReportPhotoHelp =
                 'UTF-8'
             ) ?>"
         >
+
+        <div
+            class="add-place-form-note place-report-completion"
+            data-place-report-completion
+            role="status"
+            aria-live="polite"
+        >
+            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+
+            <span>
+                <strong>
+                    Report completion:
+                    <span data-place-report-completion-percent>
+                        <?= (int) (
+                            $placeReportInitialCompletion['percent']
+                            ?? 0
+                        ) ?>%
+                    </span>
+                </strong>
+
+                <span data-place-report-completion-count>
+                    <?= (int) (
+                        $placeReportInitialCompletion['answered']
+                        ?? 0
+                    ) ?>
+                    of
+                    <?= (int) (
+                        $placeReportInitialCompletion['total']
+                        ?? 0
+                    ) ?>
+                    applicable questions addressed.
+                </span>
+
+                <button
+                    type="button"
+                    class="add-place-radio-clear"
+                    data-place-report-missing-toggle
+                    aria-expanded="false"
+                >
+                    Show missing
+                </button>
+            </span>
+        </div>
+
+        <div
+            class="contribution-message"
+            data-place-report-missing-panel
+            hidden
+        >
+            <strong>Still applicable and unanswered</strong>
+
+            <div data-place-report-missing-list>
+                <?php
+                $initialMissing =
+                    (array) (
+                        $placeReportInitialCompletion['missing']
+                        ?? []
+                    );
+                ?>
+
+                <?php if (!$initialMissing): ?>
+                    <span>Nothing. Every applicable question is addressed.</span>
+                <?php else: ?>
+                    <ul>
+                        <?php foreach ($initialMissing as $missingItem): ?>
+                            <li>
+                                <?= htmlspecialchars(
+                                    (string) (
+                                        $missingItem['label']
+                                        ?? $missingItem['key']
+                                        ?? 'Question'
+                                    ),
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <script
+            type="application/json"
+            data-place-report-completion-config
+        ><?= json_encode(
+            $placeReportCompletionConfig,
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+            | JSON_HEX_TAG
+            | JSON_HEX_AMP
+            | JSON_HEX_APOS
+            | JSON_HEX_QUOT
+        ) ?></script>
 
         <?php
         require __DIR__
