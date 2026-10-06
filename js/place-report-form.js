@@ -1108,7 +1108,11 @@ capture: true,
 
 /*
  * =========================================================
- * LIVE PLACE REPORT COMPLETION + NARRATIVE COUNTERS
+ * SHARED PLACE REPORT SCHEMA BEHAVIOR
+ *
+ * Contextual applicability controls whether a question is visible.
+ * Completion eligibility is separate: optional notes may remain
+ * visible without contributing to the completion denominator.
  * =========================================================
  */
 
@@ -1121,10 +1125,76 @@ String(value ?? '')
 return Array.from(normalized).length;
 };
 
+const readPlaceReportConfig = (form) => {
+const configNode =
+form.querySelector(
+'[data-place-report-schema-config]'
+)
+?? form.querySelector(
+'[data-place-report-completion-config]'
+);
+
+if (!configNode) {
+return null;
+}
+
+try {
+const config =
+JSON.parse(
+configNode.textContent || '{}'
+);
+
+return Array.isArray(config.fields)
+? config
+: null;
+} catch (_) {
+return null;
+}
+};
+
 const completionFieldValue = (
 form,
 fieldKey
 ) => {
+const arrayControls = [
+...form.querySelectorAll(
+`[name="${CSS.escape(fieldKey + '[]')}"]`
+),
+];
+
+if (arrayControls.length) {
+const first =
+arrayControls[0];
+
+if (
+first instanceof HTMLSelectElement
+&& first.multiple
+) {
+return [
+...first.selectedOptions,
+].map(
+(option) => String(option.value)
+);
+}
+
+const checkboxes =
+arrayControls.filter(
+(control) =>
+control instanceof HTMLInputElement
+&& control.type === 'checkbox'
+);
+
+if (checkboxes.length) {
+return checkboxes
+.filter(
+(control) => control.checked
+)
+.map(
+(control) => String(control.value)
+);
+}
+}
+
 const controls = [
 ...form.querySelectorAll(
 `[name="${CSS.escape(fieldKey)}"]`
@@ -1215,6 +1285,15 @@ String(item ?? '').trim() !== ''
 );
 }
 
+if (
+String(field.type || '')
+=== 'checkbox'
+) {
+return value === '1'
+|| value === 1
+|| value === true;
+}
+
 const minimum =
 Math.max(
 0,
@@ -1270,10 +1349,17 @@ String(field.key) === fieldKey
 );
 
 return dependency
-? completionValueAnswered(
+? (
+fieldContextuallyApplicable(
+form,
+dependency,
+config
+)
+&& completionValueAnswered(
 actual,
 dependency,
 config
+)
 )
 : String(actual).trim() !== '';
 }
@@ -1282,8 +1368,12 @@ const falseValues = [
 '',
 '0',
 'false',
-String(config.unanswered_token || '').toLowerCase(),
-String(config.unknown_token || '').toLowerCase(),
+String(
+config.unanswered_token || ''
+).toLowerCase(),
+String(
+config.unknown_token || ''
+).toLowerCase(),
 ];
 
 const actualValues =
@@ -1310,63 +1400,46 @@ if (operator === 'falsy') {
 return !actualTruthy;
 }
 
-const actualString =
-Array.isArray(actual)
-? actual.map(String)
-: String(actual);
-
 const expectedValues =
 Array.isArray(expected)
 ? expected.map(String)
 : [String(expected ?? '')];
 
 if (operator === 'equals') {
-return Array.isArray(actualString)
-? actualString.includes(
+return actualValues.includes(
 expectedValues[0]
-)
-: actualString === expectedValues[0];
+);
 }
 
 if (operator === 'not_equals') {
-return Array.isArray(actualString)
-? !actualString.includes(
+return !actualValues.includes(
 expectedValues[0]
-)
-: actualString !== expectedValues[0];
+);
 }
 
 if (operator === 'in') {
-return Array.isArray(actualString)
-? actualString.some(
+return actualValues.some(
 (value) =>
 expectedValues.includes(value)
-)
-: expectedValues.includes(actualString);
+);
 }
 
 if (operator === 'not_in') {
-return Array.isArray(actualString)
-? actualString.every(
+return actualValues.every(
 (value) =>
 !expectedValues.includes(value)
-)
-: !expectedValues.includes(actualString);
+);
 }
 
 return false;
 };
 
-const completionFieldApplicable = (
+const fieldContextuallyApplicable = (
 form,
 field,
 config
 ) => {
-if (
-field.derived
-|| field.counts_toward_completion
-=== false
-) {
+if (field.derived) {
 return false;
 }
 
@@ -1384,6 +1457,292 @@ config
 )
 );
 };
+
+const fieldCountsTowardCompletion = (
+form,
+field,
+config
+) =>
+fieldContextuallyApplicable(
+form,
+field,
+config
+)
+&& field.counts_toward_completion
+!== false;
+
+const syncApplicabilityVisibility = (
+form,
+config
+) => {
+config.fields.forEach((field) => {
+const applicable =
+fieldContextuallyApplicable(
+form,
+field,
+config
+);
+
+const key =
+String(field.key || '');
+
+if (!key) {
+return;
+}
+
+const controls = [
+...form.querySelectorAll(
+`[name="${CSS.escape(key)}"], [name="${CSS.escape(key + '[]')}"]`
+),
+];
+
+controls.forEach((control) => {
+const wrapper =
+control.closest(
+'.contribution-field, .contribution-check'
+);
+
+if (!wrapper) {
+return;
+}
+
+if (
+!Object.prototype.hasOwnProperty.call(
+wrapper.dataset,
+'placeReportOriginalHidden'
+)
+) {
+wrapper.dataset.placeReportOriginalHidden =
+wrapper.hidden ? '1' : '0';
+}
+
+if (!applicable) {
+wrapper.hidden = true;
+wrapper.dataset.placeReportApplicabilityHidden =
+'1';
+return;
+}
+
+if (
+wrapper.dataset.placeReportApplicabilityHidden
+=== '1'
+) {
+wrapper.hidden =
+wrapper.dataset.placeReportOriginalHidden
+=== '1';
+
+delete wrapper.dataset.placeReportApplicabilityHidden;
+}
+});
+});
+};
+
+const setupNarrativeCounters = (
+form,
+config
+) => {
+config.fields.forEach((field) => {
+const minimum =
+Math.max(
+0,
+Number(field.min_characters || 0)
+);
+
+if (minimum < 1) {
+return;
+}
+
+const input =
+form.querySelector(
+`textarea[name="${CSS.escape(String(field.key))}"], input[name="${CSS.escape(String(field.key))}"]`
+);
+
+if (!input) {
+return;
+}
+
+let counter =
+input.parentElement
+?.querySelector(
+`[data-place-report-character-counter="${CSS.escape(String(field.key))}"]`
+);
+
+if (!counter) {
+counter =
+document.createElement(
+'small'
+);
+
+counter.dataset.placeReportCharacterCounter =
+String(field.key);
+
+counter.className =
+'place-report-character-counter';
+
+input.insertAdjacentElement(
+'afterend',
+counter
+);
+}
+
+const update = () => {
+const count =
+normalizedCharacterCount(
+input.value
+);
+
+const met =
+count >= minimum;
+
+counter.textContent =
+count.toLocaleString()
++ ' / '
++ minimum.toLocaleString()
++ ' characters';
+
+counter.dataset.minimumMet =
+met ? '1' : '0';
+};
+
+input.addEventListener(
+'input',
+update
+);
+
+update();
+});
+};
+
+const setupMultiselectControls = (form) => {
+form
+.querySelectorAll(
+'[data-place-report-multiselect]'
+)
+.forEach((control) => {
+const search =
+control.querySelector(
+'[data-place-report-multiselect-search]'
+);
+
+const options = [
+...control.querySelectorAll(
+'[data-place-report-multiselect-option]'
+),
+];
+
+const summary =
+control.querySelector(
+'[data-place-report-multiselect-summary]'
+);
+
+const defaultSummary =
+String(
+summary?.dataset.defaultSummary
+|| 'Choose options'
+);
+
+const syncSummary = () => {
+const selected =
+options.filter(
+(option) =>
+option.querySelector(
+'input[type="checkbox"]'
+)?.checked
+);
+
+if (summary) {
+summary.textContent =
+selected.length > 0
+? selected.length.toLocaleString()
++ ' selected'
+: defaultSummary;
+}
+};
+
+const filterOptions = () => {
+const needle =
+String(
+search?.value || ''
+)
+.trim()
+.toLowerCase();
+
+options.forEach((option) => {
+const label =
+String(
+option.dataset.searchText
+|| option.textContent
+|| ''
+)
+.toLowerCase();
+
+option.hidden =
+needle !== ''
+&& !label.includes(needle);
+});
+};
+
+search?.addEventListener(
+'input',
+filterOptions
+);
+
+control.addEventListener(
+'change',
+syncSummary
+);
+
+syncSummary();
+});
+};
+
+const setupSharedPlaceReportBehavior = (
+form
+) => {
+const config =
+readPlaceReportConfig(form);
+
+if (!config) {
+return null;
+}
+
+setupNarrativeCounters(
+form,
+config
+);
+
+setupMultiselectControls(
+form
+);
+
+const sync = () => {
+syncApplicabilityVisibility(
+form,
+config
+);
+};
+
+form.addEventListener(
+'input',
+sync
+);
+
+form.addEventListener(
+'change',
+sync
+);
+
+sync();
+
+return config;
+};
+
+
+/*
+ * =========================================================
+ * LIVE PLACE REPORT COMPLETION
+ * =========================================================
+ */
 
 const completionPhotoCount = (form) => {
 let staged = 0;
@@ -1431,124 +1790,29 @@ existing++;
 return staged + existing;
 };
 
-const setupNarrativeCounters = (
+const setupLiveCompletion = (
 form,
-config
+sharedConfig = null
 ) => {
-config.fields.forEach((field) => {
-const minimum =
-Math.max(
-0,
-Number(field.min_characters || 0)
-);
-
-if (minimum < 1) {
-return;
-}
-
-const input =
-form.querySelector(
-`textarea[name="${CSS.escape(field.key)}"], input[name="${CSS.escape(field.key)}"]`
-);
-
-if (!input) {
-return;
-}
-
-let counter =
-input.parentElement
-?.querySelector(
-`[data-place-report-character-counter="${CSS.escape(field.key)}"]`
-);
-
-if (!counter) {
-counter =
-document.createElement(
-'small'
-);
-
-counter.dataset.placeReportCharacterCounter =
-String(field.key);
-
-counter.style.display = 'block';
-counter.style.marginTop = '6px';
-counter.style.fontWeight = '600';
-counter.style.color =
-'var(--text-muted)';
-
-input.insertAdjacentElement(
-'afterend',
-counter
-);
-}
-
-const update = () => {
-const count =
-normalizedCharacterCount(
-input.value
-);
-
-const met =
-count >= minimum;
-
-counter.textContent =
-count.toLocaleString()
-+ ' / '
-+ minimum.toLocaleString()
-+ ' characters';
-
-counter.style.color =
-met
-? 'var(--success, #2f9e44)'
-: 'var(--text-muted)';
-
-counter.dataset.minimumMet =
-met ? '1' : '0';
-};
-
-input.addEventListener(
-'input',
-update
-);
-
-update();
-});
-};
-
-const setupLiveCompletion = (form) => {
-const configNode =
-form.querySelector(
-'[data-place-report-completion-config]'
-);
-
 const box =
 form.querySelector(
 '[data-place-report-completion]'
 );
 
-if (!configNode || !box) {
+if (!box) {
 return;
 }
 
-let config;
+const config =
+sharedConfig
+?? readPlaceReportConfig(form);
 
-try {
-config =
-JSON.parse(
-configNode.textContent || '{}'
-);
-} catch (_) {
+if (
+!config
+|| !Array.isArray(config.fields)
+) {
 return;
 }
-
-if (!Array.isArray(config.fields)) {
-return;
-}
-
-setupNarrativeCounters(
-form,
-config
-);
 
 const percentNode =
 box.querySelector(
@@ -1575,64 +1839,12 @@ form.querySelector(
 '[data-place-report-missing-toggle]'
 );
 
-const syncApplicabilityVisibility = () => {
-config.fields.forEach((field) => {
-const applicable =
-completionFieldApplicable(
-form,
-field,
-config
-);
-
-const controls = [
-...form.querySelectorAll(
-`[name="${CSS.escape(String(field.key))}"]`
-),
-];
-
-controls.forEach((control) => {
-const wrapper =
-control.closest(
-'.contribution-field, .contribution-check'
-);
-
-if (!wrapper) {
-return;
-}
-
-if (!wrapper.dataset.placeReportOriginalHidden) {
-wrapper.dataset.placeReportOriginalHidden =
-wrapper.hidden ? '1' : '0';
-}
-
-if (!applicable) {
-wrapper.hidden = true;
-wrapper.dataset.placeReportApplicabilityHidden =
-'1';
-return;
-}
-
-if (
-wrapper.dataset.placeReportApplicabilityHidden
-=== '1'
-) {
-wrapper.hidden =
-wrapper.dataset.placeReportOriginalHidden
-=== '1';
-
-delete wrapper.dataset.placeReportApplicabilityHidden;
-}
-});
-});
-};
-
 const calculate = () => {
-syncApplicabilityVisibility();
 const items = new Map();
 
 config.fields.forEach((field) => {
 if (
-!completionFieldApplicable(
+!fieldCountsTowardCompletion(
 form,
 field,
 config
@@ -1754,16 +1966,14 @@ total > 0
 )
 : 0;
 
-const missing =
-rows.filter(
-(item) => !item.answered
-);
-
 return {
 answered,
 total,
 percent,
-missing,
+missing:
+rows.filter(
+(item) => !item.answered
+),
 };
 };
 
@@ -1781,7 +1991,7 @@ countNode.textContent =
 summary.answered.toLocaleString()
 + ' of '
 + summary.total.toLocaleString()
-+ ' applicable questions addressed.';
++ ' applicable completion items addressed.';
 }
 
 if (listNode) {
@@ -1794,7 +2004,7 @@ document.createElement(
 );
 
 done.textContent =
-'Nothing. Every applicable question is addressed.';
+'Nothing. Every applicable completion item is addressed.';
 
 listNode.appendChild(done);
 } else {
@@ -1880,7 +2090,12 @@ render();
 
 forms.forEach((form) => {
 setupTaxonomy(form);
-setupLiveCompletion(form);
+const placeReportConfig =
+setupSharedPlaceReportBehavior(form);
+setupLiveCompletion(
+form,
+placeReportConfig
+);
 form
 .querySelectorAll(
 '[data-place-report-clear]'
