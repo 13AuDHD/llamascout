@@ -387,6 +387,28 @@ function llama_place_update_valid_identifier(
 }
 
 
+function llama_place_update_normalize_storage_value(
+    mixed $value,
+    array $definition
+): mixed {
+    $field =
+        $definition['shared']
+        ?? [];
+
+    if (
+        is_array($field)
+        && (string) ($field['type'] ?? '')
+            === 'multiselect'
+    ) {
+        return llama_place_report_multiselect_values(
+            $value
+        );
+    }
+
+    return $value;
+}
+
+
 function llama_place_update_current_values(
     PDO $db,
     int $placeId,
@@ -466,8 +488,11 @@ function llama_place_update_current_values(
 
 
             $values[$path] =
-                $cache['places'][$column]
-                ?? null;
+                llama_place_update_normalize_storage_value(
+                    $cache['places'][$column]
+                        ?? null,
+                    $definition
+                );
 
             continue;
         }
@@ -525,8 +550,11 @@ function llama_place_update_current_values(
 
 
             $values[$path] =
-                $cache[$cacheKey][$column]
-                ?? null;
+                llama_place_update_normalize_storage_value(
+                    $cache[$cacheKey][$column]
+                        ?? null,
+                    $definition
+                );
 
             continue;
         }
@@ -568,8 +596,11 @@ function llama_place_update_current_values(
 
 
         $values[$path] =
-            $cache[$table][$column]
-            ?? null;
+            llama_place_update_normalize_storage_value(
+                $cache[$table][$column]
+                    ?? null,
+                $definition
+            );
     }
 
 
@@ -650,9 +681,12 @@ function llama_place_update_current_value(
             $stmt->fetchColumn();
 
 
-        return $value === false
-            ? null
-            : $value;
+        return llama_place_update_normalize_storage_value(
+            $value === false
+                ? null
+                : $value,
+            $definition
+        );
     }
 
 
@@ -693,9 +727,12 @@ function llama_place_update_current_value(
             $stmt->fetchColumn();
 
 
-        return $value === false
-            ? null
-            : $value;
+        return llama_place_update_normalize_storage_value(
+            $value === false
+                ? null
+                : $value,
+            $definition
+        );
     }
 
 
@@ -724,9 +761,12 @@ function llama_place_update_current_value(
         $stmt->fetchColumn();
 
 
-    return $value === false
-        ? null
-        : $value;
+    return llama_place_update_normalize_storage_value(
+        $value === false
+            ? null
+            : $value,
+        $definition
+    );
 }
 
 
@@ -844,6 +884,16 @@ function llama_place_update_shared_form_values(
         }
 
 
+        if ($type === 'multiselect') {
+            $values[$key] =
+                llama_place_report_multiselect_values(
+                    $value
+                );
+
+            continue;
+        }
+
+
         if (
             in_array(
                 $type,
@@ -920,6 +970,29 @@ function llama_place_update_value_equal(
         || $b === null
     ) {
         return $a === $b;
+    }
+
+
+    if (
+        (string) (
+            $field['type']
+            ?? ''
+        ) === 'multiselect'
+    ) {
+        $aValues =
+            llama_place_report_multiselect_values(
+                $a
+            );
+
+        $bValues =
+            llama_place_report_multiselect_values(
+                $b
+            );
+
+        sort($aValues, SORT_STRING);
+        sort($bValues, SORT_STRING);
+
+        return $aValues === $bValues;
     }
 
 
@@ -1013,7 +1086,10 @@ function llama_place_update_build_changes(
         }
 
 
-        if (is_array($raw)) {
+        if (
+            is_array($raw)
+            && $type !== 'multiselect'
+        ) {
             continue;
         }
 
@@ -1861,7 +1937,7 @@ function llama_place_update_resubmit(
             'Complete Access is required to update this Place.'
         );
     }
-    
+
     if (
         !llama_contributor_can(
             db(),
@@ -2281,14 +2357,39 @@ function llama_place_update_apply_field(
     }
 
 
-    $storedValue =
-        is_bool($value)
-            ? (
+    $field =
+        $definition['shared']
+        ?? [];
+
+    if (
+        is_array($field)
+        && (string) ($field['type'] ?? '')
+            === 'multiselect'
+    ) {
+        $values =
+            llama_place_report_multiselect_values(
                 $value
-                    ? 1
-                    : 0
-            )
-            : $value;
+            );
+
+        $storedValue =
+            $values
+                ? json_encode(
+                    $values,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                )
+                : null;
+    } else {
+        $storedValue =
+            is_bool($value)
+                ? (
+                    $value
+                        ? 1
+                        : 0
+                )
+                : $value;
+    }
 
 
     if ($table === 'places') {
@@ -3249,6 +3350,34 @@ function llama_place_update_display_value(
         return
             (int) $value
             . '/5';
+    }
+
+
+    if ($type === 'multiselect') {
+        $options =
+            (array) (
+                $field['options']
+                ?? []
+            );
+
+        $labels = [];
+
+        foreach (
+            llama_place_report_multiselect_values(
+                $value
+            )
+            as $selected
+        ) {
+            $labels[] =
+                (string) (
+                    $options[$selected]
+                    ?? $selected
+                );
+        }
+
+        return $labels
+            ? implode(', ', $labels)
+            : 'Not provided';
     }
 
 
