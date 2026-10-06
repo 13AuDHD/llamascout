@@ -3999,6 +3999,36 @@ function llama_place_report_question_completion_summary(
     }
 
     if (
+    !llama_place_report_question_answered(
+        $input,
+        'type'
+    )
+    ) {
+        $missingMinimum[] =
+            'Place type';
+    }
+    
+    if (
+        !llama_place_report_question_answered(
+            $input,
+            'visited_at'
+        )
+    ) {
+        $missingMinimum[] =
+            'Date visited';
+    }
+    
+    if (
+        !llama_place_report_question_answered(
+            $input,
+            'description'
+        )
+    ) {
+        $missingMinimum[] =
+            'Description';
+    }
+    
+    if (
         !llama_place_report_question_answered(
             $input,
             'latitude'
@@ -4220,6 +4250,18 @@ function llama_place_report_validate_new_place_minimum(
         $missing[] = 'a Place name';
     }
 
+    if (trim((string) ($data['type'] ?? '')) === '') {
+        $missing[] = 'a Place type';
+    }
+    
+    if (trim((string) ($data['visited_at'] ?? '')) === '') {
+        $missing[] = 'the date visited';
+    }
+    
+    if (trim((string) ($data['description'] ?? '')) === '') {
+        $missing[] = 'a description';
+    }
+    
     if (
         !is_numeric($data['latitude'] ?? null)
         || !is_numeric($data['longitude'] ?? null)
