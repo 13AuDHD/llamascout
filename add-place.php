@@ -756,19 +756,10 @@ $placeReportCompletionConfig = [
                     applicable questions addressed.
                 </span>
 
-<div class="add-place-form-note">
-
-    <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
-
-    <span>
-
-        <strong>Minimum to submit:</strong> a Place name, exact map
-
-        location, and at least one current photo.
-
-    </span>
-
-</div>
+                <span class="place-report-minimum-status">
+                    <strong>Minimum to submit:</strong>
+                    name, exact location, 1 current photo.
+                </span>
 
                 <button
                     type="button"
