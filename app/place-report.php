@@ -1651,6 +1651,37 @@ function llama_place_report_fields(): array
         ]]
     );
 
+
+    $setApplicable(
+        $f,
+        ['connectivity_starlink_note'],
+        [[
+            'field' => 'connectivity_starlink_tested',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['warning_possible_downed_trees'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campingPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['seasonal_access_note'],
+        [[
+            'field' => 'seasonal_closure',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
     return $f;
 }
 
