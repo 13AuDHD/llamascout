@@ -26,7 +26,13 @@ declare(strict_types=1);
             <label>
                 Publish status
 
-                <select name="publish_status">
+                <select
+                    name="publish_status"
+                    <?= $meetsMinimumApproval
+                        ? ''
+                        : 'disabled'
+                    ?>
+                >
                     <option value="active">Active</option>
                     <option value="featured">Featured</option>
                 </select>
@@ -37,13 +43,32 @@ declare(strict_types=1);
                 type="submit"
                 name="action"
                 value="approve"
+                <?= $meetsMinimumApproval
+                    ? ''
+                    : 'disabled aria-disabled="true"'
+                ?>
             >
                 <i aria-hidden="true">
                     <?= llama_icon('circle-check') ?>
                 </i>
-                Approve and Publish
+
+                <?= $meetsMinimumApproval
+                    ? 'Approve and Publish'
+                    : 'Below Minimum Completion'
+                ?>
             </button>
         </div>
+
+        <?php if (!$meetsMinimumApproval): ?>
+            <div class="admin-moderation-notice">
+                Approval is unavailable because this report is
+                <?= number_format($completionPercent) ?>%
+                complete. The configured minimum is
+                <?= number_format(
+                    $minimumApprovalPercent
+                ) ?>%.
+            </div>
+        <?php endif; ?>
 
         <label>
             Review notes
