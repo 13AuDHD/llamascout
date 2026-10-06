@@ -3492,6 +3492,22 @@ function llama_place_report_applicability_rule_matches(
         return false;
     }
 
+    /*
+     * A stored Yes on an inapplicable parent must not activate children.
+     * Example: generator restrictions and quiet hours from an older
+     * report must not become active when overnight use is disallowed.
+     */
+    if (
+        $dependsOn !== 'type'
+        && isset(llama_place_report_fields()[$dependsOn])
+        && !llama_place_report_question_applicable(
+            $input,
+            $dependsOn
+        )
+    ) {
+        return false;
+    }
+
     $actual =
         $input[$dependsOn]
         ?? null;
