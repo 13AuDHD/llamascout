@@ -575,51 +575,22 @@ try {
                 )
                 : 0;
 
+        /*
+         * A live published Place has no permanent "Date visited."
+         * That belongs to individual Scout reports, so exclude it
+         * through the canonical completion engine rather than
+         * changing the denominator after the calculation.
+         */
         $reportCompleteness =
-            llama_place_report_completion_summary(
+            llama_place_report_question_completion_summary(
                 llama_place_report_scoring_input_from_data(
                     $completionData
                 ),
-                $completionPhotos
+                $completionPhotos,
+                [
+                    'visited_at',
+                ]
             );
-
-        /*
-         * visited_at belongs to an individual contribution,
-         * not to the live Place record. Published Places do
-         * not store one permanent visit date, so it must not
-         * reduce live Place completeness.
-         */
-        if (
-            isset(
-                $reportCompleteness['answered'],
-                $reportCompleteness['total']
-            )
-            && (int) $reportCompleteness['total'] > 0
-        ) {
-            $liveCompletenessTotal =
-                max(
-                    0,
-                    (int) $reportCompleteness['total']
-                    - 1
-                );
-
-            $reportCompleteness['total'] =
-                $liveCompletenessTotal;
-
-            $reportCompleteness['percent'] =
-                $liveCompletenessTotal > 0
-                    ? min(
-                        100,
-                        (int) round(
-                            100
-                            * (
-                                (int) $reportCompleteness['answered']
-                                / $liveCompletenessTotal
-                            )
-                        )
-                    )
-                    : 0;
-        }
     }
 } catch (
     Throwable
