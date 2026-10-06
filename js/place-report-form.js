@@ -1552,6 +1552,59 @@ delete wrapper.dataset.placeReportApplicabilityHidden;
 }
 });
 });
+
+/*
+ * If every Place Report field inside a section is hidden by
+ * applicability, hide the section shell too. Photo/special sections
+ * with no ordinary field wrappers are left alone.
+ */
+form
+.querySelectorAll(
+'.contribution-section'
+)
+.forEach((section) => {
+const wrappers = [
+...section.querySelectorAll(
+'.contribution-field, .contribution-check'
+),
+];
+
+if (!wrappers.length) {
+return;
+}
+
+const hasVisibleField =
+wrappers.some((wrapper) => {
+const applicabilityHidden =
+wrapper.dataset.placeReportApplicabilityHidden
+=== '1';
+
+return !applicabilityHidden;
+});
+
+if (!hasVisibleField) {
+section.hidden = true;
+section.style.setProperty(
+'display',
+'none',
+'important'
+);
+section.dataset.placeReportApplicabilityHidden =
+'1';
+return;
+}
+
+if (
+section.dataset.placeReportApplicabilityHidden
+=== '1'
+) {
+section.hidden = false;
+section.style.removeProperty(
+'display'
+);
+delete section.dataset.placeReportApplicabilityHidden;
+}
+});
 };
 
 const setupNarrativeCounters = (
