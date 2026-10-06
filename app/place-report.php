@@ -2502,6 +2502,86 @@ function llama_place_report_fields(): array
         ]]
     );
 
+    /*
+     * =========================================================
+     * NATURAL DAY-USE AND ROADSIDE PROFILES
+     * =========================================================
+     * Trailheads, overlooks, road pull-offs and day-use facilities can
+     * legitimately permit overnight use, require reservations/fees,
+     * have rough entrances, or contain developed amenities. Do not
+     * assume overnight camping is forbidden or that facilities are
+     * absent. This profile only removes questions describing the
+     * geometry of an individual campsite rather than a public parking
+     * location, and makes overnight-specific items conditional.
+     */
+    $naturalDayUsePlaceTypes = [
+        'trailhead',
+        'scenic-overlook',
+        'vehicle-pulloff',
+        'day-use',
+    ];
+
+    $appendApplicable(
+        $f,
+        [
+            'vehicle_capacity',
+            'pull_through',
+            'back_in',
+            'target_shooting_allowed',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => $naturalDayUsePlaceTypes,
+        ]]
+    );
+
+    /*
+     * The road/pull-off surface, shade, views and access information
+     * remain meaningful. Firewood collection is not a characteristic
+     * of an overlook itself, though it can matter at a trailhead or
+     * a managed day-use recreation area, so avoid broad exclusions.
+     */
+    $appendApplicable(
+        $f,
+        ['collecting_firewood'],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'scenic-overlook',
+        ]]
+    );
+
+    /*
+     * Explicit overnight permission (Yes or Permit) unlocks camping
+     * fee and overnight comfort. Day-use/parking/entrance fees remain
+     * visible because they may apply to visitors staying only by day.
+     */
+    $overnightUseForNaturalDayUse = [[
+        'operator' => 'any',
+        'rules' => [
+            [
+                'field' => 'type',
+                'operator' => 'not_in',
+                'value' => $naturalDayUsePlaceTypes,
+            ],
+            [
+                'field' => 'overnight_camping_allowed',
+                'operator' => 'in',
+                'value' => ['1', '2'],
+            ],
+        ],
+    ]];
+
+    $appendApplicable(
+        $f,
+        [
+            'fee',
+            'experience_overnight_comfort',
+        ],
+        $overnightUseForNaturalDayUse
+    );
+
     return $f;
 }
 
