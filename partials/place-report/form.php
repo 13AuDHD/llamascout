@@ -225,6 +225,33 @@ if (
 }
 
 
+$placeReportBrowserFields = [];
+
+foreach ($placeReportFields as $fieldKey => $field) {
+    $placeReportBrowserFields[] = [
+        'key' => (string) $fieldKey,
+        'label' => (string) ($field['label'] ?? $fieldKey),
+        'type' => (string) ($field['type'] ?? ''),
+        'completion_group' => isset($field['completion_group'])
+            && $field['completion_group'] !== null
+                ? (string) $field['completion_group']
+                : null,
+        'min_characters' => max(0, (int) ($field['min_characters'] ?? 0)),
+        'counts_toward_completion' => !array_key_exists(
+            'counts_toward_completion',
+            $field
+        ) || (bool) $field['counts_toward_completion'],
+        'applicable_if' => array_values((array) ($field['applicable_if'] ?? [])),
+        'derived' => !empty($field['derived']),
+    ];
+}
+
+$placeReportBrowserConfig = [
+    'unknown_token' => llama_place_report_unknown_token(),
+    'unanswered_token' => llama_place_report_unanswered_token(),
+    'fields' => $placeReportBrowserFields,
+];
+
 $e =
     static fn (mixed $value): string =>
         htmlspecialchars(
@@ -246,7 +273,7 @@ $valueFor =
         array $field
     ) use (
         $placeReportValues
-    ): string {
+    ): mixed {
         if (
             array_key_exists(
                 $key,
@@ -255,6 +282,10 @@ $valueFor =
         ) {
             $value =
                 $placeReportValues[$key];
+
+            if (is_array($value)) {
+                return array_values($value);
+            }
 
             return is_scalar($value)
                 ? (string) $value
@@ -783,6 +814,86 @@ $renderField =
 
 
             <?php elseif (
+                $type === 'multiselect'
+            ): ?>
+
+
+                <?php
+                $selectedValues =
+                    is_array($current)
+                        ? array_map('strval', $current)
+                        : [];
+
+                $multiOptions =
+                    (array) (
+                        $field['options']
+                        ?? []
+                    );
+
+                $multiSummary =
+                    (string) (
+                        $field['summary']
+                        ?? 'Choose options'
+                    );
+                ?>
+
+                <details
+                    class="place-report-multiselect"
+                    data-place-report-multiselect
+                >
+                    <summary
+                        data-place-report-multiselect-summary
+                        data-default-summary="<?= $e($multiSummary) ?>"
+                    >
+                        <?= $selectedValues
+                            ? number_format(count($selectedValues)) . ' selected'
+                            : $e($multiSummary) ?>
+                    </summary>
+
+                    <div class="place-report-multiselect-panel">
+                        <input
+                            type="search"
+                            class="place-report-multiselect-search"
+                            placeholder="<?= $e(
+                                $field['search_placeholder']
+                                ?? 'Search options...'
+                            ) ?>"
+                            autocomplete="off"
+                            data-place-report-multiselect-search
+                        >
+
+                        <div class="place-report-multiselect-options">
+                            <?php foreach (
+                                $multiOptions
+                                as $optionValue => $optionLabel
+                            ): ?>
+                                <label
+                                    class="place-report-multiselect-option"
+                                    data-place-report-multiselect-option
+                                    data-search-text="<?= $e($optionLabel) ?>"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        name="<?= $e($key) ?>[]"
+                                        value="<?= $e($optionValue) ?>"
+                                        <?= in_array(
+                                            (string) $optionValue,
+                                            $selectedValues,
+                                            true
+                                        )
+                                            ? 'checked'
+                                            : '' ?>
+                                    >
+
+                                    <span><?= $e($optionLabel) ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </details>
+
+
+            <?php elseif (
                 $type === 'select'
             ): ?>
 
@@ -790,7 +901,9 @@ $renderField =
                 <?php
                 $renderSelect(
                     $field,
-                    $current
+                    is_array($current)
+                        ? ''
+                        : (string) $current
                 );
                 ?>
 
@@ -959,6 +1072,22 @@ $renderField =
     };
 
 
+?>
+
+<script
+    type="application/json"
+    data-place-report-schema-config
+><?= json_encode(
+    $placeReportBrowserConfig,
+    JSON_UNESCAPED_SLASHES
+    | JSON_UNESCAPED_UNICODE
+    | JSON_HEX_TAG
+    | JSON_HEX_AMP
+    | JSON_HEX_APOS
+    | JSON_HEX_QUOT
+) ?></script>
+
+<?php
 /*
  * =========================================================
  * PLACE REPORT SECTIONS
