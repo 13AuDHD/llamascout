@@ -232,104 +232,13 @@ $adminPageTitle =
 $adminPageEyebrow =
     'Configuration';
 
-/*
- * Until Forms receives its own sidebar item, keep the Configuration
- * group context visible by highlighting Policies.
- */
 $adminActiveNav =
     'forms';
 
 require __DIR__ . '/_header.php';
 ?>
 
-<style>
-.admin-forms-intro {
-    margin-bottom: var(--admin-panel-gap);
-}
 
-.admin-forms-grid {
-    display: grid;
-}
-
-.admin-forms-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(140px, 220px);
-    gap: 18px;
-    align-items: center;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-}
-
-.admin-forms-row:last-child {
-    border-bottom: 0;
-}
-
-.admin-forms-row > span {
-    min-width: 0;
-    display: grid;
-    gap: 4px;
-}
-
-.admin-forms-row strong {
-    font-size: .74rem;
-}
-
-.admin-forms-row small {
-    color: var(--text-muted);
-    font-size: .64rem;
-    line-height: 1.45;
-}
-
-.admin-forms-row input {
-    width: 100%;
-    min-height: 40px;
-    box-sizing: border-box;
-    padding: 8px 9px;
-    border: 1px solid var(--border);
-    border-radius: var(--admin-control-radius);
-    background: var(--background);
-    color: var(--text);
-    font: inherit;
-}
-
-.admin-forms-savebar {
-    position: sticky;
-    bottom: 14px;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: var(--admin-panel-gap);
-    padding: 14px 16px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
-}
-
-.admin-forms-savebar p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: .67rem;
-    line-height: 1.45;
-}
-
-@media (max-width: 680px) {
-    .admin-forms-row {
-        grid-template-columns: 1fr;
-    }
-
-    .admin-forms-savebar {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .admin-forms-savebar .admin-button {
-        width: 100%;
-    }
-}
-</style>
 
 <?php if ($notice !== ''): ?>
     <div class="admin-user-notice is-success">
