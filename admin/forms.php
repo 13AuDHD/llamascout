@@ -237,7 +237,7 @@ $adminPageEyebrow =
  * group context visible by highlighting Policies.
  */
 $adminActiveNav =
-    'policies';
+    'forms';
 
 require __DIR__ . '/_header.php';
 ?>
