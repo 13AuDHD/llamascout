@@ -1850,6 +1850,114 @@ form.querySelector(
 '[data-place-report-missing-toggle]'
 );
 
+let missingPanelOpened = false;
+
+const hasMeaningfulProgress = () => {
+if (completionPhotoCount(form) > 0) {
+return true;
+}
+
+return config.fields.some((field) => {
+const key =
+String(field.key || '');
+
+if (
+!key
+|| key === 'name'
+|| !fieldContextuallyApplicable(
+form,
+field,
+config
+)
+) {
+return false;
+}
+
+const value =
+completionFieldValue(
+form,
+key
+);
+
+if (Array.isArray(value)) {
+return value.some(
+(item) =>
+String(item ?? '').trim() !== ''
+);
+}
+
+const normalized =
+String(value ?? '').trim();
+
+return (
+normalized !== ''
+&& normalized
+!== String(
+config.unanswered_token || ''
+)
+);
+});
+};
+
+const setMissingPanelOpen = (open) => {
+missingPanelOpened =
+Boolean(open);
+
+if (panel) {
+panel.hidden =
+!missingPanelOpened;
+
+if (missingPanelOpened) {
+panel.style.removeProperty(
+'display'
+);
+} else {
+panel.style.setProperty(
+'display',
+'none',
+'important'
+);
+}
+}
+
+if (toggle) {
+toggle.setAttribute(
+'aria-expanded',
+missingPanelOpened
+? 'true'
+: 'false'
+);
+
+toggle.textContent =
+missingPanelOpened
+? 'Hide missing'
+: 'Show missing';
+}
+};
+
+const setMissingToggleAvailable = (
+available
+) => {
+if (!toggle) {
+return;
+}
+
+toggle.hidden =
+!available;
+
+if (available) {
+toggle.style.removeProperty(
+'display'
+);
+} else {
+toggle.style.setProperty(
+'display',
+'none',
+'important'
+);
+}
+};
+
 const calculate = () => {
 const items = new Map();
 
@@ -1997,12 +2105,35 @@ percentNode.textContent =
 summary.percent + '%';
 }
 
+const meaningfulProgress =
+hasMeaningfulProgress();
+
 if (countNode) {
 countNode.textContent =
+meaningfulProgress
+? (
 summary.answered.toLocaleString()
 + ' of '
 + summary.total.toLocaleString()
-+ ' applicable completion items addressed.';
++ ' applicable completion items addressed.'
+)
+: 'Start filling out the report to track completion.';
+}
+
+const canShowMissing =
+meaningfulProgress
+&& summary.missing.length > 0;
+
+setMissingToggleAvailable(
+canShowMissing
+);
+
+if (!canShowMissing) {
+setMissingPanelOpen(false);
+} else {
+setMissingPanelOpen(
+missingPanelOpened
+);
 }
 
 if (listNode) {
@@ -2063,20 +2194,9 @@ if (!panel) {
 return;
 }
 
-panel.hidden =
-!panel.hidden;
-
-toggle.setAttribute(
-'aria-expanded',
-panel.hidden
-? 'false'
-: 'true'
+setMissingPanelOpen(
+!missingPanelOpened
 );
-
-toggle.textContent =
-panel.hidden
-? 'Show missing'
-: 'Hide missing';
 }
 );
 
