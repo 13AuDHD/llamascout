@@ -104,12 +104,8 @@ if (
 }
 
 $policyRows = [];
-$policyLookup = [];
-$categoryDefinitions = [];
-$standaloneDefinitions = [];
+$placeReportPolicyRows = [];
 $otherPolicyRows = [];
-$newPlaceMax = 0;
-$placeUpdateMax = 0;
 
 try {
     $policyRows =
@@ -118,44 +114,24 @@ try {
         );
 
     foreach ($policyRows as $row) {
-        $policyLookup[
-            (string) $row['policy_key']
-        ] = $row;
-
-        if (
+        $group =
             (string) (
                 $row['group']
                 ?? ''
-            ) === 'Other Contributions'
-        ) {
+            );
+
+        if ($group === 'Place Report Points') {
+            $placeReportPolicyRows[] =
+                $row;
+        } elseif ($group === 'Other Contributions') {
             $otherPolicyRows[] =
                 $row;
         }
     }
-
-    $categoryDefinitions =
-        llama_place_report_category_definitions();
-
-    $standaloneDefinitions =
-        llama_points_standalone_place_fields();
-
-    $newPlaceMax =
-        llama_points_new_place_max_points(
-            $db
-        );
-
-    $placeUpdateMax =
-        llama_points_place_update_max_points(
-            $db
-        );
 } catch (Throwable $exception) {
     $policyRows = [];
-    $policyLookup = [];
-    $categoryDefinitions = [];
-    $standaloneDefinitions = [];
+    $placeReportPolicyRows = [];
     $otherPolicyRows = [];
-    $newPlaceMax = 0;
-    $placeUpdateMax = 0;
 
     if ($error === '') {
         $error =
@@ -272,136 +248,144 @@ require
     </header>
 
 
-    <?php if ($categoryDefinitions): ?>
+<?php if ($policyRows): ?>
 
-        <form method="post">
+    <form method="post">
 
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="<?= moderation_e(
-                    moderation_csrf_token()
-                ) ?>"
-            >
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= moderation_e(
+                moderation_csrf_token()
+            ) ?>"
+        >
 
-            <input
-                type="hidden"
-                name="points_admin_action"
-                value="save-policy"
-            >
+        <input
+            type="hidden"
+            name="points_admin_action"
+            value="save-policy"
+        >
 
+        <?php if ($placeReportPolicyRows): ?>
 
-            <section class="admin-points-policy-group admin-points-category-policy">
+            <section class="admin-points-policy-group">
 
-                <header class="admin-points-category-header">
-                    <div>
-                        <h3>Place Report Points</h3>
-                    </div>
-
-                    <div class="admin-points-policy-maxima">
-                        <span>
-                            New Place max
-                            <strong><?= number_format($newPlaceMax) ?></strong>
-                        </span>
-
-                        <span>
-                            Update max
-                            <strong><?= number_format($placeUpdateMax) ?></strong>
-                        </span>
-                    </div>
+                <header>
+                    <h3>Place Report Points</h3>
                 </header>
 
-
-                <div class="admin-points-category-table">
-
-                    <div class="admin-points-category-columns" aria-hidden="true">
-                        <span>Category</span>
-                        <span>New Place</span>
-                        <span>Update</span>
-                    </div>
-
+                <div class="admin-policy-grid">
 
                     <?php foreach (
-                        $categoryDefinitions
-                        as $slug => $category
+                        $placeReportPolicyRows
+                        as $row
                     ): ?>
 
-                        <?php
-                        $newKey =
-                            (string) (
-                                $category['policy_key']
-                                ?? ''
-                            );
-
-                        $updateKey =
-                            'place_update_'
-                            . (string) $slug;
-
-                        $newRow =
-                            $policyLookup[$newKey]
-                            ?? null;
-
-                        $updateRow =
-                            $policyLookup[$updateKey]
-                            ?? null;
-
-                        if (!$newRow || !$updateRow) {
-                            continue;
-                        }
-                        ?>
-
-                        <div class="admin-points-category-row">
-
-                            <span class="admin-points-category-copy">
+                        <label class="admin-policy-row">
+                            <span>
                                 <strong>
                                     <?= moderation_e(
-                                        (string) (
-                                            $category['label']
-                                            ?? $slug
-                                        )
+                                        (string) $row['label']
                                     ) ?>
                                 </strong>
+
+                                <small>
+                                    <?= moderation_e(
+                                        (string) $row['description']
+                                    ) ?>
+                                </small>
                             </span>
 
-
-                            <label>
-                                <span>New Place</span>
-
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    name="policy[<?= moderation_e($newKey) ?>]"
-                                    value="<?= (int) $newRow['points_value'] ?>"
-                                    <?= !$actorIsOwner
-                                        ? 'disabled'
-                                        : ''
-                                    ?>
-                                >
-                            </label>
-
-
-                            <label>
-                                <span>Update</span>
-
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    name="policy[<?= moderation_e($updateKey) ?>]"
-                                    value="<?= (int) $updateRow['points_value'] ?>"
-                                    <?= !$actorIsOwner
-                                        ? 'disabled'
-                                        : ''
-                                    ?>
-                                >
-                            </label>
-
-                        </div>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                name="policy[<?= moderation_e(
+                                    (string) $row['policy_key']
+                                ) ?>]"
+                                value="<?= (int) $row['points_value'] ?>"
+                                <?= !$actorIsOwner
+                                    ? 'disabled'
+                                    : ''
+                                ?>
+                            >
+                        </label>
 
                     <?php endforeach; ?>
 
                 </div>
+
+            </section>
+
+        <?php endif; ?>
+
+        <?php if ($otherPolicyRows): ?>
+
+            <section class="admin-points-policy-group">
+
+                <header>
+                    <h3>Other Contributions</h3>
+                </header>
+
+                <div class="admin-policy-grid">
+
+                    <?php foreach (
+                        $otherPolicyRows
+                        as $row
+                    ): ?>
+
+                        <label class="admin-policy-row">
+                            <span>
+                                <strong>
+                                    <?= moderation_e(
+                                        (string) $row['label']
+                                    ) ?>
+                                </strong>
+
+                                <small>
+                                    <?= moderation_e(
+                                        (string) $row['description']
+                                    ) ?>
+                                </small>
+                            </span>
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                name="policy[<?= moderation_e(
+                                    (string) $row['policy_key']
+                                ) ?>]"
+                                value="<?= (int) $row['points_value'] ?>"
+                                <?= !$actorIsOwner
+                                    ? 'disabled'
+                                    : ''
+                                ?>
+                            >
+                        </label>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+            </section>
+
+        <?php endif; ?>
+
+        <?php if ($actorIsOwner): ?>
+            <div class="admin-points-save">
+                <button
+                    class="admin-button"
+                    type="submit"
+                >
+                    Save points policy
+                </button>
+            </div>
+        <?php endif; ?>
+
+    </form>
+
+<?php endif; ?>
 
             </section>
 
