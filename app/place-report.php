@@ -1534,6 +1534,36 @@ function llama_place_report_fields(): array
             }
         };
 
+    $appendApplicable =
+        static function (
+            array &$fields,
+            array $fieldKeys,
+            array $rules
+        ): void {
+            foreach ($fieldKeys as $fieldKey) {
+                if (!isset($fields[$fieldKey])) {
+                    continue;
+                }
+
+                $existing =
+                    array_values(
+                        (array) (
+                            $fields[$fieldKey]['applicable_if']
+                            ?? []
+                        )
+                    );
+
+                $fields[$fieldKey]['applicable_if'] =
+                    array_values(
+                        array_merge(
+                            $existing,
+                            $rules
+                        )
+                    );
+            }
+        };
+
+
     $campingPlaceTypes = [
         'dispersed-camping',
         'developed-campground',
@@ -1859,6 +1889,129 @@ function llama_place_report_fields(): array
             'field' => 'seasonal_closure',
             'operator' => 'equals',
             'value' => '1',
+        ]]
+    );
+
+
+    /*
+     * =========================================================
+     * TRAVEL CENTER / TRUCK STOP PROFILE
+     * =========================================================
+     *
+     * A commercial travel center should not read like a public-land
+     * campsite inspection. Keep developed-property, overnight,
+     * sensory, accessibility, vehicle-fit, connectivity, and
+     * operational questions; suppress backcountry/public-land noise.
+     */
+    $travelCenterPlaceTypes = [
+        'travel-center',
+        'truck-stop',
+    ];
+
+    $travelCenterNotApplicable = [
+        /*
+         * Location metadata that only makes sense for managed
+         * recreation land.
+         */
+        'region',
+
+        /*
+         * Large commercial lots are not campsite-capacity questions.
+         * Parking geometry and vehicle fit remain available.
+         */
+        'vehicle_capacity',
+        'tree_cover',
+
+        /*
+         * Ordinary paved-property access does not need a road/trail
+         * condition inventory.
+         */
+        'road_surface',
+        'road_width',
+
+        /*
+         * Backcountry/natural-setting observations that add little
+         * value to a commercial overnight stop.
+         */
+        'environment_water_nearby',
+        'environment_wildlife',
+        'environment_bugs',
+        'critter_activity',
+        'sensory_dust_from_traffic',
+        'sensory_wildlife_noise',
+
+        /*
+         * Natural-terrain / emergency-access warnings that are not
+         * useful for an ordinary developed travel-center property.
+         * Keep Trip/Fall Hazard and Traffic Hazard because those can
+         * absolutely matter in a parking lot.
+         */
+        'flash_flood_risk',
+        'wildfire_risk',
+        'cliff_exposure',
+        'rockfall_risk',
+        'wildlife_risk',
+        'emergency_access',
+        'warning_possible_downed_trees',
+        'warning_passing_vehicle_dust',
+        'warning_motorized_recreation_traffic',
+        'warning_blind_turn_traffic_nearby',
+        'road_exposure',
+
+        /*
+         * Travel centers are normally year-round developed
+         * businesses. Temporary storm closures belong to live status,
+         * not a Scout's seasonal campsite profile.
+         */
+        'best_months',
+        'winter_access',
+        'hurricane_risk',
+        'snow_risk',
+        'mud_season_risk',
+        'monsoon_risk',
+        'seasonal_access_note',
+
+        /*
+         * Public-land / campsite-rule questions.
+         */
+        'dispersed_camping_allowed',
+        'collecting_firewood',
+        'campfire_allowed',
+        'drone_use_legal',
+        'target_shooting_allowed',
+        'designated_sites_only',
+        'food_storage_required',
+        'existing_sites_encouraged',
+        'pack_it_in_pack_it_out',
+        'current_fire_restrictions_url',
+
+        /*
+         * Fuel is intrinsic to the Travel Center / Truck Stop type.
+         * Other nearby services remain useful.
+         */
+        'nearest_fuel',
+
+        /*
+         * Scenic/backcountry experience ratings are noise at a
+         * commercial stop. Keep Quiet Evening, Overnight Comfort,
+         * and Remote Work because those directly affect overnight use.
+         */
+        'experience_sunrise_view',
+        'experience_sunset_view',
+        'experience_overall_scenery',
+        'experience_night_sky',
+        'experience_stargazing',
+        'experience_extended_stay_comfort',
+        'experience_sensory_retreat',
+    ];
+
+    $appendApplicable(
+        $f,
+        $travelCenterNotApplicable,
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => $travelCenterPlaceTypes,
         ]]
     );
 
