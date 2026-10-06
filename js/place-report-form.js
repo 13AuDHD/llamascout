@@ -1275,28 +1275,36 @@ config
 : String(actual).trim() !== '';
 }
 
-if (operator === 'truthy') {
-return Array.isArray(actual)
-? actual.length > 0
-: ![
+const falseValues = [
 '',
 '0',
 'false',
-config.unanswered_token,
-].includes(
-String(actual).toLowerCase()
+String(config.unanswered_token || '').toLowerCase(),
+String(config.unknown_token || '').toLowerCase(),
+];
+
+const actualValues =
+Array.isArray(actual)
+? actual.map(
+(value) => String(value)
+)
+: [String(actual ?? '')];
+
+const actualTruthy =
+actualValues.length > 0
+&& actualValues.some(
+(value) =>
+!falseValues.includes(
+String(value).toLowerCase()
+)
 );
+
+if (operator === 'truthy') {
+return actualTruthy;
 }
 
 if (operator === 'falsy') {
-return !completionRuleMatches(
-form,
-{
-...rule,
-operator: 'truthy',
-},
-config
-);
+return !actualTruthy;
 }
 
 const actualString =
@@ -1803,7 +1811,7 @@ li.textContent =
 item.label
 + (
 item.details.length
-? ' — '
+? ' â '
 + item.details.join(', ')
 : ''
 );
