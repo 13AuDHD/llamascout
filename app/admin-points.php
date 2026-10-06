@@ -5,176 +5,56 @@ declare(strict_types=1);
 function admin_points_policy_definitions(): array
 {
     return [
-        'new_place_site_vehicle' => [
-            'group' => 'New Place Categories',
-            'label' => 'Site + Vehicle',
-            'description' => 'Maximum points available from Site + Vehicle information.',
+        'new_place_points_per_percent' => [
+            'group' => 'Place Report Points',
+            'label' => 'New Place points per 1% completion',
+            'description' =>
+                'Points awarded for each percentage point of approved New Place completion.',
         ],
-        'new_place_road_access' => [
-            'group' => 'New Place Categories',
-            'label' => 'Road Access',
-            'description' => 'Maximum points available from Road Access information.',
+
+        'new_place_max_points' => [
+            'group' => 'Place Report Points',
+            'label' => 'New Place maximum points',
+            'description' =>
+                'Maximum points available from one approved New Place.',
         ],
-        'new_place_amenities' => [
-            'group' => 'New Place Categories',
-            'label' => 'Amenities',
-            'description' => 'Awarded when the contributor explicitly reports any amenity information, including No amenities.',
+
+        'new_place_minimum_approval_percent' => [
+            'group' => 'Place Report Points',
+            'label' => 'Minimum approval completion',
+            'description' =>
+                'Minimum completion percentage required before a New Place can be approved.',
         ],
-        'new_place_connectivity' => [
-            'group' => 'New Place Categories',
-            'label' => 'Connectivity',
-            'description' => 'Awarded when the contributor supplies at least one cellular, Starlink, or connectivity observation.',
+
+        'place_update_percent_per_point' => [
+            'group' => 'Place Report Points',
+            'label' => 'Update percent per point',
+            'description' =>
+                'Percentage of applicable report questions changed for each update point.',
         ],
-        'new_place_sensory' => [
-            'group' => 'New Place Categories',
-            'label' => 'Sensory',
-            'description' => 'Maximum points available from daytime, nighttime, and detailed sensory observations.',
+
+        'place_update_max_points' => [
+            'group' => 'Place Report Points',
+            'label' => 'Update maximum points',
+            'description' =>
+                'Maximum points available from one approved update or correction.',
         ],
-        'new_place_environment' => [
-            'group' => 'New Place Categories',
-            'label' => 'Environment',
-            'description' => 'Maximum points available from environment observations.',
-        ],
-        'new_place_accessibility' => [
-            'group' => 'New Place Categories',
-            'label' => 'Accessibility',
-            'description' => 'Maximum points available from accessibility observations.',
-        ],
-        'new_place_safety_warnings' => [
-            'group' => 'New Place Categories',
-            'label' => 'Safety + Warnings',
-            'description' => 'Maximum points available from safety, hazard, and quick-warning observations.',
-        ],
-        'new_place_seasons_rules_services' => [
-            'group' => 'New Place Categories',
-            'label' => 'Seasons + Rules + Services',
-            'description' => 'Maximum points available from seasonal access, rules, fees, fire, and nearby-service information.',
-        ],
-        'new_place_experience_recommendations' => [
-            'group' => 'New Place Categories',
-            'label' => 'Experience + Recommendations',
-            'description' => 'Maximum points available from experience ratings and recommendations.',
-        ],
-        'new_place_description' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Description',
-            'description' => '',
-        ],
-        'new_place_access_summary' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Access Summary',
-            'description' => '',
-        ],
-        'new_place_sensory_summary' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Sensory Summary',
-            'description' => '',
-        ],
-        'new_place_not_recommended_for' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Not Recommended For',
-            'description' => '',
-        ],
-        'new_place_seasonal_access_note' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Seasonal Access Notes',
-            'description' => '',
-        ],
-        'new_place_current_fire_restrictions_url' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Current Fire Restrictions URL',
-            'description' => '',
-        ],
-        'place_update_site_vehicle' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Site + Vehicle',
-            'description' => 'Maximum points available from approved Site + Vehicle changes.',
-        ],
-        'place_update_road_access' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Road Access',
-            'description' => 'Maximum points available from approved Road Access changes.',
-        ],
-        'place_update_amenities' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Amenities',
-            'description' => 'Maximum points available from approved Amenities changes.',
-        ],
-        'place_update_connectivity' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Connectivity',
-            'description' => 'Maximum points available from approved cellular, Starlink, or connectivity changes.',
-        ],
-        'place_update_sensory' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Sensory',
-            'description' => 'Maximum points available from approved Sensory changes.',
-        ],
-        'place_update_environment' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Environment',
-            'description' => 'Maximum points available from approved Environment changes.',
-        ],
-        'place_update_accessibility' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Accessibility',
-            'description' => 'Maximum points available from approved Accessibility changes.',
-        ],
-        'place_update_safety_warnings' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Safety + Warnings',
-            'description' => 'Maximum points available from approved Safety + Warnings changes.',
-        ],
-        'place_update_seasons_rules_services' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Seasons + Rules + Services',
-            'description' => 'Maximum points available from approved seasonal, rules, fee, fire, or nearby-service changes.',
-        ],
-        'place_update_experience_recommendations' => [
-            'group' => 'Place Update Categories',
-            'label' => 'Experience + Recommendations',
-            'description' => 'Maximum points available from approved Experience + Recommendation changes.',
-        ],
-                'place_update_description' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Description',
-            'description' => '',
-        ],
-        'place_update_access_summary' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Access Summary',
-            'description' => '',
-        ],
-        'place_update_sensory_summary' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Sensory Summary',
-            'description' => '',
-        ],
-        'place_update_not_recommended_for' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Not Recommended For',
-            'description' => '',
-        ],
-        'place_update_seasonal_access_note' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Seasonal Access Notes',
-            'description' => '',
-        ],
-        'place_update_current_fire_restrictions_url' => [
-            'group' => 'Standalone Place Fields',
-            'label' => 'Current Fire Restrictions URL',
-            'description' => '',
+
+        'points_global_multiplier' => [
+            'group' => 'Place Report Points',
+            'label' => 'Global points multiplier',
+            'description' =>
+                'Stored as a percentage. 100 = 1.00x, 150 = 1.50x, 200 = 2.00x.',
         ],
 
         'place_checkin' => [
             'group' => 'Other Contributions',
             'label' => 'Place Check In',
-            'description' => 'Points awarded for a successful geofenced on-site Place check-in.',
+            'description' =>
+                'Points awarded for a successful geofenced on-site Place check-in.',
         ],
-
     ];
 }
-
 function admin_points_policy_rows(PDO $db): array
 {
     $definitions =
@@ -399,57 +279,6 @@ function admin_points_save_policy(
 
         $saved[$key] = $value;
     }
-
-    /*
-     * These two legacy totals remain available for reporting and
-     * compatibility, but are derived from their ten category policies.
-     * They are not separately editable anymore.
-     */
-    $newPlaceMax =
-        llama_points_new_place_max_points(
-            $db
-        );
-
-    $placeUpdateMax =
-        llama_points_place_update_max_points(
-            $db
-        );
-
-    $derived =
-        $db->prepare(
-            'INSERT INTO points_policy
-                (
-                    policy_key,
-                    points_value,
-                    description,
-                    updated_by
-                )
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-                points_value = VALUES(points_value),
-                description = VALUES(description),
-                updated_by = VALUES(updated_by)'
-        );
-
-    $derived->execute([
-        'approved_new_place',
-        $newPlaceMax,
-        'Derived maximum for the weighted New Place category policy.',
-        $actorUserId,
-    ]);
-
-    $saved['approved_new_place'] =
-        $newPlaceMax;
-
-    $derived->execute([
-        'approved_place_update',
-        $placeUpdateMax,
-        'Derived maximum for the weighted Place Update category policy.',
-        $actorUserId,
-    ]);
-
-    $saved['approved_place_update'] =
-        $placeUpdateMax;
 
     admin_users_audit(
         $db,
