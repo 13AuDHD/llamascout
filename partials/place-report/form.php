@@ -533,9 +533,14 @@ $renderField =
                     ? ' contribution-field-wide'
                     : ''
             );
+
+        $fieldContainerTag =
+            $type === 'multiselect'
+                ? 'div'
+                : 'label';
         ?>
 
-        <label class="<?= $e(
+        <<?= $fieldContainerTag ?> class="<?= $e(
             $class
         ) ?>">
 
@@ -1066,7 +1071,7 @@ $renderField =
             <?php endif; ?>
 
 
-        </label>
+        </<?= $fieldContainerTag ?>>
 
         <?php
     };
