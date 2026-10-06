@@ -21,33 +21,48 @@ $maxPoints =
         ?? 0
     );
 
-$categories =
-    is_array(
-        $updatePointEstimate['categories']
-        ?? null
-    )
-        ? $updatePointEstimate['categories']
-        : [];
-
-$standaloneFields =
-    is_array(
-        $updatePointEstimate['standalone_fields']
-        ?? null
-    )
-        ? $updatePointEstimate['standalone_fields']
-        : [];
-
-$scoredChanged =
+$basePoints =
     (int) (
-        $updatePointEstimate['scored_changed_fields']
+        $updatePointEstimate['base_points']
         ?? 0
     );
 
-$unscoredChanged =
+$changedItems =
     (int) (
-        $updatePointEstimate['unscored_changed_fields']
+        $updatePointEstimate['changed_items']
         ?? 0
     );
+
+$applicableItems =
+    (int) (
+        $updatePointEstimate['applicable_items']
+        ?? 0
+    );
+
+$changedPercent =
+    (float) (
+        $updatePointEstimate['changed_percent']
+        ?? 0
+    );
+
+$percentPerPoint =
+    max(
+        1,
+        (int) (
+            $updatePointEstimate['percent_per_point']
+            ?? 1
+        )
+    );
+
+$multiplierPercent =
+    (int) (
+        $updatePointEstimate['multiplier_percent']
+        ?? 100
+    );
+
+$multiplier =
+    $multiplierPercent
+    / 100;
 ?>
 
 <link
@@ -70,13 +85,13 @@ $unscoredChanged =
             </p>
 
             <h2 id="update-points-heading">
-                Weighted Update Points
+                Update Points
             </h2>
 
             <p>
-                Only fields actually changed by this approved update are
-                scored. Each category is weighted independently from the
-                current Admin Points policy.
+                Corrections and additions are scored the same way.
+                The award is based on the percentage of applicable
+                Place Report questions changed by this approved update.
             </p>
         </div>
 
@@ -90,135 +105,88 @@ $unscoredChanged =
     </header>
 
 
-    <?php if ($categories || $standaloneFields): ?>
-        <div class="admin-moderation-points-grid">
+    <div class="admin-moderation-points-grid">
 
-            <?php foreach ($categories as $category): ?>
-                <?php
-                $changed =
-                    (int) (
-                        $category['changed']
-                        ?? 0
-                    );
+        <div class="admin-moderation-points-row">
+            <span>
+                <strong>
+                    Questions changed
+                </strong>
 
-                if ($changed < 1) {
-                    continue;
-                }
+                <small>
+                    Completion items changed by this update
+                </small>
+            </span>
 
-                $points =
-                    (int) (
-                        $category['points']
-                        ?? 0
-                    );
-
-                $categoryMax =
-                    (int) (
-                        $category['max_points']
-                        ?? 0
-                    );
-
-                $fieldTotal =
-                    (int) (
-                        $category['total']
-                        ?? 0
-                    );
-                ?>
-
-                <div class="admin-moderation-points-row">
-                    <span>
-                        <strong>
-                            <?= moderation_e(
-                                (string) (
-                                    $category['label']
-                                    ?? ''
-                                )
-                            ) ?>
-                        </strong>
-
-                        <small>
-                            <?= number_format($changed) ?>
-                            of
-                            <?= number_format($fieldTotal) ?>
-                            scored fields changed
-                        </small>
-                    </span>
-
-                    <strong>
-                        <?= number_format($points) ?>
-                        <small>
-                            /
-                            <?= number_format($categoryMax) ?>
-                        </small>
-                    </strong>
-                </div>
-            <?php endforeach; ?>
-
-                        <?php foreach ($standaloneFields as $field): ?>
-                <?php
-                $changed =
-                    !empty(
-                        $field['changed']
-                    );
-
-                if (!$changed) {
-                    continue;
-                }
-
-                $points =
-                    (int) (
-                        $field['points']
-                        ?? 0
-                    );
-
-                $fieldMax =
-                    (int) (
-                        $field['max_points']
-                        ?? 0
-                    );
-                ?>
-
-                <div class="admin-moderation-points-row">
-                    <span>
-                        <strong>
-                            <?= moderation_e(
-                                (string) (
-                                    $field['label']
-                                    ?? ''
-                                )
-                            ) ?>
-                        </strong>
-
-                        <small>
-                            Field changed
-                        </small>
-                    </span>
-
-                    <strong>
-                        <?= number_format($points) ?>
-                        <small>
-                            /
-                            <?= number_format($fieldMax) ?>
-                        </small>
-                    </strong>
-                </div>
-
-            <?php endforeach; ?>
-
+            <strong>
+                <?= number_format($changedItems) ?>
+                <small>
+                    /
+                    <?= number_format($applicableItems) ?>
+                </small>
+            </strong>
         </div>
-    <?php endif; ?>
 
 
-    <?php if ($unscoredChanged > 0): ?>
+        <div class="admin-moderation-points-row">
+            <span>
+                <strong>
+                    Report changed
+                </strong>
+
+                <small>
+                    Changed questions divided by applicable questions
+                </small>
+            </span>
+
+            <strong>
+                <?= number_format($changedPercent, 2) ?>%
+            </strong>
+        </div>
+
+
+        <div class="admin-moderation-points-row">
+            <span>
+                <strong>
+                    Base award
+                </strong>
+
+                <small>
+                    1 point for each
+                    <?= number_format($percentPerPoint) ?>%
+                    changed
+                </small>
+            </span>
+
+            <strong>
+                <?= number_format($basePoints) ?>
+            </strong>
+        </div>
+
+
+        <div class="admin-moderation-points-row">
+            <span>
+                <strong>
+                    Points multiplier
+                </strong>
+
+                <small>
+                    Applied after the normal update cap
+                </small>
+            </span>
+
+            <strong>
+                <?= number_format($multiplier, 2) ?>x
+            </strong>
+        </div>
+
+    </div>
+
+
+    <?php if ($changedItems < 1): ?>
         <p class="admin-moderation-points-note">
-            <?= number_format($unscoredChanged) ?>
-            changed field<?= $unscoredChanged === 1 ? '' : 's' ?>
-            fall outside the weighted point categories and do not add points.
-            This includes core identity or location metadata that is not part
-            of a scored Place Report category.
-        </p>
-    <?php elseif ($scoredChanged < 1): ?>
-        <p class="admin-moderation-points-note">
-            This update does not change a point-bearing Place Report field.
+            This update does not change an applicable Place Report
+            completion item, so it does not earn update points.
         </p>
     <?php endif; ?>
 
