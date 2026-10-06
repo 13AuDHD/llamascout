@@ -7,9 +7,24 @@ require_once __DIR__ . '/place-report.php';
 /* =========================================================
    LLAMA SCOUT POINTS
 
-   points_policy remains the single configuration source for
-   point VALUES. Place Report field membership comes from the
-   shared Place Report schema.
+   Place Report scoring uses one shared completion model.
+
+   New Places:
+   - completion percentage determines the base award;
+   - Admin Points controls points per percent and the base cap.
+
+   Place Updates:
+   - additions and corrections are treated identically;
+   - changed applicable completion items determine the update
+     percentage;
+   - Admin Points controls percent per point and the base cap.
+
+   The global multiplier is applied after the normal base cap.
+   ========================================================= */
+
+
+/* =========================================================
+   POLICY
    ========================================================= */
 
 function llama_points_policy(
@@ -18,15 +33,20 @@ function llama_points_policy(
     int $default = 0
 ): int {
     try {
-        $stmt = $db->prepare(
-            'SELECT points_value
-             FROM points_policy
-             WHERE policy_key = ?
-             LIMIT 1'
-        );
+        $stmt =
+            $db->prepare(
+                'SELECT points_value
+                 FROM points_policy
+                 WHERE policy_key = ?
+                 LIMIT 1'
+            );
 
-        $stmt->execute([$key]);
-        $value = $stmt->fetchColumn();
+        $stmt->execute([
+            $key,
+        ]);
+
+        $value =
+            $stmt->fetchColumn();
 
         return $value === false
             ? $default
@@ -36,56 +56,117 @@ function llama_points_policy(
     }
 }
 
+
 function llama_points_policy_required(
     PDO $db,
     string $key
 ): int {
-    $stmt = $db->prepare(
-        'SELECT points_value
-         FROM points_policy
-         WHERE policy_key = ?
-         LIMIT 1'
-    );
+    $stmt =
+        $db->prepare(
+            'SELECT points_value
+             FROM points_policy
+             WHERE policy_key = ?
+             LIMIT 1'
+        );
 
-    $stmt->execute([$key]);
-    $value = $stmt->fetchColumn();
+    $stmt->execute([
+        $key,
+    ]);
+
+    $value =
+        $stmt->fetchColumn();
 
     if ($value === false) {
         throw new RuntimeException(
-            'Points policy setting "' . $key . '" is not configured.'
+            'Points policy setting "'
+            . $key
+            . '" is not configured.'
         );
     }
 
-    return max(0, (int) $value);
+    return
+        max(
+            0,
+            (int) $value
+        );
 }
+
+
+function llama_points_multiplier_percent(
+    PDO $db
+): int {
+    return
+        llama_points_policy_required(
+            $db,
+            'points_global_multiplier'
+        );
+}
+
+
+function llama_points_apply_multiplier(
+    int $points,
+    int $multiplierPercent
+): int {
+    return
+        max(
+            0,
+            (int) round(
+                max(
+                    0,
+                    $points
+                )
+                * (
+                    max(
+                        0,
+                        $multiplierPercent
+                    )
+                    / 100
+                )
+            )
+        );
+}
+
+
+/* =========================================================
+   LEDGER
+   ========================================================= */
 
 function llama_points_total(
     PDO $db,
     int $userId
 ): int {
     try {
-        $stmt = $db->prepare(
-            'SELECT COALESCE(SUM(points), 0)
-             FROM points_ledger
-             WHERE user_id = ?'
-        );
+        $stmt =
+            $db->prepare(
+                'SELECT COALESCE(SUM(points), 0)
+                 FROM points_ledger
+                 WHERE user_id = ?'
+            );
 
-        $stmt->execute([$userId]);
+        $stmt->execute([
+            $userId,
+        ]);
 
-        return (int) $stmt->fetchColumn();
+        return
+            (int) $stmt->fetchColumn();
     } catch (Throwable) {
-        $stmt = $db->prepare(
-            'SELECT COALESCE(SUM(points_awarded), 0)
-             FROM place_contributions
-             WHERE user_id = ?
-               AND status = "approved"'
-        );
+        $stmt =
+            $db->prepare(
+                'SELECT COALESCE(SUM(points_awarded), 0)
+                 FROM place_contributions
+                 WHERE user_id = ?
+                   AND status = "approved"'
+            );
 
-        $stmt->execute([$userId]);
+        $stmt->execute([
+            $userId,
+        ]);
 
-        return (int) $stmt->fetchColumn();
+        return
+            (int) $stmt->fetchColumn();
     }
 }
+
 
 function llama_points_record(
     PDO $db,
@@ -102,35 +183,42 @@ function llama_points_record(
     }
 
     if ($contributionId) {
-        $exists = $db->prepare(
-            'SELECT id
-             FROM points_ledger
-             WHERE contribution_id = ?
-             LIMIT 1'
-        );
+        $exists =
+            $db->prepare(
+                'SELECT id
+                 FROM points_ledger
+                 WHERE contribution_id = ?
+                 LIMIT 1'
+            );
 
-        $exists->execute([$contributionId]);
+        $exists->execute([
+            $contributionId,
+        ]);
 
         $existingId =
-            (int) ($exists->fetchColumn() ?: 0);
+            (int) (
+                $exists->fetchColumn()
+                ?: 0
+            );
 
         if ($existingId > 0) {
             return $existingId;
         }
     }
 
-    $stmt = $db->prepare(
-        'INSERT INTO points_ledger (
-            user_id,
-            points,
-            source_type,
-            source_id,
-            contribution_id,
-            reason,
-            awarded_by,
-            created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
-    );
+    $stmt =
+        $db->prepare(
+            'INSERT INTO points_ledger (
+                user_id,
+                points,
+                source_type,
+                source_id,
+                contribution_id,
+                reason,
+                awarded_by,
+                created_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
+        );
 
     $stmt->execute([
         $userId,
@@ -142,64 +230,75 @@ function llama_points_record(
         $awardedBy,
     ]);
 
-    return (int) $db->lastInsertId();
+    return
+        (int) $db->lastInsertId();
 }
 
 
 /* =========================================================
-   NEW PLACE SCORING POLICY
+   LEGACY SCHEMA HELPERS
 
-   Category names, mode, and field membership are derived from
-   app/place-report.php. The point amount for each category is
-   still loaded from Admin Points / points_policy.
+   These remain available because other parts of Llama Scout
+   may still reference them. They no longer determine point
+   values.
    ========================================================= */
 
 function llama_points_standalone_place_fields(): array
 {
     return [
         'description' => [
-            'label' => 'Description',
-            'new_policy_key' => 'new_place_description',
-            'update_policy_key' => 'place_update_description',
+            'label' =>
+                'Description',
         ],
+
         'access_summary' => [
-            'label' => 'Access Summary',
-            'new_policy_key' => 'new_place_access_summary',
-            'update_policy_key' => 'place_update_access_summary',
+            'label' =>
+                'Access Summary',
         ],
+
         'sensory_summary' => [
-            'label' => 'Sensory Summary',
-            'new_policy_key' => 'new_place_sensory_summary',
-            'update_policy_key' => 'place_update_sensory_summary',
+            'label' =>
+                'Sensory Summary',
         ],
+
         'not_recommended_for' => [
-            'label' => 'Not Recommended For',
-            'new_policy_key' => 'new_place_not_recommended_for',
-            'update_policy_key' => 'place_update_not_recommended_for',
+            'label' =>
+                'Not Recommended For',
         ],
+
         'seasonal_access_note' => [
-            'label' => 'Seasonal Access Notes',
-            'new_policy_key' => 'new_place_seasonal_access_note',
-            'update_policy_key' => 'place_update_seasonal_access_note',
+            'label' =>
+                'Seasonal Access Notes',
         ],
+
         'current_fire_restrictions_url' => [
-            'label' => 'Current Fire Restrictions URL',
-            'new_policy_key' => 'new_place_current_fire_restrictions_url',
-            'update_policy_key' => 'place_update_current_fire_restrictions_url',
+            'label' =>
+                'Current Fire Restrictions URL',
         ],
     ];
 }
 
+
 function llama_points_optional_new_place_fields(): array
 {
     return [
-        'connectivity_starlink_note' => true,
-        'scout_note_1' => true,
-        'scout_note_2' => true,
-        'scout_note_3' => true,
-        'contributor_notes' => true,
+        'connectivity_starlink_note' =>
+            true,
+
+        'scout_note_1' =>
+            true,
+
+        'scout_note_2' =>
+            true,
+
+        'scout_note_3' =>
+            true,
+
+        'contributor_notes' =>
+            true,
     ];
 }
+
 
 function llama_points_new_place_categories(): array
 {
@@ -209,34 +308,19 @@ function llama_points_new_place_categories(): array
     $fields =
         llama_place_report_fields();
 
-    $standaloneFields =
-        llama_points_standalone_place_fields();
-
-    $optionalFields =
-        llama_points_optional_new_place_fields();
-
-    foreach ($categories as $slug => &$category) {
+    foreach (
+        $categories
+        as $slug => &$category
+    ) {
         $category['fields'] = [];
 
-        foreach ($fields as $fieldKey => $field) {
-            $fieldKey =
-                (string) $fieldKey;
-
-            /*
-             * Standalone point fields receive their own configured
-             * point values and must never dilute a category.
-             */
-            if (isset($standaloneFields[$fieldKey])) {
-                continue;
-            }
-
-            if (isset($optionalFields[$fieldKey])) {
-                continue;
-            }
-
+        foreach (
+            $fields
+            as $fieldKey => $field
+        ) {
             if (
                 in_array(
-                    $slug,
+                    (string) $slug,
                     (array) (
                         $field['points_categories']
                         ?? []
@@ -245,96 +329,62 @@ function llama_points_new_place_categories(): array
                 )
             ) {
                 $category['fields'][] =
-                    $fieldKey;
+                    (string) $fieldKey;
             }
         }
     }
+
     unset($category);
 
     return $categories;
 }
 
+
+function llama_points_place_update_categories(): array
+{
+    $categories =
+        llama_points_new_place_categories();
+
+    foreach (
+        $categories
+        as $slug => &$category
+    ) {
+        $category['mode'] =
+            'percentage';
+
+        $category['policy_key'] =
+            'place_update_'
+            . (string) $slug;
+    }
+
+    unset($category);
+
+    return $categories;
+}
+
+
 function llama_points_has_answer(
     array $data,
     string $key
 ): bool {
-    $fields =
-        llama_place_report_fields();
-
-    $field =
-        $fields[$key]
-        ?? null;
-
-    /*
-     * Amenity checkboxes are one observed yes/no set. The Add Place form says
-     * explicitly that an unchecked amenity means it was not present. Raw HTML
-     * submits only checked boxes, however, so the old estimator interpreted
-     * every unchecked amenity as "unanswered" even after the contributor had
-     * completed the section.
-     *
-     * Once any checkbox in that same section is present, the section has been
-     * answered and the other unchecked boxes are legitimate No answers. This
-     * also fixes amenity_none inside Safety + Warnings, which was silently
-     * costing a fully completed report a point whenever actual amenities were
-     * present.
-     */
-    if (
-        is_array($field)
-        && (string) ($field['type'] ?? '') === 'checkbox'
-        && !array_key_exists($key, $data)
-    ) {
-        $section =
-            (string) ($field['section'] ?? '');
-
-        foreach ($fields as $otherKey => $otherField) {
-            if (
-                (string) ($otherField['type'] ?? '') !== 'checkbox'
-                || (string) ($otherField['section'] ?? '') !== $section
-            ) {
-                continue;
-            }
-
-            if (array_key_exists((string) $otherKey, $data)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    return llama_place_report_is_answered_input(
-        $data,
-        $key
-    );
-}
-
-function llama_points_new_place_max_points(
-    PDO $db
-): int {
     return
-        llama_points_policy_required(
-            $db,
-            'new_place_max_points'
+        llama_place_report_is_answered_input(
+            $data,
+            $key
         );
 }
 
 
 /* =========================================================
-   PLACE REPORT COMPLETENESS
+   PLACE REPORT COMPLETION
 
-   Completion is owned by app/place-report.php.
-
-   This wrapper is retained because other Llama Scout code may
-   already call llama_place_report_completion_summary(). It now
-   delegates to the canonical deterministic completion engine.
-
-   Important:
-   - applicability is handled by the Place Report schema;
-   - grouped questions such as Amenities count once;
-   - explicitly optional fields do not count;
-   - Unknown counts as a completed observation; untouched questions do not;
-   - minimum character requirements are enforced centrally;
-   - photo evidence counts once.
+   app/place-report.php remains the source of truth for:
+   - applicability;
+   - completion groups;
+   - answered vs untouched;
+   - Unknown answers;
+   - minimum text lengths;
+   - photo evidence.
    ========================================================= */
 
 function llama_place_report_completion_summary(
@@ -347,6 +397,41 @@ function llama_place_report_completion_summary(
             $photoCount
         );
 }
+
+
+/* =========================================================
+   NEW PLACE POINTS
+
+   Base formula:
+
+       completion percentage
+       × configured points per percent
+
+   The result is capped at new_place_max_points.
+
+   The global multiplier is applied AFTER the base cap.
+
+   Example at default settings:
+
+       54% = 54 base points
+       100% = 100 base points
+
+   At a 2.00x multiplier:
+
+       54% = 108 awarded points
+       100% = 200 awarded points
+   ========================================================= */
+
+function llama_points_new_place_max_points(
+    PDO $db
+): int {
+    return
+        llama_points_policy_required(
+            $db,
+            'new_place_max_points'
+        );
+}
+
 
 function llama_points_estimate_new_place(
     PDO $db,
@@ -377,45 +462,41 @@ function llama_points_estimate_new_place(
             'new_place_points_per_percent'
         );
 
-    $maxPoints =
+    $baseMaxPoints =
         llama_points_policy_required(
             $db,
             'new_place_max_points'
         );
 
     $multiplierPercent =
-        llama_points_policy_required(
-            $db,
-            'points_global_multiplier'
+        llama_points_multiplier_percent(
+            $db
         );
 
-$basePoints =
-    max(
-        0,
-        min(
-            $maxPoints,
-            $completionPercent
-            * $pointsPerPercent
-        )
-    );
+    $rawBasePoints =
+        $completionPercent
+        * $pointsPerPercent;
 
-$estimatedPoints =
-    (int) round(
-        $basePoints
-        * (
-            $multiplierPercent
-            / 100
-        )
-    );
+    $basePoints =
+        max(
+            0,
+            min(
+                $baseMaxPoints,
+                $rawBasePoints
+            )
+        );
 
-$effectiveMaxPoints =
-    (int) round(
-        $maxPoints
-        * (
+    $estimatedPoints =
+        llama_points_apply_multiplier(
+            $basePoints,
             $multiplierPercent
-            / 100
-        )
-    );
+        );
+
+    $effectiveMaxPoints =
+        llama_points_apply_multiplier(
+            $baseMaxPoints,
+            $multiplierPercent
+        );
 
     return [
         'completion_percent' =>
@@ -441,11 +522,20 @@ $effectiveMaxPoints =
                 )
             ),
 
+        'base_points' =>
+            $basePoints,
+
         'estimated_points' =>
             $estimatedPoints,
 
+        'base_max_points' =>
+            $baseMaxPoints,
+
         'max_points' =>
             $effectiveMaxPoints,
+
+        'multiplier_percent' =>
+            $multiplierPercent,
 
         'minimum_ready' =>
             !empty(
@@ -460,181 +550,139 @@ $effectiveMaxPoints =
                 )
             ),
 
-        'categories_started' => 0,
-        'category_count' => 0,
-        'categories' => [],
-        'standalone_fields' => [],
+        /*
+         * Retained for compatibility with older UI code.
+         * Category weighting is no longer used.
+         */
+        'categories_started' =>
+            0,
+
+        'category_count' =>
+            0,
+
+        'categories' =>
+            [],
+
+        'standalone_fields' =>
+            [],
     ];
 }
 
+
 /* =========================================================
-   PLACE UPDATE SCORING POLICY
+   UPDATE / CORRECTION POINTS
 
-   Updates use the same Place Report category membership, but
-   every category is weighted by the specific fields changed.
-   "Any information" categories used by New Places do not get
-   an all-or-nothing award here.
+   Additions and corrections are treated exactly the same.
 
-   A legitimate approved change to one scored field earns at
-   least 1 point when that category has a nonzero policy value.
-   This includes answer-state improvements such as Unknown ->
-   a measured value, because those changes are present in the
-   proposed-change map.
+   Each applicable completion item changed in an approved
+   submission contributes to the percentage of the report
+   changed.
+
+   Example:
+
+       100 applicable items
+       24 changed items
+       = 24% changed
+
+       2% per point
+       = 12 base points
+
+   A correction from one valid answer to another counts exactly
+   the same as filling a previously unanswered question.
+
+   The global multiplier is applied after the base update cap.
    ========================================================= */
-
-function llama_points_place_update_categories(): array
-{
-    $categories =
-        llama_place_report_category_definitions();
-
-    $fields =
-        llama_place_report_fields();
-
-    $standaloneFields =
-        llama_points_standalone_place_fields();
-
-    foreach ($categories as $slug => &$category) {
-        $category['policy_key'] =
-            'place_update_' . $slug;
-
-        $category['mode'] =
-            'weighted';
-
-        $category['fields'] = [];
-
-        foreach ($fields as $fieldKey => $field) {
-            $fieldKey =
-                (string) $fieldKey;
-
-            /*
-             * Standalone fields have their own update point values.
-             * They must not also dilute or score inside a category.
-             */
-            if (isset($standaloneFields[$fieldKey])) {
-                continue;
-            }
-
-            if (
-                in_array(
-                    $slug,
-                    (array) (
-                        $field['points_categories']
-                        ?? []
-                    ),
-                    true
-                )
-                &&
-                (string) (
-                    $field['type']
-                    ?? ''
-                ) !== 'derived'
-            ) {
-                $category['fields'][] =
-                    $fieldKey;
-            }
-        }
-    }
-    unset($category);
-
-    return $categories;
-}
 
 function llama_points_place_update_max_points(
     PDO $db
 ): int {
-    $total = 0;
-
-    foreach (
-        llama_points_place_update_categories()
-        as $category
-    ) {
-        $total +=
-            llama_points_policy_required(
-                $db,
-                (string) $category['policy_key']
-            );
-    }
-
-    foreach (
-        llama_points_standalone_place_fields()
-        as $definition
-    ) {
-        $total +=
-            llama_points_policy_required(
-                $db,
-                (string) $definition['update_policy_key']
-            );
-    }
-
-    return $total;
+    return
+        llama_points_policy_required(
+            $db,
+            'place_update_max_points'
+        );
 }
 
-function llama_points_estimate_place_update(
-    PDO $db,
-    array $proposedChanges
+
+/*
+ * Convert a Place Report field definition into the storage path
+ * used by Place Update submissions.
+ */
+function llama_points_field_storage_path(
+    array $field
+): string {
+    return
+        trim(
+            (string) (
+                $field['storage']
+                ?? ''
+            )
+        );
+}
+
+
+/*
+ * Returns a lookup of:
+
+     storage path => completion item key
+
+ * Completion groups deliberately collapse multiple underlying
+ * fields into one report item so update scoring follows the
+ * exact same "one question = one item" model as completion.
+ */
+function llama_points_completion_storage_lookup(
+    array $finalInput
 ): array {
+    $lookup = [];
+
+    $applicableItems =
+        llama_place_report_completion_items(
+            $finalInput
+        );
+
     $fields =
         llama_place_report_fields();
 
-    $changedStorageLookup =
-        array_fill_keys(
-            array_map(
-                'strval',
-                array_keys(
-                    $proposedChanges
-                )
-            ),
-            true
-        );
-
-    $scoredStorageLookup = [];
-    $categoryRows = [];
-    $standaloneRows = [];
-
-    $estimatedPoints = 0;
-    $maxPoints = 0;
-    $scoredChangedFields = 0;
-
-
-    /*
-     * =====================================================
-     * CATEGORY CHANGES
-     * =====================================================
-     */
     foreach (
-        llama_points_place_update_categories()
-        as $slug => $category
+        $applicableItems
+        as $item
     ) {
-        $eligibleFieldKeys =
-            (array) (
-                $category['fields']
-                ?? []
+        $itemKey =
+            (string) (
+                $item['key']
+                ?? ''
             );
 
-        $eligibleStorage = [];
-        $changed = 0;
+        if ($itemKey === '') {
+            continue;
+        }
 
-        foreach ($eligibleFieldKeys as $fieldKey) {
+        foreach (
+            (array) (
+                $item['fields']
+                ?? []
+            )
+            as $fieldKey
+        ) {
+            $fieldKey =
+                (string) $fieldKey;
+
             $field =
-                $fields[(string) $fieldKey]
+                $fields[$fieldKey]
                 ?? null;
 
-            if (!$field) {
+            if (!is_array($field)) {
                 continue;
             }
 
             $storage =
-                trim(
-                    (string) (
-                        $field['storage']
-                        ?? ''
-                    )
+                llama_points_field_storage_path(
+                    $field
                 );
 
             if (
                 $storage === ''
-                ||
-                str_starts_with(
+                || str_starts_with(
                     $storage,
                     'computed.'
                 )
@@ -642,272 +690,245 @@ function llama_points_estimate_place_update(
                 continue;
             }
 
-            $eligibleStorage[$storage] =
-                true;
-
-            $scoredStorageLookup[$storage] =
-                true;
-
-            if (
-                isset(
-                    $changedStorageLookup[
-                        $storage
-                    ]
-                )
-            ) {
-                $changed++;
-            }
+            $lookup[$storage] =
+                $itemKey;
         }
-
-        $fieldCount =
-            count($eligibleStorage);
-
-        $categoryMax =
-            llama_points_policy_required(
-                $db,
-                (string) $category['policy_key']
-            );
-
-        $maxPoints +=
-            $categoryMax;
-
-        $points = 0;
-
-        if (
-            $changed > 0
-            && $fieldCount > 0
-            && $categoryMax > 0
-        ) {
-            $points =
-                (int) round(
-                    $categoryMax
-                    * (
-                        $changed
-                        / $fieldCount
-                    )
-                );
-
-            /*
-             * One legitimate approved changed field should
-             * still earn at least one point when this category
-             * has a configured value.
-             */
-            $points =
-                max(
-                    1,
-                    $points
-                );
-
-            $points =
-                min(
-                    $categoryMax,
-                    $points
-                );
-        }
-
-        $estimatedPoints +=
-            $points;
-
-        $scoredChangedFields +=
-            $changed;
-
-        $categoryRows[] = [
-            'slug' =>
-                (string) $slug,
-
-            'label' =>
-                (string) (
-                    $category['label']
-                    ?? $slug
-                ),
-
-            'policy_key' =>
-                (string) $category['policy_key'],
-
-            'mode' =>
-                'weighted',
-
-            'changed' =>
-                $changed,
-
-            'total' =>
-                $fieldCount,
-
-            'points' =>
-                $points,
-
-            'max_points' =>
-                $categoryMax,
-
-            'started' =>
-                $changed > 0,
-        ];
     }
 
-
-    /*
-     * =====================================================
-     * STANDALONE FIELD CHANGES
-     * =====================================================
-     */
-    foreach (
-        llama_points_standalone_place_fields()
-        as $fieldKey => $definition
-    ) {
-        $field =
-            $fields[(string) $fieldKey]
-            ?? null;
-
-        $fieldMax =
-            llama_points_policy_required(
-                $db,
-                (string) $definition['update_policy_key']
-            );
-
-        $maxPoints +=
-            $fieldMax;
-
-        $storage = '';
-
-        if (is_array($field)) {
-            $storage =
-                trim(
-                    (string) (
-                        $field['storage']
-                        ?? ''
-                    )
-                );
-        }
-
-        $changed =
-            $storage !== ''
-            &&
-            !str_starts_with(
-                $storage,
-                'computed.'
-            )
-            &&
-            isset(
-                $changedStorageLookup[
-                    $storage
-                ]
-            );
-
-        if ($storage !== '') {
-            $scoredStorageLookup[$storage] =
-                true;
-        }
-
-        $points =
-            $changed
-                ? $fieldMax
-                : 0;
-
-        $estimatedPoints +=
-            $points;
-
-        if ($changed) {
-            $scoredChangedFields++;
-        }
-
-        $standaloneRows[] = [
-            'field' =>
-                (string) $fieldKey,
-
-            'label' =>
-                (string) $definition['label'],
-
-            'policy_key' =>
-                (string) $definition['update_policy_key'],
-
-            'changed' =>
-                $changed ? 1 : 0,
-
-            'total' =>
-                1,
-
-            'points' =>
-                $points,
-
-            'max_points' =>
-                $fieldMax,
-
-            'started' =>
-                $changed,
-        ];
-    }
+    return $lookup;
+}
 
 
-    /*
-     * Anything changed that belongs to neither a category nor
-     * one of the six standalone point fields remains unscored.
-     */
-    $unscoredChangedFields = 0;
+/*
+ * Determine which applicable completion items were touched by
+ * this update.
+
+ * Multiple changed fields belonging to one completion group
+ * still count as one changed completion item.
+ */
+function llama_points_changed_completion_items(
+    array $finalInput,
+    array $proposedChanges
+): array {
+    $storageLookup =
+        llama_points_completion_storage_lookup(
+            $finalInput
+        );
+
+    $changedItems = [];
 
     foreach (
         array_keys(
-            $changedStorageLookup
+            $proposedChanges
         )
         as $storage
     ) {
+        $storage =
+            (string) $storage;
+
         if (
             !isset(
-                $scoredStorageLookup[
-                    (string) $storage
+                $storageLookup[
+                    $storage
                 ]
             )
         ) {
-            $unscoredChangedFields++;
+            continue;
         }
+
+        $itemKey =
+            (string) $storageLookup[
+                $storage
+            ];
+
+        $changedItems[
+            $itemKey
+        ] =
+            true;
     }
 
+    return
+        array_values(
+            array_keys(
+                $changedItems
+            )
+        );
+}
+
+
+/*
+ * $finalInput must represent the Place Report after the proposed
+ * update has been applied.
+
+ * $proposedChanges is the approved update submission's storage
+ * path => proposed value map.
+
+ * This separation is intentional:
+ * - finalInput determines which questions are applicable;
+ * - proposedChanges determines which questions this contributor
+ *   actually changed.
+ */
+function llama_points_estimate_place_update(
+    PDO $db,
+    array $finalInput,
+    array $proposedChanges
+): array {
+    $applicableItems =
+        llama_place_report_completion_items(
+            $finalInput
+        );
+
+    $applicableItemCount =
+        count(
+            $applicableItems
+        );
+
+    $changedItems =
+        llama_points_changed_completion_items(
+            $finalInput,
+            $proposedChanges
+        );
+
+    $changedItemCount =
+        count(
+            $changedItems
+        );
+
+    $changedPercent =
+        $applicableItemCount > 0
+            ? (
+                100
+                * (
+                    $changedItemCount
+                    / $applicableItemCount
+                )
+            )
+            : 0.0;
+
+    $percentPerPoint =
+        llama_points_policy_required(
+            $db,
+            'place_update_percent_per_point'
+        );
+
+    /*
+     * A zero percent-per-point value would make the formula
+     * undefined. Treat it as one rather than allowing a
+     * division-by-zero failure.
+     */
+    $percentPerPoint =
+        max(
+            1,
+            $percentPerPoint
+        );
+
+    /*
+     * "For every 2%" means only complete configured increments
+     * earn a point. floor() avoids awarding a point for less
+     * than one complete increment.
+     */
+    $rawBasePoints =
+        (int) floor(
+            $changedPercent
+            / $percentPerPoint
+        );
+
+    $baseMaxPoints =
+        llama_points_policy_required(
+            $db,
+            'place_update_max_points'
+        );
+
+    $basePoints =
+        max(
+            0,
+            min(
+                $baseMaxPoints,
+                $rawBasePoints
+            )
+        );
+
+    $multiplierPercent =
+        llama_points_multiplier_percent(
+            $db
+        );
+
+    $estimatedPoints =
+        llama_points_apply_multiplier(
+            $basePoints,
+            $multiplierPercent
+        );
+
+    $effectiveMaxPoints =
+        llama_points_apply_multiplier(
+            $baseMaxPoints,
+            $multiplierPercent
+        );
 
     return [
-        'estimated_points' =>
-            max(
-                0,
-                min(
-                    $maxPoints,
-                    $estimatedPoints
-                )
+        'changed_items' =>
+            $changedItemCount,
+
+        'applicable_items' =>
+            $applicableItemCount,
+
+        'changed_percent' =>
+            round(
+                $changedPercent,
+                2
             ),
 
-        'max_points' =>
-            $maxPoints,
+        'percent_per_point' =>
+            $percentPerPoint,
 
+        'base_points' =>
+            $basePoints,
+
+        'estimated_points' =>
+            $estimatedPoints,
+
+        'base_max_points' =>
+            $baseMaxPoints,
+
+        'max_points' =>
+            $effectiveMaxPoints,
+
+        'multiplier_percent' =>
+            $multiplierPercent,
+
+        'changed_item_keys' =>
+            $changedItems,
+
+        /*
+         * Compatibility keys retained for older callers.
+         */
         'changed_fields' =>
             count(
-                $changedStorageLookup
+                $proposedChanges
             ),
 
         'scored_changed_fields' =>
-            $scoredChangedFields,
+            $changedItemCount,
 
         'unscored_changed_fields' =>
-            $unscoredChangedFields,
+            max(
+                0,
+                count(
+                    $proposedChanges
+                )
+                - $changedItemCount
+            ),
 
         'categories_started' =>
-            count(
-                array_filter(
-                    $categoryRows,
-                    static fn (
-                        array $row
-                    ): bool =>
-                        !empty(
-                            $row['started']
-                        )
-                )
-            ),
+            0,
 
         'category_count' =>
-            count(
-                $categoryRows
-            ),
+            0,
 
         'categories' =>
-            $categoryRows,
+            [],
 
         'standalone_fields' =>
-            $standaloneRows,
+            [],
     ];
 }
