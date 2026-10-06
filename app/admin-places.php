@@ -1983,6 +1983,13 @@ function admin_place_save_details(
     $fields = [
         'vehicle_capacity' => 'int',
         'max_vehicle_length_feet' => 'int',
+        'campsite_count' => 'int',
+        'site_number' => 'text',
+        'site_hookups_available' => 'bool',
+        'hookup_electric' => 'bool',
+        'hookup_electric_service' => 'text',
+        'hookup_water' => 'bool',
+        'hookup_sewer' => 'bool',
         'max_trailer_length_feet' => 'text',
         'tent_camping_suitable' => 'bool',
         'rv_suitable' => 'bool',
