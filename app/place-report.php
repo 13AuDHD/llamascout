@@ -1587,12 +1587,26 @@ function llama_place_report_fields(): array
             'reservation_required',
             'membership_required',
             'check_in_required',
-            'check_in_begins',
             'checkout_ends',
             'fee',
         ],
         [[
             'field' => 'overnight_camping_allowed',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    /*
+     * A formal check-in start time only makes sense when the
+     * Place actually requires check-in. Checkout remains an
+     * overnight-stay rule even when no formal check-in is required.
+     */
+    $setApplicable(
+        $f,
+        ['check_in_begins'],
+        [[
+            'field' => 'check_in_required',
             'operator' => 'equals',
             'value' => '1',
         ]]
