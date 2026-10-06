@@ -1579,6 +1579,12 @@ String(field.key);
 counter.className =
 'place-report-character-counter';
 
+counter.style.display = 'block';
+counter.style.marginTop = '6px';
+counter.style.fontWeight = '600';
+counter.style.color =
+'var(--text-muted)';
+
 input.insertAdjacentElement(
 'afterend',
 counter
@@ -1602,6 +1608,11 @@ count.toLocaleString()
 
 counter.dataset.minimumMet =
 met ? '1' : '0';
+
+counter.style.color =
+met
+? 'var(--success, #2f9e44)'
+: 'var(--text-muted)';
 };
 
 input.addEventListener(
