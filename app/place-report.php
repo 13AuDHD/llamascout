@@ -486,6 +486,7 @@ function llama_place_report_field_icon(
         'snow_risk' => 'at-snowing',
         'mud_season_risk' => 'at-shovel',
         'monsoon_risk' => 'at-heavy-rain',
+        'heat_season_risk' => 'temperature-sun',
         'hurricane_risk' => 'hurricane',
         'seasonal_access_note' => 'file-text',
         'overnight_camping_allowed' => 'moon-stars',
@@ -494,7 +495,10 @@ function llama_place_report_field_icon(
         'collecting_firewood' => 'wood',
         'reservation_required' => 'calendar-check',
         'membership_required' => 'id-badge-2',
+        'membership_url' => 'link',
+        'membership_fee' => 'currency-dollar',
         'check_in_required' => 'door-enter',
+        'check_out_required' => 'door-exit',
         'reservation_url' => 'link',
         'reservation_fee' => 'currency-dollar',
         'check_in_begins' => 'clock-hour-3',
@@ -828,7 +832,6 @@ function llama_place_report_fields(): array
         'four_wheel_drive_recommended' => '4WD recommended?',
         'water_crossings' => 'Water crossings?',
         'downed_tree_risk' => 'Downed-tree risk?',
-        'seasonal_closure' => 'Seasonal closure?',
     ] as $key => $label) {
         $add($key, $label, 'road_access', 'tri', 'details.' . $key, [
             'allow_unknown' => true,
@@ -1133,14 +1136,18 @@ function llama_place_report_fields(): array
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
     ]);
-    $add('hurricane_risk', 'Hurricane risk?', 'rules', 'tri', 'rules.hurricane_risk', [
+
+    $add('seasonal_closure', 'Seasonal closure?', 'rules', 'tri', 'details.seasonal_closure', [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
     ]);
+
     foreach ([
         'snow_risk' => ['Snow risk', 'Low', 'High'],
         'mud_season_risk' => ['Mud-season risk', 'Low', 'High'],
         'monsoon_risk' => ['Monsoon risk', 'Low', 'High'],
+        'hurricane_risk' => ['Hurricane risk', 'Low', 'High'],
+        'heat_season_risk' => ['Heat-season risk', 'Low', 'High'],
     ] as $key => [$label, $low, $high]) {
         $add($key, $label, 'rules', 'rating', 'rules.' . $key, [
             'allow_unknown' => true,
@@ -1235,14 +1242,6 @@ function llama_place_report_fields(): array
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
     ]);
-    $add('membership_required', 'Membership required?', 'rules', 'tri', 'rules.membership_required', [
-        'allow_unknown' => true,
-        'points_categories' => ['seasons_rules_services'],
-    ]);
-    $add('check_in_required', 'Check-in required?', 'rules', 'tri', 'rules.check_in_required', [
-        'allow_unknown' => true,
-        'points_categories' => ['seasons_rules_services'],
-    ]);
     $add('reservation_url', 'Reservation URL', 'rules', 'url', 'rules.reservation_url', [
         'wide' => true,
         'placeholder' => 'https://...',
@@ -1256,10 +1255,32 @@ function llama_place_report_fields(): array
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
     ]);
+
+    $add('membership_required', 'Membership required?', 'rules', 'tri', 'rules.membership_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('membership_url', 'Membership URL', 'rules', 'url', 'rules.membership_url', [
+        'wide' => true,
+        'placeholder' => 'https://...',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('membership_fee', 'Membership fee', 'rules', 'number', 'rules.membership_fee', [
+        'step' => '.01',
+        'min' => '0',
+        'max' => '100000',
+        'placeholder' => '0.00',
+        'format' => 'currency',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
+    $add('check_in_required', 'Check-in required?', 'rules', 'tri', 'rules.check_in_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
     $add('check_in_begins', 'Check-in begins', 'rules', 'select', 'rules.check_in_begins', [
         'allow_unknown' => true,
         'options' => [
-            'none' => 'No set check-in time',
             'anytime' => 'Anytime',
             '10:00' => '10 AM',
             '11:00' => '11 AM',
@@ -1272,10 +1293,14 @@ function llama_place_report_fields(): array
         ],
         'points_categories' => ['seasons_rules_services'],
     ]);
-    $add('checkout_ends', 'Checkout ends', 'rules', 'select', 'rules.checkout_ends', [
+
+    $add('check_out_required', 'Check-out required?', 'rules', 'tri', 'rules.check_out_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('checkout_ends', 'Check-out ends', 'rules', 'select', 'rules.checkout_ends', [
         'allow_unknown' => true,
         'options' => [
-            'none' => 'No set checkout time',
             'anytime' => 'Anytime',
             '06:00' => '6 AM',
             '07:00' => '7 AM',
@@ -1288,6 +1313,7 @@ function llama_place_report_fields(): array
         ],
         'points_categories' => ['seasons_rules_services'],
     ]);
+
     $add('fee', 'Camping fee', 'rules', 'number', 'rules.fee', [
         'step' => '.01',
         'min' => '0',
@@ -1518,7 +1544,11 @@ function llama_place_report_fields(): array
         'critter_activity' =>
             'Rate rodents and other small animals that are likely to get into vehicles, food, trash, or gear. This is separate from dangerous wildlife risk.',
         'hurricane_risk' =>
-            'Choose Yes when hurricanes or hurricane-force tropical systems are a realistic seasonal concern for this Place or its access routes.',
+            'Rate how much hurricanes or hurricane-force tropical systems affect the normal seasonal usability or access risk at this Place.',
+        'heat_season_risk' =>
+            'Rate how much extreme seasonal heat affects normal use or safety here. Consider dangerous daytime temperatures, lack of shade, vehicle or equipment stress, and seasonal closures caused by heat.',
+        'seasonal_closure' =>
+            'Choose Yes when this Place normally closes during any recurring part of the year, whether because of winter snow, spring mud, summer heat, fire season, flooding, wildlife management, or another seasonal rule.',
         'sensory_visual_exposure' =>
             'How visually exposed does the site feel to roads, neighboring campers, pedestrians, homes, or businesses? A high rating means people can easily see into or through the site.',
         'sensory_predictability' =>
@@ -1563,6 +1593,10 @@ function llama_place_report_fields(): array
             'Choose Yes when a reservation must be made before staying overnight. Choose No when overnight use is first-come, first-served or otherwise does not require a reservation.',
         'membership_required' =>
             'Choose Yes when overnight use requires membership in a program, club, campground network, hosted-stay service, or similar organization.',
+        'membership_url' =>
+            'Use the official membership or enrollment page when membership is required.',
+        'membership_fee' =>
+            'Enter the required membership cost that applies to using this Place. Enter 0.00 when membership is required but free.',
         'check_in_required' =>
             'Choose Yes when someone must formally check in with a host, office, kiosk, desk, app, or other process before using the overnight space.',
         'reservation_url' =>
@@ -1570,9 +1604,11 @@ function llama_place_report_fields(): array
         'reservation_fee' =>
             'Enter any separate reservation or booking fee. Enter 0.00 when there is no reservation fee. Do not include the camping, entrance, facility, or parking fee here.',
         'check_in_begins' =>
-            'Choose the earliest normal check-in time. Use Anytime when arrival is allowed at any hour, or No set check-in time when there is no formal check-in window.',
+            'Choose the earliest normal check-in time. Use Anytime when check-in is required but arrival is allowed at any hour.',
+        'check_out_required' =>
+            'Choose Yes when the Place has a formal checkout requirement or departure deadline.',
         'checkout_ends' =>
-            'Choose the latest normal checkout time. Use Anytime when departure is unrestricted, or No set checkout time when there is no formal checkout deadline.',
+            'Choose the latest normal checkout time. Use Anytime when checkout is required but departure is unrestricted by clock time.',
         'fee' =>
             'Enter the camping or overnight-stay fee. Enter 0.00 when overnight camping is free. Do not include entrance, facility, or parking fees here.',
         'entrance_facility_fee' =>
@@ -1864,16 +1900,21 @@ function llama_place_report_fields(): array
         ]]
     );
 
-    /*
-     * A formal check-in start time only makes sense when the
-     * Place actually requires check-in. Checkout remains an
-     * overnight-stay rule even when no formal check-in is required.
-     */
     $setApplicable(
         $f,
         ['check_in_begins'],
         [[
             'field' => 'check_in_required',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['checkout_ends'],
+        [[
+            'field' => 'check_out_required',
             'operator' => 'equals',
             'value' => '1',
         ]]
@@ -1887,6 +1928,19 @@ function llama_place_report_fields(): array
         ],
         [[
             'field' => 'reservation_required',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'membership_url',
+            'membership_fee',
+        ],
+        [[
+            'field' => 'membership_required',
             'operator' => 'equals',
             'value' => '1',
         ]]
