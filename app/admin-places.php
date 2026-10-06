@@ -1991,6 +1991,7 @@ function admin_place_save_details(
         'hookup_water' => 'bool',
         'hookup_sewer' => 'bool',
         'max_trailer_length_feet' => 'text',
+        'max_rv_length_feet' => 'text',
         'tent_camping_suitable' => 'bool',
         'rv_suitable' => 'bool',
         'trailer_suitable' => 'bool',
