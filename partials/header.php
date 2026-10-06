@@ -47,6 +47,39 @@ $pageStylesheets = llama_merge_page_styles(
     $pageStyles ?? []
 );
 
+$serviceIssueEnabled = false;
+$serviceIssueMessage = '';
+
+try {
+    $serviceIssueEnabled =
+        llama_site_setting_bool(
+            db(),
+            'service_issue_enabled',
+            false
+        );
+
+    $serviceIssueMessage =
+        trim(
+            (string)
+            llama_site_setting(
+                db(),
+                'service_issue_message',
+                'Llama Scout is experiencing intermittent service issues beyond our control. The llamas are negotiating a fix.'
+            )
+        );
+} catch (Throwable) {
+    $serviceIssueEnabled = false;
+    $serviceIssueMessage = '';
+}
+
+if (
+    $serviceIssueEnabled
+    && $serviceIssueMessage === ''
+) {
+    $serviceIssueMessage =
+        'Llama Scout is experiencing intermittent service issues beyond our control. The llamas are negotiating a fix.';
+}
+
 $activeWebsitePromotion = null;
 
 try {
@@ -174,12 +207,12 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                 if (reducedMotion === 'true') {
                     document.documentElement.dataset.reducedMotion = 'true';
                 }
-                
+
                 document.documentElement.dataset.focusIndicators =
                     focusIndicators === 'always'
                         ? 'always'
                         : 'auto';
-                
+
             } catch (e) {
                 // Accessibility preferences are optional.
             }
@@ -208,6 +241,32 @@ $promotionBannerEndsAt = $activeWebsitePromotion
 <a class="skip-link" href="#main-content">
     Skip to main content
 </a>
+
+<?php if ($serviceIssueEnabled && $serviceIssueMessage !== ''): ?>
+<div
+    class="site-service-issue-banner"
+    role="status"
+    aria-live="polite"
+>
+    <div class="site-service-issue-banner-inner">
+        <i aria-hidden="true">
+            <?= llama_icon('alert-triangle') ?>
+        </i>
+
+        <strong>
+            Service notice:
+        </strong>
+
+        <span>
+            <?= htmlspecialchars(
+                $serviceIssueMessage,
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>
+        </span>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if ($activeWebsitePromotion && $promotionBannerText !== ''): ?>
 <div
@@ -454,7 +513,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
                     type="checkbox"
                     id="focus-indicators"
                 >
-            
+
                 <label for="focus-indicators">
                     <?= llama_icon('eye') ?>
                     Always show focus indicators
