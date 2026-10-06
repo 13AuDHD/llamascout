@@ -70,6 +70,7 @@
 
 .admin-system-health-panel,
 .admin-system-maintenance-panel,
+.admin-system-service-issue-panel,
 .admin-system-testing-panel {
     margin-bottom: var(--admin-panel-gap);
 }
@@ -340,6 +341,158 @@
     text-transform: uppercase;
 }
 
+
+/* =========================================================
+   SERVICE ISSUE BANNER CONTROL
+   ========================================================= */
+
+.admin-system-service-issue-form {
+    display: grid;
+    gap: 22px;
+
+    padding: 20px;
+}
+
+.admin-system-service-issue-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+
+    padding-bottom: 18px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-system-service-issue-status > div {
+    min-width: 0;
+}
+
+.admin-system-service-issue-status strong {
+    font-size: .95rem;
+}
+
+.admin-system-toggle {
+    position: relative;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    flex: 0 0 auto;
+
+    cursor: pointer;
+    user-select: none;
+}
+
+.admin-system-toggle input {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-system-toggle-track {
+    position: relative;
+
+    width: 54px;
+    height: 30px;
+
+    display: inline-block;
+    flex: 0 0 54px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--background);
+
+    transition:
+        background .18s ease,
+        border-color .18s ease;
+}
+
+.admin-system-toggle-track > span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+
+    background: var(--text-muted);
+
+    transition:
+        transform .18s ease,
+        background .18s ease;
+}
+
+.admin-system-toggle input:checked
++ .admin-system-toggle-track {
+    border-color: #2e9d58;
+    background: #2e9d58;
+}
+
+.admin-system-toggle input:checked
++ .admin-system-toggle-track > span {
+    background: #ffffff;
+    transform: translateX(24px);
+}
+
+.admin-system-toggle input:disabled
++ .admin-system-toggle-track {
+    opacity: .55;
+}
+
+.admin-system-toggle-label {
+    min-width: 66px;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.admin-system-service-issue-message {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-system-service-issue-message > span {
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    font-weight: 850;
+}
+
+.admin-system-service-issue-message textarea {
+    width: 100%;
+    min-height: 180px;
+
+    box-sizing: border-box;
+
+    padding: 14px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+
+    background: var(--background);
+    color: var(--text);
+
+    font: inherit;
+    line-height: 1.5;
+
+    resize: vertical;
+}
+
+.admin-system-service-issue-message textarea:focus {
+    border-color: var(--text-muted);
+}
+
 .admin-system-operations-grid {
     display: grid;
     grid-template-columns:
@@ -443,5 +596,19 @@
     .admin-system-maintenance-toggle {
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .admin-system-service-issue-status {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .admin-system-toggle {
+        align-self: flex-start;
+    }
+
+    .admin-system-service-issue-message textarea {
+        min-height: 150px;
     }
 }
