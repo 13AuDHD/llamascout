@@ -2083,10 +2083,18 @@ function llama_place_report_fields(): array
      * Formal campsite/property questions belong on campground-style
      * Places, not dispersed camping or ordinary parking Places.
      */
+    /*
+     * These questions describe camping / overnight spaces and their actual
+     * on-site utility hookups, not generic property-wide amenities. Hosted
+     * stays, private camping property and fairgrounds may have them too.
+     */
     $developedCampgroundPlaceTypes = [
         'developed-campground',
         'camping-area',
         'rv-park-resort',
+        'membership-host',
+        'private-property',
+        'fairgrounds',
     ];
 
     $setApplicable(
@@ -2188,6 +2196,49 @@ function llama_place_report_fields(): array
             'field' => 'type',
             'operator' => 'not_equals',
             'value' => 'rv-park-resort',
+        ]]
+    );
+
+    /*
+     * =========================================================
+     * HOSTED STAYS, PRIVATE PROPERTY & FAIRGROUNDS
+     * =========================================================
+     * Avoid assuming any of these properties are free, members-only,
+     * hook-up equipped, fully developed, or exempt from natural hazards.
+     * Campgrounds and event grounds may contain primitive or improved
+     * areas, and hosted properties may have just one overnight space.
+     * Keep the reservation, permission, membership, fees, seasonal,
+     * sensory, surface, accessibility and emergency questions.
+     *
+     * Region / ranger district identifies public-land management units;
+     * it is not a meaningful required answer for these property types.
+     * Fairgrounds are whole venues rather than a single overnight
+     * campsite, so a simple 'vehicle capacity' count would mislead;
+     * the separate number of camping/overnight spaces remains available.
+     */
+    $hostedPrivateFairgroundTypes = [
+        'membership-host',
+        'private-property',
+        'fairgrounds',
+    ];
+
+    $appendApplicable(
+        $f,
+        ['region'],
+        [[
+            'field' => 'type',
+            'operator' => 'not_in',
+            'value' => $hostedPrivateFairgroundTypes,
+        ]]
+    );
+
+    $appendApplicable(
+        $f,
+        ['vehicle_capacity'],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'fairgrounds',
         ]]
     );
 
