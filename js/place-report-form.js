@@ -1320,6 +1320,47 @@ if (
 return false;
 }
 
+const operator =
+String(
+rule.operator || 'equals'
+);
+
+if (
+operator === 'any'
+|| operator === 'all'
+) {
+const nestedRules =
+Array.isArray(rule.rules)
+? rule.rules.filter(
+(nested) =>
+nested
+&& typeof nested === 'object'
+)
+: [];
+
+if (!nestedRules.length) {
+return false;
+}
+
+return operator === 'any'
+? nestedRules.some(
+(nested) =>
+completionRuleMatches(
+form,
+nested,
+config
+)
+)
+: nestedRules.every(
+(nested) =>
+completionRuleMatches(
+form,
+nested,
+config
+)
+);
+}
+
 const fieldKey =
 String(rule.field || '');
 
@@ -1331,11 +1372,6 @@ const actual =
 completionFieldValue(
 form,
 fieldKey
-);
-
-const operator =
-String(
-rule.operator || 'equals'
 );
 
 const expected =
