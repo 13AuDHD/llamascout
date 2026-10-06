@@ -1069,6 +1069,7 @@ function llama_place_report_fields(): array
         'rows' => 3,
         'placeholder' => 'Gated in winter, impassable after heavy rain, snow usually lingers until June, etc.',
         'points_categories' => ['seasons_rules_services'],
+        'counts_toward_completion' => false,
     ]);
     foreach ([
         'overnight_camping_allowed' => 'Overnight camping allowed?',
@@ -1248,6 +1249,7 @@ function llama_place_report_fields(): array
         'rows' => 3,
         'placeholder' => 'Example: low-clearance vehicles, people sensitive to road noise, large trailers...',
         'points_categories' => ['experience_recommendations'],
+        'counts_toward_completion' => false,
     ]);
 
     /* Scout notes */
@@ -1557,6 +1559,16 @@ function llama_place_report_fields(): array
 
     $setApplicable(
         $f,
+        ['current_fire_restrictions_url'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campfireRelevantPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
         [
             'designated_sites_only',
             'food_storage_required',
@@ -1592,8 +1604,8 @@ function llama_place_report_fields(): array
         ],
         [[
             'field' => 'overnight_camping_allowed',
-            'operator' => 'equals',
-            'value' => '1',
+            'operator' => 'in',
+            'value' => ['1', '2'],
         ]]
     );
 
@@ -1646,8 +1658,8 @@ function llama_place_report_fields(): array
         ],
         [[
             'field' => 'overnight_camping_allowed',
-            'operator' => 'equals',
-            'value' => '1',
+            'operator' => 'in',
+            'value' => ['1', '2'],
         ]]
     );
 
@@ -1697,8 +1709,30 @@ function llama_place_report_quick_warnings(array $data): array
     $fields = llama_place_report_fields();
     $warnings = [];
 
-    $state = static function (string $key) use ($data): string {
-        return llama_place_report_answer_state($data, $key);
+    $applicabilityInput =
+        llama_place_report_scoring_input_from_data(
+            $data
+        );
+
+    $state = static function (
+        string $key
+    ) use (
+        $data,
+        $applicabilityInput
+    ): string {
+        if (
+            !llama_place_report_question_applicable(
+                $applicabilityInput,
+                $key
+            )
+        ) {
+            return 'unanswered';
+        }
+
+        return llama_place_report_answer_state(
+            $data,
+            $key
+        );
     };
 
     $value = static function (string $key) use ($data, $fields): mixed {
@@ -2389,8 +2423,19 @@ function llama_place_report_normalized_text_length(
         return 0;
     }
 
-    return function_exists('mb_strlen')
-        ? mb_strlen($text, 'UTF-8')
+    if (function_exists('mb_strlen')) {
+        return mb_strlen($text, 'UTF-8');
+    }
+
+    $matched =
+        preg_match_all(
+            '/./us',
+            $text,
+            $characters
+        );
+
+    return $matched !== false
+        ? count($characters[0])
         : strlen($text);
 }
 
@@ -2407,16 +2452,6 @@ function llama_place_report_question_applicable(
     }
 
     if (!empty($field['derived'])) {
-        return false;
-    }
-
-    if (
-        array_key_exists(
-            'counts_toward_completion',
-            $field
-        )
-        && !$field['counts_toward_completion']
-    ) {
         return false;
     }
 
@@ -2668,6 +2703,16 @@ function llama_place_report_completion_items(
                 $input,
                 $fieldKey
             )
+        ) {
+            continue;
+        }
+
+        if (
+            array_key_exists(
+                'counts_toward_completion',
+                $field
+            )
+            && !$field['counts_toward_completion']
         ) {
             continue;
         }
@@ -3483,6 +3528,45 @@ function llama_place_report_data_from_published_place(
             );
 
     $data['sensory'] = $sensory;
+
+    /*
+     * Multi-select values are stored as JSON in normalized child tables.
+     * Submission JSON already contains arrays, so decode only persisted strings.
+     */
+    foreach (llama_place_report_fields() as $fieldKey => $field) {
+        if ((string) ($field['type'] ?? '') !== 'multiselect') {
+            continue;
+        }
+
+        $storage =
+            (string) (
+                $field['storage']
+                ?? ''
+            );
+
+        $value =
+            llama_place_report_get_path(
+                $data,
+                $storage
+            );
+
+        if (is_string($value) && trim($value) !== '') {
+            $decoded =
+                json_decode(
+                    $value,
+                    true
+                );
+
+            if (is_array($decoded)) {
+                llama_place_report_set_path(
+                    $data,
+                    $storage,
+                    array_values($decoded)
+                );
+            }
+        }
+    }
+
     $data['_answer_state'] = array_values($unknownFields);
 
     return $data;
