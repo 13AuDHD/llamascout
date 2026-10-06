@@ -424,6 +424,12 @@
     white-space: normal;
 }
 
+.place-report-field-help:has(
+    .place-report-field-help-panel.is-open
+) {
+    z-index: 10001;
+}
+
 .place-report-field-help-panel.is-open {
     display: block;
 }
