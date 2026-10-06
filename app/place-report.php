@@ -1963,6 +1963,45 @@ function llama_place_report_unknown_fields(array $data): array
     return array_keys($unknown);
 }
 
+function llama_place_report_multiselect_values(mixed $value): array
+{
+    if (is_string($value)) {
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $decoded = json_decode($trimmed, true);
+
+        if (is_array($decoded)) {
+            $value = $decoded;
+        } else {
+            return [];
+        }
+    }
+
+    if (!is_array($value)) {
+        return [];
+    }
+
+    $values = [];
+
+    foreach ($value as $item) {
+        if (!is_scalar($item)) {
+            continue;
+        }
+
+        $item = trim((string) $item);
+
+        if ($item !== '') {
+            $values[$item] = true;
+        }
+    }
+
+    return array_keys($values);
+}
+
 function llama_place_report_answer_state(array $data, string $fieldKey): string
 {
     if (
@@ -1996,7 +2035,7 @@ function llama_place_report_answer_state(array $data, string $fieldKey): string
     }
 
     if ((string) $field['type'] === 'multiselect') {
-        return is_array($value) && count($value) > 0
+        return llama_place_report_multiselect_values($value)
             ? 'answered'
             : 'unanswered';
     }
@@ -2027,6 +2066,10 @@ function llama_place_report_form_value_from_data(array $data, string $fieldKey):
             $data,
             (string) $field['storage']
         );
+
+    if ((string) $field['type'] === 'multiselect') {
+        return llama_place_report_multiselect_values($value);
+    }
 
     if ((string) $field['type'] === 'checkbox') {
         return $value ? '1' : '';
@@ -2954,7 +2997,7 @@ function llama_place_report_display_value(
         $options = (array) ($field['options'] ?? []);
         $labels = [];
 
-        foreach ((array) $value as $selected) {
+        foreach (llama_place_report_multiselect_values($value) as $selected) {
             $selectedKey = (string) $selected;
 
             if (array_key_exists($selectedKey, $options)) {
@@ -3550,21 +3593,11 @@ function llama_place_report_data_from_published_place(
                 $storage
             );
 
-        if (is_string($value) && trim($value) !== '') {
-            $decoded =
-                json_decode(
-                    $value,
-                    true
-                );
-
-            if (is_array($decoded)) {
-                llama_place_report_set_path(
-                    $data,
-                    $storage,
-                    array_values($decoded)
-                );
-            }
-        }
+        llama_place_report_set_path(
+            $data,
+            $storage,
+            llama_place_report_multiselect_values($value)
+        );
     }
 
     $data['_answer_state'] = array_values($unknownFields);
