@@ -672,7 +672,8 @@ $updatePointEstimate =
     llama_points_estimate_place_update(
         $db,
         $finalPointInput,
-        $proposed
+        $proposed,
+        count($photos)
     );
 
 
@@ -1551,7 +1552,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                â
+                                                Ã¢ÂÂ
 
                                                 <?= $e(
                                                     $afterText
@@ -1592,7 +1593,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                â
+                                Ã¢ÂÂ
 
                                 <?= (int) (
                                     $event['photo_count_after']
