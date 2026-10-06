@@ -2422,6 +2422,30 @@ form.querySelector(
 || ''
 ).trim();
 
+const type =
+String(
+form.querySelector(
+'[name="type"]'
+)?.value
+|| ''
+).trim();
+
+const visitedAt =
+String(
+form.querySelector(
+'[name="visited_at"]'
+)?.value
+|| ''
+).trim();
+
+const description =
+String(
+form.querySelector(
+'[name="description"]'
+)?.value
+|| ''
+).trim();
+
 const latitude =
 String(
 form.querySelector(
@@ -2441,21 +2465,29 @@ form.querySelector(
 const hasPhoto =
 completionPhotoCount(form) > 0;
 
-const minimumReady =
-name !== ''
-&& latitude !== ''
-&& longitude !== ''
-&& hasPhoto;
-
-if (minimumReady) {
-minimumNode.textContent =
-'Minimum requirements met.';
-} else {
 const missing = [];
 
 if (name === '') {
 missing.push(
 'name'
+);
+}
+
+if (type === '') {
+missing.push(
+'place type'
+);
+}
+
+if (visitedAt === '') {
+missing.push(
+'date visited'
+);
+}
+
+if (description === '') {
+missing.push(
+'description'
 );
 }
 
@@ -2474,6 +2506,10 @@ missing.push(
 );
 }
 
+if (!missing.length) {
+minimumNode.textContent =
+'Minimum requirements met.';
+} else {
 minimumNode.textContent =
 'Minimum to submit: '
 + missing.join(', ')
