@@ -2341,7 +2341,16 @@ function llama_place_report_is_answered_input(
     $value = $input[$fieldKey];
 
     if (is_array($value)) {
-        return count($value) > 0;
+        foreach ($value as $item) {
+            if (
+                is_scalar($item)
+                && trim((string) $item) !== ''
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     if ($value === llama_place_report_unanswered_token()) {
