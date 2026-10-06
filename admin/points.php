@@ -387,189 +387,6 @@ require
 
 <?php endif; ?>
 
-            </section>
-
-            <?php if ($standaloneDefinitions): ?>
-
-                <section class="admin-points-policy-group admin-points-category-policy">
-
-                    <header class="admin-points-category-header">
-                        <div>
-                            <h3>Standalone Place Fields</h3>
-                        </div>
-                    </header>
-
-
-                    <div class="admin-points-category-table">
-
-                        <div
-                            class="admin-points-category-columns"
-                            aria-hidden="true"
-                        >
-                            <span>Field</span>
-                            <span>New Place</span>
-                            <span>Update</span>
-                        </div>
-
-
-                        <?php foreach (
-                            $standaloneDefinitions
-                            as $fieldKey => $definition
-                        ): ?>
-
-                            <?php
-                            $newKey =
-                                (string) (
-                                    $definition['new_policy_key']
-                                    ?? ''
-                                );
-
-                            $updateKey =
-                                (string) (
-                                    $definition['update_policy_key']
-                                    ?? ''
-                                );
-
-                            $newRow =
-                                $policyLookup[$newKey]
-                                ?? null;
-
-                            $updateRow =
-                                $policyLookup[$updateKey]
-                                ?? null;
-
-                            if (!$newRow || !$updateRow) {
-                                continue;
-                            }
-                            ?>
-
-                            <div class="admin-points-category-row">
-
-                                <span class="admin-points-category-copy">
-                                    <strong>
-                                        <?= moderation_e(
-                                            (string) (
-                                                $definition['label']
-                                                ?? $fieldKey
-                                            )
-                                        ) ?>
-                                    </strong>
-                                </span>
-
-
-                                <label>
-                                    <span>New Place</span>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        name="policy[<?= moderation_e($newKey) ?>]"
-                                        value="<?= (int) $newRow['points_value'] ?>"
-                                        <?= !$actorIsOwner
-                                            ? 'disabled'
-                                            : ''
-                                        ?>
-                                    >
-                                </label>
-
-
-                                <label>
-                                    <span>Update</span>
-
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        name="policy[<?= moderation_e($updateKey) ?>]"
-                                        value="<?= (int) $updateRow['points_value'] ?>"
-                                        <?= !$actorIsOwner
-                                            ? 'disabled'
-                                            : ''
-                                        ?>
-                                    >
-                                </label>
-
-                            </div>
-
-                        <?php endforeach; ?>
-
-                    </div>
-
-                </section>
-
-            <?php endif; ?>
-
-
-            <?php if ($otherPolicyRows): ?>
-
-                <section class="admin-points-policy-group">
-
-                    <header>
-                        <h3>Other Contributions</h3>
-                    </header>
-
-                    <div class="admin-policy-grid">
-
-                        <?php foreach (
-                            $otherPolicyRows
-                            as $row
-                        ): ?>
-
-                            <label class="admin-policy-row">
-                                <span>
-                                    <strong>
-                                        <?= moderation_e(
-                                            (string) $row['label']
-                                        ) ?>
-                                    </strong>
-
-                                    <small>
-                                        <?= moderation_e(
-                                            (string) $row['description']
-                                        ) ?>
-                                    </small>
-                                </span>
-
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    name="policy[<?= moderation_e(
-                                        (string) $row['policy_key']
-                                    ) ?>]"
-                                    value="<?= (int) $row['points_value'] ?>"
-                                    <?= !$actorIsOwner
-                                        ? 'disabled'
-                                        : ''
-                                    ?>
-                                >
-                            </label>
-
-                        <?php endforeach; ?>
-
-                    </div>
-
-                </section>
-
-            <?php endif; ?>
-
-
-            <?php if ($actorIsOwner): ?>
-                <div class="admin-points-save">
-                    <button
-                        class="admin-button"
-                        type="submit"
-                    >
-                        Save points policy
-                    </button>
-                </div>
-            <?php endif; ?>
-
-        </form>
-
-    <?php endif; ?>
-
 </section>
 
 
@@ -616,7 +433,7 @@ if (is_array($manualAdjustmentSelected)) {
     $selectedMemberMeta =
         trim(
             implode(
-                ' · ',
+                ' Â· ',
                 array_filter(
                     [
                         $selectedUsername !== ''
@@ -774,7 +591,7 @@ if (is_array($manualAdjustmentSelected)) {
                             data-member-meta="<?= moderation_e(
                                 trim(
                                     implode(
-                                        ' · ',
+                                        ' Â· ',
                                         array_filter(
                                             [
                                                 $memberUsername !== ''
@@ -802,12 +619,12 @@ if (is_array($manualAdjustmentSelected)) {
                             <small>
                                 <?php if ($memberUsername !== ''): ?>
                                     @<?= moderation_e($memberUsername) ?>
-                                    ·
+                                    Â·
                                 <?php endif; ?>
 
                                 <?= moderation_e($memberEmail) ?>
 
-                                · #<?= $memberId ?>
+                                Â· #<?= $memberId ?>
                             </small>
                         </button>
 
@@ -918,13 +735,13 @@ if (is_array($manualAdjustmentSelected)) {
                             <?= moderation_e(
                                 (string) $entry['source_type']
                             ) ?>
-                            ·
+                            Â·
                             <?= moderation_e(
                                 llama_format_viewer_datetime(
                                     (string) $entry['created_at']
                                 )
                             ) ?>
-                            · by
+                            Â· by
                             <?= moderation_e(
                                 (string) $entry['awarded_by_name']
                             ) ?>
