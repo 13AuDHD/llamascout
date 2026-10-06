@@ -175,6 +175,130 @@ function admin_system_set_maintenance(
 }
 
 
+function admin_system_set_service_issue(
+    PDO $db,
+    int $actorUserId,
+    array $data
+): void {
+    if (
+        !admin_users_current_is_owner(
+            $db,
+            $actorUserId
+        )
+    ) {
+        throw new RuntimeException(
+            'Only an Owner can change the service issue banner.'
+        );
+    }
+
+    $enabled =
+        ((string) ($data['enabled'] ?? '0'))
+        === '1';
+
+    $message =
+        trim(
+            (string) (
+                $data['message']
+                ?? ''
+            )
+        );
+
+    if ($message === '') {
+        $message =
+            'Llama Scout is experiencing intermittent service issues beyond our control. The llamas are negotiating a fix.';
+    }
+
+    if (mb_strlen($message) > 500) {
+        throw new RuntimeException(
+            'Service issue message must be 500 characters or less.'
+        );
+    }
+
+    $beforeEnabled =
+        llama_site_setting_bool(
+            $db,
+            'service_issue_enabled',
+            false
+        );
+
+    $beforeMessage =
+        trim(
+            (string)
+            llama_site_setting(
+                $db,
+                'service_issue_message',
+                ''
+            )
+        );
+
+    $db->beginTransaction();
+
+    try {
+        llama_set_site_setting(
+            $db,
+            'service_issue_enabled',
+            $enabled ? '1' : '0'
+        );
+
+        llama_set_site_setting(
+            $db,
+            'service_issue_message',
+            $message
+        );
+
+        if ($beforeEnabled !== $enabled) {
+            $auditAction =
+                $enabled
+                    ? 'system.service_issue_enabled'
+                    : 'system.service_issue_disabled';
+
+            $auditSummary =
+                $enabled
+                    ? 'Enabled the public service issue banner.'
+                    : 'Disabled the public service issue banner.';
+        } else {
+            $auditAction =
+                'system.service_issue_updated';
+
+            $auditSummary =
+                $enabled
+                    ? 'Updated the active public service issue banner.'
+                    : 'Updated the service issue banner while disabled.';
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            $auditAction,
+            $auditSummary,
+            [
+                'before' => [
+                    'enabled' =>
+                        $beforeEnabled,
+                    'message' =>
+                        $beforeMessage,
+                ],
+                'after' => [
+                    'enabled' =>
+                        $enabled,
+                    'message' =>
+                        $message,
+                ],
+            ]
+        );
+
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
+}
+
+
 function admin_system_audit_category_sql(): string
 {
     return
