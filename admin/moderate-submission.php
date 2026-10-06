@@ -690,8 +690,8 @@ require __DIR__
 
             <p>
                 This uses the canonical Place Report completion engine.
-                Only applicable questions are counted. Known, Unknown,
-                and Not Observed responses count as addressed.
+                Only applicable questions are counted. Known and Unknown responses count as addressed.
+                Unanswered questions do not.
             </p>
         </div>
     </header>
