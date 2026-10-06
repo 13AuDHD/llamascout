@@ -445,7 +445,7 @@ $effectiveMaxPoints =
             $estimatedPoints,
 
         'max_points' =>
-            $maxPoints,
+            $effectiveMaxPoints,
 
         'minimum_ready' =>
             !empty(
