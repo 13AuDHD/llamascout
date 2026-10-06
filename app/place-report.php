@@ -381,6 +381,13 @@ function llama_place_report_field_icon(
         'vehicle_capacity' => 'camper',
         'max_vehicle_length_feet' => 'ruler-measure',
         'max_trailer_length_feet' => 'ruler-measure',
+        'campsite_count' => 'numbers',
+        'site_number' => 'hash',
+        'site_hookups_available' => 'plug-connected',
+        'hookup_electric' => 'bolt',
+        'hookup_electric_service' => 'at-electricity-socket',
+        'hookup_water' => 'at-water-tap',
+        'hookup_sewer' => 'at-toilet-paper',
         'parking_surface' => 'parking',
         'ground_condition' => 'ground-condition',
         'tent_camping_suitable' => 'tent',
@@ -695,6 +702,54 @@ function llama_place_report_fields(): array
             'grass' => 'Grassy',
             'mixed' => 'Mixed',
         ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('campsite_count', 'Number of campsites', 'site_vehicle', 'number', 'details.campsite_count', [
+        'step' => '1',
+        'min' => '1',
+        'max' => '10000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('site_number', 'Site number / identifier', 'site_vehicle', 'text', 'details.site_number', [
+        'maxlength' => 80,
+        'placeholder' => 'Example: 14, B-27, Loop C #8',
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ]);
+
+    $add('site_hookups_available', 'Hookups at this site?', 'site_vehicle', 'tri', 'details.site_hookups_available', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('hookup_electric', 'Electric hookup at site?', 'site_vehicle', 'tri', 'details.hookup_electric', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('hookup_electric_service', 'Electric hookup service', 'site_vehicle', 'select', 'details.hookup_electric_service', [
+        'allow_unknown' => true,
+        'options' => [
+            '20a' => '15 / 20 amp',
+            '30a' => '30 amp',
+            '50a' => '50 amp',
+            '20-30a' => '15 / 20 + 30 amp',
+            '30-50a' => '30 + 50 amp',
+            '20-30-50a' => '15 / 20 + 30 + 50 amp',
+        ],
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('hookup_water', 'Water hookup at site?', 'site_vehicle', 'tri', 'details.hookup_water', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('hookup_sewer', 'Sewer hookup at site?', 'site_vehicle', 'tri', 'details.hookup_sewer', [
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
@@ -1014,7 +1069,6 @@ function llama_place_report_fields(): array
     /* Safety and warnings */
     foreach ([
         'felt_safe_daytime' => ['Felt safe during the day?', 'details.felt_safe_daytime'],
-        'felt_safe_nighttime' => ['Felt safe at night?', 'details.felt_safe_nighttime'],
         'flash_flood_risk' => ['Flash-flood risk?', 'details.flash_flood_risk'],
         'wildfire_risk' => ['Wildfire risk?', 'details.wildfire_risk'],
         'fall_hazard' => ['Trip/Fall Hazard?', 'details.fall_hazard'],
@@ -1039,6 +1093,17 @@ function llama_place_report_fields(): array
         $f['felt_safe_nighttime']['counts_toward_completion'] = false;
         $f['felt_safe_nighttime']['points_categories'] = [];
     }
+
+    /*
+     * Legacy compatibility only. Nighttime experience is represented
+     * by Overnight Comfort plus the specific nighttime sensory and
+     * safety observations.
+     */
+    $add('felt_safe_nighttime', 'Felt safe at night?', 'safety', 'derived', 'details.felt_safe_nighttime', [
+        'derived' => true,
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ]);
 
     $add('road_exposure', 'Road exposure', 'safety', 'rating', 'details.road_exposure', [
         'allow_unknown' => true,
@@ -1410,6 +1475,20 @@ function llama_place_report_fields(): array
             'Describe the property or land system the Place is on. Examples include National Forest, State Park, Water Management District, retail property, travel center property, medical property, hosted membership property, roadside right-of-way, or private land.',
         'vehicle_capacity' =>
             'Estimate how many normal vehicles can fit without blocking the road, entrance, turnaround, or neighboring sites. Do not count sketchy edge parking just because a vehicle could technically squeeze there.',
+        'campsite_count' =>
+            'Enter the total number of campsites or camping spaces at the campground or developed camping property. Choose ? when you could not determine the count.',
+        'site_number' =>
+            'If this Scout report describes a specific numbered or named campsite, enter its site identifier here. Leave this blank for a campground-level report or an unnumbered site.',
+        'site_hookups_available' =>
+            'Choose Yes when the campsite being reported has one or more utility hookups directly at the site. Property-wide electricity, potable water, or a dump station in Amenities does not count as a campsite hookup.',
+        'hookup_electric' =>
+            'Choose Yes when electrical service is available directly at the campsite.',
+        'hookup_electric_service' =>
+            'Choose the electrical service available at this campsite. Select the combined option when the pedestal offers more than one receptacle size.',
+        'hookup_water' =>
+            'Choose Yes when potable-water service connects directly at the campsite.',
+        'hookup_sewer' =>
+            'Choose Yes when the campsite has its own sewer connection. A shared campground dump station belongs in Amenities instead.',
         'max_vehicle_length_feet' =>
             'Estimate the longest single vehicle that could reasonably enter, park, and maneuver here. Think about the entire approach and parking area, not just whether a long vehicle physically fits in one spot.',
         'max_trailer_length_feet' =>
@@ -1910,6 +1989,96 @@ function llama_place_report_fields(): array
         ]]
     );
 
+
+    /*
+     * =========================================================
+     * DEVELOPED CAMPGROUND PROFILE
+     * =========================================================
+     *
+     * Formal campsite/property questions belong on campground-style
+     * Places, not dispersed camping or ordinary parking Places.
+     */
+    $developedCampgroundPlaceTypes = [
+        'developed-campground',
+        'camping-area',
+        'rv-park-resort',
+    ];
+
+    $setApplicable(
+        $f,
+        [
+            'campsite_count',
+            'site_number',
+            'site_hookups_available',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $developedCampgroundPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'hookup_electric',
+            'hookup_water',
+            'hookup_sewer',
+        ],
+        [
+            [
+                'field' => 'type',
+                'operator' => 'in',
+                'value' => $developedCampgroundPlaceTypes,
+            ],
+            [
+                'field' => 'site_hookups_available',
+                'operator' => 'equals',
+                'value' => '1',
+            ],
+        ]
+    );
+
+    $setApplicable(
+        $f,
+        ['hookup_electric_service'],
+        [
+            [
+                'field' => 'type',
+                'operator' => 'in',
+                'value' => $developedCampgroundPlaceTypes,
+            ],
+            [
+                'field' => 'site_hookups_available',
+                'operator' => 'equals',
+                'value' => '1',
+            ],
+            [
+                'field' => 'hookup_electric',
+                'operator' => 'equals',
+                'value' => '1',
+            ],
+        ]
+    );
+
+    /*
+     * These either restate "developed campground" or describe a
+     * dispersed/public-land use pattern rather than a formal campground.
+     */
+    $appendApplicable(
+        $f,
+        [
+            'overnight_camping_allowed',
+            'designated_sites_only',
+            'target_shooting_allowed',
+            'residential_use_prohibited',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'developed-campground',
+        ]]
+    );
 
     /*
      * =========================================================
