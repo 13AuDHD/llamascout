@@ -1318,6 +1318,209 @@ function llama_place_report_fields(): array
         }
     }
 
+    /*
+     * =========================================================
+     * COMPLETION APPLICABILITY RULES
+     * =========================================================
+     *
+     * These rules affect only whether a question belongs in the
+     * current completion denominator. They do not delete stored
+     * answers and they do not control Scout contribution points.
+     */
+
+    $setApplicable =
+        static function (
+            array &$fields,
+            array $fieldKeys,
+            array $rules
+        ): void {
+            foreach ($fieldKeys as $fieldKey) {
+                if (!isset($fields[$fieldKey])) {
+                    continue;
+                }
+
+                $fields[$fieldKey]['applicable_if'] =
+                    $rules;
+            }
+        };
+
+    $campingPlaceTypes = [
+        'dispersed-camping',
+        'developed-campground',
+        'camping-area',
+        'rv-park-resort',
+        'membership-host',
+        'private-property',
+        'fairgrounds',
+    ];
+
+    $dispersedRelevantPlaceTypes = [
+        'dispersed-camping',
+        'camping-area',
+        'trailhead',
+        'day-use',
+        'scenic-overlook',
+        'vehicle-pulloff',
+    ];
+
+    $campfireRelevantPlaceTypes = [
+        'dispersed-camping',
+        'developed-campground',
+        'camping-area',
+        'rv-park-resort',
+        'trailhead',
+        'day-use',
+        'membership-host',
+        'private-property',
+        'fairgrounds',
+    ];
+
+    $naturalUsePlaceTypes = [
+        'dispersed-camping',
+        'developed-campground',
+        'camping-area',
+        'trailhead',
+        'day-use',
+        'scenic-overlook',
+        'vehicle-pulloff',
+    ];
+
+    $setApplicable(
+        $f,
+        ['tent_camping_suitable'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campingPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['max_trailer_length_feet'],
+        [[
+            'field' => 'trailer_suitable',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['accessible_toilet'],
+        [[
+            'field' => 'amenity_toilets',
+            'operator' => 'truthy',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['accessible_picnic_table'],
+        [[
+            'field' => 'amenity_picnic_table',
+            'operator' => 'truthy',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['dogs_required_to_be_leashed'],
+        [[
+            'field' => 'pets_allowed',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['dispersed_camping_allowed'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $dispersedRelevantPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'collecting_firewood',
+            'target_shooting_allowed',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $naturalUsePlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['campfire_allowed'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campfireRelevantPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'designated_sites_only',
+            'food_storage_required',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campingPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        ['existing_sites_encouraged'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => [
+                'dispersed-camping',
+                'camping-area',
+            ],
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'stay_limit_days',
+            'generator_restrictions',
+            'residential_use_prohibited',
+            'felt_safe_nighttime',
+            'nighttime_noise',
+            'nighttime_traffic',
+            'nighttime_crowds',
+            'nighttime_privacy',
+            'nighttime_light_pollution',
+            'nighttime_sensory_comfort',
+            'nighttime_social_interaction',
+            'experience_night_sky',
+            'experience_stargazing',
+            'experience_quiet_evening',
+            'experience_overnight_comfort',
+            'experience_extended_stay_comfort',
+            'recommended_overnight_stop',
+            'recommended_extended_stay',
+        ],
+        [[
+            'field' => 'overnight_camping_allowed',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
     return $f;
 }
 
@@ -2034,10 +2237,6 @@ function llama_place_report_question_applicable(
         ?? null;
 
     if (!is_array($field)) {
-        return false;
-    }
-
-    if (!empty($field['hide_form'])) {
         return false;
     }
 
