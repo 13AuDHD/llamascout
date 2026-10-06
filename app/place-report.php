@@ -489,6 +489,7 @@ function llama_place_report_field_icon(
         'membership_required' => 'id-badge-2',
         'check_in_required' => 'door-enter',
         'reservation_url' => 'link',
+        'reservation_fee' => 'currency-dollar',
         'check_in_begins' => 'clock-hour-3',
         'checkout_ends' => 'clock-hour-11',
         'fee' => 'receipt',
@@ -676,17 +677,6 @@ function llama_place_report_fields(): array
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
-    $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle', 'select', 'details.max_trailer_length_feet', [
-        'options' => [
-            'not-recommended' => 'Not recommended',
-            '10' => 'About 10 ft', '15' => 'About 15 ft', '20' => 'About 20 ft',
-            '25' => 'About 25 ft', '30' => 'About 30 ft', '35' => 'About 35 ft',
-            '40' => 'About 40 ft', '45' => 'About 45 ft', '50' => 'About 50 ft',
-            '60' => '50+ ft',
-        ],
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
     $add('parking_surface', 'Parking surface', 'site_vehicle', 'select', 'details.parking_surface', [
         'options' => llama_place_report_surface_options(),
         'allow_unknown' => true,
@@ -706,11 +696,22 @@ function llama_place_report_fields(): array
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle', 'select', 'details.max_trailer_length_feet', [
+        'options' => [
+            'not-recommended' => 'Not recommended',
+            '10' => 'About 10 ft', '15' => 'About 15 ft', '20' => 'About 20 ft',
+            '25' => 'About 25 ft', '30' => 'About 30 ft', '35' => 'About 35 ft',
+            '40' => 'About 40 ft', '45' => 'About 45 ft', '50' => 'About 50 ft',
+            '60' => '50+ ft',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
     foreach ([
-        'tent_camping_suitable' => 'Tent camping suitable?',
-        'rv_suitable' => 'RV suitable?',
         'trailer_suitable' => 'Trailer suitable?',
-        'leveling_required' => 'Leveling required?',
+        'rv_suitable' => 'RV suitable?',
+        'tent_camping_suitable' => 'Tent camping suitable?',
         'turnaround_space' => 'Turnaround space?',
         'pull_through' => 'Pull-through site?',
         'back_in' => 'Back-in site?',
@@ -720,6 +721,16 @@ function llama_place_report_fields(): array
             'points_categories' => ['site_vehicle'],
         ]);
     }
+
+    /*
+     * Legacy compatibility only. Leveling Required is derived from the
+     * Levelness rating and is no longer a separate contributor question.
+     */
+    $add('leveling_required', 'Leveling required?', 'site_vehicle', 'derived', 'details.leveling_required', [
+        'derived' => true,
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ]);
 
     foreach ([
         'levelness' => ['Levelness', 'Very uneven', 'Very level'],
@@ -1020,6 +1031,12 @@ function llama_place_report_fields(): array
         ]);
     }
 
+    if (isset($f['felt_safe_nighttime'])) {
+        $f['felt_safe_nighttime']['derived'] = true;
+        $f['felt_safe_nighttime']['counts_toward_completion'] = false;
+        $f['felt_safe_nighttime']['points_categories'] = [];
+    }
+
     $add('road_exposure', 'Road exposure', 'safety', 'rating', 'details.road_exposure', [
         'allow_unknown' => true,
         'low' => 'Not exposed',
@@ -1126,6 +1143,14 @@ function llama_place_report_fields(): array
     $add('reservation_url', 'Reservation URL', 'rules', 'url', 'rules.reservation_url', [
         'wide' => true,
         'placeholder' => 'https://...',
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('reservation_fee', 'Reservation / booking fee', 'rules', 'number', 'rules.reservation_fee', [
+        'step' => '.01',
+        'min' => '0',
+        'max' => '100000',
+        'placeholder' => '0.00',
+        'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
     ]);
     $add('check_in_begins', 'Check-in begins', 'rules', 'select', 'rules.check_in_begins', [
@@ -1419,6 +1444,8 @@ function llama_place_report_fields(): array
             'Choose Yes when someone must formally check in with a host, office, kiosk, desk, app, or other process before using the overnight space.',
         'reservation_url' =>
             'Use the official reservation or booking page for this Place when a reservation is required.',
+        'reservation_fee' =>
+            'Enter any separate reservation or booking fee. Enter 0.00 when there is no reservation fee. Do not include the camping, entrance, facility, or parking fee here.',
         'check_in_begins' =>
             'Choose the earliest normal check-in time. Use Anytime when arrival is allowed at any hour, or No set check-in time when there is no formal check-in window.',
         'checkout_ends' =>
@@ -1684,22 +1711,6 @@ function llama_place_report_fields(): array
         ]]
     );
 
-    $setApplicable(
-        $f,
-        [
-            'reservation_required',
-            'membership_required',
-            'check_in_required',
-            'checkout_ends',
-            'fee',
-        ],
-        [[
-            'field' => 'overnight_camping_allowed',
-            'operator' => 'in',
-            'value' => ['1', '2'],
-        ]]
-    );
-
     /*
      * A formal check-in start time only makes sense when the
      * Place actually requires check-in. Checkout remains an
@@ -1717,7 +1728,10 @@ function llama_place_report_fields(): array
 
     $setApplicable(
         $f,
-        ['reservation_url'],
+        [
+            'reservation_url',
+            'reservation_fee',
+        ],
         [[
             'field' => 'reservation_required',
             'operator' => 'equals',
@@ -1731,7 +1745,6 @@ function llama_place_report_fields(): array
             'stay_limit_days',
             'generator_restrictions',
             'residential_use_prohibited',
-            'felt_safe_nighttime',
             'nighttime_noise',
             'nighttime_traffic',
             'nighttime_crowds',
@@ -1742,7 +1755,6 @@ function llama_place_report_fields(): array
             'experience_night_sky',
             'experience_stargazing',
             'experience_quiet_evening',
-            'experience_overnight_comfort',
             'experience_extended_stay_comfort',
         ],
         [[
@@ -1874,7 +1886,6 @@ function llama_place_report_quick_warnings(array $data): array
     /* Safety answers that become warnings when the answer is No. */
     foreach ([
         'felt_safe_daytime' => ['Did not feel safe during the day', 'felt_safe_daytime'],
-        'felt_safe_nighttime' => ['Did not feel safe at night', 'felt_safe_nighttime'],
         'emergency_access' => ['No emergency vehicle access', 'emergency_access'],
     ] as $key => [$label, $iconKey]) {
         if ($state($key) === 'answered' && $isNo($value($key))) {
@@ -1914,8 +1925,9 @@ function llama_place_report_quick_warnings(array $data): array
     }
 
     if (
-        $state('leveling_required') === 'answered'
-        && $isYes($value('leveling_required'))
+        $state('levelness') === 'answered'
+        && is_numeric($value('levelness'))
+        && (int) $value('levelness') <= 2
     ) {
         $add(
             'warning_leveling_required_derived',
