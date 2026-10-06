@@ -378,10 +378,11 @@ $placeReportRequiredFields = [
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
+$placeReportShowFieldHelp = true;
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoTitle = 'Photos of this Place';
 $placeReportPhotoHelp =
-    'Add up to 10 current photos. Signs, gates, washouts, road conditions, parking areas, and obstructions are especially useful. Location metadata is removed before permanent storage.';
+    'Add up to 10 current photos. Signs, gates, washouts, road conditions, parking areas, and obstructions are especially useful. Location metadata is removed before storage.';
 
 
 /*
