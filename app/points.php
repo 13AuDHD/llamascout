@@ -352,7 +352,7 @@ function llama_points_new_place_max_points(
    - applicability is handled by the Place Report schema;
    - grouped questions such as Amenities count once;
    - explicitly optional fields do not count;
-   - Unknown / Not observed count as completed observations;
+   - Unknown counts as a completed observation; untouched questions do not;
    - minimum character requirements are enforced centrally;
    - photo evidence counts once.
    ========================================================= */

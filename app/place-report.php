@@ -2316,10 +2316,6 @@ function llama_place_report_is_answered_input(
  * =========================================================
  */
 
-function llama_place_report_not_observed_token(): string
-{
-    return '__LLAMA_NOT_OBSERVED__';
-}
 
 function llama_place_report_normalized_text_length(
     mixed $value
@@ -2503,8 +2499,6 @@ function llama_place_report_question_answered(
     if (
         $value
         === llama_place_report_unknown_token()
-        || $value
-        === llama_place_report_not_observed_token()
     ) {
         return true;
     }
