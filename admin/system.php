@@ -171,6 +171,17 @@ if (
 
                 $notice =
                     'Test account reset completed immediately.';
+            } elseif ($action === 'service_issue') {
+                admin_system_set_service_issue(
+                    $db,
+                    $actorUserId,
+                    $_POST
+                );
+
+                $notice =
+                    isset($_POST['enabled'])
+                        ? 'Service issue banner enabled.'
+                        : 'Service issue banner disabled.';
             } else {
                 $maintenanceData =
                     $_POST;
@@ -216,6 +227,28 @@ if (
 
 $state =
     llama_maintenance_state($db);
+
+$serviceIssueEnabled =
+    llama_site_setting_bool(
+        $db,
+        'service_issue_enabled',
+        false
+    );
+
+$serviceIssueMessage =
+    trim(
+        (string)
+        llama_site_setting(
+            $db,
+            'service_issue_message',
+            'Llama Scout is experiencing intermittent service issues beyond our control. The llamas are negotiating a fix.'
+        )
+    );
+
+if ($serviceIssueMessage === '') {
+    $serviceIssueMessage =
+        'Llama Scout is experiencing intermittent service issues beyond our control. The llamas are negotiating a fix.';
+}
 
 $startedByName = '';
 
@@ -808,6 +841,118 @@ require __DIR__ . '/_header.php';
             type="submit"
         >
             Save system status
+        </button>
+    <?php endif; ?>
+
+</div>
+
+</form>
+
+</section>
+
+
+<section class="admin-panel admin-system-service-issue-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Public status notice</p>
+        <h2>Service Issue Banner</h2>
+    </div>
+
+    <?php if (!$actorIsOwner): ?>
+        <span>
+            Owner access required to change
+        </span>
+    <?php endif; ?>
+</header>
+
+<form
+    class="admin-system-service-issue-form"
+    method="post"
+>
+
+<input
+    type="hidden"
+    name="csrf_token"
+    value="<?= moderation_e(
+        moderation_csrf_token()
+    ) ?>"
+>
+
+<input
+    type="hidden"
+    name="action"
+    value="service_issue"
+>
+
+<div class="admin-system-maintenance-toggle">
+
+    <div>
+        <strong>
+            <?= $serviceIssueEnabled
+                ? 'Service issue banner is ON'
+                : 'Service issue banner is OFF' ?>
+        </strong>
+
+        <span>
+            Use this when Llama Scout remains available but the
+            site, host, server, or an upstream service is causing
+            intermittent problems. This does not restrict access.
+        </span>
+    </div>
+
+    <label class="admin-system-service-issue-switch">
+        <input
+            type="checkbox"
+            name="enabled"
+            value="1"
+            <?= $serviceIssueEnabled
+                ? 'checked'
+                : '' ?>
+            <?= !$actorIsOwner
+                ? 'disabled'
+                : '' ?>
+        >
+
+        <span>
+            <?= $serviceIssueEnabled
+                ? 'On'
+                : 'Off' ?>
+        </span>
+    </label>
+
+</div>
+
+
+<label>
+    <span>Public banner message</span>
+
+    <textarea
+        name="message"
+        rows="3"
+        maxlength="500"
+        <?= !$actorIsOwner
+            ? 'disabled'
+            : '' ?>
+    ><?= moderation_e(
+        $serviceIssueMessage
+    ) ?></textarea>
+
+    <small>
+        Shown persistently at the top of the public site while
+        the banner is enabled.
+    </small>
+</label>
+
+
+<div class="admin-user-form-actions">
+
+    <?php if ($actorIsOwner): ?>
+        <button
+            class="admin-button"
+            type="submit"
+        >
+            Save service issue status
         </button>
     <?php endif; ?>
 
