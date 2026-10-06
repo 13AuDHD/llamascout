@@ -528,13 +528,6 @@ $placeReportCompletionConfig = [
     'unanswered_token' =>
         llama_place_report_unanswered_token(),
 
-    'not_observed_token' =>
-        function_exists(
-            'llama_place_report_not_observed_token'
-        )
-            ? llama_place_report_not_observed_token()
-            : '__LLAMA_NOT_OBSERVED__',
-
     'fields' =>
         $placeReportCompletionFields,
 
