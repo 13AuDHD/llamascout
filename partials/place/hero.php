@@ -59,7 +59,7 @@ require __DIR__ . '/access-alert.php';
 
                     <div
                         class="place-report-completeness"
-                        title="How many currently applicable Place Report questions have been addressed. Known, Unknown, and Not Observed responses count as addressed."
+                        title="How many currently applicable Place Report questions have been addressed. Known and Unknown responses count as addressed. Unanswered questions do not."
                     >
                         <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
                         <span>
@@ -72,7 +72,7 @@ require __DIR__ . '/access-alert.php';
                                 )
                                 && (int) $reportCompleteness['total'] > 0
                             ): ?>
-                                Â·
+                                ·
                                 <?= (int) $reportCompleteness['answered'] ?>
                                 /
                                 <?= (int) $reportCompleteness['total'] ?>
