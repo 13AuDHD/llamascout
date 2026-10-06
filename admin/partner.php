@@ -790,6 +790,79 @@ $status =
 </section>
 
 
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
+        <p>Usage rights</p>
+        <h2>Trademark & Assets</h2>
+    </div>
+</header>
+
+<div class="admin-user-action-box">
+
+<label>
+    <span>Trademark / asset owner</span>
+
+    <input
+        type="text"
+        name="trademark_owner"
+        value="<?= moderation_e(
+            (string) (
+                $partner['trademark_owner']
+                ?? ''
+            )
+        ) ?>"
+        placeholder="Company legal name"
+    >
+</label>
+
+
+<label>
+    <span>Branding rights note</span>
+
+    <textarea
+        name="branding_rights_note"
+        rows="6"
+        placeholder="Record permission, agreement language, attribution requirements, approved placements, or restrictions."
+    ><?= moderation_e(
+        (string) (
+            $partner['branding_rights_note']
+            ?? ''
+        )
+    ) ?></textarea>
+</label>
+
+</div>
+
+</section>
+
+
+</div>
+
+
+<div class="admin-partner-savebar">
+
+<div>
+    <strong>Save partner settings</strong>
+    <span>
+        Changes apply to this partner's configuration.
+    </span>
+</div>
+
+<button
+    class="admin-button"
+    type="submit"
+>
+    Save partner
+</button>
+
+</div>
+
+
+</form>
+
+
 <section class="admin-panel admin-partner-locations-panel">
 
 <header class="admin-panel-header">
@@ -970,7 +1043,7 @@ $status =
 <small>
     <?= moderation_e(
         implode(
-            ' · ',
+            ' Â· ',
             array_filter(
                 [
                     trim(
@@ -1119,77 +1192,6 @@ $status =
 </section>
 
 
-<section class="admin-panel">
-
-<header class="admin-panel-header">
-    <div>
-        <p>Usage rights</p>
-        <h2>Trademark & Assets</h2>
-    </div>
-</header>
-
-<div class="admin-user-action-box">
-
-<label>
-    <span>Trademark / asset owner</span>
-
-    <input
-        type="text"
-        name="trademark_owner"
-        value="<?= moderation_e(
-            (string) (
-                $partner['trademark_owner']
-                ?? ''
-            )
-        ) ?>"
-        placeholder="Company legal name"
-    >
-</label>
-
-
-<label>
-    <span>Branding rights note</span>
-
-    <textarea
-        name="branding_rights_note"
-        rows="6"
-        placeholder="Record permission, agreement language, attribution requirements, approved placements, or restrictions."
-    ><?= moderation_e(
-        (string) (
-            $partner['branding_rights_note']
-            ?? ''
-        )
-    ) ?></textarea>
-</label>
-
-</div>
-
-</section>
-
-
-</div>
-
-
-<div class="admin-partner-savebar">
-
-<div>
-    <strong>Save partner settings</strong>
-    <span>
-        Changes apply to this partner's configuration.
-    </span>
-</div>
-
-<button
-    class="admin-button"
-    type="submit"
->
-    Save partner
-</button>
-
-</div>
-
-
-</form>
 
 
 <script>
