@@ -213,6 +213,34 @@ if (
                 ?? 0
             );
 
+        $minimumApprovalPercent =
+            llama_points_policy_required(
+                $db,
+                'new_place_minimum_approval_percent'
+            );
+
+        $actionCompletionPercent =
+            (int) (
+                $pointEstimate[
+                    'completion_percent'
+                ]
+                ?? 0
+            );
+
+        if (
+            $action === 'approve'
+            && $actionCompletionPercent
+                < $minimumApprovalPercent
+        ) {
+            throw new RuntimeException(
+                'This Place is only '
+                . $actionCompletionPercent
+                . '% complete. It must be at least '
+                . $minimumApprovalPercent
+                . '% complete before approval.'
+            );
+        }
+
         $db->beginTransaction();
 
         if ($action === 'approve') {
@@ -601,6 +629,16 @@ $completionPercent =
         ?? 0
     );
 
+$minimumApprovalPercent =
+    llama_points_policy_required(
+        $db,
+        'new_place_minimum_approval_percent'
+    );
+
+$meetsMinimumApproval =
+    $completionPercent
+    >= $minimumApprovalPercent;
+
 $missingQuestions =
     array_values(
         (array) (
@@ -706,6 +744,27 @@ require __DIR__
         </div>
 
         <div>
+            <span>Minimum to approve</span>
+
+            <strong>
+                <?= number_format(
+                    $minimumApprovalPercent
+                ) ?>%
+            </strong>
+        </div>
+
+        <div>
+            <span>Approval readiness</span>
+
+            <strong>
+                <?= $meetsMinimumApproval
+                    ? 'Ready'
+                    : 'Below minimum'
+                ?>
+            </strong>
+        </div>
+
+        <div>
             <span>Questions addressed</span>
 
             <strong>
@@ -745,6 +804,19 @@ require __DIR__
             </strong>
         </div>
     </div>
+
+    <?php if (!$meetsMinimumApproval): ?>
+        <div class="admin-moderation-notice">
+            This report is
+            <?= number_format($completionPercent) ?>%
+            complete. New Places must be at least
+            <?= number_format(
+                $minimumApprovalPercent
+            ) ?>%
+            complete before approval. Request changes from the
+            contributor before publishing this Place.
+        </div>
+    <?php endif; ?>
 </section>
 
 <section class="scout-report">
