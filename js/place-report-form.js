@@ -1204,7 +1204,6 @@ return false;
 
 if (
 value === config.unknown_token
-|| value === config.not_observed_token
 ) {
 return true;
 }
@@ -1804,7 +1803,7 @@ li.textContent =
 item.label
 + (
 item.details.length
-? ' â '
+? ' — '
 + item.details.join(', ')
 : ''
 );
