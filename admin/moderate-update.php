@@ -234,9 +234,43 @@ if (
                 : [];
 
 
+        $actionCurrentValues =
+            llama_place_update_current_values(
+                $db,
+                (int) $item['place_id']
+            );
+
+        $actionCurrentUnknownFields =
+            llama_place_report_published_answer_state(
+                $db,
+                (int) $item['place_id']
+            );
+
+        $actionHistoryRow =
+            llama_place_update_fetch_row(
+                $db,
+                $updateId
+            );
+
+        $actionProposedUnknownFields =
+            $actionHistoryRow
+                ? llama_place_update_latest_unknown_fields(
+                    $actionHistoryRow
+                )
+                : [];
+
+        $actionFinalInput =
+            llama_place_update_shared_form_values(
+                $actionCurrentValues,
+                $actionCurrentUnknownFields,
+                $actionProposed,
+                $actionProposedUnknownFields
+            );
+
         $actionPointEstimate =
             llama_points_estimate_place_update(
                 $db,
+                $actionFinalInput,
                 $actionProposed
             );
 
@@ -601,9 +635,43 @@ $photos =
         : [];
 
 
+$currentValues =
+    llama_place_update_current_values(
+        $db,
+        (int) $item['place_id']
+    );
+
+$currentUnknownFields =
+    llama_place_report_published_answer_state(
+        $db,
+        (int) $item['place_id']
+    );
+
+$pointHistoryRow =
+    llama_place_update_fetch_row(
+        $db,
+        $updateId
+    );
+
+$proposedUnknownFields =
+    $pointHistoryRow
+        ? llama_place_update_latest_unknown_fields(
+            $pointHistoryRow
+        )
+        : [];
+
+$finalPointInput =
+    llama_place_update_shared_form_values(
+        $currentValues,
+        $currentUnknownFields,
+        $proposed,
+        $proposedUnknownFields
+    );
+
 $updatePointEstimate =
     llama_points_estimate_place_update(
         $db,
+        $finalPointInput,
         $proposed
     );
 
@@ -1483,7 +1551,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                →
+                                                â
 
                                                 <?= $e(
                                                     $afterText
@@ -1524,7 +1592,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                →
+                                â
 
                                 <?= (int) (
                                     $event['photo_count_after']
