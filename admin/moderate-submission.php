@@ -577,40 +577,37 @@ $newPlacePointEstimate =
         count($photos)
     );
 
-$fields =
-    llama_place_report_fields();
+$completionSummary =
+    llama_place_report_question_completion_summary(
+        $pointInput,
+        count($photos)
+    );
 
-$optionalFields =
-    llama_points_optional_new_place_fields();
+$answered =
+    (int) (
+        $completionSummary['answered']
+        ?? 0
+    );
 
-$answered = 0;
-$totalFields = 0;
+$totalFields =
+    (int) (
+        $completionSummary['total']
+        ?? 0
+    );
 
-foreach (
-    array_keys($fields)
-    as $fieldKey
-) {
-    if (
-        isset(
-            $optionalFields[
-                (string) $fieldKey
-            ]
+$completionPercent =
+    (int) (
+        $completionSummary['percent']
+        ?? 0
+    );
+
+$missingQuestions =
+    array_values(
+        (array) (
+            $completionSummary['missing']
+            ?? []
         )
-    ) {
-        continue;
-    }
-
-    $totalFields++;
-
-    if (
-        llama_points_has_answer(
-            $pointInput,
-            (string) $fieldKey
-        )
-    ) {
-        $answered++;
-    }
-}
+    );
 
 $unknownCount =
     count(
@@ -692,21 +689,39 @@ require __DIR__
             </h2>
 
             <p>
-                Optional notes are excluded. Unknown counts as answered,
-                and completed checkbox sections treat unchecked options
-                as observed No answers.
+                This uses the canonical Place Report completion engine.
+                Only applicable questions are counted. Known, Unknown,
+                and Not Observed responses count as addressed.
             </p>
         </div>
     </header>
 
     <div class="admin-moderation-readiness-grid">
         <div>
-            <span>Questions answered</span>
+            <span>Report completion</span>
+
+            <strong>
+                <?= number_format($completionPercent) ?>%
+            </strong>
+        </div>
+
+        <div>
+            <span>Questions addressed</span>
 
             <strong>
                 <?= number_format($answered) ?>
                 /
                 <?= number_format($totalFields) ?>
+            </strong>
+        </div>
+
+        <div>
+            <span>Still unanswered</span>
+
+            <strong>
+                <?= number_format(
+                    count($missingQuestions)
+                ) ?>
             </strong>
         </div>
 
