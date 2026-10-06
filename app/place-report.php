@@ -2167,6 +2167,32 @@ function llama_place_report_fields(): array
 
     /*
      * =========================================================
+     * RV PARK / RESORT PROFILE
+     * =========================================================
+     * Overnight use and individually designated RV spaces are implied
+     * by this Place type. Do not assume that every park offers hookups,
+     * accepts tents, allows long-term residents, or is safe from natural
+     * hazards: those answers still need to be collected.
+     *
+     * Camping Area deliberately gets NO new hard exclusions in this
+     * pass. That type can describe anything from an undeveloped area
+     * with unnumbered spots to a fee-based managed recreation site.
+     */
+    $appendApplicable(
+        $f,
+        [
+            'overnight_camping_allowed',
+            'designated_sites_only',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'rv-park-resort',
+        ]]
+    );
+
+    /*
+     * =========================================================
      * DISPERSED CAMPING PROFILE
      * =========================================================
      *
