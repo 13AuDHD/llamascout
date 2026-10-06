@@ -1368,6 +1368,18 @@ if (!fieldKey) {
 return false;
 }
 
+// A stale answer from an inapplicable parent must not reveal a child.
+// Check this in both the visual form and the PHP scoring evaluator.
+if (fieldKey !== 'type') {
+const dependency = Array.isArray(config.fields)
+? config.fields.find((item) => String(item.key) === fieldKey)
+: null;
+
+if (dependency && !fieldContextuallyApplicable(form, dependency, config)) {
+return false;
+}
+}
+
 const actual =
 completionFieldValue(
 form,
