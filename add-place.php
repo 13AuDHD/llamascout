@@ -756,13 +756,6 @@ $placeReportCompletionConfig = [
                     applicable questions addressed.
                 </span>
 
-                <br />
-
-                <span class="place-report-minimum-status">
-                    <strong>Minimum to submit:</strong>
-                    name, exact location, 1 current photo.
-                </span>
-
                 <button
                     type="button"
                     class="add-place-radio-clear"
@@ -771,6 +764,14 @@ $placeReportCompletionConfig = [
                 >
                     Show missing
                 </button>
+
+                <br />
+
+                <span class="place-report-minimum-status">
+                    <strong>Minimum to submit:</strong>
+                    name, exact location, 1 current photo.
+                </span>
+                
             </span>
         </div>
 
