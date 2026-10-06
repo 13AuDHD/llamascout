@@ -196,7 +196,7 @@
 }
 
 .contribution-section {
-    overflow: hidden;
+    overflow: visible;
 
     border: 1px solid var(--border);
     border-radius: 12px;
