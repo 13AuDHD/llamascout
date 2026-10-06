@@ -1742,6 +1742,201 @@ update();
 });
 };
 
+
+const setupFieldHelp = (form) => {
+const toggles = [
+...form.querySelectorAll(
+'[data-place-report-help-toggle]'
+),
+];
+
+if (!toggles.length) {
+return;
+}
+
+const entries =
+toggles
+.map((toggle) => {
+const panelId =
+String(
+toggle.getAttribute(
+'data-place-report-help-toggle'
+)
+|| ''
+);
+
+const panel =
+panelId !== ''
+? form.querySelector(
+'#' + CSS.escape(panelId)
+)
+: null;
+
+return panel
+? {
+toggle,
+panel,
+}
+: null;
+})
+.filter(Boolean);
+
+const isOpen = (entry) => {
+const nativeOpen =
+typeof entry.panel.matches
+=== 'function'
+&& entry.panel.matches(
+':popover-open'
+);
+
+return nativeOpen
+|| entry.panel.classList.contains(
+'is-open'
+);
+};
+
+const syncExpanded = (entry) => {
+entry.toggle.setAttribute(
+'aria-expanded',
+isOpen(entry)
+? 'true'
+: 'false'
+);
+};
+
+const closeEntry = (entry) => {
+if (
+typeof entry.panel.hidePopover
+=== 'function'
+&& entry.panel.matches(
+':popover-open'
+)
+) {
+try {
+entry.panel.hidePopover();
+} catch (_) {
+}
+}
+
+entry.panel.classList.remove(
+'is-open'
+);
+
+syncExpanded(entry);
+};
+
+const closeOthers = (current) => {
+entries.forEach((entry) => {
+if (entry !== current) {
+closeEntry(entry);
+}
+});
+};
+
+const openEntry = (entry) => {
+closeOthers(entry);
+
+let openedNatively = false;
+
+if (
+typeof entry.panel.showPopover
+=== 'function'
+) {
+try {
+entry.panel.showPopover();
+openedNatively = true;
+} catch (_) {
+openedNatively = false;
+}
+}
+
+if (!openedNatively) {
+entry.panel.classList.add(
+'is-open'
+);
+}
+
+syncExpanded(entry);
+};
+
+const toggleEntry = (entry) => {
+if (isOpen(entry)) {
+closeEntry(entry);
+} else {
+openEntry(entry);
+}
+};
+
+entries.forEach((entry) => {
+entry.toggle.addEventListener(
+'click',
+(event) => {
+event.preventDefault();
+event.stopPropagation();
+
+toggleEntry(entry);
+}
+);
+
+entry.toggle.addEventListener(
+'keydown',
+(event) => {
+if (
+event.key !== 'Enter'
+&& event.key !== ' '
+) {
+return;
+}
+
+event.preventDefault();
+event.stopPropagation();
+
+toggleEntry(entry);
+}
+);
+
+entry.panel.addEventListener(
+'toggle',
+() => {
+syncExpanded(entry);
+}
+);
+
+syncExpanded(entry);
+});
+
+document.addEventListener(
+'click',
+(event) => {
+if (
+event.target instanceof Element
+&& event.target.closest(
+'.place-report-field-help'
+)
+) {
+return;
+}
+
+entries.forEach(
+closeEntry
+);
+}
+);
+
+document.addEventListener(
+'keydown',
+(event) => {
+if (event.key !== 'Escape') {
+return;
+}
+
+entries.forEach(
+closeEntry
+);
+}
+);
+};
+
 const setupMultiselectControls = (form) => {
 form
 .querySelectorAll(
@@ -1828,6 +2023,10 @@ syncSummary();
 const setupSharedPlaceReportBehavior = (
 form
 ) => {
+setupFieldHelp(
+form
+);
+
 const config =
 readPlaceReportConfig(form);
 
@@ -2284,7 +2483,7 @@ li.textContent =
 item.label
 + (
 item.details.length
-? ' â '
+? ' Ã¢ÂÂ '
 + item.details.join(', ')
 : ''
 );
