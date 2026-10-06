@@ -3138,7 +3138,8 @@ function llama_place_update_approve(
         llama_points_estimate_place_update(
             $db,
             $finalInput,
-            $proposed
+            $proposed,
+            count($photos)
         );
 
 
