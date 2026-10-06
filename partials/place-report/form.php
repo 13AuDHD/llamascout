@@ -572,7 +572,6 @@ $renderField =
                             role="dialog"
                             aria-label="<?= $e($field['label']) ?> help"
                             data-place-report-help-panel
-                            popover="auto"
                         >
                             <?= $e($helpText) ?>
                         </span>
