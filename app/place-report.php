@@ -1813,6 +1813,14 @@ function llama_place_report_fields(): array
         ]]
     );
 
+    $intrinsicallyOvernightPlaceTypes = [
+        'dispersed-camping',
+        'developed-campground',
+        'camping-area',
+        'rv-park-resort',
+        'membership-host',
+    ];
+
     $setApplicable(
         $f,
         [
@@ -1832,9 +1840,19 @@ function llama_place_report_fields(): array
             'experience_extended_stay_comfort',
         ],
         [[
-            'field' => 'overnight_camping_allowed',
-            'operator' => 'in',
-            'value' => ['1', '2'],
+            'operator' => 'any',
+            'rules' => [
+                [
+                    'field' => 'type',
+                    'operator' => 'in',
+                    'value' => $intrinsicallyOvernightPlaceTypes,
+                ],
+                [
+                    'field' => 'overnight_camping_allowed',
+                    'operator' => 'in',
+                    'value' => ['1', '2'],
+                ],
+            ],
         ]]
     );
 
@@ -1892,6 +1910,27 @@ function llama_place_report_fields(): array
         ]]
     );
 
+
+    /*
+     * =========================================================
+     * DISPERSED CAMPING PROFILE
+     * =========================================================
+     *
+     * Be conservative here. Managed dispersed camping can still
+     * require reservations, permits, check-in, camping/day-use fees,
+     * designated sites, food storage, generator limits, and even
+     * centralized amenities. Hide only questions that are truly
+     * redundant with the Place type itself.
+     */
+    $appendApplicable(
+        $f,
+        ['dispersed_camping_allowed'],
+        [[
+            'field' => 'type',
+            'operator' => 'not_equals',
+            'value' => 'dispersed-camping',
+        ]]
+    );
 
     /*
      * =========================================================
@@ -2849,6 +2888,175 @@ function llama_place_report_normalized_text_length(
         : strlen($text);
 }
 
+function llama_place_report_applicability_rule_matches(
+    array $input,
+    array $rule
+): bool {
+    $operator =
+        (string) (
+            $rule['operator']
+            ?? 'equals'
+        );
+
+    if (
+        in_array(
+            $operator,
+            [
+                'any',
+                'all',
+            ],
+            true
+        )
+    ) {
+        $nestedRules =
+            array_values(
+                array_filter(
+                    (array) (
+                        $rule['rules']
+                        ?? []
+                    ),
+                    'is_array'
+                )
+            );
+
+        if (!$nestedRules) {
+            return false;
+        }
+
+        if ($operator === 'any') {
+            foreach ($nestedRules as $nestedRule) {
+                if (
+                    llama_place_report_applicability_rule_matches(
+                        $input,
+                        $nestedRule
+                    )
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        foreach ($nestedRules as $nestedRule) {
+            if (
+                !llama_place_report_applicability_rule_matches(
+                    $input,
+                    $nestedRule
+                )
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    $dependsOn =
+        trim(
+            (string) (
+                $rule['field']
+                ?? ''
+            )
+        );
+
+    if ($dependsOn === '') {
+        return false;
+    }
+
+    $actual =
+        $input[$dependsOn]
+        ?? null;
+
+    $expected =
+        $rule['value']
+        ?? null;
+
+    $actualValues =
+        is_array($actual)
+            ? array_map('strval', $actual)
+            : [(string) ($actual ?? '')];
+
+    $expectedValues =
+        array_map(
+            'strval',
+            (array) $expected
+        );
+
+    $primaryExpected =
+        $expectedValues[0]
+        ?? '';
+
+    $specialFalseValues = [
+        '',
+        '0',
+        'false',
+        llama_place_report_unanswered_token(),
+        llama_place_report_unknown_token(),
+    ];
+
+    $specialFalseLookup =
+        array_map(
+            'strtolower',
+            $specialFalseValues
+        );
+
+    $actualTruthy =
+        count($actualValues) > 0
+        && array_filter(
+            $actualValues,
+            static fn (string $value): bool =>
+                !in_array(
+                    strtolower($value),
+                    $specialFalseLookup,
+                    true
+                )
+        ) !== [];
+
+    return match ($operator) {
+        'equals' =>
+            in_array(
+                $primaryExpected,
+                $actualValues,
+                true
+            ),
+
+        'not_equals' =>
+            !in_array(
+                $primaryExpected,
+                $actualValues,
+                true
+            ),
+
+        'in' =>
+            array_intersect(
+                $actualValues,
+                $expectedValues
+            ) !== [],
+
+        'not_in' =>
+            array_intersect(
+                $actualValues,
+                $expectedValues
+            ) === [],
+
+        'truthy' =>
+            $actualTruthy,
+
+        'falsy' =>
+            !$actualTruthy,
+
+        'answered' =>
+            llama_place_report_question_answered(
+                $input,
+                $dependsOn
+            ),
+
+        default =>
+            false,
+    };
+}
+
 function llama_place_report_question_applicable(
     array $input,
     string $fieldKey
@@ -2876,119 +3084,13 @@ function llama_place_report_question_applicable(
     }
 
     foreach ($rules as $rule) {
-        if (!is_array($rule)) {
-            return false;
-        }
-
-        $dependsOn =
-            trim(
-                (string) (
-                    $rule['field']
-                    ?? ''
-                )
-            );
-
-        if ($dependsOn === '') {
-            return false;
-        }
-
-        $actual =
-            $input[$dependsOn]
-            ?? null;
-
-        $operator =
-            (string) (
-                $rule['operator']
-                ?? 'equals'
-            );
-
-        $expected =
-            $rule['value']
-            ?? null;
-
-        $actualValues =
-            is_array($actual)
-                ? array_map('strval', $actual)
-                : [(string) ($actual ?? '')];
-
-        $expectedValues =
-            array_map(
-                'strval',
-                (array) $expected
-            );
-
-        $primaryExpected =
-            $expectedValues[0]
-            ?? '';
-
-        $specialFalseValues = [
-            '',
-            '0',
-            'false',
-            llama_place_report_unanswered_token(),
-            llama_place_report_unknown_token(),
-        ];
-
-        $actualTruthy =
-            count($actualValues) > 0
-            && array_filter(
-                $actualValues,
-                static fn (string $value): bool =>
-                    !in_array(
-                        strtolower($value),
-                        array_map(
-                            'strtolower',
-                            $specialFalseValues
-                        ),
-                        true
-                    )
-            ) !== [];
-
-        $matches =
-            match ($operator) {
-                'equals' =>
-                    in_array(
-                        $primaryExpected,
-                        $actualValues,
-                        true
-                    ),
-
-                'not_equals' =>
-                    !in_array(
-                        $primaryExpected,
-                        $actualValues,
-                        true
-                    ),
-
-                'in' =>
-                    array_intersect(
-                        $actualValues,
-                        $expectedValues
-                    ) !== [],
-
-                'not_in' =>
-                    array_intersect(
-                        $actualValues,
-                        $expectedValues
-                    ) === [],
-
-                'truthy' =>
-                    $actualTruthy,
-
-                'falsy' =>
-                    !$actualTruthy,
-
-                'answered' =>
-                    llama_place_report_question_answered(
-                        $input,
-                        $dependsOn
-                    ),
-
-                default =>
-                    false,
-            };
-
-        if (!$matches) {
+        if (
+            !is_array($rule)
+            || !llama_place_report_applicability_rule_matches(
+                $input,
+                $rule
+            )
+        ) {
             return false;
         }
     }
