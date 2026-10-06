@@ -402,7 +402,7 @@
     position: absolute;
     top: calc(100% + 6px);
     right: 0;
-    z-index: 1000;
+    z-index: 10000;
 
     display: none;
     width: min(340px, calc(100vw - 32px));
