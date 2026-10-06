@@ -567,32 +567,6 @@ $placeReportCompletionConfig = [
             but could not determine the answer.
         </p>
 
-        <div class="add-place-form-note">
-            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
-
-            <span>
-                <strong>Minimum to submit:</strong> a Place name, exact map
-                location, and at least one current photo.
-            </span>
-        </div>
-
-        <div class="add-place-form-note">
-            <i aria-hidden="true"><?= llama_icon('info-circle') ?></i>
-
-            <span>
-                If approved, your field work is identified as
-                <strong><?= htmlspecialchars($currentContributionLabel, ENT_QUOTES, 'UTF-8') ?></strong>.
-            </span>
-        </div>
-
-        <div class="add-place-form-note">
-            <i aria-hidden="true"><?= llama_icon('shield-check') ?></i>
-
-            <span>
-                A moderator reviews the full submission, photos, and location
-                data before it becomes a Place.
-            </span>
-        </div>
     </header>
 
     <?php if ($isNeedsChanges): ?>
@@ -781,6 +755,11 @@ $placeReportCompletionConfig = [
                     ) ?>
                     applicable questions addressed.
                 </span>
+
+                    <span>
+                        <strong>Minimum to submit:</strong> a Place name, exact map
+                        location, and at least one current photo.
+                    </span>
 
                 <button
                     type="button"
