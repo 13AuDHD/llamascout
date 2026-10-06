@@ -567,26 +567,6 @@ function llama_place_report_fields(): array
                 'storage' => $storage,
                 'points_categories' => [],
                 'allow_unknown' => false,
-
-                /*
-                 * Completion metadata.
-                 *
-                 * `counts_toward_completion` controls whether this field can
-                 * enter a report's completion denominator.
-                 *
-                 * `completion_group` lets several stored fields represent one
-                 * user-facing question. Amenities are the first use of this.
-                 *
-                 * `min_characters` allows required narrative questions to
-                 * remain incomplete until enough meaningful text is present.
-                 *
-                 * `applicable_if` is intentionally empty by default. Future
-                 * Place-type and answer-dependent branching is declared here
-                 * instead of being duplicated throughout the UI/scoring code.
-                 *
-                 * `derived` marks outputs calculated from other observations.
-                 * Derived values never count as separate completion questions.
-                 */
                 'counts_toward_completion' => true,
                 'completion_group' => null,
                 'min_characters' => 0,
@@ -1519,466 +1499,6 @@ function llama_place_report_quick_warnings(array $data): array
     return $warnings;
 }
 
-
-/*
- * =========================================================
- * PLACE REPORT COMPLETION MODEL
- *
- * Completion is question-based and completely separate from
- * Scout contribution points.
- *
- * The denominator is rebuilt from the current answers every
- * time. Hidden/non-applicable/derived fields never count.
- * =========================================================
- */
-
-function llama_place_report_not_observed_token(): string
-{
-    return '__LLAMA_NOT_OBSERVED__';
-}
-
-
-function llama_place_report_normalized_text_length(
-    mixed $value
-): int {
-    if (
-        !is_scalar($value)
-        && $value !== null
-    ) {
-        return 0;
-    }
-
-    $text =
-        preg_replace(
-            '/\s+/u',
-            ' ',
-            trim(
-                (string) $value
-            )
-        );
-
-    if (!is_string($text)) {
-        return 0;
-    }
-
-    return function_exists('mb_strlen')
-        ? mb_strlen(
-            $text,
-            'UTF-8'
-        )
-        : strlen($text);
-}
-
-
-/*
- * A field can use declarative applicability rules such as:
- *
- * 'applicable_if' => [
- *     [
- *         'field' => 'amenity_showers',
- *         'operator' => 'truthy',
- *     ],
- * ]
- *
- * Multiple rules are ANDed together.
- */
-function llama_place_report_question_applicable(
-    array $input,
-    string $fieldKey
-): bool {
-    $field =
-        llama_place_report_fields()[$fieldKey]
-        ?? null;
-
-    if (!is_array($field)) {
-        return false;
-    }
-
-    if (!empty($field['hide_form'])) {
-        return false;
-    }
-
-    if (!empty($field['derived'])) {
-        return false;
-    }
-
-    if (
-        array_key_exists(
-            'counts_toward_completion',
-            $field
-        )
-        && !$field['counts_toward_completion']
-    ) {
-        return false;
-    }
-
-    $rules =
-        (array) (
-            $field['applicable_if']
-            ?? []
-        );
-
-    if (!$rules) {
-        return true;
-    }
-
-    foreach ($rules as $rule) {
-        if (!is_array($rule)) {
-            return false;
-        }
-
-        $dependsOn =
-            trim(
-                (string) (
-                    $rule['field']
-                    ?? ''
-                )
-            );
-
-        if ($dependsOn === '') {
-            return false;
-        }
-
-        $actual =
-            $input[$dependsOn]
-            ?? null;
-
-        $operator =
-            (string) (
-                $rule['operator']
-                ?? 'equals'
-            );
-
-        $expected =
-            $rule['value']
-            ?? null;
-
-        $matches =
-            match ($operator) {
-                'equals' =>
-                    (string) $actual
-                    === (string) $expected,
-
-                'not_equals' =>
-                    (string) $actual
-                    !== (string) $expected,
-
-                'in' =>
-                    in_array(
-                        (string) $actual,
-                        array_map(
-                            'strval',
-                            (array) $expected
-                        ),
-                        true
-                    ),
-
-                'not_in' =>
-                    !in_array(
-                        (string) $actual,
-                        array_map(
-                            'strval',
-                            (array) $expected
-                        ),
-                        true
-                    ),
-
-                'truthy' =>
-                    !empty($actual),
-
-                'falsy' =>
-                    empty($actual),
-
-                'answered' =>
-                    llama_place_report_is_answered_input(
-                        $input,
-                        $dependsOn
-                    ),
-
-                default =>
-                    false,
-            };
-
-        if (!$matches) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-
-function llama_place_report_question_answered(
-    array $input,
-    string $fieldKey
-): bool {
-    $field =
-        llama_place_report_fields()[$fieldKey]
-        ?? null;
-
-    if (!is_array($field)) {
-        return false;
-    }
-
-    if (
-        !llama_place_report_question_applicable(
-            $input,
-            $fieldKey
-        )
-    ) {
-        return false;
-    }
-
-    if (
-        !array_key_exists(
-            $fieldKey,
-            $input
-        )
-    ) {
-        return false;
-    }
-
-    $value =
-        $input[$fieldKey];
-
-    if (
-        $value
-        === llama_place_report_unanswered_token()
-    ) {
-        return false;
-    }
-
-    /*
-     * Unknown and Not Observed are deliberate responses.
-     * They count as addressed questions when the particular
-     * field permits that response in the UI.
-     */
-    if (
-        $value
-        === llama_place_report_unknown_token()
-        || $value
-        === llama_place_report_not_observed_token()
-    ) {
-        return true;
-    }
-
-    $minimumCharacters =
-        max(
-            0,
-            (int) (
-                $field['min_characters']
-                ?? 0
-            )
-        );
-
-    if ($minimumCharacters > 0) {
-        return
-            llama_place_report_normalized_text_length(
-                $value
-            )
-            >= $minimumCharacters;
-    }
-
-    return llama_place_report_is_answered_input(
-        $input,
-        $fieldKey
-    );
-}
-
-
-/*
- * Returns one row per completion question.
- *
- * Fields sharing `completion_group` collapse into a single
- * question. A group is answered when at least one of its
- * applicable member fields contains a deliberate response.
- */
-function llama_place_report_completion_items(
-    array $input
-): array {
-    $items = [];
-
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        $fieldKey =
-            (string) $fieldKey;
-
-        if (
-            !llama_place_report_question_applicable(
-                $input,
-                $fieldKey
-            )
-        ) {
-            continue;
-        }
-
-        $group =
-            trim(
-                (string) (
-                    $field['completion_group']
-                    ?? ''
-                )
-            );
-
-        $itemKey =
-            $group !== ''
-                ? 'group:' . $group
-                : 'field:' . $fieldKey;
-
-        if (!isset($items[$itemKey])) {
-            $items[$itemKey] = [
-                'key' =>
-                    $itemKey,
-
-                'label' =>
-                    $group !== ''
-                        ? ucfirst(
-                            str_replace(
-                                '_',
-                                ' ',
-                                $group
-                            )
-                        )
-                        : (string) (
-                            $field['label']
-                            ?? $fieldKey
-                        ),
-
-                'fields' =>
-                    [],
-
-                'answered' =>
-                    false,
-
-                'min_characters' =>
-                    0,
-            ];
-        }
-
-        $items[$itemKey]['fields'][] =
-            $fieldKey;
-
-        $items[$itemKey]['min_characters'] =
-            max(
-                (int) (
-                    $items[$itemKey]['min_characters']
-                    ?? 0
-                ),
-                (int) (
-                    $field['min_characters']
-                    ?? 0
-                )
-            );
-
-        if (
-            llama_place_report_question_answered(
-                $input,
-                $fieldKey
-            )
-        ) {
-            $items[$itemKey]['answered'] =
-                true;
-        }
-    }
-
-    return array_values($items);
-}
-
-
-/*
- * This is the deterministic completion calculation that
- * app/points.php will consume after its refactor.
- *
- * Photos and other submission requirements intentionally do
- * NOT enter this denominator because they are not questions.
- */
-function llama_place_report_question_completion(
-    array $input
-): array {
-    $items =
-        llama_place_report_completion_items(
-            $input
-        );
-
-    $answered = 0;
-    $missing = [];
-
-    foreach ($items as $item) {
-        if (!empty($item['answered'])) {
-            $answered++;
-            continue;
-        }
-
-        $missing[] = [
-            'key' =>
-                (string) (
-                    $item['key']
-                    ?? ''
-                ),
-
-            'label' =>
-                (string) (
-                    $item['label']
-                    ?? ''
-                ),
-
-            'fields' =>
-                array_values(
-                    (array) (
-                        $item['fields']
-                        ?? []
-                    )
-                ),
-
-            'min_characters' =>
-                max(
-                    0,
-                    (int) (
-                        $item['min_characters']
-                        ?? 0
-                    )
-                ),
-        ];
-    }
-
-    $total =
-        count($items);
-
-    return [
-        'answered' =>
-            $answered,
-
-        'total' =>
-            $total,
-
-        'unanswered' =>
-            max(
-                0,
-                $total - $answered
-            ),
-
-        'percent' =>
-            $total > 0
-                ? (int) round(
-                    100
-                    * (
-                        $answered
-                        / $total
-                    )
-                )
-                : 0,
-
-        'missing' =>
-            $missing,
-
-        'over_limit' =>
-            $total > 200,
-    ];
-}
-
-
 function llama_place_report_get_path(array $data, string $path): mixed
 {
     $value = $data;
@@ -2466,6 +1986,450 @@ function llama_place_report_is_answered_input(
 
     return trim((string) $value) !== '';
 }
+
+/*
+ * =========================================================
+ * PLACE REPORT COMPLETION MODEL
+ *
+ * Completion is intentionally separate from Scout points.
+ * These helpers derive applicability and answer state from
+ * the canonical Place Report field registry every time.
+ * =========================================================
+ */
+
+function llama_place_report_not_observed_token(): string
+{
+    return '__LLAMA_NOT_OBSERVED__';
+}
+
+function llama_place_report_normalized_text_length(
+    mixed $value
+): int {
+    if (!is_scalar($value) && $value !== null) {
+        return 0;
+    }
+
+    $text =
+        preg_replace(
+            '/\\s+/u',
+            ' ',
+            trim((string) $value)
+        );
+
+    if (!is_string($text)) {
+        return 0;
+    }
+
+    return function_exists('mb_strlen')
+        ? mb_strlen($text, 'UTF-8')
+        : strlen($text);
+}
+
+function llama_place_report_question_applicable(
+    array $input,
+    string $fieldKey
+): bool {
+    $field =
+        llama_place_report_fields()[$fieldKey]
+        ?? null;
+
+    if (!is_array($field)) {
+        return false;
+    }
+
+    if (!empty($field['hide_form'])) {
+        return false;
+    }
+
+    if (!empty($field['derived'])) {
+        return false;
+    }
+
+    if (
+        array_key_exists(
+            'counts_toward_completion',
+            $field
+        )
+        && !$field['counts_toward_completion']
+    ) {
+        return false;
+    }
+
+    $rules =
+        (array) (
+            $field['applicable_if']
+            ?? []
+        );
+
+    if (!$rules) {
+        return true;
+    }
+
+    foreach ($rules as $rule) {
+        if (!is_array($rule)) {
+            return false;
+        }
+
+        $dependsOn =
+            trim(
+                (string) (
+                    $rule['field']
+                    ?? ''
+                )
+            );
+
+        if ($dependsOn === '') {
+            return false;
+        }
+
+        $actual =
+            $input[$dependsOn]
+            ?? null;
+
+        $operator =
+            (string) (
+                $rule['operator']
+                ?? 'equals'
+            );
+
+        $expected =
+            $rule['value']
+            ?? null;
+
+        $matches =
+            match ($operator) {
+                'equals' =>
+                    (string) $actual
+                    === (string) $expected,
+
+                'not_equals' =>
+                    (string) $actual
+                    !== (string) $expected,
+
+                'in' =>
+                    in_array(
+                        (string) $actual,
+                        array_map(
+                            'strval',
+                            (array) $expected
+                        ),
+                        true
+                    ),
+
+                'not_in' =>
+                    !in_array(
+                        (string) $actual,
+                        array_map(
+                            'strval',
+                            (array) $expected
+                        ),
+                        true
+                    ),
+
+                'truthy' =>
+                    !empty($actual),
+
+                'falsy' =>
+                    empty($actual),
+
+                'answered' =>
+                    llama_place_report_is_answered_input(
+                        $input,
+                        $dependsOn
+                    ),
+
+                default =>
+                    false,
+            };
+
+        if (!$matches) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function llama_place_report_question_answered(
+    array $input,
+    string $fieldKey
+): bool {
+    $field =
+        llama_place_report_fields()[$fieldKey]
+        ?? null;
+
+    if (!is_array($field)) {
+        return false;
+    }
+
+    if (
+        !llama_place_report_question_applicable(
+            $input,
+            $fieldKey
+        )
+    ) {
+        return false;
+    }
+
+    if (!array_key_exists($fieldKey, $input)) {
+        return false;
+    }
+
+    $value =
+        $input[$fieldKey];
+
+    if (
+        $value
+        === llama_place_report_unanswered_token()
+    ) {
+        return false;
+    }
+
+    if (
+        $value
+        === llama_place_report_unknown_token()
+        || $value
+        === llama_place_report_not_observed_token()
+    ) {
+        return true;
+    }
+
+    $minimumCharacters =
+        max(
+            0,
+            (int) (
+                $field['min_characters']
+                ?? 0
+            )
+        );
+
+    if ($minimumCharacters > 0) {
+        return
+            llama_place_report_normalized_text_length(
+                $value
+            )
+            >= $minimumCharacters;
+    }
+
+    return llama_place_report_is_answered_input(
+        $input,
+        $fieldKey
+    );
+}
+
+function llama_place_report_completion_items(
+    array $input,
+    array $excludedFieldKeys = []
+): array {
+    $items = [];
+
+    $excludedFieldLookup =
+        array_fill_keys(
+            array_map(
+                'strval',
+                $excludedFieldKeys
+            ),
+            true
+        );
+
+    foreach (
+        llama_place_report_fields()
+        as $fieldKey => $field
+    ) {
+        $fieldKey =
+            (string) $fieldKey;
+
+        if (isset($excludedFieldLookup[$fieldKey])) {
+            continue;
+        }
+
+        if (
+            !llama_place_report_question_applicable(
+                $input,
+                $fieldKey
+            )
+        ) {
+            continue;
+        }
+
+        $group =
+            trim(
+                (string) (
+                    $field['completion_group']
+                    ?? ''
+                )
+            );
+
+        $itemKey =
+            $group !== ''
+                ? 'group:' . $group
+                : 'field:' . $fieldKey;
+
+        if (!isset($items[$itemKey])) {
+            $items[$itemKey] = [
+                'key' =>
+                    $itemKey,
+
+                'label' =>
+                    $group !== ''
+                        ? ucfirst(
+                            str_replace(
+                                '_',
+                                ' ',
+                                $group
+                            )
+                        )
+                        : (string) (
+                            $field['label']
+                            ?? $fieldKey
+                        ),
+
+                'fields' =>
+                    [],
+
+                'answered' =>
+                    false,
+            ];
+        }
+
+        $items[$itemKey]['fields'][] =
+            $fieldKey;
+
+        if (
+            llama_place_report_question_answered(
+                $input,
+                $fieldKey
+            )
+        ) {
+            $items[$itemKey]['answered'] =
+                true;
+        }
+    }
+
+    return array_values($items);
+}
+
+function llama_place_report_question_completion_summary(
+    array $input,
+    int $photoCount = 0,
+    array $excludedFieldKeys = []
+): array {
+    $items =
+        llama_place_report_completion_items(
+            $input,
+            $excludedFieldKeys
+        );
+
+    /*
+     * Keep current Llama Scout behavior: current photo evidence
+     * contributes one completion item, but it is not a question
+     * definition and does not receive Scout points here.
+     */
+    $items[] = [
+        'key' => 'evidence:photo',
+        'label' => '1 current photo',
+        'fields' => [],
+        'answered' => $photoCount > 0,
+    ];
+
+    $answered = 0;
+    $missing = [];
+
+    foreach ($items as $item) {
+        if (!empty($item['answered'])) {
+            $answered++;
+            continue;
+        }
+
+        $missing[] = [
+            'key' =>
+                (string) (
+                    $item['key']
+                    ?? ''
+                ),
+
+            'label' =>
+                (string) (
+                    $item['label']
+                    ?? ''
+                ),
+
+            'fields' =>
+                array_values(
+                    (array) (
+                        $item['fields']
+                        ?? []
+                    )
+                ),
+        ];
+    }
+
+    $total =
+        count($items);
+
+    $missingMinimum = [];
+
+    if (
+        !llama_place_report_question_answered(
+            $input,
+            'name'
+        )
+    ) {
+        $missingMinimum[] =
+            'Place name';
+    }
+
+    if (
+        !llama_place_report_question_answered(
+            $input,
+            'latitude'
+        )
+        || !llama_place_report_question_answered(
+            $input,
+            'longitude'
+        )
+    ) {
+        $missingMinimum[] =
+            'Exact location';
+    }
+
+    if ($photoCount < 1) {
+        $missingMinimum[] =
+            '1 current photo';
+    }
+
+    return [
+        'answered' =>
+            $answered,
+
+        'total' =>
+            $total,
+
+        'percent' =>
+            $total > 0
+                ? (int) round(
+                    100
+                    * (
+                        $answered
+                        / $total
+                    )
+                )
+                : 0,
+
+        'missing' =>
+            $missing,
+
+        'missing_minimum' =>
+            $missingMinimum,
+
+        'minimum_met' =>
+            !$missingMinimum,
+
+        'over_limit' =>
+            $total > 200,
+    ];
+}
+
 
 function llama_place_report_display_value(
     array $data,
