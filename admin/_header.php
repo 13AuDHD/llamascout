@@ -684,6 +684,14 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <a
+            class="<?= admin_shell_nav_class('forms', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/forms.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+            <span>Forms</span>
+        </a>
+        
+        <a
             class="<?= admin_shell_nav_class('points', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/points.php') ?>"
         >
