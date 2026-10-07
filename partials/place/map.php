@@ -6,14 +6,28 @@ require_once dirname(__DIR__, 2) . '/app/place-map.php';
 
 $placeMapHasExactCoordinates =
     !empty($hasMemberAccess)
-    && isset($place['latitude'], $place['longitude'])
-    && is_numeric($place['latitude'])
-    && is_numeric($place['longitude']);
+    && isset(
+        $place['latitude'],
+        $place['longitude']
+    )
+    && is_numeric(
+        $place['latitude']
+    )
+    && is_numeric(
+        $place['longitude']
+    );
 
 $placeMapHasPublicCoordinates =
-    isset($place['public_latitude'], $place['public_longitude'])
-    && is_numeric($place['public_latitude'])
-    && is_numeric($place['public_longitude']);
+    isset(
+        $place['public_latitude'],
+        $place['public_longitude']
+    )
+    && is_numeric(
+        $place['public_latitude']
+    )
+    && is_numeric(
+        $place['public_longitude']
+    );
 
 $placeMapLatitude =
     $placeMapHasExactCoordinates
@@ -41,7 +55,18 @@ if (
 }
 
 $placeMapHasLayerAccess =
-    !empty($hasMemberAccess);
+    !empty(
+        $hasMemberAccess
+    );
+
+$placeMapCanEditAreas =
+    $placeMapHasExactCoordinates
+    && (int) ($userId ?? 0) > 0
+    && llama_contributor_can(
+        db(),
+        (int) $userId,
+        'field_report'
+    );
 
 $placeMapMaxZoom =
     $placeMapHasLayerAccess
@@ -50,8 +75,12 @@ $placeMapMaxZoom =
 
 $placeMapIsScopedContributor =
     $placeMapHasLayerAccess
-    && empty($hasGlobalMemberAccess)
-    && !empty($hasContributorPlaceAccess);
+    && empty(
+        $hasGlobalMemberAccess
+    )
+    && !empty(
+        $hasContributorPlaceAccess
+    );
 
 $placeMapTiles =
     $placeMapHasLayerAccess
@@ -65,7 +94,28 @@ $placeMapTiles =
 $placeMapCellApi =
     '/api/place-cell-coverage.php?slug='
     . rawurlencode(
-        (string) ($place['slug'] ?? '')
+        (string) (
+            $place['slug']
+            ?? ''
+        )
+    );
+
+$placeMapFeaturesApi =
+    '/api/place-map-features.php?slug='
+    . rawurlencode(
+        (string) (
+            $place['slug']
+            ?? ''
+        )
+    );
+
+$placeMapEditorUrl =
+    '/place-map-editor.php?slug='
+    . rawurlencode(
+        (string) (
+            $place['slug']
+            ?? ''
+        )
     );
 ?>
 
@@ -80,26 +130,61 @@ $placeMapCellApi =
 >
     <div class="place-map-heading">
         <div>
-            <p class="eyebrow">Map</p>
+            <p class="eyebrow">
+                Map
+            </p>
+
             <h2 id="place-map-heading">
                 Explore around this Place
             </h2>
         </div>
 
-        <span class="place-map-precision">
-            <?= $placeMapHasExactCoordinates
-                ? 'Exact location'
-                : 'Approximate public location' ?>
-        </span>
+        <div class="place-map-heading-actions">
+            <span class="place-map-precision">
+                <?= $placeMapHasExactCoordinates
+                    ? 'Exact location'
+                    : 'Approximate public location' ?>
+            </span>
+
+            <?php if ($placeMapCanEditAreas): ?>
+                <a
+                    class="place-map-edit-areas"
+                    href="<?= place_h(
+                        $placeMapEditorUrl
+                    ) ?>"
+                >
+                    <?= llama_icon(
+                        'edit'
+                    ) ?>
+
+                    Edit mapped areas
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div
         class="map-card place-map-card"
         data-map-member="<?= $placeMapHasLayerAccess ? '1' : '0' ?>"
         data-map-scoped="<?= $placeMapIsScopedContributor ? '1' : '0' ?>"
-        data-map-light-tile="<?= place_h((string) ($placeMapTiles['light'] ?? '')) ?>"
-        data-map-dark-tile="<?= place_h((string) ($placeMapTiles['dark'] ?? '')) ?>"
-        data-place-cell-api="<?= place_h($placeMapCellApi) ?>"
+        data-map-light-tile="<?= place_h(
+            (string) (
+                $placeMapTiles['light']
+                ?? ''
+            )
+        ) ?>"
+        data-map-dark-tile="<?= place_h(
+            (string) (
+                $placeMapTiles['dark']
+                ?? ''
+            )
+        ) ?>"
+        data-place-cell-api="<?= place_h(
+            $placeMapCellApi
+        ) ?>"
+        data-place-map-features-api="<?= $placeMapHasExactCoordinates
+            ? place_h($placeMapFeaturesApi)
+            : '' ?>"
     >
         <?php if ($placeMapHasLayerAccess): ?>
 
@@ -282,13 +367,61 @@ $placeMapCellApi =
         <div
             id="llama-map"
             class="place-inline-map"
-            data-place-latitude="<?= place_h((string) $placeMapLatitude) ?>"
-            data-place-longitude="<?= place_h((string) $placeMapLongitude) ?>"
-            data-place-name="<?= place_h((string) ($place['name'] ?? 'Place')) ?>"
+            data-place-latitude="<?= place_h(
+                (string) $placeMapLatitude
+            ) ?>"
+            data-place-longitude="<?= place_h(
+                (string) $placeMapLongitude
+            ) ?>"
+            data-place-name="<?= place_h(
+                (string) (
+                    $place['name']
+                    ?? 'Place'
+                )
+            ) ?>"
             data-place-max-zoom="<?= $placeMapMaxZoom ?>"
             data-place-exact="<?= $placeMapHasExactCoordinates ? '1' : '0' ?>"
-            aria-label="Map showing <?= place_h((string) ($place['name'] ?? 'this Place')) ?>"
+            aria-label="Map showing <?= place_h(
+                (string) (
+                    $place['name']
+                    ?? 'this Place'
+                )
+            ) ?>"
         ></div>
+
+        <div
+            class="place-map-area-legend"
+            data-place-map-area-legend
+            hidden
+            aria-label="Mapped area legend"
+        >
+            <span
+                class="place-map-area-legend-item is-place-boundary"
+                data-map-feature-legend="place_boundary"
+                hidden
+            >
+                <i aria-hidden="true"></i>
+                Place boundary
+            </span>
+
+            <span
+                class="place-map-area-legend-item is-camping-area"
+                data-map-feature-legend="camping_area"
+                hidden
+            >
+                <i aria-hidden="true"></i>
+                Camping area
+            </span>
+
+            <span
+                class="place-map-area-legend-item is-parking-area"
+                data-map-feature-legend="parking_area"
+                hidden
+            >
+                <i aria-hidden="true"></i>
+                Parking area
+            </span>
+        </div>
     </div>
 
     <?php if (!$placeMapHasLayerAccess): ?>
