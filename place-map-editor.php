@@ -30,9 +30,12 @@ $slug = trim(
     )
 );
 
-$place = $slug !== ''
-    ? place_member_by_slug($slug)
-    : null;
+$place =
+    $slug !== ''
+        ? place_member_by_slug(
+            $slug
+        )
+        : null;
 
 if (!$place) {
     http_response_code(404);
@@ -51,12 +54,16 @@ $longitude =
         ? (float) $place['longitude']
         : null;
 
-if ($latitude === null || $longitude === null) {
+if (
+    $latitude === null
+    || $longitude === null
+) {
     http_response_code(422);
-    exit('This Place needs exact coordinates before mapped areas can be edited.');
-}
 
-$tiles = llama_place_map_member_tiles();
+    exit(
+        'This Place needs exact coordinates before mapped areas can be edited.'
+    );
+}
 
 $pageTitle =
     'Edit Mapped Areas | '
@@ -101,7 +108,10 @@ require __DIR__ . '/partials/header.php';
 >
     <header class="mapped-area-editor-header">
         <div>
-            <p class="eyebrow">Mapped Areas</p>
+            <p class="eyebrow">
+                Mapped Areas
+            </p>
+
             <h1>
                 <?= htmlspecialchars(
                     (string) $place['name'],
@@ -109,9 +119,11 @@ require __DIR__ . '/partials/header.php';
                     'UTF-8'
                 ) ?>
             </h1>
+
             <p>
-                Draw the real usable or relevant area on the map.
-                V1 supports Place boundaries, Camping areas, and Parking areas.
+                Draw against satellite imagery or collect each boundary point
+                from your device GPS. All geometry is stored as WGS 84
+                coordinates.
             </p>
         </div>
 
@@ -127,6 +139,7 @@ require __DIR__ . '/partials/header.php';
 
     <div class="mapped-area-editor-layout">
         <aside class="mapped-area-editor-sidebar">
+
             <section class="mapped-area-editor-card">
                 <div class="mapped-area-editor-card-heading">
                     <h2>Area</h2>
@@ -141,6 +154,7 @@ require __DIR__ . '/partials/header.php';
 
                 <label>
                     <span>Type</span>
+
                     <select data-feature-type>
                         <?php foreach (
                             llama_place_map_feature_types()
@@ -165,6 +179,7 @@ require __DIR__ . '/partials/header.php';
 
                 <label>
                     <span>Label</span>
+
                     <input
                         type="text"
                         maxlength="120"
@@ -202,9 +217,8 @@ require __DIR__ . '/partials/header.php';
                     class="mapped-area-editor-help"
                     data-editor-help
                 >
-                    Choose Draw area, then tap around the outside edge.
-                    Three points is the minimum. Add more points for irregular
-                    or rounded shapes.
+                    Choose Draw area and tap around the outside edge, or use
+                    device GPS below to collect the points while in the field.
                 </p>
 
                 <div class="mapped-area-editor-save-actions">
@@ -235,6 +249,84 @@ require __DIR__ . '/partials/header.php';
                 ></p>
             </section>
 
+
+            <section class="mapped-area-editor-card">
+                <div class="mapped-area-editor-card-heading">
+                    <h2>Device GPS</h2>
+
+                    <span
+                        class="mapped-area-gps-state"
+                        data-gps-state
+                    >
+                        Off
+                    </span>
+                </div>
+
+                <div class="mapped-area-gps-actions">
+                    <button
+                        type="button"
+                        data-start-gps
+                    >
+                        Start GPS
+                    </button>
+
+                    <button
+                        type="button"
+                        data-stop-gps
+                        disabled
+                    >
+                        Stop GPS
+                    </button>
+                </div>
+
+                <div
+                    class="mapped-area-gps-reading"
+                    data-gps-reading
+                    hidden
+                >
+                    <div>
+                        <span>Latitude</span>
+                        <strong data-gps-latitude>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Longitude</span>
+                        <strong data-gps-longitude>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Accuracy</span>
+                        <strong data-gps-accuracy>--</strong>
+                    </div>
+                </div>
+
+                <div class="mapped-area-gps-actions">
+                    <button
+                        type="button"
+                        class="is-primary"
+                        data-add-gps-point
+                        disabled
+                    >
+                        Add GPS point
+                    </button>
+
+                    <button
+                        type="button"
+                        data-center-gps
+                        disabled
+                    >
+                        Center on me
+                    </button>
+                </div>
+
+                <p class="mapped-area-editor-help">
+                    Keep GPS running while walking the boundary. At each corner
+                    or meaningful bend, stop and choose Add GPS point. The
+                    reported accuracy is saved with the point.
+                </p>
+            </section>
+
+
             <section class="mapped-area-editor-card">
                 <h2>Existing areas</h2>
 
@@ -245,6 +337,7 @@ require __DIR__ . '/partials/header.php';
                     <p>Loading mapped areas...</p>
                 </div>
             </section>
+
 
             <section class="mapped-area-editor-card">
                 <h2>Map style</h2>
@@ -277,6 +370,7 @@ require __DIR__ . '/partials/header.php';
                     </button>
                 </div>
             </section>
+
         </aside>
 
         <div class="mapped-area-editor-map-card">
