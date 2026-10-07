@@ -173,6 +173,123 @@
 
 
 /* =========================================================
+   SHAPE EDITING
+   ========================================================= */
+
+.mapped-area-editor-unsaved {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background:
+        color-mix(
+            in srgb,
+            #d97706 12%,
+            var(--surface)
+        );
+    color:
+        color-mix(
+            in srgb,
+            #d97706 80%,
+            var(--text)
+        );
+    font-size: .66rem;
+    font-weight: 850;
+}
+
+.mapped-area-editor-unsaved[hidden] {
+    display: none;
+}
+
+.mapped-area-selected-point {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.mapped-area-selected-point[hidden] {
+    display: none;
+}
+
+.mapped-area-selected-point > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.mapped-area-selected-point span {
+    color: var(--text-muted);
+    font-size: .62rem;
+    font-weight: 750;
+}
+
+.mapped-area-selected-point strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: .7rem;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mapped-area-shape-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.mapped-area-editor-vertex.is-selected {
+    border-color: #f59e0b;
+    box-shadow:
+        0 0 0 3px rgba(245, 158, 11, .28),
+        0 2px 7px rgba(0, 0, 0, .35);
+}
+
+.mapped-area-editor-midpoint {
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .72);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.mapped-area-editor-move-handle {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border: 3px solid #fff;
+    border-radius: 999px;
+    background: #111;
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .38);
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+    cursor: move;
+}
+
+.mapped-area-editor-map.is-moving {
+    cursor: move;
+}
+
+
+
+/* =========================================================
    GPS FIELD COLLECTION
    ========================================================= */
 
