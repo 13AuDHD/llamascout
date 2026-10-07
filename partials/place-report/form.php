@@ -738,7 +738,7 @@ $renderField =
                                             <?= $current === (string) $i
                                                 ? 'checked'
                                                 : '' ?>
-                                        >
+                                    >
 
                                         <span>
                                             <?= $i ?>
@@ -1077,67 +1077,6 @@ $renderField =
 
 
 ?>
-
-<!-- Multi-select pill treatment shared by Add Place and moderator editing. -->
-<style>
-.place-report-form .place-report-multiselect-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: start;
-    padding-block: 8px 4px;
-}
-.place-report-form .place-report-multiselect-option {
-    display: inline-flex;
-    position: relative;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-    min-height: 38px;
-    padding: 8px 13px;
-    border: 1px solid var(--border, #505050);
-    border-radius: 999px;
-    background: var(--background, #242424);
-    color: var(--text, #f3f3f3);
-    font-size: .78rem;
-    font-weight: 650;
-    line-height: 1.25;
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-    box-sizing: border-box;
-}
-.place-report-form .place-report-multiselect-option input[type="checkbox"] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    opacity: 0;
-    pointer-events: none;
-}
-.place-report-form .place-report-multiselect-option span {
-    display: block;
-    margin: 0;
-    color: inherit;
-    font: inherit;
-    line-height: inherit;
-}
-.place-report-form .place-report-multiselect-option:has(input:checked) {
-    border-color: var(--text, #f3f3f3);
-    background: color-mix(in srgb, var(--text, #fff) 15%, var(--background, #242424));
-    box-shadow: inset 0 0 0 1px var(--text, #f3f3f3);
-}
-.place-report-form .place-report-multiselect-option:has(input:focus-visible) {
-    outline: 2px solid var(--text, #fff);
-    outline-offset: 3px;
-}
-.place-report-form .place-report-multiselect-option:hover {
-    border-color: var(--text, #f3f3f3);
-}
-.place-report-form .place-report-multiselect-option[hidden] {
-    display: none !important;
-}
-</style>
 
 <script
     type="application/json"
