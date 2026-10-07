@@ -2,7 +2,9 @@
     'use strict';
 
     const mapElement =
-        document.getElementById('llama-map');
+        document.getElementById(
+            'llama-map'
+        );
 
     if (
         !mapElement
@@ -12,21 +14,26 @@
     }
 
     const mapCard =
-        mapElement.closest('.map-card');
+        mapElement.closest(
+            '.map-card'
+        );
 
     const latitude =
         Number(
-            mapElement.dataset.placeLatitude
+            mapElement.dataset
+                .placeLatitude
         );
 
     const longitude =
         Number(
-            mapElement.dataset.placeLongitude
+            mapElement.dataset
+                .placeLongitude
         );
 
     const placeName =
         String(
-            mapElement.dataset.placeName
+            mapElement.dataset
+                .placeName
             || 'Place'
         ).trim();
 
@@ -36,20 +43,31 @@
             Math.min(
                 20,
                 Number(
-                    mapElement.dataset.placeMaxZoom
+                    mapElement.dataset
+                        .placeMaxZoom
                     || 11
                 )
             )
         );
 
     const hasLayerAccess =
-        mapCard?.dataset.mapMember === '1';
+        mapCard?.dataset
+            .mapMember === '1';
 
     const hasExactCoordinates =
-        mapElement.dataset.placeExact === '1';
+        mapElement.dataset
+            .placeExact === '1';
 
     const scopedPlaceAccess =
-        mapCard?.dataset.mapScoped === '1';
+        mapCard?.dataset
+            .mapScoped === '1';
+
+    const mappedAreasApi =
+        String(
+            mapCard?.dataset
+                .placeMapFeaturesApi
+            || ''
+        ).trim();
 
     if (
         !Number.isFinite(latitude)
@@ -59,7 +77,10 @@
     }
 
     const initialZoom =
-        Math.min(15, maxZoom);
+        Math.min(
+            15,
+            maxZoom
+        );
 
     const map =
         L.map(
@@ -69,14 +90,13 @@
                 zoomControl: false
             }
         ).setView(
-            [latitude, longitude],
+            [
+                latitude,
+                longitude
+            ],
             initialZoom
         );
 
-    /*
-     * The existing land/weather controls expect the full map's public global.
-     * The Place page provides the same tiny interface.
-     */
     window.LlamaScoutMap =
         Object.freeze({
             map,
@@ -87,12 +107,6 @@
         position: 'bottomright'
     }).addTo(map);
 
-    /*
-     * A Free Member with Complete Access only to this contributed Place can
-     * inspect the surrounding area without turning this compact Place map into
-     * a substitute for the full member map. The server independently enforces
-     * the same idea for FCC cell requests.
-     */
     if (
         scopedPlaceAccess
         && longitude > -178.5
@@ -119,9 +133,11 @@
         public: {
             url:
                 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 11,
+
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }
@@ -130,12 +146,15 @@
         light: {
             url:
                 String(
-                    mapCard?.dataset.mapLightTile
+                    mapCard?.dataset
+                        .mapLightTile
                     || ''
                 ),
+
             options: {
                 maxNativeZoom: 20,
                 maxZoom: 20,
+
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
@@ -144,9 +163,11 @@
         street: {
             url:
                 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }
@@ -155,9 +176,11 @@
         terrain: {
             url:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     'Tiles &copy; Esri and contributors'
             }
@@ -166,9 +189,11 @@
         topo: {
             url:
                 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+
             options: {
                 maxNativeZoom: 17,
                 maxZoom: 20,
+
                 attribution:
                     'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Map style &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
             }
@@ -177,12 +202,15 @@
         dark: {
             url:
                 String(
-                    mapCard?.dataset.mapDarkTile
+                    mapCard?.dataset
+                        .mapDarkTile
                     || ''
                 ),
+
             options: {
                 maxNativeZoom: 20,
                 maxZoom: 20,
+
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
@@ -191,9 +219,11 @@
         satellite: {
             url:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     'Tiles &copy; Esri and imagery contributors'
             }
@@ -216,10 +246,11 @@
         }
     };
 
-    const systemPrefersDark = () =>
-        window.matchMedia?.(
-            '(prefers-color-scheme: dark)'
-        ).matches === true;
+    const systemPrefersDark =
+        () =>
+            window.matchMedia?.(
+                '(prefers-color-scheme: dark)'
+            ).matches === true;
 
     const resolvedTheme = () => {
         const stored =
@@ -254,13 +285,18 @@
                 return 'public';
             }
 
-            if (selection === 'auto') {
+            if (
+                selection === 'auto'
+            ) {
                 const automatic =
-                    resolvedTheme() === 'dark'
+                    resolvedTheme()
+                    === 'dark'
                         ? 'dark'
                         : 'light';
 
-                return tileSources[automatic]?.url
+                return tileSources[
+                    automatic
+                ]?.url
                     ? automatic
                     : 'street';
             }
@@ -270,12 +306,16 @@
                     selection === 'light'
                     || selection === 'dark'
                 )
-                && !tileSources[selection]?.url
+                && !tileSources[
+                    selection
+                ]?.url
             ) {
                 return 'street';
             }
 
-            return tileSources[selection]
+            return tileSources[
+                selection
+            ]
                 ? selection
                 : 'street';
         };
@@ -287,13 +327,15 @@
             )
             .forEach((button) => {
                 const active =
-                    button.dataset.mapLayer
+                    button.dataset
+                        .mapLayer
                     === selectedLayer;
 
-                button.classList.toggle(
-                    'is-active',
-                    active
-                );
+                button.classList
+                    .toggle(
+                        'is-active',
+                        active
+                    );
 
                 button.setAttribute(
                     'aria-pressed',
@@ -335,7 +377,9 @@
                 }
             );
 
-        activeTileLayer.addTo(map);
+        activeTileLayer
+            .addTo(map);
+
         setActiveLayerButton();
     };
 
@@ -354,7 +398,8 @@
                     }
 
                     selectedLayer =
-                        button.dataset.mapLayer
+                        button.dataset
+                            .mapLayer
                         || 'auto';
 
                     applyTileLayer();
@@ -363,19 +408,23 @@
         });
 
     const themeObserver =
-        new MutationObserver(() => {
-            if (
-                hasLayerAccess
-                && selectedLayer === 'auto'
-            ) {
-                applyTileLayer();
+        new MutationObserver(
+            () => {
+                if (
+                    hasLayerAccess
+                    && selectedLayer
+                        === 'auto'
+                ) {
+                    applyTileLayer();
+                }
             }
-        });
+        );
 
     themeObserver.observe(
         document.documentElement,
         {
             attributes: true,
+
             attributeFilter: [
                 'data-theme'
             ]
@@ -391,7 +440,8 @@
         () => {
             if (
                 hasLayerAccess
-                && selectedLayer === 'auto'
+                && selectedLayer
+                    === 'auto'
                 && getStoredTheme()
                     === 'system'
             ) {
@@ -408,6 +458,7 @@
                 'change',
                 handleSystemThemeChange
             );
+
     } else if (
         colorSchemeQuery
             ?.addListener
@@ -420,18 +471,25 @@
 
     const marker =
         L.marker(
-            [latitude, longitude],
+            [
+                latitude,
+                longitude
+            ],
             {
                 icon:
                     L.divIcon({
                         className:
                             'place-map-marker-shell',
+
                         html:
                             '<span class="place-map-marker" aria-hidden="true"></span>',
+
                         iconSize:
                             [36, 46],
+
                         iconAnchor:
                             [18, 44],
+
                         popupAnchor:
                             [0, -42]
                     })
@@ -469,16 +527,291 @@
         detail
     );
 
-    marker.bindPopup(popup);
-    marker.addTo(map);
+    marker.bindPopup(
+        popup
+    );
 
-    /*
-     * A deferred invalidate keeps Leaflet sized correctly when the Place page
-     * finishes laying out fonts and responsive cards around the compact map.
-     */
+    marker.addTo(
+        map
+    );
+
+
+    /* =====================================================
+       MAPPED AREAS
+       ===================================================== */
+
+    const featureTypeLabels = {
+        place_boundary:
+            'Place boundary',
+
+        camping_area:
+            'Camping area',
+
+        parking_area:
+            'Parking area'
+    };
+
+    const featureClass =
+        (featureType) => {
+            const normalized =
+                String(
+                    featureType
+                    || ''
+                )
+                    .toLowerCase()
+                    .replace(
+                        /[^a-z0-9_-]+/g,
+                        '-'
+                    )
+                    .replace(
+                        /_/g,
+                        '-'
+                    );
+
+            return [
+                'place-map-feature',
+                `place-map-feature--${normalized}`
+            ].join(' ');
+        };
+
+    const createFeaturePopup =
+        (feature) => {
+            const wrapper =
+                document.createElement(
+                    'div'
+                );
+
+            wrapper.className =
+                'place-map-feature-popup';
+
+            const title =
+                document.createElement(
+                    'strong'
+                );
+
+            title.textContent =
+                String(
+                    feature.label
+                    || featureTypeLabels[
+                        feature.feature_type
+                    ]
+                    || 'Mapped area'
+                );
+
+            const type =
+                document.createElement(
+                    'span'
+                );
+
+            type.textContent =
+                featureTypeLabels[
+                    feature.feature_type
+                ]
+                || 'Mapped area';
+
+            wrapper.append(
+                title,
+                type
+            );
+
+            return wrapper;
+        };
+
+    const syncMappedAreaLegend =
+        (features) => {
+            const legend =
+                mapCard
+                    ?.querySelector(
+                        '[data-place-map-area-legend]'
+                    );
+
+            if (!legend) {
+                return;
+            }
+
+            const types =
+                new Set(
+                    features.map(
+                        (feature) =>
+                            String(
+                                feature.feature_type
+                                || ''
+                            )
+                    )
+                );
+
+            let visibleCount = 0;
+
+            legend
+                .querySelectorAll(
+                    '[data-map-feature-legend]'
+                )
+                .forEach((item) => {
+                    const visible =
+                        types.has(
+                            String(
+                                item.dataset
+                                    .mapFeatureLegend
+                                || ''
+                            )
+                        );
+
+                    item.hidden =
+                        !visible;
+
+                    if (visible) {
+                        visibleCount++;
+                    }
+                });
+
+            legend.hidden =
+                visibleCount === 0;
+        };
+
+    const loadMappedAreas =
+        async () => {
+            if (
+                !hasExactCoordinates
+                || mappedAreasApi === ''
+            ) {
+                return;
+            }
+
+            try {
+                const response =
+                    await fetch(
+                        mappedAreasApi,
+                        {
+                            credentials:
+                                'same-origin',
+
+                            headers: {
+                                Accept:
+                                    'application/json'
+                            }
+                        }
+                    );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload =
+                    await response.json();
+
+                if (
+                    !payload
+                    || payload.ok !== true
+                    || !Array.isArray(
+                        payload.features
+                    )
+                ) {
+                    return;
+                }
+
+                const features =
+                    payload.features
+                        .filter(
+                            (feature) =>
+                                feature
+                                && feature.geometry
+                        );
+
+                if (
+                    features.length === 0
+                ) {
+                    syncMappedAreaLegend(
+                        []
+                    );
+
+                    return;
+                }
+
+                const areaGroup =
+                    L.featureGroup();
+
+                features.forEach(
+                    (feature) => {
+                        const layer =
+                            L.geoJSON(
+                                feature.geometry,
+                                {
+                                    style: {
+                                        className:
+                                            featureClass(
+                                                feature.feature_type
+                                            )
+                                    },
+
+                                    onEachFeature:
+                                        (
+                                            geoFeature,
+                                            featureLayer
+                                        ) => {
+                                            featureLayer
+                                                .bindPopup(
+                                                    createFeaturePopup(
+                                                        feature
+                                                    )
+                                                );
+                                        }
+                                }
+                            );
+
+                        layer.addTo(
+                            areaGroup
+                        );
+                    }
+                );
+
+                areaGroup.addTo(
+                    map
+                );
+
+                syncMappedAreaLegend(
+                    features
+                );
+
+                const bounds =
+                    areaGroup
+                        .getBounds();
+
+                if (
+                    bounds.isValid()
+                ) {
+                    map.fitBounds(
+                        bounds,
+                        {
+                            padding:
+                                [36, 36],
+
+                            maxZoom:
+                                Math.min(
+                                    18,
+                                    maxZoom
+                                )
+                        }
+                    );
+                }
+
+                marker.bringToFront();
+
+            } catch (error) {
+                console.error(
+                    'Llama Scout mapped area error:',
+                    error
+                );
+            }
+        };
+
+    loadMappedAreas();
+
+
     window.requestAnimationFrame(
         () => {
-            map.invalidateSize(false);
+            map.invalidateSize(
+                false
+            );
         }
     );
 })();
