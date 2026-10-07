@@ -188,6 +188,32 @@ require __DIR__ . '/partials/header.php';
                     >
                 </label>
 
+                <div
+                    class="mapped-area-editor-summary"
+                    data-feature-summary
+                    hidden
+                >
+                    <div>
+                        <span>Points</span>
+                        <strong data-summary-points>0</strong>
+                    </div>
+
+                    <div>
+                        <span>Source</span>
+                        <strong data-summary-source>Manual</strong>
+                    </div>
+
+                    <div>
+                        <span>GPS accuracy</span>
+                        <strong data-summary-accuracy>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Updated</span>
+                        <strong data-summary-updated>--</strong>
+                    </div>
+                </div>
+
                 <div class="mapped-area-editor-draw-actions">
                     <button
                         type="button"
@@ -413,7 +439,17 @@ require __DIR__ . '/partials/header.php';
 
 
             <section class="mapped-area-editor-card">
-                <h2>Existing areas</h2>
+                <div class="mapped-area-editor-card-heading">
+                    <h2>Existing areas</h2>
+
+                    <button
+                        type="button"
+                        data-fit-all-areas
+                        disabled
+                    >
+                        Fit all
+                    </button>
+                </div>
 
                 <div
                     class="mapped-area-editor-list"
