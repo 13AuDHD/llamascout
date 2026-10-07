@@ -250,6 +250,91 @@ require __DIR__ . '/partials/header.php';
             </section>
 
 
+
+            <section class="mapped-area-editor-card">
+                <div class="mapped-area-editor-card-heading">
+                    <h2>Edit shape</h2>
+
+                    <span
+                        class="mapped-area-editor-unsaved"
+                        data-unsaved-state
+                        hidden
+                    >
+                        Unsaved
+                    </span>
+                </div>
+
+                <div
+                    class="mapped-area-selected-point"
+                    data-selected-point
+                    hidden
+                >
+                    <div>
+                        <span>Selected point</span>
+                        <strong data-selected-point-number>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Latitude</span>
+                        <strong data-selected-point-latitude>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Longitude</span>
+                        <strong data-selected-point-longitude>--</strong>
+                    </div>
+
+                    <div>
+                        <span>Source</span>
+                        <strong data-selected-point-source>--</strong>
+                    </div>
+                </div>
+
+                <div class="mapped-area-shape-actions">
+                    <button
+                        type="button"
+                        data-remove-point
+                        disabled
+                    >
+                        Remove point
+                    </button>
+
+                    <button
+                        type="button"
+                        data-use-gps-point
+                        disabled
+                    >
+                        Replace with GPS
+                    </button>
+                </div>
+
+                <div class="mapped-area-shape-actions">
+                    <button
+                        type="button"
+                        data-move-area
+                        disabled
+                    >
+                        Move whole area
+                    </button>
+
+                    <button
+                        type="button"
+                        data-revert-feature
+                        disabled
+                    >
+                        Revert changes
+                    </button>
+                </div>
+
+                <p class="mapped-area-editor-help">
+                    Tap a corner to select it. Drag corners to adjust them.
+                    Tap a small + between corners to insert another point.
+                    Move whole area lets you reposition the polygon without
+                    changing its shape.
+                </p>
+            </section>
+
+
             <section class="mapped-area-editor-card">
                 <div class="mapped-area-editor-card-heading">
                     <h2>Device GPS</h2>
