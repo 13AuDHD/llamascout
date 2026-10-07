@@ -788,9 +788,11 @@ function llama_place_report_fields(): array
     ]);
     $add('ground_condition', 'Ground condition', 'site_vehicle', 'select', 'details.ground_condition', [
         'options' => [
+            'paved' => 'Paved',
             'level-firm' => 'Mostly level and firm',
             'uneven-firm' => 'Uneven but firm',
             'rocky' => 'Rocky',
+            'gravel' => 'Gravel',
             'soft' => 'Soft / sandy',
             'mud-prone' => 'Mud-prone',
             'grass' => 'Grassy',
@@ -1098,6 +1100,7 @@ function llama_place_report_fields(): array
             'dunes' => 'Dunes',
             'cliffs-dropoffs' => 'Cliffs / drop-offs',
             'agricultural-nearby' => 'Agricultural nearby',
+            'commercial-nearby' => 'Commercial nearby',
             'residential-nearby' => 'Residential nearby',
             'industrial-nearby' => 'Industrial nearby',
         ],
