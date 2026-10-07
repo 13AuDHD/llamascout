@@ -137,12 +137,99 @@ require __DIR__ . '/partials/header.php';
         </a>
     </header>
 
-    <div class="mapped-area-editor-layout">
-        <aside class="mapped-area-editor-sidebar">
 
-            <section class="mapped-area-editor-card">
-                <div class="mapped-area-editor-card-heading">
-                    <h2>Area</h2>
+    <div class="mapped-area-editor-map-card">
+
+        <div
+            class="mapped-area-map-toolbar
+                   mapped-area-map-toolbar--draw"
+            aria-label="Drawing controls"
+        >
+            <button
+                type="button"
+                data-start-drawing
+            >
+                Draw
+            </button>
+
+            <button
+                type="button"
+                data-finish-drawing
+                disabled
+            >
+                Finish
+            </button>
+
+            <button
+                type="button"
+                data-undo-point
+                disabled
+            >
+                Undo
+            </button>
+        </div>
+
+
+        <div
+            class="mapped-area-map-toolbar
+                   mapped-area-map-toolbar--style"
+            role="group"
+            aria-label="Map style"
+        >
+            <button
+                type="button"
+                data-map-style="street"
+            >
+                Street
+            </button>
+
+            <button
+                type="button"
+                data-map-style="satellite"
+                class="is-active"
+            >
+                Satellite
+            </button>
+
+            <button
+                type="button"
+                data-map-style="terrain"
+            >
+                Terrain
+            </button>
+        </div>
+
+
+        <div
+            id="mapped-area-editor-map"
+            class="mapped-area-editor-map"
+            aria-label="Mapped area editor"
+        ></div>
+
+        <div
+            class="mapped-area-editor-point-count"
+            data-point-count
+            hidden
+        >
+            0 points
+        </div>
+    </div>
+
+
+    <div class="mapped-area-editor-content">
+
+        <section class="mapped-area-editor-card mapped-area-editor-area-card">
+            <div class="mapped-area-editor-card-heading">
+                <h2>Area details</h2>
+
+                <div class="mapped-area-editor-card-heading-actions">
+                    <span
+                        class="mapped-area-editor-unsaved"
+                        data-unsaved-state
+                        hidden
+                    >
+                        Unsaved
+                    </span>
 
                     <button
                         type="button"
@@ -151,7 +238,9 @@ require __DIR__ . '/partials/header.php';
                         New area
                     </button>
                 </div>
+            </div>
 
+            <div class="mapped-area-editor-area-fields">
                 <label>
                     <span>Type</span>
 
@@ -187,328 +276,241 @@ require __DIR__ . '/partials/header.php';
                         data-feature-label
                     >
                 </label>
-
-                <div
-                    class="mapped-area-editor-summary"
-                    data-feature-summary
-                    hidden
-                >
-                    <div>
-                        <span>Points</span>
-                        <strong data-summary-points>0</strong>
-                    </div>
-
-                    <div>
-                        <span>Source</span>
-                        <strong data-summary-source>Manual</strong>
-                    </div>
-
-                    <div>
-                        <span>GPS accuracy</span>
-                        <strong data-summary-accuracy>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Updated</span>
-                        <strong data-summary-updated>--</strong>
-                    </div>
-                </div>
-
-                <div class="mapped-area-editor-draw-actions">
-                    <button
-                        type="button"
-                        data-start-drawing
-                    >
-                        Draw area
-                    </button>
-
-                    <button
-                        type="button"
-                        data-finish-drawing
-                        disabled
-                    >
-                        Finish
-                    </button>
-
-                    <button
-                        type="button"
-                        data-undo-point
-                        disabled
-                    >
-                        Undo point
-                    </button>
-                </div>
-
-                <p
-                    class="mapped-area-editor-help"
-                    data-editor-help
-                >
-                    Choose Draw area and tap around the outside edge, or use
-                    device GPS below to collect the points while in the field.
-                </p>
-
-                <div class="mapped-area-editor-save-actions">
-                    <button
-                        type="button"
-                        class="is-primary"
-                        data-save-feature
-                        disabled
-                    >
-                        Save area
-                    </button>
-
-                    <button
-                        type="button"
-                        class="is-danger"
-                        data-delete-feature
-                        disabled
-                    >
-                        Delete
-                    </button>
-                </div>
-
-                <p
-                    class="mapped-area-editor-status"
-                    data-editor-status
-                    role="status"
-                    aria-live="polite"
-                ></p>
-            </section>
-
-
-
-            <section class="mapped-area-editor-card">
-                <div class="mapped-area-editor-card-heading">
-                    <h2>Edit shape</h2>
-
-                    <span
-                        class="mapped-area-editor-unsaved"
-                        data-unsaved-state
-                        hidden
-                    >
-                        Unsaved
-                    </span>
-                </div>
-
-                <div
-                    class="mapped-area-selected-point"
-                    data-selected-point
-                    hidden
-                >
-                    <div>
-                        <span>Selected point</span>
-                        <strong data-selected-point-number>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Latitude</span>
-                        <strong data-selected-point-latitude>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Longitude</span>
-                        <strong data-selected-point-longitude>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Source</span>
-                        <strong data-selected-point-source>--</strong>
-                    </div>
-                </div>
-
-                <div class="mapped-area-shape-actions">
-                    <button
-                        type="button"
-                        data-remove-point
-                        disabled
-                    >
-                        Remove point
-                    </button>
-
-                    <button
-                        type="button"
-                        data-use-gps-point
-                        disabled
-                    >
-                        Replace with GPS
-                    </button>
-                </div>
-
-                <div class="mapped-area-shape-actions">
-                    <button
-                        type="button"
-                        data-move-area
-                        disabled
-                    >
-                        Move whole area
-                    </button>
-
-                    <button
-                        type="button"
-                        data-revert-feature
-                        disabled
-                    >
-                        Revert changes
-                    </button>
-                </div>
-
-                <p class="mapped-area-editor-help">
-                    Tap a corner to select it. Drag corners to adjust them.
-                    Tap a small + between corners to insert another point.
-                    Move whole area lets you reposition the polygon without
-                    changing its shape.
-                </p>
-            </section>
-
-
-            <section class="mapped-area-editor-card">
-                <div class="mapped-area-editor-card-heading">
-                    <h2>Device GPS</h2>
-
-                    <span
-                        class="mapped-area-gps-state"
-                        data-gps-state
-                    >
-                        Off
-                    </span>
-                </div>
-
-                <div class="mapped-area-gps-actions">
-                    <button
-                        type="button"
-                        data-start-gps
-                    >
-                        Start GPS
-                    </button>
-
-                    <button
-                        type="button"
-                        data-stop-gps
-                        disabled
-                    >
-                        Stop GPS
-                    </button>
-                </div>
-
-                <div
-                    class="mapped-area-gps-reading"
-                    data-gps-reading
-                    hidden
-                >
-                    <div>
-                        <span>Latitude</span>
-                        <strong data-gps-latitude>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Longitude</span>
-                        <strong data-gps-longitude>--</strong>
-                    </div>
-
-                    <div>
-                        <span>Accuracy</span>
-                        <strong data-gps-accuracy>--</strong>
-                    </div>
-                </div>
-
-                <div class="mapped-area-gps-actions">
-                    <button
-                        type="button"
-                        class="is-primary"
-                        data-add-gps-point
-                        disabled
-                    >
-                        Add GPS point
-                    </button>
-
-                    <button
-                        type="button"
-                        data-center-gps
-                        disabled
-                    >
-                        Center on me
-                    </button>
-                </div>
-
-                <p class="mapped-area-editor-help">
-                    Keep GPS running while walking the boundary. At each corner
-                    or meaningful bend, stop and choose Add GPS point. The
-                    reported accuracy is saved with the point.
-                </p>
-            </section>
-
-
-            <section class="mapped-area-editor-card">
-                <div class="mapped-area-editor-card-heading">
-                    <h2>Existing areas</h2>
-
-                    <button
-                        type="button"
-                        data-fit-all-areas
-                        disabled
-                    >
-                        Fit all
-                    </button>
-                </div>
-
-                <div
-                    class="mapped-area-editor-list"
-                    data-feature-list
-                >
-                    <p>Loading mapped areas...</p>
-                </div>
-            </section>
-
-
-            <section class="mapped-area-editor-card">
-                <h2>Map style</h2>
-
-                <div
-                    class="mapped-area-editor-map-styles"
-                    role="group"
-                    aria-label="Map style"
-                >
-                    <button
-                        type="button"
-                        data-map-style="street"
-                    >
-                        Street
-                    </button>
-
-                    <button
-                        type="button"
-                        data-map-style="satellite"
-                        class="is-active"
-                    >
-                        Satellite
-                    </button>
-
-                    <button
-                        type="button"
-                        data-map-style="terrain"
-                    >
-                        Terrain
-                    </button>
-                </div>
-            </section>
-
-        </aside>
-
-        <div class="mapped-area-editor-map-card">
-            <div
-                id="mapped-area-editor-map"
-                class="mapped-area-editor-map"
-                aria-label="Mapped area editor"
-            ></div>
+            </div>
 
             <div
-                class="mapped-area-editor-point-count"
-                data-point-count
+                class="mapped-area-editor-summary"
+                data-feature-summary
                 hidden
             >
-                0 points
+                <div>
+                    <span>Points</span>
+                    <strong data-summary-points>0</strong>
+                </div>
+
+                <div>
+                    <span>Source</span>
+                    <strong data-summary-source>Manual</strong>
+                </div>
+
+                <div>
+                    <span>GPS accuracy</span>
+                    <strong data-summary-accuracy>--</strong>
+                </div>
+
+                <div>
+                    <span>Updated</span>
+                    <strong data-summary-updated>--</strong>
+                </div>
             </div>
-        </div>
+
+            <p
+                class="mapped-area-editor-help"
+                data-editor-help
+            >
+                Choose Draw on the map and tap around the outside edge, or use
+                device GPS below to collect points while in the field.
+            </p>
+
+            <div class="mapped-area-editor-save-actions">
+                <button
+                    type="button"
+                    class="is-primary"
+                    data-save-feature
+                    disabled
+                >
+                    Save area
+                </button>
+
+                <button
+                    type="button"
+                    class="is-danger"
+                    data-delete-feature
+                    disabled
+                >
+                    Delete
+                </button>
+            </div>
+
+            <p
+                class="mapped-area-editor-status"
+                data-editor-status
+                role="status"
+                aria-live="polite"
+            ></p>
+        </section>
+
+
+        <section class="mapped-area-editor-card">
+            <div class="mapped-area-editor-card-heading">
+                <h2>Edit shape</h2>
+            </div>
+
+            <div
+                class="mapped-area-selected-point"
+                data-selected-point
+                hidden
+            >
+                <div>
+                    <span>Selected point</span>
+                    <strong data-selected-point-number>--</strong>
+                </div>
+
+                <div>
+                    <span>Latitude</span>
+                    <strong data-selected-point-latitude>--</strong>
+                </div>
+
+                <div>
+                    <span>Longitude</span>
+                    <strong data-selected-point-longitude>--</strong>
+                </div>
+
+                <div>
+                    <span>Source</span>
+                    <strong data-selected-point-source>--</strong>
+                </div>
+            </div>
+
+            <div class="mapped-area-shape-actions">
+                <button
+                    type="button"
+                    data-remove-point
+                    disabled
+                >
+                    Remove point
+                </button>
+
+                <button
+                    type="button"
+                    data-use-gps-point
+                    disabled
+                >
+                    Replace with GPS
+                </button>
+
+                <button
+                    type="button"
+                    data-move-area
+                    disabled
+                >
+                    Move whole area
+                </button>
+
+                <button
+                    type="button"
+                    data-revert-feature
+                    disabled
+                >
+                    Revert changes
+                </button>
+            </div>
+
+            <p class="mapped-area-editor-help">
+                Tap a corner to select it. Drag corners to adjust them.
+                Tap a small + between corners to insert another point.
+                Move whole area repositions the polygon without changing
+                its shape.
+            </p>
+        </section>
+
+
+        <section class="mapped-area-editor-card">
+            <div class="mapped-area-editor-card-heading">
+                <h2>Device GPS</h2>
+
+                <span
+                    class="mapped-area-gps-state"
+                    data-gps-state
+                >
+                    Off
+                </span>
+            </div>
+
+            <div
+                class="mapped-area-gps-reading"
+                data-gps-reading
+                hidden
+            >
+                <div>
+                    <span>Latitude</span>
+                    <strong data-gps-latitude>--</strong>
+                </div>
+
+                <div>
+                    <span>Longitude</span>
+                    <strong data-gps-longitude>--</strong>
+                </div>
+
+                <div>
+                    <span>Accuracy</span>
+                    <strong data-gps-accuracy>--</strong>
+                </div>
+            </div>
+
+            <div class="mapped-area-gps-actions">
+                <button
+                    type="button"
+                    data-start-gps
+                >
+                    Start GPS
+                </button>
+
+                <button
+                    type="button"
+                    data-stop-gps
+                    disabled
+                >
+                    Stop GPS
+                </button>
+
+                <button
+                    type="button"
+                    class="is-primary"
+                    data-add-gps-point
+                    disabled
+                >
+                    Add GPS Point
+                </button>
+
+                <button
+                    type="button"
+                    data-center-gps
+                    disabled
+                >
+                    Center on me
+                </button>
+            </div>
+
+            <p class="mapped-area-editor-help">
+                Keep GPS running while walking the boundary. At each corner
+                or meaningful bend, stop and choose Add GPS Point. The
+                reported accuracy is saved with the point.
+            </p>
+        </section>
+
+
+        <section class="mapped-area-editor-card mapped-area-editor-existing">
+            <div class="mapped-area-editor-card-heading">
+                <h2>Existing areas</h2>
+
+                <button
+                    type="button"
+                    data-fit-all-areas
+                    disabled
+                >
+                    Fit all
+                </button>
+            </div>
+
+            <div
+                class="mapped-area-editor-list"
+                data-feature-list
+            >
+                <p>Loading mapped areas...</p>
+            </div>
+        </section>
+
     </div>
 </section>
 
