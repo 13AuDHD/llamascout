@@ -101,6 +101,56 @@
             '[data-delete-feature]'
         );
 
+    const unsavedState =
+        editor.querySelector(
+            '[data-unsaved-state]'
+        );
+
+    const selectedPointPanel =
+        editor.querySelector(
+            '[data-selected-point]'
+        );
+
+    const selectedPointNumber =
+        editor.querySelector(
+            '[data-selected-point-number]'
+        );
+
+    const selectedPointLatitude =
+        editor.querySelector(
+            '[data-selected-point-latitude]'
+        );
+
+    const selectedPointLongitude =
+        editor.querySelector(
+            '[data-selected-point-longitude]'
+        );
+
+    const selectedPointSource =
+        editor.querySelector(
+            '[data-selected-point-source]'
+        );
+
+    const removePointButton =
+        editor.querySelector(
+            '[data-remove-point]'
+        );
+
+    const useGpsPointButton =
+        editor.querySelector(
+            '[data-use-gps-point]'
+        );
+
+    const moveAreaButton =
+        editor.querySelector(
+            '[data-move-area]'
+        );
+
+    const revertFeatureButton =
+        editor.querySelector(
+            '[data-revert-feature]'
+        );
+
     const gpsState =
         editor.querySelector(
             '[data-gps-state]'
@@ -216,7 +266,13 @@
     let vertexMetadata = [];
     let shapeLayer = null;
     let vertexLayers = [];
+    let midpointLayers = [];
+    let moveHandleLayer = null;
     let existingLayers = [];
+
+    let selectedPointIndex = -1;
+    let moveMode = false;
+    let dirty = false;
 
     let gpsWatchId = null;
     let gpsPosition = null;
@@ -264,6 +320,97 @@
         if (help) {
             help.textContent =
                 message;
+        }
+    };
+
+    const setDirty = (value = true) => {
+        dirty = value === true;
+
+        if (unsavedState) {
+            unsavedState.hidden =
+                !dirty;
+        }
+
+        if (revertFeatureButton) {
+            revertFeatureButton.disabled =
+                !dirty;
+        }
+    };
+
+    const syncSelectedPointPanel = () => {
+        const hasSelection =
+            selectedPointIndex >= 0
+            && selectedPointIndex < points.length;
+
+        if (selectedPointPanel) {
+            selectedPointPanel.hidden =
+                !hasSelection;
+        }
+
+        if (removePointButton) {
+            removePointButton.disabled =
+                !hasSelection
+                || points.length <= 3
+                || drawing
+                || moveMode;
+        }
+
+        if (useGpsPointButton) {
+            useGpsPointButton.disabled =
+                !hasSelection
+                || !gpsPosition
+                || drawing
+                || moveMode;
+        }
+
+        if (!hasSelection) {
+            return;
+        }
+
+        const point =
+            points[selectedPointIndex];
+
+        const metadata =
+            vertexMetadata[selectedPointIndex]
+            || {
+                source: 'manual'
+            };
+
+        if (selectedPointNumber) {
+            selectedPointNumber.textContent =
+                String(
+                    selectedPointIndex + 1
+                );
+        }
+
+        if (selectedPointLatitude) {
+            selectedPointLatitude.textContent =
+                Number(point.lat)
+                    .toFixed(7);
+        }
+
+        if (selectedPointLongitude) {
+            selectedPointLongitude.textContent =
+                Number(point.lng)
+                    .toFixed(7);
+        }
+
+        if (selectedPointSource) {
+            const source =
+                metadata.source === 'gps'
+                    ? 'GPS'
+                    : 'Manual';
+
+            const accuracy =
+                Number(
+                    metadata.accuracy_m
+                );
+
+            selectedPointSource.textContent =
+                metadata.source === 'gps'
+                && Number.isFinite(accuracy)
+                    ? `${source} · ±${Math.round(accuracy)} m`
+                    : source;
         }
     };
 
@@ -344,7 +491,24 @@
             }
         );
 
+        midpointLayers.forEach(
+            (layer) => {
+                map.removeLayer(
+                    layer
+                );
+            }
+        );
+
+        if (moveHandleLayer) {
+            map.removeLayer(
+                moveHandleLayer
+            );
+
+            moveHandleLayer = null;
+        }
+
         vertexLayers = [];
+        midpointLayers = [];
     };
 
     const clearShapeLayer = () => {
@@ -367,7 +531,10 @@
             .camping_area;
 
     const vertexIcon =
-        (metadata) => {
+        (
+            metadata,
+            selected = false
+        ) => {
             const isGps =
                 metadata?.source
                 === 'gps';
@@ -376,7 +543,7 @@
                 className: '',
 
                 html:
-                    `<span class="mapped-area-editor-vertex${isGps ? ' is-gps' : ''}" aria-hidden="true"></span>`,
+                    `<span class="mapped-area-editor-vertex${isGps ? ' is-gps' : ''}${selected ? ' is-selected' : ''}" aria-hidden="true"></span>`,
 
                 iconSize:
                     [18, 18],
@@ -402,12 +569,200 @@
             };
         };
 
+    const midpointBetween =
+        (
+            first,
+            second
+        ) =>
+            L.latLng(
+                (
+                    Number(first.lat)
+                    + Number(second.lat)
+                ) / 2,
+                (
+                    Number(first.lng)
+                    + Number(second.lng)
+                ) / 2
+            );
+
+    const insertPointAfter =
+        (index) => {
+            const nextIndex =
+                (
+                    index + 1
+                ) % points.length;
+
+            const midpoint =
+                midpointBetween(
+                    points[index],
+                    points[nextIndex]
+                );
+
+            points.splice(
+                index + 1,
+                0,
+                midpoint
+            );
+
+            vertexMetadata.splice(
+                index + 1,
+                0,
+                {
+                    source: 'manual'
+                }
+            );
+
+            selectedPointIndex =
+                index + 1;
+
+            setDirty(true);
+
+            setStatus(
+                'Point inserted. Drag it into position, then save the area.'
+            );
+
+            renderEditableShape();
+        };
+
+    const renderMoveHandle = () => {
+        if (
+            !moveMode
+            || points.length < 3
+        ) {
+            return;
+        }
+
+        const bounds =
+            L.latLngBounds(
+                points
+            );
+
+        const center =
+            bounds.getCenter();
+
+        const originalCenter =
+            L.latLng(
+                center.lat,
+                center.lng
+            );
+
+        const originalPoints =
+            points.map(
+                (point) =>
+                    L.latLng(
+                        point.lat,
+                        point.lng
+                    )
+            );
+
+        moveHandleLayer =
+            L.marker(
+                center,
+                {
+                    draggable: true,
+
+                    icon:
+                        L.divIcon({
+                            className: '',
+
+                            html:
+                                '<span class="mapped-area-editor-move-handle" aria-hidden="true">↕</span>',
+
+                            iconSize:
+                                [28, 28],
+
+                            iconAnchor:
+                                [14, 14]
+                        })
+                }
+            ).addTo(map);
+
+        moveHandleLayer.on(
+            'drag',
+            (event) => {
+                const current =
+                    event.target
+                        .getLatLng();
+
+                const deltaLat =
+                    current.lat
+                    - originalCenter.lat;
+
+                const deltaLng =
+                    current.lng
+                    - originalCenter.lng;
+
+                points =
+                    originalPoints.map(
+                        (point) =>
+                            L.latLng(
+                                point.lat
+                                    + deltaLat,
+                                point.lng
+                                    + deltaLng
+                            )
+                    );
+
+                if (shapeLayer) {
+                    shapeLayer.setLatLngs(
+                        points
+                    );
+                }
+            }
+        );
+
+        moveHandleLayer.on(
+            'dragend',
+            () => {
+                vertexMetadata =
+                    vertexMetadata.map(
+                        (metadata) => ({
+                            ...(
+                                metadata
+                                || {
+                                    source:
+                                        'manual'
+                                }
+                            ),
+
+                            adjusted:
+                                true,
+
+                            adjusted_at:
+                                isoNow()
+                        })
+                    );
+
+                moveMode =
+                    false;
+
+                mapElement.classList
+                    .remove(
+                        'is-moving'
+                    );
+
+                setDirty(true);
+
+                setStatus(
+                    'Area moved. Save the area to keep the change.'
+                );
+
+                renderEditableShape();
+            }
+        );
+    };
+
     const renderEditableShape = () => {
         clearShapeLayer();
         clearVertexLayers();
 
         if (points.length === 0) {
+            selectedPointIndex =
+                -1;
+
+            syncSelectedPointPanel();
             updatePointCount();
+
             return;
         }
 
@@ -434,12 +789,17 @@
                 }
             ).addTo(map);
 
+        if (moveMode) {
+            renderMoveHandle();
+            syncSelectedPointPanel();
+            updatePointCount();
+            return;
+        }
+
         points.forEach(
             (latLng, index) => {
                 const metadata =
-                    vertexMetadata[
-                        index
-                    ]
+                    vertexMetadata[index]
                     || {
                         source:
                             'manual'
@@ -454,10 +814,22 @@
 
                             icon:
                                 vertexIcon(
-                                    metadata
+                                    metadata,
+                                    index
+                                        === selectedPointIndex
                                 )
                         }
                     ).addTo(map);
+
+                marker.on(
+                    'click',
+                    () => {
+                        selectedPointIndex =
+                            index;
+
+                        renderEditableShape();
+                    }
+                );
 
                 if (!drawing) {
                     marker.on(
@@ -473,6 +845,8 @@
                                         points
                                     );
                             }
+
+                            syncSelectedPointPanel();
                         }
                     );
 
@@ -483,9 +857,16 @@
                                 index
                             );
 
+                            selectedPointIndex =
+                                index;
+
+                            setDirty(true);
+
                             setStatus(
                                 'Point moved. Save the area to keep the change.'
                             );
+
+                            renderEditableShape();
                         }
                     );
                 }
@@ -496,6 +877,64 @@
             }
         );
 
+        if (
+            !drawing
+            && points.length >= 3
+        ) {
+            points.forEach(
+                (point, index) => {
+                    const nextIndex =
+                        (
+                            index + 1
+                        ) % points.length;
+
+                    const midpoint =
+                        midpointBetween(
+                            point,
+                            points[nextIndex]
+                        );
+
+                    const marker =
+                        L.marker(
+                            midpoint,
+                            {
+                                interactive:
+                                    true,
+
+                                icon:
+                                    L.divIcon({
+                                        className:
+                                            '',
+
+                                        html:
+                                            '<span class="mapped-area-editor-midpoint" aria-hidden="true">+</span>',
+
+                                        iconSize:
+                                            [16, 16],
+
+                                        iconAnchor:
+                                            [8, 8]
+                                    })
+                            }
+                        ).addTo(map);
+
+                    marker.on(
+                        'click',
+                        () => {
+                            insertPointAfter(
+                                index
+                            );
+                        }
+                    );
+
+                    midpointLayers.push(
+                        marker
+                    );
+                }
+            );
+        }
+
+        syncSelectedPointPanel();
         updatePointCount();
     };
 
@@ -553,7 +992,7 @@
                 layer.on(
                     'click',
                     () => {
-                        selectFeature(
+                        chooseFeature(
                             Number(
                                 feature.id
                             )
@@ -671,7 +1110,7 @@
                 button.addEventListener(
                     'click',
                     () => {
-                        selectFeature(
+                        chooseFeature(
                             Number(
                                 feature.id
                             )
@@ -692,8 +1131,17 @@
         ) => {
             selectedFeatureId = 0;
             drawing = false;
+            moveMode = false;
             points = [];
             vertexMetadata = [];
+            selectedPointIndex = -1;
+
+            mapElement.classList
+                .remove(
+                    'is-moving'
+                );
+
+            setDirty(false);
 
             clearShapeLayer();
             clearVertexLayers();
@@ -722,6 +1170,16 @@
 
             deleteButton.disabled =
                 true;
+
+            if (moveAreaButton) {
+                moveAreaButton.disabled =
+                    true;
+
+                moveAreaButton.textContent =
+                    'Move whole area';
+            }
+
+            syncSelectedPointPanel();
 
             setHelp(
                 'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
@@ -863,6 +1321,15 @@
             );
 
         drawing = false;
+        moveMode = false;
+        selectedPointIndex = -1;
+
+        mapElement.classList
+            .remove(
+                'is-moving'
+            );
+
+        setDirty(false);
 
         if (featureType) {
             featureType.value =
@@ -898,6 +1365,16 @@
         deleteButton.disabled =
             false;
 
+        if (moveAreaButton) {
+            moveAreaButton.disabled =
+                points.length < 3;
+
+            moveAreaButton.textContent =
+                'Move whole area';
+        }
+
+        syncSelectedPointPanel();
+
         setHelp(
             'Drag any point to correct this area. Save when finished. Choose Draw area if you want to replace the shape completely.'
         );
@@ -921,10 +1398,36 @@
         }
     };
 
+    const chooseFeature = (id) => {
+        if (
+            dirty
+            && Number(id)
+                !== selectedFeatureId
+            && !window.confirm(
+                'Discard the unsaved mapped-area changes?'
+            )
+        ) {
+            return;
+        }
+
+        selectFeature(id);
+    };
+
+
     const startDrawing = () => {
         drawing = true;
+        moveMode = false;
         points = [];
         vertexMetadata = [];
+        selectedPointIndex = -1;
+
+        mapElement.classList
+            .remove(
+                'is-moving'
+            );
+
+        setDirty(true);
+        syncSelectedPointPanel();
 
         clearShapeLayer();
         clearVertexLayers();
@@ -959,6 +1462,13 @@
 
         drawButton.disabled =
             false;
+
+        if (moveAreaButton) {
+            moveAreaButton.disabled =
+                false;
+        }
+
+        setDirty(true);
 
         setHelp(
             'Drag any point if the outline needs adjustment. Save when the shape is correct.'
@@ -1480,6 +1990,150 @@
         };
 
 
+    const removeSelectedPoint = () => {
+        if (
+            selectedPointIndex < 0
+            || selectedPointIndex >= points.length
+            || points.length <= 3
+            || drawing
+            || moveMode
+        ) {
+            return;
+        }
+
+        points.splice(
+            selectedPointIndex,
+            1
+        );
+
+        vertexMetadata.splice(
+            selectedPointIndex,
+            1
+        );
+
+        if (
+            selectedPointIndex
+            >= points.length
+        ) {
+            selectedPointIndex =
+                points.length - 1;
+        }
+
+        setDirty(true);
+
+        setStatus(
+            'Point removed. Save the area to keep the change.'
+        );
+
+        renderEditableShape();
+    };
+
+    const replaceSelectedPointWithGps = () => {
+        if (
+            selectedPointIndex < 0
+            || selectedPointIndex >= points.length
+            || !gpsPosition
+            || drawing
+            || moveMode
+        ) {
+            return;
+        }
+
+        points[selectedPointIndex] =
+            L.latLng(
+                gpsPosition.lat,
+                gpsPosition.lng
+            );
+
+        vertexMetadata[selectedPointIndex] = {
+            source:
+                'gps',
+
+            accuracy_m:
+                gpsPosition.accuracy
+                === null
+                    ? null
+                    : Number(
+                        gpsPosition
+                            .accuracy
+                            .toFixed(2)
+                    ),
+
+            captured_at:
+                gpsPosition.capturedAt
+        };
+
+        setDirty(true);
+
+        setStatus(
+            `Point ${selectedPointIndex + 1} replaced with the current GPS position.`
+        );
+
+        renderEditableShape();
+    };
+
+    const startMoveArea = () => {
+        if (
+            drawing
+            || points.length < 3
+        ) {
+            return;
+        }
+
+        moveMode =
+            !moveMode;
+
+        selectedPointIndex =
+            -1;
+
+        mapElement.classList.toggle(
+            'is-moving',
+            moveMode
+        );
+
+        if (moveAreaButton) {
+            moveAreaButton.textContent =
+                moveMode
+                    ? 'Cancel move'
+                    : 'Move whole area';
+        }
+
+        setStatus(
+            moveMode
+                ? 'Drag the center handle to move the entire polygon.'
+                : 'Move canceled.'
+        );
+
+        renderEditableShape();
+    };
+
+    const revertFeature = () => {
+        if (!dirty) {
+            return;
+        }
+
+        if (
+            selectedFeatureId > 0
+        ) {
+            selectFeature(
+                selectedFeatureId
+            );
+
+            setStatus(
+                'Unsaved changes reverted.'
+            );
+
+            return;
+        }
+
+        resetEditor(true);
+
+        setStatus(
+            'Unsaved area cleared.'
+        );
+    };
+
+
     /* =====================================================
        DEVICE GPS
        ===================================================== */
@@ -1596,6 +2250,8 @@
 
             centerGpsButton.disabled =
                 false;
+
+            syncSelectedPointPanel();
 
             clearGpsMapLayers();
 
@@ -1813,6 +2469,11 @@
                     .capturedAt
         });
 
+        selectedPointIndex =
+            points.length - 1;
+
+        setDirty(true);
+
         renderEditableShape();
 
         setStatus(
@@ -1866,6 +2527,11 @@
                     'manual'
             });
 
+            selectedPointIndex =
+                points.length - 1;
+
+            setDirty(true);
+
             renderEditableShape();
         }
     );
@@ -1897,6 +2563,11 @@
                 points.pop();
                 vertexMetadata.pop();
 
+                selectedPointIndex =
+                    points.length - 1;
+
+                setDirty(true);
+
                 renderEditableShape();
             }
         );
@@ -1917,6 +2588,15 @@
         ?.addEventListener(
             'click',
             () => {
+                if (
+                    dirty
+                    && !window.confirm(
+                        'Discard the unsaved mapped-area changes?'
+                    )
+                ) {
+                    return;
+                }
+
                 resetEditor();
             }
         );
@@ -1925,8 +2605,41 @@
         ?.addEventListener(
             'change',
             () => {
+                setDirty(true);
                 renderEditableShape();
             }
+        );
+
+    featureLabel
+        ?.addEventListener(
+            'input',
+            () => {
+                setDirty(true);
+            }
+        );
+
+    removePointButton
+        ?.addEventListener(
+            'click',
+            removeSelectedPoint
+        );
+
+    useGpsPointButton
+        ?.addEventListener(
+            'click',
+            replaceSelectedPointWithGps
+        );
+
+    moveAreaButton
+        ?.addEventListener(
+            'click',
+            startMoveArea
+        );
+
+    revertFeatureButton
+        ?.addEventListener(
+            'click',
+            revertFeature
         );
 
     startGpsButton
@@ -1975,6 +2688,18 @@
         'pagehide',
         () => {
             stopGps();
+        }
+    );
+
+    window.addEventListener(
+        'beforeunload',
+        (event) => {
+            if (!dirty) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
         }
     );
 
