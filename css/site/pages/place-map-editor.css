@@ -124,6 +124,40 @@
     color: var(--text);
 }
 
+.mapped-area-editor-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.mapped-area-editor-summary[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-summary > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.mapped-area-editor-summary span {
+    color: var(--text-muted);
+    font-size: .62rem;
+    font-weight: 750;
+}
+
+.mapped-area-editor-summary strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: .7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .mapped-area-editor-draw-actions,
 .mapped-area-editor-save-actions,
 .mapped-area-editor-map-styles,
@@ -527,7 +561,8 @@
         grid-column: 1 / -1;
     }
 
-    .mapped-area-gps-reading {
+    .mapped-area-gps-reading,
+    .mapped-area-editor-summary {
         grid-template-columns: 1fr;
     }
 
