@@ -15,6 +15,15 @@ function llama_place_map_feature_types(): array
     ];
 }
 
+function llama_place_map_feature_source_types(): array
+{
+    return [
+        'manual',
+        'gps',
+        'mixed',
+    ];
+}
+
 function llama_place_map_feature_type_is_valid(string $type): bool
 {
     return array_key_exists(
@@ -76,7 +85,7 @@ function llama_place_map_feature_validate_polygon(array $geometry): array
 
         /*
          * GeoJSON coordinate order is longitude, latitude.
-         * Seven decimal places preserves far more precision than normal
+         * Seven decimal places preserves more precision than normal
          * consumer GPS can provide while keeping output deterministic.
          */
         $longitude = round((float) $point[0], 7);
@@ -159,6 +168,243 @@ function llama_place_map_feature_polygon_wkt(array $geometry): string
         'POLYGON(('
         . implode(',', $pairs)
         . '))';
+}
+
+function llama_place_map_feature_validate_source_type(
+    string $sourceType
+): string {
+    $sourceType =
+        strtolower(
+            trim($sourceType)
+        );
+
+    if (
+        !in_array(
+            $sourceType,
+            llama_place_map_feature_source_types(),
+            true
+        )
+    ) {
+        return 'manual';
+    }
+
+    return $sourceType;
+}
+
+function llama_place_map_feature_validate_accuracy(
+    mixed $accuracy
+): ?float {
+    if (
+        $accuracy === null
+        || $accuracy === ''
+    ) {
+        return null;
+    }
+
+    if (!is_numeric($accuracy)) {
+        throw new InvalidArgumentException(
+            'GPS accuracy must be numeric.'
+        );
+    }
+
+    $accuracy = round((float) $accuracy, 2);
+
+    if (
+        $accuracy < 0
+        || $accuracy > 100000
+    ) {
+        throw new InvalidArgumentException(
+            'GPS accuracy is outside the supported range.'
+        );
+    }
+
+    return $accuracy;
+}
+
+function llama_place_map_feature_validate_metadata(
+    mixed $metadata,
+    int $vertexCount
+): array {
+    if (!is_array($metadata)) {
+        return [];
+    }
+
+    $clean = [
+        'coordinate_system' =>
+            LLAMA_PLACE_MAP_FEATURE_CRS,
+    ];
+
+    $vertices =
+        $metadata['vertices']
+        ?? [];
+
+    if (is_array($vertices)) {
+        $cleanVertices = [];
+
+        foreach (
+            array_slice(
+                array_values($vertices),
+                0,
+                $vertexCount
+            )
+            as $vertex
+        ) {
+            if (!is_array($vertex)) {
+                $cleanVertices[] = [
+                    'source' => 'manual',
+                ];
+
+                continue;
+            }
+
+            $source =
+                strtolower(
+                    trim(
+                        (string) (
+                            $vertex['source']
+                            ?? 'manual'
+                        )
+                    )
+                );
+
+            if (
+                !in_array(
+                    $source,
+                    [
+                        'manual',
+                        'gps',
+                    ],
+                    true
+                )
+            ) {
+                $source = 'manual';
+            }
+
+            $cleanVertex = [
+                'source' => $source,
+            ];
+
+            if (
+                isset($vertex['accuracy_m'])
+                && is_numeric($vertex['accuracy_m'])
+            ) {
+                $accuracy =
+                    round(
+                        (float) $vertex['accuracy_m'],
+                        2
+                    );
+
+                if (
+                    $accuracy >= 0
+                    && $accuracy <= 100000
+                ) {
+                    $cleanVertex['accuracy_m'] =
+                        $accuracy;
+                }
+            }
+
+            $capturedAt =
+                trim(
+                    (string) (
+                        $vertex['captured_at']
+                        ?? ''
+                    )
+                );
+
+            if ($capturedAt !== '') {
+                $cleanVertex['captured_at'] =
+                    mb_substr(
+                        $capturedAt,
+                        0,
+                        40
+                    );
+            }
+
+            if (
+                !empty(
+                    $vertex['adjusted']
+                )
+            ) {
+                $cleanVertex['adjusted'] =
+                    true;
+
+                $adjustedAt =
+                    trim(
+                        (string) (
+                            $vertex['adjusted_at']
+                            ?? ''
+                        )
+                    );
+
+                if ($adjustedAt !== '') {
+                    $cleanVertex['adjusted_at'] =
+                        mb_substr(
+                            $adjustedAt,
+                            0,
+                            40
+                        );
+                }
+            }
+
+            $cleanVertices[] =
+                $cleanVertex;
+        }
+
+        while (
+            count($cleanVertices)
+            < $vertexCount
+        ) {
+            $cleanVertices[] = [
+                'source' => 'manual',
+            ];
+        }
+
+        $clean['vertices'] =
+            $cleanVertices;
+    }
+
+    $gpsSummary =
+        $metadata['gps_summary']
+        ?? null;
+
+    if (is_array($gpsSummary)) {
+        $summary = [];
+
+        foreach (
+            [
+                'average_accuracy_m',
+                'best_accuracy_m',
+                'worst_accuracy_m',
+            ]
+            as $key
+        ) {
+            if (
+                isset($gpsSummary[$key])
+                && is_numeric($gpsSummary[$key])
+            ) {
+                $value =
+                    round(
+                        (float) $gpsSummary[$key],
+                        2
+                    );
+
+                if (
+                    $value >= 0
+                    && $value <= 100000
+                ) {
+                    $summary[$key] =
+                        $value;
+                }
+            }
+        }
+
+        if ($summary) {
+            $clean['gps_summary'] =
+                $summary;
+        }
+    }
+
+    return $clean;
 }
 
 function llama_place_map_features(
@@ -286,7 +532,10 @@ function llama_place_map_feature_save(
     string $featureType,
     string $label,
     array $geometry,
-    int $featureId = 0
+    int $featureId = 0,
+    string $sourceType = 'manual',
+    mixed $accuracyM = null,
+    mixed $metadata = []
 ): int {
     if ($placeId < 1 || $userId < 1) {
         throw new InvalidArgumentException(
@@ -322,11 +571,43 @@ function llama_place_map_feature_save(
             $geometry
         );
 
-    /*
-     * MariaDB's ST_GeomFromGeoJSON() does not accept an SRID argument.
-     * Convert the already validated GeoJSON ring to WKT and construct the
-     * stored geometry with SRID 4326 explicitly.
-     */
+    $vertexCount =
+        max(
+            0,
+            count(
+                (array) (
+                    $geometry['coordinates'][0]
+                    ?? []
+                )
+            ) - 1
+        );
+
+    $sourceType =
+        llama_place_map_feature_validate_source_type(
+            $sourceType
+        );
+
+    $accuracyM =
+        llama_place_map_feature_validate_accuracy(
+            $accuracyM
+        );
+
+    $metadata =
+        llama_place_map_feature_validate_metadata(
+            $metadata,
+            $vertexCount
+        );
+
+    $metadataJson =
+        $metadata
+            ? json_encode(
+                $metadata,
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            )
+            : null;
+
     $geometryWkt =
         llama_place_map_feature_polygon_wkt(
             $geometry
@@ -354,6 +635,8 @@ function llama_place_map_feature_save(
                 geometry_type = ?,
                 geometry = ST_GeomFromText(?, ?),
                 source_type = ?,
+                accuracy_m = ?,
+                metadata_json = ?,
                 updated_by = ?,
                 verified_at = UTC_TIMESTAMP(),
                 updated_at = UTC_TIMESTAMP()
@@ -368,7 +651,9 @@ function llama_place_map_feature_save(
             LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
             $geometryWkt,
             LLAMA_PLACE_MAP_FEATURE_SRID,
-            'manual',
+            $sourceType,
+            $accuracyM,
+            $metadataJson,
             $userId,
             $featureId,
             $placeId,
@@ -397,6 +682,8 @@ function llama_place_map_feature_save(
             geometry_type,
             geometry,
             source_type,
+            accuracy_m,
+            metadata_json,
             created_by,
             updated_by,
             verified_at,
@@ -415,6 +702,8 @@ function llama_place_map_feature_save(
             ?,
             ?,
             ?,
+            ?,
+            ?,
             UTC_TIMESTAMP(),
             ?,
             1,
@@ -430,7 +719,9 @@ function llama_place_map_feature_save(
         LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
         $geometryWkt,
         LLAMA_PLACE_MAP_FEATURE_SRID,
-        'manual',
+        $sourceType,
+        $accuracyM,
+        $metadataJson,
         $userId,
         $userId,
         $sortOrder,
