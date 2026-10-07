@@ -551,6 +551,9 @@
             'Parking area'
     };
 
+    const mappedAreaGroups = new Map();
+    let mappedAreaAllBounds = null;
+
     const featureClass =
         (featureType) => {
             const normalized =
@@ -617,7 +620,7 @@
             return wrapper;
         };
 
-    const syncMappedAreaLegend =
+    const syncMappedAreaControls =
         (features) => {
             const legend =
                 mapCard
@@ -644,29 +647,145 @@
 
             legend
                 .querySelectorAll(
-                    '[data-map-feature-legend]'
+                    '[data-map-feature-toggle]'
                 )
-                .forEach((item) => {
-                    const visible =
-                        types.has(
-                            String(
-                                item.dataset
-                                    .mapFeatureLegend
-                                || ''
-                            )
+                .forEach((button) => {
+                    const type =
+                        String(
+                            button.dataset
+                                .mapFeatureToggle
+                            || ''
                         );
 
-                    item.hidden =
+                    const visible =
+                        types.has(type);
+
+                    button.hidden =
                         !visible;
 
                     if (visible) {
+                        button.setAttribute(
+                            'aria-pressed',
+                            'true'
+                        );
+
                         visibleCount++;
                     }
                 });
 
+            const fitButton =
+                legend.querySelector(
+                    '[data-fit-mapped-areas]'
+                );
+
+            if (fitButton) {
+                fitButton.hidden =
+                    visibleCount === 0;
+            }
+
             legend.hidden =
                 visibleCount === 0;
         };
+
+    const fitMappedAreas = () => {
+        if (
+            !mappedAreaAllBounds
+            || !mappedAreaAllBounds.isValid()
+        ) {
+            return;
+        }
+
+        map.fitBounds(
+            mappedAreaAllBounds,
+            {
+                padding:
+                    [36, 36],
+
+                maxZoom:
+                    Math.min(
+                        18,
+                        maxZoom
+                    )
+            }
+        );
+    };
+
+    const setMappedAreaTypeVisible =
+        (
+            type,
+            visible
+        ) => {
+            const group =
+                mappedAreaGroups.get(
+                    type
+                );
+
+            if (!group) {
+                return;
+            }
+
+            if (visible) {
+                if (!map.hasLayer(group)) {
+                    group.addTo(map);
+                }
+            } else if (map.hasLayer(group)) {
+                map.removeLayer(group);
+            }
+
+            const button =
+                mapCard
+                    ?.querySelector(
+                        `[data-map-feature-toggle="${CSS.escape(type)}"]`
+                    );
+
+            if (button) {
+                button.setAttribute(
+                    'aria-pressed',
+                    visible
+                        ? 'true'
+                        : 'false'
+                );
+            }
+
+            marker.bringToFront();
+        };
+
+    mapCard
+        ?.querySelectorAll(
+            '[data-map-feature-toggle]'
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const type =
+                        String(
+                            button.dataset
+                                .mapFeatureToggle
+                            || ''
+                        );
+
+                    const visible =
+                        button.getAttribute(
+                            'aria-pressed'
+                        ) !== 'true';
+
+                    setMappedAreaTypeVisible(
+                        type,
+                        visible
+                    );
+                }
+            );
+        });
+
+    mapCard
+        ?.querySelector(
+            '[data-fit-mapped-areas]'
+        )
+        ?.addEventListener(
+            'click',
+            fitMappedAreas
+        );
 
     const loadMappedAreas =
         async () => {
@@ -717,21 +836,43 @@
                                 && feature.geometry
                         );
 
+                syncMappedAreaControls(
+                    features
+                );
+
                 if (
                     features.length === 0
                 ) {
-                    syncMappedAreaLegend(
-                        []
-                    );
-
                     return;
                 }
 
-                const areaGroup =
-                    L.featureGroup();
+                mappedAreaAllBounds =
+                    L.latLngBounds([]);
 
                 features.forEach(
                     (feature) => {
+                        const type =
+                            String(
+                                feature.feature_type
+                                || ''
+                            );
+
+                        if (
+                            !mappedAreaGroups.has(
+                                type
+                            )
+                        ) {
+                            mappedAreaGroups.set(
+                                type,
+                                L.featureGroup()
+                            );
+                        }
+
+                        const group =
+                            mappedAreaGroups.get(
+                                type
+                            );
+
                         const layer =
                             L.geoJSON(
                                 feature.geometry,
@@ -739,7 +880,7 @@
                                     style: {
                                         className:
                                             featureClass(
-                                                feature.feature_type
+                                                type
                                             )
                                     },
 
@@ -759,41 +900,29 @@
                             );
 
                         layer.addTo(
-                            areaGroup
+                            group
                         );
+
+                        const bounds =
+                            layer.getBounds();
+
+                        if (
+                            bounds.isValid()
+                        ) {
+                            mappedAreaAllBounds
+                                .extend(bounds);
+                        }
                     }
                 );
 
-                areaGroup.addTo(
-                    map
-                );
-
-                syncMappedAreaLegend(
-                    features
-                );
-
-                const bounds =
-                    areaGroup
-                        .getBounds();
-
-                if (
-                    bounds.isValid()
-                ) {
-                    map.fitBounds(
-                        bounds,
-                        {
-                            padding:
-                                [36, 36],
-
-                            maxZoom:
-                                Math.min(
-                                    18,
-                                    maxZoom
-                                )
+                mappedAreaGroups
+                    .forEach(
+                        (group) => {
+                            group.addTo(map);
                         }
                     );
-                }
 
+                fitMappedAreas();
                 marker.bringToFront();
 
             } catch (error) {

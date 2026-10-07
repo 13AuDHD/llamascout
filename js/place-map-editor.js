@@ -56,6 +56,36 @@
             '[data-feature-list]'
         );
 
+    const featureSummary =
+        editor.querySelector(
+            '[data-feature-summary]'
+        );
+
+    const summaryPoints =
+        editor.querySelector(
+            '[data-summary-points]'
+        );
+
+    const summarySource =
+        editor.querySelector(
+            '[data-summary-source]'
+        );
+
+    const summaryAccuracy =
+        editor.querySelector(
+            '[data-summary-accuracy]'
+        );
+
+    const summaryUpdated =
+        editor.querySelector(
+            '[data-summary-updated]'
+        );
+
+    const fitAllAreasButton =
+        editor.querySelector(
+            '[data-fit-all-areas]'
+        );
+
     const status =
         editor.querySelector(
             '[data-editor-status]'
@@ -337,6 +367,176 @@
         }
     };
 
+    const formatUpdatedAt =
+        (value) => {
+            const text =
+                String(
+                    value
+                    || ''
+                ).trim();
+
+            if (text === '') {
+                return '--';
+            }
+
+            const normalized =
+                text.includes('T')
+                    ? text
+                    : text.replace(
+                        ' ',
+                        'T'
+                    ) + 'Z';
+
+            const date =
+                new Date(
+                    normalized
+                );
+
+            if (
+                Number.isNaN(
+                    date.getTime()
+                )
+            ) {
+                return text;
+            }
+
+            return new Intl.DateTimeFormat(
+                undefined,
+                {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                }
+            ).format(date);
+        };
+
+    const syncFeatureSummary = () => {
+        if (!featureSummary) {
+            return;
+        }
+
+        const currentFeature =
+            features.find(
+                (feature) =>
+                    Number(feature.id)
+                    === selectedFeatureId
+            )
+            || null;
+
+        const hasGeometry =
+            points.length > 0;
+
+        featureSummary.hidden =
+            !hasGeometry
+            && !currentFeature;
+
+        if (
+            !hasGeometry
+            && !currentFeature
+        ) {
+            return;
+        }
+
+        if (summaryPoints) {
+            summaryPoints.textContent =
+                String(
+                    points.length
+                );
+        }
+
+        const gpsVertices =
+            vertexMetadata.filter(
+                (metadata) =>
+                    metadata?.source
+                    === 'gps'
+            );
+
+        const adjustedGps =
+            gpsVertices.some(
+                (metadata) =>
+                    metadata?.adjusted
+                    === true
+            );
+
+        let sourceLabel =
+            'Manual';
+
+        if (
+            gpsVertices.length > 0
+            && gpsVertices.length
+                === vertexMetadata.length
+            && !adjustedGps
+        ) {
+            sourceLabel =
+                'GPS';
+
+        } else if (
+            gpsVertices.length > 0
+        ) {
+            sourceLabel =
+                'Mixed';
+        }
+
+        if (summarySource) {
+            summarySource.textContent =
+                sourceLabel;
+        }
+
+        const accuracies =
+            gpsVertices
+                .map(
+                    (metadata) =>
+                        Number(
+                            metadata
+                                ?.accuracy_m
+                        )
+                )
+                .filter(
+                    (value) =>
+                        Number.isFinite(
+                            value
+                        )
+                        && value >= 0
+                );
+
+        if (summaryAccuracy) {
+            if (
+                accuracies.length
+                === 0
+            ) {
+                summaryAccuracy.textContent =
+                    '--';
+            } else {
+                const average =
+                    accuracies.reduce(
+                        (
+                            total,
+                            value
+                        ) =>
+                            total
+                            + value,
+                        0
+                    )
+                    / accuracies.length;
+
+                summaryAccuracy.textContent =
+                    `±${Math.round(
+                        average
+                    )} m avg`;
+            }
+        }
+
+        if (summaryUpdated) {
+            summaryUpdated.textContent =
+                currentFeature
+                    ? formatUpdatedAt(
+                        currentFeature
+                            .updated_at
+                    )
+                    : 'Not saved';
+        }
+    };
+
     const syncSelectedPointPanel = () => {
         const hasSelection =
             selectedPointIndex >= 0
@@ -440,6 +640,8 @@
         saveButton.disabled =
             drawing
             || points.length < 3;
+
+        syncFeatureSummary();
     };
 
     const applyTileLayer = () => {
@@ -1007,6 +1209,57 @@
         );
     };
 
+    const fitAllAreas = () => {
+        if (
+            !Array.isArray(features)
+            || features.length === 0
+        ) {
+            return;
+        }
+
+        const bounds =
+            L.latLngBounds([]);
+
+        features.forEach(
+            (feature) => {
+                if (!feature?.geometry) {
+                    return;
+                }
+
+                const layer =
+                    L.geoJSON(
+                        feature.geometry
+                    );
+
+                const layerBounds =
+                    layer.getBounds();
+
+                if (
+                    layerBounds.isValid()
+                ) {
+                    bounds.extend(
+                        layerBounds
+                    );
+                }
+            }
+        );
+
+        if (!bounds.isValid()) {
+            return;
+        }
+
+        map.fitBounds(
+            bounds,
+            {
+                padding:
+                    [50, 50],
+
+                maxZoom:
+                    20
+            }
+        );
+    };
+
     const featureTypeLabel = (value) => {
         const option =
             featureType
@@ -1027,6 +1280,11 @@
 
         featureList
             .replaceChildren();
+
+        if (fitAllAreasButton) {
+            fitAllAreasButton.disabled =
+                features.length === 0;
+        }
 
         if (
             features.length === 0
@@ -1180,6 +1438,7 @@
             }
 
             syncSelectedPointPanel();
+            syncFeatureSummary();
 
             setHelp(
                 'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
@@ -1384,6 +1643,7 @@
         renderEditableShape();
         renderExistingLayers();
         renderFeatureList();
+        syncFeatureSummary();
 
         if (shapeLayer) {
             map.fitBounds(
@@ -2683,6 +2943,12 @@
                 }
             );
         });
+
+    fitAllAreasButton
+        ?.addEventListener(
+            'click',
+            fitAllAreas
+        );
 
     window.addEventListener(
         'pagehide',
