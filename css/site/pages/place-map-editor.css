@@ -65,7 +65,7 @@
 .mapped-area-editor-layout {
     min-height: 680px;
     display: grid;
-    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
     gap: 18px;
 }
 
@@ -126,17 +126,20 @@
 
 .mapped-area-editor-draw-actions,
 .mapped-area-editor-save-actions,
-.mapped-area-editor-map-styles {
+.mapped-area-editor-map-styles,
+.mapped-area-gps-actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 7px;
 }
 
-.mapped-area-editor-save-actions {
-    grid-template-columns: minmax(0, 1fr) auto;
+.mapped-area-editor-save-actions,
+.mapped-area-gps-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.mapped-area-editor-save-actions .is-primary {
+.mapped-area-editor-save-actions .is-primary,
+.mapped-area-gps-actions .is-primary {
     background: var(--text);
     color: var(--background);
 }
@@ -167,6 +170,80 @@
 .mapped-area-editor-status.is-error {
     color: #ff9b94;
 }
+
+
+/* =========================================================
+   GPS FIELD COLLECTION
+   ========================================================= */
+
+.mapped-area-gps-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 850;
+}
+
+.mapped-area-gps-state.is-active {
+    border-color:
+        color-mix(
+            in srgb,
+            #1f8f4e 60%,
+            var(--border)
+        );
+
+    color:
+        color-mix(
+            in srgb,
+            #1f8f4e 70%,
+            var(--text)
+        );
+}
+
+.mapped-area-gps-reading {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.mapped-area-gps-reading[hidden] {
+    display: none;
+}
+
+.mapped-area-gps-reading > div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+}
+
+.mapped-area-gps-reading span {
+    color: var(--text-muted);
+    font-size: .62rem;
+    font-weight: 750;
+}
+
+.mapped-area-gps-reading strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: .7rem;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   EXISTING AREAS / MAP
+   ========================================================= */
 
 .mapped-area-editor-list {
     display: grid;
@@ -267,6 +344,19 @@
     box-shadow: 0 2px 7px rgba(0, 0, 0, .35);
 }
 
+.mapped-area-editor-vertex.is-gps {
+    background: #1f8f4e;
+}
+
+.mapped-area-editor-gps-marker {
+    width: 18px;
+    height: 18px;
+    border: 3px solid #fff;
+    border-radius: 999px;
+    background: #2563eb;
+    box-shadow: 0 2px 9px rgba(0, 0, 0, .42);
+}
+
 @media (max-width: 900px) {
     .mapped-area-editor-layout {
         min-height: 0;
@@ -278,7 +368,9 @@
     }
 
     .mapped-area-editor-sidebar
-    .mapped-area-editor-card:first-child {
+    .mapped-area-editor-card:first-child,
+    .mapped-area-editor-sidebar
+    .mapped-area-editor-card:nth-child(2) {
         grid-column: 1 / -1;
     }
 
@@ -303,7 +395,9 @@
     }
 
     .mapped-area-editor-sidebar
-    .mapped-area-editor-card:first-child {
+    .mapped-area-editor-card:first-child,
+    .mapped-area-editor-sidebar
+    .mapped-area-editor-card:nth-child(2) {
         grid-column: auto;
     }
 
@@ -314,6 +408,10 @@
     .mapped-area-editor-draw-actions
     [data-start-drawing] {
         grid-column: 1 / -1;
+    }
+
+    .mapped-area-gps-reading {
+        grid-template-columns: 1fr;
     }
 
     .mapped-area-editor-map-card,
