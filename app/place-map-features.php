@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON = 'polygon';
+const LLAMA_PLACE_MAP_FEATURE_SRID = 4326;
+const LLAMA_PLACE_MAP_FEATURE_CRS = 'EPSG:4326';
 
 function llama_place_map_feature_types(): array
 {
@@ -23,7 +25,10 @@ function llama_place_map_feature_type_is_valid(string $type): bool
 
 function llama_place_map_feature_validate_polygon(array $geometry): array
 {
-    if (strtolower((string) ($geometry['type'] ?? '')) !== 'polygon') {
+    if (
+        strtolower((string) ($geometry['type'] ?? ''))
+        !== 'polygon'
+    ) {
         throw new InvalidArgumentException(
             'Mapped Areas V1 accepts polygon geometry only.'
         );
@@ -69,6 +74,11 @@ function llama_place_map_feature_validate_polygon(array $geometry): array
             );
         }
 
+        /*
+         * GeoJSON coordinate order is longitude, latitude.
+         * Seven decimal places preserves far more precision than normal
+         * consumer GPS can provide while keeping output deterministic.
+         */
         $longitude = round((float) $point[0], 7);
         $latitude = round((float) $point[1], 7);
 
@@ -83,7 +93,10 @@ function llama_place_map_feature_validate_polygon(array $geometry): array
             );
         }
 
-        $normalized[] = [$longitude, $latitude];
+        $normalized[] = [
+            $longitude,
+            $latitude,
+        ];
     }
 
     $first = $normalized[0];
@@ -104,8 +117,48 @@ function llama_place_map_feature_validate_polygon(array $geometry): array
 
     return [
         'type' => 'Polygon',
-        'coordinates' => [$normalized],
+        'coordinates' => [
+            $normalized,
+        ],
     ];
+}
+
+function llama_place_map_feature_polygon_wkt(array $geometry): string
+{
+    $geometry =
+        llama_place_map_feature_validate_polygon(
+            $geometry
+        );
+
+    $ring =
+        (array) (
+            $geometry['coordinates'][0]
+            ?? []
+        );
+
+    $pairs = [];
+
+    foreach ($ring as $point) {
+        $pairs[] =
+            number_format(
+                (float) $point[0],
+                7,
+                '.',
+                ''
+            )
+            . ' '
+            . number_format(
+                (float) $point[1],
+                7,
+                '.',
+                ''
+            );
+    }
+
+    return
+        'POLYGON(('
+        . implode(',', $pairs)
+        . '))';
 }
 
 function llama_place_map_features(
@@ -133,6 +186,7 @@ function llama_place_map_features(
             created_at,
             updated_at,
             is_active,
+            ST_SRID(geometry) AS geometry_srid,
             ST_AsGeoJSON(geometry, 7) AS geometry_geojson
          FROM place_map_features
          WHERE place_id = ?';
@@ -169,12 +223,21 @@ function llama_place_map_features(
             'feature_type' => (string) $row['feature_type'],
             'label' => (string) ($row['label'] ?? ''),
             'geometry_type' => (string) $row['geometry_type'],
-            'source_type' => (string) ($row['source_type'] ?? 'manual'),
+            'crs' => LLAMA_PLACE_MAP_FEATURE_CRS,
+            'srid' => (int) ($row['geometry_srid'] ?? 0),
+            'source_type' =>
+                (string) (
+                    $row['source_type']
+                    ?? 'manual'
+                ),
             'accuracy_m' =>
                 $row['accuracy_m'] === null
                     ? null
                     : (float) $row['accuracy_m'],
-            'metadata' => is_array($metadata) ? $metadata : [],
+            'metadata' =>
+                is_array($metadata)
+                    ? $metadata
+                    : [],
             'created_by' =>
                 $row['created_by'] === null
                     ? null
@@ -186,7 +249,8 @@ function llama_place_map_features(
             'verified_at' => $row['verified_at'],
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
-            'is_active' => (int) $row['is_active'] === 1,
+            'is_active' =>
+                (int) $row['is_active'] === 1,
             'geometry' => $geometry,
         ];
     }
@@ -199,7 +263,14 @@ function llama_place_map_feature(
     int $featureId,
     int $placeId
 ): ?array {
-    foreach (llama_place_map_features($db, $placeId, false) as $feature) {
+    foreach (
+        llama_place_map_features(
+            $db,
+            $placeId,
+            false
+        )
+        as $feature
+    ) {
         if ((int) $feature['id'] === $featureId) {
             return $feature;
         }
@@ -223,9 +294,16 @@ function llama_place_map_feature_save(
         );
     }
 
-    $featureType = strtolower(trim($featureType));
+    $featureType =
+        strtolower(
+            trim($featureType)
+        );
 
-    if (!llama_place_map_feature_type_is_valid($featureType)) {
+    if (
+        !llama_place_map_feature_type_is_valid(
+            $featureType
+        )
+    ) {
         throw new InvalidArgumentException(
             'Choose a valid mapped-area type.'
         );
@@ -239,21 +317,28 @@ function llama_place_map_feature_save(
         );
     }
 
-    $geometry = llama_place_map_feature_validate_polygon($geometry);
+    $geometry =
+        llama_place_map_feature_validate_polygon(
+            $geometry
+        );
 
-    $geometryJson = json_encode(
-        $geometry,
-        JSON_UNESCAPED_SLASHES
-        | JSON_UNESCAPED_UNICODE
-        | JSON_THROW_ON_ERROR
-    );
+    /*
+     * MariaDB's ST_GeomFromGeoJSON() does not accept an SRID argument.
+     * Convert the already validated GeoJSON ring to WKT and construct the
+     * stored geometry with SRID 4326 explicitly.
+     */
+    $geometryWkt =
+        llama_place_map_feature_polygon_wkt(
+            $geometry
+        );
 
     if ($featureId > 0) {
-        $existing = llama_place_map_feature(
-            $db,
-            $featureId,
-            $placeId
-        );
+        $existing =
+            llama_place_map_feature(
+                $db,
+                $featureId,
+                $placeId
+            );
 
         if (!$existing) {
             throw new RuntimeException(
@@ -267,7 +352,7 @@ function llama_place_map_feature_save(
                 feature_type = ?,
                 label = ?,
                 geometry_type = ?,
-                geometry = ST_GeomFromGeoJSON(?),
+                geometry = ST_GeomFromText(?, ?),
                 source_type = ?,
                 updated_by = ?,
                 verified_at = UTC_TIMESTAMP(),
@@ -281,7 +366,8 @@ function llama_place_map_feature_save(
             $featureType,
             $label !== '' ? $label : null,
             LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
-            $geometryJson,
+            $geometryWkt,
+            LLAMA_PLACE_MAP_FEATURE_SRID,
             'manual',
             $userId,
             $featureId,
@@ -298,7 +384,9 @@ function llama_place_map_feature_save(
     );
 
     $sortStmt->execute([$placeId]);
-    $sortOrder = (int) $sortStmt->fetchColumn();
+
+    $sortOrder =
+        (int) $sortStmt->fetchColumn();
 
     $stmt = $db->prepare(
         'INSERT INTO place_map_features
@@ -323,7 +411,7 @@ function llama_place_map_feature_save(
             ?,
             ?,
             ?,
-            ST_GeomFromGeoJSON(?),
+            ST_GeomFromText(?, ?),
             ?,
             ?,
             ?,
@@ -340,7 +428,8 @@ function llama_place_map_feature_save(
         $featureType,
         $label !== '' ? $label : null,
         LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
-        $geometryJson,
+        $geometryWkt,
+        LLAMA_PLACE_MAP_FEATURE_SRID,
         'manual',
         $userId,
         $userId,
@@ -356,7 +445,11 @@ function llama_place_map_feature_delete(
     int $featureId,
     int $userId
 ): void {
-    if ($placeId < 1 || $featureId < 1 || $userId < 1) {
+    if (
+        $placeId < 1
+        || $featureId < 1
+        || $userId < 1
+    ) {
         throw new InvalidArgumentException(
             'A valid mapped area is required.'
         );
