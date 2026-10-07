@@ -145,46 +145,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'ok' => true,
 
         'coordinate_system' => [
-            'name' =>
-                'WGS 84',
-            'crs' =>
-                LLAMA_PLACE_MAP_FEATURE_CRS,
-            'srid' =>
-                LLAMA_PLACE_MAP_FEATURE_SRID,
-            'geojson_order' =>
-                'longitude,latitude',
+            'name' => 'WGS 84',
+            'crs' => LLAMA_PLACE_MAP_FEATURE_CRS,
+            'srid' => LLAMA_PLACE_MAP_FEATURE_SRID,
+            'geojson_order' => 'longitude,latitude',
         ],
 
-        'can_edit' =>
-            $canEdit,
+        'can_edit' => $canEdit,
 
         'place' => [
-            'id' =>
-                $placeId,
-
-            'slug' =>
-                (string) $place['slug'],
-
-            'name' =>
-                (string) $place['name'],
+            'id' => $placeId,
+            'slug' => (string) $place['slug'],
+            'name' => (string) $place['name'],
 
             'latitude' =>
-                isset(
-                    $place['latitude']
-                )
-                && is_numeric(
-                    $place['latitude']
-                )
+                isset($place['latitude'])
+                && is_numeric($place['latitude'])
                     ? (float) $place['latitude']
                     : null,
 
             'longitude' =>
-                isset(
-                    $place['longitude']
-                )
-                && is_numeric(
-                    $place['longitude']
-                )
+                isset($place['longitude'])
+                && is_numeric($place['longitude'])
                     ? (float) $place['longitude']
                     : null,
         ],
@@ -205,8 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     llama_place_map_api_json(
         [
             'ok' => false,
-            'error' =>
-                'Method not allowed.',
+            'error' => 'Method not allowed.',
         ],
         405
     );
@@ -314,7 +295,15 @@ try {
             (int) (
                 $input['feature_id']
                 ?? 0
-            )
+            ),
+            (string) (
+                $input['source_type']
+                ?? 'manual'
+            ),
+            $input['accuracy_m']
+                ?? null,
+            $input['metadata']
+                ?? []
         );
 
     llama_place_map_api_json([
@@ -349,14 +338,9 @@ try {
         $exception,
         'place.map_features.api',
         [
-            'place_id' =>
-                $placeId,
-
-            'user_id' =>
-                $userId,
-
-            'action' =>
-                $action,
+            'place_id' => $placeId,
+            'user_id' => $userId,
+            'action' => $action,
         ]
     );
 
