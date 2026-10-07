@@ -393,34 +393,49 @@ $placeMapEditorUrl =
             class="place-map-area-legend"
             data-place-map-area-legend
             hidden
-            aria-label="Mapped area legend"
+            aria-label="Mapped area controls"
         >
-            <span
+            <button
+                type="button"
                 class="place-map-area-legend-item is-place-boundary"
-                data-map-feature-legend="place_boundary"
+                data-map-feature-toggle="place_boundary"
+                aria-pressed="true"
                 hidden
             >
                 <i aria-hidden="true"></i>
                 Place boundary
-            </span>
+            </button>
 
-            <span
+            <button
+                type="button"
                 class="place-map-area-legend-item is-camping-area"
-                data-map-feature-legend="camping_area"
+                data-map-feature-toggle="camping_area"
+                aria-pressed="true"
                 hidden
             >
                 <i aria-hidden="true"></i>
                 Camping area
-            </span>
+            </button>
 
-            <span
+            <button
+                type="button"
                 class="place-map-area-legend-item is-parking-area"
-                data-map-feature-legend="parking_area"
+                data-map-feature-toggle="parking_area"
+                aria-pressed="true"
                 hidden
             >
                 <i aria-hidden="true"></i>
                 Parking area
-            </span>
+            </button>
+
+            <button
+                type="button"
+                class="place-map-area-fit"
+                data-fit-mapped-areas
+                hidden
+            >
+                Fit areas
+            </button>
         </div>
     </div>
 
