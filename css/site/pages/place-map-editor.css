@@ -1,0 +1,323 @@
+/* =========================================================
+   MAPPED AREAS EDITOR
+   ========================================================= */
+
+.mapped-area-editor {
+    width: min(1440px, calc(100% - 32px));
+    display: grid;
+    gap: 22px;
+    margin: 0 auto;
+}
+
+.mapped-area-editor-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.mapped-area-editor-header h1,
+.mapped-area-editor-header p {
+    margin-top: 0;
+}
+
+.mapped-area-editor-header h1 {
+    margin-bottom: 8px;
+}
+
+.mapped-area-editor-header > div > p:last-child {
+    max-width: 780px;
+    margin-bottom: 0;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.mapped-area-editor-back,
+.mapped-area-editor button {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.mapped-area-editor button:hover,
+.mapped-area-editor button:focus-visible,
+.mapped-area-editor-back:hover,
+.mapped-area-editor-back:focus-visible {
+    border-color: var(--text);
+}
+
+.mapped-area-editor button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.mapped-area-editor-layout {
+    min-height: 680px;
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 18px;
+}
+
+.mapped-area-editor-sidebar {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 12px;
+}
+
+.mapped-area-editor-card {
+    display: grid;
+    gap: 12px;
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.mapped-area-editor-card h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.mapped-area-editor-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mapped-area-editor-card-heading button {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: .7rem;
+}
+
+.mapped-area-editor-card label {
+    display: grid;
+    gap: 6px;
+}
+
+.mapped-area-editor-card label > span {
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+.mapped-area-editor-card input,
+.mapped-area-editor-card select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+}
+
+.mapped-area-editor-draw-actions,
+.mapped-area-editor-save-actions,
+.mapped-area-editor-map-styles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.mapped-area-editor-save-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.mapped-area-editor-save-actions .is-primary {
+    background: var(--text);
+    color: var(--background);
+}
+
+.mapped-area-editor-save-actions .is-danger {
+    border-color:
+        color-mix(
+            in srgb,
+            #b42318 55%,
+            var(--border)
+        );
+}
+
+.mapped-area-editor-help,
+.mapped-area-editor-status {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.mapped-area-editor-status.is-error {
+    color: #b42318;
+    font-weight: 750;
+}
+
+:root[data-theme="dark"]
+.mapped-area-editor-status.is-error {
+    color: #ff9b94;
+}
+
+.mapped-area-editor-list {
+    display: grid;
+    gap: 7px;
+}
+
+.mapped-area-editor-list > p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .74rem;
+}
+
+.mapped-area-editor-list button {
+    min-height: 38px;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.mapped-area-editor-list button.is-active {
+    border-color: var(--text);
+    background:
+        color-mix(
+            in srgb,
+            var(--text) 8%,
+            var(--background)
+        );
+}
+
+.mapped-area-editor-list button span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mapped-area-editor-list button small {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: .62rem;
+    white-space: nowrap;
+}
+
+.mapped-area-editor-map-styles button.is-active {
+    border-color: var(--text);
+    background:
+        color-mix(
+            in srgb,
+            var(--text) 8%,
+            var(--background)
+        );
+}
+
+.mapped-area-editor-map-card {
+    min-width: 0;
+    min-height: 680px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.mapped-area-editor-map {
+    width: 100%;
+    height: 100%;
+    min-height: 680px;
+}
+
+.mapped-area-editor-point-count {
+    position: absolute;
+    z-index: 800;
+    right: 12px;
+    bottom: 12px;
+    padding: 6px 9px;
+    border: 1px solid rgba(255, 255, 255, .38);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .68);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 850;
+    pointer-events: none;
+}
+
+.mapped-area-editor .leaflet-control-zoom a {
+    color: #222;
+}
+
+.mapped-area-editor .leaflet-popup-content-wrapper {
+    color: #222;
+}
+
+.mapped-area-editor-vertex {
+    width: 18px;
+    height: 18px;
+    border: 3px solid #fff;
+    border-radius: 999px;
+    background: #202020;
+    box-shadow: 0 2px 7px rgba(0, 0, 0, .35);
+}
+
+@media (max-width: 900px) {
+    .mapped-area-editor-layout {
+        min-height: 0;
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mapped-area-editor-sidebar
+    .mapped-area-editor-card:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .mapped-area-editor-map-card,
+    .mapped-area-editor-map {
+        min-height: 560px;
+    }
+}
+
+@media (max-width: 620px) {
+    .mapped-area-editor {
+        width: min(100% - 20px, 1440px);
+    }
+
+    .mapped-area-editor-header {
+        align-items: start;
+        flex-direction: column;
+    }
+
+    .mapped-area-editor-sidebar {
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-sidebar
+    .mapped-area-editor-card:first-child {
+        grid-column: auto;
+    }
+
+    .mapped-area-editor-draw-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mapped-area-editor-draw-actions
+    [data-start-drawing] {
+        grid-column: 1 / -1;
+    }
+
+    .mapped-area-editor-map-card,
+    .mapped-area-editor-map {
+        min-height: 500px;
+    }
+}
