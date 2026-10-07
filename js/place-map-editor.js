@@ -101,6 +101,51 @@
             '[data-delete-feature]'
         );
 
+    const gpsState =
+        editor.querySelector(
+            '[data-gps-state]'
+        );
+
+    const gpsReading =
+        editor.querySelector(
+            '[data-gps-reading]'
+        );
+
+    const gpsLatitude =
+        editor.querySelector(
+            '[data-gps-latitude]'
+        );
+
+    const gpsLongitude =
+        editor.querySelector(
+            '[data-gps-longitude]'
+        );
+
+    const gpsAccuracy =
+        editor.querySelector(
+            '[data-gps-accuracy]'
+        );
+
+    const startGpsButton =
+        editor.querySelector(
+            '[data-start-gps]'
+        );
+
+    const stopGpsButton =
+        editor.querySelector(
+            '[data-stop-gps]'
+        );
+
+    const addGpsPointButton =
+        editor.querySelector(
+            '[data-add-gps-point]'
+        );
+
+    const centerGpsButton =
+        editor.querySelector(
+            '[data-center-gps]'
+        );
+
     const apiUrl =
         `/api/place-map-features.php?slug=${encodeURIComponent(slug)}`;
 
@@ -124,9 +169,11 @@
         street: {
             url:
                 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }
@@ -135,9 +182,11 @@
         terrain: {
             url:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     'Tiles &copy; Esri and contributors'
             }
@@ -146,9 +195,11 @@
         satellite: {
             url:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+
             options: {
                 maxNativeZoom: 19,
                 maxZoom: 20,
+
                 attribution:
                     'Tiles &copy; Esri and imagery contributors'
             }
@@ -162,9 +213,15 @@
     let selectedFeatureId = 0;
     let drawing = false;
     let points = [];
+    let vertexMetadata = [];
     let shapeLayer = null;
     let vertexLayers = [];
     let existingLayers = [];
+
+    let gpsWatchId = null;
+    let gpsPosition = null;
+    let gpsMarker = null;
+    let gpsAccuracyCircle = null;
 
     const featureStyles = {
         place_boundary: {
@@ -183,6 +240,9 @@
         }
     };
 
+    const isoNow = () =>
+        new Date().toISOString();
+
     const setStatus = (
         message = '',
         isError = false
@@ -191,7 +251,9 @@
             return;
         }
 
-        status.textContent = message;
+        status.textContent =
+            message;
+
         status.classList.toggle(
             'is-error',
             isError
@@ -200,7 +262,8 @@
 
     const setHelp = (message) => {
         if (help) {
-            help.textContent = message;
+            help.textContent =
+                message;
         }
     };
 
@@ -238,7 +301,9 @@
             || tileSources.satellite;
 
         if (activeTileLayer) {
-            map.removeLayer(activeTileLayer);
+            map.removeLayer(
+                activeTileLayer
+            );
         }
 
         activeTileLayer =
@@ -247,8 +312,12 @@
                 source.options
             );
 
-        activeTileLayer.addTo(map);
-        activeTileLayer.bringToBack();
+        activeTileLayer.addTo(
+            map
+        );
+
+        activeTileLayer
+            .bringToBack();
 
         editor
             .querySelectorAll(
@@ -267,25 +336,71 @@
     };
 
     const clearVertexLayers = () => {
-        vertexLayers.forEach((layer) => {
-            map.removeLayer(layer);
-        });
+        vertexLayers.forEach(
+            (layer) => {
+                map.removeLayer(
+                    layer
+                );
+            }
+        );
 
         vertexLayers = [];
     };
 
     const clearShapeLayer = () => {
-        if (shapeLayer) {
-            map.removeLayer(shapeLayer);
-            shapeLayer = null;
+        if (!shapeLayer) {
+            return;
         }
+
+        map.removeLayer(
+            shapeLayer
+        );
+
+        shapeLayer = null;
     };
 
     const selectedStyle = () =>
         featureStyles[
             featureType?.value
         ]
-        || featureStyles.camping_area;
+        || featureStyles
+            .camping_area;
+
+    const vertexIcon =
+        (metadata) => {
+            const isGps =
+                metadata?.source
+                === 'gps';
+
+            return L.divIcon({
+                className: '',
+
+                html:
+                    `<span class="mapped-area-editor-vertex${isGps ? ' is-gps' : ''}" aria-hidden="true"></span>`,
+
+                iconSize:
+                    [18, 18],
+
+                iconAnchor:
+                    [9, 9]
+            });
+        };
+
+    const markVertexAdjusted =
+        (index) => {
+            const current =
+                vertexMetadata[index]
+                || {
+                    source: 'manual'
+                };
+
+            vertexMetadata[index] = {
+                ...current,
+                adjusted: true,
+                adjusted_at:
+                    isoNow()
+            };
+        };
 
     const renderEditableShape = () => {
         clearShapeLayer();
@@ -303,11 +418,15 @@
             L.polygon(
                 points,
                 {
-                    color: style.color,
+                    color:
+                        style.color,
+
                     weight: 3,
                     opacity: 1,
+
                     fillColor:
                         style.fillColor,
+
                     fillOpacity:
                         drawing
                             ? .16
@@ -317,22 +436,26 @@
 
         points.forEach(
             (latLng, index) => {
+                const metadata =
+                    vertexMetadata[
+                        index
+                    ]
+                    || {
+                        source:
+                            'manual'
+                    };
+
                 const marker =
                     L.marker(
                         latLng,
                         {
-                            draggable: !drawing,
+                            draggable:
+                                !drawing,
+
                             icon:
-                                L.divIcon({
-                                    className:
-                                        '',
-                                    html:
-                                        '<span class="mapped-area-editor-vertex" aria-hidden="true"></span>',
-                                    iconSize:
-                                        [18, 18],
-                                    iconAnchor:
-                                        [9, 9]
-                                })
+                                vertexIcon(
+                                    metadata
+                                )
                         }
                     ).addTo(map);
 
@@ -356,6 +479,10 @@
                     marker.on(
                         'dragend',
                         () => {
+                            markVertexAdjusted(
+                                index
+                            );
+
                             setStatus(
                                 'Point moved. Save the area to keep the change.'
                             );
@@ -363,7 +490,9 @@
                     );
                 }
 
-                vertexLayers.push(marker);
+                vertexLayers.push(
+                    marker
+                );
             }
         );
 
@@ -371,9 +500,13 @@
     };
 
     const clearExistingLayers = () => {
-        existingLayers.forEach((layer) => {
-            map.removeLayer(layer);
-        });
+        existingLayers.forEach(
+            (layer) => {
+                map.removeLayer(
+                    layer
+                );
+            }
+        );
 
         existingLayers = [];
     };
@@ -381,46 +514,58 @@
     const renderExistingLayers = () => {
         clearExistingLayers();
 
-        features.forEach((feature) => {
-            if (
-                Number(feature.id)
-                === selectedFeatureId
-            ) {
-                return;
-            }
-
-            const style =
-                featureStyles[
-                    feature.feature_type
-                ]
-                || featureStyles.camping_area;
-
-            const layer =
-                L.geoJSON(
-                    feature.geometry,
-                    {
-                        style: {
-                            color: style.color,
-                            weight: 2,
-                            opacity: .78,
-                            fillColor:
-                                style.fillColor,
-                            fillOpacity: .13
-                        }
-                    }
-                ).addTo(map);
-
-            layer.on(
-                'click',
-                () => {
-                    selectFeature(
-                        Number(feature.id)
-                    );
+        features.forEach(
+            (feature) => {
+                if (
+                    Number(feature.id)
+                    === selectedFeatureId
+                ) {
+                    return;
                 }
-            );
 
-            existingLayers.push(layer);
-        });
+                const style =
+                    featureStyles[
+                        feature.feature_type
+                    ]
+                    || featureStyles
+                        .camping_area;
+
+                const layer =
+                    L.geoJSON(
+                        feature.geometry,
+                        {
+                            style: {
+                                color:
+                                    style.color,
+
+                                weight: 2,
+                                opacity: .78,
+
+                                fillColor:
+                                    style.fillColor,
+
+                                fillOpacity:
+                                    .13
+                            }
+                        }
+                    ).addTo(map);
+
+                layer.on(
+                    'click',
+                    () => {
+                        selectFeature(
+                            Number(
+                                feature.id
+                            )
+                        );
+                    }
+                );
+
+                existingLayers.push(
+                    layer
+                );
+            }
+        );
     };
 
     const featureTypeLabel = (value) => {
@@ -431,7 +576,8 @@
                 );
 
         return option
-            ? option.textContent.trim()
+            ? option.textContent
+                .trim()
             : value;
     };
 
@@ -440,149 +586,271 @@
             return;
         }
 
-        featureList.replaceChildren();
+        featureList
+            .replaceChildren();
 
-        if (features.length === 0) {
+        if (
+            features.length === 0
+        ) {
             const empty =
-                document.createElement('p');
+                document.createElement(
+                    'p'
+                );
 
             empty.textContent =
                 'No mapped areas yet.';
 
-            featureList.append(empty);
+            featureList.append(
+                empty
+            );
+
             return;
         }
 
-        features.forEach((feature) => {
-            const button =
-                document.createElement(
-                    'button'
-                );
-
-            button.type = 'button';
-
-            button.classList.toggle(
-                'is-active',
-                Number(feature.id)
-                === selectedFeatureId
-            );
-
-            const name =
-                document.createElement(
-                    'span'
-                );
-
-            name.textContent =
-                feature.label
-                || featureTypeLabel(
-                    feature.feature_type
-                );
-
-            const type =
-                document.createElement(
-                    'small'
-                );
-
-            type.textContent =
-                featureTypeLabel(
-                    feature.feature_type
-                );
-
-            button.append(
-                name,
-                type
-            );
-
-            button.addEventListener(
-                'click',
-                () => {
-                    selectFeature(
-                        Number(feature.id)
+        features.forEach(
+            (feature) => {
+                const button =
+                    document.createElement(
+                        'button'
                     );
+
+                button.type =
+                    'button';
+
+                button.classList
+                    .toggle(
+                        'is-active',
+                        Number(
+                            feature.id
+                        )
+                        === selectedFeatureId
+                    );
+
+                const name =
+                    document.createElement(
+                        'span'
+                    );
+
+                name.textContent =
+                    feature.label
+                    || featureTypeLabel(
+                        feature.feature_type
+                    );
+
+                const type =
+                    document.createElement(
+                        'small'
+                    );
+
+                const source =
+                    feature.source_type
+                        === 'gps'
+                        ? 'GPS'
+                        : (
+                            feature.source_type
+                            === 'mixed'
+                                ? 'Mixed'
+                                : ''
+                        );
+
+                type.textContent =
+                    [
+                        featureTypeLabel(
+                            feature.feature_type
+                        ),
+                        source
+                    ]
+                        .filter(Boolean)
+                        .join(' · ');
+
+                button.append(
+                    name,
+                    type
+                );
+
+                button.addEventListener(
+                    'click',
+                    () => {
+                        selectFeature(
+                            Number(
+                                feature.id
+                            )
+                        );
+                    }
+                );
+
+                featureList.append(
+                    button
+                );
+            }
+        );
+    };
+
+    const resetEditor =
+        (
+            keepStatus = false
+        ) => {
+            selectedFeatureId = 0;
+            drawing = false;
+            points = [];
+            vertexMetadata = [];
+
+            clearShapeLayer();
+            clearVertexLayers();
+
+            if (featureType) {
+                featureType.value =
+                    'camping_area';
+            }
+
+            if (featureLabel) {
+                featureLabel.value =
+                    '';
+            }
+
+            drawButton.disabled =
+                false;
+
+            finishButton.disabled =
+                true;
+
+            undoButton.disabled =
+                true;
+
+            saveButton.disabled =
+                true;
+
+            deleteButton.disabled =
+                true;
+
+            setHelp(
+                'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
+            );
+
+            if (!keepStatus) {
+                setStatus('');
+            }
+
+            renderExistingLayers();
+            renderFeatureList();
+            updatePointCount();
+        };
+
+    const geometryToPoints =
+        (geometry) => {
+            const ring =
+                geometry
+                    ?.coordinates
+                    ?.[0];
+
+            if (!Array.isArray(ring)) {
+                return [];
+            }
+
+            const withoutClosure =
+                ring.length > 1
+                && ring[0][0]
+                    === ring[
+                        ring.length - 1
+                    ][0]
+                && ring[0][1]
+                    === ring[
+                        ring.length - 1
+                    ][1]
+                    ? ring.slice(
+                        0,
+                        -1
+                    )
+                    : ring;
+
+            return withoutClosure
+                .filter(
+                    (point) =>
+                        Array.isArray(
+                            point
+                        )
+                        && point.length
+                            >= 2
+                )
+                .map(
+                    (point) =>
+                        L.latLng(
+                            Number(
+                                point[1]
+                            ),
+                            Number(
+                                point[0]
+                            )
+                        )
+                );
+        };
+
+    const metadataForFeature =
+        (feature, count) => {
+            const vertices =
+                feature
+                    ?.metadata
+                    ?.vertices;
+
+            if (
+                !Array.isArray(
+                    vertices
+                )
+            ) {
+                return Array.from(
+                    {
+                        length: count
+                    },
+                    () => ({
+                        source:
+                            feature
+                                ?.source_type
+                                === 'gps'
+                                ? 'gps'
+                                : 'manual'
+                    })
+                );
+            }
+
+            return Array.from(
+                {
+                    length: count
+                },
+                (_, index) => {
+                    const item =
+                        vertices[index];
+
+                    return isPlainObject(
+                        item
+                    )
+                        ? {
+                            ...item
+                        }
+                        : {
+                            source:
+                                'manual'
+                        };
                 }
             );
+        };
 
-            featureList.append(button);
-        });
-    };
-
-    const resetEditor = (
-        keepStatus = false
-    ) => {
-        selectedFeatureId = 0;
-        drawing = false;
-        points = [];
-
-        clearShapeLayer();
-        clearVertexLayers();
-
-        if (featureType) {
-            featureType.value =
-                'camping_area';
-        }
-
-        if (featureLabel) {
-            featureLabel.value = '';
-        }
-
-        drawButton.disabled = false;
-        finishButton.disabled = true;
-        undoButton.disabled = true;
-        saveButton.disabled = true;
-        deleteButton.disabled = true;
-
-        setHelp(
-            'Choose Draw area, then tap around the outside edge. Three points is the minimum. Add more points for irregular or rounded shapes.'
-        );
-
-        if (!keepStatus) {
-            setStatus('');
-        }
-
-        renderExistingLayers();
-        renderFeatureList();
-        updatePointCount();
-    };
-
-    const geometryToPoints = (geometry) => {
-        const ring =
-            geometry
-                ?.coordinates
-                ?.[0];
-
-        if (!Array.isArray(ring)) {
-            return [];
-        }
-
-        const withoutClosure =
-            ring.length > 1
-            && ring[0][0]
-                === ring[ring.length - 1][0]
-            && ring[0][1]
-                === ring[ring.length - 1][1]
-                ? ring.slice(0, -1)
-                : ring;
-
-        return withoutClosure
-            .filter(
-                (point) =>
-                    Array.isArray(point)
-                    && point.length >= 2
+    function isPlainObject(value) {
+        return (
+            value !== null
+            && typeof value
+                === 'object'
+            && !Array.isArray(
+                value
             )
-            .map(
-                (point) =>
-                    L.latLng(
-                        Number(point[1]),
-                        Number(point[0])
-                    )
-            );
-    };
+        );
+    }
 
     const selectFeature = (id) => {
         const feature =
             features.find(
                 (item) =>
-                    Number(item.id) === id
+                    Number(item.id)
+                    === id
             );
 
         if (!feature) {
@@ -590,7 +858,9 @@
         }
 
         selectedFeatureId =
-            Number(feature.id);
+            Number(
+                feature.id
+            );
 
         drawing = false;
 
@@ -601,7 +871,8 @@
 
         if (featureLabel) {
             featureLabel.value =
-                feature.label || '';
+                feature.label
+                || '';
         }
 
         points =
@@ -609,10 +880,23 @@
                 feature.geometry
             );
 
-        drawButton.disabled = false;
-        finishButton.disabled = true;
-        undoButton.disabled = true;
-        deleteButton.disabled = false;
+        vertexMetadata =
+            metadataForFeature(
+                feature,
+                points.length
+            );
+
+        drawButton.disabled =
+            false;
+
+        finishButton.disabled =
+            true;
+
+        undoButton.disabled =
+            true;
+
+        deleteButton.disabled =
+            false;
 
         setHelp(
             'Drag any point to correct this area. Save when finished. Choose Draw area if you want to replace the shape completely.'
@@ -628,7 +912,9 @@
             map.fitBounds(
                 shapeLayer.getBounds(),
                 {
-                    padding: [50, 50],
+                    padding:
+                        [50, 50],
+
                     maxZoom: 20
                 }
             );
@@ -638,32 +924,41 @@
     const startDrawing = () => {
         drawing = true;
         points = [];
+        vertexMetadata = [];
 
         clearShapeLayer();
         clearVertexLayers();
 
-        drawButton.disabled = true;
-        saveButton.disabled = true;
+        drawButton.disabled =
+            true;
+
+        saveButton.disabled =
+            true;
+
         deleteButton.disabled =
-            selectedFeatureId < 1;
+            selectedFeatureId
+            < 1;
 
         setStatus('');
 
         setHelp(
-            'Tap around the outside edge of the area. Add as many points as needed, then choose Finish.'
+            'Tap the map to add points, or walk the boundary and use Add GPS point. Add as many points as needed, then choose Finish.'
         );
 
         updatePointCount();
     };
 
     const finishDrawing = () => {
-        if (points.length < 3) {
+        if (
+            points.length < 3
+        ) {
             return;
         }
 
         drawing = false;
 
-        drawButton.disabled = false;
+        drawButton.disabled =
+            false;
 
         setHelp(
             'Drag any point if the outline needs adjustment. Save when the shape is correct.'
@@ -677,7 +972,9 @@
     };
 
     const geometryPayload = () => {
-        if (points.length < 3) {
+        if (
+            points.length < 3
+        ) {
             return null;
         }
 
@@ -702,246 +999,856 @@
 
         return {
             type: 'Polygon',
-            coordinates: [ring]
+            coordinates: [
+                ring
+            ]
         };
     };
 
-    const request = async (payload) => {
-        const response =
-            await fetch(
-                '/api/place-map-features.php',
-                {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-                        'Accept':
-                            'application/json'
-                    },
-                    body:
-                        JSON.stringify({
-                            slug,
-                            csrf_token:
-                                csrfToken,
-                            ...payload
-                        })
-                }
-            );
-
-        const data =
-            await response.json()
-                .catch(() => null);
-
-        if (
-            !response.ok
-            || !data
-            || data.ok !== true
-        ) {
-            throw new Error(
-                data?.error
-                || 'The mapped area request failed.'
-            );
-        }
-
-        return data;
-    };
-
-    const saveFeature = async () => {
-        const geometry =
-            geometryPayload();
-
-        if (!geometry) {
-            setStatus(
-                'Draw at least three points first.',
-                true
-            );
-            return;
-        }
-
-        saveButton.disabled = true;
-        setStatus('Saving mapped area...');
-
-        try {
-            const data =
-                await request({
-                    action: 'save',
-                    feature_id:
-                        selectedFeatureId,
-                    feature_type:
-                        featureType?.value
-                        || 'camping_area',
-                    label:
-                        featureLabel?.value
-                        || '',
-                    geometry
-                });
-
-            features =
-                Array.isArray(
-                    data.features
-                )
-                    ? data.features
-                    : [];
-
-            const savedId =
-                Number(
-                    data.feature_id
-                    || 0
+    const sourcePayload = () => {
+        const gpsVertices =
+            vertexMetadata
+                .filter(
+                    (item) =>
+                        item?.source
+                        === 'gps'
                 );
 
-            resetEditor(true);
+        const adjusted =
+            vertexMetadata
+                .some(
+                    (item) =>
+                        item?.adjusted
+                        === true
+                );
 
-            if (savedId > 0) {
-                selectFeature(savedId);
-            }
+        let sourceType =
+            'manual';
 
-            setStatus(
-                'Mapped area saved.'
-            );
+        if (
+            gpsVertices.length
+            === vertexMetadata.length
+            && gpsVertices.length > 0
+            && !adjusted
+        ) {
+            sourceType = 'gps';
 
-        } catch (error) {
-            saveButton.disabled = false;
-
-            setStatus(
-                error.message
-                || 'The mapped area could not be saved.',
-                true
-            );
-        }
-    };
-
-    const deleteFeature = async () => {
-        if (selectedFeatureId < 1) {
-            return;
-        }
-
-        const confirmed =
-            window.confirm(
-                'Delete this mapped area?'
-            );
-
-        if (!confirmed) {
-            return;
+        } else if (
+            gpsVertices.length > 0
+        ) {
+            sourceType = 'mixed';
         }
 
-        deleteButton.disabled = true;
-        setStatus('Deleting mapped area...');
-
-        try {
-            const data =
-                await request({
-                    action: 'delete',
-                    feature_id:
-                        selectedFeatureId
-                });
-
-            features =
-                Array.isArray(
-                    data.features
+        const accuracies =
+            gpsVertices
+                .map(
+                    (item) =>
+                        Number(
+                            item.accuracy_m
+                        )
                 )
-                    ? data.features
-                    : [];
+                .filter(
+                    (value) =>
+                        Number.isFinite(
+                            value
+                        )
+                        && value >= 0
+                );
 
-            resetEditor(true);
+        const averageAccuracy =
+            accuracies.length > 0
+                ? accuracies.reduce(
+                    (
+                        total,
+                        value
+                    ) =>
+                        total + value,
+                    0
+                )
+                / accuracies.length
+                : null;
 
-            setStatus(
-                'Mapped area deleted.'
-            );
+        const metadata = {
+            coordinate_system:
+                'EPSG:4326',
 
-        } catch (error) {
-            deleteButton.disabled = false;
+            vertices:
+                vertexMetadata.map(
+                    (item) => ({
+                        source:
+                            item?.source
+                            === 'gps'
+                                ? 'gps'
+                                : 'manual',
 
-            setStatus(
-                error.message
-                || 'The mapped area could not be deleted.',
-                true
-            );
+                        ...(
+                            Number.isFinite(
+                                Number(
+                                    item
+                                        ?.accuracy_m
+                                )
+                            )
+                                ? {
+                                    accuracy_m:
+                                        Number(
+                                            Number(
+                                                item
+                                                    .accuracy_m
+                                            )
+                                                .toFixed(
+                                                    2
+                                                )
+                                        )
+                                }
+                                : {}
+                        ),
+
+                        ...(
+                            item?.captured_at
+                                ? {
+                                    captured_at:
+                                        String(
+                                            item
+                                                .captured_at
+                                        )
+                                }
+                                : {}
+                        ),
+
+                        ...(
+                            item?.adjusted
+                                ? {
+                                    adjusted:
+                                        true,
+
+                                    adjusted_at:
+                                        String(
+                                            item
+                                                .adjusted_at
+                                            || isoNow()
+                                        )
+                                }
+                                : {}
+                        )
+                    })
+                )
+        };
+
+        if (
+            accuracies.length > 0
+        ) {
+            metadata.gps_summary = {
+                average_accuracy_m:
+                    Number(
+                        averageAccuracy
+                            .toFixed(2)
+                    ),
+
+                best_accuracy_m:
+                    Number(
+                        Math.min(
+                            ...accuracies
+                        )
+                            .toFixed(2)
+                    ),
+
+                worst_accuracy_m:
+                    Number(
+                        Math.max(
+                            ...accuracies
+                        )
+                            .toFixed(2)
+                    )
+            };
         }
+
+        return {
+            source_type:
+                sourceType,
+
+            accuracy_m:
+                averageAccuracy
+                    === null
+                    ? null
+                    : Number(
+                        averageAccuracy
+                            .toFixed(2)
+                    ),
+
+            metadata
+        };
     };
 
-    const loadFeatures = async () => {
-        setStatus('Loading mapped areas...');
-
-        try {
+    const request =
+        async (payload) => {
             const response =
                 await fetch(
-                    apiUrl,
+                    '/api/place-map-features.php',
                     {
+                        method:
+                            'POST',
+
                         credentials:
                             'same-origin',
+
                         headers: {
-                            'Accept':
+                            'Content-Type':
+                                'application/json',
+
+                            Accept:
                                 'application/json'
-                        }
+                        },
+
+                        body:
+                            JSON.stringify({
+                                slug,
+                                csrf_token:
+                                    csrfToken,
+                                ...payload
+                            })
                     }
                 );
 
             const data =
-                await response.json();
+                await response
+                    .json()
+                    .catch(
+                        () => null
+                    );
 
             if (
                 !response.ok
+                || !data
                 || data.ok !== true
             ) {
                 throw new Error(
-                    data.error
-                    || 'Mapped areas could not be loaded.'
+                    data?.error
+                    || 'The mapped area request failed.'
                 );
             }
 
-            features =
-                Array.isArray(
-                    data.features
-                )
-                    ? data.features
-                    : [];
+            return data;
+        };
 
-            resetEditor(true);
-            setStatus('');
+    const saveFeature =
+        async () => {
+            const geometry =
+                geometryPayload();
 
-            if (features.length > 0) {
-                const bounds =
-                    L.latLngBounds([]);
-
-                features.forEach(
-                    (feature) => {
-                        const layer =
-                            L.geoJSON(
-                                feature.geometry
-                            );
-
-                        const layerBounds =
-                            layer.getBounds();
-
-                        if (layerBounds.isValid()) {
-                            bounds.extend(
-                                layerBounds
-                            );
-                        }
-                    }
+            if (!geometry) {
+                setStatus(
+                    'Draw at least three points first.',
+                    true
                 );
 
-                if (bounds.isValid()) {
-                    map.fitBounds(
-                        bounds,
-                        {
-                            padding:
-                                [50, 50],
-                            maxZoom: 20
-                        }
+                return;
+            }
+
+            saveButton.disabled =
+                true;
+
+            setStatus(
+                'Saving mapped area...'
+            );
+
+            try {
+                const source =
+                    sourcePayload();
+
+                const data =
+                    await request({
+                        action:
+                            'save',
+
+                        feature_id:
+                            selectedFeatureId,
+
+                        feature_type:
+                            featureType?.value
+                            || 'camping_area',
+
+                        label:
+                            featureLabel?.value
+                            || '',
+
+                        geometry,
+
+                        ...source
+                    });
+
+                features =
+                    Array.isArray(
+                        data.features
+                    )
+                        ? data.features
+                        : [];
+
+                const savedId =
+                    Number(
+                        data.feature_id
+                        || 0
+                    );
+
+                resetEditor(
+                    true
+                );
+
+                if (savedId > 0) {
+                    selectFeature(
+                        savedId
                     );
                 }
+
+                setStatus(
+                    'Mapped area saved.'
+                );
+
+            } catch (error) {
+                saveButton.disabled =
+                    false;
+
+                setStatus(
+                    error.message
+                    || 'The mapped area could not be saved.',
+                    true
+                );
+            }
+        };
+
+    const deleteFeature =
+        async () => {
+            if (
+                selectedFeatureId
+                < 1
+            ) {
+                return;
             }
 
-        } catch (error) {
+            const confirmed =
+                window.confirm(
+                    'Delete this mapped area?'
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
+            deleteButton.disabled =
+                true;
+
             setStatus(
-                error.message
-                || 'Mapped areas could not be loaded.',
-                true
+                'Deleting mapped area...'
             );
+
+            try {
+                const data =
+                    await request({
+                        action:
+                            'delete',
+
+                        feature_id:
+                            selectedFeatureId
+                    });
+
+                features =
+                    Array.isArray(
+                        data.features
+                    )
+                        ? data.features
+                        : [];
+
+                resetEditor(
+                    true
+                );
+
+                setStatus(
+                    'Mapped area deleted.'
+                );
+
+            } catch (error) {
+                deleteButton.disabled =
+                    false;
+
+                setStatus(
+                    error.message
+                    || 'The mapped area could not be deleted.',
+                    true
+                );
+            }
+        };
+
+    const loadFeatures =
+        async () => {
+            setStatus(
+                'Loading mapped areas...'
+            );
+
+            try {
+                const response =
+                    await fetch(
+                        apiUrl,
+                        {
+                            credentials:
+                                'same-origin',
+
+                            headers: {
+                                Accept:
+                                    'application/json'
+                            }
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (
+                    !response.ok
+                    || data.ok !== true
+                ) {
+                    throw new Error(
+                        data.error
+                        || 'Mapped areas could not be loaded.'
+                    );
+                }
+
+                features =
+                    Array.isArray(
+                        data.features
+                    )
+                        ? data.features
+                        : [];
+
+                resetEditor(
+                    true
+                );
+
+                setStatus('');
+
+                if (
+                    features.length
+                    > 0
+                ) {
+                    const bounds =
+                        L.latLngBounds(
+                            []
+                        );
+
+                    features.forEach(
+                        (feature) => {
+                            const layer =
+                                L.geoJSON(
+                                    feature.geometry
+                                );
+
+                            const layerBounds =
+                                layer.getBounds();
+
+                            if (
+                                layerBounds
+                                    .isValid()
+                            ) {
+                                bounds.extend(
+                                    layerBounds
+                                );
+                            }
+                        }
+                    );
+
+                    if (
+                        bounds.isValid()
+                    ) {
+                        map.fitBounds(
+                            bounds,
+                            {
+                                padding:
+                                    [50, 50],
+
+                                maxZoom:
+                                    20
+                            }
+                        );
+                    }
+                }
+
+            } catch (error) {
+                setStatus(
+                    error.message
+                    || 'Mapped areas could not be loaded.',
+                    true
+                );
+            }
+        };
+
+
+    /* =====================================================
+       DEVICE GPS
+       ===================================================== */
+
+    const setGpsState =
+        (
+            label,
+            active = false
+        ) => {
+            if (!gpsState) {
+                return;
+            }
+
+            gpsState.textContent =
+                label;
+
+            gpsState.classList.toggle(
+                'is-active',
+                active
+            );
+        };
+
+    const clearGpsMapLayers = () => {
+        if (gpsMarker) {
+            map.removeLayer(
+                gpsMarker
+            );
+
+            gpsMarker = null;
+        }
+
+        if (gpsAccuracyCircle) {
+            map.removeLayer(
+                gpsAccuracyCircle
+            );
+
+            gpsAccuracyCircle =
+                null;
         }
     };
+
+    const renderGpsPosition =
+        (position) => {
+            const lat =
+                Number(
+                    position.coords
+                        .latitude
+                );
+
+            const lng =
+                Number(
+                    position.coords
+                        .longitude
+                );
+
+            const accuracy =
+                Number(
+                    position.coords
+                        .accuracy
+                );
+
+            if (
+                !Number.isFinite(lat)
+                || !Number.isFinite(lng)
+            ) {
+                return;
+            }
+
+            gpsPosition = {
+                lat,
+                lng,
+                accuracy:
+                    Number.isFinite(
+                        accuracy
+                    )
+                        ? accuracy
+                        : null,
+
+                capturedAt:
+                    new Date(
+                        position.timestamp
+                        || Date.now()
+                    ).toISOString()
+            };
+
+            if (gpsReading) {
+                gpsReading.hidden =
+                    false;
+            }
+
+            if (gpsLatitude) {
+                gpsLatitude.textContent =
+                    lat.toFixed(7);
+            }
+
+            if (gpsLongitude) {
+                gpsLongitude.textContent =
+                    lng.toFixed(7);
+            }
+
+            if (gpsAccuracy) {
+                gpsAccuracy.textContent =
+                    gpsPosition.accuracy
+                    === null
+                        ? 'Unknown'
+                        : `±${Math.round(
+                            gpsPosition
+                                .accuracy
+                        )} m`;
+            }
+
+            addGpsPointButton.disabled =
+                false;
+
+            centerGpsButton.disabled =
+                false;
+
+            clearGpsMapLayers();
+
+            gpsAccuracyCircle =
+                L.circle(
+                    [lat, lng],
+                    {
+                        radius:
+                            Math.max(
+                                1,
+                                gpsPosition
+                                    .accuracy
+                                || 1
+                            ),
+
+                        color:
+                            '#2563eb',
+
+                        weight: 1,
+                        opacity: .7,
+
+                        fillColor:
+                            '#2563eb',
+
+                        fillOpacity:
+                            .08,
+
+                        interactive:
+                            false
+                    }
+                ).addTo(map);
+
+            gpsMarker =
+                L.marker(
+                    [lat, lng],
+                    {
+                        interactive:
+                            false,
+
+                        icon:
+                            L.divIcon({
+                                className:
+                                    '',
+
+                                html:
+                                    '<span class="mapped-area-editor-gps-marker" aria-hidden="true"></span>',
+
+                                iconSize:
+                                    [18, 18],
+
+                                iconAnchor:
+                                    [9, 9]
+                            })
+                    }
+                ).addTo(map);
+
+            setGpsState(
+                gpsPosition.accuracy
+                    === null
+                    ? 'GPS active'
+                    : `±${Math.round(
+                        gpsPosition
+                            .accuracy
+                    )} m`,
+                true
+            );
+        };
+
+    const gpsErrorMessage =
+        (error) => {
+            switch (
+                Number(
+                    error?.code
+                )
+            ) {
+                case 1:
+                    return 'Location permission was denied.';
+
+                case 2:
+                    return 'Your device could not determine a GPS position.';
+
+                case 3:
+                    return 'The GPS request timed out.';
+
+                default:
+                    return 'Device GPS is unavailable.';
+            }
+        };
+
+    const stopGps = () => {
+        if (
+            gpsWatchId !== null
+            && navigator.geolocation
+        ) {
+            navigator.geolocation
+                .clearWatch(
+                    gpsWatchId
+                );
+        }
+
+        gpsWatchId = null;
+
+        startGpsButton.disabled =
+            false;
+
+        stopGpsButton.disabled =
+            true;
+
+        setGpsState(
+            gpsPosition
+                ? 'Paused'
+                : 'Off',
+            false
+        );
+    };
+
+    const startGps = () => {
+        if (
+            !('geolocation' in navigator)
+        ) {
+            setStatus(
+                'This browser does not provide device geolocation.',
+                true
+            );
+
+            return;
+        }
+
+        if (gpsWatchId !== null) {
+            return;
+        }
+
+        startGpsButton.disabled =
+            true;
+
+        stopGpsButton.disabled =
+            false;
+
+        setGpsState(
+            'Locating...',
+            true
+        );
+
+        setStatus(
+            'Waiting for a high-accuracy GPS position...'
+        );
+
+        gpsWatchId =
+            navigator.geolocation
+                .watchPosition(
+                    (position) => {
+                        renderGpsPosition(
+                            position
+                        );
+
+                        setStatus('');
+                    },
+
+                    (error) => {
+                        setStatus(
+                            gpsErrorMessage(
+                                error
+                            ),
+                            true
+                        );
+
+                        stopGps();
+                    },
+
+                    {
+                        enableHighAccuracy:
+                            true,
+
+                        maximumAge:
+                            1000,
+
+                        timeout:
+                            15000
+                    }
+                );
+    };
+
+    const addGpsPoint = () => {
+        if (!gpsPosition) {
+            return;
+        }
+
+        if (!drawing) {
+            startDrawing();
+        }
+
+        points.push(
+            L.latLng(
+                gpsPosition.lat,
+                gpsPosition.lng
+            )
+        );
+
+        vertexMetadata.push({
+            source:
+                'gps',
+
+            accuracy_m:
+                gpsPosition.accuracy
+                === null
+                    ? null
+                    : Number(
+                        gpsPosition
+                            .accuracy
+                            .toFixed(2)
+                    ),
+
+            captured_at:
+                gpsPosition
+                    .capturedAt
+        });
+
+        renderEditableShape();
+
+        setStatus(
+            `GPS point ${points.length} added${
+                gpsPosition.accuracy
+                === null
+                    ? '.'
+                    : ` at ±${Math.round(
+                        gpsPosition
+                            .accuracy
+                    )} m accuracy.`
+            }`
+        );
+    };
+
+    const centerOnGps = () => {
+        if (!gpsPosition) {
+            return;
+        }
+
+        map.setView(
+            [
+                gpsPosition.lat,
+                gpsPosition.lng
+            ],
+            Math.max(
+                map.getZoom(),
+                19
+            )
+        );
+    };
+
+
+    /* =====================================================
+       EVENTS
+       ===================================================== */
 
     map.on(
         'click',
@@ -954,58 +1861,97 @@
                 event.latlng
             );
 
+            vertexMetadata.push({
+                source:
+                    'manual'
+            });
+
             renderEditableShape();
         }
     );
 
-    drawButton?.addEventListener(
-        'click',
-        startDrawing
-    );
+    drawButton
+        ?.addEventListener(
+            'click',
+            startDrawing
+        );
 
-    finishButton?.addEventListener(
-        'click',
-        finishDrawing
-    );
+    finishButton
+        ?.addEventListener(
+            'click',
+            finishDrawing
+        );
 
-    undoButton?.addEventListener(
-        'click',
-        () => {
-            if (
-                !drawing
-                || points.length === 0
-            ) {
-                return;
+    undoButton
+        ?.addEventListener(
+            'click',
+            () => {
+                if (
+                    !drawing
+                    || points.length
+                        === 0
+                ) {
+                    return;
+                }
+
+                points.pop();
+                vertexMetadata.pop();
+
+                renderEditableShape();
             }
+        );
 
-            points.pop();
-            renderEditableShape();
-        }
-    );
+    saveButton
+        ?.addEventListener(
+            'click',
+            saveFeature
+        );
 
-    saveButton?.addEventListener(
-        'click',
-        saveFeature
-    );
+    deleteButton
+        ?.addEventListener(
+            'click',
+            deleteFeature
+        );
 
-    deleteButton?.addEventListener(
-        'click',
-        deleteFeature
-    );
+    newButton
+        ?.addEventListener(
+            'click',
+            () => {
+                resetEditor();
+            }
+        );
 
-    newButton?.addEventListener(
-        'click',
-        () => {
-            resetEditor();
-        }
-    );
+    featureType
+        ?.addEventListener(
+            'change',
+            () => {
+                renderEditableShape();
+            }
+        );
 
-    featureType?.addEventListener(
-        'change',
-        () => {
-            renderEditableShape();
-        }
-    );
+    startGpsButton
+        ?.addEventListener(
+            'click',
+            startGps
+        );
+
+    stopGpsButton
+        ?.addEventListener(
+            'click',
+            stopGps
+        );
+
+    addGpsPointButton
+        ?.addEventListener(
+            'click',
+            addGpsPoint
+        );
+
+    centerGpsButton
+        ?.addEventListener(
+            'click',
+            centerOnGps
+        );
 
     editor
         .querySelectorAll(
@@ -1016,7 +1962,8 @@
                 'click',
                 () => {
                     selectedMapStyle =
-                        button.dataset.mapStyle
+                        button.dataset
+                            .mapStyle
                         || 'satellite';
 
                     applyTileLayer();
@@ -1024,11 +1971,20 @@
             );
         });
 
+    window.addEventListener(
+        'pagehide',
+        () => {
+            stopGps();
+        }
+    );
+
     applyTileLayer();
 
     window.requestAnimationFrame(
         () => {
-            map.invalidateSize(false);
+            map.invalidateSize(
+                false
+            );
         }
     );
 
