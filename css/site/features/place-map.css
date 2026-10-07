@@ -218,7 +218,10 @@
     display: none;
 }
 
-.place-map-area-legend-item {
+.place-map-area-legend-item,
+.place-map-area-fit {
+    min-height: 26px;
+
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -231,14 +234,32 @@
     background: rgba(0, 0, 0, .68);
     color: #fff;
 
+    font: inherit;
     font-size: .58rem;
     font-weight: 850;
     line-height: 1;
 
+    cursor: pointer;
     backdrop-filter: blur(8px);
 }
 
-.place-map-area-legend-item[hidden] {
+.place-map-area-legend-item:hover,
+.place-map-area-legend-item:focus-visible,
+.place-map-area-fit:hover,
+.place-map-area-fit:focus-visible {
+    border-color: rgba(255, 255, 255, .82);
+}
+
+.place-map-area-legend-item[aria-pressed="false"] {
+    opacity: .56;
+}
+
+.place-map-area-legend-item[aria-pressed="false"] i {
+    background: transparent;
+}
+
+.place-map-area-legend-item[hidden],
+.place-map-area-fit[hidden] {
     display: none;
 }
 
@@ -263,6 +284,11 @@
 
 .place-map-area-legend-item.is-parking-area i {
     color: #6fa3ff;
+}
+
+.place-map-area-fit {
+    margin-left: 2px;
+    white-space: nowrap;
 }
 
 
