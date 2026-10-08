@@ -847,3 +847,143 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   SITE PRICING CLASSES
+   ========================================================= */
+
+.mapped-area-editor-site-class-list {
+    display: grid;
+    gap: 10px;
+}
+
+.mapped-area-editor-site-class {
+    display: grid;
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.mapped-area-editor-site-class-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.mapped-area-editor-site-class-heading label {
+    min-width: 0;
+}
+
+.mapped-area-editor-site-class-remove,
+.mapped-area-editor-site-class-add-rate {
+    min-height: 38px;
+}
+
+.mapped-area-editor-site-class-rates {
+    display: grid;
+    gap: 8px;
+}
+
+.mapped-area-editor-site-class-rate {
+    display: grid;
+    grid-template-columns:
+        minmax(120px, .8fr)
+        minmax(120px, 1fr)
+        minmax(110px, .7fr);
+    gap: 8px;
+
+    padding: 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface);
+}
+
+.mapped-area-editor-site-class-rate.is-seasonal {
+    grid-template-columns:
+        minmax(120px, .8fr)
+        minmax(120px, 1fr)
+        minmax(110px, .7fr)
+        minmax(92px, .55fr)
+        minmax(92px, .55fr);
+}
+
+.mapped-area-editor-site-class-rate > label {
+    min-width: 0;
+}
+
+.mapped-area-editor-site-class-rate-notes {
+    grid-column: 1 / -2;
+}
+
+.mapped-area-editor-site-class-rate-remove {
+    align-self: end;
+}
+
+.mapped-area-editor-site-class-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.mapped-area-editor-site-class-footer p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+    .mapped-area-editor-site-class-heading {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mapped-area-editor-site-class-heading
+    .mapped-area-editor-site-class-remove {
+        grid-column: 1 / -1;
+    }
+
+    .mapped-area-editor-site-class-rate,
+    .mapped-area-editor-site-class-rate.is-seasonal {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mapped-area-editor-site-class-rate-notes {
+        grid-column: 1 / -1;
+    }
+
+    .mapped-area-editor-site-class-rate-remove {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 620px) {
+    .mapped-area-editor-site-class-heading,
+    .mapped-area-editor-site-class-rate,
+    .mapped-area-editor-site-class-rate.is-seasonal {
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-site-class-heading
+    .mapped-area-editor-site-class-remove,
+    .mapped-area-editor-site-class-rate-notes,
+    .mapped-area-editor-site-class-rate-remove {
+        grid-column: auto;
+    }
+
+    .mapped-area-editor-site-class-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
