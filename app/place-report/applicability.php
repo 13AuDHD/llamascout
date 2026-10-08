@@ -158,6 +158,43 @@ function llama_place_report_apply_applicability(
 
     $setApplicable(
         $f,
+        [
+            'max_people',
+            'overhead_clearance_feet',
+            'parking_length_feet',
+            'parking_grade',
+            'site_length_feet',
+            'site_width_feet',
+            'tent_pad',
+            'double_driveway',
+            'hike_in_distance_feet',
+            'site_rating',
+            'condition_rating',
+            'location_rating',
+            'capacity_size_rating',
+        ],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $campingPlaceTypes,
+        ]]
+    );
+
+    $setApplicable(
+        $f,
+        [
+            'tent_pad_length_feet',
+            'tent_pad_width_feet',
+        ],
+        [[
+            'field' => 'tent_pad',
+            'operator' => 'equals',
+            'value' => '1',
+        ]]
+    );
+
+    $setApplicable(
+        $f,
         ['max_trailer_length_feet'],
         [[
             'field' => 'trailer_suitable',

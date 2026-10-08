@@ -86,6 +86,36 @@ function llama_place_report_add_summary_fields(
             'Estimate the longest trailer that could reasonably reach the Place and maneuver into position. Consider tight turns, backing room, turnaround space, and the approach road.',
         'ground_condition' =>
             'Describe the ground where someone would actually park or camp, not the access road. Examples include firm and level, rocky, sandy, grassy, soft, mud-prone, or mixed.',
+        'max_people' =>
+            'Enter the maximum number of people this campsite or overnight space can reasonably accommodate when that limit is known.',
+        'overhead_clearance_feet' =>
+            'Enter the lowest usable overhead clearance affecting the campsite, parking spur, or final approach to the space.',
+        'parking_length_feet' =>
+            'Enter the usable length of the campsite driveway or parking spur, not the length of the access road.',
+        'parking_grade' =>
+            'Describe the slope of the campsite driveway or parking spur itself.',
+        'site_length_feet' =>
+            'Enter the approximate usable length of the campsite or overnight space.',
+        'site_width_feet' =>
+            'Enter the approximate usable width of the campsite or overnight space.',
+        'tent_pad' =>
+            'Choose Yes when there is a defined tent pad or platform at the site.',
+        'tent_pad_length_feet' =>
+            'Enter the approximate usable length of the tent pad or platform.',
+        'tent_pad_width_feet' =>
+            'Enter the approximate usable width of the tent pad or platform.',
+        'double_driveway' =>
+            'Choose Yes when the campsite has a double-width or paired driveway/parking area.',
+        'hike_in_distance_feet' =>
+            'Enter the walking distance from the normal parking point to the campsite when the site is not directly beside the vehicle.',
+        'site_rating' =>
+            'Use the official or source-provided site rating when one exists. Do not invent a source rating from your personal impression.',
+        'condition_rating' =>
+            'Use the official or source-provided condition rating when one exists. Scout observations about current condition belong in the other site questions and notes.',
+        'location_rating' =>
+            'Use the official or source-provided location rating when one exists. This is separate from your personal recommendation of the Place.',
+        'capacity_size_rating' =>
+            'Use the official or source-provided capacity/size classification when one exists, such as Single or Double.',
         'leveling_required' =>
             'Choose Yes when most campers would probably need leveling blocks, ramps, or careful positioning to get reasonably level. This is different from simply noticing that the ground is not perfectly flat.',
         'site_open_sky' =>

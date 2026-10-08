@@ -48,6 +48,106 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $add('max_people', 'Maximum people', 'site_vehicle', 'number', 'details.max_people', [
+        'step' => '1',
+        'min' => '1',
+        'max' => '500',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('overhead_clearance_feet', 'Overhead clearance (ft)', 'site_vehicle', 'number', 'details.overhead_clearance_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '100',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('parking_length_feet', 'Parking / driveway length (ft)', 'site_vehicle', 'number', 'details.parking_length_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '2000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('parking_grade', 'Parking / driveway grade', 'site_vehicle', 'select', 'details.parking_grade', [
+        'options' => [
+            'level' => 'Level',
+            'slight' => 'Slight grade',
+            'moderate' => 'Moderate grade',
+            'steep' => 'Steep',
+            'very-steep' => 'Very steep',
+            'varies' => 'Varies',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('site_length_feet', 'Site length (ft)', 'site_vehicle', 'number', 'details.site_length_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '2000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('site_width_feet', 'Site width (ft)', 'site_vehicle', 'number', 'details.site_width_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '2000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('tent_pad', 'Tent pad / platform?', 'site_vehicle', 'tri', 'details.tent_pad', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('tent_pad_length_feet', 'Tent pad length (ft)', 'site_vehicle', 'number', 'details.tent_pad_length_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '500',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('tent_pad_width_feet', 'Tent pad width (ft)', 'site_vehicle', 'number', 'details.tent_pad_width_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '500',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('double_driveway', 'Double driveway?', 'site_vehicle', 'tri', 'details.double_driveway', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('hike_in_distance_feet', 'Hike-in distance (ft)', 'site_vehicle', 'number', 'details.hike_in_distance_feet', [
+        'step' => '.1',
+        'min' => '0',
+        'max' => '100000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    foreach ([
+        'site_rating' => 'Site rating',
+        'condition_rating' => 'Condition rating',
+        'location_rating' => 'Location rating',
+        'capacity_size_rating' => 'Capacity / size rating',
+    ] as $key => $label) {
+        $add($key, $label, 'site_vehicle', 'text', 'details.' . $key, [
+            'maxlength' => 80,
+            'allow_unknown' => true,
+            'points_categories' => ['site_vehicle'],
+        ]);
+    }
+
     $add('campsite_count', 'Number of campsites', 'site_vehicle', 'number', 'details.campsite_count', [
         'step' => '1',
         'min' => '1',
@@ -224,8 +324,19 @@ function llama_place_report_add_site_fields(
         'potable_water' => 'Potable water',
         'trash' => 'Trash service',
         'fire_ring' => 'Metal Fire ring',
+        'grill' => 'Grill / barbecue',
         'picnic_table' => 'Picnic table',
         'bear_box' => 'Bear box',
+        'lantern_post' => 'Lantern post / hanging feature',
+        'recycling' => 'Recycling',
+        'amphitheater' => 'Amphitheater',
+        'playground' => 'Playground',
+        'picnic_shelter' => 'Picnic shelter',
+        'fishing_pier' => 'Fishing pier',
+        'lake_access' => 'Lake access',
+        'river_access' => 'River access',
+        'trailhead' => 'Trailhead',
+        'trailhead_parking' => 'Trailhead parking',
         'showers' => 'Showers',
         'electricity' => 'Electricity',
         'dump_station' => 'Dump station',
