@@ -309,6 +309,8 @@ try {
             $input['site_details']
                 ?? [],
             $input['rates']
+                ?? [],
+            $input['site_classes']
                 ?? []
         );
 
