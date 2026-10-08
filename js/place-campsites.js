@@ -399,42 +399,6 @@
             `
             : '';
 
-    const renderFeatureCards = (features) => {
-        if (
-            !Array.isArray(features)
-            || features.length === 0
-        ) {
-            return '';
-        }
-
-        const cards =
-            features
-                .map((feature) => {
-                    const key =
-                        clean(
-                            feature.feature_key
-                        );
-
-                    const value =
-                        featureValue(
-                            key,
-                            feature.feature_value
-                        );
-
-                    return card(
-                        featureLabel(key),
-                        value || 'Yes'
-                    );
-                })
-                .filter(Boolean)
-                .join('');
-
-        return section(
-            'Site features',
-            cards
-        );
-    };
-
     const renderSiteDetail = (site) => {
         const dimensions = [
             feet(site.site_length_ft),
@@ -708,10 +672,6 @@
                     ${section(
                         'Lodging',
                         lodgingCards
-                    )}
-
-                    ${renderFeatureCards(
-                        site.features
                     )}
                 </div>
             </article>
