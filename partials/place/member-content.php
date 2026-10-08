@@ -35,6 +35,8 @@ if ($hasMemberAccess):
         </section>
     <?php endif; ?>
 
+    <?php require __DIR__ . '/overnight-options.php'; ?>
+
     <?php require __DIR__ . '/scout-report/index.php'; ?>
 
 <?php else: ?>
