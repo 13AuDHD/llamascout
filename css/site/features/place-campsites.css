@@ -1,0 +1,243 @@
+.place-campsites {
+    overflow: hidden;
+}
+
+.place-campsites-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.place-campsites-heading h2,
+.place-campsites-heading p {
+    margin-top: 0;
+}
+
+.place-campsites-heading p:last-child {
+    margin-bottom: 0;
+}
+
+.place-campsites-count {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.place-campsites-tools {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.place-campsites-search {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.place-campsites-search span {
+    font-weight: 700;
+}
+
+.place-campsites-search input {
+    width: 100%;
+    min-height: 2.8rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border-color, currentColor);
+    border-radius: 0.7rem;
+    background: var(--surface, transparent);
+    color: inherit;
+    font: inherit;
+}
+
+.place-campsites-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.place-campsites-filters button {
+    min-height: 2.35rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border-color, currentColor);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.place-campsites-filters button.is-active {
+    font-weight: 700;
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+}
+
+.place-campsites-layout {
+    display: grid;
+    grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.6fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.place-campsites-list {
+    display: grid;
+    gap: 0.4rem;
+    max-height: 34rem;
+    overflow: auto;
+    padding-right: 0.2rem;
+}
+
+.place-campsite-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.2rem 0.75rem;
+    align-items: center;
+    width: 100%;
+    padding: 0.8rem 0.85rem;
+    border: 1px solid var(--border-color, currentColor);
+    border-radius: 0.7rem;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.place-campsite-row:hover,
+.place-campsite-row:focus-visible,
+.place-campsite-row.is-selected {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+}
+
+.place-campsite-row-name {
+    font-weight: 800;
+}
+
+.place-campsite-row-summary {
+    grid-column: 1;
+    opacity: 0.78;
+    font-size: 0.9rem;
+}
+
+.place-campsite-row-arrow {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.place-campsites-empty {
+    padding: 1rem;
+    border: 1px dashed var(--border-color, currentColor);
+    border-radius: 0.7rem;
+}
+
+.place-campsite-selected {
+    min-width: 0;
+}
+
+.place-campsite-detail {
+    border: 1px solid var(--border-color, currentColor);
+    border-radius: 0.9rem;
+    padding: 1rem;
+}
+
+.place-campsite-detail-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.9rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color, currentColor);
+}
+
+.place-campsite-detail-heading h3 {
+    margin: 0;
+}
+
+.place-campsite-detail-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+}
+
+.place-campsite-detail-summary span {
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border-color, currentColor);
+    border-radius: 999px;
+    font-size: 0.88rem;
+}
+
+.place-campsite-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.place-campsite-detail-group {
+    min-width: 0;
+}
+
+.place-campsite-detail-group h4 {
+    margin: 0 0 0.55rem;
+}
+
+.place-campsite-facts {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.place-campsite-fact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border-color, currentColor);
+}
+
+.place-campsite-fact span {
+    opacity: 0.78;
+}
+
+.place-campsite-fact strong {
+    text-align: right;
+}
+
+.place-campsite-source {
+    margin: 1rem 0 0;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border-color, currentColor);
+    opacity: 0.78;
+    font-size: 0.88rem;
+}
+
+.place-campsites-single .place-campsite-detail {
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 760px) {
+    .place-campsites-heading,
+    .place-campsite-detail-heading {
+        display: grid;
+    }
+
+    .place-campsite-detail-summary {
+        justify-content: flex-start;
+    }
+
+    .place-campsites-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .place-campsites-list {
+        max-height: 18rem;
+    }
+
+    .place-campsite-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
