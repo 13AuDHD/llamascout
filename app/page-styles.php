@@ -81,6 +81,7 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'site/features/place-shared.css';
         $styles[] = 'site/features/place-access-alert.css';
         $styles[] = 'site/features/place-top-facts.css';
+        $styles[] = 'site/features/place-description.css';
         $styles[] = 'place-actions.css';
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
