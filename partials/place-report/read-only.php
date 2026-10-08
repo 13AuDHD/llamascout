@@ -159,6 +159,38 @@ $localIcon =
         return 'info-circle';
     };
 
+$campsiteSwitchableFields = [
+    'campsite_count',
+    'site_accessible',
+    'vehicle_capacity',
+    'max_vehicle_length_feet',
+    'parking_surface',
+    'max_people',
+    'overhead_clearance_feet',
+    'parking_length_feet',
+    'parking_grade',
+    'site_length_feet',
+    'site_width_feet',
+    'tent_pad',
+    'tent_pad_length_feet',
+    'tent_pad_width_feet',
+    'double_driveway',
+    'hike_in_distance_feet',
+    'site_rating',
+    'condition_rating',
+    'location_rating',
+    'capacity_size_rating',
+    'site_hookups_available',
+    'hookup_electric',
+    'hookup_electric_service',
+    'hookup_water',
+    'hookup_sewer',
+    'tent_camping_suitable',
+    'rv_suitable',
+    'pull_through',
+    'back_in',
+];
+
 $renderValue =
     static function (
         string $key,
@@ -167,7 +199,8 @@ $renderValue =
         $placeReportData,
         $placeReportReadMode,
         $e,
-        $localIcon
+        $localIcon,
+        $campsiteSwitchableFields
     ): void {
         $state =
             llama_place_report_answer_state(
@@ -225,7 +258,27 @@ $renderValue =
             );
         ?>
 
-        <div class="<?= $e($class) ?>">
+        <?php
+        $isCampsiteSwitchable =
+            $placeReportReadMode === 'scout-report'
+            && in_array(
+                $key,
+                $campsiteSwitchableFields,
+                true
+            );
+
+        $hideUntilCampsite =
+            $isCampsiteSwitchable
+            && $state === 'unanswered';
+        ?>
+
+        <div
+            class="<?= $e($class) ?>"
+            <?php if ($isCampsiteSwitchable): ?>
+                data-campsite-report-field="<?= $e($key) ?>"
+            <?php endif; ?>
+            <?= $hideUntilCampsite ? 'hidden' : '' ?>
+        >
 
             <?php if ($isRating): ?>
                 <div class="scout-rating-content">
@@ -575,7 +628,7 @@ foreach (
     $applicableFields =
         $fields;
 
-    $reportedFields =
+    $answeredFields =
         $placeReportReadMode === 'scout-report'
             ? array_filter(
                 $applicableFields,
@@ -596,11 +649,35 @@ foreach (
             )
             : $applicableFields;
 
+    $reportedFields =
+        $answeredFields;
+
+    if (
+        $placeReportReadMode === 'scout-report'
+        && $sectionKey === 'site_vehicle'
+    ) {
+        foreach (
+            $applicableFields
+            as $fieldKey => $field
+        ) {
+            if (
+                in_array(
+                    (string) $fieldKey,
+                    $campsiteSwitchableFields,
+                    true
+                )
+            ) {
+                $reportedFields[$fieldKey] =
+                    $field;
+            }
+        }
+    }
+
     $missingApplicableCount =
         max(
             0,
             count($applicableFields)
-            - count($reportedFields)
+            - count($answeredFields)
         );
 
     $sectionHasReportedData =
