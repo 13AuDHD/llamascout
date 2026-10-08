@@ -160,7 +160,6 @@ $localIcon =
     };
 
 $campsiteSwitchableFields = [
-    'campsite_count',
     'site_accessible',
     'vehicle_capacity',
     'max_vehicle_length_feet',
@@ -654,7 +653,14 @@ foreach (
 
     if (
         $placeReportReadMode === 'scout-report'
-        && $sectionKey === 'site_vehicle'
+        && in_array(
+            $sectionKey,
+            [
+                'site_vehicle',
+                'experience',
+            ],
+            true
+        )
     ) {
         foreach (
             $applicableFields
