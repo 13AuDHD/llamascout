@@ -15,6 +15,191 @@ function llama_place_map_feature_types(): array
     ];
 }
 
+
+function llama_place_map_area_use_options(string $featureType): array
+{
+    return match (strtolower(trim($featureType))) {
+        'camping_area' => [
+            'developed_campground' => 'Developed campground',
+            'designated_camping' => 'Designated camping area',
+            'dispersed_camping' => 'Dispersed camping area',
+        ],
+
+        'parking_area' => [
+            'general_parking' => 'General parking',
+            'overnight_vehicle_parking' => 'Overnight vehicle parking',
+        ],
+
+        default => [],
+    };
+}
+
+function llama_place_map_fee_status_options(): array
+{
+    return [
+        'free' => 'Free',
+        'paid' => 'Paid',
+        'varies' => 'Varies',
+        'unknown' => 'Unknown',
+    ];
+}
+
+function llama_place_map_overnight_status_options(): array
+{
+    return [
+        'allowed' => 'Allowed',
+        'prohibited' => 'Not allowed',
+        'varies' => 'Varies',
+        'unknown' => 'Unknown',
+    ];
+}
+
+function llama_place_map_feature_validate_area_details(
+    string $featureType,
+    mixed $details
+): array {
+    if (!is_array($details)) {
+        $details = [];
+    }
+
+    $featureType = strtolower(trim($featureType));
+
+    if ($featureType === 'place_boundary') {
+        return [];
+    }
+
+    $areaUse = trim((string) ($details['area_use'] ?? ''));
+    $feeStatus = trim((string) ($details['fee_status'] ?? ''));
+    $overnightStatus =
+        trim((string) ($details['overnight_status'] ?? ''));
+
+    $useOptions =
+        llama_place_map_area_use_options($featureType);
+
+    if (
+        $areaUse !== ''
+        && !array_key_exists($areaUse, $useOptions)
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid mapped-area use.'
+        );
+    }
+
+    if (
+        $feeStatus !== ''
+        && !array_key_exists(
+            $feeStatus,
+            llama_place_map_fee_status_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid cost status.'
+        );
+    }
+
+    if ($featureType !== 'parking_area') {
+        $overnightStatus = '';
+    }
+
+    if (
+        $overnightStatus !== ''
+        && !array_key_exists(
+            $overnightStatus,
+            llama_place_map_overnight_status_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid overnight vehicle-stay status.'
+        );
+    }
+
+    return array_filter(
+        [
+            'area_use' =>
+                $areaUse !== ''
+                    ? $areaUse
+                    : null,
+
+            'fee_status' =>
+                $feeStatus !== ''
+                    ? $feeStatus
+                    : null,
+
+            'overnight_status' =>
+                $overnightStatus !== ''
+                    ? $overnightStatus
+                    : null,
+        ],
+        static fn (mixed $value): bool =>
+            $value !== null
+    );
+}
+
+function llama_place_map_feature_area_details_save(
+    PDO $db,
+    int $featureId,
+    int $userId,
+    string $featureType,
+    mixed $details
+): void {
+    $details =
+        llama_place_map_feature_validate_area_details(
+            $featureType,
+            $details
+        );
+
+    if (!$details) {
+        $stmt = $db->prepare(
+            'DELETE FROM place_map_area_details
+             WHERE feature_id = ?'
+        );
+
+        $stmt->execute([$featureId]);
+
+        return;
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO place_map_area_details
+        (
+            feature_id,
+            area_use,
+            fee_status,
+            overnight_status,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            UTC_TIMESTAMP(),
+            UTC_TIMESTAMP()
+        )
+        ON DUPLICATE KEY UPDATE
+            area_use = VALUES(area_use),
+            fee_status = VALUES(fee_status),
+            overnight_status = VALUES(overnight_status),
+            updated_by = VALUES(updated_by),
+            updated_at = UTC_TIMESTAMP()'
+    );
+
+    $stmt->execute([
+        $featureId,
+        $details['area_use'] ?? null,
+        $details['fee_status'] ?? null,
+        $details['overnight_status'] ?? null,
+        $userId,
+        $userId,
+    ]);
+}
+
 function llama_place_map_feature_source_types(): array
 {
     return [
@@ -426,6 +611,9 @@ function llama_place_map_features(
             source_type,
             accuracy_m,
             metadata_json,
+            area_details.area_use,
+            area_details.fee_status,
+            area_details.overnight_status,
             created_by,
             updated_by,
             verified_at,
@@ -435,6 +623,8 @@ function llama_place_map_features(
             ST_SRID(geometry) AS geometry_srid,
             ST_AsGeoJSON(geometry, 7) AS geometry_geojson
          FROM place_map_features
+         LEFT JOIN place_map_area_details AS area_details
+            ON area_details.feature_id = place_map_features.id
          WHERE place_id = ?';
 
     if ($activeOnly) {
@@ -484,6 +674,18 @@ function llama_place_map_features(
                 is_array($metadata)
                     ? $metadata
                     : [],
+            'area_details' => array_filter(
+                [
+                    'area_use' => $row['area_use'] ?? null,
+                    'fee_status' => $row['fee_status'] ?? null,
+                    'overnight_status' =>
+                        $row['overnight_status']
+                        ?? null,
+                ],
+                static fn (mixed $value): bool =>
+                    $value !== null
+                    && $value !== ''
+            ),
             'created_by' =>
                 $row['created_by'] === null
                     ? null
@@ -535,7 +737,8 @@ function llama_place_map_feature_save(
     int $featureId = 0,
     string $sourceType = 'manual',
     mixed $accuracyM = null,
-    mixed $metadata = []
+    mixed $metadata = [],
+    mixed $areaDetails = []
 ): int {
     if ($placeId < 1 || $userId < 1) {
         throw new InvalidArgumentException(
@@ -596,6 +799,12 @@ function llama_place_map_feature_save(
         llama_place_map_feature_validate_metadata(
             $metadata,
             $vertexCount
+        );
+
+    $areaDetails =
+        llama_place_map_feature_validate_area_details(
+            $featureType,
+            $areaDetails
         );
 
     $metadataJson =
@@ -659,12 +868,22 @@ function llama_place_map_feature_save(
             $placeId,
         ]);
 
+        llama_place_map_feature_area_details_save(
+            $db,
+            $featureId,
+            $userId,
+            $featureType,
+            $areaDetails
+        );
+
         return $featureId;
     }
 
     $sortStmt = $db->prepare(
         'SELECT COALESCE(MAX(sort_order), 0) + 10
          FROM place_map_features
+         LEFT JOIN place_map_area_details AS area_details
+            ON area_details.feature_id = place_map_features.id
          WHERE place_id = ?'
     );
 
@@ -684,6 +903,9 @@ function llama_place_map_feature_save(
             source_type,
             accuracy_m,
             metadata_json,
+            area_details.area_use,
+            area_details.fee_status,
+            area_details.overnight_status,
             created_by,
             updated_by,
             verified_at,
@@ -727,7 +949,18 @@ function llama_place_map_feature_save(
         $sortOrder,
     ]);
 
-    return (int) $db->lastInsertId();
+    $newFeatureId =
+        (int) $db->lastInsertId();
+
+    llama_place_map_feature_area_details_save(
+        $db,
+        $newFeatureId,
+        $userId,
+        $featureType,
+        $areaDetails
+    );
+
+    return $newFeatureId;
 }
 
 function llama_place_map_feature_delete(
