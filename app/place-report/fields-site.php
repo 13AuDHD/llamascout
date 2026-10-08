@@ -8,6 +8,14 @@ function llama_place_report_add_site_fields(
     callable $add
 ): void {
     /* Site and vehicle */
+    $add('campsite_count', 'Number of campsites', 'site_vehicle', 'number', 'details.campsite_count', [
+        'step' => '1',
+        'min' => '1',
+        'max' => '10000',
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
     $add('vehicle_capacity', 'Vehicle capacity', 'site_vehicle', 'select', 'details.vehicle_capacity', [
         'options' => [
             '1' => '1 vehicle', '2' => '2 vehicles', '3' => '3 vehicles',
@@ -148,13 +156,6 @@ function llama_place_report_add_site_fields(
         ]);
     }
 
-    $add('campsite_count', 'Number of campsites', 'site_vehicle', 'number', 'details.campsite_count', [
-        'step' => '1',
-        'min' => '1',
-        'max' => '10000',
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
 
     $add('site_number', 'Site number / identifier', 'site_vehicle', 'text', 'details.site_number', [
         'maxlength' => 80,
