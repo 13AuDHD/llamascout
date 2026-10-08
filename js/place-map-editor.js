@@ -3280,6 +3280,19 @@
             }
         };
 
+    const requestedFeatureId =
+        Math.max(
+            0,
+            Number.parseInt(
+                new URLSearchParams(
+                    window.location.search
+                ).get('feature')
+                || '0',
+                10
+            )
+            || 0
+        );
+
     const loadFeatures =
         async () => {
             setStatus(
@@ -3324,6 +3337,29 @@
                 resetEditor(
                     true
                 );
+
+                const requestedFeature =
+                    requestedFeatureId > 0
+                        ? features.find(
+                            (feature) =>
+                                Number(
+                                    feature.id
+                                )
+                                === requestedFeatureId
+                        )
+                        : null;
+
+                if (requestedFeature) {
+                    selectFeature(
+                        requestedFeatureId
+                    );
+
+                    setStatus(
+                        'Mapped area loaded from the Place page.'
+                    );
+
+                    return;
+                }
 
                 setStatus('');
 
