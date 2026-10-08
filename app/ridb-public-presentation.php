@@ -7,62 +7,39 @@ require_once __DIR__ . '/ridb.php';
 function llama_ridb_public_repair_text(
     mixed $value
 ): ?string {
-    $text =
-        trim(
-            (string) $value
-        );
+    $text = trim((string) $value);
 
     if ($text === '') {
         return null;
     }
 
-    if (
-        preg_match(
-            '/(?:Â|Ã|â€|â€™|â€œ|â€|â€“|â€”|â€¦)/u',
-            $text
-        )
-    ) {
-        $candidate =
-            @mb_convert_encoding(
-                $text,
-                'ISO-8859-1',
-                'UTF-8'
-            );
+    $replacements = [
+        'Â·' => ' - ',
+        'Â×' => ' x ',
+        'â€™' => "'",
+        'â€œ' => '"',
+        'â€' => '"',
+        'â€“' => '-',
+        'â€”' => '-',
+        'â€¦' => '...',
+        "\u{00A0}" => ' ',
+        "\u{200B}" => '',
+    ];
 
-        if (
-            is_string($candidate)
-            && $candidate !== ''
-            && mb_check_encoding(
-                $candidate,
-                'UTF-8'
-            )
-        ) {
-            $text = $candidate;
-        }
-    }
+    $text = strtr(
+        $text,
+        $replacements
+    );
 
     $text =
-        str_replace(
-            [
-                "\u{00A0}",
-                "\u{200B}",
-            ],
-            [
-                ' ',
-                '',
-            ],
+        preg_replace(
+            '/[ \t]+/u',
+            ' ',
             $text
-        );
+        )
+        ?? $text;
 
-    return
-        trim(
-            preg_replace(
-                '/[ \t]+/u',
-                ' ',
-                $text
-            )
-            ?? $text
-        );
+    return trim($text);
 }
 
 function llama_ridb_public_smart_name(
@@ -105,20 +82,427 @@ function llama_ridb_public_smart_name(
         $text =
             preg_replace_callback(
                 '/\b(?:Rv|Usa|Us|Blm|Nps|Usfs|Usda|Fws|Atv|Ohv|Ada)\b/u',
-                static function (
+                static fn (
                     array $match
-                ): string {
-                    return
-                        strtoupper(
-                            $match[0]
-                        );
-                },
+                ): string =>
+                    strtoupper(
+                        $match[0]
+                    ),
                 $text
             )
             ?? $text;
     }
 
     return $text;
+}
+
+function llama_ridb_public_decode_json(
+    mixed $value
+): array {
+    if (
+        !is_string($value)
+        || trim($value) === ''
+    ) {
+        return [];
+    }
+
+    $decoded =
+        json_decode(
+            $value,
+            true
+        );
+
+    return is_array($decoded)
+        ? $decoded
+        : [];
+}
+
+function llama_ridb_public_cached_facility(
+    PDO $ridbDb,
+    string $facilityId
+): array {
+    $stmt =
+        $ridbDb->prepare(
+            'SELECT source_json
+             FROM ridb_facilities
+             WHERE ridb_facility_id = ?
+             LIMIT 1'
+        );
+
+    $stmt->execute([
+        $facilityId,
+    ]);
+
+    return
+        llama_ridb_public_decode_json(
+            $stmt->fetchColumn()
+        );
+}
+
+function llama_ridb_public_cached_address(
+    PDO $ridbDb,
+    string $facilityId
+): array {
+    $stmt =
+        $ridbDb->prepare(
+            'SELECT source_json
+             FROM ridb_facility_addresses
+             WHERE ridb_facility_id = ?
+             ORDER BY id ASC
+             LIMIT 1'
+        );
+
+    $stmt->execute([
+        $facilityId,
+    ]);
+
+    return
+        llama_ridb_public_decode_json(
+            $stmt->fetchColumn()
+        );
+}
+
+function llama_ridb_public_number(
+    mixed $value
+): ?float {
+    if (
+        is_int($value)
+        || is_float($value)
+    ) {
+        return (float) $value;
+    }
+
+    $text =
+        str_replace(
+            ',',
+            '',
+            trim(
+                (string) $value
+            )
+        );
+
+    if (
+        $text === ''
+        || preg_match(
+            '/-?\d+(?:\.\d+)?/',
+            $text,
+            $match
+        ) !== 1
+    ) {
+        return null;
+    }
+
+    return (float) $match[0];
+}
+
+function llama_ridb_public_state_name(
+    mixed $value
+): ?string {
+    $raw =
+        strtoupper(
+            trim(
+                (string) $value
+            )
+        );
+
+    if ($raw === '') {
+        return null;
+    }
+
+    $states = [
+        'AL' => 'Alabama',
+        'AK' => 'Alaska',
+        'AZ' => 'Arizona',
+        'AR' => 'Arkansas',
+        'CA' => 'California',
+        'CO' => 'Colorado',
+        'CT' => 'Connecticut',
+        'DE' => 'Delaware',
+        'FL' => 'Florida',
+        'GA' => 'Georgia',
+        'HI' => 'Hawaii',
+        'ID' => 'Idaho',
+        'IL' => 'Illinois',
+        'IN' => 'Indiana',
+        'IA' => 'Iowa',
+        'KS' => 'Kansas',
+        'KY' => 'Kentucky',
+        'LA' => 'Louisiana',
+        'ME' => 'Maine',
+        'MD' => 'Maryland',
+        'MA' => 'Massachusetts',
+        'MI' => 'Michigan',
+        'MN' => 'Minnesota',
+        'MS' => 'Mississippi',
+        'MO' => 'Missouri',
+        'MT' => 'Montana',
+        'NE' => 'Nebraska',
+        'NV' => 'Nevada',
+        'NH' => 'New Hampshire',
+        'NJ' => 'New Jersey',
+        'NM' => 'New Mexico',
+        'NY' => 'New York',
+        'NC' => 'North Carolina',
+        'ND' => 'North Dakota',
+        'OH' => 'Ohio',
+        'OK' => 'Oklahoma',
+        'OR' => 'Oregon',
+        'PA' => 'Pennsylvania',
+        'RI' => 'Rhode Island',
+        'SC' => 'South Carolina',
+        'SD' => 'South Dakota',
+        'TN' => 'Tennessee',
+        'TX' => 'Texas',
+        'UT' => 'Utah',
+        'VT' => 'Vermont',
+        'VA' => 'Virginia',
+        'WA' => 'Washington',
+        'WV' => 'West Virginia',
+        'WI' => 'Wisconsin',
+        'WY' => 'Wyoming',
+        'DC' => 'District of Columbia',
+        'PR' => 'Puerto Rico',
+    ];
+
+    return
+        $states[$raw]
+        ?? llama_ridb_public_smart_name(
+            $raw
+        );
+}
+
+function llama_ridb_public_sync_core_place_fields(
+    PDO $mainDb,
+    PDO $ridbDb,
+    int $placeId,
+    string $facilityId
+): int {
+    $facility =
+        llama_ridb_public_cached_facility(
+            $ridbDb,
+            $facilityId
+        );
+
+    if (!$facility) {
+        return 0;
+    }
+
+    $address =
+        llama_ridb_public_cached_address(
+            $ridbDb,
+            $facilityId
+        );
+
+    $latitude =
+        llama_ridb_public_number(
+            llama_ridb_record_value(
+                $facility,
+                [
+                    'FacilityLatitude',
+                    'facilityLatitude',
+                    'Latitude',
+                ]
+            )
+        );
+
+    $longitude =
+        llama_ridb_public_number(
+            llama_ridb_record_value(
+                $facility,
+                [
+                    'FacilityLongitude',
+                    'facilityLongitude',
+                    'Longitude',
+                ]
+            )
+        );
+
+    $elevation =
+        llama_ridb_public_number(
+            llama_ridb_record_value(
+                $facility,
+                [
+                    'FacilityElevationFeet',
+                    'facilityElevationFeet',
+                    'ElevationFeet',
+                ]
+            )
+        );
+
+    $road =
+        llama_ridb_public_smart_name(
+            llama_ridb_record_value(
+                $address,
+                [
+                    'FacilityStreetAddress1',
+                    'StreetAddress1',
+                    'AddressLine1',
+                ],
+                llama_ridb_record_value(
+                    $facility,
+                    [
+                        'FacilityStreetAddress1',
+                        'StreetAddress1',
+                        'RoadName',
+                    ],
+                    ''
+                )
+            )
+        );
+
+    $city =
+        llama_ridb_public_smart_name(
+            llama_ridb_record_value(
+                $address,
+                [
+                    'City',
+                    'city',
+                ],
+                ''
+            )
+        );
+
+    $state =
+        llama_ridb_public_state_name(
+            llama_ridb_record_value(
+                $address,
+                [
+                    'AddressStateCode',
+                    'State',
+                    'state',
+                ],
+                ''
+            )
+        );
+
+    $name =
+        llama_ridb_public_smart_name(
+            llama_ridb_record_value(
+                $facility,
+                [
+                    'FacilityName',
+                    'facilityName',
+                ],
+                ''
+            )
+        );
+
+    $description =
+        llama_ridb_public_repair_text(
+            llama_ridb_record_value(
+                $facility,
+                [
+                    'FacilityDescription',
+                    'facilityDescription',
+                ],
+                ''
+            )
+        );
+
+    $stmt =
+        $mainDb->prepare(
+            'UPDATE places
+             SET
+                name =
+                    COALESCE(
+                        NULLIF(?, ""),
+                        name
+                    ),
+                description =
+                    COALESCE(
+                        NULLIF(?, ""),
+                        description
+                    ),
+                latitude =
+                    COALESCE(
+                        ?,
+                        latitude
+                    ),
+                longitude =
+                    COALESCE(
+                        ?,
+                        longitude
+                    ),
+                public_latitude =
+                    CASE
+                        WHEN ? IS NOT NULL
+                        THEN ROUND(?, 1)
+                        ELSE public_latitude
+                    END,
+                public_longitude =
+                    CASE
+                        WHEN ? IS NOT NULL
+                        THEN ROUND(?, 1)
+                        ELSE public_longitude
+                    END,
+                road =
+                    COALESCE(
+                        NULLIF(?, ""),
+                        road
+                    ),
+                elevation_feet =
+                    COALESCE(
+                        ?,
+                        elevation_feet
+                    ),
+                city =
+                    COALESCE(
+                        NULLIF(?, ""),
+                        city
+                    ),
+                state =
+                    COALESCE(
+                        NULLIF(?, ""),
+                        state
+                    )
+             WHERE id = ?
+             LIMIT 1'
+        );
+
+    $stmt->execute([
+        $name,
+        $description,
+        $latitude,
+        $longitude,
+        $latitude,
+        $latitude,
+        $longitude,
+        $longitude,
+        $road,
+        $elevation !== null
+            ? (int) round(
+                $elevation
+            )
+            : null,
+        $city,
+        $state,
+        $placeId,
+    ]);
+
+    $count = 0;
+
+    foreach (
+        [
+            $name,
+            $description,
+            $latitude,
+            $longitude,
+            $road,
+            $elevation,
+            $city,
+            $state,
+        ]
+        as $value
+    ) {
+        if (
+            $value !== null
+            && $value !== ''
+        ) {
+            $count++;
+        }
+    }
+
+    return $count;
 }
 
 function llama_ridb_public_media_url(
@@ -255,7 +639,7 @@ function llama_ridb_public_import_media(
             true
         );
 
-    $hasFeaturedStmt =
+    $featuredStmt =
         $mainDb->prepare(
             'SELECT COUNT(*)
              FROM place_images
@@ -263,16 +647,16 @@ function llama_ridb_public_import_media(
                AND is_featured = 1'
         );
 
-    $hasFeaturedStmt->execute([
+    $featuredStmt->execute([
         $placeId,
     ]);
 
     $hasFeatured =
-        (int) $hasFeaturedStmt
+        (int) $featuredStmt
             ->fetchColumn()
         > 0;
 
-    $orderStmt =
+    $sortStmt =
         $mainDb->prepare(
             'SELECT COALESCE(
                 MAX(sort_order),
@@ -282,12 +666,12 @@ function llama_ridb_public_import_media(
              WHERE place_id = ?'
         );
 
-    $orderStmt->execute([
+    $sortStmt->execute([
         $placeId,
     ]);
 
     $sortOrder =
-        (int) $orderStmt
+        (int) $sortStmt
             ->fetchColumn()
         + 1;
 
@@ -372,8 +756,11 @@ function llama_ridb_public_import_media(
                 : null,
         ]);
 
-        $existing[$url] =
-            true;
+        $existing[$url] = true;
+
+        if ($isFeatured === 1) {
+            $hasFeatured = true;
+        }
 
         $sortOrder++;
         $added++;
@@ -382,73 +769,12 @@ function llama_ridb_public_import_media(
     return $added;
 }
 
-function llama_ridb_public_clean_imported_records(
-    PDO $db,
+function llama_ridb_public_clean_site_names(
+    PDO $mainDb,
     int $placeId
 ): void {
-    $placeStmt =
-        $db->prepare(
-            'SELECT
-                name,
-                description,
-                city,
-                region,
-                land_manager
-             FROM places
-             WHERE id = ?
-             LIMIT 1'
-        );
-
-    $placeStmt->execute([
-        $placeId,
-    ]);
-
-    $place =
-        $placeStmt->fetch(
-            PDO::FETCH_ASSOC
-        );
-
-    if ($place) {
-        $update =
-            $db->prepare(
-                'UPDATE places
-                 SET
-                    name = ?,
-                    description = ?,
-                    city = ?,
-                    region = ?,
-                    land_manager = ?
-                 WHERE id = ?
-                 LIMIT 1'
-            );
-
-        $update->execute([
-            llama_ridb_public_smart_name(
-                $place['name']
-                ?? null
-            ),
-            llama_ridb_public_repair_text(
-                $place['description']
-                ?? null
-            ),
-            llama_ridb_public_smart_name(
-                $place['city']
-                ?? null
-            ),
-            llama_ridb_public_smart_name(
-                $place['region']
-                ?? null
-            ),
-            llama_ridb_public_smart_name(
-                $place['land_manager']
-                ?? null
-            ),
-            $placeId,
-        ]);
-    }
-
-    $siteStmt =
-        $db->prepare(
+    $stmt =
+        $mainDb->prepare(
             'SELECT
                 id,
                 site_name,
@@ -458,13 +784,13 @@ function llama_ridb_public_clean_imported_records(
                AND source_provider = ?'
         );
 
-    $siteStmt->execute([
+    $stmt->execute([
         $placeId,
         'ridb',
     ]);
 
-    $siteUpdate =
-        $db->prepare(
+    $update =
+        $mainDb->prepare(
             'UPDATE place_campsites
              SET
                 site_name = ?,
@@ -474,13 +800,13 @@ function llama_ridb_public_clean_imported_records(
         );
 
     foreach (
-        $siteStmt->fetchAll(
+        $stmt->fetchAll(
             PDO::FETCH_ASSOC
         )
         ?: []
         as $site
     ) {
-        $siteUpdate->execute([
+        $update->execute([
             llama_ridb_public_smart_name(
                 $site['site_name']
                 ?? null
@@ -490,56 +816,6 @@ function llama_ridb_public_clean_imported_records(
                 ?? null
             ),
             (int) $site['id'],
-        ]);
-    }
-
-    $featureStmt =
-        $db->prepare(
-            'SELECT
-                id,
-                feature_value,
-                qualifier
-             FROM place_campsite_features
-             WHERE campsite_id IN (
-                SELECT id
-                FROM place_campsites
-                WHERE place_id = ?
-                  AND source_provider = ?
-             )'
-        );
-
-    $featureStmt->execute([
-        $placeId,
-        'ridb',
-    ]);
-
-    $featureUpdate =
-        $db->prepare(
-            'UPDATE place_campsite_features
-             SET
-                feature_value = ?,
-                qualifier = ?
-             WHERE id = ?
-             LIMIT 1'
-        );
-
-    foreach (
-        $featureStmt->fetchAll(
-            PDO::FETCH_ASSOC
-        )
-        ?: []
-        as $feature
-    ) {
-        $featureUpdate->execute([
-            llama_ridb_public_repair_text(
-                $feature['feature_value']
-                ?? null
-            ),
-            llama_ridb_public_smart_name(
-                $feature['qualifier']
-                ?? null
-            ),
-            (int) $feature['id'],
         ]);
     }
 }
@@ -561,7 +837,15 @@ function llama_ridb_public_finalize_import(
         return $result;
     }
 
-    llama_ridb_public_clean_imported_records(
+    $result['core_fields_imported'] =
+        llama_ridb_public_sync_core_place_fields(
+            $mainDb,
+            $ridbDb,
+            $placeId,
+            $facilityId
+        );
+
+    llama_ridb_public_clean_site_names(
         $mainDb,
         $placeId
     );
