@@ -837,6 +837,18 @@ function llama_ridb_public_finalize_import(
         return $result;
     }
 
+    $mainDb
+        ->prepare(
+            'UPDATE places
+             SET source_type = ?
+             WHERE id = ?
+             LIMIT 1'
+        )
+        ->execute([
+            'external',
+            $placeId,
+        ]);
+
     $result['core_fields_imported'] =
         llama_ridb_public_sync_core_place_fields(
             $mainDb,
