@@ -12,6 +12,7 @@ function llama_place_map_feature_types(): array
         'place_boundary' => 'Place boundary',
         'camping_area' => 'Camping area',
         'parking_area' => 'Parking area',
+        'camping_site' => 'Individual campsite',
     ];
 }
 
@@ -64,7 +65,10 @@ function llama_place_map_feature_validate_area_details(
 
     $featureType = strtolower(trim($featureType));
 
-    if ($featureType === 'place_boundary') {
+    if (
+        $featureType === 'place_boundary'
+        || $featureType === 'camping_site'
+    ) {
         return [];
     }
 
@@ -195,6 +199,307 @@ function llama_place_map_feature_area_details_save(
         $details['area_use'] ?? null,
         $details['fee_status'] ?? null,
         $details['overnight_status'] ?? null,
+        $userId,
+        $userId,
+    ]);
+}
+
+function llama_place_map_camping_site_type_options(): array
+{
+    return [
+        'rv_site' => 'RV site',
+        'tent_site' => 'Tent site',
+        'mixed_site' => 'Mixed-use campsite',
+        'vehicle_site' => 'Vehicle campsite',
+        'group_site' => 'Group site',
+        'other' => 'Other',
+    ];
+}
+
+function llama_place_map_camping_site_parking_style_options(): array
+{
+    return [
+        'pull_through' => 'Pull-through',
+        'back_in' => 'Back-in',
+        'pull_in' => 'Pull-in',
+        'parallel' => 'Parallel',
+        'other' => 'Other',
+        'unknown' => 'Unknown',
+    ];
+}
+
+function llama_place_map_camping_site_hookup_options(): array
+{
+    return [
+        'full' => 'Full hookups',
+        'electric_water' => 'Electric + water',
+        'electric_only' => 'Electric only',
+        'water_only' => 'Water only',
+        'none' => 'No hookups',
+        'varies' => 'Varies',
+        'unknown' => 'Unknown',
+    ];
+}
+
+function llama_place_map_camping_site_accessible_options(): array
+{
+    return [
+        'yes' => 'Yes',
+        'no' => 'No',
+        'unknown' => 'Unknown',
+    ];
+}
+
+function llama_place_map_feature_validate_site_details(
+    PDO $db,
+    int $placeId,
+    string $featureType,
+    mixed $details
+): array {
+    if ($featureType !== 'camping_site') {
+        return [];
+    }
+
+    if (!is_array($details)) {
+        $details = [];
+    }
+
+    $parentFeatureId =
+        max(
+            0,
+            (int) (
+                $details['camping_area_feature_id']
+                ?? 0
+            )
+        );
+
+    if ($parentFeatureId < 1) {
+        throw new InvalidArgumentException(
+            'Choose the Camping area that contains this campsite.'
+        );
+    }
+
+    $parentStmt = $db->prepare(
+        'SELECT id
+         FROM place_map_features
+         WHERE id = ?
+           AND place_id = ?
+           AND feature_type = ?
+           AND is_active = 1
+         LIMIT 1'
+    );
+
+    $parentStmt->execute([
+        $parentFeatureId,
+        $placeId,
+        'camping_area',
+    ]);
+
+    if (!$parentStmt->fetchColumn()) {
+        throw new InvalidArgumentException(
+            'The selected parent Camping area is not available.'
+        );
+    }
+
+    $siteCode =
+        trim(
+            (string) (
+                $details['site_code']
+                ?? ''
+            )
+        );
+
+    if (mb_strlen($siteCode) > 60) {
+        throw new InvalidArgumentException(
+            'Campsite identifiers can be up to 60 characters.'
+        );
+    }
+
+    $siteType =
+        trim(
+            (string) (
+                $details['site_type']
+                ?? ''
+            )
+        );
+
+    if (
+        $siteType !== ''
+        && !array_key_exists(
+            $siteType,
+            llama_place_map_camping_site_type_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid campsite type.'
+        );
+    }
+
+    $parkingStyle =
+        trim(
+            (string) (
+                $details['parking_style']
+                ?? ''
+            )
+        );
+
+    if (
+        $parkingStyle !== ''
+        && !array_key_exists(
+            $parkingStyle,
+            llama_place_map_camping_site_parking_style_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid campsite parking style.'
+        );
+    }
+
+    $hookupStatus =
+        trim(
+            (string) (
+                $details['hookup_status']
+                ?? ''
+            )
+        );
+
+    if (
+        $hookupStatus !== ''
+        && !array_key_exists(
+            $hookupStatus,
+            llama_place_map_camping_site_hookup_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid campsite hookup status.'
+        );
+    }
+
+    $accessibleStatus =
+        trim(
+            (string) (
+                $details['accessible_status']
+                ?? ''
+            )
+        );
+
+    if (
+        $accessibleStatus !== ''
+        && !array_key_exists(
+            $accessibleStatus,
+            llama_place_map_camping_site_accessible_options()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid accessibility status.'
+        );
+    }
+
+    return [
+        'camping_area_feature_id' =>
+            $parentFeatureId,
+
+        'site_code' =>
+            $siteCode !== ''
+                ? $siteCode
+                : null,
+
+        'site_type' =>
+            $siteType !== ''
+                ? $siteType
+                : null,
+
+        'parking_style' =>
+            $parkingStyle !== ''
+                ? $parkingStyle
+                : null,
+
+        'hookup_status' =>
+            $hookupStatus !== ''
+                ? $hookupStatus
+                : null,
+
+        'accessible_status' =>
+            $accessibleStatus !== ''
+                ? $accessibleStatus
+                : null,
+    ];
+}
+
+function llama_place_map_feature_site_details_save(
+    PDO $db,
+    int $featureId,
+    int $userId,
+    string $featureType,
+    array $details
+): void {
+    if ($featureType !== 'camping_site') {
+        $stmt = $db->prepare(
+            'DELETE FROM place_map_camping_sites
+             WHERE feature_id = ?'
+        );
+
+        $stmt->execute([$featureId]);
+
+        return;
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO place_map_camping_sites
+        (
+            feature_id,
+            camping_area_feature_id,
+            site_code,
+            site_type,
+            parking_style,
+            hookup_status,
+            accessible_status,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            UTC_TIMESTAMP(),
+            UTC_TIMESTAMP()
+        )
+        ON DUPLICATE KEY UPDATE
+            camping_area_feature_id =
+                VALUES(camping_area_feature_id),
+            site_code =
+                VALUES(site_code),
+            site_type =
+                VALUES(site_type),
+            parking_style =
+                VALUES(parking_style),
+            hookup_status =
+                VALUES(hookup_status),
+            accessible_status =
+                VALUES(accessible_status),
+            updated_by =
+                VALUES(updated_by),
+            updated_at =
+                UTC_TIMESTAMP()'
+    );
+
+    $stmt->execute([
+        $featureId,
+        $details['camping_area_feature_id'],
+        $details['site_code'],
+        $details['site_type'],
+        $details['parking_style'],
+        $details['hookup_status'],
+        $details['accessible_status'],
         $userId,
         $userId,
     ]);
@@ -603,103 +908,238 @@ function llama_place_map_features(
 
     $sql =
         'SELECT
-            id,
-            place_id,
-            feature_type,
-            label,
-            geometry_type,
-            source_type,
-            accuracy_m,
-            metadata_json,
-            area_details.area_use,
-            area_details.fee_status,
-            area_details.overnight_status,
-            created_by,
-            updated_by,
-            verified_at,
-            created_at,
-            updated_at,
-            is_active,
-            ST_SRID(geometry) AS geometry_srid,
-            ST_AsGeoJSON(geometry, 7) AS geometry_geojson
+            place_map_features.id AS id,
+            place_map_features.place_id AS place_id,
+            place_map_features.feature_type AS feature_type,
+            place_map_features.label AS label,
+            place_map_features.geometry_type AS geometry_type,
+            place_map_features.source_type AS source_type,
+            place_map_features.accuracy_m AS accuracy_m,
+            place_map_features.metadata_json AS metadata_json,
+
+            area_details.area_use AS area_use,
+            area_details.fee_status AS fee_status,
+            area_details.overnight_status AS overnight_status,
+
+            site_details.camping_area_feature_id
+                AS camping_area_feature_id,
+            site_details.site_code AS site_code,
+            site_details.site_type AS site_type,
+            site_details.parking_style AS parking_style,
+            site_details.hookup_status AS hookup_status,
+            site_details.accessible_status
+                AS accessible_status,
+
+            parent_area.label AS parent_area_label,
+
+            place_map_features.created_by AS created_by,
+            place_map_features.updated_by AS updated_by,
+            place_map_features.verified_at AS verified_at,
+            place_map_features.created_at AS created_at,
+            place_map_features.updated_at AS updated_at,
+            place_map_features.is_active AS is_active,
+
+            ST_SRID(place_map_features.geometry)
+                AS geometry_srid,
+
+            ST_AsGeoJSON(
+                place_map_features.geometry,
+                7
+            ) AS geometry_geojson
+
          FROM place_map_features
+
          LEFT JOIN place_map_area_details AS area_details
-            ON area_details.feature_id = place_map_features.id
-         WHERE place_id = ?';
+            ON area_details.feature_id =
+                place_map_features.id
+
+         LEFT JOIN place_map_camping_sites AS site_details
+            ON site_details.feature_id =
+                place_map_features.id
+
+         LEFT JOIN place_map_features AS parent_area
+            ON parent_area.id =
+                site_details.camping_area_feature_id
+
+         WHERE place_map_features.place_id = ?';
 
     if ($activeOnly) {
-        $sql .= ' AND is_active = 1';
+        $sql .=
+            ' AND place_map_features.is_active = 1';
     }
 
-    $sql .= ' ORDER BY sort_order ASC, id ASC';
+    $sql .=
+        ' ORDER BY
+            place_map_features.sort_order ASC,
+            place_map_features.id ASC';
 
     $stmt = $db->prepare($sql);
     $stmt->execute([$placeId]);
 
     $features = [];
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-        $geometry = json_decode(
-            (string) ($row['geometry_geojson'] ?? ''),
-            true
-        );
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ?: []
+        as $row
+    ) {
+        $geometry =
+            json_decode(
+                (string) (
+                    $row['geometry_geojson']
+                    ?? ''
+                ),
+                true
+            );
 
         if (!is_array($geometry)) {
             continue;
         }
 
-        $metadata = json_decode(
-            (string) ($row['metadata_json'] ?? ''),
-            true
-        );
+        $metadata =
+            json_decode(
+                (string) (
+                    $row['metadata_json']
+                    ?? ''
+                ),
+                true
+            );
 
         $features[] = [
-            'id' => (int) $row['id'],
-            'place_id' => (int) $row['place_id'],
-            'feature_type' => (string) $row['feature_type'],
-            'label' => (string) ($row['label'] ?? ''),
-            'geometry_type' => (string) $row['geometry_type'],
-            'crs' => LLAMA_PLACE_MAP_FEATURE_CRS,
-            'srid' => (int) ($row['geometry_srid'] ?? 0),
+            'id' =>
+                (int) $row['id'],
+
+            'place_id' =>
+                (int) $row['place_id'],
+
+            'feature_type' =>
+                (string) $row['feature_type'],
+
+            'label' =>
+                (string) (
+                    $row['label']
+                    ?? ''
+                ),
+
+            'geometry_type' =>
+                (string) $row['geometry_type'],
+
+            'crs' =>
+                LLAMA_PLACE_MAP_FEATURE_CRS,
+
+            'srid' =>
+                (int) (
+                    $row['geometry_srid']
+                    ?? 0
+                ),
+
             'source_type' =>
                 (string) (
                     $row['source_type']
                     ?? 'manual'
                 ),
+
             'accuracy_m' =>
                 $row['accuracy_m'] === null
                     ? null
                     : (float) $row['accuracy_m'],
+
             'metadata' =>
                 is_array($metadata)
                     ? $metadata
                     : [],
-            'area_details' => array_filter(
-                [
-                    'area_use' => $row['area_use'] ?? null,
-                    'fee_status' => $row['fee_status'] ?? null,
-                    'overnight_status' =>
-                        $row['overnight_status']
-                        ?? null,
-                ],
-                static fn (mixed $value): bool =>
-                    $value !== null
-                    && $value !== ''
-            ),
+
+            'area_details' =>
+                array_filter(
+                    [
+                        'area_use' =>
+                            $row['area_use']
+                            ?? null,
+
+                        'fee_status' =>
+                            $row['fee_status']
+                            ?? null,
+
+                        'overnight_status' =>
+                            $row['overnight_status']
+                            ?? null,
+                    ],
+                    static fn (
+                        mixed $value
+                    ): bool =>
+                        $value !== null
+                        && $value !== ''
+                ),
+
+            'site_details' =>
+                array_filter(
+                    [
+                        'camping_area_feature_id' =>
+                            $row[
+                                'camping_area_feature_id'
+                            ]
+                            === null
+                                ? null
+                                : (int) $row[
+                                    'camping_area_feature_id'
+                                ],
+
+                        'parent_area_label' =>
+                            $row['parent_area_label']
+                            ?? null,
+
+                        'site_code' =>
+                            $row['site_code']
+                            ?? null,
+
+                        'site_type' =>
+                            $row['site_type']
+                            ?? null,
+
+                        'parking_style' =>
+                            $row['parking_style']
+                            ?? null,
+
+                        'hookup_status' =>
+                            $row['hookup_status']
+                            ?? null,
+
+                        'accessible_status' =>
+                            $row['accessible_status']
+                            ?? null,
+                    ],
+                    static fn (
+                        mixed $value
+                    ): bool =>
+                        $value !== null
+                        && $value !== ''
+                ),
+
             'created_by' =>
                 $row['created_by'] === null
                     ? null
                     : (int) $row['created_by'],
+
             'updated_by' =>
                 $row['updated_by'] === null
                     ? null
                     : (int) $row['updated_by'],
-            'verified_at' => $row['verified_at'],
-            'created_at' => $row['created_at'],
-            'updated_at' => $row['updated_at'],
+
+            'verified_at' =>
+                $row['verified_at'],
+
+            'created_at' =>
+                $row['created_at'],
+
+            'updated_at' =>
+                $row['updated_at'],
+
             'is_active' =>
-                (int) $row['is_active'] === 1,
-            'geometry' => $geometry,
+                (int) $row['is_active']
+                === 1,
+
+            'geometry' =>
+                $geometry,
         ];
     }
 
@@ -738,7 +1178,8 @@ function llama_place_map_feature_save(
     string $sourceType = 'manual',
     mixed $accuracyM = null,
     mixed $metadata = [],
-    mixed $areaDetails = []
+    mixed $areaDetails = [],
+    mixed $siteDetails = []
 ): int {
     if ($placeId < 1 || $userId < 1) {
         throw new InvalidArgumentException(
@@ -805,6 +1246,14 @@ function llama_place_map_feature_save(
         llama_place_map_feature_validate_area_details(
             $featureType,
             $areaDetails
+        );
+
+    $siteDetails =
+        llama_place_map_feature_validate_site_details(
+            $db,
+            $placeId,
+            $featureType,
+            $siteDetails
         );
 
     $metadataJson =
@@ -876,18 +1325,30 @@ function llama_place_map_feature_save(
             $areaDetails
         );
 
+        llama_place_map_feature_site_details_save(
+            $db,
+            $featureId,
+            $userId,
+            $featureType,
+            $siteDetails
+        );
+
         return $featureId;
     }
 
     $sortStmt = $db->prepare(
-        'SELECT COALESCE(MAX(sort_order), 0) + 10
+        'SELECT
+            COALESCE(
+                MAX(sort_order),
+                0
+            ) + 10
          FROM place_map_features
-         LEFT JOIN place_map_area_details AS area_details
-            ON area_details.feature_id = place_map_features.id
          WHERE place_id = ?'
     );
 
-    $sortStmt->execute([$placeId]);
+    $sortStmt->execute([
+        $placeId,
+    ]);
 
     $sortOrder =
         (int) $sortStmt->fetchColumn();
@@ -903,9 +1364,6 @@ function llama_place_map_feature_save(
             source_type,
             accuracy_m,
             metadata_json,
-            area_details.area_use,
-            area_details.fee_status,
-            area_details.overnight_status,
             created_by,
             updated_by,
             verified_at,
@@ -937,7 +1395,9 @@ function llama_place_map_feature_save(
     $stmt->execute([
         $placeId,
         $featureType,
-        $label !== '' ? $label : null,
+        $label !== ''
+            ? $label
+            : null,
         LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
         $geometryWkt,
         LLAMA_PLACE_MAP_FEATURE_SRID,
@@ -958,6 +1418,14 @@ function llama_place_map_feature_save(
         $userId,
         $featureType,
         $areaDetails
+    );
+
+    llama_place_map_feature_site_details_save(
+        $db,
+        $newFeatureId,
+        $userId,
+        $featureType,
+        $siteDetails
     );
 
     return $newFeatureId;
