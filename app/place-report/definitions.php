@@ -359,6 +359,7 @@ function llama_place_report_field_icon(
         'land_manager' => 'building-community',
         'land_type' => 'trees',
 
+        'site_accessible' => 'wheelchair',
         'vehicle_capacity' => 'camper',
         'max_vehicle_length_feet' => 'ruler-measure',
         'max_trailer_length_feet' => 'ruler-measure',

@@ -16,7 +16,12 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('vehicle_capacity', 'Vehicle capacity', 'site_vehicle', 'select', 'details.vehicle_capacity', [
+    $add('site_accessible', 'Site accessible?', 'site_vehicle', 'tri', 'details.site_accessible', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle', 'accessibility'],
+    ]);
+
+    $add('vehicle_capacity', 'Maximum vehicles', 'site_vehicle', 'select', 'details.vehicle_capacity', [
         'options' => [
             '1' => '1 vehicle', '2' => '2 vehicles', '3' => '3 vehicles',
             '4' => '4 vehicles', '5' => '5 vehicles', '6' => '6 vehicles',
@@ -155,7 +160,6 @@ function llama_place_report_add_site_fields(
             'points_categories' => ['site_vehicle'],
         ]);
     }
-
 
     $add('site_number', 'Site number / identifier', 'site_vehicle', 'text', 'details.site_number', [
         'maxlength' => 80,
