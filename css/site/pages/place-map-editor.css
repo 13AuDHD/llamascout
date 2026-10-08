@@ -269,6 +269,20 @@
     line-height: 1.45;
 }
 
+.mapped-area-editor-site-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.mapped-area-editor-site-fields[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-site-fields > p {
+    grid-column: 1 / -1;
+}
+
 .mapped-area-editor-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -644,6 +658,10 @@
         grid-template-columns: 1fr 1.4fr;
     }
 
+    .mapped-area-editor-site-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .mapped-area-editor-stay-fields {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -708,7 +726,8 @@
         font-size: .66rem;
     }
 
-    .mapped-area-editor-area-fields {
+    .mapped-area-editor-area-fields,
+    .mapped-area-editor-site-fields {
         grid-template-columns: 1fr;
     }
 
