@@ -365,6 +365,14 @@ require __DIR__ . '/partials/header.php';
                 </label>
 
                 <label>
+                    <span>Site pricing class</span>
+
+                    <select data-site-class>
+                        <option value="">No pricing class</option>
+                    </select>
+                </label>
+
+                <label>
                     <span>Site number / name</span>
 
                     <input
@@ -554,6 +562,48 @@ require __DIR__ . '/partials/header.php';
 
 
         <section
+            class="mapped-area-editor-card mapped-area-editor-site-class-card"
+            data-site-classes-section
+            hidden
+        >
+            <div class="mapped-area-editor-card-heading">
+                <div>
+                    <h2>Site pricing classes</h2>
+
+                    <p class="mapped-area-editor-card-subtitle">
+                        Create reusable campground pricing groups such as
+                        Standard Back-In or Large Pull-Through.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    data-add-site-class
+                >
+                    Add class
+                </button>
+            </div>
+
+            <div
+                class="mapped-area-editor-site-class-list"
+                data-site-class-list
+            ></div>
+
+            <p
+                class="mapped-area-editor-help"
+                data-site-class-empty
+            >
+                No site pricing classes have been entered for this Camping area yet.
+            </p>
+
+            <p class="mapped-area-editor-help">
+                Individual campsites can inherit a pricing class, then override
+                any rate that is genuinely different for that specific site.
+            </p>
+        </section>
+
+
+        <section
             class="mapped-area-editor-card mapped-area-editor-rate-card"
             data-rate-section
             hidden
@@ -562,7 +612,7 @@ require __DIR__ . '/partials/header.php';
                 <div>
                     <h2>Rates</h2>
                     <p class="mapped-area-editor-card-subtitle">
-                        Nightly pricing for this campground area or campsite.
+                        General nightly pricing for this Camping area, or site-specific overrides for an individual campsite.
                     </p>
                 </div>
 
