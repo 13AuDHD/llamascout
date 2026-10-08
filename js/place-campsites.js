@@ -918,6 +918,336 @@
         return true;
     };
 
+    const siteReportValues = (
+        site,
+        totalSites
+    ) => {
+        const values = {};
+
+        const set = (
+            key,
+            value
+        ) => {
+            const text =
+                clean(value);
+
+            if (text !== '') {
+                values[key] = text;
+            }
+        };
+
+        set(
+            'campsite_count',
+            totalSites
+        );
+
+        set(
+            'site_accessible',
+            accessibleLabel(
+                site.accessible_status
+            )
+        );
+
+        if (
+            number(site.max_vehicles) !== null
+        ) {
+            set(
+                'vehicle_capacity',
+                site.max_vehicles
+            );
+        }
+
+        set(
+            'max_vehicle_length_feet',
+            feet(
+                site.max_vehicle_length_ft
+            )
+        );
+
+        set(
+            'parking_surface',
+            smartCase(
+                site.driveway_surface
+            )
+        );
+
+        if (
+            number(site.max_people) !== null
+        ) {
+            set(
+                'max_people',
+                site.max_people
+            );
+        }
+
+        set(
+            'overhead_clearance_feet',
+            feet(
+                site.overhead_clearance_ft
+            )
+        );
+
+        set(
+            'parking_length_feet',
+            feet(
+                site.driveway_length_ft
+            )
+        );
+
+        set(
+            'parking_grade',
+            smartCase(
+                site.driveway_grade
+            )
+        );
+
+        set(
+            'site_length_feet',
+            feet(
+                site.site_length_ft
+            )
+        );
+
+        set(
+            'site_width_feet',
+            feet(
+                site.site_width_ft
+            )
+        );
+
+        set(
+            'tent_pad',
+            yesNo(
+                site.tent_pad
+            )
+        );
+
+        set(
+            'tent_pad_length_feet',
+            feet(
+                site.tent_pad_length_ft
+            )
+        );
+
+        set(
+            'tent_pad_width_feet',
+            feet(
+                site.tent_pad_width_ft
+            )
+        );
+
+        set(
+            'double_driveway',
+            yesNo(
+                siteFeature(
+                    site,
+                    'double_driveway'
+                )
+            )
+        );
+
+        const hikeIn =
+            siteFeature(
+                site,
+                'hike_in_distance'
+            );
+
+        if (hikeIn !== '') {
+            set(
+                'hike_in_distance_feet',
+                /\bft\b/i.test(hikeIn)
+                    ? hikeIn
+                    : `${hikeIn} ft`
+            );
+        }
+
+        set(
+            'site_rating',
+            siteFeature(
+                site,
+                'site_rating'
+            )
+        );
+
+        set(
+            'condition_rating',
+            siteFeature(
+                site,
+                'condition_rating'
+            )
+        );
+
+        set(
+            'location_rating',
+            siteFeature(
+                site,
+                'location_rating'
+            )
+        );
+
+        set(
+            'capacity_size_rating',
+            siteFeature(
+                site,
+                'capacity_size_rating'
+            )
+        );
+
+        const hookupStatus =
+            clean(
+                site.hookup_status
+            );
+
+        if (
+            hookupStatus !== ''
+            && hookupStatus !== 'unknown'
+        ) {
+            set(
+                'site_hookups_available',
+                hookupStatus === 'none'
+                    ? 'No'
+                    : 'Yes'
+            );
+        }
+
+        set(
+            'hookup_electric',
+            yesNo(
+                site.electric_hookup
+            )
+        );
+
+        set(
+            'hookup_electric_service',
+            smartCase(
+                site.electric_service
+            )
+        );
+
+        set(
+            'hookup_water',
+            yesNo(
+                site.water_hookup
+            )
+        );
+
+        set(
+            'hookup_sewer',
+            yesNo(
+                site.sewer_hookup
+            )
+        );
+
+        const siteType =
+            clean(
+                site.site_type
+            );
+
+        if (
+            siteType === 'tent_site'
+            || siteType === 'mixed_site'
+            || yesNo(
+                site.tent_pad
+            ) === 'Yes'
+        ) {
+            set(
+                'tent_camping_suitable',
+                'Yes'
+            );
+        }
+
+        if (
+            [
+                'rv_site',
+                'mixed_site',
+                'vehicle_site'
+            ].includes(
+                siteType
+            )
+        ) {
+            set(
+                'rv_suitable',
+                'Yes'
+            );
+        }
+
+        const parkingStyle =
+            clean(
+                site.parking_style
+            );
+
+        if (
+            parkingStyle !== ''
+            && parkingStyle !== 'unknown'
+        ) {
+            set(
+                'pull_through',
+                parkingStyle === 'pull_through'
+                    ? 'Yes'
+                    : 'No'
+            );
+
+            set(
+                'back_in',
+                parkingStyle === 'back_in'
+                    ? 'Yes'
+                    : 'No'
+            );
+        }
+
+        return values;
+    };
+
+    const updateScoutReport = (
+        site,
+        totalSites
+    ) => {
+        const values =
+            siteReportValues(
+                site,
+                totalSites
+            );
+
+        document
+            .querySelectorAll(
+                '[data-campsite-report-field]'
+            )
+            .forEach((card) => {
+                const key =
+                    clean(
+                        card.dataset
+                            .campsiteReportField
+                    );
+
+                const value =
+                    values[key]
+                    || '';
+
+                const strong =
+                    card.querySelector(
+                        '.scout-report-value-content strong'
+                    );
+
+                if (!strong) {
+                    return;
+                }
+
+                if (value === '') {
+                    card.hidden = true;
+                    return;
+                }
+
+                strong.textContent =
+                    value;
+
+                card.hidden = false;
+                card.classList.remove(
+                    'is-unanswered',
+                    'is-explicit-unknown'
+                );
+            });
+    };
+
     const renderBrowser = (
         payload
     ) => {
@@ -937,31 +1267,6 @@
             || sites.length === 0
         ) {
             mount.remove();
-            return;
-        }
-
-        if (
-            browser.show_single_site
-            && sites.length === 1
-        ) {
-            mount.innerHTML = `
-                <section
-                    class="place-section place-campsites place-campsites-single"
-                    aria-labelledby="place-campsites-heading"
-                >
-                    <div class="place-campsites-heading">
-                        <div>
-                            <p class="eyebrow">Campsite</p>
-                            <h2 id="place-campsites-heading">
-                                Site details
-                            </h2>
-                        </div>
-                    </div>
-
-                    ${renderSiteDetail(sites[0], sites.length)}
-                </section>
-            `;
-
             return;
         }
 
@@ -1000,8 +1305,8 @@
                             Choose a campsite
                         </h2>
                         <p>
-                            Shared campground information above applies to
-                            every site. Choose a site to see site-specific details.
+                            Choose a site to update the Site and vehicle fit
+                            cards in the Scout Report below.
                         </p>
                     </div>
 
@@ -1060,29 +1365,17 @@
                     </div>
                 </div>
 
-                <div class="place-campsites-layout">
-                    <div
-                        class="place-campsites-list"
-                        data-campsite-list
-                    ></div>
-
-                    <div
-                        class="place-campsite-selected"
-                        data-campsite-selected
-                        aria-live="polite"
-                    ></div>
-                </div>
+                <div
+                    class="place-campsites-list"
+                    data-campsite-list
+                    aria-label="Available campsites"
+                ></div>
             </section>
         `;
 
         const list =
             mount.querySelector(
                 '[data-campsite-list]'
-            );
-
-        const detail =
-            mount.querySelector(
-                '[data-campsite-selected]'
             );
 
         const search =
@@ -1124,8 +1417,10 @@
                     site.feature_id
                 );
 
-            detail.innerHTML =
-                renderSiteDetail(site, sites.length);
+            updateScoutReport(
+                site,
+                sites.length
+            );
 
             mount
                 .querySelectorAll(
@@ -1148,6 +1443,19 @@
                             : 'false'
                     );
                 });
+
+            const selectedButton =
+                mount.querySelector(
+                    `[data-campsite-id="${CSS.escape(selectedId)}"]`
+                );
+
+            if (selectedButton) {
+                selectedButton.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest'
+                });
+            }
 
             if (updateUrl) {
                 const url =
@@ -1257,11 +1565,6 @@
                                             .join(' - ')
                                     )}
                                 </span>
-
-                                <span
-                                    class="place-campsite-row-arrow"
-                                    aria-hidden="true"
-                                >&gt;</span>
                             </button>
                         `;
                     })
@@ -1293,6 +1596,11 @@
             ) {
                 selectSite(
                     visible[0].feature_id
+                );
+            } else {
+                selectSite(
+                    selectedId,
+                    false
                 );
             }
         };
@@ -1326,10 +1634,6 @@
         });
 
         renderList();
-        selectSite(
-            selectedId,
-            false
-        );
     };
 
     const load = async () => {
