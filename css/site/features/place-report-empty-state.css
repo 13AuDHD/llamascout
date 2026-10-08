@@ -1,0 +1,103 @@
+/* =========================================================
+   SCOUT REPORT CONTRIBUTION EMPTY STATES
+
+   Applicable but unanswered fields are not fake "Not provided"
+   observations. The read-only Scout Report shows reported facts and
+   uses these prompts to invite contributions for the missing ones.
+   ========================================================= */
+
+.scout-report-contribution-prompt {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-top: 12px;
+    padding: 13px 14px;
+
+    border: 1px dashed var(--border);
+    border-radius: 11px;
+
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 72%,
+            var(--background)
+        );
+}
+
+.scout-report-contribution-prompt.is-empty {
+    min-height: 88px;
+}
+
+.scout-report-contribution-copy {
+    min-width: 0;
+
+    display: grid;
+    gap: 4px;
+}
+
+.scout-report-contribution-copy strong {
+    color: var(--text);
+
+    font-size: .82rem;
+    font-weight: 850;
+}
+
+.scout-report-contribution-copy p {
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.scout-report-contribution-action {
+    flex: 0 0 auto;
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 7px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--background);
+    color: var(--text);
+
+    font-size: .68rem;
+    font-weight: 850;
+    line-height: 1.2;
+
+    text-decoration: none;
+}
+
+.scout-report-contribution-action:hover,
+.scout-report-contribution-action:focus-visible {
+    border-color: var(--text);
+    text-decoration: none;
+}
+
+.scout-report-contribution-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+@media (max-width: 620px) {
+    .scout-report-contribution-prompt {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .scout-report-contribution-action {
+        width: 100%;
+    }
+}
