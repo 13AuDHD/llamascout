@@ -80,6 +80,7 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'place-detail.css';
         $styles[] = 'site/features/place-shared.css';
         $styles[] = 'site/features/place-access-alert.css';
+        $styles[] = 'site/features/place-top-facts.css';
         $styles[] = 'place-actions.css';
         $styles[] = 'contributor-attribution.css';
         $styles[] = 'share.css';
@@ -89,7 +90,6 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'site/features/place-map.css';
         $styles[] = 'map-tools.css';
     }
-
 
     if (!$isAccount && $basename === 'place-history.php') {
         $styles[] = 'site/pages/place-history.css';
@@ -217,7 +217,10 @@ function llama_merge_page_styles(
             if (
                 $style === ''
                 || str_contains($style, '..')
-                || preg_match('/^[a-z0-9][a-z0-9_\/.-]*\.css$/i', $style) !== 1
+                || preg_match(
+                    '/^[a-z0-9][a-z0-9_\/.-]*\.css$/i',
+                    $style
+                ) !== 1
             ) {
                 continue;
             }
