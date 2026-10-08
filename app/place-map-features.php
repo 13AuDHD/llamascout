@@ -505,6 +505,287 @@ function llama_place_map_feature_site_details_save(
     ]);
 }
 
+function llama_place_map_feature_rate_type_options(): array
+{
+    return [
+        'standard' => 'Standard nightly',
+        'weekday' => 'Weekday',
+        'weekend' => 'Weekend',
+        'holiday' => 'Holiday',
+        'seasonal' => 'Seasonal',
+    ];
+}
+
+function llama_place_map_feature_rate_feature_type_supported(
+    string $featureType
+): bool {
+    return in_array(
+        strtolower(trim($featureType)),
+        [
+            'camping_area',
+            'camping_site',
+        ],
+        true
+    );
+}
+
+function llama_place_map_feature_validate_month_day(
+    mixed $value,
+    string $label
+): ?string {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (!preg_match('/^(\\d{2})-(\\d{2})$/', $value, $matches)) {
+        throw new InvalidArgumentException(
+            $label . ' must use MM-DD format.'
+        );
+    }
+
+    $month = (int) $matches[1];
+    $day = (int) $matches[2];
+
+    if (!checkdate($month, $day, 2000)) {
+        throw new InvalidArgumentException(
+            $label . ' is not a valid month and day.'
+        );
+    }
+
+    return sprintf('%02d-%02d', $month, $day);
+}
+
+function llama_place_map_feature_validate_rates(
+    string $featureType,
+    mixed $rates
+): array {
+    if (!llama_place_map_feature_rate_feature_type_supported($featureType)) {
+        return [];
+    }
+
+    if (!is_array($rates)) {
+        return [];
+    }
+
+    if (count($rates) > 50) {
+        throw new InvalidArgumentException(
+            'A mapped area can have up to 50 rates.'
+        );
+    }
+
+    $typeOptions =
+        llama_place_map_feature_rate_type_options();
+
+    $clean = [];
+
+    foreach (array_values($rates) as $rate) {
+        if (!is_array($rate)) {
+            continue;
+        }
+
+        $rateType =
+            strtolower(
+                trim(
+                    (string) (
+                        $rate['rate_type']
+                        ?? 'standard'
+                    )
+                )
+            );
+
+        if (!array_key_exists($rateType, $typeOptions)) {
+            throw new InvalidArgumentException(
+                'Choose a valid rate type.'
+            );
+        }
+
+        $label =
+            trim(
+                (string) (
+                    $rate['label']
+                    ?? ''
+                )
+            );
+
+        if (mb_strlen($label) > 80) {
+            throw new InvalidArgumentException(
+                'Rate labels can be up to 80 characters.'
+            );
+        }
+
+        $amount =
+            $rate['amount']
+            ?? null;
+
+        if (
+            $amount === null
+            || $amount === ''
+            || !is_numeric($amount)
+        ) {
+            throw new InvalidArgumentException(
+                'Every rate needs a valid nightly amount.'
+            );
+        }
+
+        $amount = round((float) $amount, 2);
+
+        if ($amount < 0 || $amount > 999999.99) {
+            throw new InvalidArgumentException(
+                'A rate amount is outside the supported range.'
+            );
+        }
+
+        $seasonStart =
+            llama_place_map_feature_validate_month_day(
+                $rate['season_start']
+                ?? null,
+                'Season start'
+            );
+
+        $seasonEnd =
+            llama_place_map_feature_validate_month_day(
+                $rate['season_end']
+                ?? null,
+                'Season end'
+            );
+
+        if (
+            $rateType === 'seasonal'
+            && (
+                $seasonStart === null
+                || $seasonEnd === null
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Seasonal rates need both a season start and season end.'
+            );
+        }
+
+        if ($rateType !== 'seasonal') {
+            $seasonStart = null;
+            $seasonEnd = null;
+        }
+
+        $notes =
+            trim(
+                (string) (
+                    $rate['notes']
+                    ?? ''
+                )
+            );
+
+        if (mb_strlen($notes) > 240) {
+            throw new InvalidArgumentException(
+                'Rate notes can be up to 240 characters.'
+            );
+        }
+
+        $clean[] = [
+            'rate_type' => $rateType,
+            'label' => $label !== '' ? $label : null,
+            'amount' => $amount,
+            'currency' => 'USD',
+            'season_start' => $seasonStart,
+            'season_end' => $seasonEnd,
+            'notes' => $notes !== '' ? $notes : null,
+        ];
+    }
+
+    return $clean;
+}
+
+function llama_place_map_feature_rates_save(
+    PDO $db,
+    int $featureId,
+    int $userId,
+    string $featureType,
+    array $rates
+): void {
+    $deleteStmt = $db->prepare(
+        'DELETE FROM place_map_feature_rates
+         WHERE feature_id = ?'
+    );
+
+    $deleteStmt->execute([$featureId]);
+
+    if (!llama_place_map_feature_rate_feature_type_supported($featureType)) {
+        return;
+    }
+
+    if (!$rates) {
+        return;
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO place_map_feature_rates
+        (
+            feature_id,
+            rate_type,
+            label,
+            amount,
+            currency,
+            season_start,
+            season_end,
+            notes,
+            sort_order,
+            is_active,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at
+        )
+        VALUES
+        (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?,
+            UTC_TIMESTAMP(), UTC_TIMESTAMP()
+        )'
+    );
+
+    foreach ($rates as $index => $rate) {
+        $stmt->execute([
+            $featureId,
+            $rate['rate_type'],
+            $rate['label'],
+            $rate['amount'],
+            $rate['currency'],
+            $rate['season_start'],
+            $rate['season_end'],
+            $rate['notes'],
+            ($index + 1) * 10,
+            $userId,
+            $userId,
+        ]);
+    }
+}
+
+function llama_place_map_feature_rate_summary(array $rates): array
+{
+    if (!$rates) {
+        return [];
+    }
+
+    $amounts = [];
+
+    foreach ($rates as $rate) {
+        if (isset($rate['amount']) && is_numeric($rate['amount'])) {
+            $amounts[] = (float) $rate['amount'];
+        }
+    }
+
+    if (!$amounts) {
+        return [];
+    }
+
+    return [
+        'minimum' => min($amounts),
+        'maximum' => max($amounts),
+        'currency' => 'USD',
+        'count' => count($rates),
+    ];
+}
+
 function llama_place_map_feature_source_types(): array
 {
     return [
@@ -1143,6 +1424,169 @@ function llama_place_map_features(
         ];
     }
 
+    if (!$features) {
+        return [];
+    }
+
+    $featureIds =
+        array_values(
+            array_map(
+                static fn (array $feature): int =>
+                    (int) $feature['id'],
+                $features
+            )
+        );
+
+    $rateGroups = [];
+
+    if ($featureIds) {
+        $placeholders =
+            implode(
+                ',',
+                array_fill(
+                    0,
+                    count($featureIds),
+                    '?'
+                )
+            );
+
+        $rateStmt = $db->prepare(
+            'SELECT
+                id,
+                feature_id,
+                rate_type,
+                label,
+                amount,
+                currency,
+                season_start,
+                season_end,
+                notes,
+                sort_order
+             FROM place_map_feature_rates
+             WHERE is_active = 1
+               AND feature_id IN ('
+             . $placeholders
+             . ')
+             ORDER BY feature_id ASC, sort_order ASC, id ASC'
+        );
+
+        $rateStmt->execute($featureIds);
+
+        foreach (
+            $rateStmt->fetchAll(PDO::FETCH_ASSOC)
+            ?: []
+            as $rateRow
+        ) {
+            $featureId =
+                (int) $rateRow['feature_id'];
+
+            $rateGroups[$featureId][] = [
+                'id' => (int) $rateRow['id'],
+                'rate_type' => (string) $rateRow['rate_type'],
+                'label' => (string) ($rateRow['label'] ?? ''),
+                'amount' => (float) $rateRow['amount'],
+                'currency' => (string) ($rateRow['currency'] ?? 'USD'),
+                'season_start' => $rateRow['season_start'],
+                'season_end' => $rateRow['season_end'],
+                'notes' => (string) ($rateRow['notes'] ?? ''),
+            ];
+        }
+    }
+
+    foreach ($features as &$feature) {
+        $featureId =
+            (int) $feature['id'];
+
+        $feature['rates'] =
+            array_values(
+                $rateGroups[$featureId]
+                ?? []
+            );
+
+        $feature['rate_summary'] =
+            llama_place_map_feature_rate_summary(
+                $feature['rates']
+            );
+
+        if ($feature['feature_type'] === 'camping_site') {
+            $parentId =
+                (int) (
+                    $feature['site_details']['camping_area_feature_id']
+                    ?? 0
+                );
+
+            $feature['parent_rates'] =
+                array_values(
+                    $rateGroups[$parentId]
+                    ?? []
+                );
+
+            if ($feature['rates']) {
+                $siteRateTypes =
+                    array_fill_keys(
+                        array_map(
+                            static fn (array $rate): string =>
+                                (string) ($rate['rate_type'] ?? ''),
+                            $feature['rates']
+                        ),
+                        true
+                    );
+
+                $inheritedRates =
+                    array_values(
+                        array_filter(
+                            $feature['parent_rates'],
+                            static fn (array $rate): bool =>
+                                !isset(
+                                    $siteRateTypes[
+                                        (string) (
+                                            $rate['rate_type']
+                                            ?? ''
+                                        )
+                                    ]
+                                )
+                        )
+                    );
+
+                $feature['effective_rates'] =
+                    array_values(
+                        array_merge(
+                            $inheritedRates,
+                            $feature['rates']
+                        )
+                    );
+
+                $feature['effective_rate_source'] =
+                    $feature['parent_rates']
+                        ? 'site_override'
+                        : 'site';
+            } else {
+                $feature['effective_rates'] =
+                    $feature['parent_rates'];
+
+                $feature['effective_rate_source'] =
+                    $feature['parent_rates']
+                        ? 'camping_area'
+                        : '';
+            }
+
+            $feature['effective_rate_summary'] =
+                llama_place_map_feature_rate_summary(
+                    $feature['effective_rates']
+                );
+        } else {
+            $feature['parent_rates'] = [];
+            $feature['effective_rates'] = $feature['rates'];
+            $feature['effective_rate_source'] =
+                $feature['rates']
+                    ? 'feature'
+                    : '';
+            $feature['effective_rate_summary'] =
+                $feature['rate_summary'];
+        }
+    }
+    unset($feature);
+
     return $features;
 }
 
@@ -1179,7 +1623,8 @@ function llama_place_map_feature_save(
     mixed $accuracyM = null,
     mixed $metadata = [],
     mixed $areaDetails = [],
-    mixed $siteDetails = []
+    mixed $siteDetails = [],
+    mixed $rates = []
 ): int {
     if ($placeId < 1 || $userId < 1) {
         throw new InvalidArgumentException(
@@ -1254,6 +1699,12 @@ function llama_place_map_feature_save(
             $placeId,
             $featureType,
             $siteDetails
+        );
+
+    $rates =
+        llama_place_map_feature_validate_rates(
+            $featureType,
+            $rates
         );
 
     $metadataJson =
@@ -1331,6 +1782,14 @@ function llama_place_map_feature_save(
             $userId,
             $featureType,
             $siteDetails
+        );
+
+        llama_place_map_feature_rates_save(
+            $db,
+            $featureId,
+            $userId,
+            $featureType,
+            $rates
         );
 
         return $featureId;
@@ -1426,6 +1885,14 @@ function llama_place_map_feature_save(
         $userId,
         $featureType,
         $siteDetails
+    );
+
+    llama_place_map_feature_rates_save(
+        $db,
+        $newFeatureId,
+        $userId,
+        $featureType,
+        $rates
     );
 
     return $newFeatureId;
