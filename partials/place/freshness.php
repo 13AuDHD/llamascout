@@ -7,6 +7,35 @@ $freshnessState =
 
 $overallLevel =
     trim((string) ($placeFreshness['overall_level'] ?? ''));
+
+$recordSourceValue =
+    strtolower(
+        trim(
+            (string) (
+                $place['source_type']
+                ?? ''
+            )
+        )
+    );
+
+$recordSourceLabel =
+    match ($recordSourceValue) {
+        'external',
+        'ridb' =>
+            'External Source',
+
+        'community-scouted' =>
+            'Community Scouted',
+
+        'llama-scouted' =>
+            'Llama Scouted',
+
+        'legacy' =>
+            'Legacy',
+
+        default =>
+            'Llama Scout',
+    };
 ?>
 
 <section
@@ -42,6 +71,16 @@ $overallLevel =
         </div>
 
         <div class="place-freshness-breakdown" aria-label="Field check history summary">
+            <div>
+                <span>Record Source</span>
+                <strong><?= place_h($recordSourceLabel) ?></strong>
+                <small>
+                    <?= $recordSourceLabel === 'External Source'
+                        ? 'Imported from an external recreation data source'
+                        : 'Added through Llama Scout' ?>
+                </small>
+            </div>
+
             <div>
                 <span>Community / Member</span>
                 <strong><?= place_h((string) ($placeFreshness['community_relative'] ?? 'No check yet')) ?></strong>
