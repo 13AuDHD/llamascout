@@ -18,10 +18,40 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
+/*
+ * The contributor form and completion meter evaluate applicability against
+ * flattened scoring input. The public Scout Report must use that exact same
+ * input and the exact same canonical applicability function so a question
+ * that was never available for this Place cannot reappear as a read-only
+ * "Not provided" card.
+ */
+$placeReportApplicabilityInput =
+    llama_place_report_scoring_input_from_data(
+        $placeReportData
+    );
+
+$placeReportUpdateUrl = '';
+
+if (
+    $placeReportReadMode === 'scout-report'
+    && !empty($canSuggestUpdate)
+    && !empty($place['slug'])
+) {
+    $placeReportUpdateUrl =
+        'https://account.llamascout.com/update-place.php?slug='
+        . rawurlencode(
+            (string) $place['slug']
+        );
+}
+
 ?>
 <link
     rel="stylesheet"
     href="/css/site/features/scout-warning-compact.css"
+>
+<link
+    rel="stylesheet"
+    href="/css/site/features/place-report-empty-state.css"
 >
 <?php
 
@@ -151,6 +181,11 @@ $renderValue =
                 $key
             );
 
+        /*
+         * Moderation remains a diagnostic view and can still show unanswered
+         * values. The public Scout Report filters unanswered fields before
+         * calling this renderer.
+         */
         if ($state === 'unanswered') {
             $value = 'Not provided';
         }
@@ -300,6 +335,57 @@ $renderValue =
         <?php
     };
 
+$renderContributionPrompt =
+    static function (
+        string $sectionLabel,
+        int $missingCount,
+        bool $empty
+    ) use (
+        $placeReportUpdateUrl,
+        $e
+    ): void {
+        if ($empty) {
+            $message =
+                'No one has reported '
+                . strtolower($sectionLabel)
+                . ' information here yet.';
+        } else {
+            $message =
+                $missingCount
+                . ' applicable detail'
+                . ($missingCount === 1 ? '' : 's')
+                . ' in this section '
+                . ($missingCount === 1 ? 'has' : 'have')
+                . ' not been reported yet.';
+        }
+        ?>
+
+        <div
+            class="scout-report-contribution-prompt<?= $empty ? ' is-empty' : ' is-partial' ?>"
+        >
+            <div class="scout-report-contribution-copy">
+                <strong>
+                    <?= $empty
+                        ? 'Be the first to add this'
+                        : 'Know something we are missing?' ?>
+                </strong>
+
+                <p><?= $e($message) ?></p>
+            </div>
+
+            <?php if ($placeReportUpdateUrl !== ''): ?>
+                <a
+                    href="<?= $e($placeReportUpdateUrl) ?>"
+                    class="scout-report-contribution-action"
+                >
+                    <?= llama_icon('edit') ?>
+                    Update this Place
+                </a>
+            <?php endif; ?>
+        </div>
+        <?php
+    };
+
 /*
  * Quick warnings are calculated from the canonical Place Report answers.
  * Do not maintain a second set of warning flags here.
@@ -390,30 +476,74 @@ foreach (
     $fields =
         array_filter(
             $placeReportFields,
-            static fn (array $field): bool =>
-                (string) (
-                    $field['display_section']
-                    ?? $field['section']
-                    ?? ''
-                ) === $sectionKey
-                && (
-                    $placeReportReadMode === 'moderation'
-                    || empty($field['hide_public'])
-                )
+            static function (
+                array $field,
+                string|int $fieldKey
+            ) use (
+                $sectionKey,
+                $placeReportReadMode,
+                $placeReportApplicabilityInput
+            ): bool {
+                if (
+                    (string) (
+                        $field['display_section']
+                        ?? $field['section']
+                        ?? ''
+                    ) !== $sectionKey
+                ) {
+                    return false;
+                }
+
+                if (
+                    $placeReportReadMode !== 'moderation'
+                    && !empty($field['hide_public'])
+                ) {
+                    return false;
+                }
+
+                /*
+                 * This is the key Fix: use the same applicability function that
+                 * controls Add Place and the completion denominator.
+                 */
+                if (
+                    $placeReportReadMode === 'scout-report'
+                    && !llama_place_report_question_applicable(
+                        $placeReportApplicabilityInput,
+                        (string) $fieldKey
+                    )
+                ) {
+                    return false;
+                }
+
+                return true;
+            },
+            ARRAY_FILTER_USE_BOTH
         );
 
     if (!$fields) {
         continue;
     }
 
+    /*
+     * Scout notes are free-form observations. Keep their existing behavior:
+     * do not create an empty contribution section when nobody wrote a note.
+     */
     if (
         $sectionKey === 'scout_notes'
         && $placeReportReadMode === 'scout-report'
     ) {
         $fields = array_filter(
             $fields,
-            static function (array $field) use ($placeReportData): bool {
-                $key = (string) ($field['key'] ?? '');
+            static function (
+                array $field
+            ) use (
+                $placeReportData
+            ): bool {
+                $key =
+                    (string) (
+                        $field['key']
+                        ?? ''
+                    );
 
                 if (
                     $key === ''
@@ -428,7 +558,10 @@ foreach (
                 return trim(
                     (string) llama_place_report_get_path(
                         $placeReportData,
-                        (string) ($field['storage'] ?? '')
+                        (string) (
+                            $field['storage']
+                            ?? ''
+                        )
                     )
                 ) !== '';
             }
@@ -438,14 +571,53 @@ foreach (
             continue;
         }
     }
+
+    $applicableFields =
+        $fields;
+
+    $reportedFields =
+        $placeReportReadMode === 'scout-report'
+            ? array_filter(
+                $applicableFields,
+                static function (
+                    array $field,
+                    string|int $fieldKey
+                ) use (
+                    $placeReportData
+                ): bool {
+                    return
+                        llama_place_report_answer_state(
+                            $placeReportData,
+                            (string) $fieldKey
+                        )
+                        !== 'unanswered';
+                },
+                ARRAY_FILTER_USE_BOTH
+            )
+            : $applicableFields;
+
+    $missingApplicableCount =
+        max(
+            0,
+            count($applicableFields)
+            - count($reportedFields)
+        );
+
+    $sectionHasReportedData =
+        count($reportedFields) > 0;
 ?>
     <?php
     $sectionIcon =
         $localIcon(
-            (string) ($section['icon'] ?? ''),
-            'section:' . (string) $sectionKey
+            (string) (
+                $section['icon']
+                ?? ''
+            ),
+            'section:'
+            . (string) $sectionKey
         );
     ?>
+
     <section class="scout-report-section">
         <h3>
             <?= llama_icon($sectionIcon) ?>
@@ -455,7 +627,19 @@ foreach (
             ) ?>
         </h3>
 
-        <?php if ($sectionKey === 'sensory'): ?>
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && !$sectionHasReportedData
+        ): ?>
+            <?php
+            $renderContributionPrompt(
+                (string) $section['label'],
+                count($applicableFields),
+                true
+            );
+            ?>
+
+        <?php elseif ($sectionKey === 'sensory'): ?>
             <?php foreach (
                 [
                     'Daytime',
@@ -464,17 +648,39 @@ foreach (
                 ]
                 as $subsection
             ): ?>
+                <?php
+                $subsectionFields =
+                    array_filter(
+                        $reportedFields,
+                        static fn (
+                            array $field
+                        ): bool =>
+                            (string) (
+                                $field['subsection']
+                                ?? ''
+                            )
+                            === $subsection
+                    );
+                ?>
+
+                <?php if (!$subsectionFields): ?>
+                    <?php continue; ?>
+                <?php endif; ?>
+
                 <div class="scout-report-subsection">
                     <h4><?= $e($subsection) ?></h4>
 
                     <div class="scout-report-grid">
-                        <?php foreach ($fields as $key => $field): ?>
-                            <?php if (
-                                ($field['subsection'] ?? '')
-                                === $subsection
-                            ): ?>
-                                <?php $renderValue($key, $field); ?>
-                            <?php endif; ?>
+                        <?php foreach (
+                            $subsectionFields
+                            as $key => $field
+                        ): ?>
+                            <?php
+                            $renderValue(
+                                (string) $key,
+                                $field
+                            );
+                            ?>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -483,8 +689,10 @@ foreach (
             <?php
             $sensorySummaryFields =
                 array_filter(
-                    $fields,
-                    static fn (array $field): bool =>
+                    $reportedFields,
+                    static fn (
+                        array $field
+                    ): bool =>
                         trim(
                             (string) (
                                 $field['subsection']
@@ -496,15 +704,39 @@ foreach (
 
             <?php if ($sensorySummaryFields): ?>
                 <div class="scout-report-grid">
-                    <?php foreach ($sensorySummaryFields as $key => $field): ?>
-                        <?php $renderValue($key, $field); ?>
+                    <?php foreach (
+                        $sensorySummaryFields
+                        as $key => $field
+                    ): ?>
+                        <?php
+                        $renderValue(
+                            (string) $key,
+                            $field
+                        );
+                        ?>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
 
+            <?php if (
+                $placeReportReadMode === 'scout-report'
+                && $missingApplicableCount > 0
+            ): ?>
+                <?php
+                $renderContributionPrompt(
+                    (string) $section['label'],
+                    $missingApplicableCount,
+                    false
+                );
+                ?>
+            <?php endif; ?>
+
         <?php elseif ($sectionKey === 'scout_notes'): ?>
             <ul class="scout-report-notes-list">
-                <?php foreach ($fields as $key => $field): ?>
+                <?php foreach (
+                    $reportedFields
+                    as $key => $field
+                ): ?>
                     <?php
                     $note =
                         llama_place_report_display_value(
@@ -514,20 +746,32 @@ foreach (
 
                     if (
                         $placeReportReadMode === 'scout-report'
-                        && ($note === null || trim((string) $note) === '')
+                        && (
+                            $note === null
+                            || trim(
+                                (string) $note
+                            ) === ''
+                        )
                     ) {
                         continue;
                     }
                     ?>
+
                     <li>
-                        <?= $e($note ?? 'Not provided') ?>
+                        <?= $e(
+                            $note
+                            ?? 'Not provided'
+                        ) ?>
                     </li>
                 <?php endforeach; ?>
             </ul>
 
         <?php elseif ($sectionKey === 'amenities'): ?>
             <div class="scout-report-grid">
-                <?php foreach ($fields as $key => $field): ?>
+                <?php foreach (
+                    $reportedFields
+                    as $key => $field
+                ): ?>
                     <?php
                     if ($key === 'amenity_none') {
                         continue;
@@ -540,17 +784,19 @@ foreach (
                         );
 
                     $amenityValue =
-                        !empty($rawAmenityValue)
+                        !empty(
+                            $rawAmenityValue
+                        )
                             ? 'Yes'
                             : 'No';
 
                     $amenityIcon =
                         $localIcon(
                             llama_place_report_field_icon(
-                                $key,
+                                (string) $key,
                                 $field
                             ),
-                            $key
+                            (string) $key
                         );
 
                     $amenityLabel =
@@ -559,16 +805,26 @@ foreach (
                             : (string) $field['label'];
                     ?>
 
-                    <div class="scout-report-item scout-report-value-item">
+                    <div
+                        class="scout-report-item scout-report-value-item"
+                    >
                         <div class="scout-report-value-content">
-                            <span><?= $e($amenityLabel) ?></span>
-                            <strong><?= $amenityValue ?></strong>
+                            <span>
+                                <?= $e(
+                                    $amenityLabel
+                                ) ?>
+                            </span>
+
+                            <strong>
+                                <?= $amenityValue ?>
+                            </strong>
                         </div>
 
                         <?= llama_icon(
                             $amenityIcon,
                             [
-                                'class' => 'scout-report-value-icon',
+                                'class' =>
+                                    'scout-report-value-icon',
                             ]
                         ) ?>
                     </div>
@@ -577,10 +833,31 @@ foreach (
 
         <?php else: ?>
             <div class="scout-report-grid">
-                <?php foreach ($fields as $key => $field): ?>
-                    <?php $renderValue($key, $field); ?>
+                <?php foreach (
+                    $reportedFields
+                    as $key => $field
+                ): ?>
+                    <?php
+                    $renderValue(
+                        (string) $key,
+                        $field
+                    );
+                    ?>
                 <?php endforeach; ?>
             </div>
+
+            <?php if (
+                $placeReportReadMode === 'scout-report'
+                && $missingApplicableCount > 0
+            ): ?>
+                <?php
+                $renderContributionPrompt(
+                    (string) $section['label'],
+                    $missingApplicableCount,
+                    false
+                );
+                ?>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
 <?php endforeach; ?>
