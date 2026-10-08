@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb-import.php';
+require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
 
 $adminUser =
     moderation_require_admin();
@@ -105,6 +106,18 @@ if (
                         $facilityId
                     );
 
+                $result =
+                    llama_ridb_public_finalize_import(
+                        db(),
+                        ridb_db(),
+                        (int) (
+                            $adminUser['id']
+                            ?? 0
+                        ),
+                        $facilityId,
+                        $result
+                    );
+
                 $results[] =
                     array_merge(
                         [
@@ -152,19 +165,18 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
     <div>
         <p>Production import</p>
-        <h2>RIDB â Llama Scout</h2>
+        <h2>RIDB → Llama Scout</h2>
     </div>
 </header>
 
 <p>
     Facilities are selected from the local RIDB catalog.
-    Importing refreshes the facility and campsite details from
-    Recreation.gov, stores that source data in the RIDB reference
-    database, and then creates or synchronizes the Llama Scout Place.
+    Importing refreshes the source data, creates or synchronizes the
+    Llama Scout Place, normalizes public-facing text, and attaches
+    usable RIDB photos to the normal Place gallery.
 </p>
 
 <div class="admin-user-form-actions">
-
 <a
     class="admin-button is-secondary"
     href="<?= moderation_e(
@@ -173,7 +185,6 @@ require __DIR__ . '/_header.php';
 >
     Back to RIDB catalog
 </a>
-
 </div>
 </section>
 
@@ -192,6 +203,7 @@ require __DIR__ . '/_header.php';
     <th>Place</th>
     <th>Campsites</th>
     <th>Attributes</th>
+    <th>Photos</th>
     <th></th>
 </tr>
 </thead>
@@ -272,6 +284,16 @@ require __DIR__ . '/_header.php';
         : '' ?>
 </td>
 
+<td data-label="Photos">
+    <?= isset(
+        $result['media_imported']
+    )
+        ? number_format(
+            (int) $result['media_imported']
+        )
+        : '' ?>
+</td>
+
 <td data-label="Action">
     <?php if (
         !empty(
@@ -313,12 +335,6 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-empty-state">
     <h3>Select facilities from the RIDB catalog.</h3>
-
-    <p>
-        The old manual facility-ID workflow still works through
-        /ridb-import.php?id=..., but the normal workflow now starts
-        from the synchronized RIDB catalog.
-    </p>
 
     <a
         class="admin-button"
