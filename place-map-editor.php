@@ -279,6 +279,79 @@ require __DIR__ . '/partials/header.php';
             </div>
 
             <div
+                class="mapped-area-editor-stay-fields"
+                data-area-details
+                hidden
+            >
+                <label>
+                    <span>Area use</span>
+
+                    <select data-area-use>
+                        <option value="">Not specified</option>
+                    </select>
+                </label>
+
+                <label data-overnight-status-field hidden>
+                    <span>Overnight vehicle stay</span>
+
+                    <select data-overnight-status>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_overnight_status_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Cost</span>
+
+                    <select data-fee-status>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_fee_status_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <p
+                    class="mapped-area-editor-area-note"
+                    data-area-details-note
+                ></p>
+            </div>
+
+            <div
                 class="mapped-area-editor-summary"
                 data-feature-summary
                 hidden
@@ -470,7 +543,7 @@ require __DIR__ . '/partials/header.php';
                     data-add-gps-point
                     disabled
                 >
-                    Add GPS Point
+                    Add GPS point
                 </button>
 
                 <button
@@ -484,7 +557,7 @@ require __DIR__ . '/partials/header.php';
 
             <p class="mapped-area-editor-help">
                 Keep GPS running while walking the boundary. At each corner
-                or meaningful bend, stop and choose Add GPS Point. The
+                or meaningful bend, stop and choose Add GPS point. The
                 reported accuracy is saved with the point.
             </p>
         </section>
