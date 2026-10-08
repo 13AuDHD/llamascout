@@ -156,9 +156,16 @@ function llama_place_report_apply_applicability(
         ]]
     );
 
+    /*
+     * These are campsite / overnight-space questions shared by the
+     * Add Place form, later report updates, imported source data, and
+     * the selected-campsite public card view. Keep them out of ordinary
+     * parking, business, civic, and day-use Place forms.
+     */
     $setApplicable(
         $f,
         [
+            'site_accessible',
             'max_people',
             'overhead_clearance_feet',
             'parking_length_feet',
@@ -186,11 +193,18 @@ function llama_place_report_apply_applicability(
             'tent_pad_length_feet',
             'tent_pad_width_feet',
         ],
-        [[
-            'field' => 'tent_pad',
-            'operator' => 'equals',
-            'value' => '1',
-        ]]
+        [
+            [
+                'field' => 'type',
+                'operator' => 'in',
+                'value' => $campingPlaceTypes,
+            ],
+            [
+                'field' => 'tent_pad',
+                'operator' => 'equals',
+                'value' => '1',
+            ],
+        ]
     );
 
     $setApplicable(
