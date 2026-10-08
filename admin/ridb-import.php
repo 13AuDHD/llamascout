@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb-import.php';
 require_once dirname(__DIR__) . '/app/ridb-canonical.php';
+require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
 
 $adminUser =
     moderation_require_admin();
@@ -125,6 +126,18 @@ if (
                         ?? 0
                     );
 
+                $result =
+                    llama_ridb_public_finalize_import(
+                        db(),
+                        ridb_db(),
+                        (int) (
+                            $adminUser['id']
+                            ?? 0
+                        ),
+                        $facilityId,
+                        $result
+                    );
+
                 $results[] =
                     array_merge(
                         [
@@ -176,10 +189,8 @@ require __DIR__ . '/_header.php';
 </header>
 
 <p>
-    RIDB answers that match existing Llama Scout questions are
-    written into the same canonical Place fields used by manual
-    reports. They therefore use the existing cards and count as
-    answered Place questions.
+    RIDB data is promoted into the same Place fields, gallery,
+    amenities, rules, and cards used by manually entered Places.
 </p>
 
 <div class="admin-user-form-actions">
@@ -209,6 +220,8 @@ require __DIR__ . '/_header.php';
     <th>Campsites</th>
     <th>Attributes</th>
     <th>Place answers</th>
+    <th>Location fields</th>
+    <th>Photos</th>
     <th></th>
 </tr>
 </thead>
@@ -295,6 +308,26 @@ require __DIR__ . '/_header.php';
     )
         ? number_format(
             (int) $result['canonical_answers']
+        )
+        : '' ?>
+</td>
+
+<td data-label="Location fields">
+    <?= isset(
+        $result['core_fields_imported']
+    )
+        ? number_format(
+            (int) $result['core_fields_imported']
+        )
+        : '' ?>
+</td>
+
+<td data-label="Photos">
+    <?= isset(
+        $result['media_imported']
+    )
+        ? number_format(
+            (int) $result['media_imported']
         )
         : '' ?>
 </td>
