@@ -288,8 +288,9 @@ function llama_ridb_canonical_consistent_time(
     return (string) array_key_first($times);
 }
 
-function llama_ridb_canonical_has_accessible_named_item(
-    array $rows
+function llama_ridb_canonical_name_contains(
+    array $rows,
+    array $needles
 ): bool {
     foreach ($rows as $row) {
         $name = llama_ridb_normalization_key(
@@ -299,14 +300,21 @@ function llama_ridb_canonical_has_accessible_named_item(
             )
         );
 
-        if (
-            str_contains($name, 'ACCESSIBLE')
-            && llama_ridb_canonical_presence(
-                $row['value']
-                ?? null
-            ) !== false
-        ) {
-            return true;
+        foreach ($needles as $needle) {
+            if (
+                str_contains(
+                    $name,
+                    llama_ridb_normalization_key(
+                        (string) $needle
+                    )
+                )
+                && llama_ridb_canonical_presence(
+                    $row['value']
+                    ?? null
+                ) !== false
+            ) {
+                return true;
+            }
         }
     }
 
@@ -481,6 +489,11 @@ function llama_ridb_canonical_sync_place(
     $details = [];
     $rules = [];
 
+    /*
+     * Existing Llama Scout amenity cards.
+     * These source facts are promoted into the exact same place_amenities
+     * columns used by a manually completed Place Report.
+     */
     $positiveAmenities = [
         'toilet' => 'toilets',
         'flush_toilet' => 'toilets',
@@ -510,14 +523,28 @@ function llama_ridb_canonical_sync_place(
         }
     }
 
+    /*
+     * Accessibility facts answer the existing Accessibility cards.
+     * An accessible toilet also guarantees that the normal Toilets amenity
+     * is present, and an accessible picnic table guarantees Picnic table.
+     */
     $toiletEvidence = array_merge(
         $evidence['toilet'] ?? [],
-        $evidence['flush_toilet'] ?? []
+        $evidence['flush_toilet'] ?? [],
+        $evidence['accessibility'] ?? []
     );
 
     if (
-        llama_ridb_canonical_has_accessible_named_item(
-            $toiletEvidence
+        llama_ridb_canonical_name_contains(
+            $toiletEvidence,
+            [
+                'accessible toilet',
+                'accessible toilets',
+                'accessible pit toilet',
+                'accessible pit toilets',
+                'accessible flush toilet',
+                'accessible flush toilets',
+            ]
         )
     ) {
         $amenities['toilets'] = 1;
@@ -525,72 +552,77 @@ function llama_ridb_canonical_sync_place(
     }
 
     if (
-        llama_ridb_canonical_has_accessible_named_item(
+        llama_ridb_canonical_name_contains(
             $evidence['picnic_table']
-            ?? []
+                ?? [],
+            [
+                'accessible picnic table',
+                'accessible picnic tables',
+            ]
         )
     ) {
         $amenities['picnic_table'] = 1;
         $details['accessible_picnic_table'] = 1;
     }
 
-    $pets = llama_ridb_canonical_consensus_bool(
-        $evidence['pets_allowed']
-        ?? []
-    );
-
-    if ($pets !== null) {
-        $rules['pets_allowed'] =
-            $pets
-                ? 1
-                : 0;
-    }
-
-    $campfire = llama_ridb_canonical_consensus_bool(
-        $evidence['campfire_allowed']
-        ?? []
-    );
-
-    if ($campfire !== null) {
-        $rules['campfire_allowed'] =
-            $campfire
-                ? 1
-                : 0;
-    }
-
-    $checkin = llama_ridb_canonical_consistent_time(
-        $evidence['checkin_time']
-        ?? []
-    );
-
-    if ($checkin !== null) {
-        $rules['check_in_required'] = 1;
-        $rules['check_in_begins'] = $checkin;
-    }
-
-    $checkout = llama_ridb_canonical_consistent_time(
-        $evidence['checkout_time']
-        ?? []
-    );
-
-    if ($checkout !== null) {
-        $rules['check_out_required'] = 1;
-        $rules['checkout_ends'] = $checkout;
-    }
-
-    $reservationUrl = trim(
-        (string) llama_ridb_record_value(
-            $facility,
-            [
-                'FacilityReservationURL',
-                'facilityReservationURL',
-            ],
-            ''
+    /*
+     * Existing Site and vehicle fit cards.
+     * A developed campground can truthfully say hookups are available
+     * when at least one individual campsite offers them.
+     */
+    $hasElectricHookup =
+        llama_ridb_canonical_any_positive(
+            $evidence['electric_hookup']
+            ?? []
         )
-    );
+        || llama_ridb_canonical_any_positive(
+            $evidence['electricity_available']
+            ?? []
+        )
+        || llama_ridb_canonical_any_positive(
+            $evidence['full_hookup']
+            ?? []
+        );
 
-    if ($reservationUrl !== '') {
-        $rules['reservation_url'] = $reservationUrl;
+    $hasWaterHookup =
+        llama_ridb_canonical_any_positive(
+            $evidence['water_hookup']
+            ?? []
+        )
+        || llama_ridb_canonical_any_positive(
+            $evidence['full_hookup']
+            ?? []
+        );
+
+    $hasSewerHookup =
+        llama_ridb_canonical_any_positive(
+            $evidence['sewer_hookup']
+            ?? []
+        )
+        || llama_ridb_canonical_any_positive(
+            $evidence['full_hookup']
+            ?? []
+        );
+
+    if (
+        $hasElectricHookup
+        || $hasWaterHookup
+        || $hasSewerHookup
+    ) {
+        $details['site_hookups_available'] = 1;
+    }
+
+    if ($hasElectricHookup) {
+        $details['hookup_electric'] = 1;
+        $amenities['electricity'] = 1;
+    }
+
+    if ($hasWaterHookup) {
+        $details['hookup_water'] = 1;
+    }
+
+    if ($hasSewerHookup) {
+        $details['hookup_sewer'] = 1;
     }
 
     if ($sites) {
@@ -620,7 +652,13 @@ function llama_ridb_canonical_sync_place(
         }
     }
 
-    if ($hasTentSite) {
+    if (
+        $hasTentSite
+        || llama_ridb_canonical_any_positive(
+            $evidence['tent_pad_present']
+            ?? []
+        )
+    ) {
         $details['tent_camping_suitable'] = 1;
     }
 
@@ -628,6 +666,86 @@ function llama_ridb_canonical_sync_place(
         $details['rv_suitable'] = 1;
     }
 
+    /*
+     * Existing Seasons, rules, and nearby services cards.
+     */
+    $pets = llama_ridb_canonical_consensus_bool(
+        $evidence['pets_allowed']
+            ?? []
+    );
+
+    if ($pets !== null) {
+        $rules['pets_allowed'] =
+            $pets
+                ? 1
+                : 0;
+    }
+
+    $campfire = llama_ridb_canonical_consensus_bool(
+        $evidence['campfire_allowed']
+            ?? []
+    );
+
+    if ($campfire !== null) {
+        $rules['campfire_allowed'] =
+            $campfire
+                ? 1
+                : 0;
+    }
+
+    $foodStorage =
+        llama_ridb_canonical_consensus_bool(
+            $evidence['food_storage']
+                ?? []
+        );
+
+    if ($foodStorage !== null) {
+        $rules['food_storage_required'] =
+            $foodStorage
+                ? 1
+                : 0;
+    }
+
+    $checkin = llama_ridb_canonical_consistent_time(
+        $evidence['checkin_time']
+            ?? []
+    );
+
+    if ($checkin !== null) {
+        $rules['check_in_required'] = 1;
+        $rules['check_in_begins'] = $checkin;
+    }
+
+    $checkout = llama_ridb_canonical_consistent_time(
+        $evidence['checkout_time']
+            ?? []
+    );
+
+    if ($checkout !== null) {
+        $rules['check_out_required'] = 1;
+        $rules['checkout_ends'] = $checkout;
+    }
+
+    $reservationUrl = trim(
+        (string) llama_ridb_record_value(
+            $facility,
+            [
+                'FacilityReservationURL',
+                'facilityReservationURL',
+            ],
+            ''
+        )
+    );
+
+    if ($reservationUrl !== '') {
+        $rules['reservation_url'] = $reservationUrl;
+    }
+
+    /*
+     * Write directly into the same canonical tables used by the Place Report.
+     * Existing human-entered answers are preserved. Positive imported
+     * amenities can turn an empty/unchecked amenity on.
+     */
     llama_ridb_canonical_upsert_values(
         $mainDb,
         'place_amenities',
