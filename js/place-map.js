@@ -535,6 +535,10 @@
         map
     );
 
+    marker.setZIndexOffset(
+        1000
+    );
+
 
     /* =====================================================
        MAPPED AREAS
@@ -548,7 +552,10 @@
             'Camping area',
 
         parking_area:
-            'Parking area'
+            'Parking area',
+
+        camping_site:
+            'Individual campsite'
     };
 
     const areaUseLabels = {
@@ -580,6 +587,102 @@
         prohibited: 'Overnight vehicle stay not allowed',
         varies: 'Overnight rules vary',
         unknown: 'Overnight status unknown'
+    };
+
+    const siteTypeLabels = {
+        rv_site: 'RV site',
+        tent_site: 'Tent site',
+        mixed_site: 'Mixed-use campsite',
+        vehicle_site: 'Vehicle campsite',
+        group_site: 'Group site',
+        other: 'Other'
+    };
+
+    const siteParkingStyleLabels = {
+        pull_through: 'Pull-through',
+        back_in: 'Back-in',
+        pull_in: 'Pull-in',
+        parallel: 'Parallel',
+        other: 'Other',
+        unknown: 'Parking style unknown'
+    };
+
+    const siteHookupLabels = {
+        full: 'Full hookups',
+        electric_water: 'Electric + water',
+        electric_only: 'Electric only',
+        water_only: 'Water only',
+        none: 'No hookups',
+        varies: 'Hookups vary',
+        unknown: 'Hookups unknown'
+    };
+
+    const siteAccessibleLabels = {
+        yes: 'Accessible site',
+        no: 'Not marked accessible',
+        unknown: 'Accessibility unknown'
+    };
+
+    const rateTypeLabels = {
+        standard: 'Standard',
+        weekday: 'Weekday',
+        weekend: 'Weekend',
+        holiday: 'Holiday',
+        seasonal: 'Seasonal'
+    };
+
+    const formatCurrency = (
+        amount,
+        currency = 'USD'
+    ) => {
+        const value =
+            Number(amount);
+
+        if (!Number.isFinite(value)) {
+            return '';
+        }
+
+        try {
+            return new Intl.NumberFormat(
+                undefined,
+                {
+                    style: 'currency',
+                    currency:
+                        String(
+                            currency
+                            || 'USD'
+                        ),
+                    maximumFractionDigits:
+                        Number.isInteger(value)
+                            ? 0
+                            : 2
+                }
+            ).format(value);
+
+        } catch (error) {
+            return `$${value.toFixed(
+                Number.isInteger(value)
+                    ? 0
+                    : 2
+            )}`;
+        }
+    };
+
+    const formatSeason = (
+        start,
+        end
+    ) => {
+        const a =
+            String(start || '').trim();
+
+        const b =
+            String(end || '').trim();
+
+        if (a === '' || b === '') {
+            return '';
+        }
+
+        return `${a}–${b}`;
     };
 
     const mappedAreaGroups = new Map();
@@ -618,6 +721,20 @@
             wrapper.className =
                 'place-map-feature-popup';
 
+            const siteDetails =
+                feature.site_details
+                || {};
+
+            const isCampingSite =
+                feature.feature_type
+                === 'camping_site';
+
+            const siteCode =
+                String(
+                    siteDetails.site_code
+                    || ''
+                ).trim();
+
             const title =
                 document.createElement(
                     'strong'
@@ -626,9 +743,14 @@
             title.textContent =
                 String(
                     feature.label
-                    || featureTypeLabels[
-                        feature.feature_type
-                    ]
+                    || (
+                        isCampingSite
+                        && siteCode !== ''
+                            ? `Site ${siteCode}`
+                            : featureTypeLabels[
+                                feature.feature_type
+                            ]
+                    )
                     || 'Mapped area'
                 );
 
@@ -637,48 +759,330 @@
                     'span'
                 );
 
+            const siteType =
+                siteTypeLabels[
+                    siteDetails.site_type
+                ] || '';
+
             type.textContent =
-                featureTypeLabels[
-                    feature.feature_type
+                [
+                    featureTypeLabels[
+                        feature.feature_type
+                    ]
+                    || 'Mapped area',
+                    siteType
                 ]
-                || 'Mapped area';
+                    .filter(Boolean)
+                    .join(' · ');
 
             wrapper.append(
                 title,
                 type
             );
 
+            const meta =
+                document.createElement(
+                    'div'
+                );
+
+            meta.className =
+                'place-map-popup-meta';
+
+            const appendMeta =
+                (label) => {
+                    const text =
+                        String(
+                            label
+                            || ''
+                        ).trim();
+
+                    if (text === '') {
+                        return;
+                    }
+
+                    const row =
+                        document.createElement(
+                            'span'
+                        );
+
+                    row.textContent =
+                        text;
+
+                    meta.append(
+                        row
+                    );
+                };
+
             const details =
                 feature.area_details
                 || {};
 
-            [
-                areaUseLabels[
-                    details.area_use
-                ] || '',
-                feeStatusLabels[
-                    details.fee_status
-                ] || '',
-                overnightStatusLabels[
-                    details.overnight_status
-                ] || ''
-            ]
-                .filter(Boolean)
-                .forEach(
-                    (label) => {
-                        const detail =
-                            document.createElement(
-                                'span'
+            if (isCampingSite) {
+                const parentLabel =
+                    String(
+                        siteDetails
+                            .parent_area_label
+                        || ''
+                    ).trim();
+
+                if (parentLabel !== '') {
+                    appendMeta(
+                        `Inside ${parentLabel}`
+                    );
+                }
+
+                appendMeta(
+                    siteParkingStyleLabels[
+                        siteDetails
+                            .parking_style
+                    ] || ''
+                );
+
+                appendMeta(
+                    siteHookupLabels[
+                        siteDetails
+                            .hookup_status
+                    ] || ''
+                );
+
+                appendMeta(
+                    siteAccessibleLabels[
+                        siteDetails
+                            .accessible_status
+                    ] || ''
+                );
+
+            } else {
+                appendMeta(
+                    areaUseLabels[
+                        details.area_use
+                    ] || ''
+                );
+
+                appendMeta(
+                    feeStatusLabels[
+                        details.fee_status
+                    ] || ''
+                );
+
+                appendMeta(
+                    overnightStatusLabels[
+                        details
+                            .overnight_status
+                    ] || ''
+                );
+            }
+
+            if (meta.childElementCount > 0) {
+                wrapper.append(
+                    meta
+                );
+            }
+
+            const rateSummary =
+                feature
+                    .effective_rate_summary
+                || feature.rate_summary
+                || {};
+
+            const rateCount =
+                Number(
+                    rateSummary.count
+                    || 0
+                );
+
+            const minRate =
+                Number(
+                    rateSummary.minimum
+                );
+
+            const maxRate =
+                Number(
+                    rateSummary.maximum
+                );
+
+            if (
+                rateCount > 0
+                && Number.isFinite(minRate)
+            ) {
+                const summary =
+                    document.createElement(
+                        'span'
+                    );
+
+                summary.className =
+                    'place-map-popup-rate-summary';
+
+                if (
+                    Number.isFinite(maxRate)
+                    && Math.abs(
+                        maxRate - minRate
+                    ) > 0.004
+                ) {
+                    summary.textContent =
+                        `${formatCurrency(
+                            minRate
+                        )}–${formatCurrency(
+                            maxRate
+                        )} / night`;
+                } else {
+                    summary.textContent =
+                        `${formatCurrency(
+                            minRate
+                        )} / night`;
+                }
+
+                wrapper.append(
+                    summary
+                );
+            }
+
+            const effectiveRates =
+                Array.isArray(
+                    feature.effective_rates
+                )
+                    ? feature.effective_rates
+                    : [];
+
+            if (effectiveRates.length > 0) {
+                const localRateTypes =
+                    new Set(
+                        (
+                            Array.isArray(
+                                feature.rates
+                            )
+                                ? feature.rates
+                                : []
+                        )
+                            .map(
+                                (rate) =>
+                                    String(
+                                        rate.rate_type
+                                        || ''
+                                    )
+                            )
+                    );
+
+                const rateList =
+                    document.createElement(
+                        'div'
+                    );
+
+                rateList.className =
+                    'place-map-popup-rate-list';
+
+                effectiveRates
+                    .slice(0, 8)
+                    .forEach(
+                        (rate) => {
+                            const row =
+                                document.createElement(
+                                    'div'
+                                );
+
+                            row.className =
+                                'place-map-popup-rate';
+
+                            const label =
+                                document.createElement(
+                                    'span'
+                                );
+
+                            const customLabel =
+                                String(
+                                    rate.label
+                                    || ''
+                                ).trim();
+
+                            const rateType =
+                                String(
+                                    rate.rate_type
+                                    || ''
+                                );
+
+                            label.textContent =
+                                customLabel
+                                || rateTypeLabels[
+                                    rateType
+                                ]
+                                || 'Rate';
+
+                            const amount =
+                                document.createElement(
+                                    'strong'
+                                );
+
+                            amount.textContent =
+                                `${formatCurrency(
+                                    rate.amount,
+                                    rate.currency
+                                )}/night`;
+
+                            row.append(
+                                label,
+                                amount
                             );
 
-                        detail.textContent =
-                            label;
+                            const notes = [];
 
-                        wrapper.append(
-                            detail
-                        );
-                    }
+                            const season =
+                                formatSeason(
+                                    rate.season_start,
+                                    rate.season_end
+                                );
+
+                            if (season !== '') {
+                                notes.push(
+                                    season
+                                );
+                            }
+
+                            if (
+                                isCampingSite
+                                && !localRateTypes
+                                    .has(rateType)
+                            ) {
+                                notes.push(
+                                    'Campground rate'
+                                );
+                            }
+
+                            const rateNotes =
+                                String(
+                                    rate.notes
+                                    || ''
+                                ).trim();
+
+                            if (rateNotes !== '') {
+                                notes.push(
+                                    rateNotes
+                                );
+                            }
+
+                            if (notes.length > 0) {
+                                const small =
+                                    document.createElement(
+                                        'small'
+                                    );
+
+                                small.textContent =
+                                    notes.join(' · ');
+
+                                row.append(
+                                    small
+                                );
+                            }
+
+                            rateList.append(
+                                row
+                            );
+                        }
+                    );
+
+                wrapper.append(
+                    rateList
                 );
+            }
 
             return wrapper;
         };
@@ -810,7 +1214,6 @@
                 );
             }
 
-            marker.bringToFront();
         };
 
     mapCard
@@ -986,7 +1389,6 @@
                     );
 
                 fitMappedAreas();
-                marker.bringToFront();
 
             } catch (error) {
                 console.error(
