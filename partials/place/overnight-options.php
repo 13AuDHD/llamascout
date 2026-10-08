@@ -204,6 +204,18 @@ $overnightRateText =
             );
 
         if (
+            empty($summary['count'])
+            && !empty(
+                $feature['site_class_rate_summary']
+            )
+        ) {
+            $summary =
+                (array) $feature[
+                    'site_class_rate_summary'
+                ];
+        }
+
+        if (
             !isset(
                 $summary['minimum']
             )
@@ -376,6 +388,16 @@ $overnightCanEdit =
                         ?? 0
                     )
                     : 0;
+
+            $pricingClassCount =
+                $featureType === 'camping_area'
+                    ? count(
+                        (array) (
+                            $feature['site_classes']
+                            ?? []
+                        )
+                    )
+                    : 0;
             ?>
 
             <article
@@ -466,6 +488,19 @@ $overnightCanEdit =
                                         $overnightStatus
                                     ]
                                 ) ?>
+                            </strong>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (
+                        $featureType
+                        === 'camping_area'
+                        && $pricingClassCount > 0
+                    ): ?>
+                        <div>
+                            <span>Pricing classes</span>
+                            <strong>
+                                <?= $pricingClassCount ?>
                             </strong>
                         </div>
                     <?php endif; ?>
