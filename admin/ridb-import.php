@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb-import.php';
-require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
+require_once dirname(__DIR__) . '/app/ridb-canonical.php';
 
 $adminUser =
     moderation_require_admin();
@@ -106,16 +106,23 @@ if (
                         $facilityId
                     );
 
-                $result =
-                    llama_ridb_public_finalize_import(
+                $canonical =
+                    llama_ridb_canonical_sync_place(
                         db(),
                         ridb_db(),
                         (int) (
-                            $adminUser['id']
+                            $result['place_id']
                             ?? 0
                         ),
-                        $facilityId,
-                        $result
+                        $facilityId
+                    );
+
+                $result['canonical_answers'] =
+                    (int) (
+                        $canonical[
+                            'answer_count'
+                        ]
+                        ?? 0
                     );
 
                 $results[] =
@@ -160,7 +167,6 @@ require __DIR__ . '/_header.php';
 </section>
 <?php endif; ?>
 
-
 <section class="admin-panel">
 <header class="admin-panel-header">
     <div>
@@ -170,10 +176,10 @@ require __DIR__ . '/_header.php';
 </header>
 
 <p>
-    Facilities are selected from the local RIDB catalog.
-    Importing refreshes the source data, creates or synchronizes the
-    Llama Scout Place, normalizes public-facing text, and attaches
-    usable RIDB photos to the normal Place gallery.
+    RIDB answers that match existing Llama Scout questions are
+    written into the same canonical Place fields used by manual
+    reports. They therefore use the existing cards and count as
+    answered Place questions.
 </p>
 
 <div class="admin-user-form-actions">
@@ -187,7 +193,6 @@ require __DIR__ . '/_header.php';
 </a>
 </div>
 </section>
-
 
 <?php if ($results): ?>
 <section class="admin-panel">
@@ -203,7 +208,7 @@ require __DIR__ . '/_header.php';
     <th>Place</th>
     <th>Campsites</th>
     <th>Attributes</th>
-    <th>Photos</th>
+    <th>Place answers</th>
     <th></th>
 </tr>
 </thead>
@@ -284,12 +289,12 @@ require __DIR__ . '/_header.php';
         : '' ?>
 </td>
 
-<td data-label="Photos">
+<td data-label="Place answers">
     <?= isset(
-        $result['media_imported']
+        $result['canonical_answers']
     )
         ? number_format(
-            (int) $result['media_imported']
+            (int) $result['canonical_answers']
         )
         : '' ?>
 </td>
@@ -326,7 +331,6 @@ require __DIR__ . '/_header.php';
 </section>
 <?php endif; ?>
 
-
 <?php if (
     ($_SERVER['REQUEST_METHOD'] ?? '')
     !== 'POST'
@@ -346,6 +350,5 @@ require __DIR__ . '/_header.php';
 
 </section>
 <?php endif; ?>
-
 
 <?php require __DIR__ . '/_footer.php'; ?>
