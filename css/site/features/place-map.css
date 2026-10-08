@@ -138,6 +138,44 @@
     font-size: .7rem;
 }
 
+.place-map-feature-popup .place-map-popup-meta {
+    display: grid;
+    gap: 3px;
+    padding-top: 5px;
+    border-top: 1px solid #e4e4e4;
+}
+
+.place-map-feature-popup .place-map-popup-rate-list {
+    display: grid;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.place-map-feature-popup .place-map-popup-rate {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: baseline;
+}
+
+.place-map-feature-popup .place-map-popup-rate strong {
+    font-size: .72rem;
+    white-space: nowrap;
+}
+
+.place-map-feature-popup .place-map-popup-rate small {
+    grid-column: 1 / -1;
+    color: #777;
+    font-size: .62rem;
+    line-height: 1.3;
+}
+
+.place-map-feature-popup .place-map-popup-rate-summary {
+    margin-top: 3px;
+    font-weight: 800;
+    color: #333;
+}
+
 /* Same Place-pin language used by the full map without loading map.css. */
 .place-map-marker-shell {
     border: 0;
@@ -193,6 +231,13 @@
 .place-map-feature--parking-area {
     stroke: #2563eb;
     fill: #2563eb;
+}
+
+.place-map-feature--camping-site {
+    stroke: #d97706;
+    fill: #d97706;
+    stroke-width: 2;
+    fill-opacity: .26;
 }
 
 .place-map-feature:hover,
@@ -284,6 +329,10 @@
 
 .place-map-area-legend-item.is-parking-area i {
     color: #6fa3ff;
+}
+
+.place-map-area-legend-item.is-camping-site i {
+    color: #f2a13b;
 }
 
 .place-map-area-fit {
