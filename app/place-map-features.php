@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/place-map-site-classes.php';
+
 const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON = 'polygon';
 const LLAMA_PLACE_MAP_FEATURE_SRID = 4326;
 const LLAMA_PLACE_MAP_FEATURE_CRS = 'EPSG:4326';
@@ -301,6 +303,28 @@ function llama_place_map_feature_validate_site_details(
         );
     }
 
+    $siteClassId =
+        max(
+            0,
+            (int) (
+                $details['site_class_id']
+                ?? 0
+            )
+        );
+
+    if (
+        $siteClassId > 0
+        && !llama_place_map_site_class_belongs_to_area(
+            $db,
+            $siteClassId,
+            $parentFeatureId
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'The selected site pricing class does not belong to this Camping area.'
+        );
+    }
+
     $siteCode =
         trim(
             (string) (
@@ -399,6 +423,11 @@ function llama_place_map_feature_validate_site_details(
         'camping_area_feature_id' =>
             $parentFeatureId,
 
+        'site_class_id' =>
+            $siteClassId > 0
+                ? $siteClassId
+                : null,
+
         'site_code' =>
             $siteCode !== ''
                 ? $siteCode
@@ -449,6 +478,7 @@ function llama_place_map_feature_site_details_save(
         (
             feature_id,
             camping_area_feature_id,
+            site_class_id,
             site_code,
             site_type,
             parking_style,
@@ -470,12 +500,15 @@ function llama_place_map_feature_site_details_save(
             ?,
             ?,
             ?,
+            ?,
             UTC_TIMESTAMP(),
             UTC_TIMESTAMP()
         )
         ON DUPLICATE KEY UPDATE
             camping_area_feature_id =
                 VALUES(camping_area_feature_id),
+            site_class_id =
+                VALUES(site_class_id),
             site_code =
                 VALUES(site_code),
             site_type =
@@ -495,6 +528,7 @@ function llama_place_map_feature_site_details_save(
     $stmt->execute([
         $featureId,
         $details['camping_area_feature_id'],
+        $details['site_class_id'],
         $details['site_code'],
         $details['site_type'],
         $details['parking_style'],
@@ -1204,6 +1238,8 @@ function llama_place_map_features(
 
             site_details.camping_area_feature_id
                 AS camping_area_feature_id,
+            site_details.site_class_id
+                AS site_class_id,
             site_details.site_code AS site_code,
             site_details.site_type AS site_type,
             site_details.parking_style AS parking_style,
@@ -1368,6 +1404,12 @@ function llama_place_map_features(
                         'parent_area_label' =>
                             $row['parent_area_label']
                             ?? null,
+
+                        'site_class_id' =>
+                            $row['site_class_id']
+                            === null
+                                ? null
+                                : (int) $row['site_class_id'],
 
                         'site_code' =>
                             $row['site_code']
@@ -1587,6 +1629,11 @@ function llama_place_map_features(
     }
     unset($feature);
 
+    llama_place_map_hydrate_site_classes(
+        $db,
+        $features
+    );
+
     return $features;
 }
 
@@ -1624,7 +1671,8 @@ function llama_place_map_feature_save(
     mixed $metadata = [],
     mixed $areaDetails = [],
     mixed $siteDetails = [],
-    mixed $rates = []
+    mixed $rates = [],
+    mixed $siteClasses = []
 ): int {
     if ($placeId < 1 || $userId < 1) {
         throw new InvalidArgumentException(
@@ -1706,6 +1754,13 @@ function llama_place_map_feature_save(
             $featureType,
             $rates
         );
+
+    $siteClasses =
+        $featureType === 'camping_area'
+            ? llama_place_map_validate_site_classes(
+                $siteClasses
+            )
+            : [];
 
     $metadataJson =
         $metadata
@@ -1790,6 +1845,14 @@ function llama_place_map_feature_save(
             $userId,
             $featureType,
             $rates
+        );
+
+        llama_place_map_site_classes_save(
+            $db,
+            $featureId,
+            $userId,
+            $featureType,
+            $siteClasses
         );
 
         return $featureId;
@@ -1893,6 +1956,14 @@ function llama_place_map_feature_save(
         $userId,
         $featureType,
         $rates
+    );
+
+    llama_place_map_site_classes_save(
+        $db,
+        $newFeatureId,
+        $userId,
+        $featureType,
+        $siteClasses
     );
 
     return $newFeatureId;
