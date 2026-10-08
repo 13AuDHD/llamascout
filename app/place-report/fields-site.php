@@ -8,12 +8,19 @@ function llama_place_report_add_site_fields(
     callable $add
 ): void {
     /* Site and vehicle */
-    $add('campsite_count', 'Number of campsites', 'site_vehicle', 'number', 'details.campsite_count', [
+    $add('campsite_count', 'Number of campsites', 'campground', 'number', 'details.campsite_count', [
         'step' => '1',
         'min' => '1',
         'max' => '10000',
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
+    ]);
+
+    $add('site_number', 'Site number / identifier', 'site_vehicle', 'text', 'details.site_number', [
+        'maxlength' => 80,
+        'placeholder' => 'Example: 14, B-27, Loop C #8',
+        'counts_toward_completion' => false,
+        'points_categories' => [],
     ]);
 
     $add('site_accessible', 'Site accessible?', 'site_vehicle', 'tri', 'details.site_accessible', [
@@ -147,26 +154,24 @@ function llama_place_report_add_site_fields(
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
+    $add('capacity_size_rating', 'Capacity / size rating', 'site_vehicle', 'text', 'details.capacity_size_rating', [
+        'maxlength' => 80,
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
 
     foreach ([
         'site_rating' => 'Site rating',
         'condition_rating' => 'Condition rating',
         'location_rating' => 'Location rating',
-        'capacity_size_rating' => 'Capacity / size rating',
     ] as $key => $label) {
         $add($key, $label, 'site_vehicle', 'text', 'details.' . $key, [
+            'display_section' => 'experience',
             'maxlength' => 80,
             'allow_unknown' => true,
-            'points_categories' => ['site_vehicle'],
+            'points_categories' => ['experience_recommendations'],
         ]);
     }
-
-    $add('site_number', 'Site number / identifier', 'site_vehicle', 'text', 'details.site_number', [
-        'maxlength' => 80,
-        'placeholder' => 'Example: 14, B-27, Loop C #8',
-        'counts_toward_completion' => false,
-        'points_categories' => [],
-    ]);
 
     $add('site_hookups_available', 'Hookups at this site?', 'site_vehicle', 'tri', 'details.site_hookups_available', [
         'allow_unknown' => true,

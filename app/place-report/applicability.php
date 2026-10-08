@@ -165,6 +165,7 @@ function llama_place_report_apply_applicability(
     $setApplicable(
         $f,
         [
+            'site_number',
             'site_accessible',
             'max_people',
             'overhead_clearance_feet',
@@ -515,7 +516,6 @@ function llama_place_report_apply_applicability(
         $f,
         [
             'campsite_count',
-            'site_number',
             'site_hookups_available',
         ],
         [[

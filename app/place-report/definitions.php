@@ -75,6 +75,11 @@ function llama_place_report_sections(): array
             'icon' => 'current-location',
             'open' => true,
         ],
+        'campground' => [
+            'label' => 'Campground',
+            'description' => 'Campground-wide facts that apply to the property as a whole',
+            'icon' => 'tent',
+        ],
         'site_vehicle' => [
             'label' => 'Site and vehicle fit',
             'description' => 'Size, parking, tents, RVs, trailers, and leveling',
