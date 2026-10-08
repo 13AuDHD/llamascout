@@ -509,12 +509,23 @@ function llama_place_campsite_browser_state(
     $siteCount =
         count($sites);
 
+    $siteCapableMode =
+        in_array(
+            $mode,
+            [
+                'campground',
+                'camping',
+            ],
+            true
+        );
+
     $showBrowser =
-        $mode === 'campground'
+        $siteCapableMode
         && $siteCount > 1;
 
     $showSingleSite =
-        $siteCount === 1;
+        $siteCapableMode
+        && $siteCount === 1;
 
     return [
         'mode' =>
