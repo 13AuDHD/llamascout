@@ -363,9 +363,65 @@
             );
     };
 
+    const siteFeatureValues = (
+        site,
+        key
+    ) => {
+        const features =
+            Array.isArray(site.features)
+                ? site.features
+                : [];
+
+        return features
+            .filter(
+                (feature) =>
+                    clean(
+                        feature.feature_key
+                    ) === key
+            )
+            .map(
+                (feature) =>
+                    featureValue(
+                        key,
+                        feature.feature_value
+                    )
+            )
+            .filter(Boolean);
+    };
+
+    const siteFeature = (
+        site,
+        key
+    ) =>
+        siteFeatureValues(
+            site,
+            key
+        )[0] || '';
+
+    const accessibleLabel = (value) => {
+        const status =
+            clean(value)
+                .toLowerCase();
+
+        if (status === 'yes') {
+            return 'Yes';
+        }
+
+        if (status === 'no') {
+            return 'No';
+        }
+
+        if (status === 'unknown') {
+            return 'Unknown';
+        }
+
+        return yesNo(value);
+    };
+
     const card = (
         label,
-        value
+        value,
+        icon = ''
     ) => {
         const text =
             clean(value);
@@ -374,12 +430,25 @@
             return '';
         }
 
+        const iconMarkup =
+            icon
+                ? `
+                    <img
+                        class="place-campsite-card-icon"
+                        src="/assets/icons/${escapeHtml(icon)}.svg"
+                        alt=""
+                        aria-hidden="true"
+                    >
+                `
+                : '';
+
         return `
             <div class="place-campsite-card scout-report-item scout-report-value-item">
                 <div class="place-campsite-card-content scout-report-value-content">
                     <span>${escapeHtml(label)}</span>
                     <strong>${escapeHtml(text)}</strong>
                 </div>
+                ${iconMarkup}
             </div>
         `;
     };
@@ -399,7 +468,10 @@
             `
             : '';
 
-    const renderSiteDetail = (site) => {
+    const renderSiteDetail = (
+        site,
+        totalSites = 0
+    ) => {
         const dimensions = [
             feet(site.site_length_ft),
             feet(site.site_width_ft)
@@ -410,7 +482,50 @@
             feet(site.tent_pad_width_ft)
         ].filter(Boolean);
 
-        const capacityCards = [
+        const siteType =
+            siteTypeLabel(
+                site.site_type
+            );
+
+        const dimensionsText =
+            dimensions.length === 2
+                ? dimensions.join(' x ')
+                : dimensions[0] || '';
+
+        const tentPadSize =
+            tentPadDimensions.length === 2
+                ? tentPadDimensions.join(' x ')
+                : tentPadDimensions[0] || '';
+
+        const hikeInDistance =
+            siteFeature(
+                site,
+                'hike_in_distance'
+            );
+
+        const overviewCards = [
+            card(
+                'Total sites',
+                number(totalSites) !== null
+                    && Number(totalSites) > 0
+                    ? totalSites
+                    : ''
+            ),
+            card(
+                'Site accessible?',
+                accessibleLabel(
+                    site.accessible_status
+                ),
+                'wheelchair'
+            ),
+            card(
+                'Site type',
+                siteType
+            ),
+            card(
+                'Site size',
+                dimensionsText
+            ),
             card(
                 'Maximum people',
                 number(site.max_people) !== null
@@ -428,6 +543,44 @@
                 feet(site.max_vehicle_length_ft)
             ),
             card(
+                'Tent pad',
+                yesNo(site.tent_pad),
+                'tent'
+            ),
+            card(
+                'Tent pad size',
+                tentPadSize,
+                'ruler-measure'
+            ),
+            card(
+                'Capacity / size rating',
+                siteFeature(
+                    site,
+                    'capacity_size_rating'
+                )
+            ),
+            card(
+                'Site rating',
+                siteFeature(
+                    site,
+                    'site_rating'
+                )
+            ),
+            card(
+                'Location rating',
+                siteFeature(
+                    site,
+                    'location_rating'
+                )
+            ),
+            card(
+                'Condition rating',
+                siteFeature(
+                    site,
+                    'condition_rating'
+                )
+            ),
+            card(
                 'Maximum horses',
                 number(site.max_horses) !== null
                     ? site.max_horses
@@ -440,6 +593,15 @@
                 'Parking style',
                 parkingLabel(
                     site.parking_style
+                )
+            ),
+            card(
+                'Double driveway?',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'double_driveway'
+                    )
                 )
             ),
             card(
@@ -465,6 +627,18 @@
                 feet(
                     site.overhead_clearance_ft
                 )
+            ),
+            card(
+                'Hike-in distance',
+                hikeInDistance
+                    ? (
+                        /\bft\b/i.test(
+                            hikeInDistance
+                        )
+                            ? hikeInDistance
+                            : `${hikeInDistance} ft`
+                    )
+                    : ''
             )
         ].join('');
 
@@ -501,16 +675,60 @@
             )
         ].join('');
 
-        const tentCards = [
+        const siteAmenityCards = [
             card(
-                'Tent pad',
-                yesNo(site.tent_pad)
+                'Picnic table',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'picnic_table'
+                    )
+                )
             ),
             card(
-                'Tent pad size',
-                tentPadDimensions.length === 2
-                    ? tentPadDimensions.join(' x ')
-                    : tentPadDimensions[0] || ''
+                'Grill / barbecue',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'grill'
+                    )
+                )
+            ),
+            card(
+                'Fire ring',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'fire_ring'
+                    )
+                )
+            ),
+            card(
+                'Pets allowed',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'pets_allowed'
+                    )
+                )
+            ),
+            card(
+                'Food storage',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'food_storage'
+                    )
+                )
+            ),
+            card(
+                'Lantern post',
+                yesNo(
+                    siteFeature(
+                        site,
+                        'lantern_post'
+                    )
+                )
             )
         ].join('');
 
@@ -523,19 +741,19 @@
             ),
             card(
                 'Shade',
-                smartCase(
+                yesNo(
                     site.shade_source_value
                 )
             ),
             card(
                 'Privacy',
-                smartCase(
+                yesNo(
                     site.privacy_source_value
                 )
             ),
             card(
                 'Quiet area',
-                smartCase(
+                yesNo(
                     site.quiet_area_source_value
                 )
             )
@@ -553,26 +771,6 @@
                 timeLabel(
                     site.checkout_time
                 )
-            ),
-            card(
-                'Accessibility',
-                clean(
-                    site.accessible_status
-                ) === 'yes'
-                    ? 'Accessible'
-                    : (
-                        clean(
-                            site.accessible_status
-                        ) === 'no'
-                            ? 'Not designated accessible'
-                            : (
-                                clean(
-                                    site.accessible_status
-                                ) === 'unknown'
-                                    ? 'Unknown'
-                                    : ''
-                            )
-                    )
             )
         ].join('');
 
@@ -607,16 +805,6 @@
             )
         ].join('');
 
-        const siteType =
-            siteTypeLabel(
-                site.site_type
-            );
-
-        const dimensionsText =
-            dimensions.length === 2
-                ? dimensions.join(' x ')
-                : dimensions[0] || '';
-
         return `
             <article
                 class="place-campsite-detail"
@@ -627,21 +815,12 @@
                         <p class="eyebrow">Selected campsite</p>
                         <h3>${escapeHtml(smartCase(site.display_name))}</h3>
                     </div>
-
-                    <div class="place-campsite-detail-summary">
-                        ${siteType
-                            ? `<span>${escapeHtml(siteType)}</span>`
-                            : ''}
-                        ${dimensionsText
-                            ? `<span>${escapeHtml(dimensionsText)}</span>`
-                            : ''}
-                    </div>
                 </header>
 
                 <div class="place-campsite-detail-grid">
                     ${section(
-                        'Capacity & fit',
-                        capacityCards
+                        'Site details',
+                        overviewCards
                     )}
 
                     ${section(
@@ -655,8 +834,8 @@
                     )}
 
                     ${section(
-                        'Tent setup',
-                        tentCards
+                        'Site amenities',
+                        siteAmenityCards
                     )}
 
                     ${section(
@@ -779,7 +958,7 @@
                         </div>
                     </div>
 
-                    ${renderSiteDetail(sites[0])}
+                    ${renderSiteDetail(sites[0], sites.length)}
                 </section>
             `;
 
@@ -946,7 +1125,7 @@
                 );
 
             detail.innerHTML =
-                renderSiteDetail(site);
+                renderSiteDetail(site, sites.length);
 
             mount
                 .querySelectorAll(
