@@ -32,10 +32,57 @@
         return node.innerHTML;
     };
 
+    const repairMojibake = (value) => {
+        let text =
+            String(
+                value ?? ''
+            ).trim();
+
+        if (!text) {
+            return '';
+        }
+
+        if (
+            /(?:Â|Ã|â€|â€™|â€œ|â€|â€“|â€”|â€¦)/.test(
+                text
+            )
+        ) {
+            try {
+                const bytes =
+                    Uint8Array.from(
+                        Array.from(text).map(
+                            (character) =>
+                                character.charCodeAt(0)
+                                & 0xff
+                        )
+                    );
+
+                const repaired =
+                    new TextDecoder(
+                        'utf-8',
+                        {
+                            fatal: true
+                        }
+                    ).decode(bytes);
+
+                if (repaired) {
+                    text = repaired;
+                }
+            } catch (error) {
+                text = text
+                    .replaceAll('Â·', '-')
+                    .replaceAll('Â×', 'x')
+                    .replaceAll('Â', '');
+            }
+        }
+
+        return text
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
     const clean = (value) =>
-        String(
-            value ?? ''
-        ).trim();
+        repairMojibake(value);
 
     const number = (value) => {
         const parsed =
@@ -77,17 +124,20 @@
         }
 
         const normalized =
-            String(value)
-                .toLowerCase()
-                .trim();
+            clean(value)
+                .toLowerCase();
 
         if (
             value === true
             || value === 1
-            || normalized === '1'
-            || normalized === 'yes'
-            || normalized === 'y'
-            || normalized === 'true'
+            || [
+                '1',
+                'yes',
+                'y',
+                'true',
+                'available',
+                'allowed'
+            ].includes(normalized)
         ) {
             return 'Yes';
         }
@@ -95,10 +145,15 @@
         if (
             value === false
             || value === 0
-            || normalized === '0'
-            || normalized === 'no'
-            || normalized === 'n'
-            || normalized === 'false'
+            || [
+                '0',
+                'no',
+                'n',
+                'false',
+                'none',
+                'not available',
+                'not allowed'
+            ].includes(normalized)
         ) {
             return 'No';
         }
@@ -106,58 +161,122 @@
         return clean(value);
     };
 
-    const siteTypeLabel = (value) => {
-        const labels = {
-            rv_site: 'RV site',
-            tent_site: 'Tent site',
-            mixed_site: 'Tent / RV',
-            vehicle_site: 'Vehicle site',
-            group_site: 'Group site',
-            other: 'Other'
-        };
+    const smartCase = (value) => {
+        const text =
+            clean(value);
 
-        return labels[value]
-            || clean(value)
-                .replaceAll('_', ' ');
+        if (!text) {
+            return '';
+        }
+
+        const letters =
+            text.replace(
+                /[^A-Za-z]/g,
+                ''
+            );
+
+        if (
+            letters
+            && letters === letters.toUpperCase()
+        ) {
+            return text
+                .toLowerCase()
+                .replace(
+                    /\b[a-z]/g,
+                    (letter) =>
+                        letter.toUpperCase()
+                )
+                .replace(/\bRv\b/g, 'RV')
+                .replace(/\bAda\b/g, 'ADA')
+                .replace(/\bUs\b/g, 'US');
+        }
+
+        return text;
     };
 
-    const parkingLabel = (value) => {
-        const labels = {
-            pull_through: 'Pull-through',
-            back_in: 'Back-in',
-            pull_in: 'Pull-in',
-            parallel: 'Parallel',
-            other: 'Other',
-            unknown: 'Unknown'
-        };
-
-        return labels[value]
-            || clean(value)
-                .replaceAll('_', ' ');
+    const labels = {
+        site_access: 'Site access',
+        double_driveway: 'Double driveway',
+        campfire_allowed: 'Campfire allowed',
+        fire_ring: 'Fire ring',
+        grill: 'Grill',
+        picnic_table: 'Picnic table',
+        food_storage: 'Food storage',
+        toilet: 'Toilet',
+        trash_collection: 'Trash collection',
+        pets_allowed: 'Pets allowed',
+        equipment_mandatory: 'Equipment mandatory',
+        lantern_post: 'Lantern post',
+        lake_access: 'Lake access',
+        river_access: 'River access',
+        trailhead: 'Trailhead',
+        trailhead_parking: 'Trailhead parking',
+        accessibility: 'Accessibility',
+        accessible_occupant_message: 'Accessibility note',
+        accessible_boat_ramp: 'Accessible boat ramp',
+        accessible_boat_dock: 'Accessible boat dock',
+        accessible_campsites: 'Accessible campsite',
+        recycling: 'Recycling',
+        amphitheater: 'Amphitheater',
+        geological_attractions: 'Geological attractions',
+        scenic_overlooks: 'Scenic overlooks',
+        visitor_center: 'Visitor center',
+        self_pay_station: 'Self-pay station',
+        day_use_area: 'Day-use area',
+        fishing_pier: 'Fishing pier',
+        picnic_shelter: 'Picnic shelter',
+        playground: 'Playground',
+        full_hookup: 'Full hookup',
+        electricity_available: 'Electricity available',
+        potable_water: 'Potable water',
+        drinking_water: 'Drinking water',
+        flush_toilet: 'Flush toilets',
+        campfire_circle: 'Campfire circle',
+        paved_parking: 'Paved parking',
+        platform: 'Platform',
+        site_rating: 'Site rating',
+        condition_rating: 'Condition rating',
+        location_rating: 'Location rating',
+        capacity_size_rating: 'Capacity / size',
+        hike_in_distance: 'Hike-in distance'
     };
 
-    const hookupLabel = (value) => {
-        const labels = {
-            full: 'Full hookups',
-            electric_water: 'Electric + water',
-            electric_only: 'Electric only',
-            water_only: 'Water only',
-            none: 'No hookups',
-            varies: 'Varies',
-            unknown: 'Unknown'
-        };
+    const featureLabel = (value) => {
+        const key =
+            clean(value);
 
-        return labels[value]
-            || clean(value)
-                .replaceAll('_', ' ');
-    };
+        if (labels[key]) {
+            return labels[key];
+        }
 
-    const featureLabel = (value) =>
-        clean(value)
+        return key
             .replaceAll('_', ' ')
             .replace(/\b\w/g, (letter) =>
                 letter.toUpperCase()
             );
+    };
+
+    const featureValue = (
+        key,
+        value
+    ) => {
+        const normalized =
+            yesNo(value);
+
+        if (
+            key === 'hike_in_distance'
+            && normalized !== ''
+            && !Number.isNaN(
+                Number(normalized)
+            )
+        ) {
+            return `${normalized} ft`;
+        }
+
+        return smartCase(
+            normalized
+        );
+    };
 
     const timeLabel = (value) => {
         const text =
@@ -169,7 +288,7 @@
             );
 
         if (!match) {
-            return text;
+            return smartCase(text);
         }
 
         let hour =
@@ -192,7 +311,59 @@
         return `${hour}:${minute} ${suffix}`;
     };
 
-    const fact = (
+    const siteTypeLabel = (value) => {
+        const labels = {
+            rv_site: 'RV site',
+            tent_site: 'Tent site',
+            mixed_site: 'Tent / RV',
+            vehicle_site: 'Vehicle site',
+            group_site: 'Group site',
+            other: 'Other'
+        };
+
+        return labels[value]
+            || smartCase(
+                clean(value)
+                    .replaceAll('_', ' ')
+            );
+    };
+
+    const parkingLabel = (value) => {
+        const labels = {
+            pull_through: 'Pull-through',
+            back_in: 'Back-in',
+            pull_in: 'Pull-in',
+            parallel: 'Parallel',
+            other: 'Other',
+            unknown: 'Unknown'
+        };
+
+        return labels[value]
+            || smartCase(
+                clean(value)
+                    .replaceAll('_', ' ')
+            );
+    };
+
+    const hookupLabel = (value) => {
+        const labels = {
+            full: 'Full hookups',
+            electric_water: 'Electric + water',
+            electric_only: 'Electric only',
+            water_only: 'Water only',
+            none: 'No hookups',
+            varies: 'Varies',
+            unknown: 'Unknown'
+        };
+
+        return labels[value]
+            || smartCase(
+                clean(value)
+                    .replaceAll('_', ' ')
+            );
+    };
+
+    const card = (
         label,
         value
     ) => {
@@ -204,14 +375,31 @@
         }
 
         return `
-            <div class="place-campsite-fact">
-                <span>${escapeHtml(label)}</span>
-                <strong>${escapeHtml(text)}</strong>
+            <div class="place-campsite-card scout-report-item scout-report-value-item">
+                <div class="place-campsite-card-content scout-report-value-content">
+                    <span>${escapeHtml(label)}</span>
+                    <strong>${escapeHtml(text)}</strong>
+                </div>
             </div>
         `;
     };
 
-    const featureRows = (features) => {
+    const section = (
+        title,
+        cards
+    ) =>
+        cards
+            ? `
+                <section class="place-campsite-card-section">
+                    <h4>${escapeHtml(title)}</h4>
+                    <div class="place-campsite-card-grid">
+                        ${cards}
+                    </div>
+                </section>
+            `
+            : '';
+
+    const renderFeatureCards = (features) => {
         if (
             !Array.isArray(features)
             || features.length === 0
@@ -219,46 +407,32 @@
             return '';
         }
 
-        const rows =
+        const cards =
             features
                 .map((feature) => {
-                    const value =
+                    const key =
                         clean(
+                            feature.feature_key
+                        );
+
+                    const value =
+                        featureValue(
+                            key,
                             feature.feature_value
                         );
 
-                    const qualifier =
-                        clean(
-                            feature.qualifier
-                        );
-
-                    const display =
-                        [
-                            value,
-                            qualifier
-                        ]
-                            .filter(Boolean)
-                            .join(' Â· ');
-
-                    return fact(
-                        featureLabel(
-                            feature.feature_key
-                        ),
-                        display || 'Available'
+                    return card(
+                        featureLabel(key),
+                        value || 'Yes'
                     );
                 })
+                .filter(Boolean)
                 .join('');
 
-        return rows
-            ? `
-                <div class="place-campsite-detail-group">
-                    <h4>Site features</h4>
-                    <div class="place-campsite-facts">
-                        ${rows}
-                    </div>
-                </div>
-            `
-            : '';
+        return section(
+            'Site features',
+            cards
+        );
     };
 
     const renderSiteDetail = (site) => {
@@ -272,24 +446,24 @@
             feet(site.tent_pad_width_ft)
         ].filter(Boolean);
 
-        const capacityFacts = [
-            fact(
+        const capacityCards = [
+            card(
                 'Maximum people',
                 number(site.max_people) !== null
                     ? site.max_people
                     : ''
             ),
-            fact(
+            card(
                 'Maximum vehicles',
                 number(site.max_vehicles) !== null
                     ? site.max_vehicles
                     : ''
             ),
-            fact(
+            card(
                 'Maximum vehicle length',
                 feet(site.max_vehicle_length_ft)
             ),
-            fact(
+            card(
                 'Maximum horses',
                 number(site.max_horses) !== null
                     ? site.max_horses
@@ -297,28 +471,32 @@
             )
         ].join('');
 
-        const parkingFacts = [
-            fact(
+        const parkingCards = [
+            card(
                 'Parking style',
                 parkingLabel(
                     site.parking_style
                 )
             ),
-            fact(
+            card(
                 'Driveway length',
                 feet(
                     site.driveway_length_ft
                 )
             ),
-            fact(
+            card(
                 'Driveway surface',
-                site.driveway_surface
+                smartCase(
+                    site.driveway_surface
+                )
             ),
-            fact(
+            card(
                 'Driveway grade',
-                site.driveway_grade
+                smartCase(
+                    site.driveway_grade
+                )
             ),
-            fact(
+            card(
                 'Overhead clearance',
                 feet(
                     site.overhead_clearance_ft
@@ -326,30 +504,32 @@
             )
         ].join('');
 
-        const hookupFacts = [
-            fact(
+        const hookupCards = [
+            card(
                 'Hookups',
                 hookupLabel(
                     site.hookup_status
                 )
             ),
-            fact(
+            card(
                 'Electric hookup',
                 yesNo(
                     site.electric_hookup
                 )
             ),
-            fact(
+            card(
                 'Electric service',
-                site.electric_service
+                smartCase(
+                    site.electric_service
+                )
             ),
-            fact(
+            card(
                 'Water hookup',
                 yesNo(
                     site.water_hookup
                 )
             ),
-            fact(
+            card(
                 'Sewer hookup',
                 yesNo(
                     site.sewer_hookup
@@ -357,52 +537,60 @@
             )
         ].join('');
 
-        const tentFacts = [
-            fact(
+        const tentCards = [
+            card(
                 'Tent pad',
                 yesNo(site.tent_pad)
             ),
-            fact(
+            card(
                 'Tent pad size',
                 tentPadDimensions.length === 2
-                    ? tentPadDimensions.join(' Ã ')
+                    ? tentPadDimensions.join(' x ')
                     : tentPadDimensions[0] || ''
             )
         ].join('');
 
-        const environmentFacts = [
-            fact(
+        const environmentCards = [
+            card(
                 'Proximity to water',
-                site.proximity_to_water
+                smartCase(
+                    site.proximity_to_water
+                )
             ),
-            fact(
+            card(
                 'Shade',
-                site.shade_source_value
+                smartCase(
+                    site.shade_source_value
+                )
             ),
-            fact(
+            card(
                 'Privacy',
-                site.privacy_source_value
+                smartCase(
+                    site.privacy_source_value
+                )
             ),
-            fact(
+            card(
                 'Quiet area',
-                site.quiet_area_source_value
+                smartCase(
+                    site.quiet_area_source_value
+                )
             )
         ].join('');
 
-        const operationFacts = [
-            fact(
+        const operationCards = [
+            card(
                 'Check-in',
                 timeLabel(
                     site.checkin_time
                 )
             ),
-            fact(
+            card(
                 'Checkout',
                 timeLabel(
                     site.checkout_time
                 )
             ),
-            fact(
+            card(
                 'Accessibility',
                 clean(
                     site.accessible_status
@@ -424,49 +612,36 @@
             )
         ].join('');
 
-        const lodgingFacts = [
-            fact(
+        const lodgingCards = [
+            card(
                 'Bed type',
-                site.bed_type
+                smartCase(site.bed_type)
             ),
-            fact(
+            card(
                 'Beds',
                 number(site.bed_count) !== null
                     ? site.bed_count
                     : ''
             ),
-            fact(
+            card(
                 'Bedrooms',
                 number(site.bedroom_count) !== null
                     ? site.bedroom_count
                     : ''
             ),
-            fact(
+            card(
                 'Rooms',
                 number(site.room_count) !== null
                     ? site.room_count
                     : ''
             ),
-            fact(
+            card(
                 'Shower / bath',
-                site.shower_bath_type
+                smartCase(
+                    site.shower_bath_type
+                )
             )
         ].join('');
-
-        const section = (
-            title,
-            rows
-        ) =>
-            rows
-                ? `
-                    <div class="place-campsite-detail-group">
-                        <h4>${escapeHtml(title)}</h4>
-                        <div class="place-campsite-facts">
-                            ${rows}
-                        </div>
-                    </div>
-                `
-                : '';
 
         const siteType =
             siteTypeLabel(
@@ -475,13 +650,8 @@
 
         const dimensionsText =
             dimensions.length === 2
-                ? dimensions.join(' Ã ')
+                ? dimensions.join(' x ')
                 : dimensions[0] || '';
-
-        const source =
-            clean(
-                site.source_provider
-            );
 
         return `
             <article
@@ -491,7 +661,7 @@
                 <header class="place-campsite-detail-heading">
                     <div>
                         <p class="eyebrow">Selected campsite</p>
-                        <h3>${escapeHtml(site.display_name)}</h3>
+                        <h3>${escapeHtml(smartCase(site.display_name))}</h3>
                     </div>
 
                     <div class="place-campsite-detail-summary">
@@ -507,53 +677,43 @@
                 <div class="place-campsite-detail-grid">
                     ${section(
                         'Capacity & fit',
-                        capacityFacts
+                        capacityCards
                     )}
 
                     ${section(
                         'Parking & access',
-                        parkingFacts
+                        parkingCards
                     )}
 
                     ${section(
                         'Hookups',
-                        hookupFacts
+                        hookupCards
                     )}
 
                     ${section(
                         'Tent setup',
-                        tentFacts
+                        tentCards
                     )}
 
                     ${section(
                         'Environment',
-                        environmentFacts
+                        environmentCards
                     )}
 
                     ${section(
                         'Operations',
-                        operationFacts
+                        operationCards
                     )}
 
                     ${section(
                         'Lodging',
-                        lodgingFacts
+                        lodgingCards
                     )}
 
-                    ${featureRows(
+                    ${renderFeatureCards(
                         site.features
                     )}
                 </div>
-
-                ${source
-                    ? `
-                        <p class="place-campsite-source">
-                            Structured site information from
-                            ${escapeHtml(source)}.
-                            Scout observations remain separate.
-                        </p>
-                    `
-                    : ''}
             </article>
         `;
     };
@@ -702,7 +862,7 @@
                         </h2>
                         <p>
                             Shared campground information above applies to
-                            every site. Choose a site to see what changes.
+                            every site. Choose a site to see site-specific details.
                         </p>
                     </div>
 
@@ -893,7 +1053,7 @@
                     const haystack = [
                         site.display_name,
                         site.site_code,
-                        site.map_label,
+                        site.site_name,
                         siteTypeLabel(
                             site.site_type
                         ),
@@ -904,6 +1064,7 @@
                             site.hookup_status
                         )
                     ]
+                        .map(clean)
                         .join(' ')
                         .toLowerCase();
 
@@ -930,6 +1091,8 @@
                                 site.summary
                             )
                                 ? site.summary
+                                    .map(clean)
+                                    .filter(Boolean)
                                 : [];
 
                         const isSelected =
@@ -945,21 +1108,21 @@
                                 aria-current="${isSelected ? 'true' : 'false'}"
                             >
                                 <span class="place-campsite-row-name">
-                                    ${escapeHtml(site.display_name)}
+                                    ${escapeHtml(smartCase(site.display_name))}
                                 </span>
 
                                 <span class="place-campsite-row-summary">
                                     ${escapeHtml(
                                         summary
                                             .slice(0, 3)
-                                            .join(' Â· ')
+                                            .join(' - ')
                                     )}
                                 </span>
 
                                 <span
                                     class="place-campsite-row-arrow"
                                     aria-hidden="true"
-                                >âº</span>
+                                >&gt;</span>
                             </button>
                         `;
                     })
