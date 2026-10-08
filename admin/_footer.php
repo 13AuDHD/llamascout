@@ -76,10 +76,6 @@ if (
                     }
                 );
 
-                /*
-                 * A legacy value not present in the controlled timezone list
-                 * remains visible rather than silently changing it.
-                 */
                 if (
                     currentTimezone !== ''
                     && !Object.prototype.hasOwnProperty.call(
@@ -129,6 +125,10 @@ if (
 
 <?php if ($adminFooterScript === 'moderate-report.php'): ?>
     <script src="/js/admin-place-access-alert.js"></script>
+<?php endif; ?>
+
+<?php if ($adminFooterScript === 'place.php'): ?>
+    <script src="https://llamascout.com/js/admin-place-campsite-link.js"></script>
 <?php endif; ?>
 
 
