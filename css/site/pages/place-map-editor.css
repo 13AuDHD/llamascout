@@ -373,6 +373,91 @@
 
 
 /* =========================================================
+   RATES
+   ========================================================= */
+
+.mapped-area-editor-card-subtitle {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.mapped-area-editor-rate-inheritance {
+    display: grid;
+    gap: 4px;
+    padding: 10px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 74%,
+            var(--background)
+        );
+}
+
+.mapped-area-editor-rate-inheritance[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-rate-inheritance strong {
+    font-size: .74rem;
+}
+
+.mapped-area-editor-rate-inheritance span {
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.mapped-area-editor-rate-inheritance small {
+    color: var(--text-muted);
+    font-size: .64rem;
+    line-height: 1.4;
+}
+
+.mapped-area-editor-rate-list {
+    display: grid;
+    gap: 9px;
+}
+
+.mapped-area-editor-rate-row {
+    display: grid;
+    grid-template-columns:
+        minmax(130px, .8fr)
+        minmax(150px, 1fr)
+        minmax(140px, .8fr)
+        minmax(120px, .7fr)
+        minmax(120px, .7fr)
+        minmax(180px, 1.2fr)
+        auto;
+    gap: 8px;
+    align-items: end;
+
+    padding: 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--background);
+}
+
+.mapped-area-editor-rate-row label {
+    min-width: 0;
+}
+
+.mapped-area-editor-rate-row input,
+.mapped-area-editor-rate-row select {
+    min-height: 40px;
+}
+
+.mapped-area-editor-rate-remove {
+    min-height: 40px;
+    align-self: end;
+    white-space: nowrap;
+}
+
+/* =========================================================
    SHAPE EDITING
    ========================================================= */
 
@@ -662,6 +747,14 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .mapped-area-editor-rate-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .mapped-area-editor-rate-remove {
+        width: 100%;
+    }
+
     .mapped-area-editor-stay-fields {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -729,6 +822,10 @@
     .mapped-area-editor-area-fields,
     .mapped-area-editor-site-fields {
         grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-rate-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .mapped-area-editor-stay-fields {
