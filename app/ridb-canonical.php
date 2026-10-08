@@ -265,6 +265,136 @@ function llama_ridb_canonical_consensus_bool(
     return null;
 }
 
+function llama_ridb_canonical_number(
+    mixed $value
+): ?float {
+    if (is_int($value) || is_float($value)) {
+        return (float) $value;
+    }
+
+    $text = str_replace(
+        ',',
+        '',
+        trim((string) $value)
+    );
+
+    if (
+        $text === ''
+        || preg_match(
+            '/-?\d+(?:\.\d+)?/',
+            $text,
+            $match
+        ) !== 1
+    ) {
+        return null;
+    }
+
+    return (float) $match[0];
+}
+
+function llama_ridb_canonical_consistent_number(
+    array $rows
+): ?float {
+    $values = [];
+
+    foreach ($rows as $row) {
+        $number = llama_ridb_canonical_number(
+            $row['value']
+            ?? null
+        );
+
+        if ($number === null) {
+            continue;
+        }
+
+        $key = number_format($number, 4, '.', '');
+        $values[$key] = $number;
+    }
+
+    if (count($values) !== 1) {
+        return null;
+    }
+
+    return (float) array_values($values)[0];
+}
+
+function llama_ridb_canonical_consistent_text(
+    array $rows
+): ?string {
+    $values = [];
+
+    foreach ($rows as $row) {
+        $text = trim(
+            (string) (
+                $row['value']
+                ?? ''
+            )
+        );
+
+        $key = llama_ridb_normalization_key($text);
+
+        if (
+            $text === ''
+            || in_array(
+                $key,
+                [
+                    'N A',
+                    'NA',
+                    'UNKNOWN',
+                    'NOT APPLICABLE',
+                ],
+                true
+            )
+        ) {
+            continue;
+        }
+
+        $values[$key] = $text;
+    }
+
+    if (count($values) !== 1) {
+        return null;
+    }
+
+    return (string) array_values($values)[0];
+}
+
+function llama_ridb_canonical_surface_value(
+    ?string $value
+): ?string {
+    $key = llama_ridb_normalization_key((string) $value);
+
+    return match ($key) {
+        'PAVED', 'ASPHALT', 'PAVED ASPHALT' => 'paved',
+        'CONCRETE' => 'concrete',
+        'GRAVEL', 'GRADED GRAVEL' => 'graded-gravel',
+        'LOOSE GRAVEL' => 'loose-gravel',
+        'HARD PACKED DIRT', 'HARDPACK', 'HARD PACK' => 'hard-packed-dirt',
+        'DIRT', 'EARTH' => 'dirt',
+        'SAND', 'SANDY' => 'sand',
+        'ROCK', 'ROCKY', 'BEDROCK' => 'rock',
+        'GRASS', 'GRASSY' => 'grass',
+        'MIXED', 'MIXED SURFACE' => 'mixed',
+        default => null,
+    };
+}
+
+function llama_ridb_canonical_grade_value(
+    ?string $value
+): ?string {
+    $key = llama_ridb_normalization_key((string) $value);
+
+    return match ($key) {
+        'LEVEL', 'FLAT' => 'level',
+        'SLIGHT', 'SLIGHT GRADE' => 'slight',
+        'MODERATE', 'MODERATE GRADE' => 'moderate',
+        'STEEP', 'STEEP GRADE' => 'steep',
+        'VERY STEEP', 'VERY STEEP GRADE' => 'very-steep',
+        'VARIES', 'VARIABLE' => 'varies',
+        default => null,
+    };
+}
+
 function llama_ridb_canonical_consistent_time(
     array $rows
 ): ?string {
@@ -502,8 +632,19 @@ function llama_ridb_canonical_sync_place(
         'trash_collection' => 'trash',
         'fire_ring' => 'fire_ring',
         'campfire_circle' => 'fire_ring',
+        'grill' => 'grill',
         'picnic_table' => 'picnic_table',
         'food_storage' => 'bear_box',
+        'lantern_post' => 'lantern_post',
+        'recycling' => 'recycling',
+        'amphitheater' => 'amphitheater',
+        'playground' => 'playground',
+        'picnic_shelter' => 'picnic_shelter',
+        'fishing_pier' => 'fishing_pier',
+        'lake_access' => 'lake_access',
+        'river_access' => 'river_access',
+        'trailhead' => 'trailhead',
+        'trailhead_parking' => 'trailhead_parking',
         'electricity_available' => 'electricity',
         'electric_hookup' => 'electricity',
         'full_hookup' => 'electricity',
@@ -627,6 +768,90 @@ function llama_ridb_canonical_sync_place(
 
     if ($sites) {
         $details['campsite_count'] = count($sites);
+    }
+
+    /*
+     * New canonical Site + Vehicle questions.
+     * Only values that are consistent across the imported campsites are
+     * promoted to the Place-level answer. Per-site variation stays attached
+     * to the campsite records instead of being flattened into a false answer.
+     */
+    $numericMappings = [
+        'max_people' => 'max_people',
+        'overhead_clearance' => 'overhead_clearance_feet',
+        'parking_length' => 'parking_length_feet',
+        'site_length' => 'site_length_feet',
+        'site_width' => 'site_width_feet',
+        'tent_pad_length' => 'tent_pad_length_feet',
+        'tent_pad_width' => 'tent_pad_width_feet',
+        'hike_in_distance' => 'hike_in_distance_feet',
+    ];
+
+    foreach ($numericMappings as $canonical => $column) {
+        $number = llama_ridb_canonical_consistent_number(
+            $evidence[$canonical]
+            ?? []
+        );
+
+        if ($number !== null) {
+            $details[$column] = $number;
+        }
+    }
+
+    $tentPad = llama_ridb_canonical_consensus_bool(
+        $evidence['tent_pad_present']
+        ?? []
+    );
+
+    if ($tentPad !== null) {
+        $details['tent_pad'] = $tentPad ? 1 : 0;
+    }
+
+    $doubleDriveway = llama_ridb_canonical_consensus_bool(
+        $evidence['double_driveway']
+        ?? []
+    );
+
+    if ($doubleDriveway !== null) {
+        $details['double_driveway'] = $doubleDriveway ? 1 : 0;
+    }
+
+    $surface = llama_ridb_canonical_surface_value(
+        llama_ridb_canonical_consistent_text(
+            $evidence['parking_surface']
+            ?? []
+        )
+    );
+
+    if ($surface !== null) {
+        $details['parking_surface'] = $surface;
+    }
+
+    $grade = llama_ridb_canonical_grade_value(
+        llama_ridb_canonical_consistent_text(
+            $evidence['parking_grade']
+            ?? []
+        )
+    );
+
+    if ($grade !== null) {
+        $details['parking_grade'] = $grade;
+    }
+
+    foreach ([
+        'site_rating' => 'site_rating',
+        'condition_rating' => 'condition_rating',
+        'location_rating' => 'location_rating',
+        'capacity_size_rating' => 'capacity_size_rating',
+    ] as $canonical => $column) {
+        $value = llama_ridb_canonical_consistent_text(
+            $evidence[$canonical]
+            ?? []
+        );
+
+        if ($value !== null) {
+            $details[$column] = $value;
+        }
     }
 
     $hasTentSite = false;
