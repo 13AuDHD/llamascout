@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/compare-reports.php';
 require_once __DIR__ . '/app/place-history-timeline.php';
+require_once __DIR__ . '/app/place-campsites.php';
 
 function place_h(mixed $value): string
 {
@@ -742,6 +743,10 @@ if ($pageDescription === '') {
         . ' on Llama Scout.';
 }
 
+$pageStyles = [
+    'site/features/place-campsites.css',
+];
+
 $pageSocialImage =
     '';
 
@@ -805,6 +810,13 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
+    <?php if ($hasMemberAccess): ?>
+        <div
+            data-place-campsites-mount
+            data-place-slug="<?= place_h((string) $place['slug']) ?>"
+        ></div>
+    <?php endif; ?>
+
     <?php
     require
         __DIR__
@@ -827,6 +839,7 @@ require
 
 <script src="/js/place-gallery.js"></script>
 <script src="/js/place.js"></script>
+<script src="/js/place-campsites.js"></script>
 
 <?php
 require
