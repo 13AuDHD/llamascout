@@ -937,11 +937,6 @@
         };
 
         set(
-            'campsite_count',
-            totalSites
-        );
-
-        set(
             'site_accessible',
             accessibleLabel(
                 site.accessible_status
