@@ -553,6 +553,52 @@ require __DIR__ . '/partials/header.php';
         </section>
 
 
+        <section
+            class="mapped-area-editor-card mapped-area-editor-rate-card"
+            data-rate-section
+            hidden
+        >
+            <div class="mapped-area-editor-card-heading">
+                <div>
+                    <h2>Rates</h2>
+                    <p class="mapped-area-editor-card-subtitle">
+                        Nightly pricing for this campground area or campsite.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    data-add-rate
+                >
+                    Add rate
+                </button>
+            </div>
+
+            <div
+                class="mapped-area-editor-rate-inheritance"
+                data-rate-inheritance
+                hidden
+            ></div>
+
+            <div
+                class="mapped-area-editor-rate-list"
+                data-rate-list
+            ></div>
+
+            <p
+                class="mapped-area-editor-help"
+                data-rate-empty
+            >
+                No rates have been entered for this area yet.
+            </p>
+
+            <p class="mapped-area-editor-help">
+                Standard, weekday, weekend, holiday, and recurring seasonal
+                nightly rates can be stored here. Seasonal dates use MM-DD so
+                the same season can apply every year.
+            </p>
+        </section>
+
         <section class="mapped-area-editor-card">
             <div class="mapped-area-editor-card-heading">
                 <h2>Edit shape</h2>
