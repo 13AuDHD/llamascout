@@ -1,0 +1,23 @@
+.place-facts--three {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+
+.place-facts--three > .place-fact {
+    min-width: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.place-facts--three > .place-fact strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .place-facts--three {
+        grid-template-columns: 1fr;
+    }
+}
