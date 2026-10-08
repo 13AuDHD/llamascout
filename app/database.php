@@ -32,23 +32,23 @@ function llama_config(): array
     return $config;
 }
 
-function db(): PDO
-{
-    static $pdo = null;
-
-    if ($pdo instanceof PDO) {
-        return $pdo;
+function llama_database_connection(
+    array $database,
+    string $label
+): PDO {
+    if (
+        trim(
+            (string) (
+                $database['name']
+                ?? ''
+            )
+        ) === ''
+    ) {
+        throw new RuntimeException(
+            $label . ' database configuration is missing.'
+        );
     }
 
-    $database =
-        llama_config()['database'];
-
-    /*
-     * Llama Scout stores user-entered text throughout the platform.
-     * Force full four-byte UTF-8 support at the connection level so
-     * emoji and the full Unicode range are handled consistently,
-     * regardless of an older charset value left in private/config.php.
-     */
     $dsn = sprintf(
         'mysql:host=%s;dbname=%s;charset=utf8mb4',
         $database['host'] ?? 'localhost',
@@ -71,19 +71,10 @@ function db(): PDO
         ]
     );
 
-    /*
-     * Keep the session explicit as well. This protects connections
-     * from server defaults that may still be configured as utf8/utf8mb3.
-     */
     $pdo->exec(
         "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
     );
 
-    /*
-     * Database timestamps are stored and compared in UTC.
-     * Keep only this PDO connection session in UTC without changing
-     * PHP's timezone or the database server's global timezone.
-     */
     $pdo->exec(
         "SET time_zone = '+00:00'"
     );
@@ -91,14 +82,29 @@ function db(): PDO
     return $pdo;
 }
 
+function db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $pdo =
+        llama_database_connection(
+            (array) (
+                llama_config()['database']
+                ?? []
+            ),
+            'Primary'
+        );
+
+    return $pdo;
+}
+
 
 /* =========================================================
    CELL COVERAGE DATABASE
-
-   FCC mobile coverage is intentionally isolated from the
-   primary application database. This keeps the replaceable,
-   high-volume GIS dataset out of normal Llama Scout backups
-   and application-table maintenance.
    ========================================================= */
 
 function cell_db(): PDO
@@ -109,56 +115,14 @@ function cell_db(): PDO
         return $pdo;
     }
 
-    $config =
-        llama_config();
-
-    $database =
-        $config['cell_database']
-        ?? null;
-
-    if (
-        !is_array($database) ||
-        trim(
-            (string) (
-                $database['name']
-                ?? ''
-            )
-        ) === ''
-    ) {
-        throw new RuntimeException(
-            'Cell coverage database configuration is missing.'
+    $pdo =
+        llama_database_connection(
+            (array) (
+                llama_config()['cell_database']
+                ?? []
+            ),
+            'Cell coverage'
         );
-    }
-
-    $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=utf8mb4',
-        $database['host'] ?? 'localhost',
-        $database['name'] ?? ''
-    );
-
-    $pdo = new PDO(
-        $dsn,
-        $database['user'] ?? '',
-        $database['password'] ?? '',
-        [
-            PDO::ATTR_ERRMODE =>
-                PDO::ERRMODE_EXCEPTION,
-
-            PDO::ATTR_DEFAULT_FETCH_MODE =>
-                PDO::FETCH_ASSOC,
-
-            PDO::ATTR_EMULATE_PREPARES =>
-                false,
-        ]
-    );
-
-    $pdo->exec(
-        "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-    );
-
-    $pdo->exec(
-        "SET time_zone = '+00:00'"
-    );
 
     return $pdo;
 }
@@ -166,19 +130,6 @@ function cell_db(): PDO
 
 /* =========================================================
    REFERENCE DATABASE
-
-   Large external reference catalogs are intentionally isolated
-   from the primary application database.
-
-   Examples:
-   - PAD-US
-   - government land directories
-   - state park / DOT datasets
-   - corporate partner location feeds
-   - future large external catalogs
-
-   Configuration lives in private/config.php under:
-       reference_database
    ========================================================= */
 
 function reference_db(): PDO
@@ -189,56 +140,44 @@ function reference_db(): PDO
         return $pdo;
     }
 
-    $config =
-        llama_config();
-
-    $database =
-        $config['reference_database']
-        ?? null;
-
-    if (
-        !is_array($database) ||
-        trim(
-            (string) (
-                $database['name']
-                ?? ''
-            )
-        ) === ''
-    ) {
-        throw new RuntimeException(
-            'Reference database configuration is missing.'
+    $pdo =
+        llama_database_connection(
+            (array) (
+                llama_config()['reference_database']
+                ?? []
+            ),
+            'Reference'
         );
+
+    return $pdo;
+}
+
+
+/* =========================================================
+   RIDB DATABASE
+
+   Recreation.gov / Recreation Information Database source
+   records live in their own database so imported federal
+   reference data never has to be mixed into the primary
+   Llama Scout application database.
+   ========================================================= */
+
+function ridb_db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+        return $pdo;
     }
 
-    $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=utf8mb4',
-        $database['host'] ?? 'localhost',
-        $database['name'] ?? ''
-    );
-
-    $pdo = new PDO(
-        $dsn,
-        $database['user'] ?? '',
-        $database['password'] ?? '',
-        [
-            PDO::ATTR_ERRMODE =>
-                PDO::ERRMODE_EXCEPTION,
-
-            PDO::ATTR_DEFAULT_FETCH_MODE =>
-                PDO::FETCH_ASSOC,
-
-            PDO::ATTR_EMULATE_PREPARES =>
-                false,
-        ]
-    );
-
-    $pdo->exec(
-        "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-    );
-
-    $pdo->exec(
-        "SET time_zone = '+00:00'"
-    );
+    $pdo =
+        llama_database_connection(
+            (array) (
+                llama_config()['ridb_database']
+                ?? []
+            ),
+            'RIDB'
+        );
 
     return $pdo;
 }
