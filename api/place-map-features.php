@@ -303,6 +303,8 @@ try {
             $input['accuracy_m']
                 ?? null,
             $input['metadata']
+                ?? [],
+            $input['area_details']
                 ?? []
         );
 
