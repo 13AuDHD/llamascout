@@ -51,6 +51,36 @@
             '[data-feature-label]'
         );
 
+    const areaDetails =
+        editor.querySelector(
+            '[data-area-details]'
+        );
+
+    const areaUse =
+        editor.querySelector(
+            '[data-area-use]'
+        );
+
+    const feeStatus =
+        editor.querySelector(
+            '[data-fee-status]'
+        );
+
+    const overnightStatus =
+        editor.querySelector(
+            '[data-overnight-status]'
+        );
+
+    const overnightStatusField =
+        editor.querySelector(
+            '[data-overnight-status-field]'
+        );
+
+    const areaDetailsNote =
+        editor.querySelector(
+            '[data-area-details-note]'
+        );
+
     const featureList =
         editor.querySelector(
             '[data-feature-list]'
@@ -1209,6 +1239,198 @@
         );
     };
 
+    const areaUseOptions = {
+        camping_area: [
+            ['', 'Not specified'],
+            ['developed_campground', 'Developed campground'],
+            ['designated_camping', 'Designated camping area'],
+            ['dispersed_camping', 'Dispersed camping area']
+        ],
+
+        parking_area: [
+            ['', 'Not specified'],
+            ['general_parking', 'General parking'],
+            ['overnight_vehicle_parking', 'Overnight vehicle parking']
+        ]
+    };
+
+    const areaUseLabels = Object.fromEntries(
+        Object.values(areaUseOptions)
+            .flat()
+            .filter(
+                ([value]) =>
+                    value !== ''
+            )
+    );
+
+    const feeStatusLabels = {
+        free: 'Free',
+        paid: 'Paid',
+        varies: 'Varies',
+        unknown: 'Unknown'
+    };
+
+    const overnightStatusLabels = {
+        allowed: 'Overnight allowed',
+        prohibited: 'Overnight not allowed',
+        varies: 'Overnight varies',
+        unknown: 'Overnight unknown'
+    };
+
+    const syncAreaDetailFields =
+        (details = {}) => {
+            const type =
+                featureType?.value
+                || 'camping_area';
+
+            const supported =
+                type === 'camping_area'
+                || type === 'parking_area';
+
+            if (areaDetails) {
+                areaDetails.hidden =
+                    !supported;
+            }
+
+            if (!supported) {
+                if (areaUse) {
+                    areaUse.replaceChildren();
+
+                    const option =
+                        document.createElement(
+                            'option'
+                        );
+
+                    option.value = '';
+                    option.textContent =
+                        'Not specified';
+
+                    areaUse.append(option);
+                    areaUse.value = '';
+                }
+
+                if (feeStatus) {
+                    feeStatus.value = '';
+                }
+
+                if (overnightStatus) {
+                    overnightStatus.value = '';
+                }
+
+                if (overnightStatusField) {
+                    overnightStatusField.hidden =
+                        true;
+                }
+
+                return;
+            }
+
+            if (areaUse) {
+                const desired =
+                    String(
+                        details.area_use
+                        || ''
+                    );
+
+                areaUse.replaceChildren();
+
+                (
+                    areaUseOptions[type]
+                    || []
+                ).forEach(
+                    ([value, label]) => {
+                        const option =
+                            document.createElement(
+                                'option'
+                            );
+
+                        option.value =
+                            value;
+
+                        option.textContent =
+                            label;
+
+                        areaUse.append(
+                            option
+                        );
+                    }
+                );
+
+                areaUse.value =
+                    areaUse.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            if (feeStatus) {
+                const desired =
+                    String(
+                        details.fee_status
+                        || ''
+                    );
+
+                feeStatus.value =
+                    feeStatus.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            const parking =
+                type === 'parking_area';
+
+            if (overnightStatusField) {
+                overnightStatusField.hidden =
+                    !parking;
+            }
+
+            if (overnightStatus) {
+                const desired =
+                    parking
+                        ? String(
+                            details.overnight_status
+                            || ''
+                        )
+                        : '';
+
+                overnightStatus.value =
+                    overnightStatus.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            if (areaDetailsNote) {
+                areaDetailsNote.textContent =
+                    type === 'parking_area'
+                        ? 'Use Overnight vehicle parking for ordinary parking spaces where sleeping in the vehicle is permitted. Local rules and posted signage still control.'
+                        : 'Use Developed campground for managed RV or tent sites. Individual sites and detailed rates can be mapped inside this area later.';
+            }
+        };
+
+    const areaDetailsPayload = () => ({
+        area_use:
+            areaUse?.value
+            || '',
+
+        fee_status:
+            feeStatus?.value
+            || '',
+
+        overnight_status:
+            featureType?.value
+                === 'parking_area'
+                ? (
+                    overnightStatus?.value
+                    || ''
+                )
+                : ''
+    });
+
     const fitAllAreas = () => {
         if (
             !Array.isArray(features)
@@ -1350,11 +1572,28 @@
                                 : ''
                         );
 
+                const detailLabels = [
+                    areaUseLabels[
+                        feature.area_details
+                            ?.area_use
+                    ] || '',
+                    feeStatusLabels[
+                        feature.area_details
+                            ?.fee_status
+                    ] || '',
+                    overnightStatusLabels[
+                        feature.area_details
+                            ?.overnight_status
+                    ] || ''
+                ]
+                    .filter(Boolean);
+
                 type.textContent =
                     [
                         featureTypeLabel(
                             feature.feature_type
                         ),
+                        ...detailLabels,
                         source
                     ]
                         .filter(Boolean)
@@ -1413,6 +1652,8 @@
                 featureLabel.value =
                     '';
             }
+
+            syncAreaDetailFields();
 
             drawButton.disabled =
                 false;
@@ -1600,6 +1841,11 @@
                 feature.label
                 || '';
         }
+
+        syncAreaDetailFields(
+            feature.area_details
+            || {}
+        );
 
         points =
             geometryToPoints(
@@ -2040,6 +2286,9 @@
                         label:
                             featureLabel?.value
                             || '',
+
+                        area_details:
+                            areaDetailsPayload(),
 
                         geometry,
 
@@ -2865,8 +3114,28 @@
         ?.addEventListener(
             'change',
             () => {
+                syncAreaDetailFields();
                 setDirty(true);
                 renderEditableShape();
+                renderFeatureList();
+            }
+        );
+
+    [
+        areaUse,
+        feeStatus,
+        overnightStatus
+    ]
+        .forEach(
+            (control) => {
+                control
+                    ?.addEventListener(
+                        'change',
+                        () => {
+                            setDirty(true);
+                            renderFeatureList();
+                        }
+                    );
             }
         );
 

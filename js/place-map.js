@@ -551,6 +551,37 @@
             'Parking area'
     };
 
+    const areaUseLabels = {
+        developed_campground:
+            'Developed campground',
+
+        designated_camping:
+            'Designated camping area',
+
+        dispersed_camping:
+            'Dispersed camping area',
+
+        general_parking:
+            'General parking',
+
+        overnight_vehicle_parking:
+            'Overnight vehicle parking'
+    };
+
+    const feeStatusLabels = {
+        free: 'Free',
+        paid: 'Paid',
+        varies: 'Cost varies',
+        unknown: 'Cost unknown'
+    };
+
+    const overnightStatusLabels = {
+        allowed: 'Overnight vehicle stay allowed',
+        prohibited: 'Overnight vehicle stay not allowed',
+        varies: 'Overnight rules vary',
+        unknown: 'Overnight status unknown'
+    };
+
     const mappedAreaGroups = new Map();
     let mappedAreaAllBounds = null;
 
@@ -616,6 +647,38 @@
                 title,
                 type
             );
+
+            const details =
+                feature.area_details
+                || {};
+
+            [
+                areaUseLabels[
+                    details.area_use
+                ] || '',
+                feeStatusLabels[
+                    details.fee_status
+                ] || '',
+                overnightStatusLabels[
+                    details.overnight_status
+                ] || ''
+            ]
+                .filter(Boolean)
+                .forEach(
+                    (label) => {
+                        const detail =
+                            document.createElement(
+                                'span'
+                            );
+
+                        detail.textContent =
+                            label;
+
+                        wrapper.append(
+                            detail
+                        );
+                    }
+                );
 
             return wrapper;
         };
