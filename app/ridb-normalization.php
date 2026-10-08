@@ -662,6 +662,299 @@ function llama_ridb_normalization_definitions(): array
             ],
         ],
 
+
+        'accessibility' => [
+            'label' => 'Accessibility',
+            'category' => 'Accessibility',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency accessibility attribute',
+            'aliases' => [
+                'Accessibility',
+            ],
+        ],
+
+        'accessible_occupant_message' => [
+            'label' => 'Accessible occupant message',
+            'category' => 'Accessibility',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency accessibility attribute',
+            'aliases' => [
+                'Accessible Occupant Message',
+            ],
+        ],
+
+        'accessible_boat_ramp' => [
+            'label' => 'Accessible boat ramp',
+            'category' => 'Accessibility',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'ACCESSIBLE BOAT RAMP',
+            ],
+        ],
+
+        'accessible_boat_dock' => [
+            'label' => 'Accessible boat dock',
+            'category' => 'Accessibility',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'ACCESSIBLE BOCK DOCK',
+                'ACCESSIBLE BOAT DOCK',
+            ],
+        ],
+
+        'accessible_campsites' => [
+            'label' => 'Accessible campsites',
+            'category' => 'Accessibility',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'ACCESSIBLE CAMPSITES',
+            ],
+        ],
+
+        'recycling' => [
+            'label' => 'Recycling',
+            'category' => 'Sanitation',
+            'treatment' => 'direct',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'RECYCLING',
+            ],
+        ],
+
+        'amphitheater' => [
+            'label' => 'Amphitheater',
+            'category' => 'Facility amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'AMPHITHEATER',
+            ],
+        ],
+
+        'geological_attractions' => [
+            'label' => 'Geological attractions',
+            'category' => 'Nearby / facility feature',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'GEOLOGICAL ATTRACTIONS',
+            ],
+        ],
+
+        'river_access' => [
+            'label' => 'River access',
+            'category' => 'Water access',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'RIVER ACCESS',
+            ],
+        ],
+
+        'scenic_overlooks' => [
+            'label' => 'Scenic overlooks',
+            'category' => 'Nearby / facility feature',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'SCENIC OVERLOOKS',
+            ],
+        ],
+
+        'visitor_center' => [
+            'label' => 'Visitor center',
+            'category' => 'Facility amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'VISITOR CENTER',
+            ],
+        ],
+
+        'self_pay_station' => [
+            'label' => 'Self-pay station',
+            'category' => 'Payments',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'SELF PAY STATION',
+            ],
+        ],
+
+        'day_use_area' => [
+            'label' => 'Day-use area',
+            'category' => 'Facility amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'DAY USE AREA',
+            ],
+        ],
+
+        'fishing_pier' => [
+            'label' => 'Fishing pier',
+            'category' => 'Water access',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'FISHING PIER',
+            ],
+        ],
+
+        'picnic_shelter' => [
+            'label' => 'Picnic shelter',
+            'category' => 'Facility amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'PICNIC SHELTERS',
+            ],
+        ],
+
+        'playground' => [
+            'label' => 'Playground',
+            'category' => 'Facility amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'PLAYGROUND',
+            ],
+        ],
+
+        'full_hookup' => [
+            'label' => 'Full hookup',
+            'category' => 'Hookups',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency campsite attribute',
+            'aliases' => [
+                'Full Hookup',
+            ],
+        ],
+
+        'electricity_available' => [
+            'label' => 'Electricity available',
+            'category' => 'Hookups',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'ELECTRICITY',
+            ],
+        ],
+
+        'drinking_water' => [
+            'label' => 'Drinking water',
+            'category' => 'Water',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'Federal Camping Data Standard: WATER TYPE / LOCATION / ACCESS',
+            'aliases' => [
+                'DRINKING WATER (HAND PUMP)',
+                'DRINKING WATER (PEAK SEASON)',
+            ],
+        ],
+
+        'flush_toilet' => [
+            'label' => 'Flush toilet',
+            'category' => 'Sanitation',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'Federal Camping Data Standard: TOILET',
+            'aliases' => [
+                'FLUSH TOILETS (SEASONAL)',
+            ],
+        ],
+
+        'campfire_circle' => [
+            'label' => 'Campfire circle',
+            'category' => 'Fire',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'CAMPFIRE CIRCLES',
+            ],
+        ],
+
+        'max_horses' => [
+            'label' => 'Maximum horses',
+            'category' => 'Equestrian',
+            'treatment' => 'direct',
+            'standard_basis' => 'RIDB campsite attribute',
+            'aliases' => [
+                'Max Num of Horses',
+            ],
+        ],
+
+        'paved_parking' => [
+            'label' => 'Paved parking',
+            'category' => 'Parking',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB / agency amenity',
+            'aliases' => [
+                'PAVED PARKING',
+            ],
+        ],
+
+        'platform' => [
+            'label' => 'Platform',
+            'category' => 'Site amenity',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB campsite attribute',
+            'aliases' => [
+                'Platform',
+            ],
+        ],
+
+        'bed_type' => [
+            'label' => 'Bed type',
+            'category' => 'Lodging',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB lodging campsite attribute',
+            'aliases' => [
+                'Bed Type',
+            ],
+        ],
+
+        'bed_count' => [
+            'label' => 'Number of beds',
+            'category' => 'Lodging',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB lodging campsite attribute',
+            'aliases' => [
+                'Num of Beds',
+            ],
+        ],
+
+        'bedroom_count' => [
+            'label' => 'Number of bedrooms',
+            'category' => 'Lodging',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB lodging campsite attribute',
+            'aliases' => [
+                'Num of Bedrooms',
+            ],
+        ],
+
+        'room_count' => [
+            'label' => 'Number of rooms',
+            'category' => 'Lodging',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB lodging campsite attribute',
+            'aliases' => [
+                'Num of Rooms',
+            ],
+        ],
+
+        'shower_bath_type' => [
+            'label' => 'Shower / bath type',
+            'category' => 'Lodging',
+            'treatment' => 'source_attributed',
+            'standard_basis' => 'RIDB lodging campsite attribute',
+            'aliases' => [
+                'Shower/Bath Type',
+            ],
+        ],
+
         'internal_map_x' => [
             'label' => 'Internal map X',
             'category' => 'Internal campground map',
