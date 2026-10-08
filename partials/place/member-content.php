@@ -5,6 +5,106 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2)
     . '/app/place-report.php';
 
+$placeDescriptionParagraphs = [];
+$placeDescriptionLong = false;
+
+if (!empty($place['description'])) {
+    $description =
+        html_entity_decode(
+            (string) $place['description'],
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+    $description =
+        preg_replace(
+            '/<\s*br\s*\/?\s*>/i',
+            "\n",
+            $description
+        )
+        ?? $description;
+
+    $description =
+        preg_replace(
+            '/<\s*\/\s*(?:p|h[1-6]|li|div|section)\s*>/i',
+            "\n\n",
+            $description
+        )
+        ?? $description;
+
+    $description =
+        preg_replace(
+            '/<\s*(?:p|h[1-6]|li|div|section)(?:\s[^>]*)?>/i',
+            '',
+            $description
+        )
+        ?? $description;
+
+    $description =
+        strip_tags(
+            $description
+        );
+
+    $description =
+        str_replace(
+            "\u{00A0}",
+            ' ',
+            $description
+        );
+
+    $description =
+        preg_replace(
+            "/[ \t]+\n/u",
+            "\n",
+            $description
+        )
+        ?? $description;
+
+    $description =
+        preg_replace(
+            "/\n{3,}/u",
+            "\n\n",
+            $description
+        )
+        ?? $description;
+
+    $description =
+        trim(
+            preg_replace(
+                '/[ \t]{2,}/u',
+                ' ',
+                $description
+            )
+            ?? $description
+        );
+
+    if ($description !== '') {
+        $placeDescriptionParagraphs =
+            array_values(
+                array_filter(
+                    array_map(
+                        'trim',
+                        preg_split(
+                            "/\n{2,}/u",
+                            $description
+                        )
+                        ?: []
+                    ),
+                    static fn (
+                        string $paragraph
+                    ): bool =>
+                        $paragraph !== ''
+                )
+            );
+
+        $placeDescriptionLong =
+            mb_strlen(
+                $description,
+                'UTF-8'
+            ) > 900;
+    }
+}
+
 if ($hasMemberAccess):
 ?>
 
@@ -22,17 +122,47 @@ if ($hasMemberAccess):
         </section>
     <?php endif; ?>
 
-    <?php if (!empty($place['description'])): ?>
-        <section class="place-section">
+    <?php if ($placeDescriptionParagraphs): ?>
+        <section
+            class="place-section place-description"
+            data-place-description-section
+        >
             <h2>About this place</h2>
-            <p>
-                <?= nl2br(
-                    place_h(
-                        $place['description']
-                    )
-                ) ?>
-            </p>
+
+            <div
+                class="place-description-copy<?= $placeDescriptionLong ? ' is-collapsed' : '' ?>"
+                data-place-description-copy
+            >
+                <?php foreach ($placeDescriptionParagraphs as $paragraph): ?>
+                    <p><?= place_h($paragraph) ?></p>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if ($placeDescriptionLong): ?>
+                <button
+                    type="button"
+                    class="place-description-toggle"
+                    data-place-description-toggle
+                    aria-expanded="false"
+                >
+                    <span data-place-description-toggle-label>
+                        Expand description
+                    </span>
+
+                    <?= llama_icon(
+                        'chevron-down',
+                        [
+                            'class' =>
+                                'place-description-toggle-icon',
+                        ]
+                    ) ?>
+                </button>
+            <?php endif; ?>
         </section>
+
+        <?php if ($placeDescriptionLong): ?>
+            <script src="/js/place-description.js"></script>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php require __DIR__ . '/overnight-options.php'; ?>
