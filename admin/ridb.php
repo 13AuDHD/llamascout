@@ -381,6 +381,7 @@ require __DIR__ . '/_header.php';
                     <th>Reservable</th>
                     <th>Coordinates</th>
                     <th>RIDB ID</th>
+                    <th></th>
                 </tr>
             </thead>
 
@@ -389,19 +390,53 @@ require __DIR__ . '/_header.php';
                 $searchResults
                 as $facility
             ): ?>
-                <?php if (!is_array($facility)) {
+                <?php
+                if (!is_array($facility)) {
                     continue;
-                } ?>
+                }
+
+                $facilityId =
+                    trim(
+                        (string) llama_ridb_record_value(
+                            $facility,
+                            [
+                                'FacilityID',
+                                'facilityID',
+                            ],
+                            ''
+                        )
+                    );
+
+                $lat =
+                    llama_ridb_record_value(
+                        $facility,
+                        [
+                            'FacilityLatitude',
+                            'facilityLatitude',
+                        ]
+                    );
+
+                $lng =
+                    llama_ridb_record_value(
+                        $facility,
+                        [
+                            'FacilityLongitude',
+                            'facilityLongitude',
+                        ]
+                    );
+                ?>
 
                 <tr>
                     <td>
                         <strong>
                             <?= moderation_e(
-                                (string) (
-                                    $facility[
-                                        'FacilityName'
-                                    ]
-                                    ?? 'Unnamed facility'
+                                (string) llama_ridb_record_value(
+                                    $facility,
+                                    [
+                                        'FacilityName',
+                                        'facilityName',
+                                    ],
+                                    'Unnamed facility'
                                 )
                             ) ?>
                         </strong>
@@ -409,38 +444,33 @@ require __DIR__ . '/_header.php';
 
                     <td>
                         <?= moderation_e(
-                            (string) (
-                                $facility[
-                                    'FacilityTypeDescription'
-                                ]
-                                ?? ''
+                            (string) llama_ridb_record_value(
+                                $facility,
+                                [
+                                    'FacilityTypeDescription',
+                                    'facilityTypeDescription',
+                                ],
+                                ''
                             )
                         ) ?>
                     </td>
 
                     <td>
                         <?= !empty(
-                            $facility['Reservable']
+                            llama_ridb_record_value(
+                                $facility,
+                                [
+                                    'Reservable',
+                                    'reservable',
+                                ],
+                                false
+                            )
                         )
                             ? 'Yes'
                             : 'No / unknown' ?>
                     </td>
 
                     <td>
-                        <?php
-                        $lat =
-                            $facility[
-                                'FacilityLatitude'
-                            ]
-                            ?? null;
-
-                        $lng =
-                            $facility[
-                                'FacilityLongitude'
-                            ]
-                            ?? null;
-                        ?>
-
                         <?= is_numeric($lat)
                             && is_numeric($lng)
                                 ? moderation_e(
@@ -459,13 +489,23 @@ require __DIR__ . '/_header.php';
 
                     <td>
                         <?= moderation_e(
-                            (string) (
-                                $facility[
-                                    'FacilityID'
-                                ]
-                                ?? ''
-                            )
+                            $facilityId
                         ) ?>
+                    </td>
+
+                    <td>
+                        <?php if (
+                            $facilityId !== ''
+                        ): ?>
+                            <a
+                                class="admin-button"
+                                href="/ridb-facility.php?id=<?= rawurlencode(
+                                    $facilityId
+                                ) ?>"
+                            >
+                                Inspect
+                            </a>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
