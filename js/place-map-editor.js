@@ -81,6 +81,41 @@
             '[data-area-details-note]'
         );
 
+    const siteDetails =
+        editor.querySelector(
+            '[data-site-details]'
+        );
+
+    const siteParent =
+        editor.querySelector(
+            '[data-site-parent]'
+        );
+
+    const siteCode =
+        editor.querySelector(
+            '[data-site-code]'
+        );
+
+    const siteType =
+        editor.querySelector(
+            '[data-site-type]'
+        );
+
+    const siteParkingStyle =
+        editor.querySelector(
+            '[data-site-parking-style]'
+        );
+
+    const siteHookups =
+        editor.querySelector(
+            '[data-site-hookups]'
+        );
+
+    const siteAccessible =
+        editor.querySelector(
+            '[data-site-accessible]'
+        );
+
     const featureList =
         editor.querySelector(
             '[data-feature-list]'
@@ -353,6 +388,11 @@
         parking_area: {
             color: '#2563eb',
             fillColor: '#2563eb'
+        },
+
+        camping_site: {
+            color: '#d97706',
+            fillColor: '#d97706'
         }
     };
 
@@ -1431,6 +1471,250 @@
                 : ''
     });
 
+    const siteTypeLabels = {
+        rv_site: 'RV site',
+        tent_site: 'Tent site',
+        mixed_site: 'Mixed-use campsite',
+        vehicle_site: 'Vehicle campsite',
+        group_site: 'Group site',
+        other: 'Other'
+    };
+
+    const siteParkingStyleLabels = {
+        pull_through: 'Pull-through',
+        back_in: 'Back-in',
+        pull_in: 'Pull-in',
+        parallel: 'Parallel',
+        other: 'Other',
+        unknown: 'Unknown'
+    };
+
+    const siteHookupLabels = {
+        full: 'Full hookups',
+        electric_water: 'Electric + water',
+        electric_only: 'Electric only',
+        water_only: 'Water only',
+        none: 'No hookups',
+        varies: 'Varies',
+        unknown: 'Unknown'
+    };
+
+    const siteAccessibleLabels = {
+        yes: 'Accessible',
+        no: 'Not accessible',
+        unknown: 'Accessibility unknown'
+    };
+
+    const syncSiteDetailFields =
+        (details = {}) => {
+            const isSite =
+                featureType?.value
+                === 'camping_site';
+
+            if (siteDetails) {
+                siteDetails.hidden =
+                    !isSite;
+            }
+
+            if (!siteParent) {
+                return;
+            }
+
+            const desiredParent =
+                String(
+                    details.camping_area_feature_id
+                    || ''
+                );
+
+            const campingAreas =
+                features.filter(
+                    (feature) =>
+                        feature.feature_type
+                        === 'camping_area'
+                        && feature.is_active
+                            !== false
+                );
+
+            siteParent.replaceChildren();
+
+            const placeholder =
+                document.createElement(
+                    'option'
+                );
+
+            placeholder.value = '';
+            placeholder.textContent =
+                campingAreas.length > 0
+                    ? 'Choose a Camping area'
+                    : 'Create a Camping area first';
+
+            siteParent.append(
+                placeholder
+            );
+
+            campingAreas.forEach(
+                (feature) => {
+                    const option =
+                        document.createElement(
+                            'option'
+                        );
+
+                    option.value =
+                        String(
+                            feature.id
+                        );
+
+                    option.textContent =
+                        feature.label
+                        || `Camping area #${feature.id}`;
+
+                    siteParent.append(
+                        option
+                    );
+                }
+            );
+
+            if (isSite) {
+                if (
+                    desiredParent !== ''
+                    && siteParent.querySelector(
+                        `option[value="${CSS.escape(desiredParent)}"]`
+                    )
+                ) {
+                    siteParent.value =
+                        desiredParent;
+
+                } else if (
+                    campingAreas.length
+                    === 1
+                ) {
+                    siteParent.value =
+                        String(
+                            campingAreas[0].id
+                        );
+
+                } else {
+                    siteParent.value =
+                        '';
+                }
+            } else {
+                siteParent.value = '';
+            }
+
+            if (siteCode) {
+                siteCode.value =
+                    isSite
+                        ? String(
+                            details.site_code
+                            || ''
+                        )
+                        : '';
+            }
+
+            if (siteType) {
+                const desired =
+                    isSite
+                        ? String(
+                            details.site_type
+                            || ''
+                        )
+                        : '';
+
+                siteType.value =
+                    siteType.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            if (siteParkingStyle) {
+                const desired =
+                    isSite
+                        ? String(
+                            details.parking_style
+                            || ''
+                        )
+                        : '';
+
+                siteParkingStyle.value =
+                    siteParkingStyle.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            if (siteHookups) {
+                const desired =
+                    isSite
+                        ? String(
+                            details.hookup_status
+                            || ''
+                        )
+                        : '';
+
+                siteHookups.value =
+                    siteHookups.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+
+            if (siteAccessible) {
+                const desired =
+                    isSite
+                        ? String(
+                            details.accessible_status
+                            || ''
+                        )
+                        : '';
+
+                siteAccessible.value =
+                    siteAccessible.querySelector(
+                        `option[value="${CSS.escape(desired)}"]`
+                    )
+                        ? desired
+                        : '';
+            }
+        };
+
+    const siteDetailsPayload = () => {
+        if (
+            featureType?.value
+            !== 'camping_site'
+        ) {
+            return {};
+        }
+
+        return {
+            camping_area_feature_id:
+                siteParent?.value
+                || '',
+
+            site_code:
+                siteCode?.value
+                || '',
+
+            site_type:
+                siteType?.value
+                || '',
+
+            parking_style:
+                siteParkingStyle?.value
+                || '',
+
+            hookup_status:
+                siteHookups?.value
+                || '',
+
+            accessible_status:
+                siteAccessible?.value
+                || ''
+        };
+    };
+
     const fitAllAreas = () => {
         if (
             !Array.isArray(features)
@@ -1584,6 +1868,22 @@
                     overnightStatusLabels[
                         feature.area_details
                             ?.overnight_status
+                    ] || '',
+                    feature.site_details
+                        ?.site_code
+                        ? `Site ${feature.site_details.site_code}`
+                        : '',
+                    siteTypeLabels[
+                        feature.site_details
+                            ?.site_type
+                    ] || '',
+                    siteParkingStyleLabels[
+                        feature.site_details
+                            ?.parking_style
+                    ] || '',
+                    siteHookupLabels[
+                        feature.site_details
+                            ?.hookup_status
                     ] || ''
                 ]
                     .filter(Boolean);
@@ -1654,6 +1954,7 @@
             }
 
             syncAreaDetailFields();
+            syncSiteDetailFields();
 
             drawButton.disabled =
                 false;
@@ -1844,6 +2145,11 @@
 
         syncAreaDetailFields(
             feature.area_details
+            || {}
+        );
+
+        syncSiteDetailFields(
+            feature.site_details
             || {}
         );
 
@@ -2289,6 +2595,9 @@
 
                         area_details:
                             areaDetailsPayload(),
+
+                        site_details:
+                            siteDetailsPayload(),
 
                         geometry,
 
@@ -3115,6 +3424,7 @@
             'change',
             () => {
                 syncAreaDetailFields();
+                syncSiteDetailFields();
                 setDirty(true);
                 renderEditableShape();
                 renderFeatureList();
@@ -3136,6 +3446,35 @@
                             renderFeatureList();
                         }
                     );
+            }
+        );
+
+    [
+        siteParent,
+        siteType,
+        siteParkingStyle,
+        siteHookups,
+        siteAccessible
+    ]
+        .forEach(
+            (control) => {
+                control
+                    ?.addEventListener(
+                        'change',
+                        () => {
+                            setDirty(true);
+                            renderFeatureList();
+                        }
+                    );
+            }
+        );
+
+    siteCode
+        ?.addEventListener(
+            'input',
+            () => {
+                setDirty(true);
+                renderFeatureList();
             }
         );
 
