@@ -352,6 +352,145 @@ require __DIR__ . '/partials/header.php';
             </div>
 
             <div
+                class="mapped-area-editor-site-fields"
+                data-site-details
+                hidden
+            >
+                <label>
+                    <span>Parent Camping area</span>
+
+                    <select data-site-parent>
+                        <option value="">Choose a Camping area</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Site number / name</span>
+
+                    <input
+                        type="text"
+                        maxlength="60"
+                        placeholder="e.g. 12, A14, Pull-through 3"
+                        data-site-code
+                    >
+                </label>
+
+                <label>
+                    <span>Site type</span>
+
+                    <select data-site-type>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_camping_site_type_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Parking style</span>
+
+                    <select data-site-parking-style>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_camping_site_parking_style_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Hookups</span>
+
+                    <select data-site-hookups>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_camping_site_hookup_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Accessible site</span>
+
+                    <select data-site-accessible>
+                        <option value="">Not specified</option>
+
+                        <?php foreach (
+                            llama_place_map_camping_site_accessible_options()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= htmlspecialchars(
+                                    $value,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
+                                <?= htmlspecialchars(
+                                    $label,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <p class="mapped-area-editor-area-note">
+                    Individual campsites belong to a Camping area. Put objective
+                    site facts here. Sensory observations can be added later
+                    through site reports.
+                </p>
+            </div>
+
+            <div
                 class="mapped-area-editor-summary"
                 data-feature-summary
                 hidden
