@@ -1,0 +1,67 @@
+.place-description {
+    position: relative;
+}
+
+.place-description-copy {
+    position: relative;
+    overflow: hidden;
+}
+
+.place-description-copy p {
+    margin: 0 0 1rem;
+    line-height: 1.7;
+}
+
+.place-description-copy p:last-child {
+    margin-bottom: 0;
+}
+
+.place-description-copy.is-collapsed {
+    max-height: 18rem;
+}
+
+.place-description-copy.is-collapsed::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 5.5rem;
+    pointer-events: none;
+    background:
+        linear-gradient(
+            to bottom,
+            transparent,
+            var(--surface)
+        );
+}
+
+.place-description-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.place-description-toggle:hover,
+.place-description-toggle:focus-visible {
+    text-decoration: underline;
+}
+
+.place-description-toggle-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform .18s ease;
+}
+
+.place-description-toggle[aria-expanded="true"]
+.place-description-toggle-icon {
+    transform: rotate(180deg);
+}
