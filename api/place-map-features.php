@@ -307,6 +307,8 @@ try {
             $input['area_details']
                 ?? [],
             $input['site_details']
+                ?? [],
+            $input['rates']
                 ?? []
         );
 
