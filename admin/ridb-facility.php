@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb.php';
+require_once dirname(__DIR__) . '/app/ridb-schema.php';
 
 $adminUser =
     moderation_require_admin();
@@ -161,6 +162,14 @@ try {
                 $selectedResponse
             );
 
+        if ($selectedCampsite) {
+            llama_ridb_store_campsites(
+                $ridbDb,
+                $facilityId,
+                [$selectedCampsite]
+            );
+        }
+
         $attributeResponse =
             llama_ridb_campsite_attributes(
                 $selectedCampsiteId
@@ -291,6 +300,13 @@ require __DIR__ . '/_header.php';
             href="/ridb.php"
         >
             Back to RIDB search
+        </a>
+
+        <a
+            class="admin-button is-muted"
+            href="/ridb-schema.php"
+        >
+            Schema explorer
         </a>
     </div>
 </section>

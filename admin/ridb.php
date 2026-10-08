@@ -247,6 +247,17 @@ if (
 require __DIR__ . '/_header.php';
 ?>
 
+<section class="admin-panel">
+    <div class="admin-user-form-actions">
+        <a
+            class="admin-button"
+            href="/ridb-schema.php"
+        >
+            Open RIDB Schema Explorer
+        </a>
+    </div>
+</section>
+
 <?php if ($notice !== ''): ?>
     <section class="admin-panel">
         <strong><?= moderation_e($notice) ?></strong>
