@@ -67,6 +67,53 @@ require __DIR__ . '/_header.php';
 
 <header class="admin-panel-header">
     <div>
+        <p>Federal recreation</p>
+        <h2>Recreation.gov / RIDB</h2>
+    </div>
+</header>
+
+<div class="admin-user-action-box">
+
+<p>
+    Synchronize the Recreation Information Database into Llama Scout's
+    dedicated RIDB reference database, browse the local catalog, and
+    choose which facilities become Llama Scout Places.
+</p>
+
+<div class="admin-user-form-actions">
+
+<a
+    class="admin-button"
+    href="/ridb.php"
+>
+    RIDB Sync & Catalog
+</a>
+
+<a
+    class="admin-button is-secondary"
+    href="/ridb-schema.php"
+>
+    Schema Explorer
+</a>
+
+<a
+    class="admin-button is-secondary"
+    href="/ridb-normalization.php"
+>
+    Normalization
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="admin-panel">
+
+<header class="admin-panel-header">
+    <div>
         <p>Public lands</p>
         <h2>PAD-US</h2>
     </div>
