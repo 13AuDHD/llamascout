@@ -305,6 +305,8 @@ try {
             $input['metadata']
                 ?? [],
             $input['area_details']
+                ?? [],
+            $input['site_details']
                 ?? []
         );
 
