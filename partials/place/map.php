@@ -430,6 +430,17 @@ $placeMapEditorUrl =
 
             <button
                 type="button"
+                class="place-map-area-legend-item is-camping-site"
+                data-map-feature-toggle="camping_site"
+                aria-pressed="true"
+                hidden
+            >
+                <i aria-hidden="true"></i>
+                Individual campsites
+            </button>
+
+            <button
+                type="button"
                 class="place-map-area-fit"
                 data-fit-mapped-areas
                 hidden
