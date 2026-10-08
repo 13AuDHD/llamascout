@@ -831,6 +831,19 @@
                     );
                 }
 
+                const siteClassName =
+                    String(
+                        siteDetails
+                            .site_class_name
+                        || ''
+                    ).trim();
+
+                if (siteClassName !== '') {
+                    appendMeta(
+                        `Pricing class: ${siteClassName}`
+                    );
+                }
+
                 appendMeta(
                     siteParkingStyleLabels[
                         siteDetails
@@ -871,6 +884,19 @@
                             .overnight_status
                     ] || ''
                 );
+
+                const siteClasses =
+                    Array.isArray(
+                        feature.site_classes
+                    )
+                        ? feature.site_classes
+                        : [];
+
+                if (siteClasses.length > 0) {
+                    appendMeta(
+                        `${siteClasses.length} site pricing class${siteClasses.length === 1 ? '' : 'es'}`
+                    );
+                }
             }
 
             if (meta.childElementCount > 0) {
@@ -879,11 +905,23 @@
                 );
             }
 
-            const rateSummary =
+            const ownRateSummary =
                 feature
                     .effective_rate_summary
                 || feature.rate_summary
                 || {};
+
+            const rateSummary =
+                Number(
+                    ownRateSummary.count
+                    || 0
+                ) > 0
+                    ? ownRateSummary
+                    : (
+                        feature
+                            .site_class_rate_summary
+                        || ownRateSummary
+                    );
 
             const rateCount =
                 Number(
@@ -1037,14 +1075,44 @@
                                 );
                             }
 
-                            if (
-                                isCampingSite
-                                && !localRateTypes
-                                    .has(rateType)
-                            ) {
-                                notes.push(
-                                    'Campground rate'
-                                );
+                            if (isCampingSite) {
+                                const source =
+                                    String(
+                                        rate.inheritance_source
+                                        || ''
+                                    );
+
+                                const sourceLabel =
+                                    String(
+                                        rate.inheritance_label
+                                        || ''
+                                    ).trim();
+
+                                if (
+                                    source === 'site_class'
+                                ) {
+                                    notes.push(
+                                        sourceLabel !== ''
+                                            ? `${sourceLabel} rate`
+                                            : 'Pricing-class rate'
+                                    );
+
+                                } else if (
+                                    source === 'camping_area'
+                                ) {
+                                    notes.push(
+                                        'Campground rate'
+                                    );
+
+                                } else if (
+                                    source === ''
+                                    && !localRateTypes
+                                        .has(rateType)
+                                ) {
+                                    notes.push(
+                                        'Inherited rate'
+                                    );
+                                }
                             }
 
                             const rateNotes =

@@ -91,6 +91,11 @@
             '[data-site-parent]'
         );
 
+    const siteClass =
+        editor.querySelector(
+            '[data-site-class]'
+        );
+
     const siteCode =
         editor.querySelector(
             '[data-site-code]'
@@ -114,6 +119,26 @@
     const siteAccessible =
         editor.querySelector(
             '[data-site-accessible]'
+        );
+
+    const siteClassesSection =
+        editor.querySelector(
+            '[data-site-classes-section]'
+        );
+
+    const siteClassList =
+        editor.querySelector(
+            '[data-site-class-list]'
+        );
+
+    const addSiteClassButton =
+        editor.querySelector(
+            '[data-add-site-class]'
+        );
+
+    const siteClassEmpty =
+        editor.querySelector(
+            '[data-site-class-empty]'
         );
 
     const rateSection =
@@ -394,6 +419,7 @@
     let moveMode = false;
     let dirty = false;
     let workingRates = [];
+    let workingSiteClasses = [];
 
     let gpsWatchId = null;
     let gpsPosition = null;
@@ -1531,6 +1557,100 @@
         unknown: 'Accessibility unknown'
     };
 
+    const parentCampingAreaForSite = () => {
+        const parentId =
+            Number(
+                siteParent?.value
+                || 0
+            );
+
+        if (parentId < 1) {
+            return null;
+        }
+
+        return features.find(
+            (feature) =>
+                Number(feature.id)
+                === parentId
+                && feature.feature_type
+                    === 'camping_area'
+        ) || null;
+    };
+
+    const syncSiteClassOptions =
+        (
+            desiredClassId = ''
+        ) => {
+            if (!siteClass) {
+                return;
+            }
+
+            const parent =
+                parentCampingAreaForSite();
+
+            const classes =
+                Array.isArray(
+                    parent?.site_classes
+                )
+                    ? parent.site_classes
+                    : [];
+
+            siteClass.replaceChildren();
+
+            const placeholder =
+                document.createElement(
+                    'option'
+                );
+
+            placeholder.value = '';
+            placeholder.textContent =
+                classes.length > 0
+                    ? 'No pricing class'
+                    : 'No pricing classes available';
+
+            siteClass.append(
+                placeholder
+            );
+
+            classes.forEach(
+                (item) => {
+                    const option =
+                        document.createElement(
+                            'option'
+                        );
+
+                    option.value =
+                        String(
+                            item.id
+                        );
+
+                    option.textContent =
+                        String(
+                            item.name
+                            || `Pricing class #${item.id}`
+                        );
+
+                    siteClass.append(
+                        option
+                    );
+                }
+            );
+
+            const desired =
+                String(
+                    desiredClassId
+                    || ''
+                );
+
+            siteClass.value =
+                desired !== ''
+                && siteClass.querySelector(
+                    `option[value="${CSS.escape(desired)}"]`
+                )
+                    ? desired
+                    : '';
+        };
+
     const syncSiteDetailFields =
         (details = {}) => {
             const isSite =
@@ -1627,6 +1747,15 @@
                 siteParent.value = '';
             }
 
+            syncSiteClassOptions(
+                isSite
+                    ? String(
+                        details.site_class_id
+                        || ''
+                    )
+                    : ''
+            );
+
             if (siteCode) {
                 siteCode.value =
                     isSite
@@ -1719,6 +1848,10 @@
                 siteParent?.value
                 || '',
 
+            site_class_id:
+                siteClass?.value
+                || '',
+
             site_code:
                 siteCode?.value
                 || '',
@@ -1739,6 +1872,601 @@
                 siteAccessible?.value
                 || ''
         };
+    };
+
+    const siteClassRatePayload =
+        (rate) => ({
+            rate_type:
+                rate.rate_type
+                || 'standard',
+            label:
+                rate.label
+                || '',
+            amount:
+                rate.amount
+                ?? '',
+            season_start:
+                rate.season_start
+                || '',
+            season_end:
+                rate.season_end
+                || '',
+            notes:
+                rate.notes
+                || ''
+        });
+
+    const syncSiteClasses =
+        (classes = []) => {
+            workingSiteClasses =
+                Array.isArray(classes)
+                    ? classes.map(
+                        (item) => ({
+                            id:
+                                Number(
+                                    item.id
+                                    || 0
+                                ),
+                            name:
+                                String(
+                                    item.name
+                                    || ''
+                                ),
+                            description:
+                                String(
+                                    item.description
+                                    || ''
+                                ),
+                            rates:
+                                Array.isArray(
+                                    item.rates
+                                )
+                                    ? item.rates.map(
+                                        (rate) => ({
+                                            rate_type:
+                                                String(
+                                                    rate.rate_type
+                                                    || 'standard'
+                                                ),
+                                            label:
+                                                String(
+                                                    rate.label
+                                                    || ''
+                                                ),
+                                            amount:
+                                                rate.amount
+                                                ?? '',
+                                            season_start:
+                                                String(
+                                                    rate.season_start
+                                                    || ''
+                                                ),
+                                            season_end:
+                                                String(
+                                                    rate.season_end
+                                                    || ''
+                                                ),
+                                            notes:
+                                                String(
+                                                    rate.notes
+                                                    || ''
+                                                )
+                                        })
+                                    )
+                                    : []
+                        })
+                    )
+                    : [];
+
+            renderSiteClasses();
+        };
+
+    const siteClassesPayload = () =>
+        featureType?.value === 'camping_area'
+            ? workingSiteClasses.map(
+                (item) => ({
+                    id:
+                        Number(
+                            item.id
+                            || 0
+                        ),
+                    name:
+                        item.name
+                        || '',
+                    description:
+                        item.description
+                        || '',
+                    rates:
+                        item.rates.map(
+                            siteClassRatePayload
+                        )
+                })
+            )
+            : [];
+
+    const renderSiteClasses = () => {
+        const supported =
+            featureType?.value
+            === 'camping_area';
+
+        if (siteClassesSection) {
+            siteClassesSection.hidden =
+                !supported;
+        }
+
+        if (
+            !supported
+            || !siteClassList
+        ) {
+            if (siteClassEmpty) {
+                siteClassEmpty.hidden =
+                    true;
+            }
+
+            return;
+        }
+
+        siteClassList.replaceChildren();
+
+        if (siteClassEmpty) {
+            siteClassEmpty.hidden =
+                workingSiteClasses.length > 0;
+        }
+
+        workingSiteClasses.forEach(
+            (item, classIndex) => {
+                const card =
+                    document.createElement(
+                        'div'
+                    );
+
+                card.className =
+                    'mapped-area-editor-site-class';
+
+                const heading =
+                    document.createElement(
+                        'div'
+                    );
+
+                heading.className =
+                    'mapped-area-editor-site-class-heading';
+
+                const nameInput =
+                    document.createElement(
+                        'input'
+                    );
+
+                nameInput.type = 'text';
+                nameInput.maxLength = 80;
+                nameInput.placeholder =
+                    'e.g. Standard Back-In';
+                nameInput.value =
+                    item.name
+                    || '';
+
+                nameInput.addEventListener(
+                    'input',
+                    () => {
+                        workingSiteClasses[
+                            classIndex
+                        ].name =
+                            nameInput.value;
+
+                        setDirty(true);
+                    }
+                );
+
+                const descriptionInput =
+                    document.createElement(
+                        'input'
+                    );
+
+                descriptionInput.type =
+                    'text';
+                descriptionInput.maxLength =
+                    240;
+                descriptionInput.placeholder =
+                    'Optional description';
+                descriptionInput.value =
+                    item.description
+                    || '';
+
+                descriptionInput.addEventListener(
+                    'input',
+                    () => {
+                        workingSiteClasses[
+                            classIndex
+                        ].description =
+                            descriptionInput.value;
+
+                        setDirty(true);
+                    }
+                );
+
+                const removeClassButton =
+                    document.createElement(
+                        'button'
+                    );
+
+                removeClassButton.type =
+                    'button';
+                removeClassButton.className =
+                    'mapped-area-editor-site-class-remove';
+                removeClassButton.textContent =
+                    'Remove class';
+
+                removeClassButton.addEventListener(
+                    'click',
+                    () => {
+                        workingSiteClasses.splice(
+                            classIndex,
+                            1
+                        );
+
+                        setDirty(true);
+                        renderSiteClasses();
+                    }
+                );
+
+                heading.append(
+                    rateField(
+                        'Class name',
+                        nameInput
+                    ),
+                    rateField(
+                        'Description',
+                        descriptionInput
+                    ),
+                    removeClassButton
+                );
+
+                const rates =
+                    document.createElement(
+                        'div'
+                    );
+
+                rates.className =
+                    'mapped-area-editor-site-class-rates';
+
+                item.rates.forEach(
+                    (rate, rateIndex) => {
+                        const row =
+                            document.createElement(
+                                'div'
+                            );
+
+                        row.className =
+                            'mapped-area-editor-site-class-rate';
+
+                        const typeSelect =
+                            document.createElement(
+                                'select'
+                            );
+
+                        Object.entries(
+                            rateTypeLabels
+                        ).forEach(
+                            ([value, label]) => {
+                                const option =
+                                    document.createElement(
+                                        'option'
+                                    );
+
+                                option.value =
+                                    value;
+                                option.textContent =
+                                    label;
+
+                                typeSelect.append(
+                                    option
+                                );
+                            }
+                        );
+
+                        typeSelect.value =
+                            rate.rate_type
+                            || 'standard';
+
+                        if (
+                            typeSelect.value
+                            === 'seasonal'
+                        ) {
+                            row.classList.add(
+                                'is-seasonal'
+                            );
+                        }
+
+                        typeSelect.addEventListener(
+                            'change',
+                            () => {
+                                rate.rate_type =
+                                    typeSelect.value;
+
+                                if (
+                                    typeSelect.value
+                                    !== 'seasonal'
+                                ) {
+                                    rate.season_start = '';
+                                    rate.season_end = '';
+                                }
+
+                                setDirty(true);
+                                renderSiteClasses();
+                            }
+                        );
+
+                        const labelInput =
+                            document.createElement(
+                                'input'
+                            );
+
+                        labelInput.type =
+                            'text';
+                        labelInput.maxLength =
+                            80;
+                        labelInput.placeholder =
+                            typeSelect.value
+                            === 'holiday'
+                                ? 'e.g. Memorial Day'
+                                : 'Optional label';
+                        labelInput.value =
+                            rate.label
+                            || '';
+
+                        labelInput.addEventListener(
+                            'input',
+                            () => {
+                                rate.label =
+                                    labelInput.value;
+                                setDirty(true);
+                            }
+                        );
+
+                        const amountInput =
+                            document.createElement(
+                                'input'
+                            );
+
+                        amountInput.type =
+                            'number';
+                        amountInput.min = '0';
+                        amountInput.max =
+                            '999999.99';
+                        amountInput.step =
+                            '0.01';
+                        amountInput.inputMode =
+                            'decimal';
+                        amountInput.placeholder =
+                            '0.00';
+                        amountInput.value =
+                            rate.amount
+                            ?? '';
+
+                        amountInput.addEventListener(
+                            'input',
+                            () => {
+                                rate.amount =
+                                    amountInput.value;
+                                setDirty(true);
+                            }
+                        );
+
+                        row.append(
+                            rateField(
+                                'Rate type',
+                                typeSelect
+                            ),
+                            rateField(
+                                'Label',
+                                labelInput
+                            ),
+                            rateField(
+                                'Nightly amount (USD)',
+                                amountInput
+                            )
+                        );
+
+                        if (
+                            typeSelect.value
+                            === 'seasonal'
+                        ) {
+                            const startInput =
+                                document.createElement(
+                                    'input'
+                                );
+
+                            startInput.type =
+                                'text';
+                            startInput.maxLength =
+                                5;
+                            startInput.inputMode =
+                                'numeric';
+                            startInput.placeholder =
+                                'MM-DD';
+                            startInput.value =
+                                rate.season_start
+                                || '';
+
+                            startInput.addEventListener(
+                                'input',
+                                () => {
+                                    rate.season_start =
+                                        startInput.value;
+                                    setDirty(true);
+                                }
+                            );
+
+                            const endInput =
+                                document.createElement(
+                                    'input'
+                                );
+
+                            endInput.type =
+                                'text';
+                            endInput.maxLength =
+                                5;
+                            endInput.inputMode =
+                                'numeric';
+                            endInput.placeholder =
+                                'MM-DD';
+                            endInput.value =
+                                rate.season_end
+                                || '';
+
+                            endInput.addEventListener(
+                                'input',
+                                () => {
+                                    rate.season_end =
+                                        endInput.value;
+                                    setDirty(true);
+                                }
+                            );
+
+                            row.append(
+                                rateField(
+                                    'Season begins',
+                                    startInput
+                                ),
+                                rateField(
+                                    'Season ends',
+                                    endInput
+                                )
+                            );
+                        }
+
+                        const notesInput =
+                            document.createElement(
+                                'input'
+                            );
+
+                        notesInput.type =
+                            'text';
+                        notesInput.maxLength =
+                            240;
+                        notesInput.placeholder =
+                            'Optional pricing note';
+                        notesInput.value =
+                            rate.notes
+                            || '';
+
+                        notesInput.addEventListener(
+                            'input',
+                            () => {
+                                rate.notes =
+                                    notesInput.value;
+                                setDirty(true);
+                            }
+                        );
+
+                        const removeRateButton =
+                            document.createElement(
+                                'button'
+                            );
+
+                        removeRateButton.type =
+                            'button';
+                        removeRateButton.className =
+                            'mapped-area-editor-site-class-rate-remove';
+                        removeRateButton.textContent =
+                            'Remove rate';
+
+                        removeRateButton.addEventListener(
+                            'click',
+                            () => {
+                                item.rates.splice(
+                                    rateIndex,
+                                    1
+                                );
+
+                                setDirty(true);
+                                renderSiteClasses();
+                            }
+                        );
+
+                        const notesField =
+                            rateField(
+                                'Notes',
+                                notesInput
+                            );
+
+                        notesField.className =
+                            'mapped-area-editor-site-class-rate-notes';
+
+                        row.append(
+                            notesField,
+                            removeRateButton
+                        );
+
+                        rates.append(
+                            row
+                        );
+                    }
+                );
+
+                const footer =
+                    document.createElement(
+                        'div'
+                    );
+
+                footer.className =
+                    'mapped-area-editor-site-class-footer';
+
+                const note =
+                    document.createElement(
+                        'p'
+                    );
+
+                note.textContent =
+                    item.rates.length > 0
+                        ? `${item.rates.length} class rate${item.rates.length === 1 ? '' : 's'}`
+                        : 'No rates in this class yet.';
+
+                const addRate =
+                    document.createElement(
+                        'button'
+                    );
+
+                addRate.type =
+                    'button';
+                addRate.className =
+                    'mapped-area-editor-site-class-add-rate';
+                addRate.textContent =
+                    'Add class rate';
+
+                addRate.addEventListener(
+                    'click',
+                    () => {
+                        item.rates.push({
+                            rate_type:
+                                'standard',
+                            label: '',
+                            amount: '',
+                            season_start: '',
+                            season_end: '',
+                            notes: ''
+                        });
+
+                        setDirty(true);
+                        renderSiteClasses();
+                    }
+                );
+
+                footer.append(
+                    note,
+                    addRate
+                );
+
+                card.append(
+                    heading,
+                    rates,
+                    footer
+                );
+
+                siteClassList.append(
+                    card
+                );
+            }
+        );
     };
 
     const rateTypeLabels = {
@@ -1833,12 +2561,46 @@
         const parent =
             rateParentFeature();
 
+        if (!parent) {
+            return;
+        }
+
         const parentRates =
-            Array.isArray(parent?.rates)
+            Array.isArray(parent.rates)
                 ? parent.rates
                 : [];
 
-        if (!parent || parentRates.length === 0) {
+        const selectedClassId =
+            Number(
+                siteClass?.value
+                || 0
+            );
+
+        const selectedClass =
+            (
+                Array.isArray(
+                    parent.site_classes
+                )
+                    ? parent.site_classes
+                    : []
+            ).find(
+                (item) =>
+                    Number(item.id)
+                    === selectedClassId
+            )
+            || null;
+
+        const classRates =
+            Array.isArray(
+                selectedClass?.rates
+            )
+                ? selectedClass.rates
+                : [];
+
+        if (
+            parentRates.length === 0
+            && classRates.length === 0
+        ) {
             return;
         }
 
@@ -1848,10 +2610,58 @@
             );
 
         title.textContent =
-            `Campground rates from ${
-                parent.label
-                || 'parent Camping area'
-            }`;
+            selectedClass
+                ? `Inherited pricing: ${selectedClass.name}`
+                : `Inherited pricing: ${
+                    parent.label
+                    || 'parent Camping area'
+                }`;
+
+        const effectiveInherited = [];
+
+        parentRates.forEach(
+            (rate) => {
+                effectiveInherited.push({
+                    ...rate,
+                    source: 'campground'
+                });
+            }
+        );
+
+        classRates.forEach(
+            (rate) => {
+                const rateType =
+                    String(
+                        rate.rate_type
+                        || ''
+                    );
+
+                for (
+                    let index =
+                        effectiveInherited.length - 1;
+                    index >= 0;
+                    index--
+                ) {
+                    if (
+                        String(
+                            effectiveInherited[index]
+                                .rate_type
+                            || ''
+                        ) === rateType
+                    ) {
+                        effectiveInherited.splice(
+                            index,
+                            1
+                        );
+                    }
+                }
+
+                effectiveInherited.push({
+                    ...rate,
+                    source: 'class'
+                });
+            }
+        );
 
         const summary =
             document.createElement(
@@ -1859,7 +2669,7 @@
             );
 
         const amounts =
-            parentRates
+            effectiveInherited
                 .map(
                     (rate) =>
                         Number(rate.amount)
@@ -1881,7 +2691,7 @@
                     : `${rateMoney(min)}–${rateMoney(max)} / night`;
         } else {
             summary.textContent =
-                `${parentRates.length} inherited rate${parentRates.length === 1 ? '' : 's'}`;
+                `${effectiveInherited.length} inherited rate${effectiveInherited.length === 1 ? '' : 's'}`;
         }
 
         const note =
@@ -1890,7 +2700,9 @@
             );
 
         note.textContent =
-            'Parent campground rates continue to apply unless this site has its own rate of the same type.';
+            selectedClass
+                ? 'Camping-area rates apply first, the pricing class replaces matching rate types, and this individual site can override either one.'
+                : 'Camping-area rates apply unless this individual site has its own rate of the same type.';
 
         rateInheritance.append(
             title,
@@ -1898,7 +2710,8 @@
             note
         );
 
-        rateInheritance.hidden = false;
+        rateInheritance.hidden =
+            false;
     };
 
     const rateField = (
@@ -2438,6 +3251,10 @@
                         ?.site_code
                         ? `Site ${feature.site_details.site_code}`
                         : '',
+                    feature.site_details
+                        ?.site_class_name
+                        ? `Class: ${feature.site_details.site_class_name}`
+                        : '',
                     siteTypeLabels[
                         feature.site_details
                             ?.site_type
@@ -2521,6 +3338,7 @@
 
             syncAreaDetailFields();
             syncSiteDetailFields();
+            syncSiteClasses();
             syncRates();
 
             drawButton.disabled =
@@ -2713,6 +3531,11 @@
         syncAreaDetailFields(
             feature.area_details
             || {}
+        );
+
+        syncSiteClasses(
+            feature.site_classes
+            || []
         );
 
         syncSiteDetailFields(
@@ -3173,6 +3996,9 @@
 
                         rates:
                             ratesPayload(),
+
+                        site_classes:
+                            siteClassesPayload(),
 
                         geometry,
 
@@ -4037,6 +4863,15 @@
                 syncAreaDetailFields();
                 syncSiteDetailFields();
 
+                if (
+                    featureType?.value
+                    !== 'camping_area'
+                ) {
+                    workingSiteClasses = [];
+                }
+
+                renderSiteClasses();
+
                 if (!rateFeatureSupported()) {
                     workingRates = [];
                 }
@@ -4067,8 +4902,19 @@
             }
         );
 
+    siteParent
+        ?.addEventListener(
+            'change',
+            () => {
+                syncSiteClassOptions('');
+                setDirty(true);
+                renderFeatureList();
+                renderRates();
+            }
+        );
+
     [
-        siteParent,
+        siteClass,
         siteType,
         siteParkingStyle,
         siteHookups,
@@ -4082,6 +4928,7 @@
                         () => {
                             setDirty(true);
                             renderFeatureList();
+                            renderRates();
                         }
                     );
             }
@@ -4093,6 +4940,29 @@
             () => {
                 setDirty(true);
                 renderFeatureList();
+            }
+        );
+
+    addSiteClassButton
+        ?.addEventListener(
+            'click',
+            () => {
+                if (
+                    featureType?.value
+                    !== 'camping_area'
+                ) {
+                    return;
+                }
+
+                workingSiteClasses.push({
+                    id: 0,
+                    name: '',
+                    description: '',
+                    rates: []
+                });
+
+                setDirty(true);
+                renderSiteClasses();
             }
         );
 
