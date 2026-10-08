@@ -245,6 +245,30 @@
     gap: 10px;
 }
 
+.mapped-area-editor-stay-fields {
+    display: grid;
+    grid-template-columns:
+        minmax(180px, 1fr)
+        minmax(180px, 1fr)
+        minmax(180px, 1fr);
+    gap: 10px;
+}
+
+.mapped-area-editor-stay-fields[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-area-note {
+    grid-column: 1 / -1;
+
+    margin: 0;
+
+    color: var(--text-muted);
+
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
 .mapped-area-editor-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -620,6 +644,10 @@
         grid-template-columns: 1fr 1.4fr;
     }
 
+    .mapped-area-editor-stay-fields {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .mapped-area-editor-summary,
     .mapped-area-selected-point {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -682,6 +710,14 @@
 
     .mapped-area-editor-area-fields {
         grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-stay-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-area-note {
+        grid-column: auto;
     }
 
     .mapped-area-editor-summary,
