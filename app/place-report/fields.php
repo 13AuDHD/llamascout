@@ -51,7 +51,10 @@ function llama_place_report_fields(): array
     llama_place_report_add_season_fields($f, $add);
 
     llama_place_report_add_summary_fields($f, $add);
+    require_once __DIR__ . '/flow-conditions.php';
+    llama_place_report_add_flow_condition_fields($f, $add);
     llama_place_report_apply_applicability($f);
+    llama_place_report_apply_flow_conditions($f);
 
     // Flow properties are additive annotations, not active dependencies.
     require_once __DIR__ . '/flow-metadata.php';
