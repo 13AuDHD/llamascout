@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 /**
- * Phase 3B: first live dependency family.
- *
  * Keep the existing registered answers, including Permit (2), intact.
  * New answers are stored in the existing rules payload. Applicability is
  * shared by form visibility, server validation and completion calculations.
@@ -40,6 +38,11 @@ function llama_place_report_add_flow_condition_fields(array &$fields, callable $
             'help' => 'Use Yes for a full prohibition in this reporting scope. Generator-free loops should be recorded at the Area level when available.',
         ]);
 
+    $add('generator_free_area', 'Generator-free area or loop?', 'rules', 'tri',
+        'rules.generator_free_area', $common + [
+            'help' => 'Choose Yes when one or more camping areas or loops prohibit generators even though other areas allow them.',
+        ]);
+
     $add('generator_restriction_details', 'Generator restriction details', 'rules', 'textarea',
         'rules.generator_restriction_details', $common + [
             'wide' => true,
@@ -57,24 +60,49 @@ function llama_place_report_apply_flow_conditions(array &$fields): void
         'value' => $value,
     ];
 
-    // Keep existing Place-type limitations and add actual dependencies.
+    // Retain the existing Place-type limitations for the parent question.
+    // An outright prohibition settles the generator questions immediately.
     $generatorApplicable = $fields['generator_restrictions']['applicable_if'] ?? [];
-    $quietHoursNo = [
+    $notProhibited = [
         $equals('generator_restrictions', '1'),
-        $equals('generator_quiet_hours', '0'),
+        $equals('generator_prohibited', '0'),
     ];
 
-    $fields['generator_run_restrictions']['applicable_if'] = array_merge(
-        $generatorApplicable, $quietHoursNo
+    $fields['generator_prohibited']['applicable_if'] = array_merge(
+        $generatorApplicable,
+        [$equals('generator_restrictions', '1')]
     );
-    $fields['generator_max_run_hours']['applicable_if'] = [
-        $equals('generator_run_restrictions', '1'),
-    ];
-    $fields['generator_prohibited']['applicable_if'] = [
-        $equals('generator_restrictions', '1'),
-        $equals('generator_quiet_hours', '0'),
-        $equals('generator_run_restrictions', '0'),
-    ];
+    $fields['generator_quiet_hours']['applicable_if'] = array_merge(
+        $generatorApplicable,
+        $notProhibited
+    );
+    $fields['generator_quiet_hours_begin']['applicable_if'] = array_merge(
+        $notProhibited,
+        [$equals('generator_quiet_hours', '1')]
+    );
+    $fields['generator_quiet_hours_end']['applicable_if'] = array_merge(
+        $notProhibited,
+        [$equals('generator_quiet_hours', '1')]
+    );
+    $fields['generator_run_restrictions']['applicable_if'] = array_merge(
+        $generatorApplicable,
+        $notProhibited,
+        [$equals('generator_quiet_hours', '0')]
+    );
+    $fields['generator_max_run_hours']['applicable_if'] = array_merge(
+        $notProhibited,
+        [
+            $equals('generator_quiet_hours', '0'),
+            $equals('generator_run_restrictions', '1'),
+        ]
+    );
+    $fields['generator_free_area']['applicable_if'] = array_merge(
+        $notProhibited,
+        [
+            $equals('generator_quiet_hours', '0'),
+            $equals('generator_run_restrictions', '0'),
+        ]
+    );
     $fields['generator_restriction_details']['applicable_if'] = [
         $equals('generator_restrictions', '1'),
     ];
