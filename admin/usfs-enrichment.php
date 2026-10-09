@@ -75,11 +75,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if ($selectedPlace === null) {
                 throw new InvalidArgumentException('Selected Place no longer exists.');
             }
-            // Re-fetch the official site ID; never trust browser-provided details.
-            $selectedUsfs = llama_usfs_site_by_id($siteId);
-            if (!$selectedUsfs || strtoupper((string) ($selectedUsfs['site_type'] ?? '')) !== 'CAMPGROUND') {
-                throw new InvalidArgumentException('USFS record is missing or is not a campground.');
-            }
+            // The save service re-fetches and validates the selected USFS record.
             $confirm = (string) ($_POST['confirm_match'] ?? '');
             if ($confirm !== '1') {
                 throw new InvalidArgumentException('Confirm the matching campground before saving.');
