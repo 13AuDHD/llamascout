@@ -27,3 +27,30 @@
 @media (max-width: 760px) { .place-overnight-options-heading { flex-wrap: wrap; } .place-overnight-options .place-campsite-row, .place-stay-parking-row { min-width: 210px; flex-basis: 210px; } }
 
 .place-overnight-options .place-stay-parking-row[hidden] { display: none; }
+
+/* Map polygons use the same compact buttons as canonical campsite records. */
+.place-overnight-options .place-stay-map-site-row {
+    flex: 0 0 230px;
+    min-width: 230px;
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    scroll-snap-align: start;
+}
+.place-overnight-options .place-stay-map-site-row.is-selected {
+    border-color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--text);
+}
+.place-overnight-options .place-stay-map-site-row[hidden] { display: none; }
+@media (max-width: 760px) {
+    .place-overnight-options .place-stay-map-site-row {
+        min-width: 210px;
+        flex-basis: 210px;
+    }
+}
