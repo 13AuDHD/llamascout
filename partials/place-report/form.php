@@ -1205,8 +1205,9 @@ foreach (
     $placeReportFlowOrder = [
         'rules' => [
             'overnight_camping_allowed', 'dispersed_camping_allowed',
-            'designated_sites_only', 'existing_sites_encouraged',
+            'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
             'stay_limit_days', 'residential_use_prohibited',
+            'camping_conditional_details',
             'fee', 'reservation_required', 'reservation_fee',
             'reservation_url', 'membership_required', 'membership_fee',
             'membership_url', 'check_in_required', 'check_in_begins',
@@ -1222,6 +1223,7 @@ foreach (
             'generator_prohibited', 'generator_restriction_details',
             'campfire_allowed', 'collecting_firewood',
             'current_fire_restrictions_url',
+            'fire_activities_conditional_details',
             'pets_allowed', 'dogs_required_to_be_leashed',
             'food_storage_required', 'pack_it_in_pack_it_out',
             'drone_use_legal', 'target_shooting_allowed',
@@ -1537,8 +1539,9 @@ foreach (
                 $ruleGroups = [
                     'Camping and stays' => [
                         'overnight_camping_allowed', 'dispersed_camping_allowed',
-                        'designated_sites_only', 'existing_sites_encouraged',
+                        'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
                         'stay_limit_days', 'residential_use_prohibited',
+            'camping_conditional_details',
                     ],
                     'Camping costs and reservations' => [
                         'fee', 'reservation_required', 'reservation_fee',
@@ -1566,6 +1569,7 @@ foreach (
                         'campfire_allowed', 'collecting_firewood',
                         'current_fire_restrictions_url',
                         'drone_use_legal', 'target_shooting_allowed',
+                        'fire_activities_conditional_details',
                     ],
                     'Pets and campsite rules' => [
                         'pets_allowed', 'dogs_required_to_be_leashed',
