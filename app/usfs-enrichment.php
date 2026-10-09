@@ -36,8 +36,21 @@ function llama_usfs_request(array $params): array
         throw new RuntimeException('USFS request failed (' . ($error ?: 'HTTP ' . $status) . ').');
     }
     $payload = json_decode((string) $body, true);
-    if (!is_array($payload) || isset($payload['error']) || !isset($payload['features']) || !is_array($payload['features'])) {
-        throw new RuntimeException('USFS returned an unexpected response.');
+    if (!is_array($payload)) {
+        throw new RuntimeException('USFS returned invalid JSON.');
+    }
+    if (isset($payload['error'])) {
+        $remote = (array) $payload['error'];
+        $code = (int) ($remote['code'] ?? 0);
+        $message = trim((string) ($remote['message'] ?? 'Invalid query'));
+        $details = array_filter(array_map('strval', (array) ($remote['details'] ?? [])));
+        throw new RuntimeException(
+            'USFS ArcGIS query error ' . $code . ': ' . $message
+            . ($details ? ' (' . implode('; ', array_slice($details, 0, 2)) . ')' : '')
+        );
+    }
+    if (!isset($payload['features']) || !is_array($payload['features'])) {
+        throw new RuntimeException('USFS response did not contain the expected features list.');
     }
     return $payload;
 }
@@ -180,11 +193,14 @@ function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
         return [];
     }
 
-    // ArcGIS string comparisons may be case sensitive depending on the layer.
+    /*
+     * Match the query syntax that the working USFS Source Test uses.
+     * In particular, request outFields=*; named field lists are not
+     * consistently accepted by this ArcGIS layer.
+     */
     $variants = array_unique([
-        mb_strtoupper($target),
+        mb_strtoupper($target, 'UTF-8'),
         mb_convert_case($target, MB_CASE_TITLE, 'UTF-8'),
-        $target,
     ]);
     $found = [];
     $lastError = null;
@@ -192,34 +208,43 @@ function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
 
     foreach ($variants as $variant) {
         $pattern = str_replace("'", "''", $variant);
-        try {
-            $payload = llama_usfs_request([
-                'where' => "site_name LIKE '%" . $pattern . "%'",
-                'outFields' => 'site_id,site_name,site_type,site_cn,fee_charged,fee_type,fee_description,operational_hours,seasonal_operational_status,usda_portal_url',
-                'resultRecordCount' => 100,
-            ]);
-            $successfulRequests++;
-        } catch (RuntimeException $exception) {
-            $lastError = $exception;
-            continue;
-        }
+        $whereClauses = [
+            "UPPER(site_name) LIKE '%" . mb_strtoupper($pattern, 'UTF-8') . "%'",
+            "site_name LIKE '%" . $pattern . "%'",
+        ];
 
-        foreach ($payload['features'] as $feature) {
-            $attributes = $feature['attributes'] ?? null;
-            if (!is_array($attributes)) {
+        foreach ($whereClauses as $where) {
+            try {
+                $payload = llama_usfs_request([
+                    'where' => $where,
+                    'outFields' => '*',
+                    'resultRecordCount' => 100,
+                ]);
+                $successfulRequests++;
+            } catch (RuntimeException $exception) {
+                $lastError = $exception;
                 continue;
             }
-            $id = (int) ($attributes['site_id'] ?? 0);
-            if ($id <= 0 || strtoupper(trim((string) ($attributes['site_type'] ?? ''))) !== 'CAMPGROUND') {
-                continue;
+
+            foreach ($payload['features'] as $feature) {
+                $attributes = $feature['attributes'] ?? null;
+                if (!is_array($attributes)) {
+                    continue;
+                }
+                $id = (int) ($attributes['site_id'] ?? 0);
+                if ($id <= 0 || strtoupper(trim((string) ($attributes['site_type'] ?? ''))) !== 'CAMPGROUND') {
+                    continue;
+                }
+                $normalized = llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''));
+                if ($normalized !== $target && !str_contains($normalized, $target) && !str_contains($target, $normalized)) {
+                    continue;
+                }
+                $found[$id] = $attributes;
             }
-            $normalized = llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''));
-            if ($normalized !== $target && !str_contains($normalized, $target) && !str_contains($target, $normalized)) {
-                continue;
+            if (count($found) >= $limit) {
+                break 2;
             }
-            $found[$id] = $attributes;
-        }
-        if (count($found) >= $limit) {
+            // A successful working query means the other form is unnecessary.
             break;
         }
     }
