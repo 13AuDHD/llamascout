@@ -521,6 +521,41 @@
     };
 
 
+    const activePartner = (place) => {
+        const partner = place?.map_partner;
+        return partner && Number(partner.id) > 0 ? partner : null;
+    };
+
+    const isAffiliatePlace = (place) =>
+        activePartner(place)?.relationship === 'affiliate';
+
+    // Partner colors are installed in a stylesheet, not in element style attributes.
+    const partnerStyles = document.createElement('style');
+    partnerStyles.id = 'llama-map-partner-colors';
+    document.head.appendChild(partnerStyles);
+    const styledPartners = new Set();
+    const safeColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(String(value || ''))
+        ? String(value) : null;
+
+    const registerPartnerStyles = (partner) => {
+        if (!partner || styledPartners.has(Number(partner.id))) return;
+        const id = Number(partner.id);
+        if (!Number.isSafeInteger(id) || id < 1) return;
+        styledPartners.add(id);
+        const primary = safeColor(partner.primary_color) || '#FBD318';
+        const accent = safeColor(partner.accent_color) || '#CC2027';
+        const sheet = partnerStyles.sheet;
+        if (!sheet) return;
+        sheet.insertRule(`.map-place-card.map-partner-${id} { --map-partner-primary: ${primary}; --map-partner-accent: ${accent}; }`, sheet.cssRules.length);
+    };
+
+    const brandedMarkerUrl = (partner) => {
+        if (!partner?.show_map_markers) return '';
+        const icon = String(partner.marker_icon || '');
+        return /^[a-z0-9][a-z0-9-]{0,79}$/.test(icon)
+            ? `/assets/icons/${icon}.svg` : '';
+    };
+
     const mapMarkerClass = (place) => {
         const feeStatus = campingFeeStatus(place);
 
@@ -536,8 +571,19 @@
     };
 
 
-    const markerIcon = (place) =>
-        L.divIcon({
+    const markerIcon = (place) => {
+        const partner = activePartner(place);
+        const iconUrl = brandedMarkerUrl(partner);
+        if (iconUrl) {
+            return L.divIcon({
+                className: 'map-place-marker-shell map-partner-marker-shell',
+                html: `<img class="map-partner-marker-image" src="${escapeHtml(iconUrl)}" alt="" aria-hidden="true">`,
+                iconSize: [36, 46],
+                iconAnchor: [18, 44],
+                popupAnchor: [0, -42]
+            });
+        }
+        return L.divIcon({
             className: 'map-place-marker-shell',
             html: `
                 <span
@@ -551,6 +597,7 @@ iconSize: [36, 46],
 iconAnchor: [18, 44],
 popupAnchor: [0, -42]
         });
+    };
 
 
     const placeCoordinates = (place) => {
@@ -810,10 +857,15 @@ popupAnchor: [0, -42]
         const location = locationLabel(place);
         const url = placeUrl(place);
         const featured = isFeaturedPlace(place);
+        const partner = activePartner(place);
+        const affiliate = isAffiliatePlace(place);
+        const paid = campingFeeStatus(place) === 'paid' || campingFeeStatus(place) === 'mixed';
+        if (partner?.use_branded_cards) registerPartnerStyles(partner);
 
         card.className =
             'map-place-card' +
-            (featured ? ' is-featured' : '');
+            (featured ? ' is-featured' : '') +
+            (partner?.use_branded_cards ? ` is-partner-branded map-partner-${Number(partner.id)}` : '');
         card.href = url;
         card.setAttribute(
             'aria-label',
@@ -846,6 +898,16 @@ popupAnchor: [0, -42]
                                 Featured
                             </span>
                         `
+                        : ''
+                }
+                ${
+                    affiliate
+                        ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
+                        : ''
+                }
+                ${
+                    paid
+                        ? '<span class="map-featured-badge map-paid-badge">Paid</span>'
                         : ''
                 }
             </span>
