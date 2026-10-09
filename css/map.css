@@ -786,3 +786,43 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
         animation: none;
     }
 }
+
+
+/* Partner presentation and fee label for map results. */
+.map-place-card.is-partner-branded {
+    border-color: var(--map-partner-primary, #FBD318);
+    background: color-mix(in srgb, var(--map-partner-primary, #FBD318) 17%, var(--surface));
+    box-shadow: inset 4px 0 0 var(--map-partner-primary, #FBD318);
+}
+
+.map-place-card.is-partner-branded:hover {
+    border-color: var(--map-partner-primary, #FBD318);
+}
+
+.map-place-card .map-affiliate-badge {
+    background: #F5C518;
+    color: #211700;
+    border-color: #A47C00;
+}
+
+.map-place-card .map-paid-badge {
+    background: #237a4b;
+    color: #fff;
+}
+
+.map-place-image:has(.map-affiliate-badge) .map-featured-badge:not(.map-affiliate-badge):not(.map-paid-badge),
+.map-place-image:has(.map-paid-badge) .map-featured-badge:not(.map-affiliate-badge):not(.map-paid-badge) {
+    bottom: 43px;
+}
+
+.map-place-image:has(.map-paid-badge) .map-affiliate-badge {
+    bottom: 43px;
+}
+
+.map-partner-marker-image {
+    display: block;
+    width: 36px;
+    height: 46px;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .26));
+}
