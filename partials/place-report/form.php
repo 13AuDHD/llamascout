@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/place-report.php';
 
+// Rule group layout uses a dedicated stylesheet, never inline CSS.
+
+
 
 /*
  * =========================================================
@@ -1511,6 +1514,95 @@ foreach (
                     </div>
                 <?php endif; ?>
 
+
+            <?php elseif ($sectionKey === 'rules'): ?>
+
+                <link rel="stylesheet" href="/css/site/features/place-report-flow-groups.css">
+
+                <?php
+                $ruleGroups = [
+                    'Camping and stays' => [
+                        'overnight_camping_allowed', 'dispersed_camping_allowed',
+                        'designated_sites_only', 'existing_sites_encouraged',
+                        'stay_limit_days', 'residential_use_prohibited',
+                    ],
+                    'Camping costs and reservations' => [
+                        'fee', 'reservation_required', 'reservation_fee',
+                        'reservation_url', 'membership_required',
+                        'membership_fee', 'membership_url',
+                        'check_in_required', 'check_in_begins',
+                        'check_out_required', 'checkout_ends',
+                        'entrance_facility_fee', 'parking_fee',
+                    ],
+                    'Seasons and access' => [
+                        'season_begins', 'season_ends', 'seasonal_closure',
+                        'seasonal_access_note', 'best_months', 'winter_access',
+                        'snow_risk', 'mud_season_risk', 'monsoon_risk',
+                        'hurricane_risk', 'heat_season_risk',
+                    ],
+                    'Generators' => [
+                        'generator_restrictions', 'generator_quiet_hours',
+                        'generator_quiet_hours_begin',
+                        'generator_quiet_hours_end',
+                        'generator_run_restrictions',
+                        'generator_max_run_hours', 'generator_prohibited',
+                        'generator_restriction_details',
+                    ],
+                    'Fire and outdoor activities' => [
+                        'campfire_allowed', 'collecting_firewood',
+                        'current_fire_restrictions_url',
+                        'drone_use_legal', 'target_shooting_allowed',
+                    ],
+                    'Pets and campsite rules' => [
+                        'pets_allowed', 'dogs_required_to_be_leashed',
+                        'food_storage_required', 'pack_it_in_pack_it_out',
+                    ],
+                    'Nearby services' => [
+                        'nearest_town', 'nearest_fuel', 'nearest_ev_charging',
+                        'nearest_alcohol_sales', 'nearest_propane',
+                        'nearest_grocery', 'nearest_water', 'nearest_toilet',
+                        'nearest_hospital',
+                    ],
+                ];
+                $renderedRules = [];
+                ?>
+
+                <?php foreach ($ruleGroups as $groupTitle => $fieldKeys): ?>
+                    <?php
+                    $groupFields = [];
+                    foreach ($fieldKeys as $fieldKey) {
+                        if (isset($sectionFields[$fieldKey])) {
+                            $groupFields[$fieldKey] = $sectionFields[$fieldKey];
+                            $renderedRules[$fieldKey] = true;
+                        }
+                    }
+                    if (!$groupFields) {
+                        continue;
+                    }
+                    ?>
+                    <section class="place-report-flow-group" data-place-report-flow-group>
+                        <h3 class="place-report-flow-heading"><?= $e($groupTitle) ?></h3>
+                        <div class="contribution-grid">
+                            <?php foreach ($groupFields as $field): ?>
+                                <?php $renderField($field); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+
+                <?php
+                $unassignedRules = array_diff_key($sectionFields, $renderedRules);
+                ?>
+                <?php if ($unassignedRules): ?>
+                    <section class="place-report-flow-group" data-place-report-flow-group>
+                        <h3 class="place-report-flow-heading">Additional rules</h3>
+                        <div class="contribution-grid">
+                            <?php foreach ($unassignedRules as $field): ?>
+                                <?php $renderField($field); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
 
             <?php else: ?>
 
