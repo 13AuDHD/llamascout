@@ -66,5 +66,8 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-access-options.php';
     llama_place_report_apply_access_options($f);
 
+    require_once __DIR__ . '/flow-permissions.php';
+    llama_place_report_apply_permission_flows($f, $add);
+
     return $f;
 }
