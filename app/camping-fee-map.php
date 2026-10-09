@@ -63,6 +63,47 @@ SQL;
         }
     }
 
+    /*
+     * A human-reviewed USFS link is usable evidence for an explicitly
+     * priced overnight campground. Do not override a verified manual
+     * decision. Missing fee description or a generic fee flag is unknown.
+     */
+    foreach (array_chunk($placeIds, 400) as $chunk) {
+        $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
+        try {
+            $stmt = $db->prepare(
+                "SELECT place_id, fee_charged, fee_description,
+                        camping_fee_candidate, camping_rate_candidate
+                 FROM place_usfs_enrichment
+                 WHERE place_id IN ($placeholders)"
+            );
+            $stmt->execute($chunk);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = (int) $row['place_id'];
+                if (($result[$id] ?? 'unknown') !== 'unknown') {
+                    continue;
+                }
+                $description = (string) ($row['fee_description'] ?? '');
+                $amount = (float) ($row['camping_rate_candidate'] ?? 0);
+                if (
+                    strtoupper(trim((string) ($row['fee_charged'] ?? ''))) !== 'Y'
+                    || (string) ($row['camping_fee_candidate'] ?? '') !== 'paid_candidate'
+                    || $amount <= 0
+                    || !preg_match('/\b(?:overnight\s+use|overnight\s+camping|camping\s+fee|per\s+night)\b/i', $description)
+                    || preg_match('/\b(?:free\s+(?:sites?|camping)|some\s+sites?\s+free)\b/i', $description)
+                ) {
+                    continue;
+                }
+                $result[$id] = 'paid';
+            }
+        } catch (PDOException $exception) {
+            $code = (string) ($exception->errorInfo[1] ?? '');
+            if ($code !== '1146' && $code !== '42S02') {
+                throw $exception;
+            }
+        }
+    }
+
     return $result;
 }
 
