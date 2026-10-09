@@ -40,6 +40,15 @@ function llama_place_report_fields(): array
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
 
+    // These short categorical answers use the standard three-column card
+    // width, just like the ratings immediately below them. Other long text
+    // and multiselect fields retain their normal wide presentation.
+    foreach (['landscape_primary', 'landscape_details', 'landscape_views'] as $key) {
+        if (isset($f[$key])) {
+            $f[$key]['wide'] = false;
+        }
+    }
+
     // The same canonical fields serve Add a Place, updates, and Scout Reports.
     require_once __DIR__ . '/fields-seasons.php';
     llama_place_report_add_season_fields($f, $add);
