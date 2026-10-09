@@ -653,6 +653,34 @@
     transform: translate(-50%, -50%);
 }
 
+.map-place-marker.is-paid,
+.map-place-marker.is-mixed {
+    background: #237a4b;
+}
+
+.map-place-marker.is-paid::after,
+.map-place-marker.is-mixed::after {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-weight: 900;
+    line-height: 1;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.map-place-marker.is-paid::after {
+    content: '$';
+    font-size: 18px;
+}
+
+.map-place-marker.is-mixed::after {
+    content: '$/•';
+    font-size: 11px;
+    white-space: nowrap;
+}
+
 .map-place-marker.is-featured {
     background: #237a4b;
 }
