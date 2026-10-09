@@ -1,0 +1,4 @@
+/* Scout Report: native grouped rule questions. */
+.place-report-flow-group + .place-report-flow-group { margin-top: 1.65rem; }
+.place-report-flow-heading { margin: 0 0 .8rem; padding: 0 0 .5rem; border-bottom: 1px solid var(--border-color, #d6dfd8); font-size: 1.04rem; line-height: 1.35; font-weight: 700; }
+.place-report-flow-group[hidden] { display: none; }
