@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3)
     . '/app/place-report.php';
+require_once dirname(__DIR__, 3)
+    . '/app/usfs-place-report.php';
 
 $publishedUnknown = [];
 
@@ -29,6 +31,14 @@ $placeReportData =
         $place,
         $publishedUnknown
     );
+
+if (empty($isDemoScoutReport)) {
+    $placeReportData = llama_usfs_report_enrich(
+        db(),
+        (int) ($place['id'] ?? 0),
+        $placeReportData
+    );
+}
 
 $placeReportReadMode =
     'scout-report';
