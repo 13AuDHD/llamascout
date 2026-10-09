@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/camping-fee-map.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
-
 
 /*
  * Llama Scout has used a few private-config layouts over time.
@@ -37,7 +37,6 @@ function llama_geoapify_api_key(): string
     return '';
 }
 
-
 function llama_member_map_tiles(): array
 {
     $apiKey = llama_geoapify_api_key();
@@ -54,21 +53,14 @@ function llama_member_map_tiles(): array
 
     return [
         'geoapify_available' => true,
-
-        /*
-         * Geoapify raster tiles work directly with Leaflet.
-         * The key is restricted to authenticated member-map responses.
-         */
         'light' =>
             'https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png'
             . '?apiKey=' . $encodedKey,
-
         'dark' =>
             'https://maps.geoapify.com/v1/tile/dark-matter/{z}/{x}/{y}.png'
             . '?apiKey=' . $encodedKey,
     ];
 }
-
 
 try {
     /*
@@ -96,8 +88,7 @@ try {
             )
             : [];
 
-    $hasContributorPlaceAccess =
-        !empty($contributedPlaceIds);
+    $hasContributorPlaceAccess = !empty($contributedPlaceIds);
 
     $places = places_map(
         $hasMemberMapAccess,
@@ -105,6 +96,10 @@ try {
             ? $viewerUserId
             : null
     );
+
+    // Enrich existing canonical Place rows, without changing their source
+    // provenance or leaking the internal verification audit trail.
+    $places = llama_camping_fee_enrich_map_places(db(), $places);
 
     echo json_encode(
         [
@@ -124,16 +119,10 @@ try {
                 ($hasMemberMapAccess || $hasContributorPlaceAccess)
                     ? 20
                     : 11,
-
-            /*
-             * Tile URLs are only supplied to member sessions.
-             * Free/logged-out users continue using the existing public OSM layer.
-             */
             'member_tiles' =>
                 $hasMemberMapAccess
                     ? llama_member_map_tiles()
                     : null,
-
             'places' => $places,
         ],
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
