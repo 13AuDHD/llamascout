@@ -1179,6 +1179,80 @@ foreach (
             );
     }
 
+    /*
+     * Keep the established section UI and all existing field names, while
+     * displaying related questions together. These lists affect presentation
+     * only: no values, validation, applicability or points are changed.
+     * Unlisted and future questions retain their original registry order.
+     */
+    $placeReportFlowOrder = [
+        'rules' => [
+            'overnight_camping_allowed', 'dispersed_camping_allowed',
+            'designated_sites_only', 'existing_sites_encouraged',
+            'stay_limit_days', 'residential_use_prohibited',
+            'fee', 'reservation_required', 'reservation_fee',
+            'reservation_url', 'membership_required', 'membership_fee',
+            'membership_url', 'check_in_required', 'check_in_begins',
+            'check_out_required', 'checkout_ends',
+            'entrance_facility_fee', 'parking_fee',
+            'season_begins', 'season_ends', 'seasonal_closure',
+            'seasonal_access_note', 'best_months', 'winter_access',
+            'snow_risk', 'mud_season_risk', 'monsoon_risk',
+            'hurricane_risk', 'heat_season_risk',
+            'generator_restrictions', 'generator_quiet_hours',
+            'generator_quiet_hours_begin', 'generator_quiet_hours_end',
+            'generator_run_restrictions', 'generator_max_run_hours',
+            'generator_prohibited', 'generator_restriction_details',
+            'campfire_allowed', 'collecting_firewood',
+            'current_fire_restrictions_url',
+            'pets_allowed', 'dogs_required_to_be_leashed',
+            'food_storage_required', 'pack_it_in_pack_it_out',
+            'drone_use_legal', 'target_shooting_allowed',
+            'nearest_town', 'nearest_fuel', 'nearest_ev_charging',
+            'nearest_alcohol_sales', 'nearest_propane',
+            'nearest_grocery', 'nearest_water', 'nearest_toilet',
+            'nearest_hospital',
+        ],
+        'site_vehicle' => [
+            'site_number', 'site_accessible', 'max_people',
+            'vehicle_capacity', 'capacity_size_rating',
+            'site_length_feet', 'site_width_feet',
+            'parking_surface', 'ground_condition', 'parking_grade',
+            'parking_length_feet', 'overhead_clearance_feet',
+            'max_vehicle_length_feet', 'double_driveway',
+            'turnaround_space', 'pull_through', 'back_in',
+            'trailer_suitable', 'max_trailer_length_feet',
+            'rv_suitable', 'max_rv_length_feet',
+            'tent_camping_suitable', 'tent_pad',
+            'tent_pad_length_feet', 'tent_pad_width_feet',
+            'hike_in_distance_feet', 'levelness',
+            'site_open_sky', 'tree_cover', 'site_shade',
+            'site_hookups_available', 'hookup_electric',
+            'hookup_electric_service', 'hookup_water', 'hookup_sewer',
+        ],
+        'road_access' => [
+            'road_surface', 'road_width', 'sedan_accessible',
+            'high_clearance_recommended', 'four_wheel_drive_recommended',
+            'water_crossings', 'downed_tree_risk',
+            'road_overall_difficulty', 'road_stress',
+            'rocks', 'washboards', 'potholes', 'mud_risk',
+            'steep_grades', 'drop_off_exposure',
+            'site_access_difficulty', 'access_summary',
+        ],
+    ];
+    if (isset($placeReportFlowOrder[$sectionKey])) {
+        $positions = array_flip($placeReportFlowOrder[$sectionKey]);
+        $originalOrder = array_flip(array_keys($sectionFields));
+        uksort(
+            $sectionFields,
+            static function (string $a, string $b) use ($positions, $originalOrder): int {
+                $left = $positions[$a] ?? (1000 + $originalOrder[$a]);
+                $right = $positions[$b] ?? (1000 + $originalOrder[$b]);
+                return $left <=> $right;
+            }
+        );
+    }
+
     if (!$sectionFields) {
         continue;
     }
