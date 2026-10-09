@@ -559,6 +559,10 @@
     const mapMarkerClass = (place) => {
         const feeStatus = campingFeeStatus(place);
 
+        if (isFeaturedPlace(place)) {
+            return ' is-featured';
+        }
+
         if (feeStatus === 'paid') {
             return ' is-paid';
         }
@@ -567,7 +571,7 @@
             return ' is-mixed';
         }
 
-        return isFeaturedPlace(place) ? ' is-featured' : '';
+        return '';
     };
 
 
@@ -865,6 +869,7 @@ popupAnchor: [0, -42]
         card.className =
             'map-place-card' +
             (featured ? ' is-featured' : '') +
+            (paid ? ' is-paid-place' : '') +
             (partner?.use_branded_cards ? ` is-partner-branded map-partner-${Number(partner.id)}` : '');
         card.href = url;
         card.setAttribute(
@@ -890,26 +895,26 @@ popupAnchor: [0, -42]
                         `
                 }
 
-                ${
-                    featured
-                        ? `
-                            <span class="map-featured-badge">
-                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/star.svg')" aria-hidden="true"></i>
+                <span class="map-place-badges">
+                    ${
+                        featured
+                            ? `<span class="map-featured-badge">
+                                <i class="llama-icon-mask" aria-hidden="true"></i>
                                 Featured
-                            </span>
-                        `
-                        : ''
-                }
-                ${
-                    affiliate
-                        ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
-                        : ''
-                }
-                ${
-                    paid
-                        ? '<span class="map-featured-badge map-paid-badge">Paid</span>'
-                        : ''
-                }
+                            </span>`
+                            : ''
+                    }
+                    ${
+                        affiliate
+                            ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
+                            : ''
+                    }
+                    ${
+                        paid
+                            ? '<span class="map-featured-badge map-paid-badge"><span class="map-paid-symbol" aria-hidden="true">$</span> Paid</span>'
+                            : ''
+                    }
+                </span>
             </span>
 
             <div class="map-place-body">
