@@ -1,0 +1,89 @@
+/* Compact Place provenance and field verification status. */
+.place-freshness-compact .place-freshness-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    align-items: center;
+    gap: 24px;
+}
+
+.place-freshness-compact .place-freshness-summary {
+    min-width: 0;
+}
+
+.place-freshness-compact .place-freshness-breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 10px;
+    min-width: 0;
+}
+
+.place-freshness-compact .place-freshness-status-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    min-height: 100px;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow-wrap: anywhere;
+}
+
+.place-freshness-compact .place-freshness-status-card > span,
+.place-freshness-compact .place-freshness-status-card > strong,
+.place-freshness-compact .place-freshness-status-card > small {
+    display: block;
+    margin: 0;
+    line-height: 1.35;
+}
+
+.place-freshness-compact .place-freshness-status-card > span {
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.place-freshness-compact .place-freshness-status-card > strong {
+    font-size: .91rem;
+}
+
+.place-freshness-compact .place-freshness-status-card > small {
+    font-size: .71rem;
+}
+
+.place-freshness-compact .place-freshness-status-card.is-complete {
+    border-color: #259b62;
+    background: color-mix(in srgb, #259b62 12%, var(--surface));
+}
+
+.place-freshness-compact .place-freshness-status-card.is-complete > strong {
+    color: #39bd7b;
+}
+
+.place-freshness-compact .place-freshness-status-card.is-pending {
+    border-color: #ba4c4c;
+    background: color-mix(in srgb, #ba4c4c 11%, var(--surface));
+}
+
+.place-freshness-compact .place-freshness-status-card.is-pending > strong {
+    color: #e16a6a;
+}
+
+@media (max-width: 1000px) {
+    .place-freshness-compact .place-freshness-inner {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .place-freshness-compact .place-freshness-breakdown {
+        grid-template-columns: 1fr;
+    }
+
+    .place-freshness-compact .place-freshness-status-card {
+        min-height: 0;
+    }
+}
