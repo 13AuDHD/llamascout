@@ -159,27 +159,89 @@ function llama_usfs_enrichment_save(PDO $db, int $placeId, int $siteId, int $act
     return ['place_name' => (string) $placeName, 'attributes' => $attributes, 'candidate' => $candidate];
 }
 
-/** Search official campground names. Never treat a name match as verified identity. */
+/**
+ * Find Forest Service records by normalized campground name.
+ *
+ * ArcGIS query layers do not consistently support UPPER(field), and the
+ * RIDB Place name often adds "Campground" while the USFS name omits it.
+ * Query the name as stored, without SQL functions, then check candidates in
+ * PHP. Never treat the name alone as an approved identity match.
+ */
 function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
 {
     $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
     if (mb_strlen($name) < 3 || mb_strlen($name) > 120) {
         return [];
     }
+
     $limit = max(1, min(20, $limit));
-    // Escape the SQL LIKE wildcard syntax and quote characters for ArcGIS.
-    $pattern = str_replace(['\\', '%', '_', "'"], ['\\\\', '\\%', '\\_', "''"], $name);
-    $query = llama_usfs_request([
-        'where' => "UPPER(site_name) LIKE UPPER('%" . $pattern . "%') AND UPPER(site_type) = 'CAMPGROUND'",
-        'outFields' => 'site_id,site_name,site_type,site_cn,fee_charged,fee_type,fee_description,operational_hours,seasonal_operational_status,usda_portal_url',
-        'resultRecordCount' => $limit,
+    $target = llama_usfs_normalized_campground_name($name);
+    if (mb_strlen($target) < 3) {
+        return [];
+    }
+
+    // ArcGIS string comparisons may be case sensitive depending on the layer.
+    $variants = array_unique([
+        mb_strtoupper($target),
+        mb_convert_case($target, MB_CASE_TITLE, 'UTF-8'),
+        $target,
     ]);
-    $candidates = [];
-    foreach ($query['features'] as $feature) {
-        $record = $feature['attributes'] ?? null;
-        if (is_array($record) && (int) ($record['site_id'] ?? 0) > 0) {
-            $candidates[] = $record;
+    $found = [];
+    $lastError = null;
+    $successfulRequests = 0;
+
+    foreach ($variants as $variant) {
+        $pattern = str_replace("'", "''", $variant);
+        try {
+            $payload = llama_usfs_request([
+                'where' => "site_name LIKE '%" . $pattern . "%'",
+                'outFields' => 'site_id,site_name,site_type,site_cn,fee_charged,fee_type,fee_description,operational_hours,seasonal_operational_status,usda_portal_url',
+                'resultRecordCount' => 100,
+            ]);
+            $successfulRequests++;
+        } catch (RuntimeException $exception) {
+            $lastError = $exception;
+            continue;
+        }
+
+        foreach ($payload['features'] as $feature) {
+            $attributes = $feature['attributes'] ?? null;
+            if (!is_array($attributes)) {
+                continue;
+            }
+            $id = (int) ($attributes['site_id'] ?? 0);
+            if ($id <= 0 || strtoupper(trim((string) ($attributes['site_type'] ?? ''))) !== 'CAMPGROUND') {
+                continue;
+            }
+            $normalized = llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''));
+            if ($normalized !== $target && !str_contains($normalized, $target) && !str_contains($target, $normalized)) {
+                continue;
+            }
+            $found[$id] = $attributes;
+        }
+        if (count($found) >= $limit) {
+            break;
         }
     }
-    return $candidates;
+
+    if ($successfulRequests === 0 && $lastError !== null) {
+        throw $lastError;
+    }
+
+    // Exact name matches first; suggestions still require human confirmation.
+    uasort($found, static function (array $a, array $b) use ($target): int {
+        $aExact = llama_usfs_normalized_campground_name((string) ($a['site_name'] ?? '')) === $target;
+        $bExact = llama_usfs_normalized_campground_name((string) ($b['site_name'] ?? '')) === $target;
+        return ($bExact <=> $aExact) ?: strcmp((string) ($a['site_name'] ?? ''), (string) ($b['site_name'] ?? ''));
+    });
+
+    return array_slice(array_values($found), 0, $limit);
+}
+
+function llama_usfs_normalized_campground_name(string $name): string
+{
+    $name = mb_strtolower(trim($name));
+    $name = preg_replace('/\b(?:campground|campgrounds|camping area)\b/u', ' ', $name) ?? $name;
+    $name = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $name) ?? $name;
+    return trim(preg_replace('/\s+/u', ' ', $name) ?? $name);
 }
