@@ -54,3 +54,52 @@
         flex-basis: 210px;
     }
 }
+
+/* Horizontal lists must be width-constrained even inside a CSS grid. */
+.place-overnight-options,
+.place-overnight-options [data-stay-browser-slot],
+.place-overnight-options [data-place-campsites-mount],
+.place-overnight-options .place-campsites,
+.place-overnight-options .place-campsites-tools,
+.place-overnight-options .place-campsites-list,
+.place-overnight-options .place-stay-parking-list {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+.place-overnight-options .place-campsites-list,
+.place-overnight-options .place-stay-parking-list {
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 12px;
+    padding-inline: 4px 18px;
+    touch-action: pan-x pan-y;
+}
+.place-stay-scroll-navigation {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.place-stay-scroll-navigation[hidden] { display: none; }
+.place-stay-scroll-navigation button {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    color: var(--text);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.place-stay-scroll-navigation button:disabled { opacity: .35; cursor: default; }
+.place-stay-scroll-navigation button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.place-selected-campsite-context {
+    margin-top: 9px;
+    color: var(--text-muted);
+    font-size: .88rem;
+}
+.place-selected-campsite-context strong { color: var(--text); }
+.place-selected-campsite-context a { margin-left: 10px; color: var(--text); text-decoration: underline; }
