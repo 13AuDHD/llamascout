@@ -55,22 +55,38 @@ function llama_usfs_request(array $params): array
     return $payload;
 }
 
-function llama_usfs_site_by_id(int $siteId): ?array
+/**
+ * Resolve a selected site using the same name query that produced the
+ * review card. This USFS layer rejects numeric site_id WHERE queries on
+ * some requests (ArcGIS 400), even though the field is returned in data.
+ * Match the server-fetched site_id exactly before saving anything.
+ */
+function llama_usfs_site_by_id(int $siteId, ?string $placeName = null): ?array
 {
     if ($siteId < 1) {
         throw new InvalidArgumentException('A positive USFS site ID is required.');
     }
+
+    if ($placeName !== null && trim($placeName) !== '') {
+        foreach (llama_usfs_find_campgrounds($placeName, 20) as $record) {
+            if ((int) ($record['site_id'] ?? 0) === $siteId) {
+                return $record;
+            }
+        }
+        return null;
+    }
+
+    // Kept for callers that already have only a numeric site ID.
     $data = llama_usfs_request([
         'where' => 'site_id = ' . $siteId,
         'outFields' => '*',
         'resultRecordCount' => 2,
     ]);
-    $features = $data['features'];
-    if (count($features) > 1) {
+    if (count($data['features']) > 1) {
         throw new RuntimeException('USFS returned multiple records for one site ID.');
     }
-    return isset($features[0]['attributes']) && is_array($features[0]['attributes'])
-        ? $features[0]['attributes'] : null;
+    $attributes = $data['features'][0]['attributes'] ?? null;
+    return is_array($attributes) ? $attributes : null;
 }
 
 function llama_usfs_fee_candidate(array $attributes): array
@@ -117,9 +133,15 @@ function llama_usfs_enrichment_save(PDO $db, int $placeId, int $siteId, int $act
     if ($placeName === false) {
         throw new InvalidArgumentException('Place not found.');
     }
-    $attributes = llama_usfs_site_by_id($siteId);
+    $attributes = llama_usfs_site_by_id($siteId, (string) $placeName);
     if ($attributes === null) {
         throw new RuntimeException('The USFS site ID was not found.');
+    }
+    if (
+        llama_usfs_normalized_campground_name((string) $placeName)
+        !== llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''))
+    ) {
+        throw new RuntimeException('The selected USFS name no longer matches this Llama Scout campground.');
     }
     if (strtoupper((string) ($attributes['site_type'] ?? '')) !== 'CAMPGROUND') {
         throw new RuntimeException('The selected USFS record is not a campground.');
