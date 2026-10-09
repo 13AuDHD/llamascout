@@ -51,7 +51,7 @@ if (($_GET['action'] ?? '') === 'search-usfs') {
         echo json_encode(['results' => llama_usfs_find_campgrounds($name)], JSON_UNESCAPED_UNICODE);
     } catch (Throwable $exception) {
         http_response_code(502);
-        echo json_encode(['error' => 'The Forest Service search is temporarily unavailable.']);
+        echo json_encode(['error' => 'Forest Service lookup failed: ' . $exception->getMessage()]);
     }
     exit;
 }
