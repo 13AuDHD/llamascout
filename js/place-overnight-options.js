@@ -6,8 +6,7 @@
     const mount = document.querySelector('[data-place-campsites-mount]');
     const slot = section.querySelector('[data-stay-browser-slot]');
     const fallbackList = section.querySelector('[data-stay-parking-list]');
-    const detail = section.querySelector('[data-stay-selection]');
-    if (!slot || !fallbackList || !detail) return;
+    if (!slot || !fallbackList) return;
 
     // Feature polygons and canonical campsite records are separate datasets.
     // Keep mapped sites visible even when the canonical campsite browser is
@@ -67,27 +66,12 @@
             clearSelection();
             row.classList.add('is-selected');
             row.setAttribute('aria-current', 'true');
-            detail.replaceChildren();
-            const title = document.createElement('strong');
-            const summary = document.createElement('p');
-            const link = document.createElement('a');
-            const mappedSite = row.hasAttribute('data-stay-map-site-id');
-            title.textContent = mappedSite
-                ? row.dataset.stayMapSiteName || 'Campsite'
-                : row.dataset.stayParkingName || 'Parking area';
-            summary.textContent = mappedSite
-                ? [row.dataset.stayMapSiteSummary, row.dataset.stayMapSiteArea].filter(Boolean).join(' · ')
-                : [row.dataset.stayParkingCost, row.dataset.stayParkingStatus].filter(Boolean).join(' · ');
-            link.href = '#place-map-heading';
-            link.textContent = 'View on map';
-            detail.append(title, summary, link);
-            detail.hidden = false;
+
         });
     }
     mount?.addEventListener('click', event => {
         if (event.target.closest('[data-campsite-id]')) {
             clearSelection();
-            detail.hidden = true;
         }
     });
 })();
