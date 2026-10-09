@@ -285,9 +285,7 @@
 
 
 .map-featured-badge {
-    position: absolute;
-    left: 10px;
-    bottom: 10px;
+    position: relative;
     z-index: 2;
     display: inline-flex;
     align-items: center;
@@ -592,7 +590,13 @@
 }
 
 .map-place-card.is-featured {
-    border-color: color-mix(in srgb, #237a4b 56%, var(--border));
+    border: 3px solid #226CD4;
+    background: color-mix(in srgb, #226CD4 6%, var(--surface));
+}
+
+.map-place-card.is-paid-place:not(.is-featured):not(.is-partner-branded) {
+    border: 3px solid #237A4B;
+    background: color-mix(in srgb, #237A4B 6%, var(--surface));
 }
 
 .map-place-body,
@@ -620,7 +624,7 @@
 
 .map-featured-badge {
     border-color: rgba(255, 255, 255, .42);
-    background: rgba(25, 111, 68, .94);
+    background: #226CD4;
     color: #fff;
 }
 
@@ -682,7 +686,7 @@
 }
 
 .map-place-marker.is-featured {
-    background: #237a4b;
+    background: #226CD4;
 }
 
 .map-place-marker.is-featured::after {
@@ -802,9 +806,9 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 }
 
 .map-place-card .map-affiliate-badge {
-    background: #F5C518;
+    background: var(--map-partner-primary, #F5C518);
     color: #211700;
-    border-color: #A47C00;
+    border-color: color-mix(in srgb, var(--map-partner-primary, #F5C518) 70%, #000);
 }
 
 .map-place-card .map-paid-badge {
@@ -812,13 +816,31 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     color: #fff;
 }
 
-.map-place-image:has(.map-affiliate-badge) .map-featured-badge:not(.map-affiliate-badge):not(.map-paid-badge),
-.map-place-image:has(.map-paid-badge) .map-featured-badge:not(.map-affiliate-badge):not(.map-paid-badge) {
-    bottom: 43px;
+/* Keep multiple pills visible as a compact row over the image. */
+.map-place-badges {
+    position: absolute;
+    z-index: 3;
+    left: 10px;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
 }
 
-.map-place-image:has(.map-paid-badge) .map-affiliate-badge {
-    bottom: 43px;
+.map-paid-symbol {
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
 }
 
 .map-partner-marker-image {
