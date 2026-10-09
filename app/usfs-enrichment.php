@@ -158,3 +158,28 @@ function llama_usfs_enrichment_save(PDO $db, int $placeId, int $siteId, int $act
     ]);
     return ['place_name' => (string) $placeName, 'attributes' => $attributes, 'candidate' => $candidate];
 }
+
+/** Search official campground names. Never treat a name match as verified identity. */
+function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
+{
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+    if (mb_strlen($name) < 3 || mb_strlen($name) > 120) {
+        return [];
+    }
+    $limit = max(1, min(20, $limit));
+    // Escape the SQL LIKE wildcard syntax and quote characters for ArcGIS.
+    $pattern = str_replace(['\\', '%', '_', "'"], ['\\\\', '\\%', '\\_', "''"], $name);
+    $query = llama_usfs_request([
+        'where' => "UPPER(site_name) LIKE UPPER('%" . $pattern . "%') AND UPPER(site_type) = 'CAMPGROUND'",
+        'outFields' => 'site_id,site_name,site_type,site_cn,fee_charged,fee_type,fee_description,operational_hours,seasonal_operational_status,usda_portal_url',
+        'resultRecordCount' => $limit,
+    ]);
+    $candidates = [];
+    foreach ($query['features'] as $feature) {
+        $record = $feature['attributes'] ?? null;
+        if (is_array($record) && (int) ($record['site_id'] ?? 0) > 0) {
+            $candidates[] = $record;
+        }
+    }
+    return $candidates;
+}
