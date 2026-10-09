@@ -11,6 +11,36 @@ try {
     error_log('Llama Scout stay options: ' . $exception->getMessage());
 }
 
+
+// Map-drawn campsite polygons belong to place_map_features, not necessarily
+// place_campsites. Include them even on Travel Center / parking Places.
+$stayMappedSites = [];
+foreach ($stayFeatures as $feature) {
+    if ((string) ($feature['feature_type'] ?? '') !== 'camping_site') {
+        continue;
+    }
+    $id = (int) ($feature['id'] ?? 0);
+    if ($id < 1) {
+        continue;
+    }
+    $details = (array) ($feature['site_details'] ?? []);
+    $code = trim((string) ($details['site_code'] ?? ''));
+    $name = trim((string) ($feature['label'] ?? ''));
+    $label = $code !== '' ? $code : ($name !== '' ? $name : 'Campsite ' . $id);
+    $style = trim((string) ($details['parking_style'] ?? ''));
+    $type = trim((string) ($details['site_type'] ?? ''));
+    $description = implode(' · ', array_filter([
+        $type !== '' ? ucwords(str_replace('_', ' ', $type)) : 'Campsite',
+        $style !== '' ? ucwords(str_replace('_', ' ', $style)) : '',
+    ]));
+    $stayMappedSites[] = [
+        'id' => $id,
+        'name' => $label,
+        'summary' => $description,
+        'area' => trim((string) ($feature['parent_area_label'] ?? '')),
+    ];
+}
+
 $stayParking = [];
 foreach ($stayFeatures as $feature) {
     if (($feature['feature_type'] ?? '') !== 'parking_area') {
@@ -70,7 +100,17 @@ foreach ($stayFeatures as $feature) {
         </a>
     </header>
     <div data-stay-browser-slot></div>
-    <div class="place-stay-parking-list" data-stay-parking-list aria-label="Overnight parking areas" <?= $stayParking ? '' : 'hidden' ?>>
+    <div class="place-stay-parking-list" data-stay-parking-list aria-label="Mapped campsites and overnight parking areas" <?= ($stayParking || $stayMappedSites) ? '' : 'hidden' ?>>
+        <?php foreach ($stayMappedSites as $site): ?>
+            <button type="button" class="place-campsite-row place-stay-map-site-row"
+                data-stay-map-site-id="<?= (int) $site['id'] ?>"
+                data-stay-map-site-name="<?= place_h($site['name']) ?>"
+                data-stay-map-site-area="<?= place_h($site['area']) ?>"
+                data-stay-map-site-summary="<?= place_h($site['summary']) ?>">
+                <span class="place-campsite-row-name"><?= place_h($site['name']) ?></span>
+                <span class="place-campsite-row-summary"><?= place_h($site['summary']) ?></span>
+            </button>
+        <?php endforeach; ?>
         <?php foreach ($stayParking as $parking): ?>
             <button type="button" class="place-campsite-row place-stay-parking-row"
                 data-stay-parking-id="<?= (int) $parking['id'] ?>"
