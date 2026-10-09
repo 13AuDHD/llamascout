@@ -94,7 +94,7 @@ foreach ($stayFeatures as $feature) {
         <div>
             <p class="eyebrow">Overnight options</p>
             <h2 id="place-overnight-options-heading">Where you can stay</h2>
-            <p class="place-stay-intro">Browse campsites and overnight parking areas. Select a campsite to see its details in the Scout Report.</p>
+            <p class="place-stay-intro">Browse campsites and overnight parking areas. Select an area to see its details in the Scout Report.</p>
         </div>
         <a class="place-overnight-options-map-link" href="#place-map-heading">
             <?= llama_icon('map') ?> View on map
