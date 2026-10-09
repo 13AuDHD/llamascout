@@ -1,224 +1,29 @@
-/* =========================================================
-   PLACE PAGE: OVERNIGHT OPTIONS
-   ========================================================= */
-
-.place-overnight-options {
-    display: grid;
-    gap: 14px;
-}
-
-.place-overnight-options-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 16px;
-}
-
+/* Compact, horizontally scrollable overnight options. */
+.place-overnight-options { display: grid; gap: 12px; min-width: 0; }
+.place-overnight-options-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
 .place-overnight-options-heading .eyebrow,
-.place-overnight-options-heading h2 {
-    margin-top: 0;
-}
+.place-overnight-options-heading h2 { margin-top: 0; }
+.place-overnight-options-heading .eyebrow { margin-bottom: 4px; }
+.place-overnight-options-heading h2 { margin-bottom: 0; }
+.place-stay-intro { margin: 9px 0 0; color: var(--text-muted); font-size: .88rem; }
+.place-overnight-options-map-link { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--background); color: var(--text); font-size: .75rem; font-weight: 800; text-decoration: none; }
+.place-overnight-options [data-place-campsites-mount] { display: block; min-width: 0; }
+.place-overnight-options .place-campsites { margin: 0; padding: 0; }
+.place-overnight-options .place-campsites-heading { display: none; }
+.place-overnight-options .place-campsites-list,
+.place-stay-parking-list { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.place-stay-parking-list[hidden] { display: none; }
+.place-overnight-options .place-campsite-row,
+.place-stay-parking-row { flex: 0 0 230px; min-width: 230px; display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: var(--text); text-align: left; cursor: pointer; scroll-snap-align: start; }
+.place-overnight-options .place-campsite-row.is-selected,
+.place-stay-parking-row.is-selected { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.place-stay-parking-row .place-campsite-row-name { font-weight: 850; }
+.place-stay-parking-row .place-campsite-row-summary { font-size: .78rem; color: var(--text-muted); }
+.place-stay-selection { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.place-stay-selection[hidden] { display: none; }
+.place-stay-selection p { margin: 6px 0; }
+.place-stay-selection a, .place-overnight-options-editor-note a { color: var(--text); font-weight: 800; }
+.place-overnight-options-editor-note { margin: 0; font-size: .75rem; color: var(--text-muted); }
+@media (max-width: 760px) { .place-overnight-options-heading { flex-wrap: wrap; } .place-overnight-options .place-campsite-row, .place-stay-parking-row { min-width: 210px; flex-basis: 210px; } }
 
-.place-overnight-options-heading .eyebrow {
-    margin-bottom: 4px;
-}
-
-.place-overnight-options-heading h2 {
-    margin-bottom: 0;
-}
-
-.place-overnight-options-map-link {
-    min-height: 36px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
-    padding: 7px 10px;
-
-    border: 1px solid var(--border);
-    border-radius: 9px;
-
-    background: var(--background);
-    color: var(--text);
-
-    font-size: .7rem;
-    font-weight: 850;
-    text-decoration: none;
-}
-
-.place-overnight-options-map-link:hover,
-.place-overnight-options-map-link:focus-visible {
-    border-color: var(--text);
-    text-decoration: none;
-}
-
-.place-overnight-options-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.place-overnight-option-card {
-    min-width: 0;
-
-    display: grid;
-    gap: 12px;
-
-    padding: 14px;
-
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    background: var(--surface);
-}
-
-.place-overnight-option-card-heading {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.place-overnight-option-card-heading > div {
-    min-width: 0;
-}
-
-.place-overnight-option-card-heading h3 {
-    margin: 3px 0 0;
-
-    font-size: 1rem;
-    line-height: 1.25;
-}
-
-.place-overnight-option-card-heading > i {
-    flex: 0 0 auto;
-
-    width: 36px;
-    height: 36px;
-
-    display: grid;
-    place-items: center;
-
-    border: 1px solid var(--border);
-    border-radius: 999px;
-
-    background: var(--background);
-}
-
-.place-overnight-option-card-heading > i svg {
-    width: 19px;
-    height: 19px;
-}
-
-.place-overnight-option-kind {
-    color: var(--text-muted);
-
-    font-size: .66rem;
-    font-weight: 850;
-    letter-spacing: .02em;
-}
-
-.place-overnight-option-facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-}
-
-.place-overnight-option-facts > div {
-    min-width: 0;
-
-    display: grid;
-    gap: 3px;
-
-    padding: 9px;
-
-    border: 1px solid var(--border);
-    border-radius: 8px;
-
-    background: var(--background);
-}
-
-.place-overnight-option-facts span {
-    color: var(--text-muted);
-
-    font-size: .62rem;
-    font-weight: 750;
-}
-
-.place-overnight-option-facts strong {
-    color: var(--text);
-
-    font-size: .74rem;
-    line-height: 1.3;
-}
-
-.place-overnight-option-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 7px;
-}
-
-.place-overnight-option-actions a {
-    min-height: 34px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    padding: 6px 9px;
-
-    border: 1px solid var(--border);
-    border-radius: 8px;
-
-    background: var(--background);
-    color: var(--text);
-
-    font-size: .66rem;
-    font-weight: 850;
-    text-decoration: none;
-}
-
-.place-overnight-option-actions a:hover,
-.place-overnight-option-actions a:focus-visible {
-    border-color: var(--text);
-    text-decoration: none;
-}
-
-.place-overnight-options-editor-note {
-    margin: 0;
-
-    color: var(--text-muted);
-
-    font-size: .72rem;
-    line-height: 1.5;
-}
-
-.place-overnight-options-editor-note a {
-    color: var(--text);
-    font-weight: 800;
-}
-
-@media (max-width: 700px) {
-    .place-overnight-options-heading {
-        align-items: start;
-        flex-direction: column;
-    }
-
-    .place-overnight-options-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 440px) {
-    .place-overnight-option-facts {
-        grid-template-columns: 1fr;
-    }
-
-    .place-overnight-option-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-    }
-}
+.place-overnight-options .place-stay-parking-row[hidden] { display: none; }
