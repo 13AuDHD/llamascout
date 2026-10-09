@@ -290,6 +290,20 @@ $valueFor =
                 return array_values($value);
             }
 
+            // Legacy versions stored these fields as boolean tri-state.
+            // Preserve an explicit old No (false) rather than treating it
+            // as a blank when rendering the new three-option selects.
+            if (
+                in_array(
+                    $key,
+                    ['high_clearance_recommended', 'four_wheel_drive_recommended'],
+                    true
+                )
+                && is_bool($value)
+            ) {
+                return $value ? '1' : '0';
+            }
+
             return is_scalar($value)
                 ? (string) $value
                 : '';
