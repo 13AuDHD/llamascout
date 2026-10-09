@@ -56,9 +56,13 @@ function llama_place_report_fields(): array
     llama_place_report_apply_applicability($f);
     llama_place_report_apply_flow_conditions($f);
 
-    // Flow properties are additive annotations, not active dependencies.
     require_once __DIR__ . '/flow-metadata.php';
     llama_place_report_apply_flow_metadata($f);
+
+    // Scope is advisory until Area and Site persistence is implemented.
+    // It must not change Place completion or contribution points yet.
+    require_once __DIR__ . '/flow-scopes.php';
+    llama_place_report_apply_flow_scopes($f);
 
     return $f;
 }
