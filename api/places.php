@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/camping-fee-map.php';
+require_once dirname(__DIR__) . '/app/map-partner-branding.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
 
-/*
- * Llama Scout has used a few private-config layouts over time.
- * Resolve the existing Geoapify key without hardcoding it into public JS.
- */
 function llama_geoapify_api_key(): string
 {
     $config = llama_config();
-
     $candidates = [
         $config['geoapify']['api_key'] ?? null,
         $config['geoapify']['key'] ?? null,
@@ -25,118 +21,55 @@ function llama_geoapify_api_key(): string
         $config['apis']['geoapify']['api_key'] ?? null,
         $config['apis']['geoapify']['key'] ?? null,
     ];
-
     foreach ($candidates as $candidate) {
         $candidate = trim((string) $candidate);
-
         if ($candidate !== '') {
             return $candidate;
         }
     }
-
     return '';
 }
 
 function llama_member_map_tiles(): array
 {
     $apiKey = llama_geoapify_api_key();
-
     if ($apiKey === '') {
-        return [
-            'geoapify_available' => false,
-            'light' => null,
-            'dark' => null,
-        ];
+        return ['geoapify_available' => false, 'light' => null, 'dark' => null];
     }
-
     $encodedKey = rawurlencode($apiKey);
-
     return [
         'geoapify_available' => true,
-        'light' =>
-            'https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png'
-            . '?apiKey=' . $encodedKey,
-        'dark' =>
-            'https://maps.geoapify.com/v1/tile/dark-matter/{z}/{x}/{y}.png'
-            . '?apiKey=' . $encodedKey,
+        'light' => 'https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=' . $encodedKey,
+        'dark' => 'https://maps.geoapify.com/v1/tile/dark-matter/{z}/{x}/{y}.png?apiKey=' . $encodedKey,
     ];
 }
 
 try {
-    /*
-     * Never send exact coordinates unless the current authenticated account
-     * actually has member access. The browser is not trusted to enforce this.
-     */
     $viewer = current_user();
-    $viewerUserId =
-        is_array($viewer)
-            ? (int) ($viewer['id'] ?? 0)
-            : 0;
-
-    $hasMemberMapAccess =
-        user_has_member_access(
-            $viewerUserId > 0
-                ? $viewerUserId
-                : null
-        );
-
-    $contributedPlaceIds =
-        !$hasMemberMapAccess
-        && $viewerUserId > 0
-            ? user_original_contributed_place_ids(
-                $viewerUserId
-            )
-            : [];
-
+    $viewerUserId = is_array($viewer) ? (int) ($viewer['id'] ?? 0) : 0;
+    $hasMemberMapAccess = user_has_member_access($viewerUserId > 0 ? $viewerUserId : null);
+    $contributedPlaceIds = !$hasMemberMapAccess && $viewerUserId > 0
+        ? user_original_contributed_place_ids($viewerUserId) : [];
     $hasContributorPlaceAccess = !empty($contributedPlaceIds);
-
-    $places = places_map(
-        $hasMemberMapAccess,
-        $viewerUserId > 0
-            ? $viewerUserId
-            : null
-    );
-
-    // Enrich existing canonical Place rows, without changing their source
-    // provenance or leaking the internal verification audit trail.
+    $places = places_map($hasMemberMapAccess, $viewerUserId > 0 ? $viewerUserId : null);
     $places = llama_camping_fee_enrich_map_places(db(), $places);
-
-    echo json_encode(
-        [
-            'ok' => true,
-            'count' => count($places),
-            'member_map_access' => $hasMemberMapAccess,
-            'contributor_place_access' => $hasContributorPlaceAccess,
-            'coordinate_precision' =>
-                $hasMemberMapAccess
-                    ? 'exact'
-                    : (
-                        $hasContributorPlaceAccess
-                            ? 'mixed'
-                            : 'approximate'
-                    ),
-            'max_zoom' =>
-                ($hasMemberMapAccess || $hasContributorPlaceAccess)
-                    ? 20
-                    : 11,
-            'member_tiles' =>
-                $hasMemberMapAccess
-                    ? llama_member_map_tiles()
-                    : null,
-            'places' => $places,
-        ],
-        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-    );
+    $places = llama_map_partner_branding(db(), $places);
+    echo json_encode([
+        'ok' => true,
+        'count' => count($places),
+        'member_map_access' => $hasMemberMapAccess,
+        'contributor_place_access' => $hasContributorPlaceAccess,
+        'coordinate_precision' => $hasMemberMapAccess ? 'exact' : ($hasContributorPlaceAccess ? 'mixed' : 'approximate'),
+        'max_zoom' => ($hasMemberMapAccess || $hasContributorPlaceAccess) ? 20 : 11,
+        'member_tiles' => $hasMemberMapAccess ? llama_member_map_tiles() : null,
+        'places' => $places,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $reference = llama_log_caught_exception($e, 'api_places');
     http_response_code(500);
-
-    echo json_encode(
-        [
-            'ok' => false,
-            'error' => llama_error_message_with_reference('Unable to load places.', $reference),
-            'reference' => $reference,
-        ],
-        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-    );
+    echo json_encode([
+        'ok' => false,
+        'error' => llama_error_message_with_reference('Unable to load places.', $reference),
+        'reference' => $reference,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
