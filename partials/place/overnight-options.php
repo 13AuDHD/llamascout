@@ -29,7 +29,7 @@ foreach ($stayFeatures as $feature) {
     $label = $code !== '' ? $code : ($name !== '' ? $name : 'Campsite ' . $id);
     $style = trim((string) ($details['parking_style'] ?? ''));
     $type = trim((string) ($details['site_type'] ?? ''));
-    $description = implode(' · ', array_filter([
+    $description = implode(' Â· ', array_filter([
         $type !== '' ? ucwords(str_replace('_', ' ', $type)) : 'Campsite',
         $style !== '' ? ucwords(str_replace('_', ' ', $style)) : '',
     ]));
@@ -81,12 +81,13 @@ foreach ($stayFeatures as $feature) {
     $stayParking[] = [
         'id' => $id,
         'name' => $name,
-        'summary' => $feeLabel . ' · ' . $statusLabel,
+        'summary' => $feeLabel . ' Â· ' . $statusLabel,
         'cost' => $feeLabel,
         'status' => $statusLabel,
     ];
 }
 ?>
+<script src="/js/place-campsite-horizontal-scroll.js"></script>
 <link rel="stylesheet" href="/css/site/features/place-overnight-options.css">
 <section class="place-section place-overnight-options" data-stay-options aria-labelledby="place-overnight-options-heading">
     <header class="place-overnight-options-heading">
