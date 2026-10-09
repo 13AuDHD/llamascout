@@ -510,15 +510,39 @@
         place?.is_featured === '1';
 
 
+    const campingFeeStatus = (place) => {
+        const status = String(place?.camping_fee_status ?? 'unknown')
+            .trim()
+            .toLowerCase();
+
+        return status === 'paid' || status === 'mixed'
+            ? status
+            : 'unknown';
+    };
+
+
+    const mapMarkerClass = (place) => {
+        const feeStatus = campingFeeStatus(place);
+
+        if (feeStatus === 'paid') {
+            return ' is-paid';
+        }
+
+        if (feeStatus === 'mixed') {
+            return ' is-mixed';
+        }
+
+        return isFeaturedPlace(place) ? ' is-featured' : '';
+    };
+
+
     const markerIcon = (place) =>
         L.divIcon({
             className: 'map-place-marker-shell',
             html: `
                 <span
                     class="map-place-marker${
-                        isFeaturedPlace(place)
-                            ? ' is-featured'
-                            : ''
+                        mapMarkerClass(place)
                     }"
                     aria-hidden="true"
                 ></span>
