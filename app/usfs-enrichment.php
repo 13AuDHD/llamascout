@@ -26,7 +26,7 @@ function llama_usfs_request(array $params): array
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_TIMEOUT => 25,
         CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: LlamaScout/1.0 (+https://llamascout.com)'],
+        CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: LlamaScout-USFS-source-evaluation/1.0'],
     ]);
     $body = curl_exec($curl);
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
@@ -173,12 +173,9 @@ function llama_usfs_enrichment_save(PDO $db, int $placeId, int $siteId, int $act
 }
 
 /**
- * Find Forest Service records by normalized campground name.
- *
- * ArcGIS query layers do not consistently support UPPER(field), and the
- * RIDB Place name often adds "Campground" while the USFS name omits it.
- * Query the name as stored, without SQL functions, then check candidates in
- * PHP. Never treat the name alone as an approved identity match.
+ * Use the identical query proven by admin/usfs-source-test.php.
+ * Normalize the local label before querying, but do not change the
+ * remote ArcGIS WHERE expression or request limit.
  */
 function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
 {
@@ -193,67 +190,31 @@ function llama_usfs_find_campgrounds(string $name, int $limit = 12): array
         return [];
     }
 
-    /*
-     * Match the query syntax that the working USFS Source Test uses.
-     * In particular, request outFields=*; named field lists are not
-     * consistently accepted by this ArcGIS layer.
-     */
-    $variants = array_unique([
-        mb_strtoupper($target, 'UTF-8'),
-        mb_convert_case($target, MB_CASE_TITLE, 'UTF-8'),
+    $escapedName = str_replace("'", "''", strtoupper($target));
+    $query = llama_usfs_request([
+        'where' => "UPPER(site_name) LIKE '%{$escapedName}%'",
+        'outFields' => '*',
+        'returnGeometry' => 'false',
+        'resultRecordCount' => '25',
+        'f' => 'json',
     ]);
+
     $found = [];
-    $lastError = null;
-    $successfulRequests = 0;
-
-    foreach ($variants as $variant) {
-        $pattern = str_replace("'", "''", $variant);
-        $whereClauses = [
-            "UPPER(site_name) LIKE '%" . mb_strtoupper($pattern, 'UTF-8') . "%'",
-            "site_name LIKE '%" . $pattern . "%'",
-        ];
-
-        foreach ($whereClauses as $where) {
-            try {
-                $payload = llama_usfs_request([
-                    'where' => $where,
-                    'outFields' => '*',
-                    'resultRecordCount' => 100,
-                ]);
-                $successfulRequests++;
-            } catch (RuntimeException $exception) {
-                $lastError = $exception;
-                continue;
-            }
-
-            foreach ($payload['features'] as $feature) {
-                $attributes = $feature['attributes'] ?? null;
-                if (!is_array($attributes)) {
-                    continue;
-                }
-                $id = (int) ($attributes['site_id'] ?? 0);
-                if ($id <= 0 || strtoupper(trim((string) ($attributes['site_type'] ?? ''))) !== 'CAMPGROUND') {
-                    continue;
-                }
-                $normalized = llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''));
-                if ($normalized !== $target && !str_contains($normalized, $target) && !str_contains($target, $normalized)) {
-                    continue;
-                }
-                $found[$id] = $attributes;
-            }
-            if (count($found) >= $limit) {
-                break 2;
-            }
-            // A successful working query means the other form is unnecessary.
-            break;
+    foreach ($query['features'] as $feature) {
+        $attributes = $feature['attributes'] ?? null;
+        if (!is_array($attributes)) {
+            continue;
+        }
+        $siteId = (int) ($attributes['site_id'] ?? 0);
+        if ($siteId < 1 || strtoupper(trim((string) ($attributes['site_type'] ?? ''))) !== 'CAMPGROUND') {
+            continue;
+        }
+        $candidateName = llama_usfs_normalized_campground_name((string) ($attributes['site_name'] ?? ''));
+        if ($candidateName === $target || str_contains($candidateName, $target)) {
+            $found[$siteId] = $attributes;
         }
     }
 
-    if ($successfulRequests === 0 && $lastError !== null) {
-        throw $lastError;
-    }
-
-    // Exact name matches first; suggestions still require human confirmation.
     uasort($found, static function (array $a, array $b) use ($target): int {
         $aExact = llama_usfs_normalized_campground_name((string) ($a['site_name'] ?? '')) === $target;
         $bExact = llama_usfs_normalized_campground_name((string) ($b['site_name'] ?? '')) === $target;
