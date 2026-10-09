@@ -29,7 +29,7 @@ foreach ($stayFeatures as $feature) {
     $label = $code !== '' ? $code : ($name !== '' ? $name : 'Campsite ' . $id);
     $style = trim((string) ($details['parking_style'] ?? ''));
     $type = trim((string) ($details['site_type'] ?? ''));
-    $description = implode(' · ', array_filter([
+    $description = implode(' Â· ', array_filter([
         $type !== '' ? ucwords(str_replace('_', ' ', $type)) : 'Campsite',
         $style !== '' ? ucwords(str_replace('_', ' ', $style)) : '',
     ]));
@@ -81,7 +81,7 @@ foreach ($stayFeatures as $feature) {
     $stayParking[] = [
         'id' => $id,
         'name' => $name,
-        'summary' => $feeLabel . ' · ' . $statusLabel,
+        'summary' => $feeLabel . ' Â· ' . $statusLabel,
         'cost' => $feeLabel,
         'status' => $statusLabel,
     ];
@@ -123,12 +123,6 @@ foreach ($stayFeatures as $feature) {
             </button>
         <?php endforeach; ?>
     </div>
-    <div class="place-stay-selection" data-stay-selection hidden aria-live="polite"></div>
-    <?php if (!empty($placeMapCanEditAreas)): ?>
-        <p class="place-overnight-options-editor-note">
-            <a href="/place-map-editor.php?slug=<?= rawurlencode((string) ($place['slug'] ?? '')) ?>">Edit mapped areas</a>
-        </p>
-    <?php endif; ?>
 </section>
 <script src="/js/place-overnight-options.js" defer></script>
 <script src="/js/place-stay-selection-map.js" defer></script>
