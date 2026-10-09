@@ -25,8 +25,9 @@
         const url = new URL(window.location.pathname, window.location.origin);
         Object.entries(parameters).forEach(([key, value]) => url.searchParams.set(key, value));
         const response = await fetch(url.toString(), { credentials: 'same-origin', cache: 'no-store' });
-        if (!response.ok) throw new Error('Could not load results. Please retry.');
-        return response.json();
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load results. Please retry.');
+        return data;
     };
 
     async function findPlaces() {
