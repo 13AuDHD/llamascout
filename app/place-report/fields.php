@@ -39,6 +39,11 @@ function llama_place_report_fields(): array
     llama_place_report_add_basic_location_fields($add);
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
+
+    // The same canonical fields serve Add a Place, updates, and Scout Reports.
+    require_once __DIR__ . '/fields-seasons.php';
+    llama_place_report_add_season_fields($f, $add);
+
     llama_place_report_add_summary_fields($f, $add);
     llama_place_report_apply_applicability($f);
 
