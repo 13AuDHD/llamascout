@@ -1544,13 +1544,23 @@ foreach (
                         'stay_limit_days', 'residential_use_prohibited',
             'camping_conditional_details',
                     ],
-                    'Camping costs and reservations' => [
-                        'fee', 'reservation_required', 'reservation_fee',
-                        'reservation_url', 'membership_required',
-                        'membership_fee', 'membership_url',
+                    'Place entrance and parking fees' => [
+                        'entrance_facility_fee', 'parking_fee',
+                    ],
+                    'Camping fees' => [
+                        'fee',
+                    ],
+                    'Reservations' => [
+                        'reservation_required', 'reservation_fee',
+                        'reservation_url',
+                    ],
+                    'Membership' => [
+                        'membership_required', 'membership_fee',
+                        'membership_url',
+                    ],
+                    'Arrival and departure' => [
                         'check_in_required', 'check_in_begins',
                         'check_out_required', 'checkout_ends',
-                        'entrance_facility_fee', 'parking_fee',
                     ],
                     'Seasons and access' => [
                         'season_begins', 'season_ends', 'seasonal_closure',
