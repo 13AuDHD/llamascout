@@ -46,14 +46,14 @@ function llama_place_report_apply_permission_flows(array &$fields, callable $add
 
     $groups = [
         'camping' => [
-            'label' => 'Camping conditions',
+            'label' => 'Camping permit / conditions',
             'fields' => ['overnight_camping_allowed', 'dispersed_camping_allowed', 'car_truck_camping'],
-            'help' => 'Explain restrictions for camping, sleeping inside a vehicle, or designated sites. Describe who may stay and under what conditions.',
+            'help' => 'Explain camping permits, conditions, limitations, and exceptions for tents or sleeping inside a vehicle.',
         ],
         'fire_activities' => [
-            'label' => 'Fire and activity conditions',
+            'label' => 'Fire and activity permits / conditions',
             'fields' => ['campfire_allowed', 'collecting_firewood', 'drone_use_legal', 'target_shooting_allowed'],
-            'help' => 'Explain conditional fire, firewood, drone, or shooting rules. The current official fire restrictions URL remains independently available.',
+            'help' => 'Explain permit requirements or other conditions for campfires, collecting firewood, drones, or shooting. Verify current fire restrictions separately.',
         ],
     ];
 
@@ -68,15 +68,50 @@ function llama_place_report_apply_permission_flows(array &$fields, callable $add
             'help' => $group['help'],
             'applicable_if' => [[
                 'operator' => 'any',
+                'rules' => array_merge(
+                    array_map(
+                        static fn (string $fieldKey): array => [
+                            'field' => $fieldKey,
+                            'operator' => 'in',
+                            'value' => ['2', '3'],
+                        ],
+                        $group['fields']
+                    )
+                ),
+            ]],
+        ]);
+    }
+    $permitGroups = [
+        'camping_permit_url' => [
+            'label' => 'Camping permit URL',
+            'fields' => $groups['camping']['fields'],
+            'help' => 'Link to the official permit application or permit information page. This is not a booking URL.',
+        ],
+        'fire_activity_permit_url' => [
+            'label' => 'Fire / activity permit URL',
+            'fields' => $groups['fire_activities']['fields'],
+            'help' => 'Link to the official firewood, fire, drone or target-shooting permit page that applies. Current fire restrictions are a separate URL.',
+        ],
+    ];
+    foreach ($permitGroups as $key => $group) {
+        $add($key, $group['label'], 'rules', 'url', 'rules.' . $key, [
+            'wide' => true,
+            'placeholder' => 'https://...',
+            'counts_toward_completion' => false,
+            'points_categories' => ['seasons_rules_services'],
+            'help' => $group['help'],
+            'applicable_if' => [[
+                'operator' => 'any',
                 'rules' => array_map(
                     static fn (string $fieldKey): array => [
                         'field' => $fieldKey,
                         'operator' => 'equals',
-                        'value' => '3',
+                        'value' => '2',
                     ],
                     $group['fields']
                 ),
             ]],
         ]);
     }
+
 }
