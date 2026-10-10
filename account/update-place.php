@@ -194,6 +194,51 @@ if (
 }
 
 
+
+/* Existing scoped answers and inherited Place/Area context for the report.
+ * Auth and Complete Access are checked above. This is a read-only action.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, private');
+    try {
+        require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
+        require_once dirname(__DIR__) . '/app/place-report/scoped-answers.php';
+        $scope = (string) ($_GET['scope'] ?? '');
+        $source = (string) ($_GET['source'] ?? '');
+        $targetId = (int) ($_GET['target_id'] ?? 0);
+        $target = llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+        if ($scope === 'place') {
+            throw new InvalidArgumentException('Select an Area or Site.');
+        }
+        $direct = llama_scoped_report_load($db, $placeId, $scope, $targetId, $source);
+        $inherited = [];
+        $placeValues = llama_place_update_shared_form_values(
+            llama_place_update_current_values($db, $placeId),
+            llama_place_report_published_answer_state($db, $placeId)
+        );
+        foreach (llama_place_report_fields() as $key => $field) {
+            if (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)) continue;
+            if (array_key_exists($key, $placeValues)) {
+                $inherited[$key] = ['value' => $placeValues[$key], 'from' => 'Place'];
+            }
+        }
+        if ($scope === 'site' && $source === 'map_feature' && !empty($target['parent_area_id'])) {
+            $parent = llama_report_verified_target($db, $placeId, 'area', 'map_feature', (int) $target['parent_area_id']);
+            $parentAnswers = llama_scoped_report_load($db, $placeId, 'area', (int) $parent['id'], 'map_feature');
+            foreach ($parentAnswers as $key => $value) {
+                $inherited[$key] = ['value' => $value, 'from' => 'Area: ' . $parent['label']];
+            }
+        }
+        echo json_encode(['direct' => $direct, 'inherited' => $inherited],
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Could not load this reporting target.']);
+    }
+    exit;
+}
+
 $error =
     null;
 
