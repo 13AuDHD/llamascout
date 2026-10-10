@@ -128,6 +128,17 @@ function llama_ridb_import_site_type(string $rawType): ?string {
         return 'group_site';
     }
 
+    /*
+     * RIDB uses STANDARD for ordinary campsites that can accommodate
+     * normal camping equipment rather than restricting the site to tents
+     * or RVs. Store that as the existing mixed-site canonical type so the
+     * public campsite UI can communicate Tent / RV without inventing a new
+     * database enum or presentation layer.
+     */
+    if (str_contains($key, 'STANDARD')) {
+        return 'mixed_site';
+    }
+
     if (
         str_contains($key, 'TENT ONLY')
         || (
