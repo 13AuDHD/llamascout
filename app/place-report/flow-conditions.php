@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 /**
+ * Phase 3B: first live dependency family.
+ *
  * Keep the existing registered answers, including Permit (2), intact.
  * New answers are stored in the existing rules payload. Applicability is
  * shared by form visibility, server validation and completion calculations.
@@ -86,22 +88,15 @@ function llama_place_report_apply_flow_conditions(array &$fields): void
     );
     $fields['generator_run_restrictions']['applicable_if'] = array_merge(
         $generatorApplicable,
-        $notProhibited,
-        [$equals('generator_quiet_hours', '0')]
+        $notProhibited
     );
     $fields['generator_max_run_hours']['applicable_if'] = array_merge(
         $notProhibited,
-        [
-            $equals('generator_quiet_hours', '0'),
-            $equals('generator_run_restrictions', '1'),
-        ]
+        [$equals('generator_run_restrictions', '1')]
     );
     $fields['generator_free_area']['applicable_if'] = array_merge(
-        $notProhibited,
-        [
-            $equals('generator_quiet_hours', '0'),
-            $equals('generator_run_restrictions', '0'),
-        ]
+        $generatorApplicable,
+        $notProhibited
     );
     $fields['generator_restriction_details']['applicable_if'] = [
         $equals('generator_restrictions', '1'),
