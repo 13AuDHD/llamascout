@@ -69,5 +69,14 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-permissions.php';
     llama_place_report_apply_permission_flows($f, $add);
 
+    // Entrance/day-use and parking charges describe the Place itself rather
+    // than a camping stay, so show them with the main Location/Place facts.
+    // Storage paths and points categories remain unchanged.
+    foreach (['entrance_facility_fee', 'parking_fee'] as $key) {
+        if (isset($f[$key])) {
+            $f[$key]['display_section'] = 'location';
+        }
+    }
+
     return $f;
 }
