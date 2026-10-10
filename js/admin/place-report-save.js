@@ -289,6 +289,559 @@
         );
     };
 
+
+    const campsiteConfigNode =
+        form.querySelector(
+            '[data-admin-place-campsites]'
+        );
+
+    let campsiteConfig = {
+        sites: [],
+        site_field_keys: [],
+        unknown_token: '__LLAMA_UNKNOWN__',
+        unanswered_token: '__LLAMA_UNANSWERED__'
+    };
+
+    if (campsiteConfigNode) {
+        try {
+            campsiteConfig = {
+                ...campsiteConfig,
+                ...JSON.parse(
+                    campsiteConfigNode.textContent
+                    || '{}'
+                )
+            };
+        } catch (_) {
+            // Leave the campsite editor unavailable if its page data is invalid.
+        }
+    }
+
+    const campsiteSites =
+        Array.isArray(campsiteConfig.sites)
+            ? campsiteConfig.sites
+            : [];
+
+    const campsiteFieldKeys =
+        Array.isArray(campsiteConfig.site_field_keys)
+            ? campsiteConfig.site_field_keys
+            : [];
+
+    const campsiteUnknown =
+        String(
+            campsiteConfig.unknown_token
+            || '__LLAMA_UNKNOWN__'
+        );
+
+    const campsiteUnanswered =
+        String(
+            campsiteConfig.unanswered_token
+            || '__LLAMA_UNANSWERED__'
+        );
+
+    let campsiteDirty = false;
+    let activeCampsiteId = '';
+
+    const controlsFor = (name) =>
+        Array.from(
+            form.querySelectorAll(
+                `[name="${name}"]`
+            )
+        );
+
+    const makeSelect = (
+        name,
+        options,
+        unknown = true
+    ) => {
+        const current =
+            form.querySelector(
+                `[name="${name}"]`
+            );
+
+        if (!current || current.tagName === 'SELECT') {
+            return current;
+        }
+
+        const select =
+            document.createElement(
+                'select'
+            );
+
+        select.name = name;
+
+        const blank =
+            document.createElement(
+                'option'
+            );
+
+        blank.value = '';
+        blank.textContent = 'Select...';
+        select.appendChild(blank);
+
+        if (unknown) {
+            const unknownOption =
+                document.createElement(
+                    'option'
+                );
+
+            unknownOption.value =
+                campsiteUnknown;
+            unknownOption.textContent =
+                'Unknown / could not determine';
+            select.appendChild(
+                unknownOption
+            );
+        }
+
+        options.forEach(
+            ([value, label]) => {
+                const option =
+                    document.createElement(
+                        'option'
+                    );
+
+                option.value =
+                    String(value);
+                option.textContent =
+                    String(label);
+                select.appendChild(option);
+            }
+        );
+
+        current.replaceWith(select);
+
+        return select;
+    };
+
+    const feetOptions = (
+        values
+    ) => values.map(
+        value => [
+            String(value),
+            `${value} ft`
+        ]
+    );
+
+    const range = (
+        start,
+        end,
+        step = 1
+    ) => {
+        const values = [];
+        for (
+            let value = start;
+            value <= end;
+            value += step
+        ) {
+            values.push(value);
+        }
+        return values;
+    };
+
+    makeSelect(
+        'capacity_size_rating',
+        [
+            ['Single', 'Single'],
+            ['Double', 'Double'],
+            ['Triple', 'Triple'],
+            ['Group', 'Group']
+        ]
+    );
+
+    makeSelect(
+        'condition_rating',
+        [
+            ['Basic', 'Basic'],
+            ['Standard', 'Standard'],
+            ['Good', 'Good'],
+            ['Prime', 'Prime'],
+            ['N/A', 'Not applicable']
+        ]
+    );
+
+    makeSelect(
+        'site_rating',
+        [
+            ['Basic', 'Basic'],
+            ['Standard', 'Standard'],
+            ['Preferred', 'Preferred'],
+            ['Prime', 'Prime'],
+            ['N/A', 'Not applicable']
+        ]
+    );
+
+    makeSelect(
+        'location_rating',
+        [
+            ['Basic', 'Basic'],
+            ['Standard', 'Standard'],
+            ['Good', 'Good'],
+            ['Prime', 'Prime'],
+            ['N/A', 'Not applicable']
+        ]
+    );
+
+    makeSelect(
+        'parking_length_feet',
+        feetOptions([
+            ...range(10, 100, 5),
+            110, 120, 130, 140, 150,
+            175, 200, 250, 300, 400, 500
+        ])
+    );
+
+    makeSelect(
+        'overhead_clearance_feet',
+        feetOptions([
+            ...range(8, 20),
+            22, 24, 25, 30
+        ])
+    );
+
+    makeSelect(
+        'site_length_feet',
+        feetOptions([
+            ...range(10, 100, 5),
+            110, 120, 130, 140, 150,
+            175, 200, 250, 300
+        ])
+    );
+
+    makeSelect(
+        'site_width_feet',
+        feetOptions([
+            8, 10, 12, 15, 20, 25,
+            30, 35, 40, 50, 60, 75, 100
+        ])
+    );
+
+    makeSelect(
+        'tent_pad_length_feet',
+        feetOptions([
+            6, 8, 10, 12, 15, 20,
+            25, 30, 40, 50
+        ])
+    );
+
+    makeSelect(
+        'tent_pad_width_feet',
+        feetOptions([
+            6, 8, 10, 12, 15, 20,
+            25, 30, 40, 50
+        ])
+    );
+
+    makeSelect(
+        'hike_in_distance_feet',
+        [
+            ['0', 'At the vehicle / 0 ft'],
+            ['25', 'About 25 ft'],
+            ['50', 'About 50 ft'],
+            ['100', 'About 100 ft'],
+            ['250', 'About 250 ft'],
+            ['500', 'About 500 ft'],
+            ['1000', 'About 1,000 ft'],
+            ['2640', 'About 1/2 mile'],
+            ['5280', 'About 1 mile']
+        ]
+    );
+
+    makeSelect(
+        'max_people',
+        [
+            ...range(1, 20).map(
+                value => [
+                    String(value),
+                    `${value} ${value === 1 ? 'person' : 'people'}`
+                ]
+            ),
+            ['25', '25 people'],
+            ['30', '30 people'],
+            ['40', '40 people'],
+            ['50', '50 people'],
+            ['100', '100 people']
+        ]
+    );
+
+    const siteNumberInput =
+        form.querySelector(
+            '[name="site_number"]'
+        );
+
+    let campsiteSelect = null;
+
+    if (siteNumberInput) {
+        campsiteSelect =
+            document.createElement(
+                'select'
+            );
+
+        campsiteSelect.name =
+            'selected_campsite_id';
+        campsiteSelect.setAttribute(
+            'data-admin-campsite-selector',
+            '1'
+        );
+
+        const choose =
+            document.createElement(
+                'option'
+            );
+
+        choose.value = '';
+        choose.textContent =
+            campsiteSites.length > 0
+                ? 'Select campsite...'
+                : 'No campsite records available';
+        campsiteSelect.appendChild(choose);
+
+        campsiteSites.forEach(site => {
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value =
+                String(site.id || '');
+            option.textContent =
+                String(
+                    site.label
+                    || `Site ${site.id}`
+                );
+            campsiteSelect.appendChild(option);
+        });
+
+        if (campsiteSites.length === 0) {
+            campsiteSelect.disabled = true;
+        }
+
+        const wrapper =
+            siteNumberInput.closest(
+                '.contribution-field'
+            );
+
+        const label =
+            wrapper?.querySelector(
+                '.place-report-field-label > span:first-child'
+            );
+
+        if (label) {
+            label.textContent =
+                'Campsite';
+        }
+
+        siteNumberInput.replaceWith(
+            campsiteSelect
+        );
+    }
+
+    const setSiteControlsEnabled = (
+        enabled
+    ) => {
+        campsiteFieldKeys.forEach(key => {
+            controlsFor(key).forEach(control => {
+                control.disabled = !enabled;
+            });
+        });
+    };
+
+    const ensureSelectValue = (
+        select,
+        value
+    ) => {
+        const stringValue =
+            String(value);
+
+        const found =
+            Array.from(select.options)
+                .some(
+                    option =>
+                        option.value === stringValue
+                );
+
+        if (!found && stringValue !== '') {
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value = stringValue;
+            option.textContent =
+                `Imported: ${stringValue}`;
+            select.appendChild(option);
+        }
+
+        select.value = stringValue;
+    };
+
+    const setSiteFieldValue = (
+        key,
+        value
+    ) => {
+        const controls =
+            controlsFor(key);
+
+        if (controls.length === 0) {
+            return;
+        }
+
+        const stringValue =
+            value === null
+            || value === undefined
+                ? ''
+                : String(value);
+
+        const radioControls =
+            controls.filter(
+                control =>
+                    control.type === 'radio'
+            );
+
+        if (radioControls.length > 0) {
+            radioControls.forEach(control => {
+                control.checked =
+                    control.value === stringValue;
+            });
+
+            const hidden =
+                controls.find(
+                    control =>
+                        control.type === 'hidden'
+                );
+
+            if (hidden) {
+                hidden.value =
+                    campsiteUnanswered;
+            }
+
+            return;
+        }
+
+        const control =
+            controls.find(
+                item =>
+                    item.type !== 'hidden'
+            )
+            || controls[0];
+
+        if (control.tagName === 'SELECT') {
+            ensureSelectValue(
+                control,
+                stringValue
+            );
+        } else if (control.type === 'checkbox') {
+            control.checked =
+                stringValue === '1'
+                || stringValue.toLowerCase() === 'true';
+        } else {
+            control.value = stringValue;
+        }
+    };
+
+    const clearSiteFields = () => {
+        campsiteFieldKeys.forEach(key => {
+            setSiteFieldValue(
+                key,
+                ''
+            );
+        });
+    };
+
+    const loadCampsite = (
+        siteId
+    ) => {
+        const site =
+            campsiteSites.find(
+                item =>
+                    String(item.id) ===
+                    String(siteId)
+            );
+
+        clearSiteFields();
+
+        if (!site) {
+            activeCampsiteId = '';
+            setSiteControlsEnabled(false);
+            campsiteDirty = false;
+            return;
+        }
+
+        const values =
+            site.form_values
+            && typeof site.form_values === 'object'
+                ? site.form_values
+                : {};
+
+        Object.entries(values)
+            .forEach(
+                ([key, value]) => {
+                    if (
+                        campsiteFieldKeys.includes(key)
+                    ) {
+                        setSiteFieldValue(
+                            key,
+                            value
+                        );
+                    }
+                }
+            );
+
+        activeCampsiteId =
+            String(site.id);
+        setSiteControlsEnabled(true);
+        campsiteDirty = false;
+    };
+
+    campsiteFieldKeys.forEach(key => {
+        controlsFor(key).forEach(control => {
+            control.addEventListener(
+                'change',
+                () => {
+                    if (activeCampsiteId !== '') {
+                        campsiteDirty = true;
+                    }
+                }
+            );
+        });
+    });
+
+    if (campsiteSelect) {
+        campsiteSelect.addEventListener(
+            'change',
+            () => {
+                const next =
+                    campsiteSelect.value;
+
+                if (
+                    campsiteDirty
+                    && activeCampsiteId !== ''
+                    && next !== activeCampsiteId
+                    && !window.confirm(
+                        'Switch campsites and discard unsaved changes to the current campsite?'
+                    )
+                ) {
+                    campsiteSelect.value =
+                        activeCampsiteId;
+                    return;
+                }
+
+                loadCampsite(next);
+            }
+        );
+
+        setSiteControlsEnabled(false);
+
+        if (campsiteSites.length === 1) {
+            campsiteSelect.value =
+                String(campsiteSites[0].id);
+            loadCampsite(
+                campsiteSelect.value
+            );
+        } else {
+            loadCampsite('');
+        }
+    }
+
     const save = async () => {
         if (busy) {
             return;
@@ -416,6 +969,7 @@
             }
 
             clearRecoveryCopies();
+            campsiteDirty = false;
 
             form.dispatchEvent(
                 new CustomEvent(
