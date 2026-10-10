@@ -6,6 +6,8 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
+require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/place-report/scoped-answers.php';
 require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once __DIR__ . '/_dashboard.php';
 
@@ -113,6 +115,449 @@ function admin_place_shared_report_data(
 }
 
 
+function admin_place_campsite_field_keys(): array
+{
+    $keys = [];
+
+    foreach (llama_place_report_fields() as $key => $field) {
+        if ((string) ($field['section'] ?? '') !== 'site_vehicle') {
+            continue;
+        }
+
+        if (!in_array('site', (array) ($field['report_scopes'] ?? []), true)) {
+            continue;
+        }
+
+        if (!empty($field['derived']) || $key === 'site_number') {
+            continue;
+        }
+
+        $keys[] = (string) $key;
+    }
+
+    return $keys;
+}
+
+function admin_place_without_campsite_fields(array $input): array
+{
+    if ((int) ($input['selected_campsite_id'] ?? 0) < 1) {
+        return $input;
+    }
+
+    foreach (admin_place_campsite_field_keys() as $key) {
+        unset($input[$key]);
+    }
+
+    unset($input['site_number']);
+
+    return $input;
+}
+
+function admin_place_campsite_feature_value(array $site, string $key): mixed
+{
+    $fallback = null;
+
+    foreach ((array) ($site['features'] ?? []) as $feature) {
+        if ((string) ($feature['feature_key'] ?? '') !== $key) {
+            continue;
+        }
+
+        $value = $feature['feature_value'] ?? null;
+        $provider = strtolower(trim((string) ($feature['source_provider'] ?? '')));
+
+        if (str_contains($provider, 'llama scout')) {
+            return $value;
+        }
+
+        if ($fallback === null) {
+            $fallback = $value;
+        }
+    }
+
+    return $fallback;
+}
+
+function admin_place_campsite_bool_form_value(mixed $value): ?string
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+
+    $normalized = strtoupper(trim((string) $value));
+
+    if (in_array($normalized, ['1', 'Y', 'YES', 'TRUE'], true)) {
+        return '1';
+    }
+
+    if (in_array($normalized, ['0', 'N', 'NO', 'FALSE'], true)) {
+        return '0';
+    }
+
+    return llama_place_report_unknown_token();
+}
+
+function admin_place_campsite_surface_form_value(mixed $value): ?string
+{
+    $text = strtolower(trim((string) $value));
+
+    if ($text === '' || in_array($text, ['n/a', 'na', 'none'], true)) {
+        return null;
+    }
+
+    return match (true) {
+        str_contains($text, 'concrete') => 'concrete',
+        str_contains($text, 'paved'), str_contains($text, 'asphalt') => 'paved',
+        str_contains($text, 'gravel') => 'graded-gravel',
+        str_contains($text, 'packed') && str_contains($text, 'dirt') => 'hard-packed-dirt',
+        str_contains($text, 'dirt') => 'dirt',
+        str_contains($text, 'sand') => 'sand',
+        str_contains($text, 'rock') => 'rock',
+        str_contains($text, 'grass') => 'grass',
+        str_contains($text, 'mixed') => 'mixed',
+        default => null,
+    };
+}
+
+function admin_place_campsite_grade_form_value(mixed $value): ?string
+{
+    $text = strtolower(trim((string) $value));
+
+    if ($text === '' || in_array($text, ['n/a', 'na', 'none'], true)) {
+        return null;
+    }
+
+    return match (true) {
+        str_contains($text, 'very steep') => 'very-steep',
+        str_contains($text, 'steep') => 'steep',
+        str_contains($text, 'moderate') => 'moderate',
+        str_contains($text, 'slight') => 'slight',
+        str_contains($text, 'level') => 'level',
+        str_contains($text, 'var') => 'varies',
+        default => null,
+    };
+}
+
+function admin_place_campsite_electric_service_form_value(mixed $value): ?string
+{
+    $text = preg_replace('/\\s+/', '', strtolower(trim((string) $value))) ?? '';
+
+    if ($text === '') {
+        return null;
+    }
+
+    $has20 = str_contains($text, '20') || str_contains($text, '15');
+    $has30 = str_contains($text, '30');
+    $has50 = str_contains($text, '50');
+
+    return match (true) {
+        $has20 && $has30 && $has50 => '20-30-50a',
+        $has30 && $has50 => '30-50a',
+        $has20 && $has30 => '20-30a',
+        $has50 => '50a',
+        $has30 => '30a',
+        $has20 => '20a',
+        default => null,
+    };
+}
+
+function admin_place_campsite_imported_form_values(array $site): array
+{
+    $unknown = llama_place_report_unknown_token();
+    $values = [];
+
+    $accessible = strtolower(trim((string) ($site['accessible_status'] ?? '')));
+    if ($accessible === 'yes') {
+        $values['site_accessible'] = '1';
+    } elseif ($accessible === 'no') {
+        $values['site_accessible'] = '0';
+    } elseif ($accessible !== '') {
+        $values['site_accessible'] = $unknown;
+    }
+
+    $simple = [
+        'max_people' => 'max_people',
+        'site_length_feet' => 'site_length_ft',
+        'site_width_feet' => 'site_width_ft',
+        'parking_length_feet' => 'driveway_length_ft',
+        'overhead_clearance_feet' => 'overhead_clearance_ft',
+        'max_vehicle_length_feet' => 'max_vehicle_length_ft',
+        'tent_pad_length_feet' => 'tent_pad_length_ft',
+        'tent_pad_width_feet' => 'tent_pad_width_ft',
+    ];
+
+    foreach ($simple as $fieldKey => $siteKey) {
+        if (($site[$siteKey] ?? null) !== null && $site[$siteKey] !== '') {
+            $values[$fieldKey] = (string) $site[$siteKey];
+        }
+    }
+
+    $maxVehicles = (int) ($site['max_vehicles'] ?? 0);
+    if ($maxVehicles > 0) {
+        $values['vehicle_capacity'] = (string) min(11, $maxVehicles);
+    }
+
+    $surface = admin_place_campsite_surface_form_value($site['driveway_surface'] ?? null);
+    if ($surface !== null) {
+        $values['parking_surface'] = $surface;
+    }
+
+    $grade = admin_place_campsite_grade_form_value($site['driveway_grade'] ?? null);
+    if ($grade !== null) {
+        $values['parking_grade'] = $grade;
+    }
+
+    foreach (
+        [
+            'tent_pad' => 'tent_pad',
+            'hookup_electric' => 'electric_hookup',
+            'hookup_water' => 'water_hookup',
+            'hookup_sewer' => 'sewer_hookup',
+        ]
+        as $fieldKey => $siteKey
+    ) {
+        $value = admin_place_campsite_bool_form_value($site[$siteKey] ?? null);
+        if ($value !== null) {
+            $values[$fieldKey] = $value;
+        }
+    }
+
+    $electricService = admin_place_campsite_electric_service_form_value(
+        $site['electric_service'] ?? null
+    );
+    if ($electricService !== null) {
+        $values['hookup_electric_service'] = $electricService;
+    }
+
+    $hookupStatus = strtolower(trim((string) ($site['hookup_status'] ?? '')));
+    if ($hookupStatus !== '') {
+        $values['site_hookups_available'] = $hookupStatus === 'none' ? '0' : '1';
+    }
+
+    $parkingStyle = strtolower(trim((string) ($site['parking_style'] ?? '')));
+    if ($parkingStyle !== '') {
+        $values['pull_through'] = $parkingStyle === 'pull_through' ? '1' : '0';
+        $values['back_in'] = $parkingStyle === 'back_in' ? '1' : '0';
+    }
+
+    foreach (
+        [
+            'capacity_size_rating',
+            'site_rating',
+            'condition_rating',
+            'location_rating',
+        ]
+        as $featureKey
+    ) {
+        $value = admin_place_campsite_feature_value($site, $featureKey);
+        if ($value !== null && trim((string) $value) !== '') {
+            $values[$featureKey] = trim((string) $value);
+        }
+    }
+
+    $double = admin_place_campsite_bool_form_value(
+        admin_place_campsite_feature_value($site, 'double_driveway')
+    );
+    if ($double !== null) {
+        $values['double_driveway'] = $double;
+    }
+
+    $hike = admin_place_campsite_feature_value($site, 'hike_in_distance');
+    if ($hike !== null && preg_match('/-?\\d+(?:\\.\\d+)?/', (string) $hike, $match) === 1) {
+        $values['hike_in_distance_feet'] = $match[0];
+    }
+
+    return $values;
+}
+
+function admin_place_campsite_effective_form_values(
+    PDO $db,
+    int $placeId,
+    array $site
+): array {
+    $values = admin_place_campsite_imported_form_values($site);
+    $siteId = (int) ($site['id'] ?? 0);
+
+    if ($siteId < 1) {
+        return $values;
+    }
+
+    try {
+        $overrides = llama_scoped_report_load(
+            $db,
+            $placeId,
+            'site',
+            $siteId,
+            'campsite_record'
+        );
+    } catch (PDOException $exception) {
+        $code = (string) ($exception->errorInfo[1] ?? '');
+        if ($code === '1146' || $code === '42S02') {
+            return $values;
+        }
+        throw $exception;
+    }
+
+    $fields = llama_place_report_fields();
+
+    foreach ($overrides as $key => $value) {
+        if (!isset($fields[$key])) {
+            continue;
+        }
+
+        $type = (string) ($fields[$key]['type'] ?? '');
+
+        if ($value === llama_place_report_unknown_token()) {
+            $values[$key] = llama_place_report_unknown_token();
+        } elseif ($type === 'tri' && is_bool($value)) {
+            $values[$key] = $value ? '1' : '0';
+        } elseif ($value !== null && !is_array($value)) {
+            $values[$key] = (string) $value;
+        }
+    }
+
+    return $values;
+}
+
+function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
+{
+    $catalog = [];
+
+    foreach (llama_place_campsites($db, $placeId) as $site) {
+        $siteId = (int) ($site['id'] ?? 0);
+        if ($siteId < 1) {
+            continue;
+        }
+
+        $catalog[] = [
+            'id' => $siteId,
+            'label' => (string) ($site['display_name'] ?? ('Site ' . $siteId)),
+            'source_provider' => (string) ($site['source_provider'] ?? ''),
+            'source_external_id' => (string) ($site['source_external_id'] ?? ''),
+            'form_values' => admin_place_campsite_effective_form_values(
+                $db,
+                $placeId,
+                $site
+            ),
+        ];
+    }
+
+    return $catalog;
+}
+
+function admin_place_save_selected_campsite_answers(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $input
+): ?int {
+    $campsiteId = (int) ($input['selected_campsite_id'] ?? 0);
+
+    if ($campsiteId < 1) {
+        return null;
+    }
+
+    $site = llama_place_campsite($db, $placeId, $campsiteId);
+    if (!$site) {
+        throw new InvalidArgumentException(
+            'The selected campsite does not belong to this Place.'
+        );
+    }
+
+    $fields = llama_place_report_fields();
+    $imported = admin_place_campsite_imported_form_values($site);
+    $unknownToken = llama_place_report_unknown_token();
+    $unansweredToken = llama_place_report_unanswered_token();
+    $saved = 0;
+
+    foreach (admin_place_campsite_field_keys() as $key) {
+        if (!array_key_exists($key, $input) || !isset($fields[$key])) {
+            continue;
+        }
+
+        $raw = $input[$key];
+        if (is_array($raw)) {
+            continue;
+        }
+
+        $rawString = trim((string) $raw);
+
+        if ($rawString === '' || $rawString === $unansweredToken) {
+            llama_scoped_report_clear_override(
+                $db,
+                $placeId,
+                'site',
+                $campsiteId,
+                'campsite_record',
+                $key
+            );
+            continue;
+        }
+
+        if ($rawString === $unknownToken) {
+            $value = $unknownToken;
+        } else {
+            $unknownFields = [];
+            $value = llama_place_report_parse_field(
+                $fields[$key],
+                $raw,
+                $unknownFields
+            );
+        }
+
+        $baseline = $imported[$key] ?? null;
+        $comparison = $value;
+
+        if ((string) ($fields[$key]['type'] ?? '') === 'tri' && is_bool($value)) {
+            $comparison = $value ? '1' : '0';
+        } elseif ($value !== null && !is_array($value)) {
+            $comparison = (string) $value;
+        }
+
+        if ($baseline !== null && (string) $baseline === (string) $comparison) {
+            llama_scoped_report_clear_override(
+                $db,
+                $placeId,
+                'site',
+                $campsiteId,
+                'campsite_record',
+                $key
+            );
+            continue;
+        }
+
+        llama_scoped_report_save(
+            $db,
+            $placeId,
+            'site',
+            $campsiteId,
+            'campsite_record',
+            $key,
+            $value
+        );
+        $saved++;
+    }
+
+    admin_users_audit(
+        $db,
+        $actorUserId,
+        null,
+        'place.campsite_report_updated',
+        'Updated an individual campsite report.',
+        [
+            'place_id' => $placeId,
+            'campsite_id' => $campsiteId,
+            'answers_saved' => $saved,
+        ]
+    );
+
+    return $campsiteId;
+}
+
+
 function admin_place_save_shared_report(
     PDO $db,
     int $actorUserId,
@@ -137,9 +582,14 @@ function admin_place_save_shared_report(
             $placeId
         );
 
+    $placeLevelInput =
+        admin_place_without_campsite_fields(
+            $input
+        );
+
     $reportData =
         llama_place_report_build_data(
-            $input,
+            $placeLevelInput,
             $baseData
         );
 
@@ -873,6 +1323,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_POST
                     );
 
+                    admin_place_save_selected_campsite_answers(
+                        $db,
+                        $actorUserId,
+                        $placeId,
+                        $_POST
+                    );
+
                     $removePaths =
                         is_array(
                             $_POST['remove_existing_photos']
@@ -1443,6 +1900,12 @@ $reportData =
         $placeId
     );
 
+$adminPlaceCampsites =
+    admin_place_campsite_form_catalog(
+        $db,
+        $placeId
+    );
+
 $stats =
     admin_dashboard_stats($db);
 
@@ -1765,6 +2228,24 @@ $placeReportPhotoHelp =
                     This is the same question set and control system used by Add Place and moderation.
                 </span>
             </header>
+
+            <script
+                type="application/json"
+                data-admin-place-campsites
+            ><?= json_encode(
+                [
+                    'sites' => $adminPlaceCampsites,
+                    'site_field_keys' => admin_place_campsite_field_keys(),
+                    'unknown_token' => llama_place_report_unknown_token(),
+                    'unanswered_token' => llama_place_report_unanswered_token(),
+                ],
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+            ) ?></script>
 
             <?php
             require dirname(__DIR__)
