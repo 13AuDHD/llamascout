@@ -319,6 +319,22 @@ if ($isNeedsChanges) {
 
 
 /*
+ * Only the Entire Place submission path has moderation and point handling.
+ * Until Area and Site approval is connected, never silently save a scoped
+ * answer as a Place-wide change.
+ */
+$reportTargetScope = trim((string) ($_POST['report_target_scope'] ?? 'place'));
+$reportTargetSource = trim((string) ($_POST['report_target_source'] ?? 'place'));
+$reportTargetId = (int) ($_POST['report_target_id'] ?? $placeId);
+if ($reportTargetScope !== 'place'
+    || $reportTargetSource !== 'place'
+    || $reportTargetId !== $placeId) {
+    $reportTargetIsScoped = true;
+} else {
+    $reportTargetIsScoped = false;
+}
+
+/*
  * =========================================================
  * SUBMIT
  * =========================================================
@@ -343,6 +359,11 @@ if (
     } else {
 
         try {
+            if ($reportTargetIsScoped) {
+                throw new InvalidArgumentException(
+                    'Area and Site updates are not enabled for moderated submission yet. Select Entire Place to submit this form. No changes were saved.'
+                );
+            }
 
             if ($isNeedsChanges) {
 
@@ -890,6 +911,40 @@ $e =
              * This is the same field definition and rendering
              * system used by the rest of the Place workflow.
              */
+            /* Reporting target is displayed inside the established update form. */
+            require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
+            $availableReportTargets = llama_report_targets(db(), $placeId);
+            ?>
+            <section class="contribution-section place-update-report-target">
+                <h3>What are you reporting?</h3>
+                <p>Choose the entire Place or find a camping Area or Site.</p>
+                <label for="place-update-report-target">Reporting target</label>
+                <input
+                    id="place-update-report-target"
+                    type="search"
+                    list="place-update-report-target-options"
+                    value="<?= $e('Entire Place (#' . $placeId . ', place)') ?>"
+                    autocomplete="off"
+                    data-report-target-search
+                >
+                <datalist id="place-update-report-target-options">
+                    <?php foreach ($availableReportTargets as $target): ?>
+                        <option value="<?= $e((string) $target['label'] . ' (#' . $target['id'] . ', ' . $target['scope'] . ')') ?>"></option>
+                    <?php endforeach; ?>
+                </datalist>
+                <input type="hidden" name="report_target_scope" value="place" data-report-target-scope>
+                <input type="hidden" name="report_target_source" value="place" data-report-target-source>
+                <input type="hidden" name="report_target_id" value="<?= (int) $placeId ?>" data-report-target-id>
+                <p class="place-update-report-target-status" data-report-target-status role="status">
+                    Entire Place updates use the existing review process.
+                </p>
+            </section>
+            <script type="application/json" id="place-update-report-target-data"><?= json_encode(
+                $availableReportTargets,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
+            ) ?></script>
+            <script defer src="/js/place-update-report-target.js"></script>
+            <?php
             require dirname(__DIR__)
                 . '/partials/place-report/form.php';
 
