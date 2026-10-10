@@ -954,7 +954,7 @@ $e =
             </div>
             <section class="contribution-section" data-place-update-scoped-fields hidden>
                 <h3>Area or Site correction</h3>
-                <p>Choose a question and record the answer for this Area or Site. The change will be reviewed before publishing.</p>
+                <p>Add as many relevant answers as needed for this Area or Site. All answers will be reviewed together before publishing.</p>
                 <label for="scoped-field-key">Question</label>
                 <select id="scoped-field-key" name="scoped_field_key" data-scoped-field-key>
                     <option value="">Select question...</option>
@@ -962,6 +962,9 @@ $e =
                 <label for="scoped-field-answer">Answer</label>
                 <select id="scoped-field-answer" name="scoped_field_value" data-scoped-field-answer></select>
                 <input id="scoped-field-text" type="text" data-scoped-field-text hidden autocomplete="off">
+                <button type="button" data-scoped-add-answer>Add answer to report</button>
+                <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
+                <ul data-scoped-answer-list aria-label="Answers to submit"></ul>
                 <p data-scoped-field-notice role="status"></p>
             </section>
             <script type="application/json" id="place-update-scoped-fields-data"><?= json_encode(
