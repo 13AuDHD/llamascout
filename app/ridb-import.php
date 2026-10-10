@@ -101,7 +101,6 @@ function llama_ridb_import_time(mixed $value): ?string {
     return null;
 }
 
-
 function llama_ridb_import_datetime(mixed $value): ?string {
     $text = trim((string) $value);
 
@@ -631,6 +630,116 @@ function llama_ridb_import_replace_facility_features(
     }
 }
 
+/**
+ * Build a lossless per-campsite feature list from RIDB attributes.
+ *
+ * Known attributes that already have dedicated place_campsite_facts columns
+ * are excluded to avoid duplicating structured values. Every other mapped
+ * attribute remains attached to the individual campsite. Unknown source
+ * attributes are also retained as source_attribute rows so an import never
+ * silently discards site-level details just because Llama Scout has not yet
+ * assigned them a canonical field.
+ */
+function llama_ridb_import_site_features(
+    array $attributes,
+    array $mapped
+): array {
+    $structuredCanonicals = [
+        'site_length',
+        'site_width',
+        'parking_length',
+        'parking_grade',
+        'parking_surface',
+        'overhead_clearance',
+        'max_vehicle_length',
+        'max_people',
+        'max_vehicles',
+        'min_people',
+        'min_vehicles',
+        'tent_pad_present',
+        'tent_pad_length',
+        'tent_pad_width',
+        'electric_hookup',
+        'water_hookup',
+        'sewer_hookup',
+        'checkin_time',
+        'checkout_time',
+        'proximity_to_water',
+        'shade',
+        'privacy',
+        'quiet_area',
+        'max_horses',
+        'bed_type',
+        'bed_count',
+        'bedroom_count',
+        'room_count',
+        'shower_bath_type',
+        'internal_map_x',
+        'internal_map_y',
+        'placed_on_map',
+    ];
+
+    $features = [];
+
+    foreach ($mapped as $canonical => $rows) {
+        if (in_array((string) $canonical, $structuredCanonicals, true)) {
+            continue;
+        }
+
+        foreach ((array) $rows as $row) {
+            $value = trim((string) ($row['value'] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $features[] = [
+                'feature_key' => (string) $canonical,
+                'feature_value' => $value,
+                'qualifier' => trim((string) ($row['name'] ?? '')),
+            ];
+        }
+    }
+
+    foreach ($attributes as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+
+        $name = trim(
+            (string) llama_ridb_record_value(
+                $attribute,
+                ['AttributeName', 'AttributeKey', 'attributeName'],
+                ''
+            )
+        );
+
+        $value = trim(
+            (string) llama_ridb_record_value(
+                $attribute,
+                ['AttributeValue', 'AttributeText', 'attributeValue'],
+                ''
+            )
+        );
+
+        if ($name === '' || $value === '') {
+            continue;
+        }
+
+        if (llama_ridb_normalization_match($name)) {
+            continue;
+        }
+
+        $features[] = [
+            'feature_key' => 'source_attribute',
+            'feature_value' => $value,
+            'qualifier' => $name,
+        ];
+    }
+
+    return $features;
+}
+
 function llama_ridb_import_site_payload(
     array $site,
     array $attributes
@@ -728,68 +837,6 @@ function llama_ridb_import_site_payload(
         'internal_map_placed' => llama_ridb_import_bool(llama_ridb_import_first($mapped, 'placed_on_map')),
     ];
 
-    $features = [];
-
-    $featureCanonicals = [
-        'site_access',
-        'double_driveway',
-        'campfire_allowed',
-        'fire_ring',
-        'grill',
-        'picnic_table',
-        'food_storage',
-        'toilet',
-        'trash_collection',
-        'pets_allowed',
-        'equipment_mandatory',
-        'lantern_post',
-        'lake_access',
-        'river_access',
-        'trailhead',
-        'trailhead_parking',
-        'accessibility',
-        'accessible_occupant_message',
-        'accessible_boat_ramp',
-        'accessible_boat_dock',
-        'accessible_campsites',
-        'recycling',
-        'amphitheater',
-        'geological_attractions',
-        'scenic_overlooks',
-        'visitor_center',
-        'self_pay_station',
-        'day_use_area',
-        'fishing_pier',
-        'picnic_shelter',
-        'playground',
-        'full_hookup',
-        'electricity_available',
-        'potable_water',
-        'flush_toilet',
-        'campfire_circle',
-        'paved_parking',
-        'platform',
-        'site_rating',
-        'condition_rating',
-        'location_rating',
-        'capacity_size_rating',
-        'hike_in_distance',
-    ];
-
-    foreach ($featureCanonicals as $canonical) {
-        foreach ($mapped[$canonical] ?? [] as $row) {
-            $value = trim((string) ($row['value'] ?? ''));
-
-            if ($value !== '') {
-                $features[] = [
-                    'feature_key' => $canonical,
-                    'feature_value' => $value,
-                    'qualifier' => (string) ($row['name'] ?? ''),
-                ];
-            }
-        }
-    }
-
     return [
         'identity' => [
             'site_code' => $siteName !== '' ? $siteName : null,
@@ -813,7 +860,7 @@ function llama_ridb_import_site_payload(
             ),
         ],
         'facts' => $facts,
-        'features' => $features,
+        'features' => llama_ridb_import_site_features($attributes, $mapped),
     ];
 }
 
@@ -876,11 +923,12 @@ function llama_ridb_import_upsert_site(
     $idStmt = $db->prepare(
         'SELECT id
          FROM place_campsites
-         WHERE source_provider = ?
+         WHERE place_id = ?
+           AND source_provider = ?
            AND source_external_id = ?
          LIMIT 1'
     );
-    $idStmt->execute(['ridb', $siteId]);
+    $idStmt->execute([$placeId, 'ridb', $siteId]);
 
     $campsiteId = (int) $idStmt->fetchColumn();
 
