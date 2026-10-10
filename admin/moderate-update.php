@@ -259,6 +259,10 @@ if (
                 )
                 : [];
 
+        if (isset($actionProposed['__scoped_report__'])) {
+            // Scoped questions are not eligible for Place-level point estimates.
+            $points = 0;
+        } else {
         $actionFinalInput =
             llama_place_update_shared_form_values(
                 $actionCurrentValues,
@@ -281,6 +285,8 @@ if (
                 ?? 0
             );
 
+
+        }
 
         $db->beginTransaction();
 
@@ -1552,7 +1558,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                Ã¢ÂÂ
+                                                ÃÂ¢ÃÂÃÂ
 
                                                 <?= $e(
                                                     $afterText
@@ -1593,7 +1599,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                Ã¢ÂÂ
+                                ÃÂ¢ÃÂÃÂ
 
                                 <?= (int) (
                                     $event['photo_count_after']
@@ -1748,6 +1754,19 @@ require __DIR__
 ?>
 
 
+<?php
+    $scopedReview = is_array($proposed['__scoped_report__'] ?? null)
+        ? $proposed['__scoped_report__'] : null;
+?>
+<?php if ($scopedReview): ?>
+    <section class="contribution-section">
+        <h3>Area / Site update</h3>
+        <p><strong>Target:</strong> <?= htmlspecialchars((string)($scopedReview['target_label']??''), ENT_QUOTES, 'UTF-8') ?></p>
+        <p><strong>Question:</strong> <?= htmlspecialchars((string)($scopedReview['field_key']??''), ENT_QUOTES, 'UTF-8') ?></p>
+        <p><strong>Proposed answer:</strong> <?= htmlspecialchars((string)($scopedReview['value']??''), ENT_QUOTES, 'UTF-8') ?></p>
+        <p>Approved answers are saved only to the selected Area or Site. Scoped point calculations are not active yet.</p>
+    </section>
+<?php endif; ?>
 <section class="admin-update-decision">
 
     <h2>
