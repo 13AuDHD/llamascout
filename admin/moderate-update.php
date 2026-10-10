@@ -1762,8 +1762,16 @@ require __DIR__
     <section class="contribution-section">
         <h3>Area / Site update</h3>
         <p><strong>Target:</strong> <?= htmlspecialchars((string)($scopedReview['target_label']??''), ENT_QUOTES, 'UTF-8') ?></p>
-        <p><strong>Question:</strong> <?= htmlspecialchars((string)($scopedReview['field_key']??''), ENT_QUOTES, 'UTF-8') ?></p>
-        <p><strong>Proposed answer:</strong> <?= htmlspecialchars((string)($scopedReview['value']??''), ENT_QUOTES, 'UTF-8') ?></p>
+        <?php $scopedAnswers = (array)($scopedReview['answers'] ?? []);
+              if (!$scopedAnswers && isset($scopedReview['field_key'])) {
+                  $scopedAnswers = [(string)$scopedReview['field_key'] => $scopedReview['value'] ?? ''];
+              } ?>
+        <ul>
+        <?php foreach ($scopedAnswers as $question => $answer): ?>
+            <li><strong><?= htmlspecialchars((string)$question, ENT_QUOTES, 'UTF-8') ?>:</strong>
+                <?= htmlspecialchars(is_scalar($answer)?(string)$answer:json_encode($answer), ENT_QUOTES, 'UTF-8') ?></li>
+        <?php endforeach; ?>
+        </ul>
         <p>Approved answers are saved only to the selected Area or Site. Scoped point calculations are not active yet.</p>
     </section>
 <?php endif; ?>
