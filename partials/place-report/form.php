@@ -1207,7 +1207,7 @@ foreach (
             'overnight_camping_allowed', 'dispersed_camping_allowed',
             'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
             'stay_limit_days', 'residential_use_prohibited',
-            'camping_conditional_details',
+            'camping_conditional_details', 'camping_permit_url',
             'fee', 'reservation_required', 'reservation_fee',
             'reservation_url', 'membership_required', 'membership_fee',
             'membership_url', 'check_in_required', 'check_in_begins',
@@ -1224,7 +1224,7 @@ foreach (
             'generator_restriction_details',
             'campfire_allowed', 'collecting_firewood',
             'current_fire_restrictions_url',
-            'fire_activities_conditional_details',
+            'fire_activities_conditional_details', 'fire_activity_permit_url',
             'pets_allowed', 'dogs_required_to_be_leashed',
             'food_storage_required', 'pack_it_in_pack_it_out',
             'drone_use_legal', 'target_shooting_allowed',
@@ -1542,7 +1542,7 @@ foreach (
                         'overnight_camping_allowed', 'dispersed_camping_allowed',
                         'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
                         'stay_limit_days', 'residential_use_prohibited',
-            'camping_conditional_details',
+            'camping_conditional_details', 'camping_permit_url',
                     ],
                     'Place entrance and parking fees' => [
                         'entrance_facility_fee', 'parking_fee',
@@ -1577,9 +1577,9 @@ foreach (
                     ],
                     'Fire and outdoor activities' => [
                         'campfire_allowed', 'collecting_firewood',
-                        'current_fire_restrictions_url',
+                        
                         'drone_use_legal', 'target_shooting_allowed',
-                        'fire_activities_conditional_details',
+                        'fire_activities_conditional_details', 'fire_activity_permit_url', 'current_fire_restrictions_url',
                     ],
                     'Pets and campsite rules' => [
                         'pets_allowed', 'dogs_required_to_be_leashed',
