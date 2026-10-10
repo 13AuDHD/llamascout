@@ -71,6 +71,56 @@ function llama_camping_fee_map_statuses(PDO $db, array $placeIds): array
         return $result;
     }
 
+    /*
+     * The Scout Report's Camping fee is the canonical manual answer.
+     * A positive saved camping fee must immediately classify the Place as
+     * paid on the public map. This was previously omitted entirely, which
+     * meant an Admin could save a real nightly price and still get no $
+     * marker unless a separate fee-evidence/USFS/RIDB source happened to
+     * classify the Place too.
+     *
+     * Only the camping fee column is considered here. Entrance/day-use,
+     * parking, reservation, membership and other charges do not establish
+     * paid camping. A stored zero is treated as free; NULL remains unknown.
+     */
+    foreach (array_chunk($placeIds, 400) as $chunk) {
+        $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
+
+        try {
+            $stmt = $db->prepare(
+                "SELECT place_id, fee
+                 FROM place_rules
+                 WHERE place_id IN ($placeholders)
+                   AND fee IS NOT NULL"
+            );
+            $stmt->execute($chunk);
+
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = (int) ($row['place_id'] ?? 0);
+
+                if ($id < 1) {
+                    continue;
+                }
+
+                $fee = $row['fee'] ?? null;
+
+                if ($fee === null || $fee === '' || !is_numeric($fee)) {
+                    continue;
+                }
+
+                $result[$id] = (float) $fee > 0.0
+                    ? 'paid'
+                    : 'free';
+            }
+        } catch (PDOException $exception) {
+            $code = (string) ($exception->errorInfo[1] ?? '');
+
+            if ($code !== '1146' && $code !== '42S02' && $code !== '1054' && $code !== '42S22') {
+                throw $exception;
+            }
+        }
+    }
+
     // Chunk requests to avoid giant IN clauses on large map inventories.
     foreach (array_chunk($placeIds, 400) as $chunk) {
         $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
@@ -93,9 +143,15 @@ SQL;
             $stmt = $db->prepare($sql);
             $stmt->execute($chunk);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = (int) ($row['place_id'] ?? 0);
+
+                if ($id < 1 || ($result[$id] ?? 'unknown') !== 'unknown') {
+                    continue;
+                }
+
                 $status = strtolower((string) ($row['status'] ?? ''));
                 if (in_array($status, ['paid', 'free', 'mixed'], true)) {
-                    $result[(int) $row['place_id']] = $status;
+                    $result[$id] = $status;
                 }
             }
         } catch (PDOException $exception) {
