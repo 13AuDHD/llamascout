@@ -343,6 +343,44 @@ function admin_place_campsite_imported_form_values(array $site): array
         $values['back_in'] = $parkingStyle === 'back_in' ? '1' : '0';
     }
 
+    /*
+     * Campsite type is authoritative enough to answer the broad equipment
+     * suitability questions. This prevents a Tent Only RIDB site from ever
+     * looking like an ordinary RV-capable site in the Scout Report.
+     *
+     * Existing imports may predate the STANDARD -> mixed_site normalization,
+     * so raw_site_type is also inspected. Explicit Scout overrides loaded
+     * later still win over these imported defaults.
+     */
+    $siteType = strtolower(trim((string) ($site['site_type'] ?? '')));
+    $rawSiteType = strtoupper(trim((string) ($site['raw_site_type'] ?? '')));
+
+    $isTentOnly =
+        $siteType === 'tent_site'
+        || str_contains($rawSiteType, 'TENT ONLY');
+
+    $isStandard =
+        $siteType === 'mixed_site'
+        || str_contains($rawSiteType, 'STANDARD');
+
+    $isRvOnly =
+        $siteType === 'rv_site'
+        || str_contains($rawSiteType, 'RV ONLY');
+
+    if ($isTentOnly) {
+        $values['tent_camping_suitable'] = '1';
+        $values['rv_suitable'] = '0';
+        $values['trailer_suitable'] = '0';
+    } elseif ($isStandard) {
+        $values['tent_camping_suitable'] = '1';
+        $values['rv_suitable'] = '1';
+        $values['trailer_suitable'] = '1';
+    } elseif ($isRvOnly) {
+        $values['tent_camping_suitable'] = '0';
+        $values['rv_suitable'] = '1';
+        $values['trailer_suitable'] = '1';
+    }
+
     foreach (
         [
             'capacity_size_rating',
