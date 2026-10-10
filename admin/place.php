@@ -546,27 +546,18 @@ function admin_place_save_selected_campsite_answers(
             );
         }
 
-        $baseline = $imported[$key] ?? null;
-        $comparison = $value;
-
-        if ((string) ($fields[$key]['type'] ?? '') === 'tri' && is_bool($value)) {
-            $comparison = $value ? '1' : '0';
-        } elseif ($value !== null && !is_array($value)) {
-            $comparison = (string) $value;
-        }
-
-        if ($baseline !== null && (string) $baseline === (string) $comparison) {
-            llama_scoped_report_clear_override(
-                $db,
-                $placeId,
-                'site',
-                $campsiteId,
-                'campsite_record',
-                $key
-            );
-            continue;
-        }
-
+        /*
+         * Any explicit campsite answer is a deliberate campsite override.
+         *
+         * Do not discard it merely because its normalized numeric value
+         * matches the imported source value. The Scout may be intentionally
+         * converting an exact imported value such as 45.0 ft to the
+         * standardized "About 45 ft" choice. Clearing that override makes the
+         * imported presentation return the next time the campsite is loaded.
+         *
+         * The existing blank / unanswered path above remains the explicit
+         * way to clear an override and fall back to imported data.
+         */
         llama_scoped_report_save(
             $db,
             $placeId,
