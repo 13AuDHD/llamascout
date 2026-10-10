@@ -645,8 +645,54 @@
         });
     };
 
+    const importedSelectLabel = (
+        key,
+        value
+    ) => {
+        const stringValue =
+            String(value).trim();
+
+        if (stringValue === '') {
+            return '';
+        }
+
+        const numericValue =
+            Number(stringValue);
+
+        const isNumeric =
+            Number.isFinite(numericValue);
+
+        const formattedNumber =
+            isNumeric
+                ? numericValue.toLocaleString(
+                    undefined,
+                    {
+                        maximumFractionDigits: 2
+                    }
+                )
+                : stringValue;
+
+        if (key === 'max_people' && isNumeric) {
+            return `${formattedNumber} ${numericValue === 1 ? 'person' : 'people'}`;
+        }
+
+        if (key === 'vehicle_capacity' && isNumeric) {
+            return `${formattedNumber} ${numericValue === 1 ? 'vehicle' : 'vehicles'}`;
+        }
+
+        if (
+            key.endsWith('_feet')
+            && isNumeric
+        ) {
+            return `${formattedNumber} ft`;
+        }
+
+        return stringValue;
+    };
+
     const ensureSelectValue = (
         select,
+        key,
         value
     ) => {
         const stringValue =
@@ -667,7 +713,10 @@
 
             option.value = stringValue;
             option.textContent =
-                `Imported: ${stringValue}`;
+                importedSelectLabel(
+                    key,
+                    stringValue
+                );
             select.appendChild(option);
         }
 
@@ -727,6 +776,7 @@
         if (control.tagName === 'SELECT') {
             ensureSelectValue(
                 control,
+                key,
                 stringValue
             );
         } else if (control.type === 'checkbox') {
