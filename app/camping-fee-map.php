@@ -12,6 +12,52 @@ declare(strict_types=1);
  * If the fee evidence migration has not run, the map remains available and
  * returns unknown for every Place rather than implying that they are free.
  */
+
+/**
+ * Conservative source-text classifier for overnight camping charges.
+ * It intentionally ignores entrance, parking, reservation, and amenity fees
+ * unless the same text explicitly ties a positive amount to camping/site use.
+ */
+function llama_camping_fee_source_text_status(string $description): string
+{
+    $text = html_entity_decode(strip_tags($description), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/', ' ', trim($text)) ?? trim($text);
+
+    if ($text === '') {
+        return 'unknown';
+    }
+
+    $hasPositiveAmount = preg_match(
+        '/(?:\$\s*[1-9]\d{0,3}(?:\.\d{1,2})?|\b[1-9]\d{0,3}(?:\.\d{1,2})?\s*(?:USD|dollars?)\b)/i',
+        $text
+    ) === 1;
+
+    $hasCampingContext = preg_match(
+        '/\b(?:camp(?:ing|ground)?|campsites?|sites?|overnight|per\s+night|nightly)\b/i',
+        $text
+    ) === 1;
+
+    $hasFeeContext = preg_match(
+        '/\b(?:fee|rate|cost|charge|price|per\s+night|nightly)\b|\$/i',
+        $text
+    ) === 1;
+
+    if (!$hasPositiveAmount || !$hasCampingContext || !$hasFeeContext) {
+        return 'unknown';
+    }
+
+    $mentionsFreeCamping = preg_match(
+        '/\b(?:free\s+(?:camping|campsites?|sites?)|(?:camping|campsites?|sites?)\s+(?:(?:is|are)\s+)?free|some\s+(?:camping|campsites?|sites?)\s+(?:(?:is|are)\s+)?free)\b/i',
+        $text
+    ) === 1;
+
+    if ($mentionsFreeCamping) {
+        return 'mixed';
+    }
+
+    return 'paid';
+}
+
 function llama_camping_fee_map_statuses(PDO $db, array $placeIds): array
 {
     $placeIds = array_values(array_unique(array_filter(
@@ -89,12 +135,67 @@ SQL;
                     strtoupper(trim((string) ($row['fee_charged'] ?? ''))) !== 'Y'
                     || (string) ($row['camping_fee_candidate'] ?? '') !== 'paid_candidate'
                     || $amount <= 0
-                    || !preg_match('/\b(?:overnight\s+use|overnight\s+camping|camping\s+fee|per\s+night)\b/i', $description)
-                    || preg_match('/\b(?:free\s+(?:sites?|camping)|some\s+sites?\s+free)\b/i', $description)
                 ) {
                     continue;
                 }
-                $result[$id] = 'paid';
+
+                $status = llama_camping_fee_source_text_status($description);
+
+                /*
+                 * The USFS enrichment parser has already identified this as
+                 * a positive camping-rate candidate. Preserve that signal even
+                 * when the source prose is terse, such as "$22/night".
+                 */
+                $result[$id] = $status === 'mixed' ? 'mixed' : 'paid';
+            }
+        } catch (PDOException $exception) {
+            $code = (string) ($exception->errorInfo[1] ?? '');
+            if ($code !== '1146' && $code !== '42S02') {
+                throw $exception;
+            }
+        }
+    }
+
+    /*
+     * Recreation.gov / RIDB exposes FacilityUseFeeDescription separately
+     * from reservation and entrance fields. Use it only when the text itself
+     * clearly identifies a positive overnight camping/site charge.
+     */
+    foreach (array_chunk($placeIds, 400) as $chunk) {
+        $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
+
+        try {
+            $stmt = $db->prepare(
+                "SELECT place_id, fee_description, source_provider
+                 FROM place_facility_facts
+                 WHERE place_id IN ($placeholders)"
+            );
+            $stmt->execute($chunk);
+
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = (int) ($row['place_id'] ?? 0);
+
+                if ($id < 1 || ($result[$id] ?? 'unknown') !== 'unknown') {
+                    continue;
+                }
+
+                $provider = strtolower(trim((string) ($row['source_provider'] ?? '')));
+
+                if (
+                    $provider !== ''
+                    && !str_contains($provider, 'recreation.gov')
+                    && !str_contains($provider, 'ridb')
+                ) {
+                    continue;
+                }
+
+                $status = llama_camping_fee_source_text_status(
+                    (string) ($row['fee_description'] ?? '')
+                );
+
+                if ($status !== 'unknown') {
+                    $result[$id] = $status;
+                }
             }
         } catch (PDOException $exception) {
             $code = (string) ($exception->errorInfo[1] ?? '');
