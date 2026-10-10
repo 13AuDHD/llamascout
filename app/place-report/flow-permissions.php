@@ -114,4 +114,38 @@ function llama_place_report_apply_permission_flows(array &$fields, callable $add
         ]);
     }
 
+    // Conditional overnight permission still means overnight use is possible.
+    // Any existing applicability rule that treated Yes or Permit as an
+    // overnight-positive answer must therefore include Conditional as well.
+    $expandConditionalOvernight = static function (mixed &$node) use (&$expandConditionalOvernight): void {
+        if (!is_array($node)) {
+            return;
+        }
+
+        if (
+            ($node['field'] ?? null) === 'overnight_camping_allowed'
+            && ($node['operator'] ?? null) === 'in'
+            && is_array($node['value'] ?? null)
+            && in_array('1', $node['value'], true)
+            && in_array('2', $node['value'], true)
+            && !in_array('3', $node['value'], true)
+        ) {
+            $node['value'][] = '3';
+        }
+
+        foreach ($node as &$child) {
+            if (is_array($child)) {
+                $expandConditionalOvernight($child);
+            }
+        }
+        unset($child);
+    };
+
+    foreach ($fields as &$field) {
+        if (isset($field['applicable_if']) && is_array($field['applicable_if'])) {
+            $expandConditionalOvernight($field['applicable_if']);
+        }
+    }
+    unset($field);
+
 }
