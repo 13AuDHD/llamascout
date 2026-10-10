@@ -13,6 +13,10 @@
     const answerSelect=document.querySelector('[data-scoped-field-answer]');
     const answerText=document.querySelector('[data-scoped-field-text]');
     const notice=document.querySelector('[data-scoped-field-notice]');
+    const addButton=document.querySelector('[data-scoped-add-answer]');
+    const queueList=document.querySelector('[data-scoped-answer-list]');
+    const queueInput=document.querySelector('[data-scoped-answers-json]');
+    const queue=[];
     if (![search,scope,source,id,status,targetJson,fieldsJson,placeFields,scopedFields,fieldSelect,answerSelect,answerText].every(Boolean)) return;
     let targets,fields;
     try { targets=JSON.parse(targetJson.textContent); fields=JSON.parse(fieldsJson.textContent); } catch (_) { return; }
@@ -52,17 +56,48 @@
         }
         if(notice) notice.textContent='Only this answer will be submitted for review.';
     };
+    const renderQueue=()=>{
+        if(!queueList || !queueInput)return;
+        queueInput.value=JSON.stringify(queue);
+        queueList.replaceChildren();
+        for(const entry of queue){
+            const item=document.createElement('li');
+            const f=fields.find(f=>f.key===entry.key);
+            const label=document.createElement('span');
+            label.textContent=`${f?.label||entry.key}: ${entry.display}`;
+            const remove=document.createElement('button');
+            remove.type='button';remove.textContent='Remove';
+            remove.addEventListener('click',()=>{queue.splice(queue.indexOf(entry),1);renderQueue();});
+            item.append(label,' ',remove);queueList.append(item);
+        }
+    };
+    if(addButton)addButton.addEventListener('click',()=>{
+        const f=enabledFields().find(f=>f.key===fieldSelect.value);
+        if(!f){status.textContent='Select a question first.';return;}
+        const input=answerSelect.hidden?answerText:answerSelect;
+        const value=input.value.trim();
+        if(!value){status.textContent='Enter an answer before adding it.';return;}
+        const display=answerSelect.hidden?value:answerSelect.selectedOptions[0]?.textContent||value;
+        const previous=queue.findIndex(a=>a.key===f.key);
+        if(previous!==-1)queue.splice(previous,1);
+        queue.push({key:f.key,value,display});renderQueue();
+        status.textContent=`${queue.length} answer(s) ready for moderation.`;
+        fieldSelect.value='';fillAnswers();
+    });
+    let activeTarget='';
     const update=()=>{
         const t=labels.get(search.value.trim());
         if(!t){status.textContent='Select an exact option from the list.';return;}
-        const prior=scope.value;
+        const targetKey=`${t.scope}:${t.source}:${t.id}`;
+        const switchedTarget=targetKey!==activeTarget;
+        activeTarget=targetKey;
         scope.value=t.scope;source.value=t.source;id.value=String(t.id);
         const scoped=t.scope!=='place';
         placeFields.hidden=scoped;scopedFields.hidden=!scoped;
         for(const control of placeFields.querySelectorAll('input,select,textarea,button')){
             control.disabled=scoped;
         }
-        if(scoped&&prior!==scope.value)fillQuestions();
+        if(scoped&&switchedTarget){queue.length=0;renderQueue();fillQuestions();}
         if(!scoped){answerSelect.disabled=true;answerText.disabled=true;fieldSelect.disabled=true;}
         else{fieldSelect.disabled=false;fillAnswers();}
         status.textContent=scoped?'Area/Site answer will be submitted for moderation.':'Entire Place uses the existing update form.';
@@ -74,9 +109,7 @@
         const t=labels.get(search.value.trim());
         if(!t){event.preventDefault();status.textContent='Choose a listed reporting target.';return;}
         if(t.scope!=='place'){
-            if(!fieldSelect.value||(answerSelect.hidden?!answerText.value.trim():!answerSelect.value)){
-                event.preventDefault();status.textContent='Choose a question and enter its answer.';
-            }
+            if(queue.length===0){event.preventDefault();status.textContent='Add at least one answer before submitting.';}
         }
     });
     update();
