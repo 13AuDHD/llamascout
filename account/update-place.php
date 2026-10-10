@@ -360,9 +360,13 @@ if (
 
         try {
             if ($reportTargetIsScoped) {
-                throw new InvalidArgumentException(
-                    'Area and Site updates are not enabled for moderated submission yet. Select Entire Place to submit this form. No changes were saved.'
-                );
+                if ($isNeedsChanges) {
+                    throw new InvalidArgumentException('Area and Site revisions requested by a moderator are not yet supported.');
+                }
+                require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
+                llama_scoped_update_submit($userId, $place, $_POST);
+                header('Location: https://account.llamascout.com/contributions.php?submitted=update', true, 303);
+                exit;
             }
 
             if ($isNeedsChanges) {
@@ -944,9 +948,35 @@ $e =
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
             ) ?></script>
             <script defer src="/js/place-update-report-target.js"></script>
-            <?php
-            require dirname(__DIR__)
-                . '/partials/place-report/form.php';
+            ?>
+            <div data-place-update-place-fields>
+            <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
+            </div>
+            <section class="contribution-section" data-place-update-scoped-fields hidden>
+                <h3>Area or Site correction</h3>
+                <p>Choose a question and record the answer for this Area or Site. The change will be reviewed before publishing.</p>
+                <label for="scoped-field-key">Question</label>
+                <select id="scoped-field-key" name="scoped_field_key" data-scoped-field-key>
+                    <option value="">Select question...</option>
+                </select>
+                <label for="scoped-field-answer">Answer</label>
+                <select id="scoped-field-answer" name="scoped_field_value" data-scoped-field-answer></select>
+                <input id="scoped-field-text" type="text" data-scoped-field-text hidden autocomplete="off">
+                <p data-scoped-field-notice role="status"></p>
+            </section>
+            <script type="application/json" id="place-update-scoped-fields-data"><?= json_encode(
+                array_values(array_map(static function (array $field): array {
+                    return [
+                        'key'=>(string)$field['key'],
+                        'label'=>(string)$field['label'],
+                        'type'=>(string)$field['type'],
+                        'scopes'=>array_values((array)($field['report_scopes']??['place'])),
+                        'options'=>(array)($field['options']??[]),
+                        'unknown'=>!empty($field['allow_unknown']),
+                        'derived'=>!empty($field['derived']),
+                        'location'=>!empty($field['location_field']),
+                    ];
+                }, llama_place_report_fields())), JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
 
             ?>
 
