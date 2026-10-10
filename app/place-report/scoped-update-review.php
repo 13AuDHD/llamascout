@@ -24,55 +24,81 @@ function llama_scoped_update_submit(int $userId, array $place, array $input): in
     if ($scope === 'place') {
         throw new InvalidArgumentException('Use the normal Place update form.');
     }
-    $key = trim((string) ($input['scoped_field_key'] ?? ''));
-    $field = llama_scoped_report_field($key, $scope);
-    $raw = $input['scoped_field_value'] ?? null;
-    if (!is_scalar($raw) || trim((string) $raw) === '') {
-        throw new InvalidArgumentException('Choose an answer for the selected question.');
+    // A Scout can report several answers about one target in a single review.
+    // Accept legacy single-answer submissions while existing pending reviews remain.
+    $submitted = [];
+    if (!empty($input['scoped_answers_json'])) {
+        $submitted = json_decode((string) $input['scoped_answers_json'], true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($submitted) || !array_is_list($submitted)) {
+            throw new InvalidArgumentException('Invalid Area or Site answers.');
+        }
+    } elseif (isset($input['scoped_field_key'], $input['scoped_field_value'])) {
+        $submitted = [['key'=>$input['scoped_field_key'], 'value'=>$input['scoped_field_value']]];
     }
-    $unknown = llama_place_report_unknown_token();
-    if ((string) $raw === $unknown) {
-        if (empty($field['allow_unknown'])) {
-            throw new InvalidArgumentException('Unknown is not supported for this question.');
-        }
-        $value = $unknown;
-    } elseif ($field['type'] === 'select') {
-        if (!array_key_exists((string) $raw, (array) ($field['options'] ?? []))) {
-            throw new InvalidArgumentException('Choose one of the allowed answers.');
-        }
-        $value = (string) $raw;
-    } elseif ($field['type'] === 'tri') {
-        if (!in_array((string) $raw, ['0','1'], true)) {
-            throw new InvalidArgumentException('Choose Yes or No.');
-        }
-        $value = (string) $raw;
-    } elseif ($field['type'] === 'permission') {
-        if (!in_array((string) $raw, ['0','1','2'], true)) {
-            throw new InvalidArgumentException('Choose a valid permission answer.');
-        }
-        $value = (string) $raw;
-    } elseif ($field['type'] === 'rating') {
-        if (!in_array((string) $raw, ['1','2','3','4','5'], true)) {
-            throw new InvalidArgumentException('Choose a rating from 1 to 5.');
-        }
-        $value = (string) $raw;
-    } elseif (in_array($field['type'], ['textarea','text','url','date','number'], true)) {
-        $parsedUnknown = [];
-        $value = llama_place_report_parse_field($field, $raw, $parsedUnknown);
-        if ($value === null) {
-            throw new InvalidArgumentException('Enter a valid value for this question.');
-        }
-    } else {
-        throw new InvalidArgumentException('This question requires the full form and is not yet supported for scoped corrections.');
+    if (!$submitted || count($submitted) > 50) {
+        throw new InvalidArgumentException('Add between 1 and 50 answers to this report.');
     }
     $before = llama_scoped_report_load($db, $placeId, $scope, $id, $source);
-    $previous = array_key_exists($key, $before) ? $before[$key] : null;
-    if (array_key_exists($key, $before) && $previous === $value) {
-        throw new InvalidArgumentException('That answer is already recorded.');
+    $answers = [];
+    $originalAnswers = [];
+    foreach ($submitted as $answer) {
+        if (!is_array($answer)) {
+            throw new InvalidArgumentException('Invalid Area or Site question.');
+        }
+        $key = trim((string) ($answer['key'] ?? ''));
+        if (isset($answers[$key])) {
+            throw new InvalidArgumentException('Each question can only be answered once.');
+        }
+        $field = llama_scoped_report_field($key, $scope);
+        $raw = $answer['value'] ?? null;
+        if (!is_scalar($raw) || trim((string) $raw) === '') {
+            throw new InvalidArgumentException('Choose an answer for every question.');
+        }
+        $unknown = llama_place_report_unknown_token();
+        if ((string) $raw === $unknown) {
+            if (empty($field['allow_unknown'])) {
+                throw new InvalidArgumentException('Unknown is not supported for this question.');
+            }
+            $value = $unknown;
+        } elseif ($field['type'] === 'select') {
+            if (!array_key_exists((string) $raw, (array) ($field['options'] ?? []))) {
+                throw new InvalidArgumentException('Choose one of the allowed answers.');
+            }
+            $value = (string) $raw;
+        } elseif ($field['type'] === 'tri') {
+            if (!in_array((string) $raw, ['0','1'], true)) {
+                throw new InvalidArgumentException('Choose Yes or No.');
+            }
+            $value = (string) $raw;
+        } elseif ($field['type'] === 'permission') {
+            if (!in_array((string) $raw, ['0','1','2','3'], true)) {
+                throw new InvalidArgumentException('Choose a valid permission answer.');
+            }
+            $value = (string) $raw;
+        } elseif ($field['type'] === 'rating') {
+            if (!in_array((string) $raw, ['1','2','3','4','5'], true)) {
+                throw new InvalidArgumentException('Choose a rating from 1 to 5.');
+            }
+            $value = (string) $raw;
+        } elseif (in_array($field['type'], ['textarea','text','url','date','number'], true)) {
+            $parsedUnknown = [];
+            $value = llama_place_report_parse_field($field, $raw, $parsedUnknown);
+            if ($value === null) {
+                throw new InvalidArgumentException('Enter a valid answer for ' . $field['label'] . '.');
+            }
+        } else {
+            throw new InvalidArgumentException('This question is not supported for Area or Site corrections.');
+        }
+        $recorded = array_key_exists($key, $before);
+        if ($recorded && $before[$key] === $value) {
+            throw new InvalidArgumentException('The answer for ' . $field['label'] . ' is already recorded.');
+        }
+        $answers[$key] = $value;
+        $originalAnswers[$key] = ['recorded'=>$recorded, 'value'=>$recorded ? $before[$key] : null];
     }
-    $payload = ['scope'=>$scope, 'source'=>$source, 'id'=>$id, 'field_key'=>$key, 'value'=>$value,
+    $payload = ['scope'=>$scope, 'source'=>$source, 'id'=>$id, 'answers'=>$answers,
         'target_label'=>(string) $target['label']];
-    $original = ['recorded'=>array_key_exists($key, $before), 'value'=>$previous];
+    $original = ['answers'=>$originalAnswers];
     $db->beginTransaction();
     try {
         $stmt = $db->prepare('INSERT INTO place_update_submissions
@@ -109,23 +135,41 @@ function llama_scoped_update_approve(PDO $db, array $update, int $updateId, int 
     $scope = (string) ($payload['scope'] ?? '');
     $source = (string) ($payload['source'] ?? '');
     $targetId = (int) ($payload['id'] ?? 0);
-    $key = (string) ($payload['field_key'] ?? '');
     llama_report_verified_target($db,$placeId,$scope,$source,$targetId);
-    llama_scoped_report_field($key,$scope);
-    $current = llama_scoped_report_load($db,$placeId,$scope,$targetId,$source);
-    $recorded = array_key_exists($key,$current);
-    if ($recorded !== (bool) ($before['recorded'] ?? false)
-        || ($recorded && $current[$key] !== ($before['value'] ?? null))) {
-        throw new RuntimeException('This Area or Site answer changed since submission. Review the latest information before approving.');
+    $answers = (array) ($payload['answers'] ?? []);
+    $oldAnswers = (array) ($before['answers'] ?? []);
+    if (!$answers && isset($payload['field_key'])) {
+        // Pending submissions from the original single-answer editor.
+        $answers = [(string)$payload['field_key'] => $payload['value'] ?? null];
+        $oldAnswers = [(string)$payload['field_key'] => $before];
     }
-    llama_scoped_report_save($db,$placeId,$scope,$targetId,$source,$key,$payload['value']);
+    if (!$answers || count($answers)>50) {
+        throw new RuntimeException('Invalid scoped update answers.');
+    }
+    $current = llama_scoped_report_load($db,$placeId,$scope,$targetId,$source);
+    // Validate ALL original values before writing ANY answer.
+    foreach ($answers as $key => $value) {
+        llama_scoped_report_field((string)$key,$scope);
+        $prior = $oldAnswers[$key] ?? null;
+        if (!is_array($prior)) {
+            throw new RuntimeException('Missing original Area or Site answer state.');
+        }
+        $recorded = array_key_exists($key,$current);
+        if ($recorded !== (bool) ($prior['recorded'] ?? false)
+            || ($recorded && $current[$key] !== ($prior['value'] ?? null))) {
+            throw new RuntimeException('An Area or Site answer changed since submission. Review the latest information before approving.');
+        }
+    }
+    foreach ($answers as $key => $value) {
+        llama_scoped_report_save($db,$placeId,$scope,$targetId,$source,(string)$key,$value);
+    }
     // Scoped point accounting is deliberately not guessed from Place-level scoring.
     // Award zero rather than duplicate or incorrectly compute Scout points.
     $points = 0;
     $contributionId = moderation_insert_contribution($db,$placeId,(int)$update['user_id'],null,
         'scoped-update',trim((string)($update['role_at_submission']??'user')),
         !empty($update['visited_at'])?(string)$update['visited_at']:null,
-        $reviewedBy,$points,[$scope.':'.$source.':'.$targetId.':'.$key],$notes!==''?$notes:null);
+        $reviewedBy,$points,array_map(static fn ($key) => $scope.':'.$source.':'.$targetId.':'.$key, array_keys($answers)),$notes!==''?$notes:null);
     $stmt = $db->prepare('UPDATE place_update_submissions
         SET status = ?, reviewed_by = ?, review_notes = ?, reviewed_at = CURRENT_TIMESTAMP,
             contribution_id = ?, points_awarded = ? WHERE id = ?');
