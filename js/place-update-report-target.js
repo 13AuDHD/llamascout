@@ -1,47 +1,82 @@
-/* Reporting target selector for the existing update form.
- * Area/Site submission is deliberately blocked until reviewed persistence
- * is connected; never submit their answers as Place-wide changes.
- */
 (() => {
     'use strict';
-    const search = document.querySelector('[data-report-target-search]');
-    const source = document.querySelector('[data-report-target-source]');
-    const scope = document.querySelector('[data-report-target-scope]');
-    const id = document.querySelector('[data-report-target-id]');
-    const status = document.querySelector('[data-report-target-status]');
-    const data = document.getElementById('place-update-report-target-data');
-    if (!search || !source || !scope || !id || !status || !data) return;
-    let targets;
-    try { targets = JSON.parse(data.textContent); }
-    catch (_) { return; }
-    const options = new Map();
-    for (const target of targets) {
-        options.set(`${target.label} (#${target.id}, ${target.scope})`, target);
-    }
-    const place = targets.find(t => t.scope === 'place');
-    if (!place) return;
-    const form = search.closest('form');
-    const submitButtons = form ? [...form.querySelectorAll('button[type="submit"]')] : [];
-    const update = () => {
-        const found = options.get(search.value.trim());
-        const selected = found || place;
-        scope.value = selected.scope;
-        source.value = selected.source;
-        id.value = String(selected.id);
-        const blocked = !found || selected.scope !== 'place';
-        for (const button of submitButtons) button.disabled = blocked;
-        status.textContent = !found
-            ? 'Select an option from the suggestions before submitting.'
-            : blocked
-                ? 'Area/Site editing is not enabled yet. No scoped answers will be saved. Select Entire Place to continue.'
-                : 'Entire Place updates use the existing review process.';
+    const search=document.querySelector('[data-report-target-search]');
+    const scope=document.querySelector('[data-report-target-scope]');
+    const source=document.querySelector('[data-report-target-source]');
+    const id=document.querySelector('[data-report-target-id]');
+    const status=document.querySelector('[data-report-target-status]');
+    const targetJson=document.getElementById('place-update-report-target-data');
+    const fieldsJson=document.getElementById('place-update-scoped-fields-data');
+    const placeFields=document.querySelector('[data-place-update-place-fields]');
+    const scopedFields=document.querySelector('[data-place-update-scoped-fields]');
+    const fieldSelect=document.querySelector('[data-scoped-field-key]');
+    const answerSelect=document.querySelector('[data-scoped-field-answer]');
+    const answerText=document.querySelector('[data-scoped-field-text]');
+    const notice=document.querySelector('[data-scoped-field-notice]');
+    if (![search,scope,source,id,status,targetJson,fieldsJson,placeFields,scopedFields,fieldSelect,answerSelect,answerText].every(Boolean)) return;
+    let targets,fields;
+    try { targets=JSON.parse(targetJson.textContent); fields=JSON.parse(fieldsJson.textContent); } catch (_) { return; }
+    const labels=new Map();
+    for(const t of targets) labels.set(`${t.label} (#${t.id}, ${t.scope}, ${t.source})`,t);
+    const place=targets.find(t=>t.scope==='place');
+    if(!place) return;
+    const list=document.getElementById('place-update-report-target-options');
+    list.replaceChildren();
+    for(const label of labels.keys()) {const opt=document.createElement('option');opt.value=label;list.append(opt);}
+    search.value=[...labels.keys()].find(label=>labels.get(label)===place)||'';
+    const form=search.closest('form');
+    const enabledFields=()=>fields.filter(f=>!f.derived&&!f.location&&f.scopes.includes(scope.value)&&
+        ['tri','permission','rating','select','text','textarea','number','date','url'].includes(f.type));
+    const fillQuestions=()=>{
+        fieldSelect.replaceChildren(new Option('Select question...', ''));
+        for(const f of enabledFields()) fieldSelect.add(new Option(f.label,f.key));
+        fillAnswers();
     };
-    search.addEventListener('input', update);
-    search.addEventListener('change', update);
-    if (form) form.addEventListener('submit', event => {
-        if (scope.value !== 'place' || !options.has(search.value.trim())) {
-            event.preventDefault();
-            update();
+    const fillAnswers=()=>{
+        const f=enabledFields().find(f=>f.key===fieldSelect.value);
+        answerSelect.replaceChildren(new Option('Select answer...', ''));
+        answerSelect.hidden=true;answerSelect.disabled=true;answerSelect.name='';
+        answerText.hidden=true;answerText.disabled=true;answerText.name='';
+        if(!f) return;
+        const opts=f.type==='tri'?{'0':'No','1':'Yes'}:
+            f.type==='permission'?{'0':'No','1':'Yes','2':'Permit'}:
+            f.type==='rating'?{'1':'1/5','2':'2/5','3':'3/5','4':'4/5','5':'5/5'}:
+            f.type==='select'?f.options:null;
+        if(opts){
+            for(const [value,label] of Object.entries(opts)) answerSelect.add(new Option(String(label),value));
+            if(f.unknown) answerSelect.add(new Option('Unknown','__LLAMA_UNKNOWN__'));
+            answerSelect.hidden=false;answerSelect.disabled=false;answerSelect.name='scoped_field_value';
+        } else {
+            answerText.type=f.type==='number'?'number':f.type==='date'?'date':f.type==='url'?'url':'text';
+            answerText.value='';answerText.hidden=false;answerText.disabled=false;answerText.name='scoped_field_value';
+        }
+        if(notice) notice.textContent='Only this answer will be submitted for review.';
+    };
+    const update=()=>{
+        const t=labels.get(search.value.trim());
+        if(!t){status.textContent='Select an exact option from the list.';return;}
+        const prior=scope.value;
+        scope.value=t.scope;source.value=t.source;id.value=String(t.id);
+        const scoped=t.scope!=='place';
+        placeFields.hidden=scoped;scopedFields.hidden=!scoped;
+        for(const control of placeFields.querySelectorAll('input,select,textarea,button')){
+            control.disabled=scoped;
+        }
+        if(scoped&&prior!==scope.value)fillQuestions();
+        if(!scoped){answerSelect.disabled=true;answerText.disabled=true;fieldSelect.disabled=true;}
+        else{fieldSelect.disabled=false;fillAnswers();}
+        status.textContent=scoped?'Area/Site answer will be submitted for moderation.':'Entire Place uses the existing update form.';
+    };
+    search.addEventListener('input',update);
+    search.addEventListener('change',update);
+    fieldSelect.addEventListener('change',fillAnswers);
+    if(form) form.addEventListener('submit',event=>{
+        const t=labels.get(search.value.trim());
+        if(!t){event.preventDefault();status.textContent='Choose a listed reporting target.';return;}
+        if(t.scope!=='place'){
+            if(!fieldSelect.value||(answerSelect.hidden?!answerText.value.trim():!answerSelect.value)){
+                event.preventDefault();status.textContent='Choose a question and enter its answer.';
+            }
         }
     });
     update();
