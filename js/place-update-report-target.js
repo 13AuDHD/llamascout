@@ -32,6 +32,8 @@
     const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
     const unknown = '__LLAMA_UNKNOWN__';
     let activeTarget = '';
+    let context = {direct: {}, inherited: {}};
+    let loadSequence = 0;
 
     function eligible(f) {
         return !f.derived && !f.location && f.scopes.includes(scope.value) && supported.has(f.type);
@@ -94,9 +96,57 @@
             control.addEventListener('change', changed);
             control.addEventListener('input', changed);
             card.append(control);
+            const existing = make('small', 'place-report-answer-context');
+            existing.dataset.scopedExisting = f.key;
+            card.append(existing);
             grid.append(card);
         }
+        showExisting();
         applyDependencies();
+    }
+    function valueLabel(f, value) {
+        if (value === '__LLAMA_UNKNOWN__') return 'Unknown';
+        if (value === null || value === undefined) return 'Not recorded';
+        const options = optionValues(f);
+        return options?.[String(value)] ?? (typeof value === 'object' ? JSON.stringify(value) : String(value));
+    }
+    function showExisting() {
+        for (const f of fields.filter(eligible)) {
+            const note = [...questions.querySelectorAll('[data-scoped-existing]')]
+                .find(el => el.dataset.scopedExisting === f.key);
+            if (!note) continue;
+            if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
+                note.textContent = `Recorded for this ${scope.value}: ${valueLabel(f, context.direct[f.key])}`;
+            } else if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
+                const info = context.inherited[f.key];
+                note.textContent = `Inherited from ${info.from}: ${valueLabel(f, info.value)}`;
+            } else {
+                note.textContent = 'No recorded answer';
+            }
+        }
+    }
+    async function loadContext(target) {
+        const sequence = ++loadSequence;
+        context = {direct: {}, inherited: {}};
+        showExisting();
+        const url = new URL(location.href);
+        url.searchParams.set('scoped_report_context', '1');
+        url.searchParams.set('scope', target.scope);
+        url.searchParams.set('source', target.source);
+        url.searchParams.set('target_id', String(target.id));
+        try {
+            const response = await fetch(url.toString(), {credentials: 'same-origin', cache: 'no-store'});
+            if (!response.ok) throw new Error('Context unavailable');
+            const data = await response.json();
+            if (sequence !== loadSequence) return;
+            context = {direct: data.direct || {}, inherited: data.inherited || {}};
+            showExisting();
+        } catch (_) {
+            if (sequence === loadSequence) {
+                status.textContent = 'Existing answers could not be loaded. Please retry before submitting.';
+                context = {direct: {}, inherited: {}};
+            }
+        }
     }
     function matchesRule(rule) {
         if (!rule || typeof rule !== 'object') return true;
@@ -151,7 +201,8 @@
         if (switched) {
             values.clear();
             queueInput.value = '[]';
-            if (scoped) render();
+            if (scoped) { render(); loadContext(t); }
+            else ++loadSequence;
         }
         status.textContent = scoped
             ? 'This Area or Site report will be reviewed before any changes are published.'
