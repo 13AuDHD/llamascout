@@ -1,115 +1,175 @@
 (() => {
     'use strict';
-    const search=document.querySelector('[data-report-target-search]');
-    const scope=document.querySelector('[data-report-target-scope]');
-    const source=document.querySelector('[data-report-target-source]');
-    const id=document.querySelector('[data-report-target-id]');
-    const status=document.querySelector('[data-report-target-status]');
-    const targetJson=document.getElementById('place-update-report-target-data');
-    const fieldsJson=document.getElementById('place-update-scoped-fields-data');
-    const placeFields=document.querySelector('[data-place-update-place-fields]');
-    const scopedFields=document.querySelector('[data-place-update-scoped-fields]');
-    const fieldSelect=document.querySelector('[data-scoped-field-key]');
-    const answerSelect=document.querySelector('[data-scoped-field-answer]');
-    const answerText=document.querySelector('[data-scoped-field-text]');
-    const notice=document.querySelector('[data-scoped-field-notice]');
-    const addButton=document.querySelector('[data-scoped-add-answer]');
-    const queueList=document.querySelector('[data-scoped-answer-list]');
-    const queueInput=document.querySelector('[data-scoped-answers-json]');
-    const queue=[];
-    if (![search,scope,source,id,status,targetJson,fieldsJson,placeFields,scopedFields,fieldSelect,answerSelect,answerText].every(Boolean)) return;
-    let targets,fields;
-    try { targets=JSON.parse(targetJson.textContent); fields=JSON.parse(fieldsJson.textContent); } catch (_) { return; }
-    const labels=new Map();
-    for(const t of targets) labels.set(`${t.label} (#${t.id}, ${t.scope}, ${t.source})`,t);
-    const place=targets.find(t=>t.scope==='place');
-    if(!place) return;
-    const list=document.getElementById('place-update-report-target-options');
+    const q = (selector) => document.querySelector(selector);
+    const search = q('[data-report-target-search]');
+    const scope = q('[data-report-target-scope]');
+    const source = q('[data-report-target-source]');
+    const id = q('[data-report-target-id]');
+    const status = q('[data-report-target-status]');
+    const placeFields = q('[data-place-update-place-fields]');
+    const scopedFields = q('[data-place-update-scoped-fields]');
+    const questions = q('[data-scoped-report-questions]');
+    const queueInput = q('[data-scoped-answers-json]');
+    const notice = q('[data-scoped-field-notice]');
+    const targetData = q('#place-update-report-target-data');
+    const fieldData = q('#place-update-scoped-fields-data');
+    if (![search, scope, source, id, status, placeFields, scopedFields, questions, queueInput, targetData, fieldData].every(Boolean)) return;
+
+    let targets, fields;
+    try {
+        targets = JSON.parse(targetData.textContent);
+        fields = JSON.parse(fieldData.textContent);
+    } catch (_) { return; }
+    const labels = new Map(targets.map(t => [`${t.label} (#${t.id}, ${t.scope}, ${t.source})`, t]));
+    const place = targets.find(t => t.scope === 'place');
+    if (!place) return;
+    const list = q('#place-update-report-target-options');
     list.replaceChildren();
-    for(const label of labels.keys()) {const opt=document.createElement('option');opt.value=label;list.append(opt);}
-    search.value=[...labels.keys()].find(label=>labels.get(label)===place)||'';
-    const form=search.closest('form');
-    const enabledFields=()=>fields.filter(f=>!f.derived&&!f.location&&f.scopes.includes(scope.value)&&
-        ['tri','permission','rating','select','text','textarea','number','date','url'].includes(f.type));
-    const fillQuestions=()=>{
-        fieldSelect.replaceChildren(new Option('Select question...', ''));
-        for(const f of enabledFields()) fieldSelect.add(new Option(f.label,f.key));
-        fillAnswers();
-    };
-    const fillAnswers=()=>{
-        const f=enabledFields().find(f=>f.key===fieldSelect.value);
-        answerSelect.replaceChildren(new Option('Select answer...', ''));
-        answerSelect.hidden=true;answerSelect.disabled=true;answerSelect.name='';
-        answerText.hidden=true;answerText.disabled=true;answerText.name='';
-        if(!f) return;
-        const opts=f.type==='tri'?{'0':'No','1':'Yes'}:
-            f.type==='permission'?{'0':'No','1':'Yes','2':'Permit'}:
-            f.type==='rating'?{'1':'1/5','2':'2/5','3':'3/5','4':'4/5','5':'5/5'}:
-            f.type==='select'?f.options:null;
-        if(opts){
-            for(const [value,label] of Object.entries(opts)) answerSelect.add(new Option(String(label),value));
-            if(f.unknown) answerSelect.add(new Option('Unknown','__LLAMA_UNKNOWN__'));
-            answerSelect.hidden=false;answerSelect.disabled=false;answerSelect.name='scoped_field_value';
-        } else {
-            answerText.type=f.type==='number'?'number':f.type==='date'?'date':f.type==='url'?'url':'text';
-            answerText.value='';answerText.hidden=false;answerText.disabled=false;answerText.name='scoped_field_value';
+    for (const label of labels.keys()) list.append(new Option('', label));
+    search.value = [...labels.keys()].find(k => labels.get(k) === place) || '';
+    const form = search.closest('form');
+    const values = new Map();
+    const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
+    const unknown = '__LLAMA_UNKNOWN__';
+    let activeTarget = '';
+
+    function eligible(f) {
+        return !f.derived && !f.location && f.scopes.includes(scope.value) && supported.has(f.type);
+    }
+    function make(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
+    function optionValues(f) {
+        if (f.type === 'tri') return {'1': 'Yes', '0': 'No'};
+        if (f.type === 'permission') return {'1': 'Yes', '0': 'No', '2': 'Permit', '3': 'Conditional'};
+        if (f.type === 'rating') return {'1':'1','2':'2','3':'3','4':'4','5':'5'};
+        if (f.type === 'select') return f.options || {};
+        return null;
+    }
+    function render() {
+        questions.replaceChildren();
+        const sections = new Map();
+        for (const f of fields.filter(eligible)) {
+            const title = f.section || 'Other';
+            let grid = sections.get(title);
+            if (!grid) {
+                const section = make('section', 'place-report-flow-group');
+                section.append(make('h3', 'place-report-flow-heading', title.replaceAll('_', ' ')));
+                grid = make('div', 'contribution-grid');
+                section.append(grid);
+                questions.append(section);
+                sections.set(title, grid);
+            }
+            const card = make('div', 'contribution-field');
+            card.dataset.scopedQuestion = f.key;
+            card.append(make('span', 'place-report-field-label', f.label));
+            const options = optionValues(f);
+            let control;
+            if (options) {
+                control = make('select', 'contribution-input');
+                control.append(new Option('Not answered', ''));
+                for (const [value, label] of Object.entries(options)) control.append(new Option(String(label), String(value)));
+                if (f.unknown) control.append(new Option('Unknown', unknown));
+            } else if (f.type === 'textarea') {
+                control = make('textarea', 'contribution-input');
+                control.rows = 3;
+            } else {
+                control = make('input', 'contribution-input');
+                control.type = ['number', 'date', 'url'].includes(f.type) ? f.type : 'text';
+            }
+            control.dataset.scopedControl = f.key;
+            control.id = `scoped-answer-${f.key}`;
+            control.setAttribute('aria-label', f.label);
+            control.value = values.get(f.key) || '';
+            const changed = () => {
+                const value = control.value.trim();
+                if (value) values.set(f.key, value);
+                else values.delete(f.key);
+                sync();
+                applyDependencies();
+            };
+            control.addEventListener('change', changed);
+            control.addEventListener('input', changed);
+            card.append(control);
+            grid.append(card);
         }
-        if(notice) notice.textContent='Only this answer will be submitted for review.';
-    };
-    const renderQueue=()=>{
-        if(!queueList || !queueInput)return;
-        queueInput.value=JSON.stringify(queue);
-        queueList.replaceChildren();
-        for(const entry of queue){
-            const item=document.createElement('li');
-            const f=fields.find(f=>f.key===entry.key);
-            const label=document.createElement('span');
-            label.textContent=`${f?.label||entry.key}: ${entry.display}`;
-            const remove=document.createElement('button');
-            remove.type='button';remove.textContent='Remove';
-            remove.addEventListener('click',()=>{queue.splice(queue.indexOf(entry),1);renderQueue();});
-            item.append(label,' ',remove);queueList.append(item);
+        applyDependencies();
+    }
+    function matchesRule(rule) {
+        if (!rule || typeof rule !== 'object') return true;
+        if (rule.operator === 'any') return Array.isArray(rule.rules) && rule.rules.some(matchesRule);
+        if (rule.operator === 'all') return Array.isArray(rule.rules) && rule.rules.every(matchesRule);
+        const actual = values.get(rule.field);
+        if (rule.operator === 'equals') return actual === String(rule.value);
+        if (rule.operator === 'in') return Array.isArray(rule.value) && rule.value.map(String).includes(actual);
+        // Do not guess at unrecognized applicability operators.
+        return true;
+    }
+    function applyDependencies() {
+        for (const f of fields.filter(eligible)) {
+            const card = [...questions.querySelectorAll('[data-scoped-question]')]
+                .find(el => el.dataset.scopedQuestion === f.key);
+            if (!card) continue;
+            const rules = f.applicable_if || [];
+            // Show an unanswered parent-dependent question only after the parent is answered.
+            const applicable = !rules.length || rules.every(matchesRule);
+            card.hidden = !applicable;
+            const input = card.querySelector('[data-scoped-control]');
+            if (input) input.disabled = !applicable;
         }
-    };
-    if(addButton)addButton.addEventListener('click',()=>{
-        const f=enabledFields().find(f=>f.key===fieldSelect.value);
-        if(!f){status.textContent='Select a question first.';return;}
-        const input=answerSelect.hidden?answerText:answerSelect;
-        const value=input.value.trim();
-        if(!value){status.textContent='Enter an answer before adding it.';return;}
-        const display=answerSelect.hidden?value:answerSelect.selectedOptions[0]?.textContent||value;
-        const previous=queue.findIndex(a=>a.key===f.key);
-        if(previous!==-1)queue.splice(previous,1);
-        queue.push({key:f.key,value,display});renderQueue();
-        status.textContent=`${queue.length} answer(s) ready for moderation.`;
-        fieldSelect.value='';fillAnswers();
-    });
-    let activeTarget='';
-    const update=()=>{
-        const t=labels.get(search.value.trim());
-        if(!t){status.textContent='Select an exact option from the list.';return;}
-        const targetKey=`${t.scope}:${t.source}:${t.id}`;
-        const switchedTarget=targetKey!==activeTarget;
-        activeTarget=targetKey;
-        scope.value=t.scope;source.value=t.source;id.value=String(t.id);
-        const scoped=t.scope!=='place';
-        placeFields.hidden=scoped;scopedFields.hidden=!scoped;
-        for(const control of placeFields.querySelectorAll('input,select,textarea,button')){
-            control.disabled=scoped;
+        sync();
+    }
+    function sync() {
+        const entries = [];
+        for (const f of fields.filter(eligible)) {
+            if (!values.has(f.key)) continue;
+            const card = [...questions.querySelectorAll('[data-scoped-question]')]
+                .find(el => el.dataset.scopedQuestion === f.key);
+            if (card && !card.hidden) entries.push({key: f.key, value: values.get(f.key)});
         }
-        if(scoped&&switchedTarget){queue.length=0;renderQueue();fillQuestions();}
-        if(!scoped){answerSelect.disabled=true;answerText.disabled=true;fieldSelect.disabled=true;}
-        else{fieldSelect.disabled=false;fillAnswers();}
-        status.textContent=scoped?'Area/Site answer will be submitted for moderation.':'Entire Place uses the existing update form.';
-    };
-    search.addEventListener('input',update);
-    search.addEventListener('change',update);
-    fieldSelect.addEventListener('change',fillAnswers);
-    if(form) form.addEventListener('submit',event=>{
-        const t=labels.get(search.value.trim());
-        if(!t){event.preventDefault();status.textContent='Choose a listed reporting target.';return;}
-        if(t.scope!=='place'){
-            if(queue.length===0){event.preventDefault();status.textContent='Add at least one answer before submitting.';}
+        queueInput.value = JSON.stringify(entries);
+        if (notice) notice.textContent = entries.length > 50 ? 'This report has more than 50 answers. Please submit a maximum of 50.' : `${entries.length} answer${entries.length === 1 ? '' : 's'} ready for review. Unanswered questions are not submitted.`;
+    }
+    function update() {
+        const t = labels.get(search.value.trim());
+        if (!t) {
+            status.textContent = 'Choose an exact reporting target from the suggestions.';
+            scope.value = ''; source.value = ''; id.value = '';
+            return;
+        }
+        const targetKey = `${t.scope}:${t.source}:${t.id}`;
+        const switched = targetKey !== activeTarget;
+        activeTarget = targetKey;
+        scope.value = t.scope; source.value = t.source; id.value = String(t.id);
+        const scoped = t.scope !== 'place';
+        placeFields.hidden = scoped;
+        scopedFields.hidden = !scoped;
+        for (const input of placeFields.querySelectorAll('input, select, textarea, button')) input.disabled = scoped;
+        if (switched) {
+            values.clear();
+            queueInput.value = '[]';
+            if (scoped) render();
+        }
+        status.textContent = scoped
+            ? 'This Area or Site report will be reviewed before any changes are published.'
+            : 'Entire Place uses the existing Scout Report.';
+    }
+    search.addEventListener('change', update);
+    search.addEventListener('input', update);
+    form?.addEventListener('submit', event => {
+        const t = labels.get(search.value.trim());
+        if (!t) {
+            event.preventDefault(); status.textContent = 'Choose a listed reporting target.'; return;
+        }
+        if (t.scope !== 'place') {
+            sync();
+            const count = JSON.parse(queueInput.value).length;
+            if (count === 0 || count > 50) {
+                event.preventDefault(); status.textContent = count > 50 ? 'Submit no more than 50 answers at once.' : 'Answer at least one question before submitting.';
+            }
         }
     });
     update();
