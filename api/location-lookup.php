@@ -386,20 +386,217 @@ function location_nearest_named_road(
  * =========================================================
  * NEAREST USEFUL CITY / TOWN
  *
- * Search OSM nodes, ways and relations. Some incorporated
- * towns are represented by areas/relations rather than nodes,
- * which is why the previous lookup could return nothing.
+ * Geoapify is the primary locality search because proximity
+ * queries answer the question this field actually asks:
+ * which named city, town or village is nearest this point?
  *
- * Cities and towns compete primarily on distance. Villages
- * get a modest penalty so a tiny settlement has to be
- * meaningfully closer before it wins.
+ * Overpass remains an independent fallback, followed by the
+ * existing Nominatim reverse-geocode fallback.
  * =========================================================
  */
+
+function location_geoapify_api_key(): string
+{
+    $config = llama_config();
+
+    $candidates = [
+        $config['geoapify']['api_key'] ?? null,
+        $config['geoapify']['key'] ?? null,
+        $config['geoapify_api_key'] ?? null,
+        $config['services']['geoapify']['api_key'] ?? null,
+        $config['services']['geoapify']['key'] ?? null,
+        $config['apis']['geoapify']['api_key'] ?? null,
+        $config['apis']['geoapify']['key'] ?? null,
+    ];
+
+    foreach ($candidates as $candidate) {
+        $candidate = trim((string) $candidate);
+
+        if ($candidate !== '') {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+function location_geoapify_nearest_locality(
+    float $lat,
+    float $lng
+): ?array {
+    $apiKey = location_geoapify_api_key();
+
+    if ($apiKey === '') {
+        return null;
+    }
+
+    $radiusMeters = 75000;
+
+    $url =
+        'https://api.geoapify.com/v2/places?'
+        . http_build_query([
+            'categories' =>
+                'populated_place.city,populated_place.town,populated_place.village',
+            'filter' =>
+                'circle:'
+                . number_format($lng, 7, '.', '')
+                . ','
+                . number_format($lat, 7, '.', '')
+                . ','
+                . $radiusMeters,
+            'bias' =>
+                'proximity:'
+                . number_format($lng, 7, '.', '')
+                . ','
+                . number_format($lat, 7, '.', ''),
+            'limit' =>
+                30,
+            'apiKey' =>
+                $apiKey,
+        ]);
+
+    $result = location_lookup_json(
+        $url,
+        [
+            'Accept-Language: en-US,en;q=0.9',
+        ],
+        8
+    );
+
+    $features =
+        is_array($result['features'] ?? null)
+            ? $result['features']
+            : [];
+
+    $typePenaltyMeters = [
+        'city' => 0,
+        'town' => 0,
+        'village' => 5000,
+    ];
+
+    $candidates = [];
+
+    foreach ($features as $feature) {
+        if (!is_array($feature)) {
+            continue;
+        }
+
+        $properties =
+            is_array($feature['properties'] ?? null)
+                ? $feature['properties']
+                : [];
+
+        $geometry =
+            is_array($feature['geometry'] ?? null)
+                ? $feature['geometry']
+                : [];
+
+        $coordinates =
+            is_array($geometry['coordinates'] ?? null)
+                ? $geometry['coordinates']
+                : [];
+
+        $name = trim(
+            (string) (
+                $properties['name']
+                ?? $properties['city']
+                ?? $properties['town']
+                ?? $properties['village']
+                ?? ''
+            )
+        );
+
+        if (
+            $name === ''
+            || !isset($coordinates[0], $coordinates[1])
+            || !is_numeric($coordinates[0])
+            || !is_numeric($coordinates[1])
+        ) {
+            continue;
+        }
+
+        $categories = array_map(
+            static fn (mixed $value): string =>
+                strtolower(trim((string) $value)),
+            (array) ($properties['categories'] ?? [])
+        );
+
+        $placeType = 'town';
+
+        foreach (['city', 'town', 'village'] as $candidateType) {
+            foreach ($categories as $category) {
+                if (str_contains($category, 'populated_place.' . $candidateType)) {
+                    $placeType = $candidateType;
+                    break 2;
+                }
+            }
+        }
+
+        $distance = location_haversine_meters(
+            $lat,
+            $lng,
+            (float) $coordinates[1],
+            (float) $coordinates[0]
+        );
+
+        if ($distance > $radiusMeters) {
+            continue;
+        }
+
+        $population = null;
+        if (is_numeric($properties['population'] ?? null)) {
+            $population = max(0, (int) $properties['population']);
+        }
+
+        $populationBonus =
+            $population !== null && $population > 0
+                ? min(3000, log10(max(10, $population)) * 600)
+                : 0;
+
+        $score =
+            $distance
+            + ($typePenaltyMeters[$placeType] ?? 0)
+            - $populationBonus;
+
+        $candidates[] = [
+            'name' => $name,
+            'place_type' => $placeType,
+            'distance_meters' => $distance,
+            'population' => $population,
+            'lookup' => 'geoapify_places',
+            'score' => $score,
+        ];
+    }
+
+    if (!$candidates) {
+        return null;
+    }
+
+    usort(
+        $candidates,
+        static fn (array $a, array $b): int =>
+            $a['score'] <=> $b['score']
+    );
+
+    $best = $candidates[0];
+    unset($best['score']);
+
+    return $best;
+}
 
 function location_nearest_locality(
     float $lat,
     float $lng
 ): ?array {
+    $geoapify = location_geoapify_nearest_locality(
+        $lat,
+        $lng
+    );
+
+    if ($geoapify !== null) {
+        return $geoapify;
+    }
+
     /*
      * First try the lightweight OSM place-node lookup.
      *
