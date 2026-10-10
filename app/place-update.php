@@ -2897,6 +2897,11 @@ function llama_place_update_approve(
             : [];
 
 
+    if (array_key_exists('__scoped_report__', $proposed)) {
+        require_once __DIR__ . '/place-report/scoped-update-review.php';
+        return llama_scoped_update_approve($db, $update, $updateId, $reviewedBy, $reviewNotes);
+    }
+
     $historyRow =
         llama_place_update_fetch_row(
             $db,
