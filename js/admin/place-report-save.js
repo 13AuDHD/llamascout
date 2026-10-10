@@ -797,6 +797,86 @@
         });
     };
 
+    const currentCampsiteFormValues = () => {
+        const values = {};
+
+        campsiteFieldKeys.forEach(key => {
+            const controls =
+                controlsFor(key);
+
+            if (controls.length === 0) {
+                return;
+            }
+
+            const radios =
+                controls.filter(
+                    control =>
+                        control.type === 'radio'
+                );
+
+            if (radios.length > 0) {
+                const checked =
+                    radios.find(
+                        control =>
+                            control.checked
+                    );
+
+                if (checked) {
+                    values[key] =
+                        checked.value;
+                }
+
+                return;
+            }
+
+            const control =
+                controls.find(
+                    item =>
+                        item.type !== 'hidden'
+                )
+                || controls[0];
+
+            if (control.type === 'checkbox') {
+                values[key] =
+                    control.checked
+                        ? '1'
+                        : '0';
+                return;
+            }
+
+            values[key] =
+                control.value;
+        });
+
+        return values;
+    };
+
+    const rememberSavedCampsite = () => {
+        if (activeCampsiteId === '') {
+            return;
+        }
+
+        const site =
+            campsiteSites.find(
+                item =>
+                    String(item.id) ===
+                    activeCampsiteId
+            );
+
+        if (!site) {
+            return;
+        }
+
+        site.form_values = {
+            ...(site.form_values
+                && typeof site.form_values === 'object'
+                    ? site.form_values
+                    : {}),
+            ...currentCampsiteFormValues()
+        };
+    };
+
+
     const loadCampsite = (
         siteId
     ) => {
@@ -1019,6 +1099,7 @@
             }
 
             clearRecoveryCopies();
+            rememberSavedCampsite();
             campsiteDirty = false;
 
             form.dispatchEvent(
