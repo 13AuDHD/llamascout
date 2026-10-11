@@ -2,8 +2,7 @@
 (() => {
   'use strict';
 
-  const SITE_CAPABLE_TYPES = new Set([
-    'dispersed-camping',
+  const INDIVIDUAL_SITE_TYPES = new Set([
     'developed-campground',
     'camping-area',
     'rv-park-resort',
@@ -411,11 +410,32 @@
         '[name="site_number"]'
       );
 
+    const context =
+      siteLookupContext(form);
+
+    /*
+     * A brand-new Place has no existing campsite catalog to search.
+     * Do not show an empty search/select UI. Its ordinary site_number
+     * field appears only for Place types that support individual sites.
+     */
     if (
-      !group
+      !context
+      || !group
       || !siteNumber
       || group.querySelector(
         '[data-place-report-site-context]'
+      )
+    ) {
+      return;
+    }
+
+    /*
+     * The Admin Place editor already owns its richer campsite selector and
+     * campsite-scoped persistence. Do not place a second selector above it.
+     */
+    if (
+      form.querySelector(
+        '[data-admin-campsite-selector]'
       )
     ) {
       return;
@@ -429,9 +449,6 @@
     if (!body) {
       return;
     }
-
-    const context =
-      siteLookupContext(form);
 
     const container =
       document.createElement(
@@ -487,22 +504,7 @@
 
     hiddenId.type = 'hidden';
     hiddenId.name = 'campsite_id';
-    hiddenId.value =
-      String(
-        form.querySelector(
-          '[name="campsite_id"]'
-        )?.value
-        || ''
-      );
-
-    const oldHidden =
-      form.querySelector(
-        '[name="campsite_id"]'
-      );
-
-    if (oldHidden) {
-      oldHidden.remove();
-    }
+    hiddenId.value = '';
 
     container.appendChild(
       hiddenId
@@ -543,11 +545,6 @@
         'select'
       );
 
-    select.setAttribute(
-      'data-admin-campsite-selector',
-      '1'
-    );
-
     const emptyOption =
       document.createElement(
         'option'
@@ -573,24 +570,28 @@
       manualButton
     );
 
+    container.appendChild(
+      lookupWrap
+    );
+
+    container.appendChild(
+      status
+    );
+
     const allSites = [];
 
-    const switchToManual = (
-      clearIdentifier = true
-    ) => {
+    const switchToManual = () => {
       hiddenId.value = '';
       select.value = '';
       siteNumber.readOnly = false;
+      siteNumber.value = '';
 
-      if (clearIdentifier) {
-        siteNumber.value = '';
-        dispatchFieldUpdate(
-          siteNumber
-        );
-      }
+      dispatchFieldUpdate(
+        siteNumber
+      );
 
       status.textContent =
-        'New campsite. Enter the posted site number or name below. If Llama Scout does not have an official campsite record yet, this identifier can be matched to official data later.';
+        'New campsite. Enter the posted campsite number or name below.';
 
       form.dispatchEvent(
         new CustomEvent(
@@ -604,6 +605,8 @@
           }
         )
       );
+
+      siteNumber.focus();
     };
 
     const renderOptions = (
@@ -739,7 +742,7 @@
 
         status.textContent =
           identifier !== ''
-            ? `Using existing campsite ${identifier}. The identifier is locked to the existing Llama Scout record.`
+            ? `Using existing campsite ${identifier}.`
             : 'Using the selected existing campsite record.';
 
         form.dispatchEvent(
@@ -768,129 +771,71 @@
 
     manualButton.addEventListener(
       'click',
-      () => {
-        switchToManual(true);
-        siteNumber.focus();
-      }
+      switchToManual
     );
 
-    if (!context) {
-      lookupWrap.hidden = true;
+    status.textContent =
+      'Loading existing campsite records...';
 
-      status.textContent =
-        'This is a new Place, so this campsite can be added with the site number or name you observed. Llama Scout can match it to an official campsite record later if one becomes available.';
-    } else {
-      status.textContent =
-        'Loading existing campsite records...';
+    fetch(
+      `/api/place-site-options.php?${context.query}`,
+      {
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+        },
+      }
+    )
+      .then(
+        async (response) => {
+          const payload =
+            await response.json();
 
-      fetch(
-        `/api/place-site-options.php?${context.query}`,
-        {
-          credentials: 'same-origin',
-          headers: {
-            Accept: 'application/json',
-          },
+          if (
+            !response.ok
+            || !payload?.ok
+          ) {
+            throw new Error(
+              payload?.error
+              || 'Unable to load campsites.'
+            );
+          }
+
+          allSites.push(
+            ...(
+              Array.isArray(
+                payload.sites
+              )
+                ? payload.sites
+                : []
+            )
+          );
+
+          if (!allSites.length) {
+            container.hidden = true;
+            siteNumber.readOnly = false;
+            return;
+          }
+
+          renderOptions();
+
+          status.textContent =
+            'Choose the matching existing campsite so its identifier stays consistent, or add a new campsite if it is not listed.';
+
+          /*
+           * Existing campsite records are authoritative enough to show the
+           * selector even if an older Place type is unusual. If no catalog
+           * exists, ordinary applicability decides whether site_number exists.
+           */
+          container.hidden = false;
         }
       )
-        .then(
-          async (response) => {
-            const payload =
-              await response.json();
-
-            if (
-              !response.ok
-              || !payload?.ok
-            ) {
-              throw new Error(
-                payload?.error
-                || 'Unable to load campsites.'
-              );
-            }
-
-            allSites.push(
-              ...(
-                Array.isArray(
-                  payload.sites
-                )
-                  ? payload.sites
-                  : []
-              )
-            );
-
-            renderOptions();
-
-            if (!allSites.length) {
-              lookupWrap.hidden = true;
-
-              status.textContent =
-                'Llama Scout does not have individual campsite records for this Place yet. Enter the site number or name you observed below.';
-              return;
-            }
-
-            status.textContent =
-              'Choose the matching existing campsite so its identifier stays consistent, or add a new campsite if it is not listed.';
-
-            const currentIdentifier =
-              String(
-                siteNumber.value
-                || ''
-              ).trim()
-              .toLowerCase();
-
-            if (
-              currentIdentifier !== ''
-              && hiddenId.value === ''
-            ) {
-              const exact =
-                allSites.find(
-                  (site) =>
-                    [
-                      site.site_code,
-                      site.site_name,
-                      site.canonical_identifier,
-                    ].some(
-                      (value) =>
-                        String(value || '')
-                          .trim()
-                          .toLowerCase()
-                        === currentIdentifier
-                    )
-                );
-
-              if (exact) {
-                select.value =
-                  String(exact.id);
-
-                select.dispatchEvent(
-                  new Event(
-                    'change',
-                    {
-                      bubbles: true,
-                    }
-                  )
-                );
-              }
-            }
-          }
-        )
-        .catch(
-          () => {
-            lookupWrap.hidden = true;
-            siteNumber.readOnly = false;
-
-            status.textContent =
-              'Existing campsite records could not be loaded. You can still enter the site number or name you observed.';
-          }
-        );
-    }
-
-    container.appendChild(
-      lookupWrap
-    );
-
-    container.appendChild(
-      status
-    );
+      .catch(
+        () => {
+          container.hidden = true;
+          siteNumber.readOnly = false;
+        }
+      );
 
     const grid =
       body.querySelector(
@@ -908,23 +853,26 @@
       );
     }
 
-    const updateVisibility =
-      () => {
-        const type =
-          String(
-            getValue(
-              form,
-              'type'
-            )
-            || ''
-          );
+    const updateVisibility = () => {
+      if (allSites.length) {
+        container.hidden = false;
+        return;
+      }
 
-        container.hidden =
-          type !== ''
-          && !SITE_CAPABLE_TYPES.has(
-            type
-          );
-      };
+      const type =
+        String(
+          getValue(
+            form,
+            'type'
+          )
+          || ''
+        );
+
+      container.hidden =
+        !INDIVIDUAL_SITE_TYPES.has(
+          type
+        );
+    };
 
     form.addEventListener(
       'change',
@@ -935,8 +883,6 @@
       'input',
       updateVisibility
     );
-
-    updateVisibility();
   };
 
   const init = (schema) => {
@@ -973,11 +919,6 @@
     if (!sections.length) {
       return;
     }
-
-    const siteSelector = () =>
-      form.querySelector(
-        '[data-admin-campsite-selector]'
-      );
 
     const calculate = (
       fields
@@ -1037,25 +978,44 @@
     };
 
     const render = () => {
-      const selector =
-        siteSelector();
-
-      const requiresSite =
-        Boolean(
-          selector
-          && !selector.disabled
-          && !selector.hidden
+      const siteNumber =
+        form.querySelector(
+          '[name="site_number"]'
         );
 
-      const hasSite =
-        !requiresSite
-        || selector.value !== ''
-        || String(
-          form.querySelector(
-            '[name="site_number"]'
-          )?.value
+      const existingSelector =
+        form.querySelector(
+          '[data-admin-campsite-selector]'
+        );
+
+      const hasSelectedExistingSite =
+        Boolean(
+          existingSelector
+          && existingSelector.value !== ''
+        );
+
+      const hasManualSite =
+        Boolean(
+          siteNumber
+          && String(
+            siteNumber.value
+            || ''
+          ).trim() !== ''
+        );
+
+      const type =
+        String(
+          getValue(
+            form,
+            'type'
+          )
           || ''
-        ).trim() !== '';
+        );
+
+      const requiresNamedSite =
+        INDIVIDUAL_SITE_TYPES.has(
+          type
+        );
 
       sections.forEach(
         (section) => {
@@ -1065,7 +1025,9 @@
 
           const waitingForSite =
             sectionKey === 'site'
-            && !hasSite;
+            && requiresNamedSite
+            && !hasSelectedExistingSite
+            && !hasManualSite;
 
           const fields =
             cfg.fields.filter(
