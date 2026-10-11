@@ -18,11 +18,13 @@ function llama_place_report_add_basic_location_fields(
     ]);
 
     $add('type', 'Place type', 'basic', 'select', 'type', [
+        'required' => true,
         'options' => llama_place_report_place_types(),
         'help' => 'Choose what the Place is, not the land-management agency that owns or manages it.',
     ]);
 
     $add('description', 'Description', 'basic', 'textarea', 'description', [
+        'required' => true,
         'wide' => true,
         'rows' => 5,
         'min_characters' =>
@@ -36,6 +38,7 @@ function llama_place_report_add_basic_location_fields(
 
     /* Coordinates and nearby location */
     $add('latitude', 'Latitude', 'location', 'number', 'latitude', [
+        'required' => true,
         'step' => 'any',
         'min' => '-90',
         'max' => '90',
@@ -44,6 +47,7 @@ function llama_place_report_add_basic_location_fields(
     ]);
 
     $add('longitude', 'Longitude', 'location', 'number', 'longitude', [
+        'required' => true,
         'step' => 'any',
         'min' => '-180',
         'max' => '180',
@@ -104,6 +108,7 @@ function llama_place_report_add_basic_location_fields(
 
     /* Observation provenance belongs at the end of the Place facts. */
     $add('visited_at', 'Date visited', 'basic', 'date', 'visited_at', [
+        'required' => true,
         'help' => 'Enter the date you personally visited or field-checked this Place. This is not the date an external source was last updated.',
     ]);
 }
