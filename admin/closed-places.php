@@ -170,7 +170,7 @@ require __DIR__ . '/_header.php';
 
                     <label class="closure-field closure-span-4">
                         <span>Official source URL</span>
-                        <input type="url" name="source_url" maxlength="2048" placeholder="https://â¦" value="<?= moderation_e((string) ($_POST['source_url'] ?? '')) ?>">
+                        <input type="url" name="source_url" maxlength="2048" placeholder="https://" value="<?= moderation_e((string) ($_POST['source_url'] ?? '')) ?>">
                     </label>
 
                     <label class="closure-field closure-span-12">
