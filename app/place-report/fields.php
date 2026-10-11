@@ -98,6 +98,10 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-permissions.php';
     llama_place_report_apply_permission_flows($f, $add);
 
+    require_once __DIR__ . '/fields-place-overnight.php';
+    llama_place_report_add_overnight_permission_fields($add);
+
+
     // Entrance/day-use and parking charges describe the Place itself rather
     // than a camping stay, so show them with the main Location/Place facts.
     // Storage paths and points categories remain unchanged.
@@ -109,6 +113,20 @@ function llama_place_report_fields(): array
 
     require_once __DIR__ . '/flow-layout.php';
     llama_place_report_apply_layout_metadata($f);
+
+    // The approved Place-wide overnight questions remain in their proper
+    // subsection even though their legacy storage category is "rules".
+    foreach ([
+        'tent_camping_allowed',
+        'rv_camping_allowed',
+        'trailer_camping_allowed',
+        'overnight_restrictions',
+        'overnight_vehicle_tent_permit_url',
+    ] as $key) {
+        $f[$key]['layout_section'] = 'place';
+        $f[$key]['layout_group'] = 'overnight_stays';
+    }
+
 
     return $f;
 }
