@@ -232,6 +232,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['places.css'],
             'features' => ['list-filters.css'],
         ],
+        'closed-places.php' => [
+            'pages' => [],
+            'features' => ['closed-places.css'],
+        ],
         'place.php' => [
             'pages' => ['place.css'],
             'features' => ['person-detail.css'],
@@ -527,7 +531,7 @@ function admin_shell_nav_class(string $key, string $active): string
             class="<?= admin_shell_nav_class('closed_places', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/closed-places.php') ?>"
         >
-            <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
+            <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
             <span>Closed Places</span>
         </a>
 
