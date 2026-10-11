@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/camping-fee-map.php';
 require_once dirname(__DIR__) . '/app/map-partner-branding.php';
+require_once dirname(__DIR__) . '/app/closure-map-status.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store, max-age=0');
@@ -54,6 +55,7 @@ try {
     $places = places_map($hasMemberMapAccess, $viewerUserId > 0 ? $viewerUserId : null);
     $places = llama_camping_fee_enrich_map_places(db(), $places);
     $places = llama_map_partner_branding(db(), $places);
+    $places = llama_closure_enrich_map_places(db(), $places);
     echo json_encode([
         'ok' => true,
         'count' => count($places),
