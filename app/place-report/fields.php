@@ -110,7 +110,6 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-place-operating.php';
     llama_place_report_add_operating_fields($add);
 
-
     // Entrance/day-use and parking charges describe the Place itself rather
     // than a camping stay, so show them with the main Location/Place facts.
     // Storage paths and points categories remain unchanged.
@@ -125,6 +124,9 @@ function llama_place_report_fields(): array
     llama_place_report_apply_place_rules_metadata($f);
     llama_place_report_apply_operating_metadata($f);
 
+    require_once __DIR__ . '/flow-site-selection.php';
+    llama_place_report_apply_site_selection_metadata($f);
+
     // The approved Place-wide overnight questions remain in their proper
     // subsection even though their legacy storage category is "rules".
     foreach ([
@@ -137,7 +139,6 @@ function llama_place_report_fields(): array
         $f[$key]['layout_section'] = 'place';
         $f[$key]['layout_group'] = 'overnight_stays';
     }
-
 
     return $f;
 }
