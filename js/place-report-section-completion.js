@@ -68,6 +68,7 @@
     if (!Array.isArray(cfg.fields)) return;
     const sections = [...form.querySelectorAll('[data-report-main-section]')];
     if (!sections.length) return;
+    const siteSelector = () => form.querySelector('[data-admin-campsite-selector]');
     const calculate = (fields) => {
       const items = new Map();
       fields.forEach(field => {
@@ -79,23 +80,31 @@
       return Math.round(100 * [...items.values()].filter(Boolean).length / items.size);
     };
     const render = () => {
+      const selector = siteSelector();
+      const requiresSite = Boolean(selector && !selector.disabled);
+      const hasSite = !requiresSite || selector.value !== '';
       sections.forEach(section => {
         const sectionKey = section.dataset.reportMainSection;
+        const waitingForSite = sectionKey === 'site' && !hasSite;
         const fields = cfg.fields.filter(f => f.layout_section === sectionKey);
         const mainPercent = calculate(fields);
         const mainLabel = section.querySelector(':scope > summary [data-section-completion-percent]');
-        if (mainLabel) mainLabel.textContent = mainPercent === null ? '' : `${mainPercent}%`;
+        if (mainLabel) mainLabel.textContent = waitingForSite
+          ? 'Select a site' : (mainPercent === null ? '' : `${mainPercent}%`);
         section.querySelectorAll('[data-report-subsection]').forEach(group => {
           const groupFields = fields.filter(f => f.layout_group === group.dataset.reportSubsection);
           const pct = calculate(groupFields);
           const label = group.querySelector(':scope > summary [data-section-completion-percent]');
-          if (label) label.textContent = pct === null ? '' : `${pct}%`;
+          if (label) label.textContent = waitingForSite
+            ? '' : (pct === null ? '' : `${pct}%`);
         });
       });
     };
     form.addEventListener('input', render);
     form.addEventListener('change', render);
     form.addEventListener('place-report:updated', render);
+    form.addEventListener('llama:campsite-selected', render);
+    form.addEventListener('llama:campsite-saved', render);
     render();
   };
   const start = () => document.querySelectorAll('script[data-place-report-schema-config]').forEach(init);
