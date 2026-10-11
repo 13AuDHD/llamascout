@@ -123,9 +123,9 @@ require __DIR__ . '/_header.php';
                     <label class="closure-field closure-span-8">
                         <span>Place <abbr title="Required">*</abbr></span>
                         <select name="place_id" id="closure-place-id" required>
-                            <option value="">Choose a Placeâ¦</option>
+                            <option value="">Choose a Place:</option>
                             <?php foreach ($placeChoices as $place): ?>
-                                <option value="<?= (int) $place['id'] ?>" <?= (string) ($_POST['place_id'] ?? '') === (string) $place['id'] ? 'selected' : '' ?>><?= moderation_e((string) $place['name'] . ' Â· ' . (string) ($place['state'] ?? '') . ' Â· #' . $place['id']) ?></option>
+                                <option value="<?= (int) $place['id'] ?>" <?= (string) ($_POST['place_id'] ?? '') === (string) $place['id'] ? 'selected' : '' ?>><?= moderation_e((string) $place['name'] . ' · ' . (string) ($place['state'] ?? '') . ' · #' . $place['id']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
@@ -229,8 +229,8 @@ require __DIR__ . '/_header.php';
                                                 <span class="closure-review-pill">No review date</span>
                                             <?php endif; ?>
                                         </div>
-                                        <h3><?= moderation_e((string) $row['place_name']) ?><?= $site !== '' ? ' Â· ' . moderation_e($site) : '' ?></h3>
-                                        <p><?= moderation_e((string) ($row['state'] ?? '')) ?> Â· <?= moderation_e(ucwords(str_replace('_', ' ', (string) $row['reason']))) ?></p>
+                                        <h3><?= moderation_e((string) $row['place_name']) ?><?= $site !== '' ? ' · ' . moderation_e($site) : '' ?></h3>
+                                        <p><?= moderation_e((string) ($row['state'] ?? '')) ?> · <?= moderation_e(ucwords(str_replace('_', ' ', (string) $row['reason']))) ?></p>
                                     </div>
 
                                     <div class="closure-review-actions">
