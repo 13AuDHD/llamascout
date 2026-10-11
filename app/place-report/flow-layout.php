@@ -73,8 +73,9 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'approach_access_info_url',
         ],
         'place:information_location' => [
-            'name','type','description','visited_at','latitude','longitude',
-            'elevation_feet','road','city','county','state','region','land_type','land_manager',
+            'name','type','description','latitude','longitude','elevation_feet',
+            'road','city','county','state','land_type','land_manager','region',
+            'visited_at',
         ],
         'place:overnight_stays' => [
             'campsite_count','overnight_camping_allowed','dispersed_camping_allowed',
