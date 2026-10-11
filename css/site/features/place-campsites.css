@@ -151,3 +151,45 @@
         min-width: 210px;
     }
 }
+
+/* Verified, site-specific operating closures. No inline styles. */
+.place-campsite-row.is-closed,
+.place-campsite-row.is-closed.is-selected,
+.place-campsite-detail.is-closed {
+    border: 3px solid #b42318;
+}
+
+.place-campsite-row.is-closed {
+    padding: 10px 12px;
+}
+
+.place-campsite-closed-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #b42318;
+    color: #fff;
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+.place-campsite-detail.is-closed {
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.place-campsite-closure-notice {
+    display: grid;
+    gap: 5px;
+    margin: 12px 0 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: color-mix(in srgb, #b42318 9%, var(--background));
+    border: 1px solid #b42318;
+}
+
+.place-campsite-closure-notice strong { color: #b42318; }
+.place-campsite-closure-notice small { color: var(--text-muted); }
