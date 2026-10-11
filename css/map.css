@@ -875,16 +875,37 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
+/* Verified closure styling always wins over Featured, Paid and partner colors. */
 .map-place-card.is-closed,
 .map-place-card.is-closed.is-featured,
+.map-place-card.is-closed.is-partner-branded,
 .map-place-card.is-closed.is-paid-place,
-.map-place-card.is-closed.is-partner-branded {
-    border: 3px solid #b4232b;
+.map-place-card.is-closed.is-paid-place:not(.is-featured):not(.is-partner-branded) {
+    border: 3px solid #c9363e;
+    background: color-mix(in srgb, #c9363e 8%, var(--surface));
+}
+
+.map-place-card.is-closed:hover,
+.map-place-card.is-closed.is-paid-place:not(.is-featured):not(.is-partner-branded):hover {
+    border-color: #e04a52;
 }
 
 .map-closed-badge {
-    background: #b4232b;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-color: color-mix(in srgb, #c9363e 72%, #000);
+    background: #c9363e;
     color: #fff;
+}
+
+.map-closed-badge-icon {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    background: currentColor;
+    -webkit-mask: url('/assets/icons/alert-triangle.svg') center / contain no-repeat;
+    mask: url('/assets/icons/alert-triangle.svg') center / contain no-repeat;
 }
 
 .map-open-only-filter {
