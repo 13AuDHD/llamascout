@@ -850,3 +850,97 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     object-fit: contain;
     filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .26));
 }
+
+/* Verified operating closures override promotional/fee marker colors. */
+.map-place-marker.is-closed,
+.map-place-marker.is-closed.is-featured,
+.map-place-marker.is-closed.is-paid,
+.map-place-marker.is-closed.is-mixed {
+    background: #b4232b;
+}
+
+.map-place-marker.is-closed::after,
+.map-place-marker.is-closed.is-featured::after,
+.map-place-marker.is-closed.is-paid::after,
+.map-place-marker.is-closed.is-mixed::after {
+    content: '×';
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.map-place-card.is-closed,
+.map-place-card.is-closed.is-featured,
+.map-place-card.is-closed.is-paid-place,
+.map-place-card.is-closed.is-partner-branded {
+    border: 3px solid #b4232b;
+}
+
+.map-closed-badge {
+    background: #b4232b;
+    color: #fff;
+}
+
+.map-open-only-filter {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    grid-column: 1 / -1;
+    cursor: pointer;
+}
+
+.map-open-only-filter > span:first-child {
+    font-size: .85rem;
+    font-weight: 800;
+}
+
+.map-open-only-filter input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.map-open-only-track {
+    position: relative;
+    display: block;
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #818995;
+    transition: background .15s ease;
+}
+
+.map-open-only-track::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .15s ease;
+}
+
+.map-open-only-filter input:checked + .map-open-only-track {
+    background: #237a4b;
+}
+
+.map-open-only-filter input:checked + .map-open-only-track::after {
+    transform: translateX(20px);
+}
+
+.map-open-only-filter input:focus-visible + .map-open-only-track {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+}
