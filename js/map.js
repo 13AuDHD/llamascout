@@ -623,30 +623,32 @@ popupAnchor: [0, -42]
     };
 
 
+    // Null/blank coordinates must not become 0,0 through Number().
+    // Prefer authorized exact coordinates, then the public location.
     const placeCoordinates = (place) => {
-        const exactLat = Number(place.latitude);
-        const exactLng = Number(place.longitude);
+        const pair = (latitude, longitude) => {
+            if (latitude === null || latitude === undefined ||
+                longitude === null || longitude === undefined ||
+                String(latitude).trim() === '' ||
+                String(longitude).trim() === '') {
+                return null;
+            }
 
-        if (
-            Number.isFinite(exactLat) &&
-            Number.isFinite(exactLng)
-        ) {
-            return [exactLat, exactLng];
-        }
+            const lat = Number(latitude);
+            const lng = Number(longitude);
 
-        const publicLat = Number(place.public_latitude);
-        const publicLng = Number(place.public_longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+                lat < -90 || lat > 90 || lng < -180 || lng > 180 ||
+                (lat === 0 && lng === 0)) {
+                return null;
+            }
 
-        if (
-            Number.isFinite(publicLat) &&
-            Number.isFinite(publicLng)
-        ) {
-            return [publicLat, publicLng];
-        }
+            return [lat, lng];
+        };
 
-        return null;
+        return pair(place.latitude, place.longitude) ||
+            pair(place.public_latitude, place.public_longitude);
     };
-
 
     const activeFilterCount = () => {
         let count = 0;
