@@ -64,6 +64,7 @@ function llama_place_report_fields(): array
     llama_place_report_add_flow_condition_fields($f, $add);
     llama_place_report_apply_applicability($f);
     llama_place_report_apply_flow_conditions($f);
+    llama_place_report_apply_road_hazard_dependencies($f);
 
     require_once __DIR__ . '/flow-metadata.php';
     llama_place_report_apply_flow_metadata($f);
