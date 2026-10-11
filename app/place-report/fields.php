@@ -128,6 +128,9 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-site-equipment.php';
     llama_place_report_apply_site_equipment_metadata($f);
 
+    require_once __DIR__ . '/flow-site-experience.php';
+    llama_place_report_apply_site_experience_metadata($f);
+
     foreach ([
         'tent_camping_allowed',
         'rv_camping_allowed',
