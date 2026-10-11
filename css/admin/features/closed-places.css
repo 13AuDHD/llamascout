@@ -1,0 +1,45 @@
+.closure-admin { display: grid; gap: 22px; padding-bottom: 30px; }
+.closure-admin-intro { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+.closure-admin-intro h2 { margin: 4px 0 10px; font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.closure-admin-intro p:last-child { max-width: 74ch; margin: 0; color: var(--text-muted); line-height: 1.55; }
+.closure-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.closure-stats > div { display: grid; gap: 6px; padding: 18px 20px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; }
+.closure-stats strong { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1; }
+.closure-stats span { font-size: .86rem; color: var(--text-muted); }
+.closure-panel { padding: 24px !important; }
+.closure-panel-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.closure-panel-heading h3 { margin: 6px 0 0; font-size: 1.35rem; }
+.closure-help { max-width: 78ch; margin: 0 0 24px; color: var(--text-muted); line-height: 1.55; }
+.closure-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+.closure-field { display: grid; gap: 8px; min-width: 0; align-content: start; font-weight: 650; }
+.closure-field > span { font-size: .91rem; }
+.closure-field small { color: var(--text-muted); font-weight: 400; }
+.closure-field abbr { color: #d95656; text-decoration: none; }
+.closure-field input, .closure-field select, .closure-field textarea { box-sizing: border-box; width: 100%; min-width: 0; min-height: 46px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: var(--text); font: inherit; }
+.closure-field textarea { min-height: 112px; resize: vertical; }
+.closure-field input:focus-visible, .closure-field select:focus-visible, .closure-field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.closure-wide { grid-column: 1 / -1; }
+.closure-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: 24px; }
+.closure-form-actions > span { font-size: .82rem; color: var(--text-muted); }
+.closure-notice { border-radius: 10px; padding: 14px 18px; border: 1px solid var(--border); }
+.closure-notice.is-success { border-color: #247f59; }
+.closure-notice.is-error { border-color: #c74747; }
+.closure-count { padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: .85rem; }
+.closure-review-list { display: grid; gap: 12px; }
+.closure-review-card { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: 13px; background: var(--background); }
+.closure-review-card.is-due { border-color: #c74747; }
+.closure-review-main { min-width: 0; flex: 1; }
+.closure-review-topline { display: flex; flex-wrap: wrap; gap: 8px; }
+.closure-status-pill, .closure-due-pill { border-radius: 999px; padding: 5px 10px; font-size: .77rem; font-weight: 750; }
+.closure-status-pill { background: #8f2525; color: #fff; }
+.closure-due-pill { background: #a66c16; color: #fff; }
+.closure-review-card h4 { margin: 10px 0 4px; font-size: 1.1rem; }
+.closure-review-card p { margin: 0 0 15px; color: var(--text-muted); }
+.closure-review-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; }
+.closure-review-facts > div { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.closure-review-facts span { color: var(--text-muted); font-size: .77rem; }
+.closure-review-facts strong { font-size: .87rem; font-weight: 650; }
+.closure-review-actions { display: grid; align-content: center; gap: 8px; min-width: 140px; }
+.closure-review-actions .admin-button { text-align: center; }
+.closure-empty { padding: 28px; border: 1px dashed var(--border); border-radius: 10px; color: var(--text-muted); }
+@media (max-width: 760px) { .closure-panel { padding: 16px !important; } .closure-form-grid { grid-template-columns: 1fr; } .closure-stats { gap: 8px; } .closure-stats > div { padding: 12px; } .closure-review-card { align-items: stretch; flex-direction: column; } .closure-review-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .closure-review-actions { display: flex; flex-wrap: wrap; } }
