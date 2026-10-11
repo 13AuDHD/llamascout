@@ -1,45 +1,453 @@
-.closure-admin { display: grid; gap: 22px; padding-bottom: 30px; }
-.closure-admin-intro { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
-.closure-admin-intro h2 { margin: 4px 0 10px; font-size: clamp(1.6rem, 3vw, 2.2rem); }
-.closure-admin-intro p:last-child { max-width: 74ch; margin: 0; color: var(--text-muted); line-height: 1.55; }
-.closure-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.closure-stats > div { display: grid; gap: 6px; padding: 18px 20px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; }
-.closure-stats strong { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1; }
-.closure-stats span { font-size: .86rem; color: var(--text-muted); }
-.closure-panel { padding: 24px !important; }
-.closure-panel-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.closure-panel-heading h3 { margin: 6px 0 0; font-size: 1.35rem; }
-.closure-help { max-width: 78ch; margin: 0 0 24px; color: var(--text-muted); line-height: 1.55; }
-.closure-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
-.closure-field { display: grid; gap: 8px; min-width: 0; align-content: start; font-weight: 650; }
-.closure-field > span { font-size: .91rem; }
-.closure-field small { color: var(--text-muted); font-weight: 400; }
-.closure-field abbr { color: #d95656; text-decoration: none; }
-.closure-field input, .closure-field select, .closure-field textarea { box-sizing: border-box; width: 100%; min-width: 0; min-height: 46px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: var(--text); font: inherit; }
-.closure-field textarea { min-height: 112px; resize: vertical; }
-.closure-field input:focus-visible, .closure-field select:focus-visible, .closure-field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.closure-wide { grid-column: 1 / -1; }
-.closure-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: 24px; }
-.closure-form-actions > span { font-size: .82rem; color: var(--text-muted); }
-.closure-notice { border-radius: 10px; padding: 14px 18px; border: 1px solid var(--border); }
-.closure-notice.is-success { border-color: #247f59; }
-.closure-notice.is-error { border-color: #c74747; }
-.closure-count { padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: .85rem; }
-.closure-review-list { display: grid; gap: 12px; }
-.closure-review-card { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: 13px; background: var(--background); }
-.closure-review-card.is-due { border-color: #c74747; }
-.closure-review-main { min-width: 0; flex: 1; }
-.closure-review-topline { display: flex; flex-wrap: wrap; gap: 8px; }
-.closure-status-pill, .closure-due-pill { border-radius: 999px; padding: 5px 10px; font-size: .77rem; font-weight: 750; }
-.closure-status-pill { background: #8f2525; color: #fff; }
-.closure-due-pill { background: #a66c16; color: #fff; }
-.closure-review-card h4 { margin: 10px 0 4px; font-size: 1.1rem; }
-.closure-review-card p { margin: 0 0 15px; color: var(--text-muted); }
-.closure-review-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; }
-.closure-review-facts > div { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
-.closure-review-facts span { color: var(--text-muted); font-size: .77rem; }
-.closure-review-facts strong { font-size: .87rem; font-weight: 650; }
-.closure-review-actions { display: grid; align-content: center; gap: 8px; min-width: 140px; }
-.closure-review-actions .admin-button { text-align: center; }
-.closure-empty { padding: 28px; border: 1px dashed var(--border); border-radius: 10px; color: var(--text-muted); }
-@media (max-width: 760px) { .closure-panel { padding: 16px !important; } .closure-form-grid { grid-template-columns: 1fr; } .closure-stats { gap: 8px; } .closure-stats > div { padding: 12px; } .closure-review-card { align-items: stretch; flex-direction: column; } .closure-review-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .closure-review-actions { display: flex; flex-wrap: wrap; } }
+.closure-admin {
+    display: grid;
+    gap: var(--admin-panel-gap);
+    padding-bottom: 28px;
+}
+
+.closure-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.closure-page-header h2 {
+    margin: 4px 0 8px;
+    font-size: clamp(1.65rem, 2.4vw, 2.1rem);
+}
+
+.closure-page-header p:last-child {
+    max-width: 72ch;
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.closure-notice {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    font-weight: 750;
+}
+
+.closure-notice.is-success {
+    border-color: color-mix(in srgb, #2d8a61 68%, var(--border));
+    background: color-mix(in srgb, #2d8a61 9%, var(--surface));
+}
+
+.closure-notice.is-error {
+    border-color: color-mix(in srgb, #c84c4c 72%, var(--border));
+    background: color-mix(in srgb, #c84c4c 9%, var(--surface));
+}
+
+.closure-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.closure-summary-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "label value"
+        "help value";
+    gap: 3px 14px;
+    align-items: center;
+    min-height: 88px;
+    padding: 15px 17px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-panel-radius);
+    background: var(--surface);
+}
+
+.closure-summary-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--border);
+}
+
+.closure-summary-card.is-confirmed::before {
+    background: #b5353d;
+}
+
+.closure-summary-card.is-due::before {
+    background: #d47c26;
+}
+
+.closure-summary-card.is-upcoming::before {
+    background: #3e7ccf;
+}
+
+.closure-summary-label {
+    grid-area: label;
+    min-width: 0;
+    font-size: .86rem;
+    font-weight: 850;
+}
+
+.closure-summary-card strong {
+    grid-area: value;
+    align-self: center;
+    min-width: 48px;
+    font-size: clamp(1.75rem, 3.3vw, 2.35rem);
+    line-height: 1;
+    text-align: right;
+}
+
+.closure-summary-card small {
+    grid-area: help;
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: .73rem;
+    line-height: 1.35;
+}
+
+.closure-editor-panel,
+.closure-review-panel {
+    overflow: hidden;
+}
+
+.closure-help {
+    margin: 0 0 16px;
+    color: var(--text-muted);
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.closure-form {
+    display: grid;
+    gap: 16px;
+}
+
+.closure-form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 13px 14px;
+}
+
+.closure-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    align-content: start;
+}
+
+.closure-field > span {
+    min-width: 0;
+    color: var(--text);
+    font-size: .78rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.closure-field small {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 500;
+}
+
+.closure-field abbr {
+    color: #d45c62;
+    text-decoration: none;
+}
+
+.closure-field input,
+.closure-field select,
+.closure-field textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.closure-field input,
+.closure-field select {
+    min-height: 44px;
+    padding: 9px 11px;
+}
+
+.closure-field textarea {
+    min-height: 82px;
+    padding: 10px 11px;
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.closure-field input::placeholder,
+.closure-field textarea::placeholder {
+    color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+}
+
+.closure-field input:focus,
+.closure-field select:focus,
+.closure-field textarea:focus {
+    border-color: var(--focus);
+    outline: 2px solid color-mix(in srgb, var(--focus) 24%, transparent);
+    outline-offset: 1px;
+}
+
+.closure-span-4 {
+    grid-column: span 4;
+}
+
+.closure-span-8 {
+    grid-column: span 8;
+}
+
+.closure-span-12 {
+    grid-column: 1 / -1;
+}
+
+.closure-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 2px;
+}
+
+.closure-form-actions > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.closure-form-actions small {
+    color: var(--text-muted);
+    font-size: .75rem;
+    line-height: 1.35;
+    text-align: right;
+}
+
+.closure-review-header {
+    align-items: center;
+}
+
+.closure-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+.closure-review-body {
+    padding-top: 14px;
+}
+
+.closure-review-list {
+    display: grid;
+    gap: 10px;
+}
+
+.closure-review-card {
+    border: 1px solid var(--border);
+    border-left: 4px solid #b5353d;
+    border-radius: 12px;
+    background: var(--background);
+}
+
+.closure-review-card.is-due {
+    border-left-color: #d47c26;
+}
+
+.closure-review-card.is-upcoming {
+    border-left-color: #3e7ccf;
+}
+
+.closure-review-main {
+    min-width: 0;
+    padding: 14px 15px;
+}
+
+.closure-review-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+}
+
+.closure-review-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 7px;
+}
+
+.closure-status-pill,
+.closure-review-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.closure-status-pill {
+    border-color: color-mix(in srgb, #b5353d 60%, var(--border));
+    background: color-mix(in srgb, #b5353d 15%, var(--surface));
+    color: color-mix(in srgb, #ef6e74 88%, var(--text));
+}
+
+.closure-review-pill {
+    color: var(--text-muted);
+}
+
+.closure-review-pill.is-due {
+    border-color: color-mix(in srgb, #d47c26 60%, var(--border));
+    background: color-mix(in srgb, #d47c26 13%, var(--surface));
+    color: color-mix(in srgb, #f0a45c 90%, var(--text));
+}
+
+.closure-review-pill.is-upcoming {
+    border-color: color-mix(in srgb, #3e7ccf 58%, var(--border));
+    background: color-mix(in srgb, #3e7ccf 13%, var(--surface));
+    color: color-mix(in srgb, #7aadef 90%, var(--text));
+}
+
+.closure-review-card h3 {
+    margin: 0 0 3px;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.closure-review-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .78rem;
+}
+
+.closure-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.closure-review-actions .admin-button {
+    min-height: 36px;
+    padding: 7px 10px;
+    white-space: nowrap;
+}
+
+.closure-review-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.closure-review-facts > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--surface) 70%, var(--background));
+}
+
+.closure-review-facts span {
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .025em;
+}
+
+.closure-review-facts strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: .79rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.closure-empty {
+    padding: 22px;
+}
+
+@media (max-width: 900px) {
+    .closure-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .closure-span-4,
+    .closure-span-8 {
+        grid-column: span 1;
+    }
+
+    .closure-span-8:first-child,
+    .closure-span-12 {
+        grid-column: 1 / -1;
+    }
+
+    .closure-review-title-row {
+        grid-template-columns: 1fr;
+    }
+
+    .closure-review-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 680px) {
+    .closure-page-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .closure-page-header .admin-button {
+        align-self: flex-start;
+    }
+
+    .closure-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .closure-summary-card {
+        min-height: 72px;
+    }
+
+    .closure-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .closure-span-4,
+    .closure-span-8,
+    .closure-span-12,
+    .closure-span-8:first-child {
+        grid-column: 1;
+    }
+
+    .closure-form-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .closure-form-actions small {
+        text-align: left;
+    }
+
+    .closure-review-facts {
+        grid-template-columns: 1fr;
+    }
+}
