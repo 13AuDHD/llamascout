@@ -142,19 +142,20 @@
 })();
 
 
-/* Place Rules & Restrictions: admin save bridge for supplemental rule columns. */
+/* Place operating hours and closure observations: admin persistence bridge. */
 (() => {
   'use strict';
+
   const boot = () => {
     if (!document.querySelector(
-      '[name="generator_prohibited"], [name="place_charcoal_grills_allowed"], [name="place_quiet_hours"]'
+      '[name="place_open_year_round"], [name="place_reported_operating_status"]'
     )) return;
 
-    if (!document.querySelector('script[data-place-rules-script]')) {
+    if (!document.querySelector('script[data-place-operating-script]')) {
       const script = document.createElement('script');
-      script.src = '/js/place-report-place-rules.js';
+      script.src = '/js/place-report-operating.js';
       script.defer = true;
-      script.dataset.placeRulesScript = '1';
+      script.dataset.placeOperatingScript = '1';
       document.head.appendChild(script);
     }
   };
