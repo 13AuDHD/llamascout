@@ -922,7 +922,7 @@ popupAnchor: [0, -42]
 
                 <span class="map-place-badges">
                     ${isClosedPlace(place)
-                        ? '<span class="map-featured-badge map-closed-badge">ð« Closed</span>'
+                        ? '<span class="map-featured-badge map-closed-badge"><span class="map-closed-badge-icon" aria-hidden="true"></span> Closed</span>'
                         : ''}
                     ${
                         featured
