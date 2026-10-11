@@ -893,6 +893,9 @@
             activeCampsiteId = '';
             setSiteControlsEnabled(false);
             campsiteDirty = false;
+            form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
+                detail: { campsiteId: '', label: '' }
+            }));
             return;
         }
 
@@ -920,6 +923,14 @@
             String(site.id);
         setSiteControlsEnabled(true);
         campsiteDirty = false;
+        // Programmatically populating fields doesn't emit input/change events.
+        // Notify the section-completion view after every campsite switch.
+        form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
+            detail: {
+                campsiteId: activeCampsiteId,
+                label: String(site.label || `Site ${site.id}`)
+            }
+        }));
     };
 
     campsiteFieldKeys.forEach(key => {
@@ -1101,6 +1112,9 @@
             clearRecoveryCopies();
             rememberSavedCampsite();
             campsiteDirty = false;
+            form.dispatchEvent(new CustomEvent('llama:campsite-saved', {
+                detail: { campsiteId: activeCampsiteId }
+            }));
 
             form.dispatchEvent(
                 new CustomEvent(
