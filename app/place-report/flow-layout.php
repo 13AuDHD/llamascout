@@ -62,6 +62,13 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'winter_access', 'seasonal_closure', 'seasonal_access_note',
             'snow_risk', 'mud_season_risk', 'monsoon_risk',
         ],
+        'getting_there:access_restrictions' => [
+            'approach_road_type', 'approach_permit_required',
+            'approach_fee_required', 'approach_gate_present',
+            'approach_gate_access_type', 'approach_gate_opens',
+            'approach_gate_closes', 'approach_restriction_details',
+            'approach_access_info_url',
+        ],
         'place:information_location' => [
             'name','type','description','visited_at','latitude','longitude',
             'elevation_feet','road','city','county','state','region','land_type','land_manager',
