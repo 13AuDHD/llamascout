@@ -524,6 +524,14 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <a
+            class="<?= admin_shell_nav_class('closed_places', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/closed-places.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
+            <span>Closed Places</span>
+        </a>
+
+        <a
             class="<?= admin_shell_nav_class('verifications', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/verifications.php') ?>"
         >
