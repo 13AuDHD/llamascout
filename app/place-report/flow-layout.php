@@ -49,6 +49,9 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
         'getting_there:vehicle_access' => [
             'sedan_accessible', 'high_clearance_recommended',
             'four_wheel_drive_recommended', 'road_exposure',
+            'approach_width_restricted', 'approach_narrowest_width_feet',
+            'approach_turnaround_available', 'approach_overhead_obstacles',
+            'approach_access_restrictions',
         ],
         'getting_there:seasonal_access' => [
             'winter_access', 'seasonal_closure', 'seasonal_access_note',
