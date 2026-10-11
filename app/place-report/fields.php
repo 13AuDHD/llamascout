@@ -102,7 +102,7 @@ function llama_place_report_fields(): array
     llama_place_report_add_overnight_permission_fields($add);
 
     require_once __DIR__ . '/fields-place-shared-amenities.php';
-    llama_place_report_add_shared_amenity_fields($add);
+    llama_place_report_add_shared_amenity_fields($f, $add);
 
     require_once __DIR__ . '/fields-place-rules.php';
     llama_place_report_add_place_rules_fields($add);
