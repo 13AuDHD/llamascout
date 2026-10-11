@@ -44,6 +44,8 @@ function llama_place_report_fields(): array
     llama_place_report_add_road_access_questions($add);
     require_once __DIR__ . '/fields-road-seasonal.php';
     llama_place_report_add_road_seasonal_questions($add);
+    require_once __DIR__ . '/fields-road-restrictions.php';
+    llama_place_report_add_road_restriction_questions($add);
 
     // Short categorical cards match the width of nearby ratings.
     foreach (['landscape_primary', 'landscape_details', 'landscape_views'] as $key) {
@@ -77,6 +79,11 @@ function llama_place_report_fields(): array
         'approach_reopening_month', 'approach_reopening_day',
         'approach_winter_maintenance', 'approach_snow_chains',
         'approach_seasonal_restrictions', 'approach_road_conditions_url',
+        'approach_road_type', 'approach_permit_required',
+        'approach_fee_required', 'approach_gate_present',
+        'approach_gate_access_type', 'approach_gate_opens',
+        'approach_gate_closes', 'approach_restriction_details',
+        'approach_access_info_url',
     ] as $key) {
         $f[$key]['report_scopes'] = ['place'];
         $f[$key]['report_scope_group'] = 'place';
