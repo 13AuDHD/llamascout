@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 /**
@@ -88,6 +87,22 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'membership_fee','reservation_url','membership_url',
             'place_rate_cards_json',
         ],
+        'place:shared_amenities' => [
+            'amenity_none',
+            'amenity_toilets','amenity_potable_water',
+            'amenity_water_filling_station','amenity_dishwashing_station',
+            'amenity_trash','amenity_recycling',
+            'amenity_showers','amenity_accessible_showers',
+            'amenity_laundry','amenity_wifi','amenity_dump_station',
+            'amenity_electricity',
+            'amenity_picnic_shelter','amenity_playground',
+            'amenity_amphitheater','amenity_fishing_pier',
+            'amenity_lake_access','amenity_river_access',
+            'amenity_trailhead','amenity_trailhead_parking',
+            'amenity_camp_store','amenity_campground_host',
+            'shared_accessible_facilities',
+            'shared_accessible_facility_types',
+        ],
         'place:place_rules' => [
             'generator_restrictions','generator_quiet_hours',
             'generator_quiet_hours_begin','generator_quiet_hours_end',
@@ -107,6 +122,8 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
         ],
         'site:camping_equipment' => [
             'tent_pad','tent_pad_length_feet','tent_pad_width_feet',
+            'amenity_fire_ring','amenity_grill','amenity_picnic_table',
+            'amenity_bear_box','amenity_lantern_post',
             'site_hookups_available','hookup_electric','hookup_electric_service',
             'hookup_water','hookup_sewer',
         ],
@@ -145,14 +162,15 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
         'safety' => ['site','sensory_environment'],
         'summaries' => ['site','site_photos'],
     ];
+
     foreach ($fields as $key => &$field) {
         $current = (string) ($field['section'] ?? '');
         [$section, $group] = $lookup[$key]
             ?? $fallbacks[$current]
             ?? ['place', 'information_location'];
+
         $field['layout_section'] = $section;
         $field['layout_group'] = $group;
-        // No inactive-field layer: Ground Condition remains a normal Site field.
     }
     unset($field);
 }

@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 /* Canonical field registry assembled from smaller section files. */
@@ -49,7 +48,6 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-road-restrictions.php';
     llama_place_report_add_road_restriction_questions($add);
 
-    // Short categorical cards match the width of nearby ratings.
     foreach (['landscape_primary', 'landscape_details', 'landscape_views'] as $key) {
         if (isset($f[$key])) {
             $f[$key]['wide'] = false;
@@ -69,7 +67,6 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-metadata.php';
     llama_place_report_apply_flow_metadata($f);
 
-    // Report scopes are annotations until each caller supports scoped saving.
     require_once __DIR__ . '/flow-scopes.php';
     llama_place_report_apply_flow_scopes($f);
 
@@ -105,7 +102,7 @@ function llama_place_report_fields(): array
     llama_place_report_add_pricing_fields($add);
 
     require_once __DIR__ . '/fields-place-shared-amenities.php';
-    llama_place_report_add_shared_amenity_fields($add);
+    llama_place_report_add_shared_amenity_fields($f, $add);
 
     require_once __DIR__ . '/fields-place-rules.php';
     llama_place_report_add_place_rules_fields($add);
@@ -113,14 +110,11 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-place-operating.php';
     llama_place_report_add_operating_fields($add);
 
-
     require_once __DIR__ . '/flow-layout.php';
     llama_place_report_apply_layout_metadata($f);
     llama_place_report_apply_place_rules_metadata($f);
     llama_place_report_apply_operating_metadata($f);
 
-    // The approved Place-wide overnight questions remain in their proper
-    // subsection even though their legacy storage category is "rules".
     foreach ([
         'tent_camping_allowed',
         'rv_camping_allowed',
@@ -131,7 +125,6 @@ function llama_place_report_fields(): array
         $f[$key]['layout_section'] = 'place';
         $f[$key]['layout_group'] = 'overnight_stays';
     }
-
 
     return $f;
 }
