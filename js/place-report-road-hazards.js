@@ -99,3 +99,29 @@
     document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else boot();
 })();
+
+
+/* Reservations & Pricing: load the repeatable Rate Card enhancement only when needed. */
+(() => {
+  'use strict';
+  const boot = () => {
+    if (!document.querySelector('textarea[name="place_rate_cards_json"]')) return;
+    if (!document.querySelector('link[data-place-rate-cards-style]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/css/site/features/place-report-rate-cards.css';
+      link.dataset.placeRateCardsStyle = '1';
+      document.head.appendChild(link);
+    }
+    if (!document.querySelector('script[data-place-rate-cards-script]')) {
+      const script = document.createElement('script');
+      script.src = '/js/place-report-rate-cards.js';
+      script.defer = true;
+      script.dataset.placeRateCardsScript = '1';
+      document.head.appendChild(script);
+    }
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else boot();
+})();
