@@ -1,0 +1,200 @@
+.place-rate-cards-field {
+    display: grid;
+    gap: 14px;
+}
+
+.place-rate-cards-json {
+    display: none !important;
+}
+
+.place-rate-cards-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.place-rate-cards-heading > div {
+    min-width: 0;
+}
+
+.place-rate-cards-label {
+    display: block;
+    font-weight: 850;
+}
+
+.place-rate-cards-heading p {
+    max-width: 70ch;
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.place-rate-cards-add,
+.place-rate-card-remove {
+    appearance: none;
+    min-height: 38px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.place-rate-cards-add:hover,
+.place-rate-card-remove:hover,
+.place-rate-cards-add:focus-visible,
+.place-rate-card-remove:focus-visible {
+    border-color: color-mix(in srgb, var(--text) 38%, var(--border));
+}
+
+.place-rate-cards-list {
+    display: grid;
+    gap: 12px;
+}
+
+.place-rate-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 94%, var(--text) 6%);
+}
+
+.place-rate-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.place-rate-card-header > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.place-rate-card-kicker {
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.place-rate-card-header strong {
+    overflow-wrap: anywhere;
+}
+
+.place-rate-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.place-rate-card-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.place-rate-card-field > span {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.place-rate-card-field input,
+.place-rate-card-field select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+
+.place-rate-card-field input:focus-visible,
+.place-rate-card-field select:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.place-rate-card-span-2 {
+    grid-column: span 2;
+}
+
+.place-rate-card-money {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    overflow: hidden;
+}
+
+.place-rate-card-money > span {
+    padding-left: 11px;
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.place-rate-card-money input {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.place-rate-cards-empty {
+    padding: 14px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.place-rate-cards-status {
+    min-height: 1.2em;
+    color: var(--text-muted);
+    font-size: .76rem;
+}
+
+@media (max-width: 980px) {
+    .place-rate-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+    .place-rate-cards-heading,
+    .place-rate-card-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .place-rate-cards-add,
+    .place-rate-card-remove {
+        width: 100%;
+    }
+
+    .place-rate-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .place-rate-card-span-2 {
+        grid-column: auto;
+    }
+}
