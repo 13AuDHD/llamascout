@@ -40,6 +40,9 @@ function llama_place_report_fields(): array
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
 
+    require_once __DIR__ . '/fields-road-access-additions.php';
+    llama_place_report_add_road_access_questions($add);
+
     // Short categorical cards match the width of nearby ratings.
     foreach (['landscape_primary', 'landscape_details', 'landscape_views'] as $key) {
         if (isset($f[$key])) {
@@ -62,6 +65,15 @@ function llama_place_report_fields(): array
     // Report scopes are annotations until each caller supports scoped saving.
     require_once __DIR__ . '/flow-scopes.php';
     llama_place_report_apply_flow_scopes($f);
+
+    foreach ([
+        'approach_width_restricted', 'approach_narrowest_width_feet',
+        'approach_turnaround_available', 'approach_overhead_obstacles',
+        'approach_access_restrictions',
+    ] as $key) {
+        $f[$key]['report_scopes'] = ['place'];
+        $f[$key]['report_scope_group'] = 'place';
+    }
 
     require_once __DIR__ . '/flow-access-options.php';
     llama_place_report_apply_access_options($f);
