@@ -121,6 +121,86 @@ function llama_camping_fee_map_statuses(PDO $db, array $placeIds): array
         }
     }
 
+    /*
+     * Detailed Rate Cards are also manual camping-fee evidence when the
+     * simple campground-wide Camping fee is blank. Multiple positive and
+     * zero-dollar cards make the Place mixed; a positive card makes it paid.
+     * Keep this separate from the legacy fee query so older deployments keep
+     * working safely until the rate_cards_json migration has been installed.
+     */
+    foreach (array_chunk($placeIds, 400) as $chunk) {
+        $unknownIds = array_values(array_filter(
+            $chunk,
+            static fn (int $id): bool => ($result[$id] ?? 'unknown') === 'unknown'
+        ));
+
+        if ($unknownIds === []) {
+            continue;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($unknownIds), '?'));
+
+        try {
+            $stmt = $db->prepare(
+                "SELECT place_id, rate_cards_json
+                 FROM place_rules
+                 WHERE place_id IN ($placeholders)
+                   AND rate_cards_json IS NOT NULL
+                   AND rate_cards_json <> ''"
+            );
+            $stmt->execute($unknownIds);
+
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = (int) ($row['place_id'] ?? 0);
+                if ($id < 1 || ($result[$id] ?? 'unknown') !== 'unknown') {
+                    continue;
+                }
+
+                $rateCards = json_decode(
+                    (string) ($row['rate_cards_json'] ?? ''),
+                    true
+                );
+
+                if (!is_array($rateCards)) {
+                    continue;
+                }
+
+                $hasPaidRate = false;
+                $hasFreeRate = false;
+
+                foreach ($rateCards as $rateCard) {
+                    if (!is_array($rateCard)) {
+                        continue;
+                    }
+
+                    $price = $rateCard['price'] ?? null;
+                    if ($price === null || $price === '' || !is_numeric($price)) {
+                        continue;
+                    }
+
+                    if ((float) $price > 0.0) {
+                        $hasPaidRate = true;
+                    } else {
+                        $hasFreeRate = true;
+                    }
+                }
+
+                if ($hasPaidRate && $hasFreeRate) {
+                    $result[$id] = 'mixed';
+                } elseif ($hasPaidRate) {
+                    $result[$id] = 'paid';
+                } elseif ($hasFreeRate) {
+                    $result[$id] = 'free';
+                }
+            }
+        } catch (PDOException $exception) {
+            $code = (string) ($exception->errorInfo[1] ?? '');
+            if ($code !== '1054' && $code !== '42S22' && $code !== '1146' && $code !== '42S02') {
+                throw $exception;
+            }
+        }
+    }
+
     // Chunk requests to avoid giant IN clauses on large map inventories.
     foreach (array_chunk($placeIds, 400) as $chunk) {
         $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
