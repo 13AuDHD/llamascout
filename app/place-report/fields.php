@@ -40,6 +40,8 @@ function llama_place_report_fields(): array
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
 
+    require_once __DIR__ . '/fields-road-conditions.php';
+    llama_place_report_add_road_condition_questions($add);
     require_once __DIR__ . '/fields-road-access-additions.php';
     llama_place_report_add_road_access_questions($add);
     require_once __DIR__ . '/fields-road-seasonal.php';
