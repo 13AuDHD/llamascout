@@ -468,6 +468,32 @@
             `
             : '';
 
+    const closureStatus = (site) => {
+        if (site?.is_closed !== true) return '';
+        const status = String(site.operating_status || '').toLowerCase();
+        return {
+            temporary: 'Temporarily closed',
+            seasonal: 'Seasonally closed',
+            permanent: 'Permanently closed'
+        }[status] || 'Closed';
+    };
+
+    const closureDetails = (site) => {
+        const status = closureStatus(site);
+        if (!status) return '';
+        const reason = clean(site.closure_reason || '').replaceAll('_', ' ');
+        const reopening = clean(site.expected_reopening || '');
+        const verified = clean(site.closure_verified_at || '');
+        return `
+            <aside class="place-campsite-closure-notice" role="status">
+                <strong>🚫 ${escapeHtml(status)}</strong>
+                ${reason && reason !== 'unknown' ? `<span>Reason: ${escapeHtml(smartCase(reason))}</span>` : ''}
+                ${reopening ? `<span>Expected reopening: ${escapeHtml(reopening)}</span>` : ''}
+                ${verified ? `<small>Verified: ${escapeHtml(verified)}</small>` : ''}
+            </aside>
+        `;
+    };
+
     const renderSiteDetail = (
         site,
         totalSites = 0
@@ -807,7 +833,7 @@
 
         return `
             <article
-                class="place-campsite-detail"
+                class="place-campsite-detail${closureStatus(site) ? ' is-closed' : ''}"
                 data-campsite-detail-id="${escapeHtml(site.feature_id)}"
             >
                 <header class="place-campsite-detail-heading">
@@ -816,6 +842,8 @@
                         <h3>${escapeHtml(smartCase(site.display_name))}</h3>
                     </div>
                 </header>
+
+                ${closureDetails(site)}
 
                 <div class="place-campsite-detail-grid">
                     ${section(
@@ -1363,8 +1391,10 @@
                 <div
                     class="place-campsites-list"
                     data-campsite-list
-                    aria-label="Available campsites"
+                    aria-label="Campsites"
                 ></div>
+
+                <div data-campsite-selected-detail></div>
             </section>
         `;
 
@@ -1416,6 +1446,11 @@
                 site,
                 sites.length
             );
+
+            const detailMount = mount.querySelector('[data-campsite-selected-detail]');
+            if (detailMount) {
+                detailMount.innerHTML = renderSiteDetail(site, sites.length);
+            }
 
             mount
                 .querySelectorAll(
@@ -1545,13 +1580,15 @@
                         return `
                             <button
                                 type="button"
-                                class="place-campsite-row${isSelected ? ' is-selected' : ''}"
+                                class="place-campsite-row${isSelected ? ' is-selected' : ''}${closureStatus(site) ? ' is-closed' : ''}"
                                 data-campsite-id="${escapeHtml(site.feature_id)}"
                                 aria-current="${isSelected ? 'true' : 'false'}"
                             >
                                 <span class="place-campsite-row-name">
                                     ${escapeHtml(smartCase(site.display_name))}
                                 </span>
+
+                                ${closureStatus(site) ? '<span class="place-campsite-closed-badge">🚫 Closed</span>' : ''}
 
                                 <span class="place-campsite-row-summary">
                                     ${escapeHtml(
