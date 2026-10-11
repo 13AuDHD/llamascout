@@ -85,6 +85,7 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
         'place:reservations_pricing' => [
             'fee','entrance_facility_fee','parking_fee','reservation_fee',
             'membership_fee','reservation_url','membership_url',
+            'place_rate_cards_json',
         ],
         'place:place_rules' => [
             'generator_restrictions','generator_quiet_hours',

@@ -101,6 +101,9 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-place-overnight.php';
     llama_place_report_add_overnight_permission_fields($add);
 
+    require_once __DIR__ . '/fields-place-pricing.php';
+    llama_place_report_add_pricing_fields($add);
+
     require_once __DIR__ . '/fields-place-shared-amenities.php';
     llama_place_report_add_shared_amenity_fields($add);
 
