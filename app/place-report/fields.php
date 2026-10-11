@@ -127,6 +127,9 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-site-selection.php';
     llama_place_report_apply_site_selection_metadata($f);
 
+    require_once __DIR__ . '/flow-site-parking.php';
+    llama_place_report_apply_site_parking_metadata($f);
+
     // The approved Place-wide overnight questions remain in their proper
     // subsection even though their legacy storage category is "rules".
     foreach ([
