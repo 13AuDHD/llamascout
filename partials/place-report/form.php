@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/place-report.php';
 
-// Rule group layout uses a dedicated stylesheet, never inline CSS.
-
-
 
 /*
  * =========================================================
@@ -288,20 +285,6 @@ $valueFor =
 
             if (is_array($value)) {
                 return array_values($value);
-            }
-
-            // Legacy versions stored these fields as boolean tri-state.
-            // Preserve an explicit old No (false) rather than treating it
-            // as a blank when rendering the new three-option selects.
-            if (
-                in_array(
-                    $key,
-                    ['high_clearance_recommended', 'four_wheel_drive_recommended'],
-                    true
-                )
-                && is_bool($value)
-            ) {
-                return $value ? '1' : '0';
             }
 
             return is_scalar($value)
@@ -1115,211 +1098,59 @@ $renderField =
  * =========================================================
  */
 
-foreach (
-    $placeReportSections
-    as $sectionKey => $section
-):
 
-    $sectionFields =
-        array_filter(
-            $placeReportFields,
-            static fn (array $field): bool =>
-                (string) (
-                    $field['display_section']
-                    ?? $field['section']
-                    ?? ''
-                ) === $sectionKey
-        );
-
-    $combinedCoordinates = '';
-    $combinedLatitude = '';
-    $combinedLongitude = '';
-
+/* Exactly three top-level sections; nested groups reuse canonical field renderers. */
+$reportLayoutGroups = llama_place_report_layout_groups();
+$reportMainLabels = [
+    'getting_there' => ['Getting There', 'road'],
+    'place' => ['Place', 'info-circle'],
+    'site' => ['Site', 'camper'],
+];
+$placeReportVisibleFields = [];
+foreach ($placeReportFields as $fieldKey => $field) {
+    $legacySection = (string) ($field['display_section'] ?? $field['section'] ?? '');
     if (
-        $sectionKey === 'location'
+        $legacySection === 'location'
         && $placeReportShowLocate
+        && in_array((string) $fieldKey, ['latitude','longitude'], true)
     ) {
-        $combinedLatitude =
-            trim(
-                (string) (
-                    $placeReportValues['latitude']
-                    ?? ''
-                )
-            );
-
-        $combinedLongitude =
-            trim(
-                (string) (
-                    $placeReportValues['longitude']
-                    ?? ''
-                )
-            );
-
-        $combinedCoordinates =
-            trim(
-                (string) (
-                    $placeReportValues['coordinates']
-                    ?? ''
-                )
-            );
-
-        if (
-            $combinedCoordinates === ''
-            && is_numeric($combinedLatitude)
-            && is_numeric($combinedLongitude)
-        ) {
-            $combinedCoordinates =
-                number_format(
-                    (float) $combinedLatitude,
-                    7,
-                    '.',
-                    ''
-                )
-                . ', '
-                . number_format(
-                    (float) $combinedLongitude,
-                    7,
-                    '.',
-                    ''
-                );
-        }
-
-        $sectionFields =
-            array_filter(
-                $sectionFields,
-                static fn (array $field): bool =>
-                    !in_array(
-                        (string) ($field['key'] ?? ''),
-                        ['latitude', 'longitude'],
-                        true
-                    )
-            );
-    }
-
-    /*
-     * Keep the established section UI and all existing field names, while
-     * displaying related questions together. These lists affect presentation
-     * only: no values, validation, applicability or points are changed.
-     * Unlisted and future questions retain their original registry order.
-     */
-    $placeReportFlowOrder = [
-        'rules' => [
-            'overnight_camping_allowed', 'dispersed_camping_allowed',
-            'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
-            'stay_limit_days', 'residential_use_prohibited',
-            'camping_conditional_details', 'camping_permit_url',
-            'fee', 'reservation_required', 'reservation_fee',
-            'reservation_url', 'membership_required', 'membership_fee',
-            'membership_url', 'check_in_required', 'check_in_begins',
-            'check_out_required', 'checkout_ends',
-            'entrance_facility_fee', 'parking_fee',
-            'season_begins', 'season_ends', 'seasonal_closure',
-            'seasonal_access_note', 'best_months', 'winter_access',
-            'snow_risk', 'mud_season_risk', 'monsoon_risk',
-            'hurricane_risk', 'heat_season_risk',
-            'generator_restrictions', 'generator_prohibited',
-            'generator_quiet_hours', 'generator_quiet_hours_begin',
-            'generator_quiet_hours_end', 'generator_run_restrictions',
-            'generator_max_run_hours', 'generator_free_area',
-            'generator_restriction_details',
-            'campfire_allowed', 'collecting_firewood',
-            'current_fire_restrictions_url',
-            'fire_activities_conditional_details', 'fire_activity_permit_url',
-            'pets_allowed', 'dogs_required_to_be_leashed',
-            'food_storage_required', 'pack_it_in_pack_it_out',
-            'drone_use_legal', 'target_shooting_allowed',
-            'nearest_town', 'nearest_fuel', 'nearest_ev_charging',
-            'nearest_alcohol_sales', 'nearest_propane',
-            'nearest_grocery', 'nearest_water', 'nearest_toilet',
-            'nearest_hospital',
-        ],
-        'site_vehicle' => [
-            'site_number', 'site_accessible', 'max_people',
-            'vehicle_capacity', 'capacity_size_rating',
-            'site_length_feet', 'site_width_feet',
-            'parking_surface', 'ground_condition', 'parking_grade',
-            'parking_length_feet', 'overhead_clearance_feet',
-            'max_vehicle_length_feet', 'double_driveway',
-            'turnaround_space', 'pull_through', 'back_in',
-            'trailer_suitable', 'max_trailer_length_feet',
-            'rv_suitable', 'max_rv_length_feet',
-            'tent_camping_suitable', 'tent_pad',
-            'tent_pad_length_feet', 'tent_pad_width_feet',
-            'hike_in_distance_feet', 'levelness',
-            'site_open_sky', 'tree_cover', 'site_shade',
-            'site_hookups_available', 'hookup_electric',
-            'hookup_electric_service', 'hookup_water', 'hookup_sewer',
-        ],
-        'road_access' => [
-            'road_surface', 'road_width', 'sedan_accessible',
-            'high_clearance_recommended', 'four_wheel_drive_recommended',
-            'water_crossings', 'downed_tree_risk',
-            'road_overall_difficulty', 'road_stress',
-            'rocks', 'washboards', 'potholes', 'mud_risk',
-            'steep_grades', 'drop_off_exposure',
-            'site_access_difficulty', 'access_summary',
-        ],
-    ];
-    if (isset($placeReportFlowOrder[$sectionKey])) {
-        $positions = array_flip($placeReportFlowOrder[$sectionKey]);
-        $originalOrder = array_flip(array_keys($sectionFields));
-        uksort(
-            $sectionFields,
-            static function (string $a, string $b) use ($positions, $originalOrder): int {
-                $left = $positions[$a] ?? (1000 + $originalOrder[$a]);
-                $right = $positions[$b] ?? (1000 + $originalOrder[$b]);
-                return $left <=> $right;
-            }
-        );
-    }
-
-    if (!$sectionFields) {
         continue;
     }
-    ?>
-
-    <details
-        class="contribution-section"
-        <?= !empty(
-            $section['open']
-        )
-            ? 'open'
-            : '' ?>
-    >
-
-        <summary>
-
-            <span>
-
-                <?= llama_icon(
-                    (string) (
-                        $section['icon']
-                        ?? 'info-circle'
-                    )
-                ) ?>
-
-                <?= $e(
-                    $section['label']
-                    ?? 'Place information'
-                ) ?>
-
-            </span>
-
-            <small>
-                <?= $e(
-                    $section['description']
-                    ?? ''
-                ) ?>
-            </small>
-
-        </summary>
-
-
-        <div class="contribution-section-body">
-
-
+    $placeReportVisibleFields[$fieldKey] = $field;
+}
+foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIcon]):
+    $reportMainFields = array_filter(
+        $placeReportVisibleFields,
+        static fn (array $field): bool =>
+            (string) ($field['layout_section'] ?? '') === $reportMainKey
+    );
+    if (!$reportMainFields && !($reportMainKey === 'site' && $placeReportShowPhotos)) {
+        continue;
+    }
+?>
+<details class="contribution-section" <?= $reportMainKey === 'getting_there' ? 'open' : '' ?>
+    data-report-main-section="<?= $e($reportMainKey) ?>">
+    <summary>
+        <span><?= llama_icon($reportMainIcon) ?> <?= $e($reportMainLabel) ?></span>
+    </summary>
+    <div class="contribution-section-body">
+        <?php foreach ($reportLayoutGroups[$reportMainKey] as $reportGroupKey => $reportGroupLabel):
+            $reportGroupFields = array_filter(
+                $reportMainFields,
+                static fn (array $field): bool =>
+                    (string) ($field['layout_group'] ?? '') === $reportGroupKey
+            );
+            if (!$reportGroupFields && !($reportMainKey === 'site' && $reportGroupKey === 'site_photos' && $placeReportShowPhotos)) {
+                continue;
+            }
+        ?>
+        <details class="contribution-section" data-report-subsection="<?= $e($reportGroupKey) ?>"
+            <?= $reportMainKey === 'place' && $reportGroupKey === 'information_location' ? 'open' : '' ?>>
+            <summary><span><?= $e($reportGroupLabel) ?></span></summary>
+            <div class="contribution-section-body">
+                <?php if ($reportMainKey === 'place' && $reportGroupKey === 'information_location' && $placeReportShowLocate): ?>
             <?php if (
-                $sectionKey === 'location'
+                true
                 && $placeReportShowLocate
             ): ?>
 
@@ -1416,265 +1247,14 @@ foreach (
             <?php endif; ?>
 
 
-            <?php if (
-                $sectionKey === 'amenities'
-            ): ?>
 
-
-                <p class="contribution-section-help">
-                    Unchecked means the amenity was not present when observed.
-                    Choose No amenities only when none of the listed amenities
-                    are present.
-                </p>
-
-
-                <div class="contribution-checkbox-grid">
-
-                    <?php foreach (
-                        $sectionFields
-                        as $field
-                    ): ?>
-
-                        <?php
-                        $renderField(
-                            $field
-                        );
-                        ?>
-
-                    <?php endforeach; ?>
-
-                </div>
-
-
-            <?php elseif (
-                $sectionKey === 'sensory'
-            ): ?>
-
-
-                <?php foreach (
-                    [
-                        'Daytime',
-                        'Nighttime',
-                        'Specific sensory conditions',
-                    ]
-                    as $subsection
-                ): ?>
-
-
-                    <?php
-                    $subsectionFields =
-                        array_filter(
-                            $sectionFields,
-                            static fn (array $field): bool =>
-                                (string) (
-                                    $field['subsection']
-                                    ?? ''
-                                ) === $subsection
-                        );
-
-                    if (!$subsectionFields) {
-                        continue;
-                    }
-                    ?>
-
-
-                    <h3 class="contribution-subheading">
-                        <?= $e(
-                            $subsection
-                        ) ?>
-                    </h3>
-
-
-                    <div class="contribution-grid">
-
-                        <?php foreach (
-                            $subsectionFields
-                            as $field
-                        ): ?>
-
-                            <?php
-                            $renderField(
-                                $field
-                            );
-                            ?>
-
-                        <?php endforeach; ?>
-
-                    </div>
-
-
-                <?php endforeach; ?>
-
-
-                <?php
-                $sensorySummaryFields =
-                    array_filter(
-                        $sectionFields,
-                        static fn (array $field): bool =>
-                            trim(
-                                (string) (
-                                    $field['subsection']
-                                    ?? ''
-                                )
-                            ) === ''
-                    );
-                ?>
-
-                <?php if ($sensorySummaryFields): ?>
-                    <div class="contribution-grid">
-                        <?php foreach (
-                            $sensorySummaryFields
-                            as $field
-                        ): ?>
-                            <?php $renderField($field); ?>
-                        <?php endforeach; ?>
-                    </div>
                 <?php endif; ?>
-
-
-            <?php elseif ($sectionKey === 'rules'): ?>
-
-                <link rel="stylesheet" href="/css/site/features/place-report-flow-groups.css">
-
-                <?php
-                $ruleGroups = [
-                    'Camping and stays' => [
-                        'overnight_camping_allowed', 'dispersed_camping_allowed',
-                        'car_truck_camping', 'designated_sites_only', 'existing_sites_encouraged',
-                        'stay_limit_days', 'residential_use_prohibited',
-            'camping_conditional_details', 'camping_permit_url',
-                    ],
-                    'Place entrance and parking fees' => [
-                        'entrance_facility_fee', 'parking_fee',
-                    ],
-                    'Camping fees' => [
-                        'fee',
-                    ],
-                    'Reservations' => [
-                        'reservation_required', 'reservation_fee',
-                        'reservation_url',
-                    ],
-                    'Membership' => [
-                        'membership_required', 'membership_fee',
-                        'membership_url',
-                    ],
-                    'Arrival and departure' => [
-                        'check_in_required', 'check_in_begins',
-                        'check_out_required', 'checkout_ends',
-                    ],
-                    'Seasons and access' => [
-                        'season_begins', 'season_ends', 'seasonal_closure',
-                        'seasonal_access_note', 'best_months', 'winter_access',
-                        'snow_risk', 'mud_season_risk', 'monsoon_risk',
-                        'hurricane_risk', 'heat_season_risk',
-                    ],
-                    'Generators' => [
-                        'generator_restrictions', 'generator_prohibited',
-                        'generator_quiet_hours', 'generator_quiet_hours_begin',
-                        'generator_quiet_hours_end', 'generator_run_restrictions',
-                        'generator_max_run_hours', 'generator_free_area',
-                        'generator_restriction_details',
-                    ],
-                    'Fire and outdoor activities' => [
-                        'campfire_allowed', 'collecting_firewood',
-                        
-                        'drone_use_legal', 'target_shooting_allowed',
-                        'fire_activities_conditional_details', 'fire_activity_permit_url', 'current_fire_restrictions_url',
-                    ],
-                    'Pets and campsite rules' => [
-                        'pets_allowed', 'dogs_required_to_be_leashed',
-                        'food_storage_required', 'pack_it_in_pack_it_out',
-                    ],
-                    'Nearby services' => [
-                        'nearest_town', 'nearest_fuel', 'nearest_ev_charging',
-                        'nearest_alcohol_sales', 'nearest_propane',
-                        'nearest_grocery', 'nearest_water', 'nearest_toilet',
-                        'nearest_hospital',
-                    ],
-                ];
-                $renderedRules = [];
-                ?>
-
-                <?php foreach ($ruleGroups as $groupTitle => $fieldKeys): ?>
-                    <?php
-                    $groupFields = [];
-                    foreach ($fieldKeys as $fieldKey) {
-                        if (isset($sectionFields[$fieldKey])) {
-                            $groupFields[$fieldKey] = $sectionFields[$fieldKey];
-                            $renderedRules[$fieldKey] = true;
-                        }
-                    }
-                    if (!$groupFields) {
-                        continue;
-                    }
-                    ?>
-                    <section class="place-report-flow-group" data-place-report-flow-group>
-                        <h3 class="place-report-flow-heading"><?= $e($groupTitle) ?></h3>
-                        <div class="contribution-grid">
-                            <?php foreach ($groupFields as $field): ?>
-                                <?php $renderField($field); ?>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-                <?php endforeach; ?>
-
-                <?php
-                $unassignedRules = array_diff_key($sectionFields, $renderedRules);
-                ?>
-                <?php if ($unassignedRules): ?>
-                    <section class="place-report-flow-group" data-place-report-flow-group>
-                        <h3 class="place-report-flow-heading">Additional rules</h3>
-                        <div class="contribution-grid">
-                            <?php foreach ($unassignedRules as $field): ?>
-                                <?php $renderField($field); ?>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-                <?php endif; ?>
-
-            <?php else: ?>
-
-
                 <div class="contribution-grid">
-
-                    <?php foreach (
-                        $sectionFields
-                        as $field
-                    ): ?>
-
-                        <?php
-                        $renderField(
-                            $field
-                        );
-                        ?>
-
+                    <?php foreach ($reportGroupFields as $field): ?>
+                        <?php $renderField($field); ?>
                     <?php endforeach; ?>
-
                 </div>
-
-
-            <?php endif; ?>
-
-
-        </div>
-
-    </details>
-
-<?php endforeach; ?>
-
-
-<?php
-/*
- * =========================================================
- * SHARED PHOTO SECTION
- * =========================================================
- *
- * Add Place and moderation continue using this normally.
- * Suggest an Update turns it off and supplies its own
- * update-specific evidence section.
- */
-?>
-
+                <?php if ($reportMainKey === 'site' && $reportGroupKey === 'site_photos'): ?>
 <?php if ($placeReportShowPhotos): ?>
 
     <details
@@ -1819,3 +1399,12 @@ foreach (
     </details>
 
 <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </details>
+        <?php endforeach; ?>
+    </div>
+</details>
+<?php endforeach; ?>
+
+
