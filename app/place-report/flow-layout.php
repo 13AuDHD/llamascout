@@ -54,6 +54,11 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'approach_access_restrictions',
         ],
         'getting_there:seasonal_access' => [
+            'approach_year_round', 'approach_seasonal_closure',
+            'approach_closure_month', 'approach_closure_day',
+            'approach_reopening_month', 'approach_reopening_day',
+            'approach_winter_maintenance', 'approach_snow_chains',
+            'approach_seasonal_restrictions', 'approach_road_conditions_url',
             'winter_access', 'seasonal_closure', 'seasonal_access_note',
             'snow_risk', 'mud_season_risk', 'monsoon_risk',
         ],
