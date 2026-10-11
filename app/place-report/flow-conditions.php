@@ -3,11 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Phase 3B: first live dependency family.
- *
- * Keep the existing registered answers, including Permit (2), intact.
- * New answers are stored in the existing rules payload. Applicability is
- * shared by form visibility, server validation and completion calculations.
+ * Conditional Place Report question families.
  */
 function llama_place_report_add_flow_condition_fields(array &$fields, callable $add): void
 {
@@ -37,12 +33,7 @@ function llama_place_report_add_flow_condition_fields(array &$fields, callable $
 
     $add('generator_prohibited', 'Generators prohibited?', 'rules', 'tri',
         'rules.generator_prohibited', $common + [
-            'help' => 'Use Yes for a full prohibition in this reporting scope. Generator-free loops should be recorded at the Area level when available.',
-        ]);
-
-    $add('generator_free_area', 'Generator-free area or loop?', 'rules', 'tri',
-        'rules.generator_free_area', $common + [
-            'help' => 'Choose Yes when one or more camping areas or loops prohibit generators even though other areas allow them.',
+            'help' => 'Use Yes when generators are prohibited throughout this Place.',
         ]);
 
     $add('generator_restriction_details', 'Generator restriction details', 'rules', 'textarea',
@@ -50,7 +41,7 @@ function llama_place_report_add_flow_condition_fields(array &$fields, callable $
             'wide' => true,
             'rows' => 3,
             'counts_toward_completion' => false,
-            'help' => 'Explain unusual time limits, generator-free loops, seasonal restrictions, and exceptions.',
+            'help' => 'Explain unusual generator hours, run-time limits, seasonal restrictions, or exceptions.',
         ]);
 }
 
@@ -62,8 +53,6 @@ function llama_place_report_apply_flow_conditions(array &$fields): void
         'value' => $value,
     ];
 
-    // Retain the existing Place-type limitations for the parent question.
-    // An outright prohibition settles the generator questions immediately.
     $generatorApplicable = $fields['generator_restrictions']['applicable_if'] ?? [];
     $notProhibited = [
         $equals('generator_restrictions', '1'),
@@ -74,42 +63,46 @@ function llama_place_report_apply_flow_conditions(array &$fields): void
         $generatorApplicable,
         [$equals('generator_restrictions', '1')]
     );
+
     $fields['generator_quiet_hours']['applicable_if'] = array_merge(
         $generatorApplicable,
         $notProhibited
     );
+
     $fields['generator_quiet_hours_begin']['applicable_if'] = array_merge(
         $notProhibited,
         [$equals('generator_quiet_hours', '1')]
     );
+
     $fields['generator_quiet_hours_end']['applicable_if'] = array_merge(
         $notProhibited,
         [$equals('generator_quiet_hours', '1')]
     );
+
     $fields['generator_run_restrictions']['applicable_if'] = array_merge(
         $generatorApplicable,
         $notProhibited
     );
+
     $fields['generator_max_run_hours']['applicable_if'] = array_merge(
         $notProhibited,
         [$equals('generator_run_restrictions', '1')]
     );
-    $fields['generator_free_area']['applicable_if'] = array_merge(
-        $generatorApplicable,
-        $notProhibited
-    );
+
     $fields['generator_restriction_details']['applicable_if'] = [
         $equals('generator_restrictions', '1'),
     ];
 
-    // Independently useful regardless of the campsite's normal fire policy.
-    // Retain any original Place-type rules but never gate on campfire_allowed.
+    /*
+     * The previously proposed generator-free-area/loop question is deliberately
+     * not registered. Generator rules remain Place-wide here; more restrictive
+     * individual-site rules belong under Site → Rules & Restrictions.
+     */
+
     $fields['current_fire_restrictions_url']['flow_independent_of'] = [
         'campfire_allowed',
     ];
 
-    // A 'No' or 'Unknown' to dispersed camping must not hide information
-    // about designated spaces. Existing place-type applicability is retained.
     $fields['designated_sites_only']['flow_independent_of'] = [
         'dispersed_camping_allowed',
     ];
