@@ -857,6 +857,7 @@ $renderField =
                     </summary>
 
                     <div class="place-report-multiselect-panel">
+                        <?php if ($key !== 'approach_road_hazards'): ?>
                         <input
                             type="search"
                             class="place-report-multiselect-search"
@@ -867,6 +868,7 @@ $renderField =
                             autocomplete="off"
                             data-place-report-multiselect-search
                         >
+                        <?php endif; ?>
 
                         <div class="place-report-multiselect-options">
                             <?php foreach (
@@ -1414,3 +1416,4 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 
 
 <script defer src="/js/place-report-section-completion.js"></script>
+<script defer src="/js/place-report-road-hazards.js"></script>
