@@ -30,10 +30,10 @@ function llama_place_report_layout_groups(): array
             'selection_type' => 'Site Selection & Type',
             'parking_dimensions' => 'Parking & Dimensions',
             'camping_equipment' => 'Camping & Equipment',
-            'site_amenities' => 'Amenities',
-            'site_rules' => 'Rules & Restrictions',
             'sensory_environment' => 'Sensory & Environment',
+            'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
+            'experience_recommendations' => 'Experience & Recommendations',
             'site_photos' => 'Photos & Site Information',
         ],
     ];
@@ -151,21 +151,65 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'amenity_picnic_table','amenity_bear_box','amenity_lantern_post',
         ],
         'site:sensory_environment' => [
-            'site_shade','tree_cover','site_open_sky','landscape_primary',
-            'landscape_details','landscape_views','environment_water_nearby',
-            'critter_activity','environment_bugs','sensory_summary',
+            'site_shade','tree_cover','site_open_sky',
+            'landscape_primary','landscape_details','landscape_views',
+            'environment_water_nearby','environment_wildlife',
+            'environment_bugs','environment_wind_exposure',
+            'environment_sun_exposure','environment_shade',
+            'environment_open_sky','critter_activity',
+            'daytime_noise','daytime_traffic','daytime_crowds',
+            'daytime_privacy','daytime_light_pollution',
+            'daytime_sensory_comfort','daytime_social_interaction',
+            'nighttime_noise','nighttime_traffic','nighttime_crowds',
+            'nighttime_privacy','nighttime_light_pollution',
+            'nighttime_sensory_comfort','nighttime_social_interaction',
+            'sensory_dust_from_traffic','sensory_generator_noise',
+            'sensory_aircraft_noise','sensory_train_noise',
+            'sensory_dog_barking','sensory_road_noise',
+            'sensory_human_activity','sensory_wildlife_noise',
+            'sensory_wind_noise','sensory_smoke_risk',
+            'sensory_strong_odors','sensory_visual_exposure',
+            'sensory_predictability','sensory_summary',
+        ],
+        'site:safety_hazards' => [
+            'felt_safe_daytime','felt_safe_nighttime',
+            'flash_flood_risk','wildfire_risk','fall_hazard',
+            'cliff_exposure','rockfall_risk','wildlife_risk',
+            'traffic_hazard','emergency_access',
+            'warning_passing_vehicle_dust',
+            'warning_motorized_recreation_traffic',
+            'warning_blind_turn_traffic_nearby',
         ],
         'site:site_accessibility' => [
             'site_accessible','wheelchair_friendly','mobility_device_friendly',
             'flat_walking_surface','step_free_access',
         ],
+        'site:experience_recommendations' => [
+            'site_rating','condition_rating','location_rating',
+            'experience_sunrise_view','experience_sunset_view',
+            'experience_overall_scenery','experience_night_sky',
+            'experience_stargazing','experience_quiet_evening',
+            'experience_overnight_comfort','experience_extended_stay_comfort',
+            'experience_sensory_retreat','experience_remote_work',
+            'recommended_overnight_stop','recommended_quiet_evening',
+            'recommended_extended_stay','recommended_sensory_retreat',
+            'recommended_stargazing','recommended_remote_work',
+            'recommended_solo_travel','recommended_families',
+            'recommended_large_groups','not_recommended_for',
+        ],
     ];
 
     $lookup = [];
+
     foreach ($assignments as $target => $keys) {
-        [$section, $group] = explode(':', $target, 2);
+        [$section, $group] =
+            explode(':', $target, 2);
+
         foreach ($keys as $key) {
-            $lookup[$key] = [$section, $group];
+            $lookup[$key] = [
+                $section,
+                $group,
+            ];
         }
     }
 
@@ -181,18 +225,32 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
         'landscape_setting' => ['site','sensory_environment'],
         'connectivity' => ['place','connectivity_services'],
         'accessibility' => ['site','site_accessibility'],
-        'experience' => ['site','sensory_environment'],
-        'safety' => ['site','sensory_environment'],
+        'experience' => ['site','experience_recommendations'],
+        'safety' => ['site','safety_hazards'],
         'summaries' => ['site','site_photos'],
     ];
 
     foreach ($fields as $key => &$field) {
-        $current = (string) ($field['section'] ?? '');
-        [$section, $group] = $lookup[$key]
+        $current =
+            (string) (
+                $field['section']
+                ?? ''
+            );
+
+        [$section, $group] =
+            $lookup[$key]
             ?? $fallbacks[$current]
-            ?? ['place', 'information_location'];
-        $field['layout_section'] = $section;
-        $field['layout_group'] = $group;
+            ?? [
+                'place',
+                'information_location',
+            ];
+
+        $field['layout_section'] =
+            $section;
+
+        $field['layout_group'] =
+            $group;
     }
+
     unset($field);
 }
