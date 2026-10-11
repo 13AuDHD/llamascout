@@ -33,6 +33,21 @@
         amenity: document.getElementById('filter-amenity')
     };
 
+    // Closure filters are opt-in. Closed locations remain visible by default.
+    const openOnlyFilter = document.createElement('label');
+    openOnlyFilter.className = 'map-open-only-filter';
+    openOnlyFilter.innerHTML = `
+        <span>Show Open Places Only</span>
+        <input type="checkbox" role="switch" aria-label="Show Open Places Only">
+        <span class="map-open-only-track" aria-hidden="true"></span>
+    `;
+    const openOnlySwitch = openOnlyFilter.querySelector('input');
+    controls.panel?.appendChild(openOnlyFilter);
+
+    const isClosedPlace = (place) =>
+        place?.is_closed === true || place?.is_closed === 1 ||
+        place?.is_closed === '1';
+
     const amenityLabels = {
         toilets: 'Toilets',
         potable_water: 'Potable water',
@@ -559,6 +574,10 @@
     const mapMarkerClass = (place) => {
         const feeStatus = campingFeeStatus(place);
 
+        if (isClosedPlace(place)) {
+            return ' is-closed';
+        }
+
         if (isFeaturedPlace(place)) {
             return ' is-featured';
         }
@@ -578,7 +597,7 @@
     const markerIcon = (place) => {
         const partner = activePartner(place);
         const iconUrl = brandedMarkerUrl(partner);
-        if (iconUrl) {
+        if (iconUrl && !isClosedPlace(place)) {
             return L.divIcon({
                 className: 'map-place-marker-shell map-partner-marker-shell',
                 html: `<img class="map-partner-marker-image" src="${escapeHtml(iconUrl)}" alt="" aria-hidden="true">`,
@@ -712,6 +731,9 @@ popupAnchor: [0, -42]
 
 
     const matches = (place) => {
+        if (openOnlySwitch?.checked && isClosedPlace(place)) {
+            return false;
+        }
         const search = normalize(controls.search?.value);
         const selectedAmenity = controls.amenity?.value || '';
         const maxElevation = Number(controls.elevationMax?.value || 0);
@@ -868,6 +890,7 @@ popupAnchor: [0, -42]
 
         card.className =
             'map-place-card' +
+            (isClosedPlace(place) ? ' is-closed' : '') +
             (featured ? ' is-featured' : '') +
             (paid ? ' is-paid-place' : '') +
             (partner?.use_branded_cards ? ` is-partner-branded map-partner-${Number(partner.id)}` : '');
@@ -896,6 +919,9 @@ popupAnchor: [0, -42]
                 }
 
                 <span class="map-place-badges">
+                    ${isClosedPlace(place)
+                        ? '<span class="map-featured-badge map-closed-badge">ð« Closed</span>'
+                        : ''}
                     ${
                         featured
                             ? `<span class="map-featured-badge">
@@ -1093,6 +1119,7 @@ popupAnchor: [0, -42]
             }
         });
 
+        if (openOnlySwitch) openOnlySwitch.checked = false;
         render(true);
     };
 
@@ -1192,6 +1219,7 @@ popupAnchor: [0, -42]
     }
 
 
+    openOnlySwitch?.addEventListener('change', () => render(true));
     controls.toggle?.addEventListener('click', toggleFilters);
     controls.clear?.addEventListener('click', clearFilters);
     controls.fit?.addEventListener('click', fitVisiblePlaces);
