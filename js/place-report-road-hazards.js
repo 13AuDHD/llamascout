@@ -30,7 +30,6 @@
       const controls = fieldControls(key);
       const checked = controls.find(el => el.type === 'radio' && el.checked);
       if (checked) {
-        // The first point of a severity scale means no significant hazard.
         return Number(checked.value) > 1 || (!Number.isFinite(Number(checked.value)) && checked.value !== '');
       }
       const select = controls.find(el => el.tagName === 'SELECT');
@@ -38,8 +37,6 @@
       return controls.some(el => el.type === 'checkbox' && el.checked);
     }
 
-    // Populate legacy severity answers when there is no saved hazard selection.
-    // This preserves old reports that predate the new hazard selector.
     function hydrateLegacy() {
       const anyChecked = hazards.some(el => el.checked);
       if (anyChecked) return;
@@ -59,8 +56,6 @@
     }
 
     function announce() {
-      // Both existing completion listeners and the live applicability layer
-      // receive a change signal, without fetching or replacing the form.
       form.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
@@ -75,8 +70,6 @@
             if (byValue.has(v)) byValue.get(v).checked = false;
           });
         }
-        // The old rating values are deliberately not deleted when a hazard
-        // is unchecked: they remain recoverable if a Scout selects it again.
         refresh();
         announce();
       });
@@ -84,8 +77,7 @@
 
     hydrateLegacy();
     refresh();
-    // When campsite switching replaces form values without replacing nodes,
-    // defer the refresh until the new values have been applied.
+
     form.addEventListener('change', event => {
       if (hazards.includes(event.target)) return;
       queueMicrotask(refresh);
@@ -121,6 +113,29 @@
       document.head.appendChild(script);
     }
   };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else boot();
+})();
+
+
+/* Place shared facilities: admin save bridge for extended amenity columns. */
+(() => {
+  'use strict';
+  const boot = () => {
+    if (!document.querySelector(
+      '[name="amenity_campground_host"], [name="amenity_camp_store"], [name="shared_accessible_facilities"]'
+    )) return;
+
+    if (!document.querySelector('script[data-place-shared-amenities-script]')) {
+      const script = document.createElement('script');
+      script.src = '/js/place-report-shared-amenities.js';
+      script.defer = true;
+      script.dataset.placeSharedAmenitiesScript = '1';
+      document.head.appendChild(script);
+    }
+  };
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else boot();
