@@ -78,5 +78,8 @@ function llama_place_report_fields(): array
         }
     }
 
+    require_once __DIR__ . '/flow-layout.php';
+    llama_place_report_apply_layout_metadata($f);
+
     return $f;
 }
