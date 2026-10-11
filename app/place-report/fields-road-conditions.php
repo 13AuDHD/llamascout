@@ -43,3 +43,41 @@ function llama_place_report_add_road_condition_questions(callable $add): void
             'high' => 'Severe',
         ]);
 }
+
+/**
+ * Use the same canonical applicability rules for the form, live completion,
+ * server completion, and scoring eligibility. The selection is authoritative;
+ * an unselected severity is not an unanswered required question.
+ *
+ * Existing answers remain in their original storage paths. Changing the
+ * hazard selector does not erase them; reselecting a hazard exposes its
+ * previously recorded detail.
+ */
+function llama_place_report_apply_road_hazard_dependencies(array &$fields): void
+{
+    $hazards = [
+        'rocks',
+        'washboards',
+        'potholes',
+        'mud_risk',
+        'steep_grades',
+        'drop_off_exposure',
+        'water_crossings',
+        'downed_tree_risk',
+        'approach_deep_ruts',
+    ];
+
+    foreach ($hazards as $key) {
+        if (!isset($fields[$key])) {
+            continue;
+        }
+
+        $existing = (array) ($fields[$key]['applicable_if'] ?? []);
+        $existing[] = [
+            'field' => 'approach_road_hazards',
+            'operator' => 'in',
+            'value' => [$key],
+        ];
+        $fields[$key]['applicable_if'] = $existing;
+    }
+}
