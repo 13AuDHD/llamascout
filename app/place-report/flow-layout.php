@@ -43,9 +43,11 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
     $assignments = [
         'getting_there:road_conditions' => [
             'road_surface', 'road_width', 'approach_road_condition',
+            'approach_road_hazards',
             'approach_deep_ruts', 'road_overall_difficulty', 'road_stress',
             'rocks', 'washboards', 'potholes', 'mud_risk', 'steep_grades',
-            'drop_off_exposure', 'warning_possible_downed_trees',
+            'drop_off_exposure', 'water_crossings', 'downed_tree_risk',
+            'warning_possible_downed_trees',
         ],
         'getting_there:vehicle_access' => [
             'sedan_accessible', 'high_clearance_recommended',
