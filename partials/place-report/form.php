@@ -230,6 +230,8 @@ $placeReportBrowserFields = [];
 foreach ($placeReportFields as $fieldKey => $field) {
     $placeReportBrowserFields[] = [
         'key' => (string) $fieldKey,
+        'layout_section' => (string) ($field['layout_section'] ?? ''),
+        'layout_group' => (string) ($field['layout_group'] ?? ''),
         'label' => (string) ($field['label'] ?? $fieldKey),
         'type' => (string) ($field['type'] ?? ''),
         'completion_group' => isset($field['completion_group'])
@@ -1132,6 +1134,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
     data-report-main-section="<?= $e($reportMainKey) ?>">
     <summary>
         <span><?= llama_icon($reportMainIcon) ?> <?= $e($reportMainLabel) ?></span>
+        <span class="place-report-section-progress" data-section-completion-percent aria-label="Section completion"></span>
     </summary>
     <div class="contribution-section-body">
         <?php foreach ($reportLayoutGroups[$reportMainKey] as $reportGroupKey => $reportGroupLabel):
@@ -1146,7 +1149,8 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         ?>
         <details class="contribution-section" data-report-subsection="<?= $e($reportGroupKey) ?>"
             <?= $reportMainKey === 'place' && $reportGroupKey === 'information_location' ? 'open' : '' ?>>
-            <summary><span><?= $e($reportGroupLabel) ?></span></summary>
+            <summary><span><?= $e($reportGroupLabel) ?></span>
+            <span class="place-report-section-progress" data-section-completion-percent aria-label="Subsection completion"></span></summary>
             <div class="contribution-section-body">
                 <?php if ($reportMainKey === 'place' && $reportGroupKey === 'information_location' && $placeReportShowLocate): ?>
             <?php if (
@@ -1408,3 +1412,5 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 <?php endforeach; ?>
 
 
+
+<script defer src="/js/place-report-section-completion.js"></script>
