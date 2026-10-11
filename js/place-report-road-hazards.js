@@ -140,3 +140,26 @@
     document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else boot();
 })();
+
+
+/* Place Rules & Restrictions: admin save bridge for supplemental rule columns. */
+(() => {
+  'use strict';
+  const boot = () => {
+    if (!document.querySelector(
+      '[name="generator_prohibited"], [name="place_charcoal_grills_allowed"], [name="place_quiet_hours"]'
+    )) return;
+
+    if (!document.querySelector('script[data-place-rules-script]')) {
+      const script = document.createElement('script');
+      script.src = '/js/place-report-place-rules.js';
+      script.defer = true;
+      script.dataset.placeRulesScript = '1';
+      document.head.appendChild(script);
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else boot();
+})();
