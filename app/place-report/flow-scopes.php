@@ -45,6 +45,19 @@ function llama_place_report_scope_overrides(): array
         'entrance_facility_fee' => 'place',
         'parking_fee' => 'place',
         'campsite_count' => 'place_area',
+
+        // Connectivity describes the Place as a whole in the canonical
+        // Place Report. Individual campsite records do not override it.
+        'connectivity_overall' => 'place',
+        'connectivity_t_mobile' => 'place',
+        'connectivity_verizon' => 'place',
+        'connectivity_att' => 'place',
+        'connectivity_other_cell' => 'place',
+        'connectivity_starlink' => 'place',
+        'connectivity_starlink_tested' => 'place',
+        'connectivity_starlink_note' => 'place',
+
+        // Nearby services describe the Place, not an individual campsite.
         'nearest_town' => 'place',
         'nearest_fuel' => 'place',
         'nearest_ev_charging' => 'place',
