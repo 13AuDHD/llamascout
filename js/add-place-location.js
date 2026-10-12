@@ -53,6 +53,68 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   };
 
+  const locationField = name =>
+    document.querySelector(
+      `[data-location-field="${name}"]`
+    );
+
+  const syncVisibleCoordinatesFromStoredFields = () => {
+    if (!coordinateInput) return false;
+
+    const latitudeField =
+      locationField("latitude");
+
+    const longitudeField =
+      locationField("longitude");
+
+    if (!latitudeField || !longitudeField) {
+      return false;
+    }
+
+    const latitudeRaw =
+      String(latitudeField.value || "").trim();
+
+    const longitudeRaw =
+      String(longitudeField.value || "").trim();
+
+    if (
+      latitudeRaw === ""
+      || longitudeRaw === ""
+    ) {
+      return false;
+    }
+
+    const latitude =
+      Number(latitudeRaw);
+
+    const longitude =
+      Number(longitudeRaw);
+
+    if (
+      !Number.isFinite(latitude)
+      || latitude < -90
+      || latitude > 90
+      || !Number.isFinite(longitude)
+      || longitude < -180
+      || longitude > 180
+    ) {
+      return false;
+    }
+
+    const formatted =
+      `${latitude.toFixed(7)}, ${longitude.toFixed(7)}`;
+
+    if (
+      coordinateInput.value.trim()
+      !== formatted
+    ) {
+      coordinateInput.value =
+        formatted;
+    }
+
+    return true;
+  };
+
   const normalizeMinus = value =>
     String(value || "").replace(/\u2212/g, "-");
 
@@ -491,6 +553,41 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       });
     };
+
+  /*
+   * The recovery/draft systems persist the canonical hidden latitude and
+   * longitude fields. The combined visible coordinate input is only a UI
+   * convenience. If the browser restores the hidden fields but not that
+   * display field, rebuild it immediately so the form cannot appear to have
+   * "lost" a location while completion still sees valid coordinates.
+   */
+  syncVisibleCoordinatesFromStoredFields();
+
+  window.setTimeout(
+    syncVisibleCoordinatesFromStoredFields,
+    0
+  );
+
+  window.addEventListener(
+    "pageshow",
+    () => {
+      syncVisibleCoordinatesFromStoredFields();
+    }
+  );
+
+  [
+    locationField("latitude"),
+    locationField("longitude")
+  ]
+    .filter(Boolean)
+    .forEach(field => {
+      field.addEventListener(
+        "change",
+        () => {
+          syncVisibleCoordinatesFromStoredFields();
+        }
+      );
+    });
 
   if (
     searchButton &&
