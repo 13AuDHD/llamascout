@@ -143,7 +143,6 @@ function llama_place_report_fields(): array
     foreach ([
         'tent_camping_allowed',
         'rv_camping_allowed',
-        'trailer_camping_allowed',
         'overnight_restrictions',
         'overnight_vehicle_tent_permit_url',
     ] as $key) {
