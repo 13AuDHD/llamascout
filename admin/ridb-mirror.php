@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/ridb-mirror-extended.php';
+require_once dirname(__DIR__) . '/app/ridb-mirror.php';
 
 $adminUser =
     moderation_require_admin();
@@ -26,8 +26,8 @@ $ridbDb =
 $feeds =
     llama_ridb_mirror_feeds();
 
-$childFeeds =
-    llama_ridb_mirror_recommended_child_feeds();
+$autoRunning = false;
+$autoFeed = '';
 
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '')
@@ -45,7 +45,11 @@ if (
             'Your session token expired. Reload and try again.';
     } else {
         try {
-            @set_time_limit(0);
+            /*
+             * One request handles at most 500 records.
+             * The browser waits 15 seconds before requesting the next batch.
+             */
+            @set_time_limit(45);
 
             $action =
                 trim(
@@ -55,7 +59,7 @@ if (
                     )
                 );
 
-            $feed =
+            $requestedFeed =
                 trim(
                     (string) (
                         $_POST['feed']
@@ -63,121 +67,126 @@ if (
                     )
                 );
 
-            if ($action === 'sync_feed') {
+            if (
+                in_array(
+                    $action,
+                    [
+                        'auto_start',
+                        'auto_tick',
+                    ],
+                    true
+                )
+            ) {
+                $autoFeed =
+                    $requestedFeed !== ''
+                        ? $requestedFeed
+                        : (
+                            llama_ridb_mirror_first_incomplete_feed(
+                                $ridbDb
+                            )
+                            ?? ''
+                        );
+
+                if (
+                    $autoFeed !== ''
+                    && isset($feeds[$autoFeed])
+                ) {
+                    $result =
+                        llama_ridb_mirror_sync_feed_batch(
+                            $ridbDb,
+                            $autoFeed,
+                            500
+                        );
+
+                    $notice =
+                        number_format(
+                            (int) $result['seen']
+                        )
+                        . ' '
+                        . $feeds[$autoFeed]['label']
+                        . ' records processed. Offset '
+                        . number_format(
+                            (int) $result['next_offset']
+                        )
+                        . '.';
+
+                    if (!empty($result['complete'])) {
+                        $nextFeed =
+                            llama_ridb_mirror_first_incomplete_feed(
+                                $ridbDb
+                            );
+
+                        if ($nextFeed !== null) {
+                            $autoFeed = $nextFeed;
+                            $autoRunning = true;
+
+                            $notice .=
+                                ' That feed is complete. The importer will move to '
+                                . $feeds[$nextFeed]['label']
+                                . ' after the 15-second pause.';
+                        } else {
+                            $autoFeed = '';
+                            $autoRunning = false;
+
+                            $notice .=
+                                ' Every global RIDB mirror feed is complete.';
+                        }
+                    } else {
+                        $autoRunning = true;
+                    }
+                }
+            } elseif ($action === 'single_batch') {
+                if (!isset($feeds[$requestedFeed])) {
+                    throw new InvalidArgumentException(
+                        'Unknown RIDB mirror feed.'
+                    );
+                }
+
                 $result =
-                    llama_ridb_mirror_sync_feed_until_complete(
+                    llama_ridb_mirror_sync_feed_batch(
                         $ridbDb,
-                        $feed
+                        $requestedFeed,
+                        500
                     );
 
                 $notice =
-                    (
-                        $feeds[$feed]['label']
-                        ?? $feed
-                    )
-                    . ' synchronization finished. '
-                    . number_format(
+                    number_format(
                         (int) $result['seen']
                     )
-                    . ' additional records were read in '
+                    . ' '
+                    . $feeds[$requestedFeed]['label']
+                    . ' records processed. Offset '
                     . number_format(
-                        (int) $result['passes']
-                    )
-                    . ' checkpoint pass'
-                    . (
-                        (int) $result['passes'] === 1
-                            ? ''
-                            : 'es'
+                        (int) $result['next_offset']
                     )
                     . '.';
-            } elseif ($action === 'sync_all_feeds') {
-                $results =
-                    llama_ridb_mirror_sync_all_until_complete(
-                        $ridbDb
-                    );
-
-                $notice =
-                    !$results
-                        ? 'Every global RIDB mirror feed was already complete.'
-                        : 'Every incomplete global RIDB mirror feed finished. '
-                            . number_format(
-                                count($results)
-                            )
-                            . ' dataset'
-                            . (
-                                count($results) === 1
-                                    ? ''
-                                    : 's'
-                            )
-                            . ' were completed.';
-            } elseif (
-                $action
-                === 'extract_campsite_details'
-            ) {
-                $result =
-                    llama_ridb_mirror_extract_cached_campsite_details(
-                        $ridbDb,
-                        1000
-                    );
-
-                $notice =
-                    'Campsite detail extraction finished. '
-                    . number_format(
-                        (int) $result['sites']
-                    )
-                    . ' campsite records checked, '
-                    . number_format(
-                        (int) $result['attributes']
-                    )
-                    . ' embedded attributes, '
-                    . number_format(
-                        (int) $result['equipment']
-                    )
-                    . ' permitted-equipment records, and '
-                    . number_format(
-                        (int) $result['media']
-                    )
-                    . ' campsite media records stored.';
-            } elseif ($action === 'sync_child_feed') {
-                $result =
-                    llama_ridb_mirror_sync_child_until_complete(
-                        $ridbDb,
-                        $feed
-                    );
-
-                $notice =
-                    (
-                        $childFeeds[$feed]['label']
-                        ?? $feed
-                    )
-                    . ' synchronization finished. '
-                    . number_format(
-                        (int) $result['parents_seen']
-                    )
-                    . ' parent records were checked.';
             } elseif ($action === 'reset_feed') {
                 llama_ridb_mirror_reset_feed(
                     $ridbDb,
-                    $feed
+                    $requestedFeed
                 );
 
                 $notice =
-                    'The selected mirror feed was reset to the beginning.';
+                    'The selected feed was reset to the beginning.';
+            } elseif ($action === 'stop_auto') {
+                $notice =
+                    'Automatic RIDB synchronization stopped.';
             }
         } catch (Throwable $exception) {
             $error =
                 $exception->getMessage();
+
+            /*
+             * Never continue automatically after an error.
+             */
+            $autoRunning = false;
+            $autoFeed = '';
         }
     }
 }
 
 $counts =
     llama_ridb_mirror_counts(
-        $ridbDb
-    );
-
-$detailCounts =
-    llama_ridb_mirror_campsite_detail_counts(
         $ridbDb
     );
 
@@ -192,25 +201,9 @@ foreach ($feeds as $feed => $definition) {
         );
 }
 
-$childStates = [];
-
-foreach ($childFeeds as $feed => $definition) {
-    $childStates[$feed] =
-        llama_ridb_mirror_child_state(
-            $ridbDb,
-            $feed,
-            $definition['path']
-        );
-}
-
-$incompleteGlobal =
-    array_filter(
-        $states,
-        static fn (array $state): bool =>
-            (int) (
-                $state['complete']
-                ?? 0
-            ) !== 1
+$firstIncomplete =
+    llama_ridb_mirror_first_incomplete_feed(
+        $ridbDb
     );
 
 require __DIR__ . '/_header.php';
@@ -242,48 +235,101 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
     <div>
         <p>Lossless source cache</p>
-        <h2>RIDB Full Mirror</h2>
+        <h2>RIDB Slow Importer</h2>
     </div>
 </header>
 
 <p>
-    RIDB records are cached in the dedicated reference database before
-    selected information is promoted into Llama Scout. Full source JSON
-    remains available even when Llama Scout does not currently map a field.
+    Automatic mode processes one 500-record batch, ends the PHP request,
+    waits 15 seconds in the browser, then starts the next batch. It continues
+    from the saved RIDB offset and moves to the next incomplete global feed
+    automatically.
+</p>
+
+<p>
+    Closing this page, navigating away, or pressing Stop prevents another
+    batch from starting. A failed batch also stops automatic mode.
 </p>
 
 <div class="admin-user-form-actions">
-    <a
-        class="admin-button is-secondary"
-        href="/ridb.php"
+
+<a
+    class="admin-button is-secondary"
+    href="/ridb.php"
+>
+    Back to RIDB catalog
+</a>
+
+<?php if ($firstIncomplete !== null && !$autoRunning): ?>
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
     >
-        Back to RIDB catalog
-    </a>
+    <input
+        type="hidden"
+        name="action"
+        value="auto_start"
+    >
+    <input
+        type="hidden"
+        name="feed"
+        value="<?= moderation_e(
+            $firstIncomplete
+        ) ?>"
+    >
 
-    <?php if ($incompleteGlobal): ?>
-    <form method="post">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= moderation_e(
-                moderation_csrf_token()
-            ) ?>"
-        >
-        <input
-            type="hidden"
-            name="action"
-            value="sync_all_feeds"
-        >
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Start slow automatic import
+    </button>
+</form>
+<?php endif; ?>
 
-        <button
-            class="admin-button"
-            type="submit"
-        >
-            Finish all incomplete feeds
-        </button>
-    </form>
-    <?php endif; ?>
+<?php if ($autoRunning): ?>
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
+    >
+    <input
+        type="hidden"
+        name="action"
+        value="stop_auto"
+    >
+
+    <button
+        class="admin-button is-secondary"
+        type="submit"
+    >
+        Stop after this batch
+    </button>
+</form>
+<?php endif; ?>
+
 </div>
+
+<?php if ($autoRunning && $autoFeed !== ''): ?>
+<div class="admin-user-notice">
+    Automatic import is running:
+    <strong>
+        <?= moderation_e(
+            $feeds[$autoFeed]['label']
+            ?? $autoFeed
+        ) ?>
+    </strong>.
+    Next 500-record batch starts in about 15 seconds.
+</div>
+<?php endif; ?>
+
 </section>
 
 <section class="admin-panel">
@@ -293,12 +339,6 @@ require __DIR__ . '/_header.php';
         <h2>Mirror feeds</h2>
     </div>
 </header>
-
-<p>
-    A single Finish button now continues through every remaining
-    5,000-record checkpoint automatically. You no longer need to press
-    Continue for each 500 records.
-</p>
 
 <div class="admin-integration-table-wrap">
 <table class="admin-integration-table">
@@ -324,6 +364,10 @@ $complete =
         $state['complete']
         ?? 0
     ) === 1;
+
+$isCurrent =
+    $autoRunning
+    && $autoFeed === $feed;
 ?>
 <tr>
     <td data-label="Dataset">
@@ -361,242 +405,17 @@ $complete =
         <span class="admin-status-pill">
             <?= $complete
                 ? 'Complete'
-                : 'In progress' ?>
+                : (
+                    $isCurrent
+                        ? 'Auto'
+                        : 'In progress'
+                ) ?>
         </span>
     </td>
 
     <td data-label="Action">
         <div class="admin-user-form-actions">
-            <form method="post">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= moderation_e(
-                        moderation_csrf_token()
-                    ) ?>"
-                >
-                <input
-                    type="hidden"
-                    name="action"
-                    value="sync_feed"
-                >
-                <input
-                    type="hidden"
-                    name="feed"
-                    value="<?= moderation_e(
-                        $feed
-                    ) ?>"
-                >
 
-                <button
-                    class="admin-button"
-                    type="submit"
-                    <?= $complete
-                        ? 'disabled'
-                        : '' ?>
-                >
-                    <?= $complete
-                        ? 'Complete'
-                        : 'Finish' ?>
-                </button>
-            </form>
-
-            <form method="post">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= moderation_e(
-                        moderation_csrf_token()
-                    ) ?>"
-                >
-                <input
-                    type="hidden"
-                    name="action"
-                    value="reset_feed"
-                >
-                <input
-                    type="hidden"
-                    name="feed"
-                    value="<?= moderation_e(
-                        $feed
-                    ) ?>"
-                >
-
-                <button
-                    class="admin-button is-secondary"
-                    type="submit"
-                >
-                    Reset
-                </button>
-            </form>
-        </div>
-    </td>
-</tr>
-<?php endforeach; ?>
-
-</tbody>
-</table>
-</div>
-</section>
-
-<section class="admin-panel">
-<header class="admin-panel-header">
-    <div>
-        <p>Campsite records already downloaded</p>
-        <h2>Embedded campsite details</h2>
-    </div>
-</header>
-
-<p>
-    RIDB campsite records can already contain attributes, permitted equipment,
-    and individual campsite media. Extract these directly from the cached
-    campsite JSON instead of making a separate API request for every campsite.
-</p>
-
-<div class="admin-integration-summary">
-<div>
-    <strong>
-        <?= number_format(
-            (int) (
-                $detailCounts[
-                    'campsite_attributes'
-                ]
-                ?? 0
-            )
-        ) ?>
-    </strong>
-    <span>Campsite attributes</span>
-</div>
-
-<div>
-    <strong>
-        <?= number_format(
-            (int) (
-                $detailCounts[
-                    'campsite_permitted_equipment'
-                ]
-                ?? 0
-            )
-        ) ?>
-    </strong>
-    <span>Equipment records</span>
-</div>
-
-<div>
-    <strong>
-        <?= number_format(
-            (int) (
-                $detailCounts[
-                    'campsite_media'
-                ]
-                ?? 0
-            )
-        ) ?>
-    </strong>
-    <span>Campsite media</span>
-</div>
-</div>
-
-<div class="admin-user-form-actions">
-<form method="post">
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= moderation_e(
-            moderation_csrf_token()
-        ) ?>"
-    >
-    <input
-        type="hidden"
-        name="action"
-        value="extract_campsite_details"
-    >
-
-    <button
-        class="admin-button"
-        type="submit"
-    >
-        Extract cached campsite details
-    </button>
-</form>
-</div>
-</section>
-
-<section class="admin-panel">
-<header class="admin-panel-header">
-    <div>
-        <p>Only data that still needs per-entity requests</p>
-        <h2>Child feeds</h2>
-    </div>
-</header>
-
-<p>
-    Campsite attributes are no longer listed here because they are extracted
-    from the campsite records already downloaded. These remaining feeds are
-    only for RIDB data that still requires a parent-specific endpoint.
-</p>
-
-<div class="admin-integration-table-wrap">
-<table class="admin-integration-table">
-<thead>
-<tr>
-    <th>Dataset</th>
-    <th>Cached</th>
-    <th>Parents processed</th>
-    <th>Status</th>
-    <th>Action</th>
-</tr>
-</thead>
-<tbody>
-
-<?php foreach ($childFeeds as $feed => $definition): ?>
-<?php
-$state =
-    $childStates[$feed]
-    ?? [];
-
-$complete =
-    (int) (
-        $state['complete']
-        ?? 0
-    ) === 1;
-?>
-<tr>
-    <td data-label="Dataset">
-        <strong>
-            <?= moderation_e(
-                $definition['label']
-            ) ?>
-        </strong>
-    </td>
-
-    <td data-label="Cached">
-        <?= number_format(
-            (int) (
-                $counts[$feed]
-                ?? 0
-            )
-        ) ?>
-    </td>
-
-    <td data-label="Parents processed">
-        <?= number_format(
-            (int) (
-                $state['next_offset']
-                ?? 0
-            )
-        ) ?>
-    </td>
-
-    <td data-label="Status">
-        <span class="admin-status-pill">
-            <?= $complete
-                ? 'Complete'
-                : 'In progress' ?>
-        </span>
-    </td>
-
-    <td data-label="Action">
         <form method="post">
             <input
                 type="hidden"
@@ -608,7 +427,7 @@ $complete =
             <input
                 type="hidden"
                 name="action"
-                value="sync_child_feed"
+                value="single_batch"
             >
             <input
                 type="hidden"
@@ -621,15 +440,49 @@ $complete =
             <button
                 class="admin-button"
                 type="submit"
-                <?= $complete
+                <?= $complete || $autoRunning
                     ? 'disabled'
                     : '' ?>
             >
                 <?= $complete
                     ? 'Complete'
-                    : 'Finish' ?>
+                    : 'Run 500 once' ?>
             </button>
         </form>
+
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="action"
+                value="reset_feed"
+            >
+            <input
+                type="hidden"
+                name="feed"
+                value="<?= moderation_e(
+                    $feed
+                ) ?>"
+            >
+
+            <button
+                class="admin-button is-secondary"
+                type="submit"
+                <?= $autoRunning
+                    ? 'disabled'
+                    : '' ?>
+            >
+                Reset
+            </button>
+        </form>
+
+        </div>
     </td>
 </tr>
 <?php endforeach; ?>
@@ -638,5 +491,53 @@ $complete =
 </table>
 </div>
 </section>
+
+<?php if ($autoRunning && $autoFeed !== ''): ?>
+<form
+    id="ridb-slow-auto-next"
+    method="post"
+    hidden
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
+    >
+    <input
+        type="hidden"
+        name="action"
+        value="auto_tick"
+    >
+    <input
+        type="hidden"
+        name="feed"
+        value="<?= moderation_e(
+            $autoFeed
+        ) ?>"
+    >
+</form>
+
+<script>
+(function () {
+    var nextForm =
+        document.getElementById(
+            'ridb-slow-auto-next'
+        );
+
+    if (!nextForm) {
+        return;
+    }
+
+    window.setTimeout(
+        function () {
+            nextForm.submit();
+        },
+        15000
+    );
+}());
+</script>
+<?php endif; ?>
 
 <?php require __DIR__ . '/_footer.php'; ?>
