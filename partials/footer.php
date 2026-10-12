@@ -104,7 +104,7 @@ $footerUser = current_user();
                 aria-label="Explore Llama Scout"
             >
 
-                <h2>Explore</h2>
+                <h2>Explore Llama Scout</h2>
 
                 <a href="<?= htmlspecialchars($footerSiteBase . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                     Map
@@ -205,6 +205,8 @@ $footerUser = current_user();
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/photo-uploader.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/contributor-photo-sorter.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/persistent-photo-manager.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/place-report-presentation.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/map-closure-marker.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/share.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/session-heartbeat.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 
