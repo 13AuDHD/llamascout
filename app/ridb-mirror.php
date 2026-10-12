@@ -2,874 +2,650 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/ridb.php';
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/ridb-mirror-extended.php';
 
-/**
- * Lossless RIDB mirror.
- *
- * Existing normalized RIDB tables remain the fast/indexed working cache.
- * This mirror keeps the complete JSON payload for the rest of the useful
- * RIDB API so Llama Scout can normalize additional fields later without
- * having to rediscover or re-download the source record.
- */
+$adminUser =
+    moderation_require_admin();
 
-function llama_ridb_mirror_feeds(): array
-{
-    return [
-        'organizations' => [
-            'label' => 'Organizations',
-            'endpoint' => '/organizations',
-            'id_keys' => ['OrgID', 'OrganizationID', 'organizationID'],
-        ],
-        'recreation_areas' => [
-            'label' => 'Recreation areas',
-            'endpoint' => '/recareas',
-            'id_keys' => ['RecAreaID', 'recAreaID', 'recarea_id'],
-        ],
-        'recreation_area_addresses' => [
-            'label' => 'Recreation area addresses',
-            'endpoint' => '/recareaaddresses',
-            'id_keys' => ['RecAreaAddressID', 'recAreaAddressID'],
-        ],
-        'facility_addresses' => [
-            'label' => 'Facility addresses',
-            'endpoint' => '/facilityaddresses',
-            'id_keys' => ['FacilityAddressID', 'facilityAddressID'],
-        ],
-        'activities' => [
-            'label' => 'Activities',
-            'endpoint' => '/activities',
-            'id_keys' => ['ActivityID', 'activityID'],
-        ],
-        'links' => [
-            'label' => 'Links',
-            'endpoint' => '/links',
-            'id_keys' => ['LinkID', 'linkID'],
-        ],
-        'media' => [
-            'label' => 'Media',
-            'endpoint' => '/media',
-            'id_keys' => ['EntityMediaID', 'MediaID', 'entityMediaID'],
-        ],
-        'campsites' => [
-            'label' => 'Campsites',
-            'endpoint' => '/campsites',
-            'id_keys' => ['CampsiteID', 'campsiteID', 'campsite_id'],
-        ],
-        'events' => [
-            'label' => 'Events',
-            'endpoint' => '/events',
-            'id_keys' => ['EventID', 'eventID'],
-        ],
-        'permit_entrances' => [
-            'label' => 'Permit entrances',
-            'endpoint' => '/permitentrances',
-            'id_keys' => ['PermitEntranceID', 'permitEntranceID'],
-        ],
-        'tours' => [
-            'label' => 'Tours',
-            'endpoint' => '/tours',
-            'id_keys' => ['TourID', 'tourID'],
-        ],
-    ];
-}
+$adminPageTitle =
+    'RIDB Full Mirror';
 
-function llama_ridb_mirror_child_feeds(): array
-{
-    return [
-        'campsite_attributes' => [
-            'label' => 'Campsite attributes',
-            'parent_feed' => 'campsites',
-            'path' => '/campsites/%s/attributes',
-            'id_keys' => [
-                'AttributeID',
-                'EntityAttributeID',
-                'attributeID',
-            ],
-        ],
-        'permit_entrance_attributes' => [
-            'label' => 'Permit entrance attributes',
-            'parent_feed' => 'permit_entrances',
-            'path' => '/permitentrances/%s/attributes',
-            'id_keys' => [
-                'AttributeID',
-                'EntityAttributeID',
-                'attributeID',
-            ],
-        ],
-        'permit_entrance_zones' => [
-            'label' => 'Permit entrance zones',
-            'parent_feed' => 'permit_entrances',
-            'path' => '/permitentrances/%s/zones',
-            'id_keys' => ['ZoneID', 'zoneID'],
-        ],
-        'tour_attributes' => [
-            'label' => 'Tour attributes',
-            'parent_feed' => 'tours',
-            'path' => '/tours/%s/attributes',
-            'id_keys' => [
-                'AttributeID',
-                'EntityAttributeID',
-                'attributeID',
-            ],
-        ],
-    ];
-}
+$adminPageEyebrow =
+    'Reference Data';
 
-function llama_ridb_mirror_record_value(
-    array $record,
-    array $keys
-): string {
-    foreach ($keys as $key) {
-        if (!array_key_exists($key, $record)) {
-            continue;
-        }
+$adminActiveNav =
+    'reference-data';
 
-        $value = trim((string) $record[$key]);
+$error = '';
+$notice = '';
+$autoFeed = '';
 
-        if ($value !== '') {
-            return $value;
-        }
-    }
+$ridbDb =
+    ridb_db();
 
-    return '';
-}
+$feeds =
+    llama_ridb_mirror_feeds();
 
-function llama_ridb_mirror_record_id(
-    array $record,
-    array $idKeys
-): string {
-    $sourceId =
-        llama_ridb_mirror_record_value(
-            $record,
-            $idKeys
-        );
+$childFeeds =
+    llama_ridb_mirror_recommended_child_feeds();
 
-    if ($sourceId !== '') {
-        return $sourceId;
-    }
-
-    return
-        'sha256:'
-        . hash(
-            'sha256',
-            json_encode(
-                $record,
-                JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
-                | JSON_THROW_ON_ERROR
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '')
+    === 'POST'
+) {
+    if (
+        !moderation_verify_csrf(
+            (string) (
+                $_POST['csrf_token']
+                ?? ''
             )
-        );
-}
+        )
+    ) {
+        $error =
+            'Your session token expired. Reload and try again.';
+    } else {
+        try {
+            /*
+             * IMPORTANT:
+             * Keep every web request deliberately short. The browser may
+             * continue automatically, but the PHP request itself must never
+             * loop until an entire national RIDB feed is complete.
+             */
+            @set_time_limit(45);
 
-function llama_ridb_mirror_relationship(
-    array $record,
-    string $feed
-): array {
-    if ($feed === 'media') {
-        $entityId =
-            llama_ridb_mirror_record_value(
-                $record,
-                ['EntityID', 'entityID', 'entity_id']
-            );
+            $action =
+                trim(
+                    (string) (
+                        $_POST['action']
+                        ?? ''
+                    )
+                );
 
-        $entityType =
-            llama_ridb_mirror_record_value(
-                $record,
-                ['EntityType', 'entityType', 'entity_type']
-            );
+            $feed =
+                trim(
+                    (string) (
+                        $_POST['feed']
+                        ?? ''
+                    )
+                );
 
-        return [
-            'entity_id' => $entityId,
-            'entity_type' => $entityType,
-            'parent_id' => $entityId,
-            'parent_type' => $entityType,
-        ];
-    }
+            if ($action === 'sync_feed') {
+                $result =
+                    llama_ridb_mirror_sync_feed_batch(
+                        $ridbDb,
+                        $feed,
+                        500
+                    );
 
-    $parentCandidates = [
-        ['FacilityID', 'facilityID', 'facility_id', 'Facility'],
-        ['RecAreaID', 'recAreaID', 'recarea_id', 'RecreationArea'],
-        ['OrgID', 'OrganizationID', 'organizationID', 'Organization'],
-        ['PermitEntranceID', 'permitEntranceID', 'PermitEntrance'],
-        ['TourID', 'tourID', 'Tour'],
-    ];
+                $notice =
+                    number_format(
+                        (int) $result['seen']
+                    )
+                    . ' '
+                    . (
+                        $feeds[$feed]['label']
+                        ?? $feed
+                    )
+                    . ' records processed. Offset is now '
+                    . number_format(
+                        (int) $result['next_offset']
+                    )
+                    . '.';
 
-    foreach ($parentCandidates as $candidate) {
-        [$a, $b, $c, $type] = $candidate;
+                if (empty($result['complete'])) {
+                    $autoFeed = $feed;
+                }
+            } elseif (
+                $action
+                === 'extract_campsite_details'
+            ) {
+                /*
+                 * This extraction is local DB work only, but can still be
+                 * large. Keep the existing full backfill action manual for
+                 * now rather than chaining it through gateway requests.
+                 */
+                $result =
+                    llama_ridb_mirror_extract_cached_campsite_details(
+                        $ridbDb,
+                        1000
+                    );
 
-        $value =
-            llama_ridb_mirror_record_value(
-                $record,
-                [$a, $b, $c]
-            );
+                $notice =
+                    'Campsite detail extraction finished. '
+                    . number_format(
+                        (int) $result['sites']
+                    )
+                    . ' campsite records checked, '
+                    . number_format(
+                        (int) $result['attributes']
+                    )
+                    . ' embedded attributes, '
+                    . number_format(
+                        (int) $result['equipment']
+                    )
+                    . ' equipment records, and '
+                    . number_format(
+                        (int) $result['media']
+                    )
+                    . ' campsite media records stored.';
+            } elseif ($action === 'sync_child_feed') {
+                $result =
+                    llama_ridb_mirror_sync_child_batch(
+                        $ridbDb,
+                        $feed,
+                        25
+                    );
 
-        if ($value !== '') {
-            return [
-                'entity_id' => '',
-                'entity_type' => '',
-                'parent_id' => $value,
-                'parent_type' => $type,
-            ];
+                $notice =
+                    number_format(
+                        (int) $result['parents_seen']
+                    )
+                    . ' parent records checked; '
+                    . number_format(
+                        (int) $result['stored']
+                    )
+                    . ' child records stored.';
+            } elseif ($action === 'reset_feed') {
+                llama_ridb_mirror_reset_feed(
+                    $ridbDb,
+                    $feed
+                );
+
+                $notice =
+                    'The selected mirror feed was reset to the beginning.';
+            }
+        } catch (Throwable $exception) {
+            $error =
+                $exception->getMessage();
+
+            /*
+             * Never auto-submit again after a failed request.
+             */
+            $autoFeed = '';
         }
     }
-
-    return [
-        'entity_id' => '',
-        'entity_type' => '',
-        'parent_id' => '',
-        'parent_type' => '',
-    ];
 }
 
-function llama_ridb_mirror_store_records(
-    PDO $ridbDb,
-    string $feed,
-    string $endpoint,
-    array $records,
-    array $idKeys,
-    string $forcedParentId = '',
-    string $forcedParentType = ''
-): int {
-    if (!$records) {
-        return 0;
-    }
+$counts =
+    llama_ridb_mirror_counts(
+        $ridbDb
+    );
 
-    $stmt =
-        $ridbDb->prepare(
-            'INSERT INTO ridb_raw_records
-            (
-                feed,
-                source_record_id,
-                source_endpoint,
-                entity_id,
-                entity_type,
-                parent_id,
-                parent_type,
-                source_json,
-                record_hash,
-                first_seen_at,
-                last_seen_at
-            )
-            VALUES
-            (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                UTC_TIMESTAMP(),
-                UTC_TIMESTAMP()
-            )
-            ON DUPLICATE KEY UPDATE
-                source_endpoint = VALUES(source_endpoint),
-                entity_id = VALUES(entity_id),
-                entity_type = VALUES(entity_type),
-                parent_type = VALUES(parent_type),
-                source_json = VALUES(source_json),
-                record_hash = VALUES(record_hash),
-                last_seen_at = UTC_TIMESTAMP()'
-        );
+$detailCounts =
+    llama_ridb_mirror_campsite_detail_counts(
+        $ridbDb
+    );
 
-    $stored = 0;
+$states = [];
 
-    foreach ($records as $record) {
-        if (!is_array($record)) {
-            continue;
-        }
-
-        $sourceId =
-            llama_ridb_mirror_record_id(
-                $record,
-                $idKeys
-            );
-
-        $relationship =
-            llama_ridb_mirror_relationship(
-                $record,
-                $feed
-            );
-
-        if ($forcedParentId !== '') {
-            $relationship['parent_id'] =
-                $forcedParentId;
-
-            $relationship['parent_type'] =
-                $forcedParentType;
-        }
-
-        $json =
-            json_encode(
-                $record,
-                JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
-                | JSON_THROW_ON_ERROR
-            );
-
-        $stmt->execute([
-            $feed,
-            $sourceId,
-            $endpoint,
-            (string) $relationship['entity_id'],
-            (string) $relationship['entity_type'],
-            (string) $relationship['parent_id'],
-            (string) $relationship['parent_type'],
-            $json,
-            hash('sha256', $json),
-        ]);
-
-        $stored++;
-    }
-
-    return $stored;
-}
-
-function llama_ridb_mirror_sync_state(
-    PDO $ridbDb,
-    string $feed,
-    string $endpoint
-): array {
-    $stmt =
-        $ridbDb->prepare(
-            'SELECT
-                feed,
-                endpoint,
-                next_offset,
-                complete,
-                total_seen,
-                total_stored,
-                last_batch_count,
-                started_at,
-                updated_at
-             FROM ridb_mirror_sync_state
-             WHERE feed = ?
-             LIMIT 1'
-        );
-
-    $stmt->execute([$feed]);
-
-    $row =
-        $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($row) {
-        return $row;
-    }
-
-    $insert =
-        $ridbDb->prepare(
-            'INSERT INTO ridb_mirror_sync_state
-            (
-                feed,
-                endpoint,
-                next_offset,
-                complete,
-                total_seen,
-                total_stored,
-                last_batch_count,
-                started_at,
-                updated_at
-            )
-            VALUES
-            (
-                ?, ?, 0, 0, 0, 0, 0,
-                UTC_TIMESTAMP(),
-                UTC_TIMESTAMP()
-            )'
-        );
-
-    $insert->execute([
-        $feed,
-        $endpoint,
-    ]);
-
-    return [
-        'feed' => $feed,
-        'endpoint' => $endpoint,
-        'next_offset' => 0,
-        'complete' => 0,
-        'total_seen' => 0,
-        'total_stored' => 0,
-        'last_batch_count' => 0,
-        'started_at' => null,
-        'updated_at' => null,
-    ];
-}
-
-function llama_ridb_mirror_reset_feed(
-    PDO $ridbDb,
-    string $feed
-): void {
-    $feeds =
-        llama_ridb_mirror_feeds();
-
-    if (!isset($feeds[$feed])) {
-        throw new InvalidArgumentException(
-            'Unknown RIDB mirror feed.'
-        );
-    }
-
-    $stmt =
-        $ridbDb->prepare(
-            'INSERT INTO ridb_mirror_sync_state
-            (
-                feed,
-                endpoint,
-                next_offset,
-                complete,
-                total_seen,
-                total_stored,
-                last_batch_count,
-                started_at,
-                updated_at
-            )
-            VALUES
-            (
-                ?, ?, 0, 0, 0, 0, 0,
-                UTC_TIMESTAMP(),
-                UTC_TIMESTAMP()
-            )
-            ON DUPLICATE KEY UPDATE
-                endpoint = VALUES(endpoint),
-                next_offset = 0,
-                complete = 0,
-                total_seen = 0,
-                total_stored = 0,
-                last_batch_count = 0,
-                started_at = UTC_TIMESTAMP(),
-                updated_at = UTC_TIMESTAMP()'
-        );
-
-    $stmt->execute([
-        $feed,
-        $feeds[$feed]['endpoint'],
-    ]);
-}
-
-function llama_ridb_mirror_sync_feed_batch(
-    PDO $ridbDb,
-    string $feed,
-    int $maxRecords = 500
-): array {
-    $feeds =
-        llama_ridb_mirror_feeds();
-
-    if (!isset($feeds[$feed])) {
-        throw new InvalidArgumentException(
-            'Unknown RIDB mirror feed.'
-        );
-    }
-
-    $definition =
-        $feeds[$feed];
-
-    $state =
+foreach ($feeds as $feed => $definition) {
+    $states[$feed] =
         llama_ridb_mirror_sync_state(
             $ridbDb,
             $feed,
             $definition['endpoint']
         );
-
-    if ((int) ($state['complete'] ?? 0) === 1) {
-        return [
-            'feed' => $feed,
-            'seen' => 0,
-            'stored' => 0,
-            'next_offset' =>
-                (int) ($state['next_offset'] ?? 0),
-            'complete' => true,
-        ];
-    }
-
-    $maxRecords =
-        max(
-            50,
-            min(5000, $maxRecords)
-        );
-
-    $limit = 50;
-    $offset =
-        (int) ($state['next_offset'] ?? 0);
-
-    $seen = 0;
-    $stored = 0;
-    $complete = false;
-
-    while ($seen < $maxRecords) {
-        $response =
-            llama_ridb_request(
-                $definition['endpoint'],
-                [
-                    'limit' => $limit,
-                    'offset' => $offset,
-                ]
-            );
-
-        $records =
-            llama_ridb_response_records(
-                $response
-            );
-
-        $count = count($records);
-
-        if ($count === 0) {
-            $complete = true;
-            break;
-        }
-
-        $stored +=
-            llama_ridb_mirror_store_records(
-                $ridbDb,
-                $feed,
-                $definition['endpoint'],
-                $records,
-                $definition['id_keys']
-            );
-
-        /*
-         * Keep the existing normalized working tables useful while the
-         * lossless mirror grows.
-         */
-        if ($feed === 'campsites') {
-            $byFacility = [];
-
-            foreach ($records as $record) {
-                if (!is_array($record)) {
-                    continue;
-                }
-
-                $facilityId =
-                    llama_ridb_mirror_record_value(
-                        $record,
-                        [
-                            'FacilityID',
-                            'facilityID',
-                            'facility_id',
-                        ]
-                    );
-
-                if ($facilityId === '') {
-                    continue;
-                }
-
-                $byFacility[$facilityId][] =
-                    $record;
-            }
-
-            foreach ($byFacility as $facilityId => $sites) {
-                llama_ridb_store_campsites(
-                    $ridbDb,
-                    (string) $facilityId,
-                    $sites
-                );
-            }
-        }
-
-        $seen += $count;
-        $offset += $count;
-
-        if ($count < $limit) {
-            $complete = true;
-            break;
-        }
-    }
-
-    $update =
-        $ridbDb->prepare(
-            'UPDATE ridb_mirror_sync_state
-             SET
-                endpoint = ?,
-                next_offset = ?,
-                complete = ?,
-                total_seen = total_seen + ?,
-                total_stored = total_stored + ?,
-                last_batch_count = ?,
-                updated_at = UTC_TIMESTAMP()
-             WHERE feed = ?'
-        );
-
-    $update->execute([
-        $definition['endpoint'],
-        $offset,
-        $complete ? 1 : 0,
-        $seen,
-        $stored,
-        $seen,
-        $feed,
-    ]);
-
-    llama_ridb_log_sync_run(
-        $ridbDb,
-        'mirror_' . $feed,
-        $complete ? 'success' : 'partial',
-        $seen,
-        $stored,
-        $definition['label']
-            . ' mirror offset now '
-            . $offset
-            . (
-                $complete
-                    ? '; synchronization complete'
-                    : '; more records remain'
-            )
-    );
-
-    return [
-        'feed' => $feed,
-        'seen' => $seen,
-        'stored' => $stored,
-        'next_offset' => $offset,
-        'complete' => $complete,
-    ];
 }
 
-function llama_ridb_mirror_parent_ids(
-    PDO $ridbDb,
-    string $parentFeed
-): array {
-    $stmt =
-        $ridbDb->prepare(
-            'SELECT source_record_id
-             FROM ridb_raw_records
-             WHERE feed = ?
-             ORDER BY source_record_id ASC'
-        );
+$childStates = [];
 
-    $stmt->execute([$parentFeed]);
-
-    return
-        array_values(
-            array_filter(
-                array_map(
-                    'strval',
-                    $stmt->fetchAll(
-                        PDO::FETCH_COLUMN
-                    )
-                    ?: []
-                )
-            )
-        );
-}
-
-function llama_ridb_mirror_child_state(
-    PDO $ridbDb,
-    string $feed,
-    string $endpointPattern
-): array {
-    return
-        llama_ridb_mirror_sync_state(
-            $ridbDb,
-            $feed,
-            $endpointPattern
-        );
-}
-
-function llama_ridb_mirror_sync_child_batch(
-    PDO $ridbDb,
-    string $feed,
-    int $maxParents = 50
-): array {
-    $feeds =
-        llama_ridb_mirror_child_feeds();
-
-    if (!isset($feeds[$feed])) {
-        throw new InvalidArgumentException(
-            'Unknown RIDB child mirror feed.'
-        );
-    }
-
-    $definition =
-        $feeds[$feed];
-
-    $parentIds =
-        llama_ridb_mirror_parent_ids(
-            $ridbDb,
-            $definition['parent_feed']
-        );
-
-    $state =
+foreach ($childFeeds as $feed => $definition) {
+    $childStates[$feed] =
         llama_ridb_mirror_child_state(
             $ridbDb,
             $feed,
             $definition['path']
         );
-
-    $offset =
-        (int) ($state['next_offset'] ?? 0);
-
-    if ((int) ($state['complete'] ?? 0) === 1) {
-        return [
-            'feed' => $feed,
-            'parents_seen' => 0,
-            'stored' => 0,
-            'next_offset' => $offset,
-            'complete' => true,
-        ];
-    }
-
-    $maxParents =
-        max(
-            1,
-            min(250, $maxParents)
-        );
-
-    $slice =
-        array_slice(
-            $parentIds,
-            $offset,
-            $maxParents
-        );
-
-    $parentsSeen = 0;
-    $stored = 0;
-
-    foreach ($slice as $parentId) {
-        $endpoint =
-            sprintf(
-                $definition['path'],
-                rawurlencode($parentId)
-            );
-
-        $response =
-            llama_ridb_fetch_all(
-                $endpoint,
-                [],
-                1000
-            );
-
-        $records =
-            $response['records']
-            ?? [];
-
-        $stored +=
-            llama_ridb_mirror_store_records(
-                $ridbDb,
-                $feed,
-                $endpoint,
-                $records,
-                $definition['id_keys'],
-                $parentId,
-                $definition['parent_feed']
-            );
-
-        $parentsSeen++;
-    }
-
-    $offset += $parentsSeen;
-
-    $complete =
-        $offset >= count($parentIds);
-
-    $update =
-        $ridbDb->prepare(
-            'UPDATE ridb_mirror_sync_state
-             SET
-                endpoint = ?,
-                next_offset = ?,
-                complete = ?,
-                total_seen = total_seen + ?,
-                total_stored = total_stored + ?,
-                last_batch_count = ?,
-                updated_at = UTC_TIMESTAMP()
-             WHERE feed = ?'
-        );
-
-    $update->execute([
-        $definition['path'],
-        $offset,
-        $complete ? 1 : 0,
-        $parentsSeen,
-        $stored,
-        $parentsSeen,
-        $feed,
-    ]);
-
-    llama_ridb_log_sync_run(
-        $ridbDb,
-        'mirror_' . $feed,
-        $complete ? 'success' : 'partial',
-        $parentsSeen,
-        $stored,
-        $definition['label']
-            . ': processed '
-            . $offset
-            . ' of '
-            . count($parentIds)
-            . ' parent records'
-    );
-
-    return [
-        'feed' => $feed,
-        'parents_seen' => $parentsSeen,
-        'stored' => $stored,
-        'next_offset' => $offset,
-        'complete' => $complete,
-        'parent_total' => count($parentIds),
-    ];
 }
 
-function llama_ridb_mirror_counts(
-    PDO $ridbDb
-): array {
-    $rows =
-        $ridbDb
-            ->query(
-                'SELECT
-                    feed,
-                    COUNT(*) AS record_count
-                 FROM ridb_raw_records
-                 GROUP BY feed
-                 ORDER BY feed ASC'
+require __DIR__ . '/_header.php';
+?>
+
+<?php if ($notice !== ''): ?>
+<section class="admin-panel">
+    <div
+        class="admin-user-notice is-success"
+        role="status"
+    >
+        <?= moderation_e($notice) ?>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($error !== ''): ?>
+<section class="admin-panel">
+    <div
+        class="admin-user-notice is-error"
+        role="alert"
+    >
+        <?= moderation_e($error) ?>
+    </div>
+</section>
+<?php endif; ?>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
+        <p>Lossless source cache</p>
+        <h2>RIDB Full Mirror</h2>
+    </div>
+</header>
+
+<p>
+    RIDB records are cached in the dedicated reference database before
+    selected information is promoted into Llama Scout.
+</p>
+
+<p>
+    Large feeds now run as a chain of short 500-record requests. The browser
+    continues automatically, but each server request ends before the next one
+    begins so a national feed does not sit inside one gateway request.
+</p>
+
+<div class="admin-user-form-actions">
+    <a
+        class="admin-button is-secondary"
+        href="/ridb.php"
+    >
+        Back to RIDB catalog
+    </a>
+</div>
+</section>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
+        <p>Global RIDB datasets</p>
+        <h2>Mirror feeds</h2>
+    </div>
+</header>
+
+<div class="admin-integration-table-wrap">
+<table class="admin-integration-table">
+<thead>
+<tr>
+    <th>Dataset</th>
+    <th>Cached</th>
+    <th>Offset</th>
+    <th>Status</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody>
+
+<?php foreach ($feeds as $feed => $definition): ?>
+<?php
+$state =
+    $states[$feed]
+    ?? [];
+
+$complete =
+    (int) (
+        $state['complete']
+        ?? 0
+    ) === 1;
+
+$isRunning =
+    $autoFeed === $feed;
+?>
+<tr>
+    <td data-label="Dataset">
+        <strong>
+            <?= moderation_e(
+                $definition['label']
+            ) ?>
+        </strong>
+        <div>
+            <?= moderation_e(
+                $definition['endpoint']
+            ) ?>
+        </div>
+    </td>
+
+    <td data-label="Cached">
+        <?= number_format(
+            (int) (
+                $counts[$feed]
+                ?? 0
             )
-            ->fetchAll(PDO::FETCH_ASSOC)
-        ?: [];
+        ) ?>
+    </td>
 
-    $counts = [];
+    <td data-label="Offset">
+        <?= number_format(
+            (int) (
+                $state['next_offset']
+                ?? 0
+            )
+        ) ?>
+    </td>
 
-    foreach ($rows as $row) {
-        $counts[(string) $row['feed']] =
-            (int) $row['record_count'];
-    }
+    <td data-label="Status">
+        <span class="admin-status-pill">
+            <?= $complete
+                ? 'Complete'
+                : (
+                    $isRunning
+                        ? 'Running'
+                        : 'In progress'
+                ) ?>
+        </span>
+    </td>
 
-    return $counts;
-}
+    <td data-label="Action">
+        <div class="admin-user-form-actions">
+            <form
+                method="post"
+                <?= $isRunning
+                    ? 'data-ridb-auto-sync'
+                    : '' ?>
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= moderation_e(
+                        moderation_csrf_token()
+                    ) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="action"
+                    value="sync_feed"
+                >
+                <input
+                    type="hidden"
+                    name="feed"
+                    value="<?= moderation_e(
+                        $feed
+                    ) ?>"
+                >
 
-function llama_ridb_mirror_media_for_entity(
-    PDO $ridbDb,
-    string $entityType,
-    string $entityId
-): array {
-    $stmt =
-        $ridbDb->prepare(
-            'SELECT
-                source_record_id,
-                source_json,
-                last_seen_at
-             FROM ridb_raw_records
-             WHERE feed = ?
-               AND LOWER(entity_type) = LOWER(?)
-               AND entity_id = ?
-             ORDER BY source_record_id ASC'
+                <button
+                    class="admin-button"
+                    type="submit"
+                    <?= $complete
+                        ? 'disabled'
+                        : '' ?>
+                >
+                    <?= $complete
+                        ? 'Complete'
+                        : (
+                            $isRunning
+                                ? 'Running...'
+                                : 'Continue safely'
+                        ) ?>
+                </button>
+            </form>
+
+            <form method="post">
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= moderation_e(
+                        moderation_csrf_token()
+                    ) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="action"
+                    value="reset_feed"
+                >
+                <input
+                    type="hidden"
+                    name="feed"
+                    value="<?= moderation_e(
+                        $feed
+                    ) ?>"
+                >
+
+                <button
+                    class="admin-button is-secondary"
+                    type="submit"
+                    <?= $isRunning
+                        ? 'disabled'
+                        : '' ?>
+                >
+                    Reset
+                </button>
+            </form>
+        </div>
+    </td>
+</tr>
+<?php endforeach; ?>
+
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
+        <p>Campsite records already downloaded</p>
+        <h2>Embedded campsite details</h2>
+    </div>
+</header>
+
+<div class="admin-integration-summary">
+<div>
+    <strong>
+        <?= number_format(
+            (int) (
+                $detailCounts[
+                    'campsite_attributes'
+                ]
+                ?? 0
+            )
+        ) ?>
+    </strong>
+    <span>Campsite attributes</span>
+</div>
+
+<div>
+    <strong>
+        <?= number_format(
+            (int) (
+                $detailCounts[
+                    'campsite_permitted_equipment'
+                ]
+                ?? 0
+            )
+        ) ?>
+    </strong>
+    <span>Equipment records</span>
+</div>
+
+<div>
+    <strong>
+        <?= number_format(
+            (int) (
+                $detailCounts[
+                    'campsite_media'
+                ]
+                ?? 0
+            )
+        ) ?>
+    </strong>
+    <span>Campsite media</span>
+</div>
+</div>
+
+<div class="admin-user-form-actions">
+<form method="post">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
+    >
+    <input
+        type="hidden"
+        name="action"
+        value="extract_campsite_details"
+    >
+
+    <button
+        class="admin-button"
+        type="submit"
+    >
+        Extract cached campsite details
+    </button>
+</form>
+</div>
+</section>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
+        <p>Per-entity detail datasets</p>
+        <h2>Child feeds</h2>
+    </div>
+</header>
+
+<div class="admin-integration-table-wrap">
+<table class="admin-integration-table">
+<thead>
+<tr>
+    <th>Dataset</th>
+    <th>Cached</th>
+    <th>Parents processed</th>
+    <th>Status</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody>
+
+<?php foreach ($childFeeds as $feed => $definition): ?>
+<?php
+$state =
+    $childStates[$feed]
+    ?? [];
+
+$complete =
+    (int) (
+        $state['complete']
+        ?? 0
+    ) === 1;
+?>
+<tr>
+    <td data-label="Dataset">
+        <strong>
+            <?= moderation_e(
+                $definition['label']
+            ) ?>
+        </strong>
+    </td>
+
+    <td data-label="Cached">
+        <?= number_format(
+            (int) (
+                $counts[$feed]
+                ?? 0
+            )
+        ) ?>
+    </td>
+
+    <td data-label="Parents processed">
+        <?= number_format(
+            (int) (
+                $state['next_offset']
+                ?? 0
+            )
+        ) ?>
+    </td>
+
+    <td data-label="Status">
+        <span class="admin-status-pill">
+            <?= $complete
+                ? 'Complete'
+                : 'In progress' ?>
+        </span>
+    </td>
+
+    <td data-label="Action">
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="action"
+                value="sync_child_feed"
+            >
+            <input
+                type="hidden"
+                name="feed"
+                value="<?= moderation_e(
+                    $feed
+                ) ?>"
+            >
+
+            <button
+                class="admin-button"
+                type="submit"
+                <?= $complete
+                    ? 'disabled'
+                    : '' ?>
+            >
+                <?= $complete
+                    ? 'Complete'
+                    : 'Process 25 parents' ?>
+            </button>
+        </form>
+    </td>
+</tr>
+<?php endforeach; ?>
+
+</tbody>
+</table>
+</div>
+</section>
+
+<?php if ($autoFeed !== ''): ?>
+<form
+    method="post"
+    id="ridb-auto-sync-next"
+    hidden
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= moderation_e(
+            moderation_csrf_token()
+        ) ?>"
+    >
+    <input
+        type="hidden"
+        name="action"
+        value="sync_feed"
+    >
+    <input
+        type="hidden"
+        name="feed"
+        value="<?= moderation_e(
+            $autoFeed
+        ) ?>"
+    >
+</form>
+
+<script>
+window.setTimeout(function () {
+    var form =
+        document.getElementById(
+            'ridb-auto-sync-next'
         );
 
-    $stmt->execute([
-        'media',
-        trim($entityType),
-        trim($entityId),
-    ]);
-
-    $records = [];
-
-    foreach (
-        $stmt->fetchAll(PDO::FETCH_ASSOC)
-        ?: []
-        as $row
-    ) {
-        $decoded =
-            json_decode(
-                (string) $row['source_json'],
-                true
-            );
-
-        if (is_array($decoded)) {
-            $records[] = $decoded;
-        }
+    if (form) {
+        form.submit();
     }
+}, 750);
+</script>
+<?php endif; ?>
 
-    return $records;
-}
+<?php require __DIR__ . '/_footer.php'; ?>
