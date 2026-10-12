@@ -1,0 +1,51 @@
+/* =========================================================
+   CLOSED MAP MARKERS
+
+   Closure changes the marker color to red while preserving
+   the price symbol. Free/unknown = bullet. Paid/mixed = $.
+   ========================================================= */
+
+.map-place-marker.is-closed,
+.map-place-marker.is-closed.is-featured,
+.map-place-marker.is-closed.is-paid,
+.map-place-marker.is-closed.is-mixed {
+    background: #b4232b;
+}
+
+.map-place-marker.is-closed::after,
+.map-place-marker.is-closed.is-featured::after {
+    content: '•';
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    transform:
+        translate(
+            -50%,
+            -50%
+        )
+        rotate(45deg);
+}
+
+.map-place-marker.is-closed.is-paid::after,
+.map-place-marker.is-closed.is-mixed::after {
+    content: '$';
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+    transform:
+        translate(
+            -50%,
+            -50%
+        )
+        rotate(45deg);
+}
