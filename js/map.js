@@ -927,7 +927,7 @@ popupAnchor: [0, -42]
                     ${
                         featured
                             ? `<span class="map-featured-badge">
-                                <i class="llama-icon-mask" aria-hidden="true"></i>
+                                    <span aria-hidden="true">★</span>
                                 Featured
                             </span>`
                             : ''
