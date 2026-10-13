@@ -376,6 +376,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['cell-coverage.css'],
             'features' => [],
         ],
+        'ridb-facility.php' => [
+            'pages' => ['ridb-facility.css'],
+            'features' => [],
+        ],
     ];
 
     $adminManifestEntry =

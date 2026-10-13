@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb.php';
 require_once dirname(__DIR__) . '/app/ridb-schema.php';
+require_once dirname(__DIR__) . '/app/ridb-facility-inspector.php';
 
 $adminUser =
     moderation_require_admin();
@@ -13,6 +14,7 @@ $facilityId =
     trim(
         (string) (
             $_GET['id']
+            ?? $_POST['id']
             ?? ''
         )
     );
@@ -26,187 +28,238 @@ $selectedCampsiteId =
     trim(
         (string) (
             $_GET['campsite']
+            ?? $_POST['campsite']
             ?? ''
         )
     );
 
 $error = '';
 $notice = '';
-$facility = [];
-$addresses = [];
-$media = [];
-$links = [];
-$activities = [];
-$campsites = [];
-$campsitesTruncated = false;
-$selectedCampsite = [];
-$selectedAttributes = [];
 
 try {
     $ridbDb =
         ridb_db();
 
-    $facilityResponse =
-        llama_ridb_facility(
-            $facilityId
-        );
-
-    $facility =
-        llama_ridb_response_record(
-            $facilityResponse
-        );
-
-    if (!$facility) {
-        throw new RuntimeException(
-            'RIDB did not return this facility.'
-        );
-    }
-
-    llama_ridb_store_facilities(
-        $ridbDb,
-        [$facility]
-    );
-
-    $addressResponse =
-        llama_ridb_facility_addresses(
-            $facilityId
-        );
-
-    $addresses =
-        $addressResponse['records'];
-
-    llama_ridb_replace_related_records(
-        $ridbDb,
-        'ridb_facility_addresses',
-        $facilityId,
-        $addresses,
-        'FacilityAddressID'
-    );
-
-    $mediaResponse =
-        llama_ridb_facility_media(
-            $facilityId
-        );
-
-    $media =
-        $mediaResponse['records'];
-
-    llama_ridb_replace_related_records(
-        $ridbDb,
-        'ridb_media',
-        $facilityId,
-        $media,
-        'MediaID'
-    );
-
-    $linkResponse =
-        llama_ridb_facility_links(
-            $facilityId
-        );
-
-    $links =
-        $linkResponse['records'];
-
-    llama_ridb_replace_related_records(
-        $ridbDb,
-        'ridb_links',
-        $facilityId,
-        $links,
-        'LinkID'
-    );
-
-    $activityResponse =
-        llama_ridb_facility_activities(
-            $facilityId
-        );
-
-    $activities =
-        $activityResponse['records'];
-
-    llama_ridb_replace_related_records(
-        $ridbDb,
-        'ridb_activities',
-        $facilityId,
-        $activities,
-        'ActivityID'
-    );
-
-    $campsiteResponse =
-        llama_ridb_facility_campsites(
-            $facilityId,
-            500
-        );
-
-    $campsites =
-        $campsiteResponse['records'];
-
-    $campsitesTruncated =
-        !empty(
-            $campsiteResponse['truncated']
-        );
-
-    llama_ridb_store_campsites(
-        $ridbDb,
-        $facilityId,
-        $campsites
-    );
-
-    if ($selectedCampsiteId !== '') {
-        $selectedResponse =
-            llama_ridb_campsite(
-                $selectedCampsiteId
-            );
-
-        $selectedCampsite =
-            llama_ridb_response_record(
-                $selectedResponse
-            );
-
-        if ($selectedCampsite) {
-            llama_ridb_store_campsites(
-                $ridbDb,
-                $facilityId,
-                [$selectedCampsite]
+    if (
+        ($_SERVER['REQUEST_METHOD'] ?? '')
+        === 'POST'
+    ) {
+        if (
+            !moderation_verify_csrf(
+                (string) (
+                    $_POST['csrf_token']
+                    ?? ''
+                )
+            )
+        ) {
+            throw new RuntimeException(
+                'Your session token expired. Reload and try again.'
             );
         }
 
-        $attributeResponse =
-            llama_ridb_campsite_attributes(
-                $selectedCampsiteId
+        $action =
+            trim(
+                (string) (
+                    $_POST['action']
+                    ?? ''
+                )
             );
 
-        $selectedAttributes =
-            $attributeResponse['records'];
+        if (
+            $action
+            === 'refresh_facility'
+        ) {
+            $result =
+                llama_ridb_inspector_refresh_facility(
+                    $ridbDb,
+                    $facilityId
+                );
 
-        llama_ridb_replace_campsite_attributes(
-            $ridbDb,
-            $selectedCampsiteId,
-            $selectedAttributes
-        );
+            $notice =
+                'Facility refreshed from RIDB. '
+                . number_format(
+                    (int) (
+                        $result['seen']
+                        ?? 0
+                    )
+                )
+                . ' source records processed.';
+
+            if (
+                !empty(
+                    $result['truncated']
+                )
+            ) {
+                $notice .=
+                    ' Campsite refresh reached the 500-site safety limit.';
+            }
+
+        } elseif (
+            $action
+            === 'refresh_campsite'
+            && $selectedCampsiteId !== ''
+        ) {
+            $result =
+                llama_ridb_inspector_refresh_campsite(
+                    $ridbDb,
+                    $facilityId,
+                    $selectedCampsiteId
+                );
+
+            $notice =
+                'Campsite refreshed from RIDB with '
+                . number_format(
+                    (int) (
+                        $result['attributes']
+                        ?? 0
+                    )
+                )
+                . ' attribute rows.';
+        }
     }
 
-    $seen =
-        1
-        + count($addresses)
-        + count($media)
-        + count($links)
-        + count($activities)
-        + count($campsites)
-        + count($selectedAttributes);
+    $bundle =
+        llama_ridb_inspector_load_facility(
+            $ridbDb,
+            $facilityId
+        );
 
-    llama_ridb_log_sync_run(
-        $ridbDb,
-        'facility_inspection',
-        'success',
-        $seen,
-        $seen,
-        'Facility '
-        . $facilityId
-    );
 } catch (Throwable $exception) {
+    $bundle = [
+        'facility' => [],
+        'addresses' => [],
+        'media' => [],
+        'links' => [],
+        'activities' => [],
+        'campsites' => [],
+    ];
+
     $error =
         $exception->getMessage();
 }
+
+$facility =
+    (array) (
+        $bundle['facility']
+        ?? []
+    );
+
+$addresses =
+    (array) (
+        $bundle['addresses']
+        ?? []
+    );
+
+$media =
+    (array) (
+        $bundle['media']
+        ?? []
+    );
+
+$links =
+    (array) (
+        $bundle['links']
+        ?? []
+    );
+
+$activities =
+    (array) (
+        $bundle['activities']
+        ?? []
+    );
+
+$campsites =
+    (array) (
+        $bundle['campsites']
+        ?? []
+    );
+
+$campsiteDetail = [];
+
+if (
+    $error === ''
+    && $selectedCampsiteId !== ''
+) {
+    try {
+        $campsiteDetail =
+            llama_ridb_inspector_load_campsite(
+                $ridbDb,
+                $facilityId,
+                $selectedCampsiteId
+            );
+    } catch (Throwable $exception) {
+        $error =
+            $exception->getMessage();
+    }
+}
+
+$selectedCampsite =
+    (array) (
+        $campsiteDetail['selected']
+        ?? []
+    );
+
+$rawCampsite =
+    (array) (
+        $campsiteDetail['raw_record']
+        ?? []
+    );
+
+$embeddedAttributes =
+    (array) (
+        $campsiteDetail[
+            'embedded_attributes'
+        ]
+        ?? []
+    );
+
+$embeddedEquipment =
+    (array) (
+        $campsiteDetail[
+            'embedded_equipment'
+        ]
+        ?? []
+    );
+
+$embeddedMedia =
+    (array) (
+        $campsiteDetail[
+            'embedded_media'
+        ]
+        ?? []
+    );
+
+$mirroredAttributes =
+    (array) (
+        $campsiteDetail[
+            'mirrored_attributes'
+        ]
+        ?? []
+    );
+
+$mirroredEquipment =
+    (array) (
+        $campsiteDetail[
+            'mirrored_equipment'
+        ]
+        ?? []
+    );
+
+$mirroredMedia =
+    (array) (
+        $campsiteDetail[
+            'mirrored_media'
+        ]
+        ?? []
+    );
+
+$normalizedAttributes =
+    (array) (
+        $campsiteDetail[
+            'normalized_attributes'
+        ]
+        ?? []
+    );
 
 $facilityName =
     trim(
@@ -221,13 +274,15 @@ $facilityName =
     );
 
 $adminPageTitle =
-    $facilityName;
+    $facilityName !== ''
+        ? $facilityName
+        : 'RIDB Facility';
 
 $adminPageEyebrow =
     'RIDB Facility';
 
 $adminActiveNav =
-    'reference-data';
+    'ridb';
 
 $mapping =
     llama_ridb_place_mapping_preview(
@@ -236,7 +291,21 @@ $mapping =
         $media,
         $links,
         $activities,
-        $campsites
+        array_map(
+            static function (
+                array $row
+            ): array {
+                $decoded =
+                    llama_ridb_inspector_decode_json(
+                        $row['source_json']
+                        ?? ''
+                    );
+
+                return $decoded
+                    ?: $row;
+            },
+            $campsites
+        )
     );
 
 $description =
@@ -286,28 +355,106 @@ $longitude =
 require __DIR__ . '/_header.php';
 ?>
 
+<?php if ($notice !== ''): ?>
+<section class="admin-panel">
+    <div
+        class="admin-user-notice is-success"
+        role="status"
+    >
+        <?= moderation_e($notice) ?>
+    </div>
+</section>
+<?php endif; ?>
+
 <?php if ($error !== ''): ?>
-    <section class="admin-panel">
+<section class="admin-panel">
+    <div
+        class="admin-user-notice is-error"
+        role="alert"
+    >
         <strong>RIDB error</strong>
         <p><?= moderation_e($error) ?></p>
-    </section>
+    </div>
+</section>
 <?php endif; ?>
 
 <section class="admin-panel">
-    <div class="admin-user-form-actions">
-        <a
-            class="admin-button is-muted"
-            href="/ridb.php"
-        >
-            Back to RIDB search
-        </a>
+    <header class="admin-panel-header">
+        <div>
+            <p>Local RIDB cache</p>
+            <h2>Facility inspection</h2>
+        </div>
 
-        <a
-            class="admin-button is-muted"
-            href="/ridb-schema.php"
-        >
-            Schema explorer
-        </a>
+        <span class="admin-status-pill">
+            Local-first
+        </span>
+    </header>
+
+    <div class="admin-user-action-box">
+        <p>
+            Opening this page reads the local RIDB database only. Use the
+            refresh button when you explicitly want to contact Recreation.gov
+            for the latest facility data.
+        </p>
+
+        <div class="admin-user-form-actions">
+            <a
+                class="admin-button is-secondary"
+                href="/ridb.php"
+            >
+                Back to RIDB
+            </a>
+
+            <form method="post">
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= moderation_e(
+                        moderation_csrf_token()
+                    ) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="id"
+                    value="<?= moderation_e(
+                        $facilityId
+                    ) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="campsite"
+                    value="<?= moderation_e(
+                        $selectedCampsiteId
+                    ) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="action"
+                    value="refresh_facility"
+                >
+
+                <button
+                    class="admin-button"
+                    type="submit"
+                >
+                    Refresh facility from RIDB
+                </button>
+            </form>
+
+            <a
+                class="admin-button is-secondary"
+                href="/ridb-schema.php"
+            >
+                Schema Explorer
+            </a>
+
+            <a
+                class="admin-button is-secondary"
+                href="/ridb-normalization.php"
+            >
+                Normalization
+            </a>
+        </div>
     </div>
 </section>
 
@@ -319,23 +466,63 @@ require __DIR__ . '/_header.php';
         </div>
     </header>
 
-    <dl class="admin-user-definition-list">
+    <div class="admin-integration-summary">
         <div>
-            <dt>RIDB ID</dt>
-            <dd><?= moderation_e($facilityId) ?></dd>
+            <strong>
+                <?= moderation_e($facilityId) ?>
+            </strong>
+            <span>RIDB facility ID</span>
         </div>
 
         <div>
-            <dt>Facility type</dt>
-            <dd>
+            <strong>
                 <?= moderation_e(
                     $facilityType !== ''
                         ? $facilityType
-                        : 'Not provided'
+                        : 'Unknown'
                 ) ?>
-            </dd>
+            </strong>
+            <span>Facility type</span>
         </div>
 
+        <div>
+            <strong>
+                <?= number_format(
+                    count($campsites)
+                ) ?>
+            </strong>
+            <span>Cached campsites</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count($media)
+                ) ?>
+            </strong>
+            <span>Facility media</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count($activities)
+                ) ?>
+            </strong>
+            <span>Activities</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count($links)
+                ) ?>
+            </strong>
+            <span>Official links</span>
+        </div>
+    </div>
+
+    <dl class="admin-user-definition-list">
         <div>
             <dt>Reservable</dt>
             <dd>
@@ -376,49 +563,14 @@ require __DIR__ . '/_header.php';
     </dl>
 
     <?php if ($description !== ''): ?>
-        <p><?= nl2br(moderation_e($description)) ?></p>
+        <p>
+            <?= nl2br(
+                moderation_e(
+                    $description
+                )
+            ) ?>
+        </p>
     <?php endif; ?>
-</section>
-
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>What RIDB gives us</p>
-            <h2>Source inventory</h2>
-        </div>
-    </header>
-
-    <dl class="admin-user-definition-list">
-        <div>
-            <dt>Addresses</dt>
-            <dd><?= number_format(count($addresses)) ?></dd>
-        </div>
-
-        <div>
-            <dt>Media</dt>
-            <dd><?= number_format(count($media)) ?></dd>
-        </div>
-
-        <div>
-            <dt>Links</dt>
-            <dd><?= number_format(count($links)) ?></dd>
-        </div>
-
-        <div>
-            <dt>Activities</dt>
-            <dd><?= number_format(count($activities)) ?></dd>
-        </div>
-
-        <div>
-            <dt>Campsites</dt>
-            <dd>
-                <?= number_format(count($campsites)) ?>
-                <?= $campsitesTruncated
-                    ? ' (first 500)'
-                    : '' ?>
-            </dd>
-        </div>
-    </dl>
 </section>
 
 <section class="admin-panel">
@@ -432,37 +584,43 @@ require __DIR__ . '/_header.php';
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
-                <tr>
-                    <th>Llama Scout field</th>
-                    <th>RIDB status</th>
-                    <th>Preview</th>
-                </tr>
+            <tr>
+                <th>Llama Scout field</th>
+                <th>RIDB status</th>
+                <th>Preview</th>
+            </tr>
             </thead>
 
             <tbody>
             <?php foreach (
                 $mapping['rows']
+                ?? []
                 as $row
             ): ?>
                 <tr>
                     <td>
                         <strong>
                             <?= moderation_e(
-                                (string) $row['field']
+                                (string) (
+                                    $row['field']
+                                    ?? ''
+                                )
                             ) ?>
                         </strong>
                     </td>
 
                     <td>
-                        <?= $row['status']
-                            === 'import'
-                                ? 'Can import'
-                                : 'Needs review' ?>
+                        <?= (
+                            $row['status']
+                            ?? ''
+                        ) === 'import'
+                            ? 'Can import'
+                            : 'Needs review' ?>
                     </td>
 
                     <td>
                         <?php
-                        $value =
+                        $preview =
                             trim(
                                 (string) (
                                     $row['value']
@@ -471,12 +629,12 @@ require __DIR__ . '/_header.php';
                             );
 
                         if (
-                            mb_strlen($value)
+                            mb_strlen($preview)
                             > 260
                         ) {
-                            $value =
+                            $preview =
                                 mb_substr(
-                                    $value,
+                                    $preview,
                                     0,
                                     257
                                 )
@@ -485,43 +643,11 @@ require __DIR__ . '/_header.php';
                         ?>
 
                         <?= moderation_e(
-                            $value !== ''
-                                ? $value
+                            $preview !== ''
+                                ? $preview
                                 : 'Not provided'
                         ) ?>
                     </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>Human layer</p>
-            <h2>Still needs Llama Scout</h2>
-        </div>
-    </header>
-
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Scout contribution</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-
-            <tbody>
-            <?php foreach (
-                $mapping['needs_scout']
-                as $need
-            ): ?>
-                <tr>
-                    <td><?= moderation_e($need) ?></td>
-                    <td>Update me</td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -533,7 +659,7 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>RIDB data</p>
+            <p>Facility data</p>
             <h2>Addresses</h2>
         </div>
     </header>
@@ -548,30 +674,28 @@ require __DIR__ . '/_header.php';
                             trim(
                                 implode(
                                     ', ',
-                                    array_filter(
-                                        [
-                                            (string) llama_ridb_record_value(
-                                                $address,
-                                                ['FacilityStreetAddress1'],
-                                                ''
-                                            ),
-                                            (string) llama_ridb_record_value(
-                                                $address,
-                                                ['City'],
-                                                ''
-                                            ),
-                                            (string) llama_ridb_record_value(
-                                                $address,
-                                                ['AddressStateCode'],
-                                                ''
-                                            ),
-                                            (string) llama_ridb_record_value(
-                                                $address,
-                                                ['PostalCode'],
-                                                ''
-                                            ),
-                                        ]
-                                    )
+                                    array_filter([
+                                        (string) llama_ridb_record_value(
+                                            $address,
+                                            ['FacilityStreetAddress1'],
+                                            ''
+                                        ),
+                                        (string) llama_ridb_record_value(
+                                            $address,
+                                            ['City'],
+                                            ''
+                                        ),
+                                        (string) llama_ridb_record_value(
+                                            $address,
+                                            ['AddressStateCode'],
+                                            ''
+                                        ),
+                                        (string) llama_ridb_record_value(
+                                            $address,
+                                            ['PostalCode'],
+                                            ''
+                                        ),
+                                    ])
                                 )
                             )
                         ) ?>
@@ -588,32 +712,26 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>RIDB data</p>
+            <p>Facility data</p>
             <h2>Activities</h2>
         </div>
     </header>
 
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <tbody>
-            <?php foreach ($activities as $activity): ?>
-                <tr>
-                    <td>
-                        <?= moderation_e(
-                            (string) llama_ridb_record_value(
-                                $activity,
-                                [
-                                    'ActivityName',
-                                    'activityName',
-                                ],
-                                'Unnamed activity'
-                            )
-                        ) ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+    <div class="ridb-facility-pill-list">
+        <?php foreach ($activities as $activity): ?>
+            <span>
+                <?= moderation_e(
+                    (string) llama_ridb_record_value(
+                        $activity,
+                        [
+                            'ActivityName',
+                            'activityName',
+                        ],
+                        'Unnamed activity'
+                    )
+                ) ?>
+            </span>
+        <?php endforeach; ?>
     </div>
 </section>
 <?php endif; ?>
@@ -622,7 +740,7 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>RIDB data</p>
+            <p>Facility data</p>
             <h2>Official links</h2>
         </div>
     </header>
@@ -630,10 +748,10 @@ require __DIR__ . '/_header.php';
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>URL</th>
-                </tr>
+            <tr>
+                <th>Title</th>
+                <th>URL</th>
+            </tr>
             </thead>
 
             <tbody>
@@ -675,11 +793,13 @@ require __DIR__ . '/_header.php';
                             )
                         ): ?>
                             <a
-                                href="<?= moderation_e($url) ?>"
+                                href="<?= moderation_e(
+                                    $url
+                                ) ?>"
                                 target="_blank"
                                 rel="noopener"
                             >
-                                Open
+                                Open source link
                             </a>
                         <?php else: ?>
                             Not provided
@@ -697,86 +817,90 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>RIDB data</p>
-            <h2>Media</h2>
+            <p>Facility data</p>
+            <h2>Facility media</h2>
         </div>
     </header>
 
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Type</th>
-                    <th>Source</th>
-                </tr>
-            </thead>
+    <div class="ridb-facility-media-grid">
+        <?php foreach ($media as $item): ?>
+            <?php
+            $url =
+                trim(
+                    (string) llama_ridb_record_value(
+                        $item,
+                        [
+                            'URL',
+                            'MediaURL',
+                            'Url',
+                        ],
+                        ''
+                    )
+                );
 
-            <tbody>
-            <?php foreach ($media as $item): ?>
-                <?php
-                $url =
-                    trim(
-                        (string) llama_ridb_record_value(
-                            $item,
-                            [
-                                'URL',
-                                'MediaURL',
-                                'EmbedCode',
-                            ],
-                            ''
-                        )
-                    );
-                ?>
-                <tr>
-                    <td>
-                        <?= moderation_e(
-                            (string) llama_ridb_record_value(
-                                $item,
-                                [
-                                    'Title',
-                                    'MediaTitle',
-                                ],
-                                'Media item'
-                            )
-                        ) ?>
-                    </td>
+            $title =
+                trim(
+                    (string) llama_ridb_record_value(
+                        $item,
+                        [
+                            'Title',
+                            'MediaTitle',
+                        ],
+                        'Media item'
+                    )
+                );
 
-                    <td>
-                        <?= moderation_e(
-                            (string) llama_ridb_record_value(
-                                $item,
-                                [
-                                    'MediaType',
-                                    'Type',
-                                ],
-                                ''
-                            )
-                        ) ?>
-                    </td>
+            $credit =
+                trim(
+                    (string) llama_ridb_record_value(
+                        $item,
+                        [
+                            'Credits',
+                            'Credit',
+                        ],
+                        ''
+                    )
+                );
+            ?>
 
-                    <td>
-                        <?php if (
-                            filter_var(
-                                $url,
-                                FILTER_VALIDATE_URL
-                            )
-                        ): ?>
-                            <a
-                                href="<?= moderation_e($url) ?>"
-                                target="_blank"
-                                rel="noopener"
-                            >
-                                Open
-                            </a>
-                        <?php else: ?>
-                            Stored in raw RIDB record
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+            <article class="ridb-facility-media-card">
+                <?php if (
+                    preg_match(
+                        '#^https?://#i',
+                        $url
+                    ) === 1
+                ): ?>
+                    <img
+                        src="<?= moderation_e($url) ?>"
+                        alt=""
+                        loading="lazy"
+                    >
+                <?php endif; ?>
+
+                <div>
+                    <strong>
+                        <?= moderation_e($title) ?>
+                    </strong>
+
+                    <?php if ($credit !== ''): ?>
+                        <small>
+                            Credit:
+                            <?= moderation_e($credit) ?>
+                        </small>
+                    <?php endif; ?>
+
+                    <?php if ($url !== ''): ?>
+                        <a
+                            href="<?= moderation_e($url) ?>"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Open source media
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
     </div>
 </section>
 <?php endif; ?>
@@ -784,28 +908,34 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>RIDB data</p>
+            <p>Cached RIDB campsites</p>
             <h2>Individual campsites</h2>
         </div>
+
+        <span>
+            <?= number_format(
+                count($campsites)
+            ) ?>
+        </span>
     </header>
 
     <?php if (!$campsites): ?>
         <div class="admin-empty-state">
             <p>
-                RIDB did not return individual campsites for this facility.
+                No individual campsites are cached for this facility.
             </p>
         </div>
     <?php else: ?>
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
-                    <tr>
-                        <th>Site</th>
-                        <th>Type</th>
-                        <th>Accessible</th>
-                        <th>RIDB ID</th>
-                        <th></th>
-                    </tr>
+                <tr>
+                    <th>Site</th>
+                    <th>Type</th>
+                    <th>Accessible</th>
+                    <th>RIDB ID</th>
+                    <th></th>
+                </tr>
                 </thead>
 
                 <tbody>
@@ -813,27 +943,24 @@ require __DIR__ . '/_header.php';
                     <?php
                     $siteId =
                         trim(
-                            (string) llama_ridb_record_value(
-                                $site,
-                                [
-                                    'CampsiteID',
-                                    'campsiteID',
-                                ],
-                                ''
+                            (string) (
+                                $site[
+                                    'ridb_campsite_id'
+                                ]
+                                ?? ''
                             )
                         );
                     ?>
+
                     <tr>
                         <td>
                             <strong>
                                 <?= moderation_e(
-                                    (string) llama_ridb_record_value(
-                                        $site,
-                                        [
-                                            'CampsiteName',
-                                            'campsiteName',
-                                        ],
-                                        'Unnamed site'
+                                    (string) (
+                                        $site[
+                                            'campsite_name'
+                                        ]
+                                        ?: $siteId
                                     )
                                 ) ?>
                             </strong>
@@ -841,48 +968,47 @@ require __DIR__ . '/_header.php';
 
                         <td>
                             <?= moderation_e(
-                                (string) llama_ridb_record_value(
-                                    $site,
-                                    [
-                                        'CampsiteType',
-                                        'CampsiteTypeDescription',
-                                    ],
-                                    ''
+                                (string) (
+                                    $site[
+                                        'campsite_type'
+                                    ]
+                                    ?? ''
                                 )
                             ) ?>
                         </td>
 
                         <td>
-                            <?php
-                            $accessible =
-                                llama_ridb_record_value(
-                                    $site,
-                                    [
-                                        'CampsiteAccessible',
-                                    ]
-                                );
-                            ?>
-
-                            <?= $accessible === null
+                            <?= (
+                                $site[
+                                    'campsite_accessible'
+                                ]
+                                ?? null
+                            ) === null
                                 ? 'Unknown'
                                 : (
-                                    !empty($accessible)
+                                    !empty(
+                                        $site[
+                                            'campsite_accessible'
+                                        ]
+                                    )
                                         ? 'Yes'
                                         : 'No'
                                 ) ?>
                         </td>
 
                         <td>
-                            <?= moderation_e($siteId) ?>
+                            <?= moderation_e(
+                                $siteId
+                            ) ?>
                         </td>
 
                         <td>
                             <?php if ($siteId !== ''): ?>
                                 <a
-                                    class="admin-button"
+                                    class="admin-button is-secondary"
                                     href="/ridb-facility.php?id=<?= rawurlencode(
                                         $facilityId
-                                    ) ?>&campsite=<?= rawurlencode(
+                                    ) ?>&amp;campsite=<?= rawurlencode(
                                         $siteId
                                     ) ?>#ridb-campsite-detail"
                                 >
@@ -905,99 +1031,231 @@ require __DIR__ . '/_header.php';
 >
     <header class="admin-panel-header">
         <div>
-            <p>Campsite inspection</p>
+            <p>Local campsite inspection</p>
             <h2>
                 <?= moderation_e(
-                    (string) llama_ridb_record_value(
-                        $selectedCampsite,
-                        [
-                            'CampsiteName',
-                            'campsiteName',
-                        ],
-                        'Campsite ' . $selectedCampsiteId
+                    (string) (
+                        $selectedCampsite[
+                            'campsite_name'
+                        ]
+                        ?? (
+                            $rawCampsite[
+                                'CampsiteName'
+                            ]
+                            ?? $selectedCampsiteId
+                        )
                     )
                 ) ?>
             </h2>
         </div>
+
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="id"
+                value="<?= moderation_e(
+                    $facilityId
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="campsite"
+                value="<?= moderation_e(
+                    $selectedCampsiteId
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="action"
+                value="refresh_campsite"
+            >
+
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Refresh this campsite
+            </button>
+        </form>
     </header>
 
-    <dl class="admin-user-definition-list">
+    <div class="admin-integration-summary">
         <div>
-            <dt>RIDB campsite ID</dt>
-            <dd><?= moderation_e($selectedCampsiteId) ?></dd>
+            <strong>
+                <?= moderation_e(
+                    $selectedCampsiteId
+                ) ?>
+            </strong>
+            <span>RIDB campsite ID</span>
         </div>
 
         <div>
-            <dt>Attributes returned</dt>
-            <dd><?= number_format(count($selectedAttributes)) ?></dd>
+            <strong>
+                <?= number_format(
+                    count(
+                        $embeddedAttributes
+                    )
+                ) ?>
+            </strong>
+            <span>Embedded attributes</span>
         </div>
-    </dl>
 
-    <?php if ($selectedAttributes): ?>
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Attribute</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                <?php foreach (
-                    $selectedAttributes
-                    as $attribute
-                ): ?>
-                    <tr>
-                        <td>
-                            <?= moderation_e(
-                                (string) llama_ridb_record_value(
-                                    $attribute,
-                                    [
-                                        'AttributeName',
-                                        'AttributeKey',
-                                    ],
-                                    'Attribute'
-                                )
-                            ) ?>
-                        </td>
-
-                        <td>
-                            <?= moderation_e(
-                                (string) llama_ridb_record_value(
-                                    $attribute,
-                                    [
-                                        'AttributeValue',
-                                        'AttributeText',
-                                    ],
-                                    ''
-                                )
-                            ) ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+        <div>
+            <strong>
+                <?= number_format(
+                    count(
+                        $embeddedEquipment
+                    )
+                ) ?>
+            </strong>
+            <span>Permitted equipment</span>
         </div>
-    <?php else: ?>
-        <div class="admin-empty-state">
-            <p>
-                RIDB returned no campsite attributes for this site.
-            </p>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count($embeddedMedia)
+                ) ?>
+            </strong>
+            <span>Embedded site photos</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count(
+                        $mirroredAttributes
+                    )
+                ) ?>
+            </strong>
+            <span>Extracted attribute rows</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    count(
+                        $mirroredEquipment
+                    )
+                ) ?>
+            </strong>
+            <span>Extracted equipment rows</span>
+        </div>
+    </div>
+</section>
+
+<?php if ($embeddedMedia || $mirroredMedia): ?>
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Campsite-specific media</p>
+            <h2>Site photos</h2>
+        </div>
+    </header>
+
+    <?php if ($embeddedMedia): ?>
+        <div class="ridb-facility-media-grid">
+            <?php foreach ($embeddedMedia as $item): ?>
+                <?php
+                $url =
+                    trim(
+                        (string) (
+                            $item['URL']
+                            ?? $item['Url']
+                            ?? $item['url']
+                            ?? ''
+                        )
+                    );
+
+                $title =
+                    trim(
+                        (string) (
+                            $item['Title']
+                            ?? $item['title']
+                            ?? 'Untitled media'
+                        )
+                    );
+
+                $credit =
+                    trim(
+                        (string) (
+                            $item['Credits']
+                            ?? $item['credits']
+                            ?? ''
+                        )
+                    );
+                ?>
+
+                <article class="ridb-facility-media-card">
+                    <?php if (
+                        preg_match(
+                            '#^https?://#i',
+                            $url
+                        ) === 1
+                    ): ?>
+                        <img
+                            src="<?= moderation_e(
+                                $url
+                            ) ?>"
+                            alt=""
+                            loading="lazy"
+                        >
+                    <?php endif; ?>
+
+                    <div>
+                        <strong>
+                            <?= moderation_e(
+                                $title
+                            ) ?>
+                        </strong>
+
+                        <?php if (
+                            $credit !== ''
+                        ): ?>
+                            <small>
+                                Credit:
+                                <?= moderation_e(
+                                    $credit
+                                ) ?>
+                            </small>
+                        <?php endif; ?>
+
+                        <?php if ($url !== ''): ?>
+                            <a
+                                href="<?= moderation_e(
+                                    $url
+                                ) ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Open source media
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
         </div>
     <?php endif; ?>
 
-    <details>
-        <summary>Show raw campsite JSON</summary>
+    <details class="ridb-facility-json">
+        <summary>
+            Mirrored campsite media rows
+            (<?= number_format(
+                count($mirroredMedia)
+            ) ?>)
+        </summary>
 
         <pre><?= moderation_e(
-            json_encode(
-                $selectedCampsite,
-                JSON_PRETTY_PRINT
-                | JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
+            llama_ridb_inspector_pretty_json(
+                $mirroredMedia
             )
-            ?: ''
         ) ?></pre>
     </details>
 </section>
@@ -1006,22 +1264,176 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Development inspection</p>
-            <h2>Raw facility JSON</h2>
+            <p>Campsite-specific data</p>
+            <h2>Attributes & equipment</h2>
         </div>
     </header>
 
-    <details>
-        <summary>Show raw facility JSON</summary>
+    <?php if ($normalizedAttributes): ?>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <?php foreach (
+                    $normalizedAttributes
+                    as $attribute
+                ): ?>
+                    <tr>
+                        <td>
+                            <?= moderation_e(
+                                (string) (
+                                    $attribute[
+                                        'attribute_name'
+                                    ]
+                                    ?? ''
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= moderation_e(
+                                (string) (
+                                    $attribute[
+                                        'attribute_value'
+                                    ]
+                                    ?? ''
+                                )
+                            ) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+
+    <div class="ridb-facility-json-columns">
+        <details
+            class="ridb-facility-json"
+            open
+        >
+            <summary>
+                Embedded ATTRIBUTES
+                (<?= number_format(
+                    count(
+                        $embeddedAttributes
+                    )
+                ) ?>)
+            </summary>
+
+            <pre><?= moderation_e(
+                llama_ridb_inspector_pretty_json(
+                    $embeddedAttributes
+                )
+            ) ?></pre>
+        </details>
+
+        <details
+            class="ridb-facility-json"
+            open
+        >
+            <summary>
+                Embedded PERMITTEDEQUIPMENT
+                (<?= number_format(
+                    count(
+                        $embeddedEquipment
+                    )
+                ) ?>)
+            </summary>
+
+            <pre><?= moderation_e(
+                llama_ridb_inspector_pretty_json(
+                    $embeddedEquipment
+                )
+            ) ?></pre>
+        </details>
+    </div>
+
+    <div class="ridb-facility-json-columns">
+        <details class="ridb-facility-json">
+            <summary>
+                Extracted attribute mirror rows
+                (<?= number_format(
+                    count(
+                        $mirroredAttributes
+                    )
+                ) ?>)
+            </summary>
+
+            <pre><?= moderation_e(
+                llama_ridb_inspector_pretty_json(
+                    $mirroredAttributes
+                )
+            ) ?></pre>
+        </details>
+
+        <details class="ridb-facility-json">
+            <summary>
+                Extracted equipment mirror rows
+                (<?= number_format(
+                    count(
+                        $mirroredEquipment
+                    )
+                ) ?>)
+            </summary>
+
+            <pre><?= moderation_e(
+                llama_ridb_inspector_pretty_json(
+                    $mirroredEquipment
+                )
+            ) ?></pre>
+        </details>
+    </div>
+</section>
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Lossless source record</p>
+            <h2>Full campsite JSON</h2>
+        </div>
+    </header>
+
+    <details
+        class="ridb-facility-json"
+        open
+    >
+        <summary>
+            Raw RIDB campsite record
+        </summary>
 
         <pre><?= moderation_e(
-            json_encode(
-                $facility,
-                JSON_PRETTY_PRINT
-                | JSON_UNESCAPED_SLASHES
-                | JSON_UNESCAPED_UNICODE
+            llama_ridb_inspector_pretty_json(
+                $rawCampsite
             )
-            ?: ''
+        ) ?></pre>
+    </details>
+</section>
+<?php endif; ?>
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Lossless source record</p>
+            <h2>Full facility JSON</h2>
+        </div>
+    </header>
+
+    <details class="ridb-facility-json">
+        <summary>
+            Raw RIDB facility record
+        </summary>
+
+        <pre><?= moderation_e(
+            llama_ridb_inspector_pretty_json(
+                $facility
+            )
         ) ?></pre>
     </details>
 </section>

@@ -722,13 +722,6 @@ require __DIR__ . '/_header.php';
     <div class="admin-user-form-actions">
         <a
             class="admin-button is-secondary"
-            href="/ridb-campsite-inspector.php"
-        >
-            Campsite Inspector
-        </a>
-
-        <a
-            class="admin-button is-secondary"
             href="/ridb-schema.php"
         >
             Schema Explorer
