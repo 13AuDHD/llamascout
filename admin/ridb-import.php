@@ -10,6 +10,7 @@ require_once dirname(__DIR__) . '/app/ridb-complete-import.php';
 require_once dirname(__DIR__) . '/app/ridb-facility-details.php';
 require_once dirname(__DIR__) . '/app/ridb-safe-sync.php';
 require_once dirname(__DIR__) . '/app/ridb-status.php';
+require_once dirname(__DIR__) . '/app/ridb-useful-fields.php';
 
 $adminUser =
     moderation_require_admin();
@@ -18,10 +19,10 @@ $adminPageTitle =
     'RIDB Import';
 
 $adminPageEyebrow =
-    'Reference Data';
+    'RIDB';
 
 $adminActiveNav =
-    'reference-data';
+    'ridb';
 
 $error = '';
 $results = [];
@@ -197,6 +198,23 @@ if (
                     $result['sync_mode'] =
                         'new';
                 }
+
+                $useful =
+                    llama_ridb_useful_sync(
+                        $mainDb,
+                        $ridbDb,
+                        (int) (
+                            $result['place_id']
+                            ?? 0
+                        ),
+                        $facilityId
+                    );
+
+                $result =
+                    array_merge(
+                        $result,
+                        $useful
+                    );
 
                 $results[] =
                     array_merge(
