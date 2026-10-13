@@ -1,0 +1,153 @@
+/* Official facility-level RIDB information. */
+
+.place-facility-info {
+    display: grid;
+    gap: 18px;
+}
+
+.place-facility-info-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.place-facility-info-heading h2,
+.place-facility-info-heading p {
+    margin-top: 0;
+}
+
+.place-facility-source {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+.place-facility-info-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(190px, 1fr)
+        );
+    gap: 8px;
+}
+
+.place-facility-info-card {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.place-facility-info-card span {
+    color: var(--text-muted);
+    font-size: .76rem;
+}
+
+.place-facility-info-card strong,
+.place-facility-info-card a {
+    overflow-wrap: anywhere;
+}
+
+.place-facility-copy,
+.place-facility-list-section {
+    display: grid;
+    gap: 9px;
+}
+
+.place-facility-copy h3,
+.place-facility-list-section h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.place-facility-copy p {
+    margin: 0;
+    line-height: 1.55;
+}
+
+.place-facility-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.place-facility-action,
+.place-facility-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 800;
+}
+
+.place-facility-action:hover,
+.place-facility-action:focus-visible,
+.place-facility-links a:hover,
+.place-facility-links a:focus-visible {
+    border-color: var(--text);
+}
+
+.place-facility-action svg,
+.place-facility-links svg {
+    width: 16px;
+    height: 16px;
+}
+
+.place-facility-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.place-facility-pills span {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--background);
+    font-size: .8rem;
+}
+
+.place-facility-links {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(190px, 1fr)
+        );
+    gap: 8px;
+}
+
+.place-facility-links a {
+    justify-content: space-between;
+}
+
+.place-facility-updated {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .76rem;
+}
+
+@media (max-width: 640px) {
+    .place-facility-info-heading {
+        display: grid;
+    }
+
+    .place-facility-source {
+        justify-self: start;
+    }
+}
