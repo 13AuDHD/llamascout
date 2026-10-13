@@ -29,7 +29,7 @@ foreach ($stayFeatures as $feature) {
     $label = $code !== '' ? $code : ($name !== '' ? $name : 'Campsite ' . $id);
     $style = trim((string) ($details['parking_style'] ?? ''));
     $type = trim((string) ($details['site_type'] ?? ''));
-    $description = implode(' Â· ', array_filter([
+    $description = implode(' · ', array_filter([
         $type !== '' ? ucwords(str_replace('_', ' ', $type)) : 'Campsite',
         $style !== '' ? ucwords(str_replace('_', ' ', $style)) : '',
     ]));
