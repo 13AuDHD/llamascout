@@ -594,6 +594,22 @@ function admin_shell_nav_class(string $key, string $active): string
             <span>Cell Coverage</span>
         </a>
 
+        <a
+            class="<?= admin_shell_nav_class(
+                'ridb',
+                $adminActiveNav
+            ) ?>"
+            href="<?= moderation_e(
+                $adminUrl . '/ridb.php'
+            ) ?>"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('database') ?>
+            </i>
+
+            <span>RIDB / Recreation.gov</span>
+        </a>
+
         <p class="admin-nav-label">People</p>
 
         <a
