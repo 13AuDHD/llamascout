@@ -19,7 +19,7 @@ $adminPageEyebrow =
     'Reference Data';
 
 $adminActiveNav =
-    'reference-data';
+    'ridb';
 
 $notice = '';
 $error = '';
