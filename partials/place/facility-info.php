@@ -4,18 +4,31 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2)
     . '/app/ridb-facility-details.php';
+require_once dirname(__DIR__, 2)
+    . '/app/ridb-useful-fields.php';
 
 $facilityPublic =
     [];
+$facilityUseful =
+    [];
 
 try {
+    $placeId =
+        (int) (
+            $place['id']
+            ?? 0
+        );
+
     $facilityPublic =
         llama_place_facility_public_data(
             db(),
-            (int) (
-                $place['id']
-                ?? 0
-            )
+            $placeId
+        );
+
+    $facilityUseful =
+        llama_ridb_useful_public_data(
+            db(),
+            $placeId
         );
 } catch (Throwable $exception) {
     llama_log_caught_exception(
@@ -99,6 +112,82 @@ $facilitySourceUpdated =
         )
     );
 
+$facilityAddress3 =
+    trim(
+        (string) (
+            $facilityUseful[
+                'official_address_3'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityAddressType =
+    trim(
+        (string) (
+            $facilityUseful[
+                'official_address_type'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityAccessibility =
+    trim(
+        (string) (
+            $facilityUseful[
+                'accessibility_text'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityAdaAccess =
+    trim(
+        (string) (
+            $facilityUseful[
+                'ada_access'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityMapUrl =
+    trim(
+        (string) (
+            $facilityUseful[
+                'facility_map_url'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityStayLimit =
+    trim(
+        (string) (
+            $facilityUseful[
+                'stay_limit'
+            ]
+            ?? ''
+        )
+    );
+
+$facilityActivityDetails =
+    (array) (
+        $facilityUseful[
+            'activity_details'
+        ]
+        ?? []
+    );
+
+$facilityLinkDescriptions =
+    (array) (
+        $facilityUseful[
+            'link_descriptions'
+        ]
+        ?? []
+    );
+
 $hasFacilityOfficialInfo =
     $facilityAddress !== ''
     || $facilityPhone !== ''
@@ -111,7 +200,19 @@ $hasFacilityOfficialInfo =
         ) === 1
     )
     || $facilityFeeDescription !== ''
+    || $facilityAddress3 !== ''
+    || $facilityAccessibility !== ''
+    || $facilityAdaAccess !== ''
+    || $facilityStayLimit !== ''
+    || (
+        $facilityMapUrl !== ''
+        && preg_match(
+            '#^https?://#i',
+            $facilityMapUrl
+        ) === 1
+    )
     || !empty($facilityActivities)
+    || !empty($facilityActivityDetails)
     || !empty($facilityLinks);
 
 if (!$hasFacilityOfficialInfo) {
@@ -157,6 +258,14 @@ if (!$hasFacilityOfficialInfo) {
                     <span>Official address</span>
                     <strong>
                         <?= place_h($facilityAddress) ?>
+                        <?php if ($facilityAddress3 !== ''): ?>
+                            <br><?= place_h($facilityAddress3) ?>
+                        <?php endif; ?>
+                        <?php if ($facilityAddressType !== ''): ?>
+                            <small>
+                                <?= place_h($facilityAddressType) ?> address
+                            </small>
+                        <?php endif; ?>
                     </strong>
                 </div>
             <?php endif; ?>
@@ -195,6 +304,68 @@ if (!$hasFacilityOfficialInfo) {
                     </strong>
                 </div>
             <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (
+        $facilityAccessibility !== ''
+        || $facilityAdaAccess !== ''
+        || $facilityStayLimit !== ''
+    ): ?>
+        <div class="place-facility-info-grid">
+            <?php if ($facilityAdaAccess !== ''): ?>
+                <div class="place-facility-info-card">
+                    <span>Official accessibility</span>
+                    <strong>
+                        <?= place_h($facilityAdaAccess) ?>
+                    </strong>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($facilityStayLimit !== ''): ?>
+                <div class="place-facility-info-card">
+                    <span>Official stay limit</span>
+                    <strong>
+                        <?= place_h($facilityStayLimit) ?>
+                    </strong>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($facilityAccessibility !== ''): ?>
+            <section class="place-facility-copy">
+                <h3>Official accessibility information</h3>
+
+                <p>
+                    <?= nl2br(
+                        place_h(
+                            $facilityAccessibility
+                        )
+                    ) ?>
+                </p>
+            </section>
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if (
+        $facilityMapUrl !== ''
+        && preg_match(
+            '#^https?://#i',
+            $facilityMapUrl
+        ) === 1
+    ): ?>
+        <div class="place-facility-actions">
+            <a
+                class="place-facility-action"
+                href="<?= place_h(
+                    $facilityMapUrl
+                ) ?>"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                Official facility map
+                <?= llama_icon('external-link') ?>
+            </a>
         </div>
     <?php endif; ?>
 
@@ -251,6 +422,77 @@ if (!$hasFacilityOfficialInfo) {
         </section>
     <?php endif; ?>
 
+    <?php if ($facilityActivityDetails): ?>
+        <section class="place-facility-list-section">
+            <h3>Official activity details</h3>
+
+            <?php foreach (
+                $facilityActivityDetails
+                as $activityDetail
+            ): ?>
+                <?php
+                $activityName =
+                    trim(
+                        (string) (
+                            $activityDetail['name']
+                            ?? ''
+                        )
+                    );
+
+                $activityDescription =
+                    trim(
+                        (string) (
+                            $activityDetail[
+                                'description'
+                            ]
+                            ?? ''
+                        )
+                    );
+
+                $activityFee =
+                    trim(
+                        (string) (
+                            $activityDetail[
+                                'fee_description'
+                            ]
+                            ?? ''
+                        )
+                    );
+                ?>
+
+                <?php if (
+                    $activityDescription !== ''
+                    || $activityFee !== ''
+                ): ?>
+                    <div class="place-facility-copy">
+                        <?php if ($activityName !== ''): ?>
+                            <h4>
+                                <?= place_h($activityName) ?>
+                            </h4>
+                        <?php endif; ?>
+
+                        <?php if ($activityDescription !== ''): ?>
+                            <p>
+                                <?= nl2br(
+                                    place_h(
+                                        $activityDescription
+                                    )
+                                ) ?>
+                            </p>
+                        <?php endif; ?>
+
+                        <?php if ($activityFee !== ''): ?>
+                            <p>
+                                <strong>Fee:</strong>
+                                <?= place_h($activityFee) ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </section>
+    <?php endif; ?>
+
     <?php if ($facilityLinks): ?>
         <section class="place-facility-list-section">
             <h3>Official links</h3>
@@ -286,6 +528,16 @@ if (!$hasFacilityOfficialInfo) {
                                 ?? ''
                             )
                         );
+
+                    $description =
+                        trim(
+                            (string) (
+                                $facilityLinkDescriptions[
+                                    $url
+                                ]
+                                ?? ''
+                            )
+                        );
                     ?>
 
                     <a
@@ -299,6 +551,12 @@ if (!$hasFacilityOfficialInfo) {
                                     ? $title
                                     : 'Official link'
                             ) ?>
+
+                            <?php if ($description !== ''): ?>
+                                <small>
+                                    <?= place_h($description) ?>
+                                </small>
+                            <?php endif; ?>
                         </span>
 
                         <?= llama_icon('external-link') ?>
