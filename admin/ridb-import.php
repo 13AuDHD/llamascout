@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb-import.php';
 require_once dirname(__DIR__) . '/app/ridb-canonical.php';
 require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
+require_once dirname(__DIR__) . '/app/ridb-complete-import.php';
 
 $adminUser =
     moderation_require_admin();
@@ -96,21 +97,30 @@ if (
 
         foreach ($facilityIds as $facilityId) {
             try {
+                $mainDb =
+                    db();
+
+                $ridbDb =
+                    ridb_db();
+
+                $userId =
+                    (int) (
+                        $adminUser['id']
+                        ?? 0
+                    );
+
                 $result =
                     llama_ridb_import_facility(
-                        db(),
-                        ridb_db(),
-                        (int) (
-                            $adminUser['id']
-                            ?? 0
-                        ),
+                        $mainDb,
+                        $ridbDb,
+                        $userId,
                         $facilityId
                     );
 
                 $canonical =
                     llama_ridb_canonical_sync_place(
-                        db(),
-                        ridb_db(),
+                        $mainDb,
+                        $ridbDb,
                         (int) (
                             $result['place_id']
                             ?? 0
@@ -128,14 +138,34 @@ if (
 
                 $result =
                     llama_ridb_public_finalize_import(
-                        db(),
-                        ridb_db(),
-                        (int) (
-                            $adminUser['id']
-                            ?? 0
-                        ),
+                        $mainDb,
+                        $ridbDb,
+                        $userId,
                         $facilityId,
                         $result
+                    );
+
+                /*
+                 * Promote the campsite-specific data that RIDB embeds directly
+                 * in its campsite records: equipment, top-level metadata, and
+                 * individual campsite media.
+                 */
+                $complete =
+                    llama_ridb_complete_campsite_import(
+                        $mainDb,
+                        $ridbDb,
+                        $userId,
+                        (int) (
+                            $result['place_id']
+                            ?? 0
+                        ),
+                        $facilityId
+                    );
+
+                $result =
+                    array_merge(
+                        $result,
+                        $complete
                     );
 
                 $results[] =
@@ -143,7 +173,6 @@ if (
                         [
                             'facility_id' =>
                                 $facilityId,
-
                             'ok' =>
                                 true,
                         ],
@@ -153,10 +182,8 @@ if (
                 $results[] = [
                     'facility_id' =>
                         $facilityId,
-
                     'ok' =>
                         false,
-
                     'error' =>
                         $exception
                             ->getMessage(),
@@ -184,13 +211,14 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
     <div>
         <p>Production import</p>
-        <h2>RIDB → Llama Scout</h2>
+        <h2>RIDB â Llama Scout</h2>
     </div>
 </header>
 
 <p>
     RIDB data is promoted into the same Place fields, gallery,
-    amenities, rules, and cards used by manually entered Places.
+    amenities, rules, campsite records, campsite facts, campsite
+    equipment, and individual campsite galleries used by Llama Scout.
 </p>
 
 <div class="admin-user-form-actions">
@@ -219,9 +247,11 @@ require __DIR__ . '/_header.php';
     <th>Place</th>
     <th>Campsites</th>
     <th>Attributes</th>
+    <th>Site details</th>
+    <th>Site photos</th>
     <th>Place answers</th>
     <th>Location fields</th>
-    <th>Photos</th>
+    <th>Place photos</th>
     <th></th>
 </tr>
 </thead>
@@ -302,6 +332,34 @@ require __DIR__ . '/_header.php';
         : '' ?>
 </td>
 
+<td data-label="Site details">
+    <?= isset(
+        $result[
+            'site_metadata_imported'
+        ]
+    )
+        ? number_format(
+            (int) $result[
+                'site_metadata_imported'
+            ]
+        )
+        : '' ?>
+</td>
+
+<td data-label="Site photos">
+    <?= isset(
+        $result[
+            'site_media_imported'
+        ]
+    )
+        ? number_format(
+            (int) $result[
+                'site_media_imported'
+            ]
+        )
+        : '' ?>
+</td>
+
 <td data-label="Place answers">
     <?= isset(
         $result['canonical_answers']
@@ -317,12 +375,14 @@ require __DIR__ . '/_header.php';
         $result['core_fields_imported']
     )
         ? number_format(
-            (int) $result['core_fields_imported']
+            (int) $result[
+                'core_fields_imported'
+            ]
         )
         : '' ?>
 </td>
 
-<td data-label="Photos">
+<td data-label="Place photos">
     <?= isset(
         $result['media_imported']
     )
