@@ -102,6 +102,51 @@ function llama_ridb_coverage_rules(): array
                 'status' => 'preserved',
                 'target' => 'RIDB source geometry',
             ],
+            'FacilityAccessibilityText' => [
+                'status' => 'imported',
+                'target' => 'Official facility accessibility notes',
+            ],
+            'FacilityAdaAccess' => [
+                'status' => 'imported',
+                'target' => 'Official ADA accessibility status',
+            ],
+            'FacilityMapURL' => [
+                'status' => 'imported',
+                'target' => 'Official facility map link',
+            ],
+            'StayLimit' => [
+                'status' => 'imported',
+                'target' => 'Official source stay-limit text',
+            ],
+            'Keywords' => [
+                'status' => 'preserved',
+                'target' => 'RIDB source metadata',
+            ],
+            'LegacyFacilityID' => [
+                'status' => 'preserved',
+                'target' => 'RIDB legacy source identity',
+            ],
+            'OrgFacilityID' => [
+                'status' => 'preserved',
+                'target' => 'RIDB organization relationship',
+            ],
+            'ParentOrgID' => [
+                'status' => 'preserved',
+                'target' => 'RIDB organization relationship',
+            ],
+            'GEOJSON.COORDINATES' => [
+                'status' => 'preserved',
+                'target' => 'RIDB source geometry',
+            ],
+            'GEOJSON.COORDINATES[]' => [
+                'status' => 'preserved',
+                'target' => 'RIDB source geometry',
+            ],
+            'GEOJSON.TYPE' => [
+                'status' => 'preserved',
+                'target' => 'RIDB source geometry',
+            ],
+
         ],
 
         'campsite' => [
@@ -236,6 +281,19 @@ function llama_ridb_coverage_rules(): array
                 'status' => 'preserved',
                 'target' => 'RIDB address source',
             ],
+            'FacilityAddressType' => [
+                'status' => 'imported',
+                'target' => 'Official address type / preferred address selection',
+            ],
+            'FacilityStreetAddress3' => [
+                'status' => 'imported',
+                'target' => 'Official facility address line 3',
+            ],
+            'LastUpdatedDate' => [
+                'status' => 'imported',
+                'target' => 'Official address provenance timestamp',
+            ],
+
         ],
 
         'media' => [
@@ -291,6 +349,19 @@ function llama_ridb_coverage_rules(): array
                 'status' => 'preserved',
                 'target' => 'RIDB source media record',
             ],
+            'IsGallery' => [
+                'status' => 'imported',
+                'target' => 'RIDB gallery ordering behavior',
+            ],
+            'IsPreview' => [
+                'status' => 'imported',
+                'target' => 'RIDB media priority behavior',
+            ],
+            'IsPrimary' => [
+                'status' => 'imported',
+                'target' => 'RIDB featured-image priority behavior',
+            ],
+
         ],
 
         'link' => [
@@ -322,6 +393,15 @@ function llama_ridb_coverage_rules(): array
                 'status' => 'imported',
                 'target' => 'Official facility links',
             ],
+            'Description' => [
+                'status' => 'imported',
+                'target' => 'Official link description',
+            ],
+            'EntityLinkID' => [
+                'status' => 'preserved',
+                'target' => 'RIDB link provenance',
+            ],
+
         ],
 
         'activity' => [
@@ -333,6 +413,19 @@ function llama_ridb_coverage_rules(): array
                 'status' => 'imported',
                 'target' => 'Place facility feature',
             ],
+            'FacilityID' => [
+                'status' => 'preserved',
+                'target' => 'RIDB facility relationship',
+            ],
+            'FacilityActivityDescription' => [
+                'status' => 'imported',
+                'target' => 'Source-attributed activity description',
+            ],
+            'FacilityActivityFeeDescription' => [
+                'status' => 'imported',
+                'target' => 'Source-attributed activity fee description',
+            ],
+
             'EntityID' => [
                 'status' => 'preserved',
                 'target' => 'RIDB relationship',
@@ -405,6 +498,75 @@ function llama_ridb_coverage_match(
             'status' => 'preserved',
             'target' => 'Lossless permitted-equipment source record',
         ];
+    }
+
+    if ($scope === 'facility') {
+        $structural = [
+            'ACTIVITY',
+            'CAMPSITE',
+            'EVENT',
+            'FACILITYADDRESS',
+            'LINK',
+            'MEDIA',
+            'ORGANIZATION',
+            'PERMITENTRANCE',
+            'RECAREA',
+            'TOUR',
+        ];
+
+        if (
+            in_array(
+                $path,
+                $structural,
+                true
+            )
+        ) {
+            return [
+                'status' => 'preserved',
+                'target' => 'RIDB structural/source relationship container',
+            ];
+        }
+
+        if (
+            $path === 'MEDIA[]'
+            || str_starts_with(
+                $path,
+                'MEDIA[].'
+            )
+        ) {
+            $mappedMediaChildren = [
+                'MEDIA[].Credits',
+                'MEDIA[].Description',
+                'MEDIA[].EntityID',
+                'MEDIA[].EntityMediaID',
+                'MEDIA[].EntityType',
+                'MEDIA[].IsGallery',
+                'MEDIA[].IsPreview',
+                'MEDIA[].IsPrimary',
+                'MEDIA[].MediaType',
+                'MEDIA[].Title',
+                'MEDIA[].URL',
+            ];
+
+            return [
+                'status' =>
+                    in_array(
+                        $path,
+                        $mappedMediaChildren,
+                        true
+                    )
+                        ? 'imported'
+                        : 'preserved',
+                'target' =>
+                    in_array(
+                        $path,
+                        $mappedMediaChildren,
+                        true
+                    )
+                        ? 'Facility media/gallery source behavior'
+                        : 'Lossless embedded facility media source record',
+            ];
+        }
     }
 
     return [
