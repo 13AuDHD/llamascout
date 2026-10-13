@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/ridb-import.php';
 require_once dirname(__DIR__) . '/app/ridb-canonical.php';
 require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
 require_once dirname(__DIR__) . '/app/ridb-complete-import.php';
+require_once dirname(__DIR__) . '/app/ridb-facility-details.php';
 
 $adminUser =
     moderation_require_admin();
@@ -168,6 +169,17 @@ if (
                         $complete
                     );
 
+                $result['facility_links_imported'] =
+                    llama_ridb_import_facility_links(
+                        $mainDb,
+                        $ridbDb,
+                        (int) (
+                            $result['place_id']
+                            ?? 0
+                        ),
+                        $facilityId
+                    );
+
                 $results[] =
                     array_merge(
                         [
@@ -252,6 +264,7 @@ require __DIR__ . '/_header.php';
     <th>Place answers</th>
     <th>Location fields</th>
     <th>Place photos</th>
+    <th>Official links</th>
     <th></th>
 </tr>
 </thead>
@@ -388,6 +401,20 @@ require __DIR__ . '/_header.php';
     )
         ? number_format(
             (int) $result['media_imported']
+        )
+        : '' ?>
+</td>
+
+<td data-label="Official links">
+    <?= isset(
+        $result[
+            'facility_links_imported'
+        ]
+    )
+        ? number_format(
+            (int) $result[
+                'facility_links_imported'
+            ]
         )
         : '' ?>
 </td>
