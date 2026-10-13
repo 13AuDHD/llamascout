@@ -87,6 +87,9 @@ foreach ($stayFeatures as $feature) {
     ];
 }
 ?>
+
+<?php require __DIR__ . '/facility-info.php'; ?>
+
 <script src="/js/place-campsite-horizontal-scroll.js"></script>
 <link rel="stylesheet" href="/css/site/features/place-overnight-options.css">
 <link rel="stylesheet" href="/css/site/features/place-campsite-detail-media.css">
