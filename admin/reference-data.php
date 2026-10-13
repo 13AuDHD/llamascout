@@ -41,9 +41,7 @@ $adminActiveNav =
 require __DIR__ . '/_header.php';
 ?>
 
-
 <section class="admin-panel">
-
 <header class="admin-panel-header">
     <div>
         <p>External catalogs</p>
@@ -52,19 +50,14 @@ require __DIR__ . '/_header.php';
 </header>
 
 <div class="admin-user-action-box">
-
 <p>
-    Manage large external datasets that Llama Scout uses as reference
-    information without turning every source record into a Llama Scout Place.
+    Manage external source datasets used by Llama Scout without automatically
+    turning every source record into a public Place.
 </p>
-
 </div>
-
 </section>
 
-
 <section class="admin-panel">
-
 <header class="admin-panel-header">
     <div>
         <p>Federal recreation</p>
@@ -73,45 +66,24 @@ require __DIR__ . '/_header.php';
 </header>
 
 <div class="admin-user-action-box">
-
 <p>
-    Synchronize the Recreation Information Database into Llama Scout's
-    dedicated RIDB reference database, browse the local catalog, and
-    choose which facilities become Llama Scout Places.
+    The RIDB Control Center now contains the source mirror, campsite detail
+    extraction, searchable facility catalog, production import controls, and
+    links to RIDB mapping tools.
 </p>
 
 <div class="admin-user-form-actions">
-
 <a
     class="admin-button"
     href="/ridb.php"
 >
-    RIDB Sync & Catalog
+    Open RIDB Control Center
 </a>
-
-<a
-    class="admin-button is-secondary"
-    href="/ridb-schema.php"
->
-    Schema Explorer
-</a>
-
-<a
-    class="admin-button is-secondary"
-    href="/ridb-normalization.php"
->
-    Normalization
-</a>
-
 </div>
-
 </div>
-
 </section>
 
-
 <section class="admin-panel">
-
 <header class="admin-panel-header">
     <div>
         <p>Public lands</p>
@@ -120,13 +92,11 @@ require __DIR__ . '/_header.php';
 </header>
 
 <div class="admin-user-action-box">
-
 <p>
     Protected Areas Database of the United States reference catalog.
 </p>
 
 <div class="admin-user-form-actions">
-
 <a
     class="admin-button"
     href="/pad-us-sync.php"
@@ -147,12 +117,8 @@ require __DIR__ . '/_header.php';
 >
     Review Classifications
 </a>
-
 </div>
-
 </div>
-
 </section>
-
 
 <?php require __DIR__ . '/_footer.php'; ?>
