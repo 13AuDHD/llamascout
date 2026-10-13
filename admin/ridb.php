@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/ridb.php';
 require_once dirname(__DIR__) . '/app/ridb-catalog.php';
 require_once dirname(__DIR__) . '/app/ridb-mirror.php';
 require_once dirname(__DIR__) . '/app/ridb-campsite-extract.php';
+require_once dirname(__DIR__) . '/app/ridb-status.php';
 
 $adminUser =
     moderation_require_admin();
@@ -359,6 +360,32 @@ if (
 
             } elseif (
                 $action
+                === 'reconcile_status'
+            ) {
+                $result =
+                    llama_ridb_status_reconcile(
+                        $ridbDb,
+                        db()
+                    );
+
+                $notice =
+                    number_format(
+                        (int) (
+                            $result['imported']
+                            ?? 0
+                        )
+                    )
+                    . ' imported RIDB facilities reconciled. '
+                    . number_format(
+                        (int) (
+                            $result['source_updated']
+                            ?? 0
+                        )
+                    )
+                    . ' have newer RIDB source data available.';
+
+            } elseif (
+                $action
                 === 'test_api'
             ) {
                 llama_ridb_request(
@@ -418,6 +445,12 @@ $filters =
         $_GET
     );
 
+$filters['status'] =
+    llama_ridb_status_filter(
+        $_GET['status']
+        ?? ''
+    );
+
 $catalog = [
     'rows' => [],
     'total' => 0,
@@ -428,6 +461,15 @@ $catalog = [
 $types = [];
 $states = [];
 $importedLookup = [];
+
+$statusCounts = [
+    'facilities' => 0,
+    'imported' => 0,
+    'not_imported' => 0,
+    'source_updated' => 0,
+    'current' => 0,
+    'missing_source' => 0,
+];
 
 if ($ridbDb instanceof PDO) {
     try {
@@ -473,8 +515,13 @@ if ($ridbDb instanceof PDO) {
                 $ridbDb
             );
 
+        $statusCounts =
+            llama_ridb_status_counts(
+                $ridbDb
+            );
+
         $catalog =
-            llama_ridb_catalog_facilities(
+            llama_ridb_status_catalog_facilities(
                 $ridbDb,
                 $filters,
                 50
@@ -1122,6 +1169,111 @@ $complete =
 <section class="admin-panel">
 <header class="admin-panel-header">
     <div>
+        <p>RIDB vs Llama Scout</p>
+        <h2>Production Sync Status</h2>
+    </div>
+</header>
+
+<div class="admin-integration-summary">
+    <div>
+        <strong>
+            <?= number_format(
+                (int) (
+                    $statusCounts['imported']
+                    ?? 0
+                )
+            ) ?>
+        </strong>
+        <span>Imported facilities</span>
+    </div>
+
+    <div>
+        <strong>
+            <?= number_format(
+                (int) (
+                    $statusCounts['not_imported']
+                    ?? 0
+                )
+            ) ?>
+        </strong>
+        <span>RIDB only / not imported</span>
+    </div>
+
+    <div>
+        <strong>
+            <?= number_format(
+                (int) (
+                    $statusCounts['source_updated']
+                    ?? 0
+                )
+            ) ?>
+        </strong>
+        <span>Source updates available</span>
+    </div>
+
+    <div>
+        <strong>
+            <?= number_format(
+                (int) (
+                    $statusCounts['current']
+                    ?? 0
+                )
+            ) ?>
+        </strong>
+        <span>Imported and current</span>
+    </div>
+</div>
+
+<div class="admin-user-action-box">
+    <p>
+        Reconciliation compares the RIDB source update timestamp with the
+        source timestamp saved when each Llama Scout Place was last imported
+        or synchronized. It never changes a Place.
+    </p>
+
+    <div class="admin-user-form-actions">
+        <form method="post">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= moderation_e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+            <input
+                type="hidden"
+                name="action"
+                value="reconcile_status"
+            >
+
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Reconcile production status
+            </button>
+        </form>
+
+        <a
+            class="admin-button is-secondary"
+            href="/ridb.php?status=not_imported"
+        >
+            Browse not imported
+        </a>
+
+        <a
+            class="admin-button is-secondary"
+            href="/ridb.php?status=source_updated"
+        >
+            Browse source updates
+        </a>
+    </div>
+</div>
+</section>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
         <p>Searchable facility index</p>
         <h2>Facility Catalog</h2>
     </div>
@@ -1320,6 +1472,63 @@ $complete =
         </option>
     </select>
 </label>
+
+<label>
+    <span>Llama Scout status</span>
+    <select name="status">
+        <option value="">
+            All source records
+        </option>
+
+        <option
+            value="not_imported"
+            <?= (
+                $filters['status']
+                ?? ''
+            ) === 'not_imported'
+                ? 'selected'
+                : '' ?>
+        >
+            Not imported
+        </option>
+
+        <option
+            value="imported"
+            <?= (
+                $filters['status']
+                ?? ''
+            ) === 'imported'
+                ? 'selected'
+                : '' ?>
+        >
+            Imported
+        </option>
+
+        <option
+            value="source_updated"
+            <?= (
+                $filters['status']
+                ?? ''
+            ) === 'source_updated'
+                ? 'selected'
+                : '' ?>
+        >
+            Source updated
+        </option>
+
+        <option
+            value="current"
+            <?= (
+                $filters['status']
+                ?? ''
+            ) === 'current'
+                ? 'selected'
+                : '' ?>
+        >
+            Imported and current
+        </option>
+    </select>
+</label>
 </div>
 
 <div class="admin-user-form-actions">
@@ -1366,7 +1575,7 @@ $complete =
     type="hidden"
     name="return_url"
     value="<?= moderation_e(
-        llama_ridb_catalog_url(
+        llama_ridb_status_catalog_url(
             $filters
         )
     ) ?>"
@@ -1501,17 +1710,53 @@ $imported =
 </td>
 
 <td data-label="Llama Scout">
-    <?php if ($imported): ?>
-        <strong>Imported</strong>
+    <?php
+    $syncStatus =
+        trim(
+            (string) (
+                $row['sync_status']
+                ?? ''
+            )
+        );
+
+    $statusPlaceId =
+        (int) (
+            $row['place_id']
+            ?? (
+                $imported['place_id']
+                ?? 0
+            )
+        );
+    ?>
+
+    <?php if ($statusPlaceId > 0): ?>
+        <strong>
+            <?= $syncStatus === 'source_updated'
+                ? 'Source updated'
+                : 'Imported' ?>
+        </strong>
+
         <small>
             Place #
             <?= number_format(
-                (int) (
-                    $imported['place_id']
-                    ?? 0
-                )
+                $statusPlaceId
             ) ?>
         </small>
+
+        <?php if (
+            $syncStatus
+            === 'source_updated'
+        ): ?>
+            <small>
+                RIDB has newer source data
+            </small>
+        <?php elseif (
+            $syncStatus === 'current'
+        ): ?>
+            <small>
+                Source current
+            </small>
+        <?php endif; ?>
     <?php else: ?>
         Not imported
     <?php endif; ?>
@@ -1583,7 +1828,7 @@ $previousFilters['page'] =
 <a
     class="admin-button is-secondary"
     href="<?= moderation_e(
-        llama_ridb_catalog_url(
+        llama_ridb_status_catalog_url(
             $previousFilters
         )
     ) ?>"
@@ -1630,7 +1875,7 @@ $nextFilters['page'] =
 <a
     class="admin-button is-secondary"
     href="<?= moderation_e(
-        llama_ridb_catalog_url(
+        llama_ridb_status_catalog_url(
             $nextFilters
         )
     ) ?>"
