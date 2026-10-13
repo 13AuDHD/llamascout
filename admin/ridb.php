@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/app/ridb-catalog.php';
 require_once dirname(__DIR__) . '/app/ridb-mirror.php';
 require_once dirname(__DIR__) . '/app/ridb-campsite-extract.php';
 require_once dirname(__DIR__) . '/app/ridb-status.php';
+require_once dirname(__DIR__) . '/app/ridb-refresh.php';
 
 $adminUser =
     moderation_require_admin();
@@ -28,6 +29,7 @@ $mirrorAutoRunning = false;
 $mirrorAutoFeed = '';
 
 $extractAutoRunning = false;
+$facilityRefreshAutoRunning = false;
 
 try {
     $ridbDb =
@@ -311,6 +313,37 @@ if (
 
             /*
              * =========================================================
+             * FACILITY SOURCE REFRESH
+             * =========================================================
+             */
+            } elseif ($action === 'facility_refresh_start') {
+                $refresh = llama_ridb_refresh_begin($ridbDb);
+                $facilityRefreshAutoRunning = true;
+                $notice = 'Facility source refresh started. ' . number_format((int) ($refresh['baseline_count'] ?? 0)) . ' existing facilities were snapshotted for change detection.';
+
+            } elseif ($action === 'facility_refresh_tick') {
+                $result = llama_ridb_refresh_batch($ridbDb, 500);
+                $facilityRefreshAutoRunning = empty($result['complete']);
+                $notice = number_format((int) ($result['seen'] ?? 0)) . ' facilities refreshed. Offset ' . number_format((int) ($result['next_offset'] ?? 0)) . '.';
+
+                if (!empty($result['complete'])) {
+                    $refresh = (array) ($result['refresh'] ?? []);
+                    $notice .= ' Complete: ' . number_format((int) ($refresh['new_count'] ?? 0)) . ' new, ' . number_format((int) ($refresh['changed_count'] ?? 0)) . ' changed, ' . number_format((int) ($refresh['missing_count'] ?? 0)) . ' missing from the current source.';
+                }
+
+            } elseif ($action === 'facility_refresh_once') {
+                if (!llama_ridb_refresh_active($ridbDb)) {
+                    llama_ridb_refresh_begin($ridbDb);
+                }
+                $result = llama_ridb_refresh_batch($ridbDb, 500);
+                $notice = number_format((int) ($result['seen'] ?? 0)) . ' facilities refreshed. Offset ' . number_format((int) ($result['next_offset'] ?? 0)) . '.';
+
+            } elseif ($action === 'facility_refresh_stop') {
+                $facilityRefreshAutoRunning = false;
+                $notice = 'Automatic facility source refresh stopped. Progress is saved.';
+
+            /*
+             * =========================================================
              * NORMALIZED FACILITY CATALOG
              * =========================================================
              */
@@ -462,6 +495,12 @@ $types = [];
 $states = [];
 $importedLookup = [];
 
+$refreshActive = null;
+$refreshLatest = null;
+$refreshChanges = [];
+$refreshChangeType = trim((string) ($_GET['source_change'] ?? ''));
+$refreshChangeQuery = trim((string) ($_GET['source_q'] ?? ''));
+
 $statusCounts = [
     'facilities' => 0,
     'imported' => 0,
@@ -514,6 +553,19 @@ if ($ridbDb instanceof PDO) {
             llama_ridb_catalog_sync_state(
                 $ridbDb
             );
+
+        $refreshActive = llama_ridb_refresh_active($ridbDb);
+        $refreshLatest = llama_ridb_refresh_latest($ridbDb);
+
+        if ($refreshLatest && (int) ($refreshLatest['id'] ?? 0) > 0) {
+            $refreshChanges = llama_ridb_refresh_changes(
+                $ridbDb,
+                (int) $refreshLatest['id'],
+                $refreshChangeType,
+                $refreshChangeQuery,
+                100
+            );
+        }
 
         $statusCounts =
             llama_ridb_status_counts(
@@ -1267,6 +1319,84 @@ $complete =
 <section class="admin-panel">
 <header class="admin-panel-header">
     <div>
+        <p>Recreation.gov facility feed</p>
+        <h2>Facility Source Refresh</h2>
+    </div>
+    <span class="admin-status-pill">
+        <?= $refreshActive ? 'In progress' : (($refreshLatest && ($refreshLatest['status'] ?? '') === 'complete') ? 'Complete' : 'Not run') ?>
+    </span>
+</header>
+
+<?php if ($refreshLatest): ?>
+<div class="admin-integration-summary">
+    <div><strong><?= number_format((int) ($refreshLatest['seen_count'] ?? 0)) ?></strong><span>Facilities seen</span></div>
+    <div><strong><?= number_format((int) ($refreshLatest['new_count'] ?? 0)) ?></strong><span>New facilities</span></div>
+    <div><strong><?= number_format((int) ($refreshLatest['changed_count'] ?? 0)) ?></strong><span>Source changed</span></div>
+    <div><strong><?= number_format((int) ($refreshLatest['missing_count'] ?? 0)) ?></strong><span>Missing from source</span></div>
+    <div><strong><?= number_format((int) ($refreshLatest['unchanged_count'] ?? 0)) ?></strong><span>Unchanged</span></div>
+</div>
+<?php endif; ?>
+
+<div class="admin-user-action-box">
+    <p>Recheck the full Recreation.gov facility catalog without deleting cached rows. Llama Scout snapshots the current facility records first, then reports new, changed, and missing facilities when the pass completes.</p>
+    <p>Automatic refresh handles 500 facilities per request, fully exits PHP, waits 3 seconds, then continues.</p>
+    <div class="admin-user-form-actions">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="facility_refresh_start">
+            <button class="admin-button" type="submit"><?= $refreshActive ? 'Resume automatic refresh' : 'Start facility source refresh' ?></button>
+        </form>
+        <?php if ($refreshActive): ?>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="facility_refresh_once">
+            <button class="admin-button is-secondary" type="submit">Run 500 once</button>
+        </form>
+        <?php endif; ?>
+        <?php if ($facilityRefreshAutoRunning): ?>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="facility_refresh_stop">
+            <button class="admin-button is-secondary" type="submit">Stop after this batch</button>
+        </form>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if ($refreshLatest && ($refreshLatest['status'] ?? '') === 'complete'): ?>
+<form class="admin-user-action-box" method="get">
+    <div class="admin-integration-summary">
+        <label><span>Source change</span><select name="source_change">
+            <option value="">All changes</option>
+            <option value="new" <?= $refreshChangeType === 'new' ? 'selected' : '' ?>>New</option>
+            <option value="changed" <?= $refreshChangeType === 'changed' ? 'selected' : '' ?>>Changed</option>
+            <option value="missing" <?= $refreshChangeType === 'missing' ? 'selected' : '' ?>>Missing</option>
+        </select></label>
+        <label><span>Search changes</span><input type="search" name="source_q" value="<?= moderation_e($refreshChangeQuery) ?>" placeholder="Facility name or RIDB ID"></label>
+    </div>
+    <div class="admin-user-form-actions"><button class="admin-button" type="submit">Filter source changes</button><a class="admin-button is-secondary" href="/ridb.php">Clear</a></div>
+</form>
+
+<?php if ($refreshChanges): ?>
+<div class="admin-integration-table-wrap"><table class="admin-integration-table"><thead><tr><th>Change</th><th>Facility</th><th>Type</th><th>Location</th><th>RIDB updated</th><th></th></tr></thead><tbody>
+<?php foreach ($refreshChanges as $change): ?>
+<tr>
+<td data-label="Change"><strong><?= moderation_e(ucfirst((string) ($change['change_type'] ?? ''))) ?></strong></td>
+<td data-label="Facility"><strong><?= moderation_e((string) ($change['facility_name'] ?: $change['ridb_facility_id'])) ?></strong><small>RIDB <?= moderation_e((string) ($change['ridb_facility_id'] ?? '')) ?></small></td>
+<td data-label="Type"><?= moderation_e((string) ($change['facility_type_description'] ?? '')) ?></td>
+<td data-label="Location"><?= moderation_e(trim(implode(', ', array_filter([(string) ($change['city'] ?? ''), (string) ($change['state_code'] ?? '')])))) ?></td>
+<td data-label="RIDB updated"><?= moderation_e((string) ($change['source_last_updated'] ?? '')) ?></td>
+<td data-label="Action"><a class="admin-button is-secondary" href="/ridb-facility.php?id=<?= rawurlencode((string) ($change['ridb_facility_id'] ?? '')) ?>">Inspect</a></td>
+</tr>
+<?php endforeach; ?>
+</tbody></table></div>
+<?php endif; ?>
+<?php endif; ?>
+</section>
+
+<section class="admin-panel">
+<header class="admin-panel-header">
+    <div>
         <p>Searchable facility index</p>
         <h2>Facility Catalog</h2>
     </div>
@@ -1881,7 +2011,13 @@ $nextFilters['page'] =
 <?php endif; ?>
 </section>
 
-<?php if (
+<?php if ($facilityRefreshAutoRunning): ?>
+<form id="ridb-auto-next" method="post" hidden>
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <input type="hidden" name="action" value="facility_refresh_tick">
+</form>
+<script>window.setTimeout(function(){var form=document.getElementById('ridb-auto-next');if(form){form.submit();}},3000);</script>
+<?php elseif (
     $mirrorAutoRunning
     && $mirrorAutoFeed !== ''
 ): ?>
