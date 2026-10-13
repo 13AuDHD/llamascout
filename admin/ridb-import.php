@@ -8,6 +8,8 @@ require_once dirname(__DIR__) . '/app/ridb-canonical.php';
 require_once dirname(__DIR__) . '/app/ridb-public-presentation.php';
 require_once dirname(__DIR__) . '/app/ridb-complete-import.php';
 require_once dirname(__DIR__) . '/app/ridb-facility-details.php';
+require_once dirname(__DIR__) . '/app/ridb-safe-sync.php';
+require_once dirname(__DIR__) . '/app/ridb-status.php';
 
 $adminUser =
     moderation_require_admin();
@@ -110,75 +112,91 @@ if (
                         ?? 0
                     );
 
-                $result =
-                    llama_ridb_import_facility(
+                $existingPlaceId =
+                    llama_ridb_import_find_place(
                         $mainDb,
-                        $ridbDb,
-                        $userId,
                         $facilityId
                     );
 
-                $canonical =
-                    llama_ridb_canonical_sync_place(
-                        $mainDb,
-                        $ridbDb,
+                if ($existingPlaceId !== null) {
+                    $result =
+                        llama_ridb_safe_sync_facility(
+                            $mainDb,
+                            $ridbDb,
+                            $userId,
+                            $facilityId
+                        );
+                } else {
+                    $result =
+                        llama_ridb_import_facility(
+                            $mainDb,
+                            $ridbDb,
+                            $userId,
+                            $facilityId
+                        );
+
+                    $canonical =
+                        llama_ridb_canonical_sync_place(
+                            $mainDb,
+                            $ridbDb,
+                            (int) (
+                                $result['place_id']
+                                ?? 0
+                            ),
+                            $facilityId
+                        );
+
+                    $result['canonical_answers'] =
                         (int) (
-                            $result['place_id']
+                            $canonical[
+                                'answer_count'
+                            ]
                             ?? 0
-                        ),
-                        $facilityId
-                    );
+                        );
 
-                $result['canonical_answers'] =
-                    (int) (
-                        $canonical[
-                            'answer_count'
-                        ]
-                        ?? 0
-                    );
+                    $result =
+                        llama_ridb_public_finalize_import(
+                            $mainDb,
+                            $ridbDb,
+                            $userId,
+                            $facilityId,
+                            $result
+                        );
 
-                $result =
-                    llama_ridb_public_finalize_import(
-                        $mainDb,
-                        $ridbDb,
-                        $userId,
-                        $facilityId,
-                        $result
-                    );
+                    $complete =
+                        llama_ridb_complete_campsite_import(
+                            $mainDb,
+                            $ridbDb,
+                            $userId,
+                            (int) (
+                                $result['place_id']
+                                ?? 0
+                            ),
+                            $facilityId
+                        );
 
-                /*
-                 * Promote the campsite-specific data that RIDB embeds directly
-                 * in its campsite records: equipment, top-level metadata, and
-                 * individual campsite media.
-                 */
-                $complete =
-                    llama_ridb_complete_campsite_import(
-                        $mainDb,
-                        $ridbDb,
-                        $userId,
-                        (int) (
-                            $result['place_id']
-                            ?? 0
-                        ),
-                        $facilityId
-                    );
+                    $result =
+                        array_merge(
+                            $result,
+                            $complete
+                        );
 
-                $result =
-                    array_merge(
-                        $result,
-                        $complete
-                    );
+                    $result[
+                        'facility_links_imported'
+                    ] =
+                        llama_ridb_import_facility_links(
+                            $mainDb,
+                            $ridbDb,
+                            (int) (
+                                $result['place_id']
+                                ?? 0
+                            ),
+                            $facilityId
+                        );
 
-                $result['facility_links_imported'] =
-                    llama_ridb_import_facility_links(
-                        $mainDb,
-                        $ridbDb,
-                        (int) (
-                            $result['place_id']
-                            ?? 0
-                        ),
-                        $facilityId
-                    );
+                    $result['sync_mode'] =
+                        'new';
+                }
 
                 $results[] =
                     array_merge(
@@ -201,6 +219,18 @@ if (
                             ->getMessage(),
                 ];
             }
+        }
+
+        try {
+            llama_ridb_status_reconcile(
+                ridb_db(),
+                db()
+            );
+        } catch (Throwable $exception) {
+            llama_log_caught_exception(
+                $exception,
+                'ridb.status.reconcile.after.import'
+            );
         }
     }
 }
@@ -228,9 +258,10 @@ require __DIR__ . '/_header.php';
 </header>
 
 <p>
-    RIDB data is promoted into the same Place fields, gallery,
-    amenities, rules, campsite records, campsite facts, campsite
-    equipment, and individual campsite galleries used by Llama Scout.
+    New facilities receive a complete RIDB import. Existing imported
+    Places use a conservative source synchronization that refreshes RIDB-owned
+    facility and campsite data while preserving existing human-entered Place
+    fields, amenity answers, Scout observations, and Scout photos.
 </p>
 
 <div class="admin-user-form-actions">
@@ -256,6 +287,7 @@ require __DIR__ . '/_header.php';
 <tr>
     <th>RIDB facility</th>
     <th>Status</th>
+    <th>Mode</th>
     <th>Place</th>
     <th>Campsites</th>
     <th>Attributes</th>
@@ -309,6 +341,21 @@ require __DIR__ . '/_header.php';
                 )
             ) ?>
         </small>
+    <?php endif; ?>
+</td>
+
+<td data-label="Mode">
+    <?php if (
+        !empty(
+            $result['ok']
+        )
+    ): ?>
+        <?= (
+            $result['sync_mode']
+            ?? ''
+        ) === 'safe'
+            ? 'Safe source sync'
+            : 'New import' ?>
     <?php endif; ?>
 </td>
 
