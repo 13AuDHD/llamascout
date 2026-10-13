@@ -2,14 +2,235 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/ridb-mirror-extended.php';
+require_once __DIR__ . '/ridb-mirror.php';
 
 /**
  * Bounded, resumable local extraction of embedded campsite details.
  *
+ * This file intentionally contains only the safe local campsite-extraction
+ * helpers needed by admin/ridb.php. It does NOT contain any "run until
+ * complete" loops or large all-in-one mirror operations.
+ *
  * No RIDB API calls are made here. One invocation processes a small number
  * of already-mirrored campsite JSON rows and then exits.
  */
+
+function llama_ridb_campsite_extract_embedded_list(
+    array $record,
+    array $keys
+): array {
+    foreach ($keys as $key) {
+        $value =
+            $record[$key]
+            ?? null;
+
+        if (!is_array($value)) {
+            continue;
+        }
+
+        if (!$value) {
+            return [];
+        }
+
+        if (
+            isset($value[0])
+            && is_array($value[0])
+        ) {
+            return array_values(
+                array_filter(
+                    $value,
+                    'is_array'
+                )
+            );
+        }
+
+        return [$value];
+    }
+
+    return [];
+}
+
+function llama_ridb_campsite_extract_record(
+    PDO $ridbDb,
+    array $site
+): array {
+    $siteId =
+        llama_ridb_mirror_record_value(
+            $site,
+            [
+                'CampsiteID',
+                'campsiteID',
+                'campsite_id',
+            ]
+        );
+
+    if ($siteId === '') {
+        return [
+            'attributes' => 0,
+            'equipment' => 0,
+            'media' => 0,
+        ];
+    }
+
+    $attributes =
+        llama_ridb_campsite_extract_embedded_list(
+            $site,
+            [
+                'ATTRIBUTES',
+                'Attributes',
+                'attributes',
+            ]
+        );
+
+    $equipment =
+        llama_ridb_campsite_extract_embedded_list(
+            $site,
+            [
+                'PERMITTEDEQUIPMENT',
+                'PermittedEquipment',
+                'permittedEquipment',
+            ]
+        );
+
+    $media =
+        llama_ridb_campsite_extract_embedded_list(
+            $site,
+            [
+                'ENTITYMEDIA',
+                'EntityMedia',
+                'entityMedia',
+            ]
+        );
+
+    foreach ($media as &$item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        if (
+            llama_ridb_mirror_record_value(
+                $item,
+                [
+                    'EntityID',
+                    'entityID',
+                    'entity_id',
+                ]
+            ) === ''
+        ) {
+            $item['EntityID'] =
+                $siteId;
+        }
+
+        if (
+            llama_ridb_mirror_record_value(
+                $item,
+                [
+                    'EntityType',
+                    'entityType',
+                    'entity_type',
+                ]
+            ) === ''
+        ) {
+            $item['EntityType'] =
+                'Campsite';
+        }
+    }
+    unset($item);
+
+    $endpointBase =
+        '/campsites/'
+        . rawurlencode($siteId);
+
+    return [
+        'attributes' =>
+            llama_ridb_mirror_store_records(
+                $ridbDb,
+                'campsite_attributes',
+                $endpointBase
+                    . '#embedded-attributes',
+                $attributes,
+                [
+                    'AttributeID',
+                    'EntityAttributeID',
+                    'attributeID',
+                ],
+                $siteId,
+                'Campsite'
+            ),
+
+        'equipment' =>
+            llama_ridb_mirror_store_records(
+                $ridbDb,
+                'campsite_permitted_equipment',
+                $endpointBase
+                    . '#embedded-permitted-equipment',
+                $equipment,
+                [],
+                $siteId,
+                'Campsite'
+            ),
+
+        'media' =>
+            llama_ridb_mirror_store_records(
+                $ridbDb,
+                'media',
+                $endpointBase
+                    . '#embedded-media',
+                $media,
+                [
+                    'EntityMediaID',
+                    'MediaID',
+                    'entityMediaID',
+                ],
+                $siteId,
+                'Campsite'
+            ),
+    ];
+}
+
+function llama_ridb_campsite_extract_detail_counts(
+    PDO $ridbDb
+): array {
+    $counts = [
+        'campsite_attributes' => 0,
+        'campsite_permitted_equipment' => 0,
+        'campsite_media' => 0,
+    ];
+
+    foreach (
+        [
+            'campsite_attributes',
+            'campsite_permitted_equipment',
+        ]
+        as $feed
+    ) {
+        $stmt =
+            $ridbDb->prepare(
+                'SELECT COUNT(*)
+                 FROM ridb_raw_records
+                 WHERE feed = ?'
+            );
+
+        $stmt->execute([
+            $feed,
+        ]);
+
+        $counts[$feed] =
+            (int) $stmt->fetchColumn();
+    }
+
+    $counts['campsite_media'] =
+        (int) $ridbDb
+            ->query(
+                'SELECT COUNT(*)
+                 FROM ridb_raw_records
+                 WHERE feed = "media"
+                   AND LOWER(entity_type) = "campsite"'
+            )
+            ->fetchColumn();
+
+    return $counts;
+}
 
 function llama_ridb_campsite_extract_feed(): string
 {
@@ -30,7 +251,7 @@ function llama_ridb_campsite_extract_counts(
     PDO $ridbDb
 ): array {
     $detailCounts =
-        llama_ridb_mirror_campsite_detail_counts(
+        llama_ridb_campsite_extract_detail_counts(
             $ridbDb
         );
 
@@ -55,8 +276,10 @@ function llama_ridb_campsite_extract_counts(
     return [
         'total_campsites' =>
             $totalCampsites,
+
         'max_raw_id' =>
             $maxId,
+
         'attributes' =>
             (int) (
                 $detailCounts[
@@ -64,6 +287,7 @@ function llama_ridb_campsite_extract_counts(
                 ]
                 ?? 0
             ),
+
         'equipment' =>
             (int) (
                 $detailCounts[
@@ -71,6 +295,7 @@ function llama_ridb_campsite_extract_counts(
                 ]
                 ?? 0
             ),
+
         'media' =>
             (int) (
                 $detailCounts[
@@ -87,10 +312,12 @@ function llama_ridb_campsite_extract_reset(
     $feed =
         llama_ridb_campsite_extract_feed();
 
-    $state =
-        llama_ridb_campsite_extract_state(
-            $ridbDb
-        );
+    /*
+     * Ensure the synthetic state row exists before updating it.
+     */
+    llama_ridb_campsite_extract_state(
+        $ridbDb
+    );
 
     $stmt =
         $ridbDb->prepare(
@@ -139,7 +366,8 @@ function llama_ridb_campsite_extract_batch(
     ]);
 
     $gotLock =
-        (int) $lockStmt->fetchColumn()
+        (int) $lockStmt
+            ->fetchColumn()
         === 1;
 
     if (!$gotLock) {
@@ -233,22 +461,25 @@ function llama_ridb_campsite_extract_batch(
             }
 
             $result =
-                llama_ridb_mirror_extract_campsite_record(
+                llama_ridb_campsite_extract_record(
                     $ridbDb,
                     $site
                 );
 
             $seen++;
+
             $attributes +=
                 (int) (
                     $result['attributes']
                     ?? 0
                 );
+
             $equipment +=
                 (int) (
                     $result['equipment']
                     ?? 0
                 );
+
             $media +=
                 (int) (
                     $result['media']
@@ -282,7 +513,9 @@ function llama_ridb_campsite_extract_batch(
         $update->execute([
             'local:ridb_raw_records/campsites',
             $lastId,
-            $complete ? 1 : 0,
+            $complete
+                ? 1
+                : 0,
             $seen,
             $stored,
             $seen,
