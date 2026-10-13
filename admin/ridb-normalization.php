@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/ridb-schema.php';
 require_once dirname(__DIR__) . '/app/ridb-normalization.php';
+require_once dirname(__DIR__) . '/app/ridb-coverage.php';
 
 $adminUser =
     moderation_require_admin();
@@ -13,10 +14,10 @@ $adminPageTitle =
     'RIDB Normalization';
 
 $adminPageEyebrow =
-    'Reference Data';
+    'RIDB';
 
 $adminActiveNav =
-    'reference-data';
+    'ridb';
 
 $error = '';
 
@@ -32,11 +33,42 @@ $report = [
     'unmapped' => [],
 ];
 
+$auditScope =
+    trim(
+        (string) (
+            $_GET['audit_scope']
+            ?? 'facility'
+        )
+    );
+
+$coverageReport = [
+    'scope' => 'facility',
+    'label' => 'Facilities',
+    'record_count' => 0,
+    'field_count' => 0,
+    'imported_count' => 0,
+    'preserved_count' => 0,
+    'review_count' => 0,
+    'rows' => [],
+    'scopes' =>
+        llama_ridb_coverage_scopes(),
+];
+
 try {
+    $ridbDb =
+        ridb_db();
+
     $report =
         llama_ridb_normalization_report(
-            ridb_db()
+            $ridbDb
         );
+
+    $coverageReport =
+        llama_ridb_coverage_report(
+            $ridbDb,
+            $auditScope
+        );
+
 } catch (Throwable $exception) {
     $error =
         $exception->getMessage();
@@ -65,22 +97,27 @@ require __DIR__ . '/_header.php';
 
 <?php if ($error !== ''): ?>
 <section class="admin-panel">
-    <strong>RIDB normalization error</strong>
-    <p><?= moderation_e($error) ?></p>
+    <div
+        class="admin-user-notice is-error"
+        role="alert"
+    >
+        <strong>RIDB normalization error</strong>
+        <p><?= moderation_e($error) ?></p>
+    </div>
 </section>
 <?php endif; ?>
 
 <section class="admin-panel">
     <div class="admin-user-form-actions">
         <a
-            class="admin-button is-muted"
+            class="admin-button is-secondary"
             href="/ridb-schema.php"
         >
-            Back to Schema Explorer
+            Schema Explorer
         </a>
 
         <a
-            class="admin-button is-muted"
+            class="admin-button is-secondary"
             href="/ridb.php"
         >
             Back to RIDB
@@ -91,89 +128,326 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Normalization foundation</p>
-            <h2>Federal standard + real RIDB vocabulary</h2>
+            <p>Complete source inventory</p>
+            <h2>RIDB field coverage audit</h2>
         </div>
+
+        <span class="admin-status-pill">
+            <?= number_format(
+                (int) (
+                    $coverageReport['review_count']
+                    ?? 0
+                )
+            ) ?>
+            to review
+        </span>
     </header>
 
-    <dl class="admin-user-definition-list">
+    <div class="admin-user-action-box">
+        <p>
+            This compares the field paths actually observed in the local RIDB
+            mirror with the fields the current importer explicitly maps or
+            intentionally preserves. Any observed field without a registered
+            treatment is surfaced here instead of being silently ignored.
+        </p>
+
+        <form method="get">
+            <label for="ridb-audit-scope">
+                Source dataset
+            </label>
+
+            <div class="admin-user-form-actions">
+                <select
+                    id="ridb-audit-scope"
+                    name="audit_scope"
+                >
+                    <?php foreach (
+                        (array) (
+                            $coverageReport['scopes']
+                            ?? []
+                        )
+                        as $scope => $label
+                    ): ?>
+                        <option
+                            value="<?= moderation_e(
+                                (string) $scope
+                            ) ?>"
+                            <?= (
+                                $coverageReport['scope']
+                                ?? ''
+                            ) === $scope
+                                ? 'selected'
+                                : '' ?>
+                        >
+                            <?= moderation_e(
+                                (string) $label
+                            ) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <button
+                    class="admin-button"
+                    type="submit"
+                >
+                    Audit dataset
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="admin-integration-summary">
         <div>
-            <dt>Inspected sites</dt>
-            <dd>
+            <strong>
                 <?= number_format(
-                    (int) $report[
-                        'site_count'
-                    ]
+                    (int) (
+                        $coverageReport[
+                            'record_count'
+                        ]
+                        ?? 0
+                    )
                 ) ?>
-            </dd>
+            </strong>
+            <span>Records inspected</span>
         </div>
 
         <div>
-            <dt>Unique RIDB attribute names</dt>
-            <dd>
+            <strong>
                 <?= number_format(
-                    (int) $report[
-                        'source_attribute_count'
-                    ]
+                    (int) (
+                        $coverageReport[
+                            'field_count'
+                        ]
+                        ?? 0
+                    )
                 ) ?>
-            </dd>
+            </strong>
+            <span>Observed field paths</span>
         </div>
 
         <div>
-            <dt>Mapped source names</dt>
-            <dd>
+            <strong>
                 <?= number_format(
-                    (int) $report[
-                        'mapped_source_attribute_count'
-                    ]
+                    (int) (
+                        $coverageReport[
+                            'imported_count'
+                        ]
+                        ?? 0
+                    )
                 ) ?>
-            </dd>
+            </strong>
+            <span>Explicitly mapped</span>
         </div>
 
         <div>
-            <dt>Still unmapped</dt>
-            <dd>
+            <strong>
                 <?= number_format(
-                    (int) $report[
-                        'unmapped_source_attribute_count'
-                    ]
+                    (int) (
+                        $coverageReport[
+                            'preserved_count'
+                        ]
+                        ?? 0
+                    )
                 ) ?>
-            </dd>
+            </strong>
+            <span>Preserved source-backed</span>
         </div>
 
         <div>
-            <dt>Canonical concepts</dt>
-            <dd>
+            <strong>
                 <?= number_format(
-                    (int) $report[
-                        'canonical_count'
-                    ]
+                    (int) (
+                        $coverageReport[
+                            'review_count'
+                        ]
+                        ?? 0
+                    )
                 ) ?>
-            </dd>
+            </strong>
+            <span>Needs review</span>
         </div>
+    </div>
 
-        <div>
-            <dt>Observed occurrence coverage</dt>
-            <dd>
-                <?= number_format(
-                    $coverage,
-                    1
-                ) ?>%
-            </dd>
+    <?php if (
+        !empty(
+            $coverageReport['rows']
+        )
+    ): ?>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                <tr>
+                    <th>RIDB field path</th>
+                    <th>Coverage</th>
+                    <th>Llama Scout treatment</th>
+                    <th>Records seen</th>
+                    <th>Nonblank</th>
+                    <th>Types</th>
+                    <th>Examples</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <?php foreach (
+                    $coverageReport['rows']
+                    as $row
+                ): ?>
+                    <tr>
+                        <td>
+                            <strong>
+                                <?= moderation_e(
+                                    (string) (
+                                        $row['path']
+                                        ?? ''
+                                    )
+                                ) ?>
+                            </strong>
+                        </td>
+
+                        <td>
+                            <?= moderation_e(
+                                llama_ridb_coverage_status_label(
+                                    (string) (
+                                        $row[
+                                            'coverage_status'
+                                        ]
+                                        ?? 'review'
+                                    )
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= moderation_e(
+                                (string) (
+                                    $row['target']
+                                    ?? ''
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= number_format(
+                                (int) (
+                                    $row[
+                                        'records_seen'
+                                    ]
+                                    ?? 0
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= number_format(
+                                (int) (
+                                    $row[
+                                        'records_nonblank'
+                                    ]
+                                    ?? 0
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= moderation_e(
+                                implode(
+                                    ', ',
+                                    (array) (
+                                        $row['types']
+                                        ?? []
+                                    )
+                                )
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= moderation_e(
+                                implode(
+                                    ' | ',
+                                    (array) (
+                                        $row['examples']
+                                        ?? []
+                                    )
+                                )
+                            ) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
-    </dl>
-
-    <p>
-        This layer does not write anything into Llama Scout Places.
-        It collapses agency and legacy RIDB labels into canonical
-        concepts so the future importer has one stable vocabulary.
-    </p>
+    <?php endif; ?>
 </section>
 
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Canonical vocabulary</p>
+            <p>Campsite normalization foundation</p>
+            <h2>Federal standard + real RIDB attribute vocabulary</h2>
+        </div>
+    </header>
+
+    <div class="admin-integration-summary">
+        <div>
+            <strong>
+                <?= number_format(
+                    (int) $report[
+                        'site_count'
+                    ]
+                ) ?>
+            </strong>
+            <span>Inspected sites</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    (int) $report[
+                        'source_attribute_count'
+                    ]
+                ) ?>
+            </strong>
+            <span>Unique attribute names</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    (int) $report[
+                        'mapped_source_attribute_count'
+                    ]
+                ) ?>
+            </strong>
+            <span>Mapped source names</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    (int) $report[
+                        'unmapped_source_attribute_count'
+                    ]
+                ) ?>
+            </strong>
+            <span>Still unmapped</span>
+        </div>
+
+        <div>
+            <strong>
+                <?= number_format(
+                    $coverage,
+                    1
+                ) ?>%
+            </strong>
+            <span>Observed occurrence coverage</span>
+        </div>
+    </div>
+</section>
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Canonical campsite vocabulary</p>
             <h2>Mapped concepts</h2>
         </div>
     </header>
@@ -181,15 +455,15 @@ require __DIR__ . '/_header.php';
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
-                <tr>
-                    <th>Canonical field</th>
-                    <th>Category</th>
-                    <th>Treatment</th>
-                    <th>RIDB aliases actually seen</th>
-                    <th>Site occurrences</th>
-                    <th>Examples</th>
-                    <th>Basis</th>
-                </tr>
+            <tr>
+                <th>Canonical field</th>
+                <th>Category</th>
+                <th>Treatment</th>
+                <th>RIDB aliases actually seen</th>
+                <th>Site occurrences</th>
+                <th>Examples</th>
+                <th>Basis</th>
+            </tr>
             </thead>
 
             <tbody>
@@ -283,11 +557,11 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Reality check</p>
+            <p>Campsite reality check</p>
             <h2>RIDB attributes not normalized yet</h2>
         </div>
 
-        <span>
+        <span class="admin-status-pill">
             <?= number_format(
                 (int) $report[
                     'unmapped_source_attribute_count'
@@ -311,12 +585,12 @@ require __DIR__ . '/_header.php';
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
-                    <tr>
-                        <th>RIDB attribute</th>
-                        <th>Sites seen</th>
-                        <th>Nonblank</th>
-                        <th>Examples</th>
-                    </tr>
+                <tr>
+                    <th>RIDB attribute</th>
+                    <th>Sites seen</th>
+                    <th>Nonblank</th>
+                    <th>Examples</th>
+                </tr>
                 </thead>
 
                 <tbody>
