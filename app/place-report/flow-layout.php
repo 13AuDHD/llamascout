@@ -134,22 +134,60 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'place_alcohol_permitted','drone_use_legal','target_shooting_allowed',
             'place_additional_rules',
         ],
+
+        /*
+         * Site & vehicle fit display order.
+         *
+         * Keep the order here with the rest of the report layout metadata
+         * instead of creating another helper file solely to rearrange fields.
+         */
         'site:selection_type' => [
-            'site_number','capacity_size_rating','max_people','vehicle_capacity',
-            'rv_suitable','trailer_suitable','tent_camping_suitable',
+            'site_accessible',
+            'max_people',
+            'capacity_size_rating',
+            'vehicle_capacity',
+            'rv_suitable',
+            'max_vehicle_length_feet',
+            'max_rv_length_feet',
+            'overhead_clearance_feet',
+            'double_driveway',
+            'parking_surface',
+            'parking_length_feet',
+            'parking_grade',
+            'pull_through',
+            'back_in',
+            'turnaround_space',
+            'tent_camping_suitable',
+            'tent_pad',
+            'tent_pad_length_feet',
+            'tent_pad_width_feet',
+            'site_hookups_available',
+            'hookup_electric',
+            'hookup_electric_service',
+            'hookup_water',
+            'hookup_sewer',
+            'hike_in_distance_feet',
+            'site_length_feet',
+            'site_width_feet',
+            'ground_condition',
+            'levelness',
+            'amenity_picnic_table',
+            'amenity_fire_ring',
+            'amenity_grill',
+            'amenity_bear_box',
+            'amenity_lantern_post',
         ],
+
+        /*
+         * These remain part of the site model but are not part of the
+         * preferred Site & vehicle fit sequence above.
+         */
         'site:parking_dimensions' => [
-            'site_length_feet','site_width_feet','parking_length_feet',
-            'overhead_clearance_feet','parking_surface','parking_grade',
-            'double_driveway','leveling_required','hike_in_distance_feet',
-            'walking_distance_from_vehicle','ground_condition',
+            'walking_distance_from_vehicle',
+            'leveling_required',
+            'site_access_difficulty',
         ],
-        'site:camping_equipment' => [
-            'tent_pad','tent_pad_length_feet','tent_pad_width_feet',
-            'site_hookups_available','hookup_electric','hookup_electric_service',
-            'hookup_water','hookup_sewer','amenity_fire_ring','amenity_grill',
-            'amenity_picnic_table','amenity_bear_box','amenity_lantern_post',
-        ],
+        'site:camping_equipment' => [],
         'site:sensory_environment' => [
             'site_shade','tree_cover','site_open_sky',
             'landscape_primary','landscape_details','landscape_views',
@@ -181,8 +219,9 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
             'warning_blind_turn_traffic_nearby',
         ],
         'site:site_accessibility' => [
-            'site_accessible','wheelchair_friendly','mobility_device_friendly',
+            'wheelchair_friendly','mobility_device_friendly',
             'flat_walking_surface','step_free_access',
+            'walking_distance_from_vehicle',
         ],
         'site:experience_recommendations' => [
             'site_rating','condition_rating','location_rating',
@@ -215,7 +254,7 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
 
     $fallbacks = [
         'road_access' => ['getting_there','road_conditions'],
-        'site_vehicle' => ['site','parking_dimensions'],
+        'site_vehicle' => ['site','selection_type'],
         'campground' => ['place','overnight_stays'],
         'basic' => ['place','information_location'],
         'location' => ['place','information_location'],
@@ -253,4 +292,70 @@ function llama_place_report_apply_layout_metadata(array &$fields): void
     }
 
     unset($field);
+
+    /*
+     * Reorder the canonical registry itself so the public Scout Report and
+     * field-driven forms read in the same order. This stays here because field
+     * order is presentation/layout metadata.
+     */
+    $siteVehicleOrder = $assignments['site:selection_type'];
+
+    $siteVehicleFields = [];
+    $siteVehicleKeys = [];
+
+    foreach ($fields as $key => $field) {
+        if (
+            (string) (
+                $field['section']
+                ?? ''
+            ) !== 'site_vehicle'
+        ) {
+            continue;
+        }
+
+        $siteVehicleFields[$key] = $field;
+        $siteVehicleKeys[$key] = true;
+    }
+
+    $orderedSiteVehicle = [];
+
+    foreach ($siteVehicleOrder as $key) {
+        if (!isset($siteVehicleFields[$key])) {
+            continue;
+        }
+
+        $orderedSiteVehicle[$key] =
+            $siteVehicleFields[$key];
+
+        unset($siteVehicleFields[$key]);
+    }
+
+    foreach ($siteVehicleFields as $key => $field) {
+        $orderedSiteVehicle[$key] = $field;
+    }
+
+    $rebuilt = [];
+    $inserted = false;
+
+    foreach ($fields as $key => $field) {
+        if (isset($siteVehicleKeys[$key])) {
+            if (!$inserted) {
+                foreach (
+                    $orderedSiteVehicle
+                    as $orderedKey => $orderedField
+                ) {
+                    $rebuilt[$orderedKey] =
+                        $orderedField;
+                }
+
+                $inserted = true;
+            }
+
+            continue;
+        }
+
+        $rebuilt[$key] = $field;
+    }
+
+    $fields = $rebuilt;
 }
