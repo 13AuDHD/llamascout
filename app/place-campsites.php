@@ -490,23 +490,36 @@ function llama_place_campsite_map_options(
         return [];
     }
 
+    /*
+     * map_feature_id is the ACTIVE Site association exposed to consumers.
+     * stored_map_feature_id preserves the raw database reference so Admin can
+     * surface stale historical links without treating them as live geometry.
+     */
     $stmt =
         $db->prepare(
             'SELECT
-                id,
-                map_feature_id,
-                site_code,
-                site_name
-             FROM place_campsites
-             WHERE place_id = ?
-               AND is_active = 1
+                cs.id,
+                cs.map_feature_id
+                    AS stored_map_feature_id,
+                active_map.id
+                    AS active_map_feature_id,
+                cs.site_code,
+                cs.site_name
+             FROM place_campsites AS cs
+             LEFT JOIN place_map_features AS active_map
+                ON active_map.id = cs.map_feature_id
+               AND active_map.place_id = cs.place_id
+               AND active_map.feature_type = "camping_site"
+               AND active_map.is_active = 1
+             WHERE cs.place_id = ?
+               AND cs.is_active = 1
              ORDER BY
                 COALESCE(
-                    NULLIF(site_code, ""),
-                    NULLIF(site_name, ""),
-                    CAST(id AS CHAR)
+                    NULLIF(cs.site_code, ""),
+                    NULLIF(cs.site_name, ""),
+                    CAST(cs.id AS CHAR)
                 ) ASC,
-                id ASC'
+                cs.id ASC'
         );
 
     $stmt->execute([
@@ -573,11 +586,20 @@ function llama_place_campsite_map_options(
                 . $campsiteId;
         }
 
-        $mapFeatureId =
+        $activeMapFeatureId =
             max(
                 0,
                 (int) (
-                    $row['map_feature_id']
+                    $row['active_map_feature_id']
+                    ?? 0
+                )
+            );
+
+        $storedMapFeatureId =
+            max(
+                0,
+                (int) (
+                    $row['stored_map_feature_id']
                     ?? 0
                 )
             );
@@ -596,8 +618,19 @@ function llama_place_campsite_map_options(
                 $siteName,
 
             'map_feature_id' =>
-                $mapFeatureId > 0
-                    ? $mapFeatureId
+                $activeMapFeatureId > 0
+                    ? $activeMapFeatureId
+                    : null,
+
+            'stored_map_feature_id' =>
+                $storedMapFeatureId > 0
+                    ? $storedMapFeatureId
+                    : null,
+
+            'stale_map_feature_id' =>
+                $storedMapFeatureId > 0
+                && $activeMapFeatureId < 1
+                    ? $storedMapFeatureId
                     : null,
         ];
     }
