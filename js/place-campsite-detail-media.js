@@ -175,6 +175,57 @@
         `;
     };
 
+    const equipmentMaximumLength = (
+        site,
+        rows
+    ) => {
+        const direct =
+            Number(
+                site?.max_vehicle_length_ft
+            );
+
+        if (
+            Number.isFinite(direct)
+            && direct > 0
+        ) {
+            return direct;
+        }
+
+        let maximum = 0;
+
+        rows.forEach((row) => {
+            const qualifier =
+                clean(
+                    row?.qualifier
+                );
+
+            const match =
+                qualifier.match(
+                    /(\d+(?:\.\d+)?)\s*ft/i
+                );
+
+            if (!match) {
+                return;
+            }
+
+            const value =
+                Number(
+                    match[1]
+                );
+
+            if (
+                Number.isFinite(value)
+                && value > maximum
+            ) {
+                maximum = value;
+            }
+        });
+
+        return maximum > 0
+            ? maximum
+            : null;
+    };
+
     const equipmentMarkup = (
         site
     ) => {
@@ -188,47 +239,56 @@
             return '';
         }
 
-        const items =
-            rows
-                .map((row) => {
-                    const name =
-                        smartCase(
-                            row.feature_value
-                        );
+        const names =
+            Array.from(
+                new Set(
+                    rows
+                        .map(
+                            (row) =>
+                                smartCase(
+                                    row.feature_value
+                                )
+                        )
+                        .filter(Boolean)
+                )
+            );
 
-                    const qualifier =
-                        clean(
-                            row.qualifier
-                        );
-
-                    if (!name) {
-                        return '';
-                    }
-
-                    return `
-                        <div class="place-campsite-equipment-card">
-                            <strong>${escapeHtml(name)}</strong>
-                            ${
-                                qualifier
-                                    ? `<span>${escapeHtml(qualifier)}</span>`
-                                    : ''
-                            }
-                        </div>
-                    `;
-                })
-                .filter(Boolean)
-                .join('');
-
-        if (!items) {
+        if (!names.length) {
             return '';
         }
 
+        const maximum =
+            equipmentMaximumLength(
+                site,
+                rows
+            );
+
+        const pills =
+            names
+                .map(
+                    (name) =>
+                        `
+                            <span class="place-campsite-equipment-pill">
+                                ${escapeHtml(name)}
+                            </span>
+                        `
+                )
+                .join('');
+
         return `
             <section class="place-campsite-rich-section">
-                <h4>Permitted equipment</h4>
+                <div class="place-campsite-rich-heading">
+                    <h4>Permitted equipment</h4>
 
-                <div class="place-campsite-equipment-grid">
-                    ${items}
+                    ${
+                        maximum
+                            ? `<span>Maximum vehicle length: ${escapeHtml(String(maximum))} ft</span>`
+                            : ''
+                    }
+                </div>
+
+                <div class="place-campsite-equipment-pills">
+                    ${pills}
                 </div>
             </section>
         `;
@@ -402,6 +462,63 @@
         `;
     };
 
+    const polishCoreDetail = (
+        detail
+    ) => {
+        detail
+            .querySelectorAll(
+                '.place-campsite-card'
+            )
+            .forEach((card) => {
+                const label =
+                    clean(
+                        card
+                            .querySelector('span')
+                            ?.textContent
+                    );
+
+                const valueNode =
+                    card.querySelector(
+                        'strong'
+                    );
+
+                const value =
+                    clean(
+                        valueNode?.textContent
+                    );
+
+                if (
+                    label.toLowerCase()
+                    === 'total sites'
+                ) {
+                    card.remove();
+                    return;
+                }
+
+                if (
+                    valueNode
+                    && /^no\s+ft$/i.test(value)
+                ) {
+                    valueNode.textContent =
+                        'No';
+                }
+            });
+
+        detail
+            .querySelectorAll(
+                '.place-campsite-card-section'
+            )
+            .forEach((section) => {
+                if (
+                    !section.querySelector(
+                        '.place-campsite-card'
+                    )
+                ) {
+                    section.remove();
+                }
+            });
+    };
+
     const render = (
         detail,
         payload
@@ -414,6 +531,10 @@
                 (node) =>
                     node.remove()
             );
+
+        polishCoreDetail(
+            detail
+        );
 
         const gallery =
             galleryMarkup(
