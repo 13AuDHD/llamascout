@@ -512,11 +512,11 @@ $statusCounts = [
 
 if ($ridbDb instanceof PDO) {
     try {
-        $mirrorCounts =
-            llama_ridb_mirror_counts(
-                $ridbDb
-            );
-
+        /*
+         * Performance rule:
+         * normal RIDB page loads must not rescan the large raw mirror tables.
+         * Use the already-maintained sync-state counters for dashboard status.
+         */
         foreach (
             $mirrorFeeds
             as $feed => $definition
@@ -526,6 +526,12 @@ if ($ridbDb instanceof PDO) {
                     $ridbDb,
                     $feed,
                     $definition['endpoint']
+                );
+
+            $mirrorCounts[$feed] =
+                (int) (
+                    $mirrorStates[$feed]['total_stored']
+                    ?? 0
                 );
         }
 
@@ -539,15 +545,26 @@ if ($ridbDb instanceof PDO) {
                 $ridbDb
             );
 
-        $extractCounts =
-            llama_ridb_campsite_extract_counts(
-                $ridbDb
-            );
-
-        $catalogCounts =
-            llama_ridb_catalog_counts(
-                $ridbDb
-            );
+        /*
+         * The extractor state already tracks processed/stored totals. Exact
+         * per-kind counts are diagnostics, not something worth scanning the
+         * raw mirror for on every navigation request.
+         */
+        $extractCounts = [
+            'total_campsites' =>
+                (int) (
+                    $mirrorStates['campsites']['total_seen']
+                    ?? $mirrorStates['campsites']['total_stored']
+                    ?? 0
+                ),
+            'attributes' =>
+                (int) (
+                    $extractState['total_stored']
+                    ?? 0
+                ),
+            'equipment' => 0,
+            'media' => 0,
+        ];
 
         $catalogSyncState =
             llama_ridb_catalog_sync_state(
@@ -571,6 +588,16 @@ if ($ridbDb instanceof PDO) {
             llama_ridb_status_counts(
                 $ridbDb
             );
+
+        $catalogCounts = [
+            'facilities' =>
+                (int) (
+                    $statusCounts['facilities']
+                    ?? 0
+                ),
+            'campsites' => 0,
+            'attributes' => 0,
+        ];
 
         $catalog =
             llama_ridb_status_catalog_facilities(
@@ -694,7 +721,7 @@ require __DIR__ . '/_header.php';
         <strong>
             <?= number_format(
                 (int) (
-                    $mirrorCounts['facilities']
+                    $statusCounts['facilities']
                     ?? 0
                 )
             ) ?>
@@ -718,36 +745,12 @@ require __DIR__ . '/_header.php';
         <strong>
             <?= number_format(
                 (int) (
-                    $extractCounts['attributes']
+                    $extractState['total_stored']
                     ?? 0
                 )
             ) ?>
         </strong>
-        <span>Extracted site attributes</span>
-    </div>
-
-    <div>
-        <strong>
-            <?= number_format(
-                (int) (
-                    $extractCounts['equipment']
-                    ?? 0
-                )
-            ) ?>
-        </strong>
-        <span>Extracted equipment</span>
-    </div>
-
-    <div>
-        <strong>
-            <?= number_format(
-                (int) (
-                    $extractCounts['media']
-                    ?? 0
-                )
-            ) ?>
-        </strong>
-        <span>Campsite media rows</span>
+        <span>Extracted campsite detail rows</span>
     </div>
 
     <div>
@@ -958,7 +961,7 @@ $complete =
     <td data-label="Cached">
         <?= number_format(
             (int) (
-                $mirrorCounts[$feed]
+                $state['total_stored']
                 ?? 0
             )
         ) ?>
@@ -1082,36 +1085,12 @@ $complete =
         <strong>
             <?= number_format(
                 (int) (
-                    $extractCounts['attributes']
+                    $extractState['total_stored']
                     ?? 0
                 )
             ) ?>
         </strong>
-        <span>Attribute rows</span>
-    </div>
-
-    <div>
-        <strong>
-            <?= number_format(
-                (int) (
-                    $extractCounts['equipment']
-                    ?? 0
-                )
-            ) ?>
-        </strong>
-        <span>Equipment rows</span>
-    </div>
-
-    <div>
-        <strong>
-            <?= number_format(
-                (int) (
-                    $extractCounts['media']
-                    ?? 0
-                )
-            ) ?>
-        </strong>
-        <span>Campsite media rows</span>
+        <span>Detail rows stored</span>
     </div>
 </div>
 
