@@ -336,7 +336,7 @@
                                     source
                                 ]
                                     .filter(Boolean)
-                                    .join(' Â· ');
+                                    .join(' · ');
 
                             button.append(
                                 name,
