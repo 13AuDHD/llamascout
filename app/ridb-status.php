@@ -510,14 +510,7 @@ function llama_ridb_status_catalog_facilities(
                 s.production_synced_at,
                 s.ridb_source_updated_at,
                 s.sync_status,
-                s.checked_at,
-
-                (
-                    SELECT COUNT(*)
-                    FROM ridb_campsites c
-                    WHERE c.ridb_facility_id =
-                        f.ridb_facility_id
-                ) AS cached_campsite_count
+                s.checked_at
 
              FROM ridb_facilities f
              LEFT JOIN ridb_llama_sync_status s
@@ -553,12 +546,104 @@ function llama_ridb_status_catalog_facilities(
         $params
     );
 
-    return [
-        'rows' =>
-            $stmt->fetchAll(
+    $rows =
+        $stmt->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+
+    /*
+     * Count campsites only for the facilities on the visible page. The former
+     * correlated subquery could repeatedly probe ridb_campsites while sorting
+     * the catalog.
+     */
+    $facilityIds =
+        array_values(
+            array_filter(
+                array_map(
+                    static fn (
+                        array $row
+                    ): string =>
+                        trim(
+                            (string) (
+                                $row['ridb_facility_id']
+                                ?? ''
+                            )
+                        ),
+                    $rows
+                ),
+                static fn (
+                    string $value
+                ): bool =>
+                    $value !== ''
+            )
+        );
+
+    $campsiteCounts = [];
+
+    if ($facilityIds) {
+        $placeholders =
+            implode(
+                ',',
+                array_fill(
+                    0,
+                    count($facilityIds),
+                    '?'
+                )
+            );
+
+        $countVisible =
+            $ridbDb->prepare(
+                'SELECT
+                    ridb_facility_id,
+                    COUNT(*) AS campsite_count
+                 FROM ridb_campsites
+                 WHERE ridb_facility_id IN ('
+                . $placeholders
+                . ')
+                 GROUP BY ridb_facility_id'
+            );
+
+        $countVisible->execute(
+            $facilityIds
+        );
+
+        foreach (
+            $countVisible->fetchAll(
                 PDO::FETCH_ASSOC
             )
-            ?: [],
+            ?: []
+            as $countRow
+        ) {
+            $campsiteCounts[
+                (string) (
+                    $countRow['ridb_facility_id']
+                    ?? ''
+                )
+            ] =
+                (int) (
+                    $countRow['campsite_count']
+                    ?? 0
+                );
+        }
+    }
+
+    foreach ($rows as &$row) {
+        $facilityId =
+            (string) (
+                $row['ridb_facility_id']
+                ?? ''
+            );
+
+        $row['cached_campsite_count'] =
+            $campsiteCounts[$facilityId]
+            ?? 0;
+    }
+    unset($row);
+
+    return [
+        'rows' =>
+            $rows,
         'total' =>
             $total,
         'page' =>
