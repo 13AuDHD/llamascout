@@ -216,7 +216,7 @@
                             && Number.isFinite(
                                 accuracy
                             )
-                                ? `${source} Â· Â±${Math.round(accuracy)} m`
+                                ? `${source} · ±${Math.round(accuracy)} m`
                                 : source;
                     }
                 };
