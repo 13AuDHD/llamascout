@@ -254,13 +254,23 @@ function llama_error_signature(
     return hash('sha256', implode("\n", $parts));
 }
 
+/**
+ * Record an exception in application_errors.
+ *
+ * Returns the LS reference only when persistence actually succeeded.
+ * A null return means the database logger itself failed; the original error
+ * and the attempted reference are still written to the PHP/server error log.
+ */
 function llama_log_exception(
     Throwable $exception,
     ?string $action = null,
     array $context = [],
     string $severity = 'error'
-): string {
-    $reference = llama_error_reference();
+): ?string {
+    $candidateReference = llama_error_reference();
+    $reference = $candidateReference;
+    $persisted = false;
+
     $method = mb_substr((string) ($_SERVER['REQUEST_METHOD'] ?? ''), 0, 12);
     $path = llama_error_request_path();
     $userId = llama_error_user_id();
@@ -292,6 +302,8 @@ function llama_log_exception(
                  WHERE id = ?'
             );
             $updateStmt->execute([(int) $existing['id']]);
+
+            $persisted = true;
         } else {
             $stmt = $db->prepare(
                 'INSERT INTO application_errors
@@ -322,20 +334,35 @@ function llama_log_exception(
                 $contextJson !== false ? $contextJson : null,
                 $signature,
             ]);
+
+            $persisted = true;
         }
 
         llama_error_maybe_cleanup($db);
     } catch (Throwable $loggingFailure) {
+        /*
+         * Keep one correlation ID in the host/PHP log even though it was not
+         * successfully stored in application_errors.
+         */
         error_log(
-            '[error-logger-failure] ' . $reference . ' ' .
-            get_class($loggingFailure) . ': ' . $loggingFailure->getMessage()
+            '[error-logger-failure] attempted_reference='
+            . $candidateReference
+            . ' '
+            . get_class($loggingFailure)
+            . ': '
+            . $loggingFailure->getMessage()
         );
     }
 
     $serverLine = sprintf(
-        '[%s] %s %s user=%s path=%s action=%s %s: %s in %s:%d',
+        '[%s] %s stored=%s %s user=%s path=%s action=%s %s: %s in %s:%d',
         $severity,
-        $reference,
+        $persisted
+            ? $reference
+            : $candidateReference,
+        $persisted
+            ? 'yes'
+            : 'no',
         gmdate('c'),
         $userId !== null ? (string) $userId : '-',
         $path !== '' ? $path : '-',
@@ -348,9 +375,10 @@ function llama_log_exception(
 
     error_log($serverLine);
 
-    return $reference;
+    return $persisted
+        ? $reference
+        : null;
 }
-
 
 function llama_log_caught_exception(
     Throwable $exception,
@@ -390,8 +418,10 @@ function llama_log_caught_exception(
     );
 }
 
-function llama_error_message_with_reference(string $message, ?string $reference): string
-{
+function llama_error_message_with_reference(
+    string $message,
+    ?string $reference
+): string {
     if ($reference === null || $reference === '') {
         return $message;
     }
@@ -405,7 +435,7 @@ function llama_error_report_url(string $reference): string
         . rawurlencode($reference);
 }
 
-function llama_error_public_response(string $reference): never
+function llama_error_public_response(?string $reference): never
 {
     if (!headers_sent()) {
         http_response_code(500);
@@ -414,31 +444,52 @@ function llama_error_public_response(string $reference): never
 
     $path = llama_error_request_path();
     $isApi = str_starts_with($path, '/api/');
+    $persisted =
+        is_string($reference)
+        && $reference !== '';
 
     if ($isApi) {
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');
         }
 
-        echo json_encode([
+        $payload = [
             'error' => 'Something went wrong.',
-            'reference' => $reference,
-            'report_url' => llama_error_report_url($reference),
-        ]);
+            'logged' => $persisted,
+        ];
+
+        if ($persisted) {
+            $payload['reference'] = $reference;
+            $payload['report_url'] =
+                llama_error_report_url($reference);
+        }
+
+        echo json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+        );
+
         exit;
     }
 
-    $safeReference = htmlspecialchars(
-        $reference,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+    $safeReference =
+        $persisted
+            ? htmlspecialchars(
+                $reference,
+                ENT_QUOTES,
+                'UTF-8'
+            )
+            : '';
 
-    $safeReportUrl = htmlspecialchars(
-        llama_error_report_url($reference),
-        ENT_QUOTES,
-        'UTF-8'
-    );
+    $safeReportUrl =
+        $persisted
+            ? htmlspecialchars(
+                llama_error_report_url($reference),
+                ENT_QUOTES,
+                'UTF-8'
+            )
+            : '';
 
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         . '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -457,15 +508,31 @@ function llama_error_public_response(string $reference): never
         . '.note{margin-top:22px;font-size:.88rem;color:#aaa}'
         . '@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}'
         . '</style></head><body><main>'
-        . '<h1>Something went wrong.</h1>'
-        . '<p>Llama Scout recorded the error so it can be investigated.</p>'
-        . '<p>Error reference: <code>' . $safeReference . '</code></p>'
-        . '<div class="actions">'
-        . '<a class="button primary" href="' . $safeReportUrl . '">Report this error</a>'
-        . '<a class="button" href="https://llamascout.com/">Return to Llama Scout</a>'
-        . '</div>'
-        . '<p class="note">Reporting the error opens a support ticket with this reference already attached. You only need to describe what you were doing when it happened.</p>'
-        . '</main></body></html>';
+        . '<h1>Something went wrong.</h1>';
+
+    if ($persisted) {
+        echo '<p>Llama Scout recorded the error so it can be investigated.</p>'
+            . '<p>Error reference: <code>'
+            . $safeReference
+            . '</code></p>'
+            . '<div class="actions">'
+            . '<a class="button primary" href="'
+            . $safeReportUrl
+            . '">Report this error</a>'
+            . '<a class="button" href="https://llamascout.com/">Return to Llama Scout</a>'
+            . '</div>'
+            . '<p class="note">Reporting the error opens a support ticket with this reference already attached. You only need to describe what you were doing when it happened.</p>';
+    } else {
+        echo '<p>The application error log could not save this error.</p>'
+            . '<p>The failure was written to the server error log instead. No Llama Scout error reference was created.</p>'
+            . '<div class="actions">'
+            . '<a class="button primary" href="https://llamascout.com/contact.php">Contact support</a>'
+            . '<a class="button" href="https://llamascout.com/">Return to Llama Scout</a>'
+            . '</div>'
+            . '<p class="note">If this keeps happening, include what you were doing and the approximate time so the server log can be checked.</p>';
+    }
+
+    echo '</main></body></html>';
 
     exit;
 }
@@ -482,8 +549,14 @@ function llama_error_register_handlers(): void
 
     set_exception_handler(
         static function (Throwable $exception): void {
-            $reference = llama_log_exception($exception, 'uncaught_exception');
-            llama_error_public_response($reference);
+            $reference = llama_log_exception(
+                $exception,
+                'uncaught_exception'
+            );
+
+            llama_error_public_response(
+                $reference
+            );
         }
     );
 
@@ -495,24 +568,58 @@ function llama_error_register_handlers(): void
                 return;
             }
 
-            $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+            $fatalTypes = [
+                E_ERROR,
+                E_PARSE,
+                E_CORE_ERROR,
+                E_COMPILE_ERROR,
+                E_USER_ERROR,
+            ];
 
-            if (!in_array((int) ($last['type'] ?? 0), $fatalTypes, true)) {
+            if (
+                !in_array(
+                    (int) (
+                        $last['type']
+                        ?? 0
+                    ),
+                    $fatalTypes,
+                    true
+                )
+            ) {
                 return;
             }
 
             $exception = new ErrorException(
-                (string) ($last['message'] ?? 'Fatal PHP error'),
+                (string) (
+                    $last['message']
+                    ?? 'Fatal PHP error'
+                ),
                 0,
-                (int) ($last['type'] ?? E_ERROR),
-                (string) ($last['file'] ?? ''),
-                (int) ($last['line'] ?? 0)
+                (int) (
+                    $last['type']
+                    ?? E_ERROR
+                ),
+                (string) (
+                    $last['file']
+                    ?? ''
+                ),
+                (int) (
+                    $last['line']
+                    ?? 0
+                )
             );
 
-            $reference = llama_log_exception($exception, 'fatal_shutdown', [], 'fatal');
+            $reference = llama_log_exception(
+                $exception,
+                'fatal_shutdown',
+                [],
+                'fatal'
+            );
 
             if (!headers_sent()) {
-                llama_error_public_response($reference);
+                llama_error_public_response(
+                    $reference
+                );
             }
         }
     );
