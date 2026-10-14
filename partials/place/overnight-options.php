@@ -29,7 +29,7 @@ foreach ($stayFeatures as $feature) {
     $label = $code !== '' ? $code : ($name !== '' ? $name : 'Campsite ' . $id);
     $style = trim((string) ($details['parking_style'] ?? ''));
     $type = trim((string) ($details['site_type'] ?? ''));
-    $description = implode(' · ', array_filter([
+    $description = implode(' Â· ', array_filter([
         $type !== '' ? ucwords(str_replace('_', ' ', $type)) : 'Campsite',
         $style !== '' ? ucwords(str_replace('_', ' ', $style)) : '',
     ]));
@@ -81,7 +81,7 @@ foreach ($stayFeatures as $feature) {
     $stayParking[] = [
         'id' => $id,
         'name' => $name,
-        'summary' => $feeLabel . ' · ' . $statusLabel,
+        'summary' => $feeLabel . ' Â· ' . $statusLabel,
         'cost' => $feeLabel,
         'status' => $statusLabel,
     ];
@@ -104,7 +104,32 @@ foreach ($stayFeatures as $feature) {
             <?= llama_icon('map') ?> View on map
         </a>
     </header>
+
     <div data-stay-browser-slot></div>
+
+    <div
+        class="place-stay-scroll-navigation"
+        data-stay-scroll-navigation
+        aria-label="Scroll overnight options"
+        hidden
+    >
+        <button
+            type="button"
+            data-stay-scroll-back
+            aria-label="Scroll to previous overnight options"
+        >
+            <?= llama_icon('chevron-left') ?>
+        </button>
+
+        <button
+            type="button"
+            data-stay-scroll-next
+            aria-label="Scroll to next overnight options"
+        >
+            <?= llama_icon('chevron-right') ?>
+        </button>
+    </div>
+
     <div class="place-stay-parking-list" data-stay-parking-list aria-label="Mapped campsites and overnight parking areas" <?= ($stayParking || $stayMappedSites) ? '' : 'hidden' ?>>
         <?php foreach ($stayMappedSites as $site): ?>
             <button type="button" class="place-campsite-row place-stay-map-site-row"
