@@ -512,6 +512,37 @@ function admin_place_site_association_catalog(PDO $db, int $placeId): array
             $placeId
         );
 
+    $mapFeatures =
+        llama_place_map_features(
+            $db,
+            $placeId
+        );
+
+    $activeMappedSiteIds = [];
+
+    foreach ($mapFeatures as $feature) {
+        if (
+            (string) (
+                $feature['feature_type']
+                ?? ''
+            ) !== 'camping_site'
+        ) {
+            continue;
+        }
+
+        $featureId =
+            (int) (
+                $feature['id']
+                ?? 0
+            );
+
+        if ($featureId > 0) {
+            $activeMappedSiteIds[
+                $featureId
+            ] = true;
+        }
+    }
+
     $campsites = [];
 
     foreach (
@@ -540,6 +571,15 @@ function admin_place_site_association_catalog(PDO $db, int $placeId): array
                 )
             );
 
+        $staleMapFeatureId =
+            max(
+                0,
+                (int) (
+                    $site['stale_map_feature_id']
+                    ?? 0
+                )
+            );
+
         $label =
             trim(
                 (string) (
@@ -554,6 +594,19 @@ function admin_place_site_association_catalog(PDO $db, int $placeId): array
                 . $campsiteId;
         }
 
+        if ($mapFeatureId > 0) {
+            $mappingLabel =
+                ' - mapped to feature #'
+                . $mapFeatureId;
+        } elseif ($staleMapFeatureId > 0) {
+            $mappingLabel =
+                ' - stale mapping reference #'
+                . $staleMapFeatureId;
+        } else {
+            $mappingLabel =
+                ' - not mapped';
+        }
+
         $campsites[] = [
             'id' => $campsiteId,
             'label' => $label,
@@ -561,26 +614,19 @@ function admin_place_site_association_catalog(PDO $db, int $placeId): array
                 $mapFeatureId > 0
                     ? $mapFeatureId
                     : null,
+            'stale_map_feature_id' =>
+                $staleMapFeatureId > 0
+                    ? $staleMapFeatureId
+                    : null,
             'display_label' =>
                 $label
-                . (
-                    $mapFeatureId > 0
-                        ? ' - mapped to feature #'
-                            . $mapFeatureId
-                        : ' - not mapped'
-                ),
+                . $mappingLabel,
         ];
     }
 
     $mappedSites = [];
 
-    foreach (
-        llama_place_map_features(
-            $db,
-            $placeId
-        )
-        as $feature
-    ) {
+    foreach ($mapFeatures as $feature) {
         if (
             (string) (
                 $feature['feature_type']
@@ -707,6 +753,7 @@ function admin_place_site_association_catalog(PDO $db, int $placeId): array
         'mapped_sites' => $mappedSites,
     ];
 }
+
 
 function admin_place_save_site_association(
     PDO $db,
