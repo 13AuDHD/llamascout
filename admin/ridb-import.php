@@ -40,12 +40,8 @@ $facilityIds =
                 (array) (
                     $_POST['facility_ids']
                     ?? (
-                        isset(
-                            $_GET['id']
-                        )
-                            ? [
-                                $_GET['id'],
-                            ]
+                        isset($_GET['id'])
+                            ? [$_GET['id']]
                             : []
                     )
                 )
@@ -66,17 +62,10 @@ $returnUrl =
     );
 
 if (
-    !str_starts_with(
-        $returnUrl,
-        '/'
-    )
-    || str_starts_with(
-        $returnUrl,
-        '//'
-    )
+    !str_starts_with($returnUrl, '/')
+    || str_starts_with($returnUrl, '//')
 ) {
-    $returnUrl =
-        '/ridb.php';
+    $returnUrl = '/ridb.php';
 }
 
 if (
@@ -101,11 +90,8 @@ if (
 
         foreach ($facilityIds as $facilityId) {
             try {
-                $mainDb =
-                    db();
-
-                $ridbDb =
-                    ridb_db();
+                $mainDb = db();
+                $ridbDb = ridb_db();
 
                 $userId =
                     (int) (
@@ -149,9 +135,7 @@ if (
 
                     $result['canonical_answers'] =
                         (int) (
-                            $canonical[
-                                'answer_count'
-                            ]
+                            $canonical['answer_count']
                             ?? 0
                         );
 
@@ -221,20 +205,18 @@ if (
                         [
                             'facility_id' =>
                                 $facilityId,
-                            'ok' =>
-                                true,
+                            'ok' => true,
                         ],
                         $result
                     );
+
             } catch (Throwable $exception) {
                 $results[] = [
                     'facility_id' =>
                         $facilityId,
-                    'ok' =>
-                        false,
+                    'ok' => false,
                     'error' =>
-                        $exception
-                            ->getMessage(),
+                        $exception->getMessage(),
                 ];
             }
         }
@@ -271,7 +253,7 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
     <div>
         <p>Production import</p>
-        <h2>RIDB â Llama Scout</h2>
+        <h2>RIDB to Llama Scout</h2>
     </div>
 </header>
 
@@ -296,11 +278,8 @@ require __DIR__ . '/_header.php';
 
 <?php if ($results): ?>
 <section class="admin-panel">
-
 <div class="admin-integration-table-wrap">
-
 <table class="admin-integration-table">
-
 <thead>
 <tr>
     <th>RIDB facility</th>
@@ -318,16 +297,10 @@ require __DIR__ . '/_header.php';
     <th></th>
 </tr>
 </thead>
-
 <tbody>
 
-<?php foreach (
-    $results
-    as $result
-): ?>
-
+<?php foreach ($results as $result): ?>
 <tr>
-
 <td data-label="RIDB facility">
     <?= moderation_e(
         (string) (
@@ -338,19 +311,12 @@ require __DIR__ . '/_header.php';
 </td>
 
 <td data-label="Status">
-    <?php if (
-        !empty(
-            $result['ok']
-        )
-    ): ?>
-        <?= !empty(
-            $result['created']
-        )
+    <?php if (!empty($result['ok'])): ?>
+        <?= !empty($result['created'])
             ? 'Imported'
             : 'Synchronized' ?>
     <?php else: ?>
         Failed
-
         <small>
             <?= moderation_e(
                 (string) (
@@ -363,11 +329,7 @@ require __DIR__ . '/_header.php';
 </td>
 
 <td data-label="Mode">
-    <?php if (
-        !empty(
-            $result['ok']
-        )
-    ): ?>
+    <?php if (!empty($result['ok'])): ?>
         <?= (
             $result['sync_mode']
             ?? ''
@@ -378,22 +340,15 @@ require __DIR__ . '/_header.php';
 </td>
 
 <td data-label="Place">
-    <?php if (
-        !empty(
-            $result['place_id']
-        )
-    ): ?>
-        #
-        <?= number_format(
+    <?php if (!empty($result['place_id'])): ?>
+        #<?= number_format(
             (int) $result['place_id']
         ) ?>
     <?php endif; ?>
 </td>
 
 <td data-label="Campsites">
-    <?= isset(
-        $result['campsites']
-    )
+    <?= isset($result['campsites'])
         ? number_format(
             (int) $result['campsites']
         )
@@ -401,9 +356,7 @@ require __DIR__ . '/_header.php';
 </td>
 
 <td data-label="Attributes">
-    <?= isset(
-        $result['attributes']
-    )
+    <?= isset($result['attributes'])
         ? number_format(
             (int) $result['attributes']
         )
@@ -412,36 +365,26 @@ require __DIR__ . '/_header.php';
 
 <td data-label="Site details">
     <?= isset(
-        $result[
-            'site_metadata_imported'
-        ]
+        $result['site_metadata_imported']
     )
         ? number_format(
-            (int) $result[
-                'site_metadata_imported'
-            ]
+            (int) $result['site_metadata_imported']
         )
         : '' ?>
 </td>
 
 <td data-label="Site photos">
     <?= isset(
-        $result[
-            'site_media_imported'
-        ]
+        $result['site_media_imported']
     )
         ? number_format(
-            (int) $result[
-                'site_media_imported'
-            ]
+            (int) $result['site_media_imported']
         )
         : '' ?>
 </td>
 
 <td data-label="Place answers">
-    <?= isset(
-        $result['canonical_answers']
-    )
+    <?= isset($result['canonical_answers'])
         ? number_format(
             (int) $result['canonical_answers']
         )
@@ -449,21 +392,15 @@ require __DIR__ . '/_header.php';
 </td>
 
 <td data-label="Location fields">
-    <?= isset(
-        $result['core_fields_imported']
-    )
+    <?= isset($result['core_fields_imported'])
         ? number_format(
-            (int) $result[
-                'core_fields_imported'
-            ]
+            (int) $result['core_fields_imported']
         )
         : '' ?>
 </td>
 
 <td data-label="Place photos">
-    <?= isset(
-        $result['media_imported']
-    )
+    <?= isset($result['media_imported'])
         ? number_format(
             (int) $result['media_imported']
         )
@@ -472,24 +409,16 @@ require __DIR__ . '/_header.php';
 
 <td data-label="Official links">
     <?= isset(
-        $result[
-            'facility_links_imported'
-        ]
+        $result['facility_links_imported']
     )
         ? number_format(
-            (int) $result[
-                'facility_links_imported'
-            ]
+            (int) $result['facility_links_imported']
         )
         : '' ?>
 </td>
 
 <td data-label="Action">
-    <?php if (
-        !empty(
-            $result['slug']
-        )
-    ): ?>
+    <?php if (!empty($result['slug'])): ?>
         <a
             class="admin-button"
             href="https://llamascout.com/place.php?slug=<?= rawurlencode(
@@ -502,17 +431,12 @@ require __DIR__ . '/_header.php';
         </a>
     <?php endif; ?>
 </td>
-
 </tr>
-
 <?php endforeach; ?>
 
 </tbody>
-
 </table>
-
 </div>
-
 </section>
 <?php endif; ?>
 
@@ -521,7 +445,6 @@ require __DIR__ . '/_header.php';
     !== 'POST'
 ): ?>
 <section class="admin-panel">
-
 <div class="admin-empty-state">
     <h3>Select facilities from the RIDB catalog.</h3>
 
@@ -532,7 +455,6 @@ require __DIR__ . '/_header.php';
         Browse RIDB catalog
     </a>
 </div>
-
 </section>
 <?php endif; ?>
 
