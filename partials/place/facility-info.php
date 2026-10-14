@@ -188,6 +188,86 @@ $facilityLinkDescriptions =
         ?? []
     );
 
+$facilityActivityRows = [];
+
+foreach ($facilityActivities as $activity) {
+    $name =
+        trim(
+            (string) $activity
+        );
+
+    if ($name === '') {
+        continue;
+    }
+
+    $key =
+        strtolower(
+            preg_replace(
+                '/\s+/u',
+                ' ',
+                $name
+            )
+            ?? $name
+        );
+
+    $facilityActivityRows[$key] = [
+        'name' => $name,
+        'description' => '',
+        'fee_description' => '',
+    ];
+}
+
+foreach ($facilityActivityDetails as $detail) {
+    $name =
+        trim(
+            (string) (
+                $detail['name']
+                ?? ''
+            )
+        );
+
+    if ($name === '') {
+        continue;
+    }
+
+    $key =
+        strtolower(
+            preg_replace(
+                '/\s+/u',
+                ' ',
+                $name
+            )
+            ?? $name
+        );
+
+    $facilityActivityRows[$key] ??= [
+        'name' => $name,
+        'description' => '',
+        'fee_description' => '',
+    ];
+
+    $facilityActivityRows[$key]['description'] =
+        trim(
+            (string) (
+                $detail['description']
+                ?? ''
+            )
+        );
+
+    $facilityActivityRows[$key]['fee_description'] =
+        trim(
+            (string) (
+                $detail['fee_description']
+                ?? ''
+            )
+        );
+}
+
+$facilityActivityRows =
+    array_values(
+        $facilityActivityRows
+    );
+
 $hasFacilityOfficialInfo =
     $facilityAddress !== ''
     || $facilityPhone !== ''
@@ -211,8 +291,7 @@ $hasFacilityOfficialInfo =
             $facilityMapUrl
         ) === 1
     )
-    || !empty($facilityActivities)
-    || !empty($facilityActivityDetails)
+    || !empty($facilityActivityRows)
     || !empty($facilityLinks);
 
 if (!$hasFacilityOfficialInfo) {
@@ -405,91 +484,58 @@ if (!$hasFacilityOfficialInfo) {
         </div>
     <?php endif; ?>
 
-    <?php if ($facilityActivities): ?>
+    <?php if ($facilityActivityRows): ?>
         <section class="place-facility-list-section">
             <h3>Activities</h3>
 
-            <div class="place-facility-pills">
+            <div class="place-facility-activity-list">
                 <?php foreach (
-                    $facilityActivities
+                    $facilityActivityRows
                     as $activity
                 ): ?>
-                    <span>
-                        <?= place_h($activity) ?>
-                    </span>
-                <?php endforeach; ?>
-            </div>
-        </section>
-    <?php endif; ?>
+                    <div class="place-facility-activity">
+                        <strong>
+                            <?= place_h(
+                                (string) (
+                                    $activity['name']
+                                    ?? ''
+                                )
+                            ) ?>
+                        </strong>
 
-    <?php if ($facilityActivityDetails): ?>
-        <section class="place-facility-list-section">
-            <h3>Official activity details</h3>
-
-            <?php foreach (
-                $facilityActivityDetails
-                as $activityDetail
-            ): ?>
-                <?php
-                $activityName =
-                    trim(
-                        (string) (
-                            $activityDetail['name']
-                            ?? ''
-                        )
-                    );
-
-                $activityDescription =
-                    trim(
-                        (string) (
-                            $activityDetail[
-                                'description'
-                            ]
-                            ?? ''
-                        )
-                    );
-
-                $activityFee =
-                    trim(
-                        (string) (
-                            $activityDetail[
-                                'fee_description'
-                            ]
-                            ?? ''
-                        )
-                    );
-                ?>
-
-                <?php if (
-                    $activityDescription !== ''
-                    || $activityFee !== ''
-                ): ?>
-                    <div class="place-facility-copy">
-                        <?php if ($activityName !== ''): ?>
-                            <h4>
-                                <?= place_h($activityName) ?>
-                            </h4>
-                        <?php endif; ?>
-
-                        <?php if ($activityDescription !== ''): ?>
-                            <p>
-                                <?= nl2br(
-                                    place_h(
-                                        $activityDescription
-                                    )
+                        <?php if (
+                            !empty(
+                                $activity['description']
+                            )
+                        ): ?>
+                            <span>
+                                <?= place_h(
+                                    (string) $activity[
+                                        'description'
+                                    ]
                                 ) ?>
-                            </p>
+                            </span>
                         <?php endif; ?>
 
-                        <?php if ($activityFee !== ''): ?>
-                            <p>
-                                <strong>Fee:</strong>
-                                <?= place_h($activityFee) ?>
-                            </p>
+                        <?php if (
+                            !empty(
+                                $activity[
+                                    'fee_description'
+                                ]
+                            )
+                        ): ?>
+                            <small>
+                                Fee:
+                                <?= place_h(
+                                    (string) $activity[
+                                        'fee_description'
+                                    ]
+                                ) ?>
+                            </small>
                         <?php endif; ?>
                     </div>
-                <?php endif; ?>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
         </section>
     <?php endif; ?>
 
