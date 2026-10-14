@@ -110,7 +110,11 @@ function llama_ridb_safe_cached_campsites(
         );
 
         if ($siteId !== '' && $record) {
-            $rows[$siteId] = $record;
+            /*
+             * PHP converts numeric-string array keys to integers. Prefixing
+             * prevents that coercion; the sync loop removes the prefix.
+             */
+            $rows['site:' . $siteId] = $record;
         }
     }
 
@@ -119,8 +123,14 @@ function llama_ridb_safe_cached_campsites(
 
 function llama_ridb_safe_cached_attributes(
     PDO $ridbDb,
-    string $siteId
+    string|int $siteId
 ): array {
+    $siteId = trim((string) $siteId);
+
+    if ($siteId === '') {
+        return [];
+    }
+
     $stmt = $ridbDb->prepare(
         'SELECT
             source_record_id,
@@ -178,141 +188,75 @@ function llama_ridb_safe_fill_place_core(
     $name = llama_ridb_import_text(
         llama_ridb_record_value(
             $facility,
-            [
-                'FacilityName',
-                'facilityName',
-            ]
+            ['FacilityName', 'facilityName']
         )
     );
 
     $description = llama_ridb_import_text(
         llama_ridb_record_value(
             $facility,
-            [
-                'FacilityDescription',
-                'facilityDescription',
-            ]
+            ['FacilityDescription', 'facilityDescription']
         )
     );
 
     $latitude = llama_ridb_import_number(
         llama_ridb_record_value(
             $facility,
-            [
-                'FacilityLatitude',
-                'facilityLatitude',
-            ]
+            ['FacilityLatitude', 'facilityLatitude']
         )
     );
 
     $longitude = llama_ridb_import_number(
         llama_ridb_record_value(
             $facility,
-            [
-                'FacilityLongitude',
-                'facilityLongitude',
-            ]
+            ['FacilityLongitude', 'facilityLongitude']
         )
     );
 
-    $road = trim(
-        (string) (
-            $address['address_1']
-            ?? ''
-        )
-    );
-
-    $city = trim(
-        (string) (
-            $address['city']
-            ?? ''
-        )
-    );
-
-    $state = trim(
-        (string) (
-            $address['state']
-            ?? ''
-        )
-    );
+    $road = trim((string) ($address['address_1'] ?? ''));
+    $city = trim((string) ($address['city'] ?? ''));
+    $state = trim((string) ($address['state'] ?? ''));
 
     $stmt = $mainDb->prepare(
         'UPDATE places
          SET
-            name =
-                CASE
-                    WHEN name IS NULL
-                      OR name = ""
-                    THEN COALESCE(
-                        NULLIF(?, ""),
-                        name
-                    )
-                    ELSE name
-                END,
-            description =
-                CASE
-                    WHEN description IS NULL
-                      OR description = ""
-                    THEN COALESCE(
-                        NULLIF(?, ""),
-                        description
-                    )
-                    ELSE description
-                END,
-            latitude =
-                COALESCE(
-                    latitude,
-                    ?
-                ),
-            longitude =
-                COALESCE(
-                    longitude,
-                    ?
-                ),
-            public_latitude =
-                CASE
-                    WHEN public_latitude IS NULL
-                     AND ? IS NOT NULL
-                    THEN ROUND(?, 1)
-                    ELSE public_latitude
-                END,
-            public_longitude =
-                CASE
-                    WHEN public_longitude IS NULL
-                     AND ? IS NOT NULL
-                    THEN ROUND(?, 1)
-                    ELSE public_longitude
-                END,
-            road =
-                CASE
-                    WHEN road IS NULL
-                      OR road = ""
-                    THEN COALESCE(
-                        NULLIF(?, ""),
-                        road
-                    )
-                    ELSE road
-                END,
-            city =
-                CASE
-                    WHEN city IS NULL
-                      OR city = ""
-                    THEN COALESCE(
-                        NULLIF(?, ""),
-                        city
-                    )
-                    ELSE city
-                END,
-            state =
-                CASE
-                    WHEN state IS NULL
-                      OR state = ""
-                    THEN COALESCE(
-                        NULLIF(?, ""),
-                        state
-                    )
-                    ELSE state
-                END
+            name = CASE
+                WHEN name IS NULL OR name = ""
+                THEN COALESCE(NULLIF(?, ""), name)
+                ELSE name
+            END,
+            description = CASE
+                WHEN description IS NULL OR description = ""
+                THEN COALESCE(NULLIF(?, ""), description)
+                ELSE description
+            END,
+            latitude = COALESCE(latitude, ?),
+            longitude = COALESCE(longitude, ?),
+            public_latitude = CASE
+                WHEN public_latitude IS NULL AND ? IS NOT NULL
+                THEN ROUND(?, 1)
+                ELSE public_latitude
+            END,
+            public_longitude = CASE
+                WHEN public_longitude IS NULL AND ? IS NOT NULL
+                THEN ROUND(?, 1)
+                ELSE public_longitude
+            END,
+            road = CASE
+                WHEN road IS NULL OR road = ""
+                THEN COALESCE(NULLIF(?, ""), road)
+                ELSE road
+            END,
+            city = CASE
+                WHEN city IS NULL OR city = ""
+                THEN COALESCE(NULLIF(?, ""), city)
+                ELSE city
+            END,
+            state = CASE
+                WHEN state IS NULL OR state = ""
+                THEN COALESCE(NULLIF(?, ""), state)
+                ELSE state
+            END
          WHERE id = ?
          LIMIT 1'
     );
@@ -399,10 +343,7 @@ function llama_ridb_safe_replace_activities(
         $name = llama_ridb_import_text(
             llama_ridb_record_value(
                 $activity,
-                [
-                    'ActivityName',
-                    'activityName',
-                ]
+                ['ActivityName', 'activityName']
             )
         );
 
@@ -413,10 +354,7 @@ function llama_ridb_safe_replace_activities(
         $externalId = trim(
             (string) llama_ridb_record_value(
                 $activity,
-                [
-                    'ActivityID',
-                    'activityID',
-                ],
+                ['ActivityID', 'activityID'],
                 ''
             )
         );
@@ -490,23 +428,14 @@ function llama_ridb_safe_replace_links(
         $url = trim(
             (string) llama_ridb_record_value(
                 $link,
-                [
-                    'URL',
-                    'Url',
-                    'LinkURL',
-                    'linkURL',
-                    'url',
-                ],
+                ['URL', 'Url', 'LinkURL', 'linkURL', 'url'],
                 ''
             )
         );
 
         if (
             $url === ''
-            || preg_match(
-                '#^https?://#i',
-                $url
-            ) !== 1
+            || preg_match('#^https?://#i', $url) !== 1
         ) {
             continue;
         }
@@ -514,13 +443,7 @@ function llama_ridb_safe_replace_links(
         $title = trim(
             (string) llama_ridb_record_value(
                 $link,
-                [
-                    'Title',
-                    'LinkTitle',
-                    'LinkType',
-                    'linkType',
-                    'title',
-                ],
+                ['Title', 'LinkTitle', 'LinkType', 'linkType', 'title'],
                 ''
             )
         );
@@ -528,11 +451,7 @@ function llama_ridb_safe_replace_links(
         $externalId = trim(
             (string) llama_ridb_record_value(
                 $link,
-                [
-                    'LinkID',
-                    'linkID',
-                    'id',
-                ],
+                ['LinkID', 'linkID', 'id'],
                 ''
             )
         );
@@ -580,16 +499,12 @@ function llama_ridb_safe_add_place_media(
          WHERE place_id = ?'
     );
 
-    $existingStmt->execute([
-        $placeId,
-    ]);
+    $existingStmt->execute([$placeId]);
 
     $existing = array_fill_keys(
         array_map(
             'strval',
-            $existingStmt->fetchAll(
-                PDO::FETCH_COLUMN
-            )
+            $existingStmt->fetchAll(PDO::FETCH_COLUMN)
             ?: []
         ),
         true
@@ -602,31 +517,22 @@ function llama_ridb_safe_add_place_media(
            AND is_featured = 1'
     );
 
-    $featuredStmt->execute([
-        $placeId,
-    ]);
+    $featuredStmt->execute([$placeId]);
 
     $hasFeatured =
-        (int) $featuredStmt
-            ->fetchColumn()
+        (int) $featuredStmt->fetchColumn()
         > 0;
 
     $sortStmt = $mainDb->prepare(
-        'SELECT COALESCE(
-            MAX(sort_order),
-            -1
-         )
+        'SELECT COALESCE(MAX(sort_order), -1)
          FROM place_images
          WHERE place_id = ?'
     );
 
-    $sortStmt->execute([
-        $placeId,
-    ]);
+    $sortStmt->execute([$placeId]);
 
     $sort =
-        (int) $sortStmt
-            ->fetchColumn()
+        (int) $sortStmt->fetchColumn()
         + 1;
 
     $insert = $mainDb->prepare(
@@ -649,9 +555,7 @@ function llama_ridb_safe_add_place_media(
             continue;
         }
 
-        $url = llama_ridb_public_media_url(
-            $item
-        );
+        $url = llama_ridb_public_media_url($item);
 
         if (
             $url === null
@@ -667,11 +571,7 @@ function llama_ridb_safe_add_place_media(
         $title = llama_ridb_public_smart_name(
             llama_ridb_record_value(
                 $item,
-                [
-                    'Title',
-                    'MediaTitle',
-                    'Subtitle',
-                ],
+                ['Title', 'MediaTitle', 'Subtitle'],
                 ''
             )
         );
@@ -686,9 +586,7 @@ function llama_ridb_safe_add_place_media(
             $title !== ''
                 ? $title
                 : $placeName,
-            $isFeatured
-                ? 1
-                : 0,
+            $isFeatured ? 1 : 0,
             $sort,
             $userId > 0
                 ? $userId
@@ -721,9 +619,7 @@ function llama_ridb_safe_canonical_sync(
          LIMIT 1'
     );
 
-    $amenityStmt->execute([
-        $placeId,
-    ]);
+    $amenityStmt->execute([$placeId]);
 
     $amenitySnapshot = $amenityStmt->fetch(
         PDO::FETCH_ASSOC
@@ -743,17 +639,12 @@ function llama_ridb_safe_canonical_sync(
         return $result;
     }
 
-    unset(
-        $amenitySnapshot['place_id']
-    );
+    unset($amenitySnapshot['place_id']);
 
     $columns = [];
     $values = [];
 
-    foreach (
-        $amenitySnapshot
-        as $column => $value
-    ) {
+    foreach ($amenitySnapshot as $column => $value) {
         if (
             !preg_match(
                 '/^[a-z0-9_]+$/',
@@ -777,17 +668,12 @@ function llama_ridb_safe_canonical_sync(
         $restore = $mainDb->prepare(
             'UPDATE place_amenities
              SET '
-            . implode(
-                ', ',
-                $columns
-            )
+            . implode(', ', $columns)
             . '
              WHERE place_id = ?'
         );
 
-        $restore->execute(
-            $values
-        );
+        $restore->execute($values);
     }
 
     return $result;
@@ -913,7 +799,23 @@ function llama_ridb_safe_sync_facility(
     $siteCount = 0;
     $attributeCount = 0;
 
-    foreach ($sites as $siteId => $site) {
+    foreach ($sites as $siteKey => $site) {
+        $siteId = str_starts_with(
+            (string) $siteKey,
+            'site:'
+        )
+            ? substr(
+                (string) $siteKey,
+                5
+            )
+            : (string) $siteKey;
+
+        $siteId = trim($siteId);
+
+        if ($siteId === '') {
+            continue;
+        }
+
         $attributes =
             llama_ridb_safe_cached_attributes(
                 $ridbDb,
@@ -979,14 +881,10 @@ function llama_ridb_safe_sync_facility(
          LIMIT 1'
     );
 
-    $nameStmt->execute([
-        $placeId,
-    ]);
+    $nameStmt->execute([$placeId]);
 
     $placeRow =
-        $nameStmt->fetch(
-            PDO::FETCH_ASSOC
-        )
+        $nameStmt->fetch(PDO::FETCH_ASSOC)
         ?: [];
 
     $placeMediaCount = llama_ridb_safe_add_place_media(
