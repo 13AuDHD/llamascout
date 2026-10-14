@@ -40,6 +40,9 @@ function llama_place_report_fields(): array
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
 
+    require_once __DIR__ . '/fields-source-context.php';
+    llama_place_report_add_source_context_fields($add);
+
     require_once __DIR__ . '/fields-road-conditions.php';
     llama_place_report_add_road_condition_questions($add);
     require_once __DIR__ . '/fields-road-access-additions.php';
@@ -70,6 +73,25 @@ function llama_place_report_fields(): array
 
     require_once __DIR__ . '/flow-scopes.php';
     llama_place_report_apply_flow_scopes($f);
+
+    /*
+     * Source-fed place facts are ordinary Scout Report answers. Keep their
+     * ownership explicit so they never become campsite defaults by accident.
+     */
+    foreach ([
+        'place_accessible',
+        'facility_map_url',
+        'activities',
+        'accessibility_notes',
+    ] as $key) {
+        if (!isset($f[$key])) {
+            continue;
+        }
+
+        $f[$key]['report_scopes'] = ['place'];
+        $f[$key]['report_scope_group'] = 'place';
+        $f[$key]['scope_inheritance'] = 'none';
+    }
 
     foreach ([
         'approach_width_restricted', 'approach_narrowest_width_feet',

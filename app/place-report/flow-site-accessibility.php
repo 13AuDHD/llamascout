@@ -5,10 +5,9 @@ declare(strict_types=1);
 /**
  * Site -> Accessibility cleanup.
  *
- * These questions describe the path from the vehicle into the individual
- * campsite and the usability of that campsite itself. Shared accessible
- * toilets, showers, tables, and other campground facilities remain under
- * Place -> Facilities & Amenities.
+ * An official accessible / not-accessible designation is one fact, not a
+ * verdict about whether a particular traveler can use the site. Practical
+ * access questions remain available regardless of that designation.
  */
 function llama_place_report_apply_site_accessibility_metadata(
     array &$fields
@@ -41,11 +40,25 @@ function llama_place_report_apply_site_accessibility_metadata(
 
         $fields[$key]['scope_inheritance'] =
             'none';
+
+        /*
+         * Do not make practical access questions conditional on the official
+         * designation. "Not marked accessible" must never hide them.
+         */
+        if ($key !== 'site_accessible') {
+            $fields[$key]['applicable_if'] =
+                [];
+        }
+    }
+
+    if (isset($fields['site_accessible'])) {
+        $fields['site_accessible']['display_section'] =
+            'accessibility';
     }
 
     $labels = [
         'site_accessible' =>
-            'Marked accessible campsite?',
+            'Officially marked accessible campsite?',
 
         'wheelchair_friendly' =>
             'Wheelchair usable?',
@@ -72,13 +85,13 @@ function llama_place_report_apply_site_accessibility_metadata(
 
     $help = [
         'site_accessible' =>
-            'Whether this individual campsite is officially marked or designated as accessible.',
+            'Whether this individual campsite is officially marked or designated as accessible. A No answer only describes the designation. It does not mean the route, surface, bathroom access, or campsite layout will be unusable for every disabled traveler.',
 
         'wheelchair_friendly' =>
-            'Whether a wheelchair can reasonably move from the parking position into and around the usable campsite area.',
+            'Whether a wheelchair can reasonably move from the parking position into and around the usable campsite area, regardless of whether the campsite is officially designated accessible.',
 
         'mobility_device_friendly' =>
-            'Whether an outdoor mobility device such as an all-terrain mobility chair can reasonably use the route and campsite.',
+            'Whether an outdoor mobility device such as an all-terrain mobility chair can reasonably use the route and campsite, regardless of the official designation.',
 
         'flat_walking_surface' =>
             'Whether the route from the vehicle into the usable campsite is firm and mostly level rather than loose, steep, deeply rutted, or highly uneven.',
