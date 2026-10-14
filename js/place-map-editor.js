@@ -610,7 +610,7 @@
                         / accuracies.length;
 
                     summaryAccuracy.textContent =
-                        `Â±${Math.round(average)} m avg`;
+                        `±${Math.round(average)} m avg`;
                 }
             }
 
