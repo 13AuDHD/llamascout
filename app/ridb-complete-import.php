@@ -244,9 +244,10 @@ function llama_ridb_complete_media_is_image(
 function llama_ridb_complete_site_metadata(
     PDO $mainDb,
     int $campsiteId,
-    string $siteId,
+    string|int $siteId,
     array $site
 ): int {
+    $siteId = trim((string) $siteId);
     /*
      * The main RIDB importer already owns its source-scoped campsite features.
      * Only replace metadata keys introduced by this supplemental importer.
@@ -448,10 +449,11 @@ function llama_ridb_complete_site_media(
     PDO $mainDb,
     int $placeId,
     int $campsiteId,
-    string $siteId,
+    string|int $siteId,
     array $site,
     int $userId
 ): int {
+    $siteId = trim((string) $siteId);
     $media =
         llama_ridb_complete_embedded_list(
             $site,
