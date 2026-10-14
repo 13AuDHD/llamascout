@@ -585,6 +585,13 @@
                 wrapper,
                 grid
             );
+
+            /*
+             * Canonical campsite facts belong in the Scout Report below.
+             * Keep this upper area only for site photos, permitted equipment,
+             * and genuinely source-specific RIDB metadata.
+             */
+            grid.remove();
         } else {
             detail.appendChild(
                 wrapper
