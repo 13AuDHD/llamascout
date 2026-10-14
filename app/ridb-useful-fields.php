@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/ridb-import.php';
 require_once __DIR__ . '/ridb-public-presentation.php';
+require_once __DIR__ . '/ridb-report-consolidation.php';
 
 /**
  * Promote useful RIDB fields that do not belong in Scout-owned Place answers.
@@ -879,7 +880,23 @@ function llama_ridb_useful_sync(
             $facilityId
         );
 
+    $reportConsolidation =
+        llama_ridb_report_consolidation_sync(
+            $mainDb,
+            $ridbDb,
+            $placeId,
+            $facilityId
+        );
+
     return [
+        'report_fields_imported' =>
+            (int) (
+                $reportConsolidation[
+                    'report_fields_imported'
+                ]
+                ?? 0
+            ),
+
         'useful_facility_facts' =>
             llama_ridb_useful_upsert_facility_facts(
                 $mainDb,
