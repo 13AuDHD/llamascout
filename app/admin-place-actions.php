@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/admin-place-report.php';
 require_once __DIR__ . '/place-verifications.php';
 
@@ -93,7 +94,18 @@ function admin_place_handle_actions(
     }
 
     try {
-        if ($action === 'save-report') {
+        if ($action === 'save-site-association') {
+            admin_place_save_site_association(
+                $db,
+                $actorUserId,
+                $placeId,
+                $_POST
+            );
+
+            $notice =
+                'Site map association updated.';
+
+        } elseif ($action === 'save-report') {
             $photosAdded =
                 0;
 
