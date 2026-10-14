@@ -88,13 +88,15 @@ function llama_report_targets(
             'Entire Place',
     ]];
 
-    /*
-     * Track canonical campsite IDs already represented by an active mapped
-     * Site. Those records must not be added a second time by the canonical
-     * campsite query below.
-     */
     $mappedCanonicalCampsiteIds = [];
+    $activeMappedSiteIds = [];
 
+    /*
+     * Read all active mapped reporting features first. Multiple active
+     * canonical campsite rows pointing at one mapped Site are an identity
+     * conflict, not two legitimate report targets. Reject that state instead
+     * of silently duplicating one physical Site in reporting.
+     */
     $stmt =
         $db->prepare(
             "SELECT
@@ -133,12 +135,15 @@ function llama_report_targets(
                     ELSE 2
                 END,
                 mf.label,
-                mf.id"
+                mf.id,
+                cs.id"
         );
 
     $stmt->execute([
         $placeId,
     ]);
+
+    $rowsByFeature = [];
 
     foreach (
         $stmt->fetchAll(
@@ -157,6 +162,15 @@ function llama_report_targets(
             continue;
         }
 
+        if (!isset($rowsByFeature[$featureId])) {
+            $rowsByFeature[$featureId] = [];
+        }
+
+        $rowsByFeature[$featureId][] = $row;
+    }
+
+    foreach ($rowsByFeature as $featureId => $rows) {
+        $row = $rows[0];
         $featureType =
             (string) (
                 $row['feature_type']
@@ -172,18 +186,6 @@ function llama_report_targets(
                 ],
                 true
             );
-
-        $parentAreaId =
-            $isArea
-                ? null
-                : (
-                    $row['camping_area_feature_id']
-                    === null
-                        ? null
-                        : (int) $row[
-                            'camping_area_feature_id'
-                        ]
-                );
 
         $mappedLabel =
             trim(
@@ -202,13 +204,13 @@ function llama_report_targets(
                     'map_feature',
 
                 'id' =>
-                    $featureId,
+                    (int) $featureId,
 
                 'parent_area_id' =>
                     null,
 
                 'map_feature_id' =>
-                    $featureId,
+                    (int) $featureId,
 
                 'label' =>
                     $mappedLabel !== ''
@@ -219,18 +221,49 @@ function llama_report_targets(
             continue;
         }
 
-        /*
-         * A mapped Site associated with place_campsites keeps the canonical
-         * campsite as its reporting identity. The map feature remains attached
-         * as geometry through map_feature_id.
-         */
-        $campsiteId =
-            (int) (
-                $row['campsite_id']
-                ?? 0
+        $activeMappedSiteIds[
+            (int) $featureId
+        ] = true;
+
+        $canonicalRows =
+            array_values(
+                array_filter(
+                    $rows,
+                    static fn (array $candidate): bool =>
+                        (int) (
+                            $candidate['campsite_id']
+                            ?? 0
+                        ) > 0
+                )
             );
 
-        if ($campsiteId > 0) {
+        if (count($canonicalRows) > 1) {
+            throw new RuntimeException(
+                'Mapped Site #'
+                . (int) $featureId
+                . ' is linked to multiple active campsite records. '
+                . 'Resolve the Site association conflict before using scoped reporting.'
+            );
+        }
+
+        $parentAreaId =
+            $row['camping_area_feature_id']
+            === null
+                ? null
+                : (int) $row[
+                    'camping_area_feature_id'
+                ];
+
+        if ($canonicalRows) {
+            $canonicalRow =
+                $canonicalRows[0];
+
+            $campsiteId =
+                (int) (
+                    $canonicalRow['campsite_id']
+                    ?? 0
+                );
+
             $mappedCanonicalCampsiteIds[
                 $campsiteId
             ] = true;
@@ -249,11 +282,11 @@ function llama_report_targets(
                     $parentAreaId,
 
                 'map_feature_id' =>
-                    $featureId,
+                    (int) $featureId,
 
                 'label' =>
                     llama_report_campsite_label(
-                        $row,
+                        $canonicalRow,
                         $campsiteId,
                         $mappedLabel
                     ),
@@ -262,10 +295,6 @@ function llama_report_targets(
             continue;
         }
 
-        /*
-         * A map-only Site has no canonical campsite record yet, so the mapped
-         * feature itself remains the reporting identity.
-         */
         $targets[] = [
             'scope' =>
                 'site',
@@ -274,13 +303,13 @@ function llama_report_targets(
                 'map_feature',
 
             'id' =>
-                $featureId,
+                (int) $featureId,
 
             'parent_area_id' =>
                 $parentAreaId,
 
             'map_feature_id' =>
-                $featureId,
+                (int) $featureId,
 
             'label' =>
                 $mappedLabel !== ''
@@ -290,8 +319,9 @@ function llama_report_targets(
     }
 
     /*
-     * Add canonical campsites that are not already represented above through
-     * an active mapped Site.
+     * Add canonical Sites that are not represented by an active mapped Site.
+     * A stale or wrong-type stored map_feature_id is deliberately not exposed
+     * as report geometry.
      */
     $stmt =
         $db->prepare(
@@ -343,7 +373,7 @@ function llama_report_targets(
             continue;
         }
 
-        $mapFeatureId =
+        $storedMapFeatureId =
             max(
                 0,
                 (int) (
@@ -351,6 +381,20 @@ function llama_report_targets(
                     ?? 0
                 )
             );
+
+        /*
+         * If this points at an active mapped Site it would already have been
+         * represented above. Anything reaching this branch is canonical-only
+         * for reporting purposes, even if a stale raw reference remains.
+         */
+        $mapFeatureId =
+            isset(
+                $activeMappedSiteIds[
+                    $storedMapFeatureId
+                ]
+            )
+                ? $storedMapFeatureId
+                : 0;
 
         $targets[] = [
             'scope' =>
@@ -365,11 +409,6 @@ function llama_report_targets(
             'parent_area_id' =>
                 null,
 
-            /*
-             * This may reference an inactive/missing feature from historical
-             * data. Consumers must still verify the feature before using it as
-             * geometry.
-             */
             'map_feature_id' =>
                 $mapFeatureId > 0
                     ? $mapFeatureId
@@ -385,6 +424,7 @@ function llama_report_targets(
 
     return $targets;
 }
+
 
 
 /**
