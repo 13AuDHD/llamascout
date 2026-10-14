@@ -568,7 +568,7 @@ function llama_place_campsite_map_options(
             $label =
                 'Site '
                 . $siteCode
-                . ' Â· '
+                . ' · '
                 . $siteName;
 
         } elseif ($siteCode !== '') {
