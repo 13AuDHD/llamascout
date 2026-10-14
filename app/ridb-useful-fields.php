@@ -1009,22 +1009,45 @@ function llama_ridb_useful_public_data(
                 'fee_description' => '',
             ];
 
+            $value =
+                trim(
+                    (string) (
+                        $row['feature_value']
+                        ?? ''
+                    )
+                );
+
+            $name =
+                trim(
+                    (string) (
+                        $activityDetails[$id]['name']
+                        ?? ''
+                    )
+                );
+
+            /*
+             * RIDB often repeats the activity name as its description or fee
+             * description (for example "Hiking" beneath HIKING). That is not
+             * additional information and should not create a second rendering
+             * of the same activity.
+             */
+            if (
+                $value !== ''
+                && $name !== ''
+                && strcasecmp(
+                    preg_replace('/\s+/u', ' ', $value) ?? $value,
+                    preg_replace('/\s+/u', ' ', $name) ?? $name
+                ) === 0
+            ) {
+                $value = '';
+            }
+
             if ($key === 'activity_description') {
                 $activityDetails[$id]['description'] =
-                    trim(
-                        (string) (
-                            $row['feature_value']
-                            ?? ''
-                        )
-                    );
+                    $value;
             } else {
                 $activityDetails[$id]['fee_description'] =
-                    trim(
-                        (string) (
-                            $row['feature_value']
-                            ?? ''
-                        )
-                    );
+                    $value;
             }
 
             continue;
@@ -1050,6 +1073,28 @@ function llama_ridb_useful_public_data(
             }
         }
     }
+
+    $activityDetails =
+        array_values(
+            array_filter(
+                $activityDetails,
+                static function (array $detail): bool {
+                    return
+                        trim(
+                            (string) (
+                                $detail['description']
+                                ?? ''
+                            )
+                        ) !== ''
+                        || trim(
+                            (string) (
+                                $detail['fee_description']
+                                ?? ''
+                            )
+                        ) !== '';
+                }
+            )
+        );
 
     return [
         'official_address_3' =>
@@ -1102,9 +1147,7 @@ function llama_ridb_useful_public_data(
                 )
             ),
         'activity_details' =>
-            array_values(
-                $activityDetails
-            ),
+            $activityDetails,
         'link_descriptions' =>
             $linkDescriptions,
     ];

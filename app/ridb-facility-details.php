@@ -334,7 +334,7 @@ function llama_place_facility_public_data(
     return [
         'address' =>
             implode(
-                ' Â· ',
+                ' · ',
                 $addressParts
             ),
         'phone' =>

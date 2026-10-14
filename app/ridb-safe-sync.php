@@ -213,7 +213,6 @@ function llama_ridb_safe_fill_place_core(
         )
     );
 
-    $road = trim((string) ($address['address_1'] ?? ''));
     $city = trim((string) ($address['city'] ?? ''));
     $state = trim((string) ($address['state'] ?? ''));
 
@@ -242,11 +241,6 @@ function llama_ridb_safe_fill_place_core(
                 THEN ROUND(?, 1)
                 ELSE public_longitude
             END,
-            road = CASE
-                WHEN road IS NULL OR road = ""
-                THEN COALESCE(NULLIF(?, ""), road)
-                ELSE road
-            END,
             city = CASE
                 WHEN city IS NULL OR city = ""
                 THEN COALESCE(NULLIF(?, ""), city)
@@ -270,7 +264,6 @@ function llama_ridb_safe_fill_place_core(
         $latitude,
         $longitude,
         $longitude,
-        $road,
         $city,
         $state,
         $placeId,
@@ -284,7 +277,6 @@ function llama_ridb_safe_fill_place_core(
             $description,
             $latitude,
             $longitude,
-            $road,
             $city,
             $state,
         ]
