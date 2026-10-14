@@ -219,6 +219,12 @@ $adminPlaceCampsites =
         $placeId
     );
 
+$adminPlaceSiteAssociations =
+    admin_place_site_association_catalog(
+        $db,
+        $placeId
+    );
+
 $stats =
     admin_dashboard_stats(
         $db
