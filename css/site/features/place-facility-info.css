@@ -80,8 +80,7 @@
     gap: 8px;
 }
 
-.place-facility-action,
-.place-facility-links a {
+.place-facility-action {
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -96,14 +95,11 @@
 }
 
 .place-facility-action:hover,
-.place-facility-action:focus-visible,
-.place-facility-links a:hover,
-.place-facility-links a:focus-visible {
+.place-facility-action:focus-visible {
     border-color: var(--text);
 }
 
-.place-facility-action svg,
-.place-facility-links svg {
+.place-facility-action svg {
     width: 16px;
     height: 16px;
 }
@@ -122,18 +118,44 @@
     font-size: .8rem;
 }
 
-.place-facility-links {
+/* Official links: one clear row per destination. */
+.place-facility-link-grid {
     display: grid;
-    grid-template-columns:
-        repeat(
-            auto-fit,
-            minmax(190px, 1fr)
-        );
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 7px;
 }
 
-.place-facility-links a {
+.place-facility-link-card {
+    display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.place-facility-link-card span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.place-facility-link-card svg {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+}
+
+.place-facility-link-card:hover,
+.place-facility-link-card:focus-visible {
+    border-color: var(--text);
 }
 
 .place-facility-updated {
@@ -151,7 +173,6 @@
         justify-self: start;
     }
 }
-
 
 .place-facility-activity-list {
     display: flex;
