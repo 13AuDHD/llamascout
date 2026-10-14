@@ -41,6 +41,15 @@ $auditScope =
         )
     );
 
+$runCoverage =
+    isset($_GET['audit_scope']);
+
+$runAttributes =
+    (
+        $_GET['attribute_audit']
+        ?? ''
+    ) === '1';
+
 $coverageReport = [
     'scope' => 'facility',
     'label' => 'Facilities',
@@ -58,16 +67,20 @@ try {
     $ridbDb =
         ridb_db();
 
-    $report =
-        llama_ridb_normalization_report(
-            $ridbDb
-        );
+    if ($runAttributes) {
+        $report =
+            llama_ridb_normalization_report(
+                $ridbDb
+            );
+    }
 
-    $coverageReport =
-        llama_ridb_coverage_report(
-            $ridbDb,
-            $auditScope
-        );
+    if ($runCoverage) {
+        $coverageReport =
+            llama_ridb_coverage_report(
+                $ridbDb,
+                $auditScope
+            );
+    }
 
 } catch (Throwable $exception) {
     $error =
@@ -145,10 +158,9 @@ require __DIR__ . '/_header.php';
 
     <div class="admin-user-action-box">
         <p>
-            This compares the field paths actually observed in the local RIDB
-            mirror with the fields the current importer explicitly maps or
-            intentionally preserves. Any observed field without a registered
-            treatment is surfaced here instead of being silently ignored.
+            RIDB audits are intentionally run only when requested. This keeps
+            normal admin navigation fast and prevents large JSON scans from
+            running just because you opened this page.
         </p>
 
         <form method="get">
@@ -387,7 +399,25 @@ require __DIR__ . '/_header.php';
         </div>
     </header>
 
+    <?php if (!$runAttributes): ?>
+        <div class="admin-empty-state">
+            <p>
+                The campsite attribute audit scans the normalized attribute
+                table and is not run during ordinary page navigation.
+            </p>
+
+            <a
+                class="admin-button"
+                href="/ridb-normalization.php?attribute_audit=1"
+            >
+                Run campsite attribute audit
+            </a>
+        </div>
+    <?php else: ?>
+
     <div class="admin-integration-summary">
+
+
         <div>
             <strong>
                 <?= number_format(
@@ -442,8 +472,10 @@ require __DIR__ . '/_header.php';
             <span>Observed occurrence coverage</span>
         </div>
     </div>
+    <?php endif; ?>
 </section>
 
+<?php if ($runAttributes): ?>
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
@@ -642,5 +674,6 @@ require __DIR__ . '/_header.php';
         </div>
     <?php endif; ?>
 </section>
+<?php endif; ?>
 
 <?php require __DIR__ . '/_footer.php'; ?>
