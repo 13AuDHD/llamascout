@@ -9,132 +9,12 @@
     const isPlainObject =
         (value) =>
             value !== null
-            && typeof value
-                === 'object'
-            && !Array.isArray(
-                value
-            );
-
-    const geometryToPoints =
-        (
-            geometry,
-            leaflet
-        ) => {
-            const ring =
-                geometry
-                    ?.coordinates
-                    ?.[0];
-
-            if (
-                !Array.isArray(
-                    ring
-                )
-            ) {
-                return [];
-            }
-
-            const withoutClosure =
-                ring.length > 1
-                && ring[0][0]
-                    === ring[
-                        ring.length - 1
-                    ][0]
-                && ring[0][1]
-                    === ring[
-                        ring.length - 1
-                    ][1]
-                    ? ring.slice(
-                        0,
-                        -1
-                    )
-                    : ring;
-
-            return withoutClosure
-                .filter(
-                    (point) =>
-                        Array.isArray(
-                            point
-                        )
-                        && point.length
-                            >= 2
-                )
-                .map(
-                    (point) =>
-                        leaflet.latLng(
-                            Number(
-                                point[1]
-                            ),
-                            Number(
-                                point[0]
-                            )
-                        )
-                );
-        };
-
-    const metadataForFeature =
-        (
-            feature,
-            count
-        ) => {
-            const vertices =
-                feature
-                    ?.metadata
-                    ?.vertices;
-
-            if (
-                !Array.isArray(
-                    vertices
-                )
-            ) {
-                return Array.from(
-                    {
-                        length:
-                            count
-                    },
-                    () => ({
-                        source:
-                            feature
-                                ?.source_type
-                                === 'gps'
-                                ? 'gps'
-                                : 'manual'
-                    })
-                );
-            }
-
-            return Array.from(
-                {
-                    length:
-                        count
-                },
-                (
-                    _,
-                    index
-                ) => {
-                    const item =
-                        vertices[
-                            index
-                        ];
-
-                    return isPlainObject(
-                        item
-                    )
-                        ? {
-                            ...item
-                        }
-                        : {
-                            source:
-                                'manual'
-                        };
-                }
-            );
-        };
+            && typeof value === 'object'
+            && !Array.isArray(value);
 
     namespace.createFeatureState =
         ({
-            editor,
             map,
-            mapElement,
             leaflet,
             featureType,
             featureLabel,
@@ -150,50 +30,29 @@
             getSelectedFeatureId,
             setSelectedFeatureId,
             getDirty,
-            setDrawing,
-            setMoveMode,
-            setSelectedPointIndex,
-            setPoints,
-            setVertexMetadata,
             setDirty,
-            getShapeLayer,
-            clearShapeLayer,
-            clearVertexLayers,
             syncAreaDetailFields,
             syncSiteFields,
             syncSiteClasses,
             syncRates,
             clearSiteClasses,
             clearRates,
-            syncSelectedPointPanel,
+            setGeometry,
+            clearGeometry,
+            getShapeLayer,
             syncFeatureSummary,
             setHelp,
             setStatus,
-            renderEditableShape,
             renderExistingLayers,
-            updatePointCount,
             areaUseLabels,
             feeStatusLabels,
             overnightStatusLabels,
             getSiteDetailLabels,
             rateMoney
         }) => {
-            if (
-                !editor
-                || !map
-                || !mapElement
-                || !leaflet
-            ) {
-                throw new Error(
-                    'Mapped-area feature state requires the editor, map, and Leaflet.'
-                );
-            }
-
             const currentFeatures =
                 () =>
-                    Array.isArray(
-                        getFeatures?.()
-                    )
+                    Array.isArray(getFeatures?.())
                         ? getFeatures()
                         : [];
 
@@ -209,18 +68,82 @@
                     const option =
                         featureType
                             ?.querySelector(
-                                `option[value="${CSS.escape(
-                                    String(value)
-                                )}"]`
+                                `option[value="${CSS.escape(String(value))}"]`
                             );
 
                     return option
-                        ? option.textContent
-                            .trim()
-                        : String(
-                            value
-                            || ''
+                        ? option.textContent.trim()
+                        : String(value || '');
+                };
+
+            const geometryToPoints =
+                (geometry) => {
+                    const ring =
+                        geometry
+                            ?.coordinates
+                            ?.[0];
+
+                    if (!Array.isArray(ring)) {
+                        return [];
+                    }
+
+                    const withoutClosure =
+                        ring.length > 1
+                        && ring[0][0]
+                            === ring[ring.length - 1][0]
+                        && ring[0][1]
+                            === ring[ring.length - 1][1]
+                            ? ring.slice(0, -1)
+                            : ring;
+
+                    return withoutClosure
+                        .filter(
+                            (point) =>
+                                Array.isArray(point)
+                                && point.length >= 2
+                        )
+                        .map(
+                            (point) =>
+                                leaflet.latLng(
+                                    Number(point[1]),
+                                    Number(point[0])
+                                )
                         );
+                };
+
+            const metadataForFeature =
+                (
+                    feature,
+                    count
+                ) => {
+                    const vertices =
+                        feature
+                            ?.metadata
+                            ?.vertices;
+
+                    if (!Array.isArray(vertices)) {
+                        return Array.from(
+                            { length: count },
+                            () => ({
+                                source:
+                                    feature?.source_type === 'gps'
+                                        ? 'gps'
+                                        : 'manual'
+                            })
+                        );
+                    }
+
+                    return Array.from(
+                        { length: count },
+                        (_, index) => {
+                            const item =
+                                vertices[index];
+
+                            return isPlainObject(item)
+                                ? { ...item }
+                                : { source: 'manual' };
+                        }
+                    );
                 };
 
             const fitAllAreas =
@@ -228,24 +151,16 @@
                     const features =
                         currentFeatures();
 
-                    if (
-                        features.length
-                        === 0
-                    ) {
+                    if (features.length === 0) {
                         return;
                     }
 
                     const bounds =
-                        leaflet.latLngBounds(
-                            []
-                        );
+                        leaflet.latLngBounds([]);
 
                     features.forEach(
                         (feature) => {
-                            if (
-                                !feature
-                                    ?.geometry
-                            ) {
+                            if (!feature?.geometry) {
                                 return;
                             }
 
@@ -257,10 +172,7 @@
                             const layerBounds =
                                 layer.getBounds();
 
-                            if (
-                                layerBounds
-                                    .isValid()
-                            ) {
+                            if (layerBounds.isValid()) {
                                 bounds.extend(
                                     layerBounds
                                 );
@@ -268,9 +180,7 @@
                         }
                     );
 
-                    if (
-                        !bounds.isValid()
-                    ) {
+                    if (!bounds.isValid()) {
                         return;
                     }
 
@@ -286,34 +196,26 @@
                     );
                 };
 
+            let chooseFeature =
+                () => {};
+
             const renderFeatureList =
-                (
-                    chooseFeature
-                ) => {
-                    if (
-                        !featureList
-                    ) {
+                () => {
+                    if (!featureList) {
                         return;
                     }
 
                     const features =
                         currentFeatures();
 
-                    featureList
-                        .replaceChildren();
+                    featureList.replaceChildren();
 
-                    if (
-                        fitAllAreasButton
-                    ) {
+                    if (fitAllAreasButton) {
                         fitAllAreasButton.disabled =
-                            features.length
-                            === 0;
+                            features.length === 0;
                     }
 
-                    if (
-                        features.length
-                        === 0
-                    ) {
+                    if (features.length === 0) {
                         const empty =
                             document.createElement(
                                 'p'
@@ -339,14 +241,11 @@
                             button.type =
                                 'button';
 
-                            button.classList
-                                .toggle(
-                                    'is-active',
-                                    Number(
-                                        feature.id
-                                    )
+                            button.classList.toggle(
+                                'is-active',
+                                Number(feature.id)
                                     === currentSelectedFeatureId()
-                                );
+                            );
 
                             const name =
                                 document.createElement(
@@ -365,105 +264,79 @@
                                 );
 
                             const source =
-                                feature.source_type
-                                === 'gps'
+                                feature.source_type === 'gps'
                                     ? 'GPS'
                                     : (
-                                        feature.source_type
-                                        === 'mixed'
+                                        feature.source_type === 'mixed'
                                             ? 'Mixed'
                                             : ''
                                     );
 
                             const rateSummary =
-                                feature
-                                    .effective_rate_summary
-                                || feature
-                                    .rate_summary
+                                feature.effective_rate_summary
+                                || feature.rate_summary
                                 || {};
 
                             const minimum =
                                 Number(
-                                    rateSummary
-                                        .minimum
+                                    rateSummary.minimum
                                 );
 
                             const maximum =
                                 Number(
-                                    rateSummary
-                                        .maximum
+                                    rateSummary.maximum
                                 );
 
                             const rateLabel =
-                                Number.isFinite(
-                                    minimum
-                                )
+                                Number.isFinite(minimum)
                                     ? (
-                                        minimum
-                                        === maximum
+                                        minimum === maximum
                                             ? `${rateMoney?.(minimum) || ''} / night`
                                             : `${rateMoney?.(minimum) || ''}â${rateMoney?.(maximum) || ''} / night`
                                     )
                                     : '';
 
+                            const siteLabels =
+                                getSiteDetailLabels?.(
+                                    feature.site_details
+                                    || {}
+                                );
+
                             const detailLabels = [
                                 areaUseLabels?.[
-                                    feature
-                                        .area_details
+                                    feature.area_details
                                         ?.area_use
                                 ] || '',
 
                                 feeStatusLabels?.[
-                                    feature
-                                        .area_details
+                                    feature.area_details
                                         ?.fee_status
                                 ] || '',
 
                                 overnightStatusLabels?.[
-                                    feature
-                                        .area_details
+                                    feature.area_details
                                         ?.overnight_status
                                 ] || '',
 
                                 ...(
-                                    Array.isArray(
-                                        getSiteDetailLabels?.(
-                                            feature
-                                                .site_details
-                                            || {}
-                                        )
-                                    )
-                                        ? getSiteDetailLabels(
-                                            feature
-                                                .site_details
-                                            || {}
-                                        )
+                                    Array.isArray(siteLabels)
+                                        ? siteLabels
                                         : []
                                 ),
 
                                 rateLabel
-                            ]
-                                .filter(
-                                    Boolean
-                                );
+                            ].filter(Boolean);
 
                             type.textContent =
                                 [
                                     featureTypeLabel(
-                                        feature
-                                            .feature_type
+                                        feature.feature_type
                                     ),
-
                                     ...detailLabels,
-
                                     source
                                 ]
-                                    .filter(
-                                        Boolean
-                                    )
-                                    .join(
-                                        ' Â· '
-                                    );
+                                    .filter(Boolean)
+                                    .join(' Â· ');
 
                             button.append(
                                 name,
@@ -473,10 +346,8 @@
                             button.addEventListener(
                                 'click',
                                 () => {
-                                    chooseFeature?.(
-                                        Number(
-                                            feature.id
-                                        )
+                                    chooseFeature(
+                                        Number(feature.id)
                                     );
                                 }
                             );
@@ -490,55 +361,19 @@
 
             const resetEditor =
                 (
-                    keepStatus = false,
-                    chooseFeature
+                    keepStatus = false
                 ) => {
-                    setSelectedFeatureId?.(
-                        0
-                    );
+                    setSelectedFeatureId?.(0);
+                    setDirty?.(false);
 
-                    setDrawing?.(
-                        false
-                    );
+                    clearGeometry?.();
 
-                    setMoveMode?.(
-                        false
-                    );
-
-                    setPoints?.(
-                        []
-                    );
-
-                    setVertexMetadata?.(
-                        []
-                    );
-
-                    setSelectedPointIndex?.(
-                        -1
-                    );
-
-                    mapElement.classList
-                        .remove(
-                            'is-moving'
-                        );
-
-                    setDirty?.(
-                        false
-                    );
-
-                    clearShapeLayer?.();
-                    clearVertexLayers?.();
-
-                    if (
-                        featureType
-                    ) {
+                    if (featureType) {
                         featureType.value =
                             'camping_area';
                     }
 
-                    if (
-                        featureLabel
-                    ) {
+                    if (featureLabel) {
                         featureLabel.value =
                             '';
                     }
@@ -552,9 +387,7 @@
                     ) {
                         clearSiteClasses();
                     } else {
-                        syncSiteClasses?.(
-                            []
-                        );
+                        syncSiteClasses?.([]);
                     }
 
                     if (
@@ -563,49 +396,35 @@
                     ) {
                         clearRates();
                     } else {
-                        syncRates?.(
-                            []
-                        );
+                        syncRates?.([]);
                     }
 
-                    if (
-                        drawButton
-                    ) {
+                    if (drawButton) {
                         drawButton.disabled =
                             false;
                     }
 
-                    if (
-                        finishButton
-                    ) {
+                    if (finishButton) {
                         finishButton.disabled =
                             true;
                     }
 
-                    if (
-                        undoButton
-                    ) {
+                    if (undoButton) {
                         undoButton.disabled =
                             true;
                     }
 
-                    if (
-                        saveButton
-                    ) {
+                    if (saveButton) {
                         saveButton.disabled =
                             true;
                     }
 
-                    if (
-                        deleteButton
-                    ) {
+                    if (deleteButton) {
                         deleteButton.disabled =
                             true;
                     }
 
-                    if (
-                        moveAreaButton
-                    ) {
+                    if (moveAreaButton) {
                         moveAreaButton.disabled =
                             true;
 
@@ -613,114 +432,63 @@
                             'Move whole area';
                     }
 
-                    syncSelectedPointPanel?.();
                     syncFeatureSummary?.();
 
                     setHelp?.(
                         'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
                     );
 
-                    if (
-                        !keepStatus
-                    ) {
-                        setStatus?.(
-                            ''
-                        );
+                    if (!keepStatus) {
+                        setStatus?.('');
                     }
 
                     renderExistingLayers?.();
-
-                    renderFeatureList(
-                        chooseFeature
-                    );
-
-                    updatePointCount?.();
+                    renderFeatureList();
                 };
 
             const selectFeature =
-                (
-                    id,
-                    chooseFeature
-                ) => {
+                (id) => {
                     const feature =
                         currentFeatures()
                             .find(
                                 (item) =>
-                                    Number(
-                                        item.id
-                                    )
-                                    === Number(
-                                        id
-                                    )
+                                    Number(item.id)
+                                    === Number(id)
                             );
 
-                    if (
-                        !feature
-                    ) {
+                    if (!feature) {
                         return;
                     }
 
-                    const selectedId =
-                        Number(
-                            feature.id
-                        );
-
                     setSelectedFeatureId?.(
-                        selectedId
+                        Number(feature.id)
                     );
 
-                    setDrawing?.(
-                        false
-                    );
+                    setDirty?.(false);
 
-                    setMoveMode?.(
-                        false
-                    );
-
-                    setSelectedPointIndex?.(
-                        -1
-                    );
-
-                    mapElement.classList
-                        .remove(
-                            'is-moving'
-                        );
-
-                    setDirty?.(
-                        false
-                    );
-
-                    if (
-                        featureType
-                    ) {
+                    if (featureType) {
                         featureType.value =
-                            feature
-                                .feature_type;
+                            feature.feature_type;
                     }
 
-                    if (
-                        featureLabel
-                    ) {
+                    if (featureLabel) {
                         featureLabel.value =
                             feature.label
                             || '';
                     }
 
                     syncAreaDetailFields?.(
-                        feature
-                            .area_details
+                        feature.area_details
                         || {}
                     );
 
                     syncSiteClasses?.(
-                        feature
-                            .site_classes
+                        feature.site_classes
                         || []
                     );
 
                     syncSiteFields?.(
-                        feature
-                            .site_details
+                        feature.site_details
                         || {}
                     );
 
@@ -731,77 +499,56 @@
 
                     const points =
                         geometryToPoints(
-                            feature.geometry,
-                            leaflet
+                            feature.geometry
                         );
 
-                    setPoints?.(
-                        points
-                    );
-
-                    setVertexMetadata?.(
+                    const metadata =
                         metadataForFeature(
                             feature,
                             points.length
-                        )
+                        );
+
+                    setGeometry?.(
+                        points,
+                        metadata
                     );
 
-                    if (
-                        drawButton
-                    ) {
+                    if (drawButton) {
                         drawButton.disabled =
                             false;
                     }
 
-                    if (
-                        finishButton
-                    ) {
+                    if (finishButton) {
                         finishButton.disabled =
                             true;
                     }
 
-                    if (
-                        undoButton
-                    ) {
+                    if (undoButton) {
                         undoButton.disabled =
                             true;
                     }
 
-                    if (
-                        deleteButton
-                    ) {
+                    if (deleteButton) {
                         deleteButton.disabled =
                             false;
                     }
 
-                    if (
-                        moveAreaButton
-                    ) {
+                    if (moveAreaButton) {
                         moveAreaButton.disabled =
-                            points.length
-                            < 3;
+                            points.length < 3;
 
                         moveAreaButton.textContent =
                             'Move whole area';
                     }
 
-                    syncSelectedPointPanel?.();
-
                     setHelp?.(
                         'Drag any point to correct this area. Save when finished. Choose Draw area if you want to replace the shape completely.'
                     );
 
-                    setStatus?.(
-                        ''
-                    );
+                    setStatus?.('');
 
-                    renderEditableShape?.();
                     renderExistingLayers?.();
-
-                    renderFeatureList(
-                        chooseFeature
-                    );
-
+                    renderFeatureList();
                     syncFeatureSummary?.();
 
                     const shapeLayer =
@@ -809,13 +556,11 @@
 
                     if (
                         shapeLayer
-                        && typeof shapeLayer
-                            .getBounds
+                        && typeof shapeLayer.getBounds
                             === 'function'
                     ) {
                         map.fitBounds(
-                            shapeLayer
-                                .getBounds(),
+                            shapeLayer.getBounds(),
                             {
                                 padding:
                                     [50, 50],
@@ -827,17 +572,12 @@
                     }
                 };
 
-            const chooseFeature =
+            chooseFeature =
                 (id) => {
-                    const selectedId =
-                        currentSelectedFeatureId();
-
                     if (
                         getDirty?.()
-                        && Number(
-                            id
-                        )
-                            !== selectedId
+                        && Number(id)
+                            !== currentSelectedFeatureId()
                         && !window.confirm(
                             'Discard the unsaved mapped-area changes?'
                         )
@@ -845,10 +585,7 @@
                         return;
                     }
 
-                    selectFeature(
-                        id,
-                        chooseFeature
-                    );
+                    selectFeature(id);
                 };
 
             fitAllAreasButton
@@ -859,40 +596,12 @@
 
             return {
                 fitAllAreas,
-
-                renderFeatureList:
-                    () =>
-                        renderFeatureList(
-                            chooseFeature
-                        ),
-
-                resetEditor:
-                    (
-                        keepStatus = false
-                    ) =>
-                        resetEditor(
-                            keepStatus,
-                            chooseFeature
-                        ),
-
-                selectFeature:
-                    (id) =>
-                        selectFeature(
-                            id,
-                            chooseFeature
-                        ),
-
+                renderFeatureList,
+                resetEditor,
+                selectFeature,
                 chooseFeature,
-
                 featureTypeLabel,
-
-                geometryToPoints:
-                    (geometry) =>
-                        geometryToPoints(
-                            geometry,
-                            leaflet
-                        ),
-
+                geometryToPoints,
                 metadataForFeature
             };
         };
