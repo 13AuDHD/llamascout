@@ -248,6 +248,247 @@ function llama_place_campsite(PDO $db, int $placeId, int $campsiteId): array {
     return [];
 }
 
+function llama_place_campsite_map_options(PDO $db, int $placeId): array {
+    if ($placeId < 1) {
+        return [];
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            id,
+            map_feature_id,
+            site_code,
+            site_name
+         FROM place_campsites
+         WHERE place_id = ?
+           AND is_active = 1
+         ORDER BY
+            COALESCE(
+                NULLIF(site_code, ""),
+                NULLIF(site_name, ""),
+                CAST(id AS CHAR)
+            ) ASC,
+            id ASC'
+    );
+    $stmt->execute([$placeId]);
+
+    $options = [];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $campsiteId = (int) ($row['id'] ?? 0);
+
+        if ($campsiteId < 1) {
+            continue;
+        }
+
+        $siteCode = trim((string) ($row['site_code'] ?? ''));
+        $siteName = trim((string) ($row['site_name'] ?? ''));
+
+        if ($siteCode !== '' && $siteName !== '') {
+            $label = 'Site ' . $siteCode . ' Â· ' . $siteName;
+        } elseif ($siteCode !== '') {
+            $label = 'Site ' . $siteCode;
+        } elseif ($siteName !== '') {
+            $label = $siteName;
+        } else {
+            $label = 'Site #' . $campsiteId;
+        }
+
+        $mapFeatureId = max(
+            0,
+            (int) ($row['map_feature_id'] ?? 0)
+        );
+
+        $options[] = [
+            'id' => $campsiteId,
+            'label' => $label,
+            'site_code' => $siteCode,
+            'site_name' => $siteName,
+            'map_feature_id' => $mapFeatureId > 0
+                ? $mapFeatureId
+                : null,
+        ];
+    }
+
+    return $options;
+}
+
+function llama_place_campsite_map_associations(
+    PDO $db,
+    int $placeId
+): array {
+    $associations = [];
+
+    foreach (
+        llama_place_campsite_map_options(
+            $db,
+            $placeId
+        )
+        as $site
+    ) {
+        $mapFeatureId = (int) ($site['map_feature_id'] ?? 0);
+
+        if ($mapFeatureId < 1) {
+            continue;
+        }
+
+        if (!isset($associations[$mapFeatureId])) {
+            $associations[$mapFeatureId] = [
+                'campsite_id' => (int) $site['id'],
+                'label' => (string) $site['label'],
+                'conflict' => false,
+            ];
+
+            continue;
+        }
+
+        /*
+         * Historical data may predate one-to-one enforcement. Surface that
+         * state instead of silently pretending the association is clean.
+         */
+        $associations[$mapFeatureId]['conflict'] = true;
+    }
+
+    return $associations;
+}
+
+function llama_place_campsite_map_association_clear(
+    PDO $db,
+    int $placeId,
+    int $featureId
+): void {
+    if ($placeId < 1 || $featureId < 1) {
+        throw new InvalidArgumentException(
+            'A valid Place and mapped Site are required.'
+        );
+    }
+
+    $stmt = $db->prepare(
+        'UPDATE place_campsites
+         SET map_feature_id = NULL
+         WHERE place_id = ?
+           AND map_feature_id = ?'
+    );
+    $stmt->execute([
+        $placeId,
+        $featureId,
+    ]);
+}
+
+function llama_place_campsite_map_association_save(
+    PDO $db,
+    int $placeId,
+    int $featureId,
+    int $campsiteId
+): void {
+    if ($placeId < 1 || $featureId < 1) {
+        throw new InvalidArgumentException(
+            'A valid Place and mapped Site are required.'
+        );
+    }
+
+    if ($campsiteId < 1) {
+        llama_place_campsite_map_association_clear(
+            $db,
+            $placeId,
+            $featureId
+        );
+
+        return;
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            id,
+            map_feature_id
+         FROM place_campsites
+         WHERE id = ?
+           AND place_id = ?
+           AND is_active = 1
+         LIMIT 1
+         FOR UPDATE'
+    );
+    $stmt->execute([
+        $campsiteId,
+        $placeId,
+    ]);
+
+    $site = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!is_array($site)) {
+        throw new InvalidArgumentException(
+            'The selected campsite is not available for this Place.'
+        );
+    }
+
+    $currentFeatureId = max(
+        0,
+        (int) ($site['map_feature_id'] ?? 0)
+    );
+
+    if (
+        $currentFeatureId > 0
+        && $currentFeatureId !== $featureId
+    ) {
+        $featureStmt = $db->prepare(
+            'SELECT id
+             FROM place_map_features
+             WHERE id = ?
+               AND place_id = ?
+               AND is_active = 1
+             LIMIT 1'
+        );
+        $featureStmt->execute([
+            $currentFeatureId,
+            $placeId,
+        ]);
+
+        if ($featureStmt->fetchColumn()) {
+            throw new InvalidArgumentException(
+                'That campsite is already associated with another active mapped Site.'
+            );
+        }
+    }
+
+    /*
+     * A map feature can represent only one canonical campsite. Explicitly
+     * choosing a different campsite moves the association instead of leaving
+     * two canonical records attached to the same geometry.
+     */
+    $clearStmt = $db->prepare(
+        'UPDATE place_campsites
+         SET map_feature_id = NULL
+         WHERE place_id = ?
+           AND map_feature_id = ?
+           AND id <> ?'
+    );
+    $clearStmt->execute([
+        $placeId,
+        $featureId,
+        $campsiteId,
+    ]);
+
+    $saveStmt = $db->prepare(
+        'UPDATE place_campsites
+         SET map_feature_id = ?
+         WHERE id = ?
+           AND place_id = ?
+           AND is_active = 1
+         LIMIT 1'
+    );
+    $saveStmt->execute([
+        $featureId,
+        $campsiteId,
+        $placeId,
+    ]);
+
+    if ($saveStmt->rowCount() < 1 && $currentFeatureId !== $featureId) {
+        throw new RuntimeException(
+            'The campsite association could not be saved.'
+        );
+    }
+}
+
 function llama_place_campsite_browser_state(array $place, array $sites): array {
     $mode = llama_place_experience_mode($place);
     $siteCount = count($sites);
