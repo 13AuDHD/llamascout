@@ -302,6 +302,39 @@ $valueFor =
     };
 
 
+/*
+ * The combined coordinate control replaces the individual latitude /
+ * longitude inputs whenever locating is enabled. Seed it from the same
+ * canonical form values as every other field so editing an existing Place
+ * never opens with blank hidden coordinates and then saves them as NULL.
+ */
+$combinedLatitude =
+    trim(
+        (string) (
+            $placeReportValues['latitude']
+            ?? ''
+        )
+    );
+
+$combinedLongitude =
+    trim(
+        (string) (
+            $placeReportValues['longitude']
+            ?? ''
+        )
+    );
+
+$combinedCoordinates =
+    (
+        $combinedLatitude !== ''
+        && $combinedLongitude !== ''
+    )
+        ? $combinedLatitude
+            . ', '
+            . $combinedLongitude
+        : '';
+
+
 $renderSelect =
     static function (
         array $field,
