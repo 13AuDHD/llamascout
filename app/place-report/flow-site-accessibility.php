@@ -52,8 +52,13 @@ function llama_place_report_apply_site_accessibility_metadata(
     }
 
     if (isset($fields['site_accessible'])) {
+        /*
+         * Keep the official designation first in Site & vehicle fit.
+         * The practical accessibility questions remain in the separate
+         * Accessibility section and are never hidden by a No answer here.
+         */
         $fields['site_accessible']['display_section'] =
-            'accessibility';
+            'site_vehicle';
     }
 
     $labels = [
