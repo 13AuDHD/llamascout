@@ -111,6 +111,7 @@ declare(strict_types=1);
 
 
 <nav class="admin-place-section-nav">
+    <a href="#site-mapping">Site Mapping</a>
     <a href="#place-report">Place Report</a>
     <a href="#photos">Photos</a>
     <a href="#notes">Notes</a>
@@ -118,6 +119,151 @@ declare(strict_types=1);
     <a href="#status">Status</a>
     <a href="#history">History</a>
 </nav>
+
+
+<section
+    class="admin-place-admin-meta"
+    id="site-mapping"
+>
+    <header>
+        <p>Site identity</p>
+        <h2>Canonical Site â mapped Site</h2>
+
+        <span class="admin-place-muted">
+            This controls which mapped campsite polygon belongs to a canonical
+            Site record. Scout Report answers follow the canonical Site after
+            linking. To move a canonical Site between two active mapped Sites,
+            unlink it first and save, then create the new link.
+        </span>
+    </header>
+
+    <?php
+    $associationCampsites =
+        (array) (
+            $adminPlaceSiteAssociations['campsites']
+            ?? []
+        );
+
+    $associationMappedSites =
+        (array) (
+            $adminPlaceSiteAssociations['mapped_sites']
+            ?? []
+        );
+    ?>
+
+    <?php if (!$associationCampsites): ?>
+        <p class="admin-place-muted">
+            No canonical campsite records are available for this Place.
+        </p>
+    <?php elseif (!$associationMappedSites): ?>
+        <p class="admin-place-muted">
+            No mapped Individual campsite features are available yet. Create
+            them in the mapped-area editor first.
+        </p>
+    <?php else: ?>
+        <form
+            method="post"
+            class="admin-place-meta-grid"
+        >
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= $e(
+                    moderation_csrf_token()
+                ) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_id"
+                value="<?= $placeId ?>"
+            >
+
+            <input
+                type="hidden"
+                name="place_admin_action"
+                value="save-site-association"
+            >
+
+            <label>
+                <span>Canonical campsite</span>
+
+                <select
+                    name="canonical_campsite_id"
+                    required
+                >
+                    <option value="">
+                        Select canonical Site...
+                    </option>
+
+                    <?php foreach (
+                        $associationCampsites
+                        as $site
+                    ): ?>
+                        <option
+                            value="<?= (int) (
+                                $site['id']
+                                ?? 0
+                            ) ?>"
+                        >
+                            <?= $e(
+                                $site['display_label']
+                                ?? $site['label']
+                                ?? ''
+                            ) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <label>
+                <span>Mapped Site geometry</span>
+
+                <select name="mapped_site_feature_id">
+                    <option value="0">
+                        Not mapped / unlink
+                    </option>
+
+                    <?php foreach (
+                        $associationMappedSites
+                        as $mappedSite
+                    ): ?>
+                        <option
+                            value="<?= (int) (
+                                $mappedSite['id']
+                                ?? 0
+                            ) ?>"
+                            <?= (
+                                !empty(
+                                    $mappedSite['conflict']
+                                )
+                                || (int) (
+                                    $mappedSite['campsite_id']
+                                    ?? 0
+                                ) > 0
+                            ) ? 'disabled' : '' ?>
+                        >
+                            <?= $e(
+                                $mappedSite['display_label']
+                                ?? $mappedSite['label']
+                                ?? ''
+                            ) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <div>
+                <button
+                    class="admin-button"
+                    type="submit"
+                >
+                    Save Site Mapping
+                </button>
+            </div>
+        </form>
+    <?php endif; ?>
+</section>
 
 
 <form
