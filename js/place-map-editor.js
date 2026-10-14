@@ -11,12 +11,38 @@
             'mapped-area-editor-map'
         );
 
+    const modules =
+        window.LlamaPlaceMapEditor
+        || {};
+
     if (
         !editor
         || !mapElement
         || typeof L === 'undefined'
     ) {
         return;
+    }
+
+    const requiredFactories = [
+        'createSiteFields',
+        'createPricing',
+        'createFeatureState',
+        'createGeometryEditor',
+        'createGps',
+        'createMapStyles'
+    ];
+
+    const missingFactory =
+        requiredFactories.find(
+            (name) =>
+                typeof modules[name]
+                !== 'function'
+        );
+
+    if (missingFactory) {
+        throw new Error(
+            `Mapped-area editor module is missing: ${missingFactory}`
+        );
     }
 
     const slug =
@@ -79,91 +105,6 @@
     const areaDetailsNote =
         editor.querySelector(
             '[data-area-details-note]'
-        );
-
-    const siteDetails =
-        editor.querySelector(
-            '[data-site-details]'
-        );
-
-    const siteParent =
-        editor.querySelector(
-            '[data-site-parent]'
-        );
-
-    const siteClass =
-        editor.querySelector(
-            '[data-site-class]'
-        );
-
-    const siteCode =
-        editor.querySelector(
-            '[data-site-code]'
-        );
-
-    const siteType =
-        editor.querySelector(
-            '[data-site-type]'
-        );
-
-    const siteParkingStyle =
-        editor.querySelector(
-            '[data-site-parking-style]'
-        );
-
-    const siteHookups =
-        editor.querySelector(
-            '[data-site-hookups]'
-        );
-
-    const siteAccessible =
-        editor.querySelector(
-            '[data-site-accessible]'
-        );
-
-    const siteClassesSection =
-        editor.querySelector(
-            '[data-site-classes-section]'
-        );
-
-    const siteClassList =
-        editor.querySelector(
-            '[data-site-class-list]'
-        );
-
-    const addSiteClassButton =
-        editor.querySelector(
-            '[data-add-site-class]'
-        );
-
-    const siteClassEmpty =
-        editor.querySelector(
-            '[data-site-class-empty]'
-        );
-
-    const rateSection =
-        editor.querySelector(
-            '[data-rate-section]'
-        );
-
-    const rateList =
-        editor.querySelector(
-            '[data-rate-list]'
-        );
-
-    const addRateButton =
-        editor.querySelector(
-            '[data-add-rate]'
-        );
-
-    const rateEmpty =
-        editor.querySelector(
-            '[data-rate-empty]'
-        );
-
-    const rateInheritance =
-        editor.querySelector(
-            '[data-rate-inheritance]'
         );
 
     const featureList =
@@ -296,49 +237,14 @@
             '[data-revert-feature]'
         );
 
-    const gpsState =
+    const siteParent =
         editor.querySelector(
-            '[data-gps-state]'
+            '[data-site-parent]'
         );
 
-    const gpsReading =
+    const siteClass =
         editor.querySelector(
-            '[data-gps-reading]'
-        );
-
-    const gpsLatitude =
-        editor.querySelector(
-            '[data-gps-latitude]'
-        );
-
-    const gpsLongitude =
-        editor.querySelector(
-            '[data-gps-longitude]'
-        );
-
-    const gpsAccuracy =
-        editor.querySelector(
-            '[data-gps-accuracy]'
-        );
-
-    const startGpsButton =
-        editor.querySelector(
-            '[data-start-gps]'
-        );
-
-    const stopGpsButton =
-        editor.querySelector(
-            '[data-stop-gps]'
-        );
-
-    const addGpsPointButton =
-        editor.querySelector(
-            '[data-add-gps-point]'
-        );
-
-    const centerGpsButton =
-        editor.querySelector(
-            '[data-center-gps]'
+            '[data-site-class]'
         );
 
     const apiUrl =
@@ -348,146 +254,190 @@
         L.map(
             mapElement,
             {
-                zoomControl: false,
-                maxZoom: 20
+                zoomControl:
+                    false,
+
+                maxZoom:
+                    20
             }
         ).setView(
-            [latitude, longitude],
+            [
+                latitude,
+                longitude
+            ],
             18
         );
 
     L.control.zoom({
-        position: 'bottomright'
-    }).addTo(map);
-
-    const tileSources = {
-        street: {
-            url:
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-
-            options: {
-                maxNativeZoom: 19,
-                maxZoom: 20,
-
-                attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }
-        },
-
-        terrain: {
-            url:
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-
-            options: {
-                maxNativeZoom: 19,
-                maxZoom: 20,
-
-                attribution:
-                    'Tiles &copy; Esri and contributors'
-            }
-        },
-
-        satellite: {
-            url:
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-
-            options: {
-                maxNativeZoom: 19,
-                maxZoom: 20,
-
-                attribution:
-                    'Tiles &copy; Esri and imagery contributors'
-            }
-        }
-    };
-
-    let activeTileLayer = null;
-    let selectedMapStyle = 'satellite';
-
-    let features = [];
-    let selectedFeatureId = 0;
-    let drawing = false;
-    let points = [];
-    let vertexMetadata = [];
-    let shapeLayer = null;
-    let vertexLayers = [];
-    let midpointLayers = [];
-    let moveHandleLayer = null;
-    let existingLayers = [];
-
-    let selectedPointIndex = -1;
-    let moveMode = false;
-    let dirty = false;
-    let workingRates = [];
-    let workingSiteClasses = [];
-
-    let gpsWatchId = null;
-    let gpsPosition = null;
-    let gpsMarker = null;
-    let gpsAccuracyCircle = null;
+        position:
+            'bottomright'
+    }).addTo(
+        map
+    );
 
     const featureStyles = {
         place_boundary: {
-            color: '#8b5cf6',
-            fillColor: '#8b5cf6'
+            color:
+                '#8b5cf6',
+
+            fillColor:
+                '#8b5cf6'
         },
 
         camping_area: {
-            color: '#1f8f4e',
-            fillColor: '#1f8f4e'
+            color:
+                '#1f8f4e',
+
+            fillColor:
+                '#1f8f4e'
         },
 
         parking_area: {
-            color: '#2563eb',
-            fillColor: '#2563eb'
+            color:
+                '#2563eb',
+
+            fillColor:
+                '#2563eb'
         },
 
         camping_site: {
-            color: '#d97706',
-            fillColor: '#d97706'
+            color:
+                '#d97706',
+
+            fillColor:
+                '#d97706'
         }
     };
 
-    const isoNow = () =>
-        new Date().toISOString();
+    const areaUseOptions = {
+        camping_area: [
+            [
+                '',
+                'Not specified'
+            ],
+            [
+                'developed_campground',
+                'Developed campground'
+            ],
+            [
+                'designated_camping',
+                'Designated camping area'
+            ],
+            [
+                'dispersed_camping',
+                'Dispersed camping area'
+            ]
+        ],
 
-    const setStatus = (
-        message = '',
-        isError = false
-    ) => {
-        if (!status) {
-            return;
-        }
+        parking_area: [
+            [
+                '',
+                'Not specified'
+            ],
+            [
+                'general_parking',
+                'General parking'
+            ],
+            [
+                'overnight_vehicle_parking',
+                'Overnight vehicle parking'
+            ]
+        ]
+    };
 
-        status.textContent =
-            message;
-
-        status.classList.toggle(
-            'is-error',
-            isError
+    const areaUseLabels =
+        Object.fromEntries(
+            Object.values(
+                areaUseOptions
+            )
+                .flat()
+                .filter(
+                    ([value]) =>
+                        value !== ''
+                )
         );
+
+    const feeStatusLabels = {
+        free:
+            'Free',
+
+        paid:
+            'Paid',
+
+        varies:
+            'Varies',
+
+        unknown:
+            'Unknown'
     };
 
-    const setHelp = (message) => {
-        if (help) {
-            help.textContent =
+    const overnightStatusLabels = {
+        allowed:
+            'Overnight allowed',
+
+        prohibited:
+            'Overnight not allowed',
+
+        varies:
+            'Overnight varies',
+
+        unknown:
+            'Overnight unknown'
+    };
+
+    let features = [];
+    let campsites = [];
+    let selectedFeatureId = 0;
+    let dirty = false;
+    let existingLayers = [];
+
+    let siteFields = null;
+    let pricing = null;
+    let geometry = null;
+    let gps = null;
+    let featureState = null;
+
+    const setStatus =
+        (
+            message = '',
+            isError = false
+        ) => {
+            if (!status) {
+                return;
+            }
+
+            status.textContent =
                 message;
-        }
-    };
 
-    const setDirty = (value = true) => {
-        dirty = value === true;
+            status.classList.toggle(
+                'is-error',
+                isError
+            );
+        };
 
-        if (unsavedState) {
-            unsavedState.hidden =
-                !dirty;
-        }
+    const setHelp =
+        (message) => {
+            if (help) {
+                help.textContent =
+                    message;
+            }
+        };
 
-        if (revertFeatureButton) {
-            revertFeatureButton.disabled =
-                !dirty;
-        }
-    };
+    const setDirty =
+        (value = true) => {
+            dirty =
+                value === true;
+
+            if (unsavedState) {
+                unsavedState.hidden =
+                    !dirty;
+            }
+
+            if (revertFeatureButton) {
+                revertFeatureButton.disabled =
+                    !dirty;
+            }
+        };
 
     const formatUpdatedAt =
         (value) => {
@@ -525,852 +475,160 @@
             return new Intl.DateTimeFormat(
                 undefined,
                 {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
+                    year:
+                        'numeric',
+
+                    month:
+                        'short',
+
+                    day:
+                        'numeric'
                 }
-            ).format(date);
+            ).format(
+                date
+            );
         };
 
-    const syncFeatureSummary = () => {
-        if (!featureSummary) {
-            return;
-        }
-
-        const currentFeature =
-            features.find(
-                (feature) =>
-                    Number(feature.id)
-                    === selectedFeatureId
-            )
-            || null;
-
-        const hasGeometry =
-            points.length > 0;
-
-        featureSummary.hidden =
-            !hasGeometry
-            && !currentFeature;
-
-        if (
-            !hasGeometry
-            && !currentFeature
-        ) {
-            return;
-        }
-
-        if (summaryPoints) {
-            summaryPoints.textContent =
-                String(
-                    points.length
-                );
-        }
-
-        const gpsVertices =
-            vertexMetadata.filter(
-                (metadata) =>
-                    metadata?.source
-                    === 'gps'
-            );
-
-        const adjustedGps =
-            gpsVertices.some(
-                (metadata) =>
-                    metadata?.adjusted
-                    === true
-            );
-
-        let sourceLabel =
-            'Manual';
-
-        if (
-            gpsVertices.length > 0
-            && gpsVertices.length
-                === vertexMetadata.length
-            && !adjustedGps
-        ) {
-            sourceLabel =
-                'GPS';
-
-        } else if (
-            gpsVertices.length > 0
-        ) {
-            sourceLabel =
-                'Mixed';
-        }
-
-        if (summarySource) {
-            summarySource.textContent =
-                sourceLabel;
-        }
-
-        const accuracies =
-            gpsVertices
-                .map(
-                    (metadata) =>
-                        Number(
-                            metadata
-                                ?.accuracy_m
-                        )
-                )
-                .filter(
-                    (value) =>
-                        Number.isFinite(
-                            value
-                        )
-                        && value >= 0
-                );
-
-        if (summaryAccuracy) {
+    const syncFeatureSummary =
+        () => {
             if (
-                accuracies.length
-                === 0
+                !featureSummary
+                || !geometry
             ) {
-                summaryAccuracy.textContent =
-                    '--';
-            } else {
-                const average =
-                    accuracies.reduce(
-                        (
-                            total,
-                            value
-                        ) =>
-                            total
-                            + value,
-                        0
-                    )
-                    / accuracies.length;
-
-                summaryAccuracy.textContent =
-                    `±${Math.round(
-                        average
-                    )} m avg`;
+                return;
             }
-        }
 
-        if (summaryUpdated) {
-            summaryUpdated.textContent =
-                currentFeature
-                    ? formatUpdatedAt(
-                        currentFeature
-                            .updated_at
-                    )
-                    : 'Not saved';
-        }
-    };
+            const currentFeature =
+                features.find(
+                    (feature) =>
+                        Number(feature.id)
+                        === selectedFeatureId
+                )
+                || null;
 
-    const syncSelectedPointPanel = () => {
-        const hasSelection =
-            selectedPointIndex >= 0
-            && selectedPointIndex < points.length;
+            const points =
+                geometry.getPoints();
 
-        if (selectedPointPanel) {
-            selectedPointPanel.hidden =
-                !hasSelection;
-        }
+            const vertexMetadata =
+                geometry.getVertexMetadata();
 
-        if (removePointButton) {
-            removePointButton.disabled =
-                !hasSelection
-                || points.length <= 3
-                || drawing
-                || moveMode;
-        }
+            const hasGeometry =
+                points.length > 0;
 
-        if (useGpsPointButton) {
-            useGpsPointButton.disabled =
-                !hasSelection
-                || !gpsPosition
-                || drawing
-                || moveMode;
-        }
+            featureSummary.hidden =
+                !hasGeometry
+                && !currentFeature;
 
-        if (!hasSelection) {
-            return;
-        }
-
-        const point =
-            points[selectedPointIndex];
-
-        const metadata =
-            vertexMetadata[selectedPointIndex]
-            || {
-                source: 'manual'
-            };
-
-        if (selectedPointNumber) {
-            selectedPointNumber.textContent =
-                String(
-                    selectedPointIndex + 1
-                );
-        }
-
-        if (selectedPointLatitude) {
-            selectedPointLatitude.textContent =
-                Number(point.lat)
-                    .toFixed(7);
-        }
-
-        if (selectedPointLongitude) {
-            selectedPointLongitude.textContent =
-                Number(point.lng)
-                    .toFixed(7);
-        }
-
-        if (selectedPointSource) {
-            const source =
-                metadata.source === 'gps'
-                    ? 'GPS'
-                    : 'Manual';
-
-            const accuracy =
-                Number(
-                    metadata.accuracy_m
-                );
-
-            selectedPointSource.textContent =
-                metadata.source === 'gps'
-                && Number.isFinite(accuracy)
-                    ? `${source} · ±${Math.round(accuracy)} m`
-                    : source;
-        }
-    };
-
-    const updatePointCount = () => {
-        if (!pointCount) {
-            return;
-        }
-
-        pointCount.hidden =
-            points.length === 0;
-
-        pointCount.textContent =
-            `${points.length} point${
-                points.length === 1
-                    ? ''
-                    : 's'
-            }`;
-
-        finishButton.disabled =
-            !drawing
-            || points.length < 3;
-
-        undoButton.disabled =
-            !drawing
-            || points.length === 0;
-
-        saveButton.disabled =
-            drawing
-            || points.length < 3;
-
-        syncFeatureSummary();
-    };
-
-    const applyTileLayer = () => {
-        const source =
-            tileSources[selectedMapStyle]
-            || tileSources.satellite;
-
-        if (activeTileLayer) {
-            map.removeLayer(
-                activeTileLayer
-            );
-        }
-
-        activeTileLayer =
-            L.tileLayer(
-                source.url,
-                source.options
-            );
-
-        activeTileLayer.addTo(
-            map
-        );
-
-        activeTileLayer
-            .bringToBack();
-
-        editor
-            .querySelectorAll(
-                '[data-map-style]'
-            )
-            .forEach((button) => {
-                const active =
-                    button.dataset.mapStyle
-                    === selectedMapStyle;
-
-                button.classList.toggle(
-                    'is-active',
-                    active
-                );
-            });
-    };
-
-    const clearVertexLayers = () => {
-        vertexLayers.forEach(
-            (layer) => {
-                map.removeLayer(
-                    layer
-                );
+            if (
+                !hasGeometry
+                && !currentFeature
+            ) {
+                return;
             }
-        );
 
-        midpointLayers.forEach(
-            (layer) => {
-                map.removeLayer(
-                    layer
-                );
+            if (summaryPoints) {
+                summaryPoints.textContent =
+                    String(
+                        points.length
+                    );
             }
-        );
 
-        if (moveHandleLayer) {
-            map.removeLayer(
-                moveHandleLayer
-            );
-
-            moveHandleLayer = null;
-        }
-
-        vertexLayers = [];
-        midpointLayers = [];
-    };
-
-    const clearShapeLayer = () => {
-        if (!shapeLayer) {
-            return;
-        }
-
-        map.removeLayer(
-            shapeLayer
-        );
-
-        shapeLayer = null;
-    };
-
-    const selectedStyle = () =>
-        featureStyles[
-            featureType?.value
-        ]
-        || featureStyles
-            .camping_area;
-
-    const vertexIcon =
-        (
-            metadata,
-            selected = false
-        ) => {
-            const isGps =
-                metadata?.source
-                === 'gps';
-
-            return L.divIcon({
-                className: '',
-
-                html:
-                    `<span class="mapped-area-editor-vertex${isGps ? ' is-gps' : ''}${selected ? ' is-selected' : ''}" aria-hidden="true"></span>`,
-
-                iconSize:
-                    [18, 18],
-
-                iconAnchor:
-                    [9, 9]
-            });
-        };
-
-    const markVertexAdjusted =
-        (index) => {
-            const current =
-                vertexMetadata[index]
-                || {
-                    source: 'manual'
-                };
-
-            vertexMetadata[index] = {
-                ...current,
-                adjusted: true,
-                adjusted_at:
-                    isoNow()
-            };
-        };
-
-    const midpointBetween =
-        (
-            first,
-            second
-        ) =>
-            L.latLng(
-                (
-                    Number(first.lat)
-                    + Number(second.lat)
-                ) / 2,
-                (
-                    Number(first.lng)
-                    + Number(second.lng)
-                ) / 2
-            );
-
-    const insertPointAfter =
-        (index) => {
-            const nextIndex =
-                (
-                    index + 1
-                ) % points.length;
-
-            const midpoint =
-                midpointBetween(
-                    points[index],
-                    points[nextIndex]
+            const gpsVertices =
+                vertexMetadata.filter(
+                    (metadata) =>
+                        metadata?.source
+                        === 'gps'
                 );
 
-            points.splice(
-                index + 1,
-                0,
-                midpoint
-            );
+            const adjustedGps =
+                gpsVertices.some(
+                    (metadata) =>
+                        metadata?.adjusted
+                        === true
+                );
 
-            vertexMetadata.splice(
-                index + 1,
-                0,
-                {
-                    source: 'manual'
-                }
-            );
+            let sourceLabel =
+                'Manual';
 
-            selectedPointIndex =
-                index + 1;
+            if (
+                gpsVertices.length > 0
+                && gpsVertices.length
+                    === vertexMetadata.length
+                && !adjustedGps
+            ) {
+                sourceLabel =
+                    'GPS';
 
-            setDirty(true);
-
-            setStatus(
-                'Point inserted. Drag it into position, then save the area.'
-            );
-
-            renderEditableShape();
-        };
-
-    const renderMoveHandle = () => {
-        if (
-            !moveMode
-            || points.length < 3
-        ) {
-            return;
-        }
-
-        const bounds =
-            L.latLngBounds(
-                points
-            );
-
-        const center =
-            bounds.getCenter();
-
-        const originalCenter =
-            L.latLng(
-                center.lat,
-                center.lng
-            );
-
-        const originalPoints =
-            points.map(
-                (point) =>
-                    L.latLng(
-                        point.lat,
-                        point.lng
-                    )
-            );
-
-        moveHandleLayer =
-            L.marker(
-                center,
-                {
-                    draggable: true,
-
-                    icon:
-                        L.divIcon({
-                            className: '',
-
-                            html:
-                                '<span class="mapped-area-editor-move-handle" aria-hidden="true">↕</span>',
-
-                            iconSize:
-                                [28, 28],
-
-                            iconAnchor:
-                                [14, 14]
-                        })
-                }
-            ).addTo(map);
-
-        moveHandleLayer.on(
-            'drag',
-            (event) => {
-                const current =
-                    event.target
-                        .getLatLng();
-
-                const deltaLat =
-                    current.lat
-                    - originalCenter.lat;
-
-                const deltaLng =
-                    current.lng
-                    - originalCenter.lng;
-
-                points =
-                    originalPoints.map(
-                        (point) =>
-                            L.latLng(
-                                point.lat
-                                    + deltaLat,
-                                point.lng
-                                    + deltaLng
-                            )
-                    );
-
-                if (shapeLayer) {
-                    shapeLayer.setLatLngs(
-                        points
-                    );
-                }
+            } else if (
+                gpsVertices.length > 0
+            ) {
+                sourceLabel =
+                    'Mixed';
             }
-        );
 
-        moveHandleLayer.on(
-            'dragend',
-            () => {
-                vertexMetadata =
-                    vertexMetadata.map(
-                        (metadata) => ({
-                            ...(
-                                metadata
-                                || {
-                                    source:
-                                        'manual'
-                                }
-                            ),
-
-                            adjusted:
-                                true,
-
-                            adjusted_at:
-                                isoNow()
-                        })
-                    );
-
-                moveMode =
-                    false;
-
-                mapElement.classList
-                    .remove(
-                        'is-moving'
-                    );
-
-                setDirty(true);
-
-                setStatus(
-                    'Area moved. Save the area to keep the change.'
-                );
-
-                renderEditableShape();
+            if (summarySource) {
+                summarySource.textContent =
+                    sourceLabel;
             }
-        );
-    };
 
-    const renderEditableShape = () => {
-        clearShapeLayer();
-        clearVertexLayers();
-
-        if (points.length === 0) {
-            selectedPointIndex =
-                -1;
-
-            syncSelectedPointPanel();
-            updatePointCount();
-
-            return;
-        }
-
-        const style =
-            selectedStyle();
-
-        shapeLayer =
-            L.polygon(
-                points,
-                {
-                    color:
-                        style.color,
-
-                    weight: 3,
-                    opacity: 1,
-
-                    fillColor:
-                        style.fillColor,
-
-                    fillOpacity:
-                        drawing
-                            ? .16
-                            : .24
-                }
-            ).addTo(map);
-
-        if (moveMode) {
-            renderMoveHandle();
-            syncSelectedPointPanel();
-            updatePointCount();
-            return;
-        }
-
-        points.forEach(
-            (latLng, index) => {
-                const metadata =
-                    vertexMetadata[index]
-                    || {
-                        source:
-                            'manual'
-                    };
-
-                const marker =
-                    L.marker(
-                        latLng,
-                        {
-                            draggable:
-                                !drawing,
-
-                            icon:
-                                vertexIcon(
-                                    metadata,
-                                    index
-                                        === selectedPointIndex
-                                )
-                        }
-                    ).addTo(map);
-
-                marker.on(
-                    'click',
-                    () => {
-                        selectedPointIndex =
-                            index;
-
-                        renderEditableShape();
-                    }
-                );
-
-                if (!drawing) {
-                    marker.on(
-                        'drag',
-                        (event) => {
-                            points[index] =
-                                event.target
-                                    .getLatLng();
-
-                            if (shapeLayer) {
-                                shapeLayer
-                                    .setLatLngs(
-                                        points
-                                    );
-                            }
-
-                            syncSelectedPointPanel();
-                        }
-                    );
-
-                    marker.on(
-                        'dragend',
-                        () => {
-                            markVertexAdjusted(
-                                index
-                            );
-
-                            selectedPointIndex =
-                                index;
-
-                            setDirty(true);
-
-                            setStatus(
-                                'Point moved. Save the area to keep the change.'
-                            );
-
-                            renderEditableShape();
-                        }
-                    );
-                }
-
-                vertexLayers.push(
-                    marker
-                );
-            }
-        );
-
-        if (
-            !drawing
-            && points.length >= 3
-        ) {
-            points.forEach(
-                (point, index) => {
-                    const nextIndex =
-                        (
-                            index + 1
-                        ) % points.length;
-
-                    const midpoint =
-                        midpointBetween(
-                            point,
-                            points[nextIndex]
-                        );
-
-                    const marker =
-                        L.marker(
-                            midpoint,
-                            {
-                                interactive:
-                                    true,
-
-                                icon:
-                                    L.divIcon({
-                                        className:
-                                            '',
-
-                                        html:
-                                            '<span class="mapped-area-editor-midpoint" aria-hidden="true">+</span>',
-
-                                        iconSize:
-                                            [16, 16],
-
-                                        iconAnchor:
-                                            [8, 8]
-                                    })
-                            }
-                        ).addTo(map);
-
-                    marker.on(
-                        'click',
-                        () => {
-                            insertPointAfter(
-                                index
-                            );
-                        }
-                    );
-
-                    midpointLayers.push(
-                        marker
-                    );
-                }
-            );
-        }
-
-        syncSelectedPointPanel();
-        updatePointCount();
-    };
-
-    const clearExistingLayers = () => {
-        existingLayers.forEach(
-            (layer) => {
-                map.removeLayer(
-                    layer
-                );
-            }
-        );
-
-        existingLayers = [];
-    };
-
-    const renderExistingLayers = () => {
-        clearExistingLayers();
-
-        features.forEach(
-            (feature) => {
-                if (
-                    Number(feature.id)
-                    === selectedFeatureId
-                ) {
-                    return;
-                }
-
-                const style =
-                    featureStyles[
-                        feature.feature_type
-                    ]
-                    || featureStyles
-                        .camping_area;
-
-                const layer =
-                    L.geoJSON(
-                        feature.geometry,
-                        {
-                            style: {
-                                color:
-                                    style.color,
-
-                                weight: 2,
-                                opacity: .78,
-
-                                fillColor:
-                                    style.fillColor,
-
-                                fillOpacity:
-                                    .13
-                            }
-                        }
-                    ).addTo(map);
-
-                layer.on(
-                    'click',
-                    () => {
-                        chooseFeature(
+            const accuracies =
+                gpsVertices
+                    .map(
+                        (metadata) =>
                             Number(
-                                feature.id
+                                metadata
+                                    ?.accuracy_m
                             )
-                        );
-                    }
-                );
+                    )
+                    .filter(
+                        (value) =>
+                            Number.isFinite(
+                                value
+                            )
+                            && value >= 0
+                    );
 
-                existingLayers.push(
-                    layer
-                );
+            if (summaryAccuracy) {
+                if (
+                    accuracies.length
+                    === 0
+                ) {
+                    summaryAccuracy.textContent =
+                        '--';
+
+                } else {
+                    const average =
+                        accuracies.reduce(
+                            (
+                                total,
+                                value
+                            ) =>
+                                total
+                                + value,
+                            0
+                        )
+                        / accuracies.length;
+
+                    summaryAccuracy.textContent =
+                        `Â±${Math.round(average)} m avg`;
+                }
             }
-        );
-    };
 
-    const areaUseOptions = {
-        camping_area: [
-            ['', 'Not specified'],
-            ['developed_campground', 'Developed campground'],
-            ['designated_camping', 'Designated camping area'],
-            ['dispersed_camping', 'Dispersed camping area']
-        ],
-
-        parking_area: [
-            ['', 'Not specified'],
-            ['general_parking', 'General parking'],
-            ['overnight_vehicle_parking', 'Overnight vehicle parking']
-        ]
-    };
-
-    const areaUseLabels = Object.fromEntries(
-        Object.values(areaUseOptions)
-            .flat()
-            .filter(
-                ([value]) =>
-                    value !== ''
-            )
-    );
-
-    const feeStatusLabels = {
-        free: 'Free',
-        paid: 'Paid',
-        varies: 'Varies',
-        unknown: 'Unknown'
-    };
-
-    const overnightStatusLabels = {
-        allowed: 'Overnight allowed',
-        prohibited: 'Overnight not allowed',
-        varies: 'Overnight varies',
-        unknown: 'Overnight unknown'
-    };
+            if (summaryUpdated) {
+                summaryUpdated.textContent =
+                    currentFeature
+                        ? formatUpdatedAt(
+                            currentFeature
+                                .updated_at
+                        )
+                        : 'Not saved';
+            }
+        };
 
     const syncAreaDetailFields =
-        (details = {}) => {
+        (
+            details = {}
+        ) => {
             const type =
                 featureType?.value
                 || 'camping_area';
@@ -1393,20 +651,28 @@
                             'option'
                         );
 
-                    option.value = '';
+                    option.value =
+                        '';
+
                     option.textContent =
                         'Not specified';
 
-                    areaUse.append(option);
-                    areaUse.value = '';
+                    areaUse.append(
+                        option
+                    );
+
+                    areaUse.value =
+                        '';
                 }
 
                 if (feeStatus) {
-                    feeStatus.value = '';
+                    feeStatus.value =
+                        '';
                 }
 
                 if (overnightStatus) {
-                    overnightStatus.value = '';
+                    overnightStatus.value =
+                        '';
                 }
 
                 if (overnightStatusField) {
@@ -1430,7 +696,10 @@
                     areaUseOptions[type]
                     || []
                 ).forEach(
-                    ([value, label]) => {
+                    ([
+                        value,
+                        label
+                    ]) => {
                         const option =
                             document.createElement(
                                 'option'
@@ -1483,7 +752,8 @@
                 const desired =
                     parking
                         ? String(
-                            details.overnight_status
+                            details
+                                .overnight_status
                             || ''
                         )
                         : '';
@@ -1504,2397 +774,379 @@
             }
         };
 
-    const areaDetailsPayload = () => ({
-        area_use:
-            areaUse?.value
-            || '',
+    const areaDetailsPayload =
+        () => ({
+            area_use:
+                areaUse?.value
+                || '',
 
-        fee_status:
-            feeStatus?.value
-            || '',
+            fee_status:
+                feeStatus?.value
+                || '',
 
-        overnight_status:
-            featureType?.value
-                === 'parking_area'
-                ? (
-                    overnightStatus?.value
-                    || ''
-                )
-                : ''
-    });
-
-    const siteTypeLabels = {
-        rv_site: 'RV site',
-        tent_site: 'Tent site',
-        mixed_site: 'Mixed-use campsite',
-        vehicle_site: 'Vehicle campsite',
-        group_site: 'Group site',
-        other: 'Other'
-    };
-
-    const siteParkingStyleLabels = {
-        pull_through: 'Pull-through',
-        back_in: 'Back-in',
-        pull_in: 'Pull-in',
-        parallel: 'Parallel',
-        other: 'Other',
-        unknown: 'Unknown'
-    };
-
-    const siteHookupLabels = {
-        full: 'Full hookups',
-        electric_water: 'Electric + water',
-        electric_only: 'Electric only',
-        water_only: 'Water only',
-        none: 'No hookups',
-        varies: 'Varies',
-        unknown: 'Unknown'
-    };
-
-    const siteAccessibleLabels = {
-        yes: 'Accessible',
-        no: 'Not accessible',
-        unknown: 'Accessibility unknown'
-    };
-
-    const parentCampingAreaForSite = () => {
-        const parentId =
-            Number(
-                siteParent?.value
-                || 0
-            );
-
-        if (parentId < 1) {
-            return null;
-        }
-
-        return features.find(
-            (feature) =>
-                Number(feature.id)
-                === parentId
-                && feature.feature_type
-                    === 'camping_area'
-        ) || null;
-    };
-
-    const syncSiteClassOptions =
-        (
-            desiredClassId = ''
-        ) => {
-            if (!siteClass) {
-                return;
-            }
-
-            const parent =
-                parentCampingAreaForSite();
-
-            const classes =
-                Array.isArray(
-                    parent?.site_classes
-                )
-                    ? parent.site_classes
-                    : [];
-
-            siteClass.replaceChildren();
-
-            const placeholder =
-                document.createElement(
-                    'option'
-                );
-
-            placeholder.value = '';
-            placeholder.textContent =
-                classes.length > 0
-                    ? 'No pricing class'
-                    : 'No pricing classes available';
-
-            siteClass.append(
-                placeholder
-            );
-
-            classes.forEach(
-                (item) => {
-                    const option =
-                        document.createElement(
-                            'option'
-                        );
-
-                    option.value =
-                        String(
-                            item.id
-                        );
-
-                    option.textContent =
-                        String(
-                            item.name
-                            || `Pricing class #${item.id}`
-                        );
-
-                    siteClass.append(
-                        option
-                    );
-                }
-            );
-
-            const desired =
-                String(
-                    desiredClassId
-                    || ''
-                );
-
-            siteClass.value =
-                desired !== ''
-                && siteClass.querySelector(
-                    `option[value="${CSS.escape(desired)}"]`
-                )
-                    ? desired
-                    : '';
-        };
-
-    const syncSiteDetailFields =
-        (details = {}) => {
-            const isSite =
+            overnight_status:
                 featureType?.value
-                === 'camping_site';
-
-            if (siteDetails) {
-                siteDetails.hidden =
-                    !isSite;
-            }
-
-            if (!siteParent) {
-                return;
-            }
-
-            const desiredParent =
-                String(
-                    details.camping_area_feature_id
-                    || ''
-                );
-
-            const campingAreas =
-                features.filter(
-                    (feature) =>
-                        feature.feature_type
-                        === 'camping_area'
-                        && feature.is_active
-                            !== false
-                );
-
-            siteParent.replaceChildren();
-
-            const placeholder =
-                document.createElement(
-                    'option'
-                );
-
-            placeholder.value = '';
-            placeholder.textContent =
-                campingAreas.length > 0
-                    ? 'Choose a Camping area'
-                    : 'Create a Camping area first';
-
-            siteParent.append(
-                placeholder
-            );
-
-            campingAreas.forEach(
-                (feature) => {
-                    const option =
-                        document.createElement(
-                            'option'
-                        );
-
-                    option.value =
-                        String(
-                            feature.id
-                        );
-
-                    option.textContent =
-                        feature.label
-                        || `Camping area #${feature.id}`;
-
-                    siteParent.append(
-                        option
-                    );
-                }
-            );
-
-            if (isSite) {
-                if (
-                    desiredParent !== ''
-                    && siteParent.querySelector(
-                        `option[value="${CSS.escape(desiredParent)}"]`
-                    )
-                ) {
-                    siteParent.value =
-                        desiredParent;
-
-                } else if (
-                    campingAreas.length
-                    === 1
-                ) {
-                    siteParent.value =
-                        String(
-                            campingAreas[0].id
-                        );
-
-                } else {
-                    siteParent.value =
-                        '';
-                }
-            } else {
-                siteParent.value = '';
-            }
-
-            syncSiteClassOptions(
-                isSite
-                    ? String(
-                        details.site_class_id
+                === 'parking_area'
+                    ? (
+                        overnightStatus?.value
                         || ''
                     )
                     : ''
-            );
-
-            if (siteCode) {
-                siteCode.value =
-                    isSite
-                        ? String(
-                            details.site_code
-                            || ''
-                        )
-                        : '';
-            }
-
-            if (siteType) {
-                const desired =
-                    isSite
-                        ? String(
-                            details.site_type
-                            || ''
-                        )
-                        : '';
-
-                siteType.value =
-                    siteType.querySelector(
-                        `option[value="${CSS.escape(desired)}"]`
-                    )
-                        ? desired
-                        : '';
-            }
-
-            if (siteParkingStyle) {
-                const desired =
-                    isSite
-                        ? String(
-                            details.parking_style
-                            || ''
-                        )
-                        : '';
-
-                siteParkingStyle.value =
-                    siteParkingStyle.querySelector(
-                        `option[value="${CSS.escape(desired)}"]`
-                    )
-                        ? desired
-                        : '';
-            }
-
-            if (siteHookups) {
-                const desired =
-                    isSite
-                        ? String(
-                            details.hookup_status
-                            || ''
-                        )
-                        : '';
-
-                siteHookups.value =
-                    siteHookups.querySelector(
-                        `option[value="${CSS.escape(desired)}"]`
-                    )
-                        ? desired
-                        : '';
-            }
-
-            if (siteAccessible) {
-                const desired =
-                    isSite
-                        ? String(
-                            details.accessible_status
-                            || ''
-                        )
-                        : '';
-
-                siteAccessible.value =
-                    siteAccessible.querySelector(
-                        `option[value="${CSS.escape(desired)}"]`
-                    )
-                        ? desired
-                        : '';
-            }
-        };
-
-    const siteDetailsPayload = () => {
-        if (
-            featureType?.value
-            !== 'camping_site'
-        ) {
-            return {};
-        }
-
-        return {
-            camping_area_feature_id:
-                siteParent?.value
-                || '',
-
-            site_class_id:
-                siteClass?.value
-                || '',
-
-            site_code:
-                siteCode?.value
-                || '',
-
-            site_type:
-                siteType?.value
-                || '',
-
-            parking_style:
-                siteParkingStyle?.value
-                || '',
-
-            hookup_status:
-                siteHookups?.value
-                || '',
-
-            accessible_status:
-                siteAccessible?.value
-                || ''
-        };
-    };
-
-    const siteClassRatePayload =
-        (rate) => ({
-            rate_type:
-                rate.rate_type
-                || 'standard',
-            label:
-                rate.label
-                || '',
-            amount:
-                rate.amount
-                ?? '',
-            season_start:
-                rate.season_start
-                || '',
-            season_end:
-                rate.season_end
-                || '',
-            notes:
-                rate.notes
-                || ''
         });
 
-    const syncSiteClasses =
-        (classes = []) => {
-            workingSiteClasses =
-                Array.isArray(classes)
-                    ? classes.map(
-                        (item) => ({
-                            id:
-                                Number(
-                                    item.id
-                                    || 0
-                                ),
-                            name:
-                                String(
-                                    item.name
-                                    || ''
-                                ),
-                            description:
-                                String(
-                                    item.description
-                                    || ''
-                                ),
-                            rates:
-                                Array.isArray(
-                                    item.rates
-                                )
-                                    ? item.rates.map(
-                                        (rate) => ({
-                                            rate_type:
-                                                String(
-                                                    rate.rate_type
-                                                    || 'standard'
-                                                ),
-                                            label:
-                                                String(
-                                                    rate.label
-                                                    || ''
-                                                ),
-                                            amount:
-                                                rate.amount
-                                                ?? '',
-                                            season_start:
-                                                String(
-                                                    rate.season_start
-                                                    || ''
-                                                ),
-                                            season_end:
-                                                String(
-                                                    rate.season_end
-                                                    || ''
-                                                ),
-                                            notes:
-                                                String(
-                                                    rate.notes
-                                                    || ''
-                                                )
-                                        })
-                                    )
-                                    : []
-                        })
-                    )
-                    : [];
+    const clearExistingLayers =
+        () => {
+            existingLayers.forEach(
+                (layer) => {
+                    map.removeLayer(
+                        layer
+                    );
+                }
+            );
 
-            renderSiteClasses();
+            existingLayers =
+                [];
         };
 
-    const siteClassesPayload = () =>
-        featureType?.value === 'camping_area'
-            ? workingSiteClasses.map(
-                (item) => ({
-                    id:
-                        Number(
-                            item.id
-                            || 0
-                        ),
-                    name:
-                        item.name
-                        || '',
-                    description:
-                        item.description
-                        || '',
-                    rates:
-                        item.rates.map(
-                            siteClassRatePayload
-                        )
-                })
-            )
-            : [];
-
-    const renderSiteClasses = () => {
-        const supported =
-            featureType?.value
-            === 'camping_area';
-
-        if (siteClassesSection) {
-            siteClassesSection.hidden =
-                !supported;
-        }
-
-        if (
-            !supported
-            || !siteClassList
-        ) {
-            if (siteClassEmpty) {
-                siteClassEmpty.hidden =
-                    true;
-            }
-
-            return;
-        }
-
-        siteClassList.replaceChildren();
-
-        if (siteClassEmpty) {
-            siteClassEmpty.hidden =
-                workingSiteClasses.length > 0;
-        }
-
-        workingSiteClasses.forEach(
-            (item, classIndex) => {
-                const card =
-                    document.createElement(
-                        'div'
-                    );
-
-                card.className =
-                    'mapped-area-editor-site-class';
-
-                const heading =
-                    document.createElement(
-                        'div'
-                    );
-
-                heading.className =
-                    'mapped-area-editor-site-class-heading';
-
-                const nameInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                nameInput.type = 'text';
-                nameInput.maxLength = 80;
-                nameInput.placeholder =
-                    'e.g. Standard Back-In';
-                nameInput.value =
-                    item.name
-                    || '';
-
-                nameInput.addEventListener(
-                    'input',
-                    () => {
-                        workingSiteClasses[
-                            classIndex
-                        ].name =
-                            nameInput.value;
-
-                        setDirty(true);
-                    }
-                );
-
-                const descriptionInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                descriptionInput.type =
-                    'text';
-                descriptionInput.maxLength =
-                    240;
-                descriptionInput.placeholder =
-                    'Optional description';
-                descriptionInput.value =
-                    item.description
-                    || '';
-
-                descriptionInput.addEventListener(
-                    'input',
-                    () => {
-                        workingSiteClasses[
-                            classIndex
-                        ].description =
-                            descriptionInput.value;
-
-                        setDirty(true);
-                    }
-                );
-
-                const removeClassButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                removeClassButton.type =
-                    'button';
-                removeClassButton.className =
-                    'mapped-area-editor-site-class-remove';
-                removeClassButton.textContent =
-                    'Remove class';
-
-                removeClassButton.addEventListener(
-                    'click',
-                    () => {
-                        workingSiteClasses.splice(
-                            classIndex,
-                            1
-                        );
-
-                        setDirty(true);
-                        renderSiteClasses();
-                    }
-                );
-
-                heading.append(
-                    rateField(
-                        'Class name',
-                        nameInput
-                    ),
-                    rateField(
-                        'Description',
-                        descriptionInput
-                    ),
-                    removeClassButton
-                );
-
-                const rates =
-                    document.createElement(
-                        'div'
-                    );
-
-                rates.className =
-                    'mapped-area-editor-site-class-rates';
-
-                item.rates.forEach(
-                    (rate, rateIndex) => {
-                        const row =
-                            document.createElement(
-                                'div'
-                            );
-
-                        row.className =
-                            'mapped-area-editor-site-class-rate';
-
-                        const typeSelect =
-                            document.createElement(
-                                'select'
-                            );
-
-                        Object.entries(
-                            rateTypeLabels
-                        ).forEach(
-                            ([value, label]) => {
-                                const option =
-                                    document.createElement(
-                                        'option'
-                                    );
-
-                                option.value =
-                                    value;
-                                option.textContent =
-                                    label;
-
-                                typeSelect.append(
-                                    option
-                                );
-                            }
-                        );
-
-                        typeSelect.value =
-                            rate.rate_type
-                            || 'standard';
-
-                        if (
-                            typeSelect.value
-                            === 'seasonal'
-                        ) {
-                            row.classList.add(
-                                'is-seasonal'
-                            );
-                        }
-
-                        typeSelect.addEventListener(
-                            'change',
-                            () => {
-                                rate.rate_type =
-                                    typeSelect.value;
-
-                                if (
-                                    typeSelect.value
-                                    !== 'seasonal'
-                                ) {
-                                    rate.season_start = '';
-                                    rate.season_end = '';
-                                }
-
-                                setDirty(true);
-                                renderSiteClasses();
-                            }
-                        );
-
-                        const labelInput =
-                            document.createElement(
-                                'input'
-                            );
-
-                        labelInput.type =
-                            'text';
-                        labelInput.maxLength =
-                            80;
-                        labelInput.placeholder =
-                            typeSelect.value
-                            === 'holiday'
-                                ? 'e.g. Memorial Day'
-                                : 'Optional label';
-                        labelInput.value =
-                            rate.label
-                            || '';
-
-                        labelInput.addEventListener(
-                            'input',
-                            () => {
-                                rate.label =
-                                    labelInput.value;
-                                setDirty(true);
-                            }
-                        );
-
-                        const amountInput =
-                            document.createElement(
-                                'input'
-                            );
-
-                        amountInput.type =
-                            'number';
-                        amountInput.min = '0';
-                        amountInput.max =
-                            '999999.99';
-                        amountInput.step =
-                            '0.01';
-                        amountInput.inputMode =
-                            'decimal';
-                        amountInput.placeholder =
-                            '0.00';
-                        amountInput.value =
-                            rate.amount
-                            ?? '';
-
-                        amountInput.addEventListener(
-                            'input',
-                            () => {
-                                rate.amount =
-                                    amountInput.value;
-                                setDirty(true);
-                            }
-                        );
-
-                        row.append(
-                            rateField(
-                                'Rate type',
-                                typeSelect
-                            ),
-                            rateField(
-                                'Label',
-                                labelInput
-                            ),
-                            rateField(
-                                'Nightly amount (USD)',
-                                amountInput
-                            )
-                        );
-
-                        if (
-                            typeSelect.value
-                            === 'seasonal'
-                        ) {
-                            const startInput =
-                                document.createElement(
-                                    'input'
-                                );
-
-                            startInput.type =
-                                'text';
-                            startInput.maxLength =
-                                5;
-                            startInput.inputMode =
-                                'numeric';
-                            startInput.placeholder =
-                                'MM-DD';
-                            startInput.value =
-                                rate.season_start
-                                || '';
-
-                            startInput.addEventListener(
-                                'input',
-                                () => {
-                                    rate.season_start =
-                                        startInput.value;
-                                    setDirty(true);
-                                }
-                            );
-
-                            const endInput =
-                                document.createElement(
-                                    'input'
-                                );
-
-                            endInput.type =
-                                'text';
-                            endInput.maxLength =
-                                5;
-                            endInput.inputMode =
-                                'numeric';
-                            endInput.placeholder =
-                                'MM-DD';
-                            endInput.value =
-                                rate.season_end
-                                || '';
-
-                            endInput.addEventListener(
-                                'input',
-                                () => {
-                                    rate.season_end =
-                                        endInput.value;
-                                    setDirty(true);
-                                }
-                            );
-
-                            row.append(
-                                rateField(
-                                    'Season begins',
-                                    startInput
-                                ),
-                                rateField(
-                                    'Season ends',
-                                    endInput
-                                )
-                            );
-                        }
-
-                        const notesInput =
-                            document.createElement(
-                                'input'
-                            );
-
-                        notesInput.type =
-                            'text';
-                        notesInput.maxLength =
-                            240;
-                        notesInput.placeholder =
-                            'Optional pricing note';
-                        notesInput.value =
-                            rate.notes
-                            || '';
-
-                        notesInput.addEventListener(
-                            'input',
-                            () => {
-                                rate.notes =
-                                    notesInput.value;
-                                setDirty(true);
-                            }
-                        );
-
-                        const removeRateButton =
-                            document.createElement(
-                                'button'
-                            );
-
-                        removeRateButton.type =
-                            'button';
-                        removeRateButton.className =
-                            'mapped-area-editor-site-class-rate-remove';
-                        removeRateButton.textContent =
-                            'Remove rate';
-
-                        removeRateButton.addEventListener(
-                            'click',
-                            () => {
-                                item.rates.splice(
-                                    rateIndex,
-                                    1
-                                );
-
-                                setDirty(true);
-                                renderSiteClasses();
-                            }
-                        );
-
-                        const notesField =
-                            rateField(
-                                'Notes',
-                                notesInput
-                            );
-
-                        notesField.className =
-                            'mapped-area-editor-site-class-rate-notes';
-
-                        row.append(
-                            notesField,
-                            removeRateButton
-                        );
-
-                        rates.append(
-                            row
-                        );
-                    }
-                );
-
-                const footer =
-                    document.createElement(
-                        'div'
-                    );
-
-                footer.className =
-                    'mapped-area-editor-site-class-footer';
-
-                const note =
-                    document.createElement(
-                        'p'
-                    );
-
-                note.textContent =
-                    item.rates.length > 0
-                        ? `${item.rates.length} class rate${item.rates.length === 1 ? '' : 's'}`
-                        : 'No rates in this class yet.';
-
-                const addRate =
-                    document.createElement(
-                        'button'
-                    );
-
-                addRate.type =
-                    'button';
-                addRate.className =
-                    'mapped-area-editor-site-class-add-rate';
-                addRate.textContent =
-                    'Add class rate';
-
-                addRate.addEventListener(
-                    'click',
-                    () => {
-                        item.rates.push({
-                            rate_type:
-                                'standard',
-                            label: '',
-                            amount: '',
-                            season_start: '',
-                            season_end: '',
-                            notes: ''
-                        });
-
-                        setDirty(true);
-                        renderSiteClasses();
-                    }
-                );
-
-                footer.append(
-                    note,
-                    addRate
-                );
-
-                card.append(
-                    heading,
-                    rates,
-                    footer
-                );
-
-                siteClassList.append(
-                    card
-                );
-            }
-        );
-    };
-
-    const rateTypeLabels = {
-        standard: 'Standard nightly',
-        weekday: 'Weekday',
-        weekend: 'Weekend',
-        holiday: 'Holiday',
-        seasonal: 'Seasonal'
-    };
-
-    const rateFeatureSupported = () =>
-        [
-            'camping_area',
-            'camping_site'
-        ].includes(
-            featureType?.value
-            || ''
-        );
-
-    const currentFeature = () =>
-        features.find(
-            (feature) =>
-                Number(feature.id)
-                === selectedFeatureId
-        )
-        || null;
-
-    const rateParentFeature = () => {
-        if (
-            featureType?.value
-            !== 'camping_site'
-        ) {
-            return null;
-        }
-
-        const parentId =
-            Number(
-                siteParent?.value
-                || currentFeature()
-                    ?.site_details
-                    ?.camping_area_feature_id
-                || 0
-            );
-
-        if (parentId < 1) {
-            return null;
-        }
-
-        return features.find(
-            (feature) =>
-                Number(feature.id)
-                === parentId
-                && feature.feature_type
-                    === 'camping_area'
-        ) || null;
-    };
-
-    const rateMoney = (amount) => {
-        const value =
-            Number(amount);
-
-        if (!Number.isFinite(value)) {
-            return '';
-        }
-
-        return new Intl.NumberFormat(
-            undefined,
-            {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }
-        ).format(value);
-    };
-
-    const updateRateInheritance = () => {
-        if (!rateInheritance) {
-            return;
-        }
-
-        rateInheritance.hidden = true;
-        rateInheritance.replaceChildren();
-
-        if (
-            featureType?.value
-            !== 'camping_site'
-        ) {
-            return;
-        }
-
-        const parent =
-            rateParentFeature();
-
-        if (!parent) {
-            return;
-        }
-
-        const parentRates =
-            Array.isArray(parent.rates)
-                ? parent.rates
-                : [];
-
-        const selectedClassId =
-            Number(
-                siteClass?.value
-                || 0
-            );
-
-        const selectedClass =
-            (
-                Array.isArray(
-                    parent.site_classes
-                )
-                    ? parent.site_classes
-                    : []
-            ).find(
-                (item) =>
-                    Number(item.id)
-                    === selectedClassId
-            )
-            || null;
-
-        const classRates =
-            Array.isArray(
-                selectedClass?.rates
-            )
-                ? selectedClass.rates
-                : [];
-
-        if (
-            parentRates.length === 0
-            && classRates.length === 0
-        ) {
-            return;
-        }
-
-        const title =
-            document.createElement(
-                'strong'
-            );
-
-        title.textContent =
-            selectedClass
-                ? `Inherited pricing: ${selectedClass.name}`
-                : `Inherited pricing: ${
-                    parent.label
-                    || 'parent Camping area'
-                }`;
-
-        const effectiveInherited = [];
-
-        parentRates.forEach(
-            (rate) => {
-                effectiveInherited.push({
-                    ...rate,
-                    source: 'campground'
-                });
-            }
-        );
-
-        classRates.forEach(
-            (rate) => {
-                const rateType =
-                    String(
-                        rate.rate_type
-                        || ''
-                    );
-
-                for (
-                    let index =
-                        effectiveInherited.length - 1;
-                    index >= 0;
-                    index--
-                ) {
+    const renderExistingLayers =
+        () => {
+            clearExistingLayers();
+
+            features.forEach(
+                (feature) => {
                     if (
-                        String(
-                            effectiveInherited[index]
-                                .rate_type
-                            || ''
-                        ) === rateType
-                    ) {
-                        effectiveInherited.splice(
-                            index,
-                            1
-                        );
-                    }
-                }
-
-                effectiveInherited.push({
-                    ...rate,
-                    source: 'class'
-                });
-            }
-        );
-
-        const summary =
-            document.createElement(
-                'span'
-            );
-
-        const amounts =
-            effectiveInherited
-                .map(
-                    (rate) =>
-                        Number(rate.amount)
-                )
-                .filter(
-                    Number.isFinite
-                );
-
-        if (amounts.length > 0) {
-            const min =
-                Math.min(...amounts);
-
-            const max =
-                Math.max(...amounts);
-
-            summary.textContent =
-                min === max
-                    ? `${rateMoney(min)} / night`
-                    : `${rateMoney(min)}–${rateMoney(max)} / night`;
-        } else {
-            summary.textContent =
-                `${effectiveInherited.length} inherited rate${effectiveInherited.length === 1 ? '' : 's'}`;
-        }
-
-        const note =
-            document.createElement(
-                'small'
-            );
-
-        note.textContent =
-            selectedClass
-                ? 'Camping-area rates apply first, the pricing class replaces matching rate types, and this individual site can override either one.'
-                : 'Camping-area rates apply unless this individual site has its own rate of the same type.';
-
-        rateInheritance.append(
-            title,
-            summary,
-            note
-        );
-
-        rateInheritance.hidden =
-            false;
-    };
-
-    const rateField = (
-        labelText,
-        control
-    ) => {
-        const label =
-            document.createElement(
-                'label'
-            );
-
-        const span =
-            document.createElement(
-                'span'
-            );
-
-        span.textContent =
-            labelText;
-
-        label.append(
-            span,
-            control
-        );
-
-        return label;
-    };
-
-    const renderRates = () => {
-        const supported =
-            rateFeatureSupported();
-
-        if (rateSection) {
-            rateSection.hidden =
-                !supported;
-        }
-
-        if (!supported || !rateList) {
-            if (rateEmpty) {
-                rateEmpty.hidden = true;
-            }
-
-            if (rateInheritance) {
-                rateInheritance.hidden = true;
-            }
-
-            return;
-        }
-
-        rateList.replaceChildren();
-
-        if (rateEmpty) {
-            rateEmpty.hidden =
-                workingRates.length > 0;
-        }
-
-        updateRateInheritance();
-
-        workingRates.forEach(
-            (rate, index) => {
-                const row =
-                    document.createElement(
-                        'div'
-                    );
-
-                row.className =
-                    'mapped-area-editor-rate-row';
-
-                const typeSelect =
-                    document.createElement(
-                        'select'
-                    );
-
-                Object.entries(
-                    rateTypeLabels
-                ).forEach(
-                    ([value, label]) => {
-                        const option =
-                            document.createElement(
-                                'option'
-                            );
-
-                        option.value = value;
-                        option.textContent = label;
-
-                        typeSelect.append(
-                            option
-                        );
-                    }
-                );
-
-                typeSelect.value =
-                    rate.rate_type
-                    || 'standard';
-
-                typeSelect.addEventListener(
-                    'change',
-                    () => {
-                        workingRates[index].rate_type =
-                            typeSelect.value;
-
-                        if (
-                            typeSelect.value
-                            !== 'seasonal'
-                        ) {
-                            workingRates[index].season_start = '';
-                            workingRates[index].season_end = '';
-                        }
-
-                        setDirty(true);
-                        renderRates();
-                    }
-                );
-
-                const labelInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                labelInput.type = 'text';
-                labelInput.maxLength = 80;
-                labelInput.placeholder =
-                    typeSelect.value === 'holiday'
-                        ? 'e.g. Memorial Day'
-                        : 'Optional label';
-                labelInput.value =
-                    rate.label
-                    || '';
-
-                labelInput.addEventListener(
-                    'input',
-                    () => {
-                        workingRates[index].label =
-                            labelInput.value;
-                        setDirty(true);
-                    }
-                );
-
-                const amountInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                amountInput.type = 'number';
-                amountInput.min = '0';
-                amountInput.max = '999999.99';
-                amountInput.step = '0.01';
-                amountInput.inputMode = 'decimal';
-                amountInput.placeholder = '0.00';
-                amountInput.value =
-                    rate.amount
-                    ?? '';
-
-                amountInput.addEventListener(
-                    'input',
-                    () => {
-                        workingRates[index].amount =
-                            amountInput.value;
-                        setDirty(true);
-                    }
-                );
-
-                const startInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                startInput.type = 'text';
-                startInput.inputMode = 'numeric';
-                startInput.maxLength = 5;
-                startInput.placeholder = 'MM-DD';
-                startInput.value =
-                    rate.season_start
-                    || '';
-
-                startInput.addEventListener(
-                    'input',
-                    () => {
-                        workingRates[index].season_start =
-                            startInput.value;
-                        setDirty(true);
-                    }
-                );
-
-                const endInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                endInput.type = 'text';
-                endInput.inputMode = 'numeric';
-                endInput.maxLength = 5;
-                endInput.placeholder = 'MM-DD';
-                endInput.value =
-                    rate.season_end
-                    || '';
-
-                endInput.addEventListener(
-                    'input',
-                    () => {
-                        workingRates[index].season_end =
-                            endInput.value;
-                        setDirty(true);
-                    }
-                );
-
-                const notesInput =
-                    document.createElement(
-                        'input'
-                    );
-
-                notesInput.type = 'text';
-                notesInput.maxLength = 240;
-                notesInput.placeholder =
-                    'Optional pricing note';
-                notesInput.value =
-                    rate.notes
-                    || '';
-
-                notesInput.addEventListener(
-                    'input',
-                    () => {
-                        workingRates[index].notes =
-                            notesInput.value;
-                        setDirty(true);
-                    }
-                );
-
-                const removeButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                removeButton.type = 'button';
-                removeButton.className =
-                    'mapped-area-editor-rate-remove';
-                removeButton.textContent =
-                    'Remove rate';
-
-                removeButton.addEventListener(
-                    'click',
-                    () => {
-                        workingRates.splice(
-                            index,
-                            1
-                        );
-                        setDirty(true);
-                        renderRates();
-                    }
-                );
-
-                row.append(
-                    rateField(
-                        'Rate type',
-                        typeSelect
-                    ),
-                    rateField(
-                        'Label',
-                        labelInput
-                    ),
-                    rateField(
-                        'Nightly amount (USD)',
-                        amountInput
-                    )
-                );
-
-                if (
-                    typeSelect.value
-                    === 'seasonal'
-                ) {
-                    row.append(
-                        rateField(
-                            'Season begins',
-                            startInput
-                        ),
-                        rateField(
-                            'Season ends',
-                            endInput
-                        )
-                    );
-                }
-
-                row.append(
-                    rateField(
-                        'Notes',
-                        notesInput
-                    ),
-                    removeButton
-                );
-
-                rateList.append(
-                    row
-                );
-            }
-        );
-    };
-
-    const ratesPayload = () =>
-        rateFeatureSupported()
-            ? workingRates.map(
-                (rate) => ({
-                    rate_type:
-                        rate.rate_type
-                        || 'standard',
-                    label:
-                        rate.label
-                        || '',
-                    amount:
-                        rate.amount
-                        ?? '',
-                    season_start:
-                        rate.season_start
-                        || '',
-                    season_end:
-                        rate.season_end
-                        || '',
-                    notes:
-                        rate.notes
-                        || ''
-                })
-            )
-            : [];
-
-    const syncRates = (rates = []) => {
-        workingRates =
-            Array.isArray(rates)
-                ? rates.map(
-                    (rate) => ({
-                        rate_type:
-                            String(
-                                rate.rate_type
-                                || 'standard'
-                            ),
-                        label:
-                            String(
-                                rate.label
-                                || ''
-                            ),
-                        amount:
-                            rate.amount
-                            ?? '',
-                        season_start:
-                            String(
-                                rate.season_start
-                                || ''
-                            ),
-                        season_end:
-                            String(
-                                rate.season_end
-                                || ''
-                            ),
-                        notes:
-                            String(
-                                rate.notes
-                                || ''
-                            )
-                    })
-                )
-                : [];
-
-        renderRates();
-    };
-
-    const fitAllAreas = () => {
-        if (
-            !Array.isArray(features)
-            || features.length === 0
-        ) {
-            return;
-        }
-
-        const bounds =
-            L.latLngBounds([]);
-
-        features.forEach(
-            (feature) => {
-                if (!feature?.geometry) {
-                    return;
-                }
-
-                const layer =
-                    L.geoJSON(
-                        feature.geometry
-                    );
-
-                const layerBounds =
-                    layer.getBounds();
-
-                if (
-                    layerBounds.isValid()
-                ) {
-                    bounds.extend(
-                        layerBounds
-                    );
-                }
-            }
-        );
-
-        if (!bounds.isValid()) {
-            return;
-        }
-
-        map.fitBounds(
-            bounds,
-            {
-                padding:
-                    [50, 50],
-
-                maxZoom:
-                    20
-            }
-        );
-    };
-
-    const featureTypeLabel = (value) => {
-        const option =
-            featureType
-                ?.querySelector(
-                    `option[value="${CSS.escape(value)}"]`
-                );
-
-        return option
-            ? option.textContent
-                .trim()
-            : value;
-    };
-
-    const renderFeatureList = () => {
-        if (!featureList) {
-            return;
-        }
-
-        featureList
-            .replaceChildren();
-
-        if (fitAllAreasButton) {
-            fitAllAreasButton.disabled =
-                features.length === 0;
-        }
-
-        if (
-            features.length === 0
-        ) {
-            const empty =
-                document.createElement(
-                    'p'
-                );
-
-            empty.textContent =
-                'No mapped areas yet.';
-
-            featureList.append(
-                empty
-            );
-
-            return;
-        }
-
-        features.forEach(
-            (feature) => {
-                const button =
-                    document.createElement(
-                        'button'
-                    );
-
-                button.type =
-                    'button';
-
-                button.classList
-                    .toggle(
-                        'is-active',
-                        Number(
-                            feature.id
-                        )
+                        Number(feature.id)
                         === selectedFeatureId
-                    );
-
-                const name =
-                    document.createElement(
-                        'span'
-                    );
-
-                name.textContent =
-                    feature.label
-                    || featureTypeLabel(
-                        feature.feature_type
-                    );
-
-                const type =
-                    document.createElement(
-                        'small'
-                    );
-
-                const source =
-                    feature.source_type
-                        === 'gps'
-                        ? 'GPS'
-                        : (
-                            feature.source_type
-                            === 'mixed'
-                                ? 'Mixed'
-                                : ''
-                        );
-
-                const rateSummary =
-                    feature.effective_rate_summary
-                    || feature.rate_summary
-                    || {};
-
-                const rateLabel =
-                    Number.isFinite(
-                        Number(
-                            rateSummary.minimum
-                        )
-                    )
-                        ? (
-                            Number(rateSummary.minimum)
-                            === Number(rateSummary.maximum)
-                                ? `${rateMoney(rateSummary.minimum)} / night`
-                                : `${rateMoney(rateSummary.minimum)}–${rateMoney(rateSummary.maximum)} / night`
-                        )
-                        : '';
-
-                const detailLabels = [
-                    areaUseLabels[
-                        feature.area_details
-                            ?.area_use
-                    ] || '',
-                    feeStatusLabels[
-                        feature.area_details
-                            ?.fee_status
-                    ] || '',
-                    overnightStatusLabels[
-                        feature.area_details
-                            ?.overnight_status
-                    ] || '',
-                    feature.site_details
-                        ?.site_code
-                        ? `Site ${feature.site_details.site_code}`
-                        : '',
-                    feature.site_details
-                        ?.site_class_name
-                        ? `Class: ${feature.site_details.site_class_name}`
-                        : '',
-                    siteTypeLabels[
-                        feature.site_details
-                            ?.site_type
-                    ] || '',
-                    siteParkingStyleLabels[
-                        feature.site_details
-                            ?.parking_style
-                    ] || '',
-                    siteHookupLabels[
-                        feature.site_details
-                            ?.hookup_status
-                    ] || '',
-                    rateLabel
-                ]
-                    .filter(Boolean);
-
-                type.textContent =
-                    [
-                        featureTypeLabel(
-                            feature.feature_type
-                        ),
-                        ...detailLabels,
-                        source
-                    ]
-                        .filter(Boolean)
-                        .join(' · ');
-
-                button.append(
-                    name,
-                    type
-                );
-
-                button.addEventListener(
-                    'click',
-                    () => {
-                        chooseFeature(
-                            Number(
-                                feature.id
-                            )
-                        );
+                    ) {
+                        return;
                     }
-                );
 
-                featureList.append(
-                    button
-                );
-            }
-        );
-    };
+                    const style =
+                        featureStyles[
+                            feature.feature_type
+                        ]
+                        || featureStyles
+                            .camping_area;
 
-    const resetEditor =
-        (
-            keepStatus = false
-        ) => {
-            selectedFeatureId = 0;
-            drawing = false;
-            moveMode = false;
-            points = [];
-            vertexMetadata = [];
-            selectedPointIndex = -1;
+                    const layer =
+                        L.geoJSON(
+                            feature.geometry,
+                            {
+                                style: {
+                                    color:
+                                        style.color,
 
-            mapElement.classList
-                .remove(
-                    'is-moving'
-                );
+                                    weight:
+                                        2,
 
-            setDirty(false);
+                                    opacity:
+                                        .78,
 
-            clearShapeLayer();
-            clearVertexLayers();
+                                    fillColor:
+                                        style.fillColor,
 
-            if (featureType) {
-                featureType.value =
-                    'camping_area';
-            }
+                                    fillOpacity:
+                                        .13
+                                }
+                            }
+                        ).addTo(
+                            map
+                        );
 
-            if (featureLabel) {
-                featureLabel.value =
-                    '';
-            }
-
-            syncAreaDetailFields();
-            syncSiteDetailFields();
-            syncSiteClasses();
-            syncRates();
-
-            drawButton.disabled =
-                false;
-
-            finishButton.disabled =
-                true;
-
-            undoButton.disabled =
-                true;
-
-            saveButton.disabled =
-                true;
-
-            deleteButton.disabled =
-                true;
-
-            if (moveAreaButton) {
-                moveAreaButton.disabled =
-                    true;
-
-                moveAreaButton.textContent =
-                    'Move whole area';
-            }
-
-            syncSelectedPointPanel();
-            syncFeatureSummary();
-
-            setHelp(
-                'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
-            );
-
-            if (!keepStatus) {
-                setStatus('');
-            }
-
-            renderExistingLayers();
-            renderFeatureList();
-            updatePointCount();
-        };
-
-    const geometryToPoints =
-        (geometry) => {
-            const ring =
-                geometry
-                    ?.coordinates
-                    ?.[0];
-
-            if (!Array.isArray(ring)) {
-                return [];
-            }
-
-            const withoutClosure =
-                ring.length > 1
-                && ring[0][0]
-                    === ring[
-                        ring.length - 1
-                    ][0]
-                && ring[0][1]
-                    === ring[
-                        ring.length - 1
-                    ][1]
-                    ? ring.slice(
-                        0,
-                        -1
-                    )
-                    : ring;
-
-            return withoutClosure
-                .filter(
-                    (point) =>
-                        Array.isArray(
-                            point
-                        )
-                        && point.length
-                            >= 2
-                )
-                .map(
-                    (point) =>
-                        L.latLng(
-                            Number(
-                                point[1]
-                            ),
-                            Number(
-                                point[0]
-                            )
-                        )
-                );
-        };
-
-    const metadataForFeature =
-        (feature, count) => {
-            const vertices =
-                feature
-                    ?.metadata
-                    ?.vertices;
-
-            if (
-                !Array.isArray(
-                    vertices
-                )
-            ) {
-                return Array.from(
-                    {
-                        length: count
-                    },
-                    () => ({
-                        source:
-                            feature
-                                ?.source_type
-                                === 'gps'
-                                ? 'gps'
-                                : 'manual'
-                    })
-                );
-            }
-
-            return Array.from(
-                {
-                    length: count
-                },
-                (_, index) => {
-                    const item =
-                        vertices[index];
-
-                    return isPlainObject(
-                        item
-                    )
-                        ? {
-                            ...item
+                    layer.on(
+                        'click',
+                        () => {
+                            featureState
+                                ?.chooseFeature(
+                                    Number(
+                                        feature.id
+                                    )
+                                );
                         }
-                        : {
-                            source:
-                                'manual'
-                        };
+                    );
+
+                    existingLayers.push(
+                        layer
+                    );
                 }
             );
         };
 
-    function isPlainObject(value) {
-        return (
-            value !== null
-            && typeof value
-                === 'object'
-            && !Array.isArray(
-                value
-            )
-        );
-    }
+    siteFields =
+        modules.createSiteFields({
+            editor,
 
-    const selectFeature = (id) => {
-        const feature =
-            features.find(
-                (item) =>
-                    Number(item.id)
-                    === id
-            );
+            getFeatureType:
+                () =>
+                    featureType?.value
+                    || '',
 
-        if (!feature) {
-            return;
-        }
+            getFeatures:
+                () =>
+                    features,
 
-        selectedFeatureId =
-            Number(
-                feature.id
-            );
+            getCampsites:
+                () =>
+                    campsites,
 
-        drawing = false;
-        moveMode = false;
-        selectedPointIndex = -1;
+            getSelectedFeatureId:
+                () =>
+                    selectedFeatureId,
 
-        mapElement.classList
-            .remove(
-                'is-moving'
-            );
+            markDirty:
+                setDirty,
 
-        setDirty(false);
+            renderFeatureList:
+                () =>
+                    featureState
+                        ?.renderFeatureList(),
 
-        if (featureType) {
-            featureType.value =
-                feature.feature_type;
-        }
+            renderRates:
+                () =>
+                    pricing
+                        ?.renderRates()
+        });
 
-        if (featureLabel) {
-            featureLabel.value =
-                feature.label
-                || '';
-        }
+    pricing =
+        modules.createPricing({
+            editor,
 
-        syncAreaDetailFields(
-            feature.area_details
-            || {}
-        );
+            getFeatureType:
+                () =>
+                    featureType?.value
+                    || '',
 
-        syncSiteClasses(
-            feature.site_classes
-            || []
-        );
+            getFeatures:
+                () =>
+                    features,
 
-        syncSiteDetailFields(
-            feature.site_details
-            || {}
-        );
+            getSelectedFeatureId:
+                () =>
+                    selectedFeatureId,
 
-        syncRates(
-            feature.rates
-            || []
-        );
+            getSiteParentId:
+                () =>
+                    siteParent?.value
+                    || '',
 
-        points =
-            geometryToPoints(
-                feature.geometry
-            );
+            getSiteClassId:
+                () =>
+                    siteClass?.value
+                    || '',
 
-        vertexMetadata =
-            metadataForFeature(
-                feature,
-                points.length
-            );
+            markDirty:
+                setDirty
+        });
 
-        drawButton.disabled =
-            false;
+    geometry =
+        modules.createGeometryEditor({
+            editor,
+            map,
+            mapElement,
+            leaflet:
+                L,
+            featureType,
+            drawButton,
+            finishButton,
+            undoButton,
+            saveButton,
+            deleteButton,
+            moveAreaButton,
+            revertFeatureButton,
+            pointCount,
+            selectedPointPanel,
+            selectedPointNumber,
+            selectedPointLatitude,
+            selectedPointLongitude,
+            selectedPointSource,
+            removePointButton,
+            useGpsPointButton,
 
-        finishButton.disabled =
-            true;
+            getFeatures:
+                () =>
+                    features,
 
-        undoButton.disabled =
-            true;
+            getSelectedFeatureId:
+                () =>
+                    selectedFeatureId,
 
-        deleteButton.disabled =
-            false;
+            getDirty:
+                () =>
+                    dirty,
 
-        if (moveAreaButton) {
-            moveAreaButton.disabled =
-                points.length < 3;
+            getGpsPosition:
+                () =>
+                    gps
+                        ?.getGpsPosition()
+                    || null,
 
-            moveAreaButton.textContent =
-                'Move whole area';
-        }
+            getFeatureStyle:
+                (type) =>
+                    featureStyles[type]
+                    || featureStyles
+                        .camping_area,
 
-        syncSelectedPointPanel();
+            setDirty,
+            setStatus,
+            setHelp,
 
-        setHelp(
-            'Drag any point to correct this area. Save when finished. Choose Draw area if you want to replace the shape completely.'
-        );
-
-        setStatus('');
-
-        renderEditableShape();
-        renderExistingLayers();
-        renderFeatureList();
-        syncFeatureSummary();
-
-        if (shapeLayer) {
-            map.fitBounds(
-                shapeLayer.getBounds(),
-                {
-                    padding:
-                        [50, 50],
-
-                    maxZoom: 20
-                }
-            );
-        }
-    };
-
-    const chooseFeature = (id) => {
-        if (
-            dirty
-            && Number(id)
-                !== selectedFeatureId
-            && !window.confirm(
-                'Discard the unsaved mapped-area changes?'
-            )
-        ) {
-            return;
-        }
-
-        selectFeature(id);
-    };
-
-
-    const startDrawing = () => {
-        drawing = true;
-        moveMode = false;
-        points = [];
-        vertexMetadata = [];
-        selectedPointIndex = -1;
-
-        mapElement.classList
-            .remove(
-                'is-moving'
-            );
-
-        setDirty(true);
-        syncSelectedPointPanel();
-
-        clearShapeLayer();
-        clearVertexLayers();
-
-        drawButton.disabled =
-            true;
-
-        saveButton.disabled =
-            true;
-
-        deleteButton.disabled =
-            selectedFeatureId
-            < 1;
-
-        setStatus('');
-
-        setHelp(
-            'Tap the map to add points, or walk the boundary and use Add GPS point. Add as many points as needed, then choose Finish.'
-        );
-
-        updatePointCount();
-    };
-
-    const finishDrawing = () => {
-        if (
-            points.length < 3
-        ) {
-            return;
-        }
-
-        drawing = false;
-
-        drawButton.disabled =
-            false;
-
-        if (moveAreaButton) {
-            moveAreaButton.disabled =
-                false;
-        }
-
-        setDirty(true);
-
-        setHelp(
-            'Drag any point if the outline needs adjustment. Save when the shape is correct.'
-        );
-
-        setStatus(
-            'Area ready to save.'
-        );
-
-        renderEditableShape();
-    };
-
-    const geometryPayload = () => {
-        if (
-            points.length < 3
-        ) {
-            return null;
-        }
-
-        const ring =
-            points.map(
-                (point) => [
-                    Number(
-                        point.lng
-                            .toFixed(7)
-                    ),
-                    Number(
-                        point.lat
-                            .toFixed(7)
-                    )
-                ]
-            );
-
-        ring.push([
-            ring[0][0],
-            ring[0][1]
-        ]);
-
-        return {
-            type: 'Polygon',
-            coordinates: [
-                ring
-            ]
-        };
-    };
-
-    const sourcePayload = () => {
-        const gpsVertices =
-            vertexMetadata
-                .filter(
-                    (item) =>
-                        item?.source
-                        === 'gps'
-                );
-
-        const adjusted =
-            vertexMetadata
-                .some(
-                    (item) =>
-                        item?.adjusted
-                        === true
-                );
-
-        let sourceType =
-            'manual';
-
-        if (
-            gpsVertices.length
-            === vertexMetadata.length
-            && gpsVertices.length > 0
-            && !adjusted
-        ) {
-            sourceType = 'gps';
-
-        } else if (
-            gpsVertices.length > 0
-        ) {
-            sourceType = 'mixed';
-        }
-
-        const accuracies =
-            gpsVertices
-                .map(
-                    (item) =>
-                        Number(
-                            item.accuracy_m
-                        )
-                )
-                .filter(
-                    (value) =>
-                        Number.isFinite(
-                            value
-                        )
-                        && value >= 0
-                );
-
-        const averageAccuracy =
-            accuracies.length > 0
-                ? accuracies.reduce(
-                    (
-                        total,
-                        value
-                    ) =>
-                        total + value,
-                    0
-                )
-                / accuracies.length
-                : null;
-
-        const metadata = {
-            coordinate_system:
-                'EPSG:4326',
-
-            vertices:
-                vertexMetadata.map(
-                    (item) => ({
-                        source:
-                            item?.source
-                            === 'gps'
-                                ? 'gps'
-                                : 'manual',
-
-                        ...(
-                            Number.isFinite(
-                                Number(
-                                    item
-                                        ?.accuracy_m
-                                )
-                            )
-                                ? {
-                                    accuracy_m:
-                                        Number(
-                                            Number(
-                                                item
-                                                    .accuracy_m
-                                            )
-                                                .toFixed(
-                                                    2
-                                                )
-                                        )
-                                }
-                                : {}
+            selectFeature:
+                (id) =>
+                    featureState
+                        ?.selectFeature(
+                            id
                         ),
 
-                        ...(
-                            item?.captured_at
-                                ? {
-                                    captured_at:
-                                        String(
-                                            item
-                                                .captured_at
-                                        )
-                                }
-                                : {}
+            resetEditor:
+                (keepStatus) =>
+                    featureState
+                        ?.resetEditor(
+                            keepStatus
                         ),
 
-                        ...(
-                            item?.adjusted
-                                ? {
-                                    adjusted:
-                                        true,
+            onSummaryChanged:
+                syncFeatureSummary
+        });
 
-                                    adjusted_at:
-                                        String(
-                                            item
-                                                .adjusted_at
-                                            || isoNow()
-                                        )
-                                }
-                                : {}
+    gps =
+        modules.createGps({
+            editor,
+            map,
+            leaflet:
+                L,
+            setStatus,
+
+            syncSelectedPointPanel:
+                () =>
+                    geometry
+                        .syncSelectedPointPanel(),
+
+            addGpsPoint:
+                (position) =>
+                    geometry
+                        .addGpsPoint(
+                            position
                         )
-                    })
-                )
-        };
+        });
 
-        if (
-            accuracies.length > 0
-        ) {
-            metadata.gps_summary = {
-                average_accuracy_m:
-                    Number(
-                        averageAccuracy
-                            .toFixed(2)
+    featureState =
+        modules.createFeatureState({
+            map,
+            leaflet:
+                L,
+            featureType,
+            featureLabel,
+            featureList,
+            fitAllAreasButton,
+            drawButton,
+            finishButton,
+            undoButton,
+            saveButton,
+            deleteButton,
+            moveAreaButton,
+
+            getFeatures:
+                () =>
+                    features,
+
+            getSelectedFeatureId:
+                () =>
+                    selectedFeatureId,
+
+            setSelectedFeatureId:
+                (value) => {
+                    selectedFeatureId =
+                        Number(value)
+                        || 0;
+                },
+
+            getDirty:
+                () =>
+                    dirty,
+
+            setDirty,
+            syncAreaDetailFields,
+
+            syncSiteFields:
+                (details) =>
+                    siteFields.sync(
+                        details
                     ),
 
-                best_accuracy_m:
-                    Number(
-                        Math.min(
-                            ...accuracies
+            syncSiteClasses:
+                (classes) =>
+                    pricing
+                        .syncSiteClasses(
+                            classes
+                        ),
+
+            syncRates:
+                (rates) =>
+                    pricing
+                        .syncRates(
+                            rates
+                        ),
+
+            clearSiteClasses:
+                () =>
+                    pricing
+                        .clearSiteClasses(),
+
+            clearRates:
+                () =>
+                    pricing
+                        .clearRates(),
+
+            setGeometry:
+                (
+                    points,
+                    metadata
+                ) =>
+                    geometry
+                        .setGeometry(
+                            points,
+                            metadata
+                        ),
+
+            clearGeometry:
+                () =>
+                    geometry
+                        .clearGeometry(),
+
+            getShapeLayer:
+                () =>
+                    geometry
+                        .getShapeLayer(),
+
+            syncFeatureSummary,
+            setHelp,
+            setStatus,
+            renderExistingLayers,
+            areaUseLabels,
+            feeStatusLabels,
+            overnightStatusLabels,
+
+            getSiteDetailLabels:
+                (details) =>
+                    siteFields
+                        .detailLabels(
+                            details
+                        ),
+
+            rateMoney:
+                (amount) =>
+                    pricing
+                        .rateMoney(
+                            amount
                         )
-                            .toFixed(2)
-                    ),
+        });
 
-                worst_accuracy_m:
-                    Number(
-                        Math.max(
-                            ...accuracies
-                        )
-                            .toFixed(2)
-                    )
-            };
-        }
-
-        return {
-            source_type:
-                sourceType,
-
-            accuracy_m:
-                averageAccuracy
-                    === null
-                    ? null
-                    : Number(
-                        averageAccuracy
-                            .toFixed(2)
-                    ),
-
-            metadata
-        };
-    };
+    modules.createMapStyles({
+        editor,
+        map,
+        leaflet:
+            L
+    });
 
     const request =
         async (payload) => {
@@ -3947,12 +1199,30 @@
             return data;
         };
 
+    const applyApiState =
+        (data) => {
+            features =
+                Array.isArray(
+                    data.features
+                )
+                    ? data.features
+                    : [];
+
+            campsites =
+                Array.isArray(
+                    data.campsites
+                )
+                    ? data.campsites
+                    : [];
+        };
+
     const saveFeature =
         async () => {
-            const geometry =
-                geometryPayload();
+            const geometryPayload =
+                geometry
+                    .geometryPayload();
 
-            if (!geometry) {
+            if (!geometryPayload) {
                 setStatus(
                     'Draw at least three points first.',
                     true
@@ -3961,8 +1231,10 @@
                 return;
             }
 
-            saveButton.disabled =
-                true;
+            if (saveButton) {
+                saveButton.disabled =
+                    true;
+            }
 
             setStatus(
                 'Saving mapped area...'
@@ -3970,7 +1242,8 @@
 
             try {
                 const source =
-                    sourcePayload();
+                    geometry
+                        .sourcePayload();
 
                 const data =
                     await request({
@@ -3992,25 +1265,26 @@
                             areaDetailsPayload(),
 
                         site_details:
-                            siteDetailsPayload(),
+                            siteFields
+                                .payload(),
 
                         rates:
-                            ratesPayload(),
+                            pricing
+                                .ratesPayload(),
 
                         site_classes:
-                            siteClassesPayload(),
+                            pricing
+                                .siteClassesPayload(),
 
-                        geometry,
+                        geometry:
+                            geometryPayload,
 
                         ...source
                     });
 
-                features =
-                    Array.isArray(
-                        data.features
-                    )
-                        ? data.features
-                        : [];
+                applyApiState(
+                    data
+                );
 
                 const savedId =
                     Number(
@@ -4018,14 +1292,16 @@
                         || 0
                     );
 
-                resetEditor(
-                    true
-                );
+                featureState
+                    .resetEditor(
+                        true
+                    );
 
                 if (savedId > 0) {
-                    selectFeature(
-                        savedId
-                    );
+                    featureState
+                        .selectFeature(
+                            savedId
+                        );
                 }
 
                 setStatus(
@@ -4033,8 +1309,10 @@
                 );
 
             } catch (error) {
-                saveButton.disabled =
-                    false;
+                if (saveButton) {
+                    saveButton.disabled =
+                        false;
+                }
 
                 setStatus(
                     error.message
@@ -4053,17 +1331,18 @@
                 return;
             }
 
-            const confirmed =
-                window.confirm(
+            if (
+                !window.confirm(
                     'Delete this mapped area?'
-                );
-
-            if (!confirmed) {
+                )
+            ) {
                 return;
             }
 
-            deleteButton.disabled =
-                true;
+            if (deleteButton) {
+                deleteButton.disabled =
+                    true;
+            }
 
             setStatus(
                 'Deleting mapped area...'
@@ -4079,24 +1358,24 @@
                             selectedFeatureId
                     });
 
-                features =
-                    Array.isArray(
-                        data.features
-                    )
-                        ? data.features
-                        : [];
-
-                resetEditor(
-                    true
+                applyApiState(
+                    data
                 );
+
+                featureState
+                    .resetEditor(
+                        true
+                    );
 
                 setStatus(
                     'Mapped area deleted.'
                 );
 
             } catch (error) {
-                deleteButton.disabled =
-                    false;
+                if (deleteButton) {
+                    deleteButton.disabled =
+                        false;
+                }
 
                 setStatus(
                     error.message
@@ -4112,7 +1391,9 @@
             Number.parseInt(
                 new URLSearchParams(
                     window.location.search
-                ).get('feature')
+                ).get(
+                    'feature'
+                )
                 || '0',
                 10
             )
@@ -4141,7 +1422,8 @@
                     );
 
                 const data =
-                    await response.json();
+                    await response
+                        .json();
 
                 if (
                     !response.ok
@@ -4153,16 +1435,14 @@
                     );
                 }
 
-                features =
-                    Array.isArray(
-                        data.features
-                    )
-                        ? data.features
-                        : [];
-
-                resetEditor(
-                    true
+                applyApiState(
+                    data
                 );
+
+                featureState
+                    .resetEditor(
+                        true
+                    );
 
                 const requestedFeature =
                     requestedFeatureId > 0
@@ -4176,9 +1456,10 @@
                         : null;
 
                 if (requestedFeature) {
-                    selectFeature(
-                        requestedFeatureId
-                    );
+                    featureState
+                        .selectFeature(
+                            requestedFeatureId
+                        );
 
                     setStatus(
                         'Mapped area loaded from the Place page.'
@@ -4189,51 +1470,8 @@
 
                 setStatus('');
 
-                if (
-                    features.length
-                    > 0
-                ) {
-                    const bounds =
-                        L.latLngBounds(
-                            []
-                        );
-
-                    features.forEach(
-                        (feature) => {
-                            const layer =
-                                L.geoJSON(
-                                    feature.geometry
-                                );
-
-                            const layerBounds =
-                                layer.getBounds();
-
-                            if (
-                                layerBounds
-                                    .isValid()
-                            ) {
-                                bounds.extend(
-                                    layerBounds
-                                );
-                            }
-                        }
-                    );
-
-                    if (
-                        bounds.isValid()
-                    ) {
-                        map.fitBounds(
-                            bounds,
-                            {
-                                padding:
-                                    [50, 50],
-
-                                maxZoom:
-                                    20
-                            }
-                        );
-                    }
-                }
+                featureState
+                    .fitAllAreas();
 
             } catch (error) {
                 setStatus(
@@ -4244,588 +1482,15 @@
             }
         };
 
-
-    const removeSelectedPoint = () => {
-        if (
-            selectedPointIndex < 0
-            || selectedPointIndex >= points.length
-            || points.length <= 3
-            || drawing
-            || moveMode
-        ) {
-            return;
-        }
-
-        points.splice(
-            selectedPointIndex,
-            1
-        );
-
-        vertexMetadata.splice(
-            selectedPointIndex,
-            1
-        );
-
-        if (
-            selectedPointIndex
-            >= points.length
-        ) {
-            selectedPointIndex =
-                points.length - 1;
-        }
-
-        setDirty(true);
-
-        setStatus(
-            'Point removed. Save the area to keep the change.'
-        );
-
-        renderEditableShape();
-    };
-
-    const replaceSelectedPointWithGps = () => {
-        if (
-            selectedPointIndex < 0
-            || selectedPointIndex >= points.length
-            || !gpsPosition
-            || drawing
-            || moveMode
-        ) {
-            return;
-        }
-
-        points[selectedPointIndex] =
-            L.latLng(
-                gpsPosition.lat,
-                gpsPosition.lng
-            );
-
-        vertexMetadata[selectedPointIndex] = {
-            source:
-                'gps',
-
-            accuracy_m:
-                gpsPosition.accuracy
-                === null
-                    ? null
-                    : Number(
-                        gpsPosition
-                            .accuracy
-                            .toFixed(2)
-                    ),
-
-            captured_at:
-                gpsPosition.capturedAt
-        };
-
-        setDirty(true);
-
-        setStatus(
-            `Point ${selectedPointIndex + 1} replaced with the current GPS position.`
-        );
-
-        renderEditableShape();
-    };
-
-    const startMoveArea = () => {
-        if (
-            drawing
-            || points.length < 3
-        ) {
-            return;
-        }
-
-        moveMode =
-            !moveMode;
-
-        selectedPointIndex =
-            -1;
-
-        mapElement.classList.toggle(
-            'is-moving',
-            moveMode
-        );
-
-        if (moveAreaButton) {
-            moveAreaButton.textContent =
-                moveMode
-                    ? 'Cancel move'
-                    : 'Move whole area';
-        }
-
-        setStatus(
-            moveMode
-                ? 'Drag the center handle to move the entire polygon.'
-                : 'Move canceled.'
-        );
-
-        renderEditableShape();
-    };
-
-    const revertFeature = () => {
-        if (!dirty) {
-            return;
-        }
-
-        if (
-            selectedFeatureId > 0
-        ) {
-            selectFeature(
-                selectedFeatureId
-            );
-
-            setStatus(
-                'Unsaved changes reverted.'
-            );
-
-            return;
-        }
-
-        resetEditor(true);
-
-        setStatus(
-            'Unsaved area cleared.'
-        );
-    };
-
-
-    /* =====================================================
-       DEVICE GPS
-       ===================================================== */
-
-    const setGpsState =
-        (
-            label,
-            active = false
-        ) => {
-            if (!gpsState) {
-                return;
-            }
-
-            gpsState.textContent =
-                label;
-
-            gpsState.classList.toggle(
-                'is-active',
-                active
-            );
-        };
-
-    const clearGpsMapLayers = () => {
-        if (gpsMarker) {
-            map.removeLayer(
-                gpsMarker
-            );
-
-            gpsMarker = null;
-        }
-
-        if (gpsAccuracyCircle) {
-            map.removeLayer(
-                gpsAccuracyCircle
-            );
-
-            gpsAccuracyCircle =
-                null;
-        }
-    };
-
-    const renderGpsPosition =
-        (position) => {
-            const lat =
-                Number(
-                    position.coords
-                        .latitude
-                );
-
-            const lng =
-                Number(
-                    position.coords
-                        .longitude
-                );
-
-            const accuracy =
-                Number(
-                    position.coords
-                        .accuracy
-                );
-
-            if (
-                !Number.isFinite(lat)
-                || !Number.isFinite(lng)
-            ) {
-                return;
-            }
-
-            gpsPosition = {
-                lat,
-                lng,
-                accuracy:
-                    Number.isFinite(
-                        accuracy
-                    )
-                        ? accuracy
-                        : null,
-
-                capturedAt:
-                    new Date(
-                        position.timestamp
-                        || Date.now()
-                    ).toISOString()
-            };
-
-            if (gpsReading) {
-                gpsReading.hidden =
-                    false;
-            }
-
-            if (gpsLatitude) {
-                gpsLatitude.textContent =
-                    lat.toFixed(7);
-            }
-
-            if (gpsLongitude) {
-                gpsLongitude.textContent =
-                    lng.toFixed(7);
-            }
-
-            if (gpsAccuracy) {
-                gpsAccuracy.textContent =
-                    gpsPosition.accuracy
-                    === null
-                        ? 'Unknown'
-                        : `±${Math.round(
-                            gpsPosition
-                                .accuracy
-                        )} m`;
-            }
-
-            addGpsPointButton.disabled =
-                false;
-
-            centerGpsButton.disabled =
-                false;
-
-            syncSelectedPointPanel();
-
-            clearGpsMapLayers();
-
-            gpsAccuracyCircle =
-                L.circle(
-                    [lat, lng],
-                    {
-                        radius:
-                            Math.max(
-                                1,
-                                gpsPosition
-                                    .accuracy
-                                || 1
-                            ),
-
-                        color:
-                            '#2563eb',
-
-                        weight: 1,
-                        opacity: .7,
-
-                        fillColor:
-                            '#2563eb',
-
-                        fillOpacity:
-                            .08,
-
-                        interactive:
-                            false
-                    }
-                ).addTo(map);
-
-            gpsMarker =
-                L.marker(
-                    [lat, lng],
-                    {
-                        interactive:
-                            false,
-
-                        icon:
-                            L.divIcon({
-                                className:
-                                    '',
-
-                                html:
-                                    '<span class="mapped-area-editor-gps-marker" aria-hidden="true"></span>',
-
-                                iconSize:
-                                    [18, 18],
-
-                                iconAnchor:
-                                    [9, 9]
-                            })
-                    }
-                ).addTo(map);
-
-            setGpsState(
-                gpsPosition.accuracy
-                    === null
-                    ? 'GPS active'
-                    : `±${Math.round(
-                        gpsPosition
-                            .accuracy
-                    )} m`,
-                true
-            );
-        };
-
-    const gpsErrorMessage =
-        (error) => {
-            switch (
-                Number(
-                    error?.code
-                )
-            ) {
-                case 1:
-                    return 'Location permission was denied.';
-
-                case 2:
-                    return 'Your device could not determine a GPS position.';
-
-                case 3:
-                    return 'The GPS request timed out.';
-
-                default:
-                    return 'Device GPS is unavailable.';
-            }
-        };
-
-    const stopGps = () => {
-        if (
-            gpsWatchId !== null
-            && navigator.geolocation
-        ) {
-            navigator.geolocation
-                .clearWatch(
-                    gpsWatchId
-                );
-        }
-
-        gpsWatchId = null;
-
-        startGpsButton.disabled =
-            false;
-
-        stopGpsButton.disabled =
-            true;
-
-        setGpsState(
-            gpsPosition
-                ? 'Paused'
-                : 'Off',
-            false
-        );
-    };
-
-    const startGps = () => {
-        if (
-            !('geolocation' in navigator)
-        ) {
-            setStatus(
-                'This browser does not provide device geolocation.',
-                true
-            );
-
-            return;
-        }
-
-        if (gpsWatchId !== null) {
-            return;
-        }
-
-        startGpsButton.disabled =
-            true;
-
-        stopGpsButton.disabled =
-            false;
-
-        setGpsState(
-            'Locating...',
-            true
-        );
-
-        setStatus(
-            'Waiting for a high-accuracy GPS position...'
-        );
-
-        gpsWatchId =
-            navigator.geolocation
-                .watchPosition(
-                    (position) => {
-                        renderGpsPosition(
-                            position
-                        );
-
-                        setStatus('');
-                    },
-
-                    (error) => {
-                        setStatus(
-                            gpsErrorMessage(
-                                error
-                            ),
-                            true
-                        );
-
-                        stopGps();
-                    },
-
-                    {
-                        enableHighAccuracy:
-                            true,
-
-                        maximumAge:
-                            1000,
-
-                        timeout:
-                            15000
-                    }
-                );
-    };
-
-    const addGpsPoint = () => {
-        if (!gpsPosition) {
-            return;
-        }
-
-        if (!drawing) {
-            startDrawing();
-        }
-
-        points.push(
-            L.latLng(
-                gpsPosition.lat,
-                gpsPosition.lng
-            )
-        );
-
-        vertexMetadata.push({
-            source:
-                'gps',
-
-            accuracy_m:
-                gpsPosition.accuracy
-                === null
-                    ? null
-                    : Number(
-                        gpsPosition
-                            .accuracy
-                            .toFixed(2)
-                    ),
-
-            captured_at:
-                gpsPosition
-                    .capturedAt
-        });
-
-        selectedPointIndex =
-            points.length - 1;
-
-        setDirty(true);
-
-        renderEditableShape();
-
-        setStatus(
-            `GPS point ${points.length} added${
-                gpsPosition.accuracy
-                === null
-                    ? '.'
-                    : ` at ±${Math.round(
-                        gpsPosition
-                            .accuracy
-                    )} m accuracy.`
-            }`
-        );
-    };
-
-    const centerOnGps = () => {
-        if (!gpsPosition) {
-            return;
-        }
-
-        map.setView(
-            [
-                gpsPosition.lat,
-                gpsPosition.lng
-            ],
-            Math.max(
-                map.getZoom(),
-                19
-            )
-        );
-    };
-
-
-    /* =====================================================
-       EVENTS
-       ===================================================== */
-
     map.on(
         'click',
         (event) => {
-            if (!drawing) {
-                return;
-            }
-
-            points.push(
-                event.latlng
-            );
-
-            vertexMetadata.push({
-                source:
-                    'manual'
-            });
-
-            selectedPointIndex =
-                points.length - 1;
-
-            setDirty(true);
-
-            renderEditableShape();
+            geometry
+                .addManualPoint(
+                    event.latlng
+                );
         }
     );
-
-    drawButton
-        ?.addEventListener(
-            'click',
-            startDrawing
-        );
-
-    finishButton
-        ?.addEventListener(
-            'click',
-            finishDrawing
-        );
-
-    undoButton
-        ?.addEventListener(
-            'click',
-            () => {
-                if (
-                    !drawing
-                    || points.length
-                        === 0
-                ) {
-                    return;
-                }
-
-                points.pop();
-                vertexMetadata.pop();
-
-                selectedPointIndex =
-                    points.length - 1;
-
-                setDirty(true);
-
-                renderEditableShape();
-            }
-        );
 
     saveButton
         ?.addEventListener(
@@ -4852,7 +1517,8 @@
                     return;
                 }
 
-                resetEditor();
+                featureState
+                    .resetEditor();
             }
         );
 
@@ -4861,25 +1527,39 @@
             'change',
             () => {
                 syncAreaDetailFields();
-                syncSiteDetailFields();
+                siteFields.sync();
 
                 if (
-                    featureType?.value
+                    featureType.value
                     !== 'camping_area'
                 ) {
-                    workingSiteClasses = [];
+                    pricing
+                        .clearSiteClasses();
+                } else {
+                    pricing
+                        .renderSiteClasses();
                 }
 
-                renderSiteClasses();
-
-                if (!rateFeatureSupported()) {
-                    workingRates = [];
+                if (
+                    !pricing
+                        .rateFeatureSupported()
+                ) {
+                    pricing
+                        .clearRates();
+                } else {
+                    pricing
+                        .renderRates();
                 }
 
-                renderRates();
-                setDirty(true);
-                renderEditableShape();
-                renderFeatureList();
+                setDirty(
+                    true
+                );
+
+                geometry
+                    .renderEditableShape();
+
+                featureState
+                    .renderFeatureList();
             }
         );
 
@@ -4887,193 +1567,35 @@
         areaUse,
         feeStatus,
         overnightStatus
-    ]
-        .forEach(
-            (control) => {
-                control
-                    ?.addEventListener(
-                        'change',
-                        () => {
-                            setDirty(true);
-                            renderFeatureList();
-                            renderRates();
-                        }
-                    );
-            }
-        );
+    ].forEach(
+        (control) => {
+            control
+                ?.addEventListener(
+                    'change',
+                    () => {
+                        setDirty(
+                            true
+                        );
 
-    siteParent
-        ?.addEventListener(
-            'change',
-            () => {
-                syncSiteClassOptions('');
-                setDirty(true);
-                renderFeatureList();
-                renderRates();
-            }
-        );
+                        featureState
+                            .renderFeatureList();
 
-    [
-        siteClass,
-        siteType,
-        siteParkingStyle,
-        siteHookups,
-        siteAccessible
-    ]
-        .forEach(
-            (control) => {
-                control
-                    ?.addEventListener(
-                        'change',
-                        () => {
-                            setDirty(true);
-                            renderFeatureList();
-                            renderRates();
-                        }
-                    );
-            }
-        );
-
-    siteCode
-        ?.addEventListener(
-            'input',
-            () => {
-                setDirty(true);
-                renderFeatureList();
-            }
-        );
-
-    addSiteClassButton
-        ?.addEventListener(
-            'click',
-            () => {
-                if (
-                    featureType?.value
-                    !== 'camping_area'
-                ) {
-                    return;
-                }
-
-                workingSiteClasses.push({
-                    id: 0,
-                    name: '',
-                    description: '',
-                    rates: []
-                });
-
-                setDirty(true);
-                renderSiteClasses();
-            }
-        );
-
-    addRateButton
-        ?.addEventListener(
-            'click',
-            () => {
-                if (!rateFeatureSupported()) {
-                    return;
-                }
-
-                workingRates.push({
-                    rate_type: 'standard',
-                    label: '',
-                    amount: '',
-                    season_start: '',
-                    season_end: '',
-                    notes: ''
-                });
-
-                setDirty(true);
-                renderRates();
-            }
-        );
+                        pricing
+                            .renderRates();
+                    }
+                );
+        }
+    );
 
     featureLabel
         ?.addEventListener(
             'input',
             () => {
-                setDirty(true);
+                setDirty(
+                    true
+                );
             }
         );
-
-    removePointButton
-        ?.addEventListener(
-            'click',
-            removeSelectedPoint
-        );
-
-    useGpsPointButton
-        ?.addEventListener(
-            'click',
-            replaceSelectedPointWithGps
-        );
-
-    moveAreaButton
-        ?.addEventListener(
-            'click',
-            startMoveArea
-        );
-
-    revertFeatureButton
-        ?.addEventListener(
-            'click',
-            revertFeature
-        );
-
-    startGpsButton
-        ?.addEventListener(
-            'click',
-            startGps
-        );
-
-    stopGpsButton
-        ?.addEventListener(
-            'click',
-            stopGps
-        );
-
-    addGpsPointButton
-        ?.addEventListener(
-            'click',
-            addGpsPoint
-        );
-
-    centerGpsButton
-        ?.addEventListener(
-            'click',
-            centerOnGps
-        );
-
-    editor
-        .querySelectorAll(
-            '[data-map-style]'
-        )
-        .forEach((button) => {
-            button.addEventListener(
-                'click',
-                () => {
-                    selectedMapStyle =
-                        button.dataset
-                            .mapStyle
-                        || 'satellite';
-
-                    applyTileLayer();
-                }
-            );
-        });
-
-    fitAllAreasButton
-        ?.addEventListener(
-            'click',
-            fitAllAreas
-        );
-
-    window.addEventListener(
-        'pagehide',
-        () => {
-            stopGps();
-        }
-    );
 
     window.addEventListener(
         'beforeunload',
@@ -5083,11 +1605,10 @@
             }
 
             event.preventDefault();
-            event.returnValue = '';
+            event.returnValue =
+                '';
         }
     );
-
-    applyTileLayer();
 
     window.requestAnimationFrame(
         () => {
