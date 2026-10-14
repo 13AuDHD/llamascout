@@ -31,9 +31,10 @@
     display: grid;
     grid-template-columns:
         repeat(
-            auto-fit,
-            minmax(180px, 1fr)
+            auto-fill,
+            minmax(180px, 230px)
         );
+    justify-content: start;
     gap: 10px;
 }
 
@@ -69,7 +70,6 @@
     color: var(--text-muted);
 }
 
-.place-campsite-equipment-grid,
 .place-campsite-source-grid {
     display: grid;
     grid-template-columns:
@@ -80,7 +80,6 @@
     gap: 8px;
 }
 
-.place-campsite-equipment-card,
 .place-campsite-source-card {
     display: grid;
     gap: 4px;
@@ -91,13 +90,11 @@
     background: var(--background);
 }
 
-.place-campsite-equipment-card span,
 .place-campsite-source-card span {
     color: var(--text-muted);
     font-size: .76rem;
 }
 
-.place-campsite-equipment-card strong,
 .place-campsite-source-card strong {
     overflow-wrap: anywhere;
 }
@@ -109,6 +106,112 @@
     }
 
     .place-campsite-gallery {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+
+.place-campsite-equipment-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.place-campsite-equipment-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--background);
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+/* Compact the dynamic campsite facts instead of inheriting large Scout cards. */
+.place-campsite-detail-grid {
+    display: grid;
+    gap: 18px;
+}
+
+.place-campsite-card-section {
+    display: grid;
+    gap: 9px;
+}
+
+.place-campsite-card-section h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.place-campsite-card-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(155px, 1fr)
+        );
+    gap: 8px;
+}
+
+.place-campsite-card {
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+}
+
+.place-campsite-card-content {
+    display: grid;
+    gap: 4px;
+}
+
+.place-campsite-card-content span {
+    color: var(--text-muted);
+    font-size: .74rem;
+    line-height: 1.25;
+}
+
+.place-campsite-card-content strong {
+    font-size: .92rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.place-campsite-card-icon {
+    width: 18px;
+    height: 18px;
+    opacity: .72;
+}
+
+@media (min-width: 900px) {
+    .place-campsite-card-grid {
+        grid-template-columns:
+            repeat(
+                4,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 640px) {
+    .place-campsite-gallery {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .place-campsite-card-grid {
         grid-template-columns:
             repeat(
                 2,
