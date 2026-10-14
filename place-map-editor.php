@@ -137,7 +137,6 @@ require __DIR__ . '/partials/header.php';
         </a>
     </header>
 
-
     <div class="mapped-area-editor-map-card">
 
         <div
@@ -169,7 +168,6 @@ require __DIR__ . '/partials/header.php';
             </button>
         </div>
 
-
         <div
             class="mapped-area-map-toolbar
                    mapped-area-map-toolbar--style"
@@ -199,7 +197,6 @@ require __DIR__ . '/partials/header.php';
             </button>
         </div>
 
-
         <div
             id="mapped-area-editor-map"
             class="mapped-area-editor-map"
@@ -214,7 +211,6 @@ require __DIR__ . '/partials/header.php';
             0 points
         </div>
     </div>
-
 
     <div class="mapped-area-editor-content">
 
@@ -356,6 +352,14 @@ require __DIR__ . '/partials/header.php';
                 data-site-details
                 hidden
             >
+                <label>
+                    <span>Canonical campsite</span>
+
+                    <select data-site-canonical>
+                        <option value="">Map-only Site</option>
+                    </select>
+                </label>
+
                 <label>
                     <span>Parent Camping area</span>
 
@@ -560,7 +564,6 @@ require __DIR__ . '/partials/header.php';
             ></p>
         </section>
 
-
         <section
             class="mapped-area-editor-card mapped-area-editor-site-class-card"
             data-site-classes-section
@@ -601,7 +604,6 @@ require __DIR__ . '/partials/header.php';
                 any rate that is genuinely different for that specific site.
             </p>
         </section>
-
 
         <section
             class="mapped-area-editor-card mapped-area-editor-rate-card"
@@ -722,7 +724,6 @@ require __DIR__ . '/partials/header.php';
             </p>
         </section>
 
-
         <section class="mapped-area-editor-card">
             <div class="mapped-area-editor-card-heading">
                 <h2>Device GPS</h2>
@@ -797,7 +798,6 @@ require __DIR__ . '/partials/header.php';
             </p>
         </section>
 
-
         <section class="mapped-area-editor-card mapped-area-editor-existing">
             <div class="mapped-area-editor-card-heading">
                 <h2>Existing areas</h2>
@@ -823,6 +823,12 @@ require __DIR__ . '/partials/header.php';
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/place-map-editor/site-fields.js"></script>
+<script src="/js/place-map-editor/pricing.js"></script>
+<script src="/js/place-map-editor/feature-state.js"></script>
+<script src="/js/place-map-editor/geometry.js"></script>
+<script src="/js/place-map-editor/gps.js"></script>
+<script src="/js/place-map-editor/map-styles.js"></script>
 <script src="/js/place-map-editor.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
