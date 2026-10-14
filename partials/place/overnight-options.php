@@ -151,7 +151,7 @@ foreach ($stayFeatures as $feature) {
 
     $description =
         implode(
-            ' Â· ',
+            ' · ',
             array_filter([
                 $type !== ''
                     ? ucwords(
@@ -307,7 +307,7 @@ foreach ($stayFeatures as $feature) {
 
         'summary' =>
             $feeLabel
-            . ' Â· '
+            . ' · '
             . $statusLabel,
 
         'cost' =>
