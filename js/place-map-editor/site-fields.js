@@ -373,7 +373,7 @@
                                     mappedElsewhere
                                 ) {
                                     option.textContent +=
-                                        ' Â· mapped elsewhere';
+                                        ' · mapped elsewhere';
                                 }
 
                                 /*
