@@ -3,45 +3,85 @@
 
     // The older campsite browser calls scrollIntoView for every selection.
     // Keep that movement inside its horizontal list, without scrolling the page.
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function (options) {
-        const list = this.closest?.('[data-campsite-list]');
-        if (!list || !list.contains(this)) {
-            return originalScrollIntoView.call(this, options);
-        }
+    const originalScrollIntoView =
+        Element.prototype.scrollIntoView;
 
-        const listBounds = list.getBoundingClientRect();
-        const itemBounds = this.getBoundingClientRect();
-        const leftEdge = listBounds.left + 8;
-        const rightEdge = listBounds.right - 8;
-        let next = list.scrollLeft;
+    Element.prototype.scrollIntoView =
+        function (options) {
+            const list =
+                this.closest?.(
+                    '[data-campsite-list]'
+                );
 
-        if (itemBounds.left < leftEdge) {
-            next += itemBounds.left - leftEdge;
-        }
+            if (
+                !list
+                || !list.contains(this)
+            ) {
+                return originalScrollIntoView.call(
+                    this,
+                    options
+                );
+            }
 
-        if (itemBounds.right > rightEdge) {
-            next += itemBounds.right - rightEdge;
-        }
+            const listBounds =
+                list.getBoundingClientRect();
 
-        next = Math.max(
-            0,
-            Math.min(
-                next,
-                list.scrollWidth - list.clientWidth
-            )
-        );
+            const itemBounds =
+                this.getBoundingClientRect();
 
-        if (Math.abs(next - list.scrollLeft) > 1) {
-            list.scrollTo({
-                left: next,
-                behavior:
-                    options?.behavior === 'smooth'
-                        ? 'smooth'
-                        : 'auto'
-            });
-        }
-    };
+            const leftEdge =
+                listBounds.left + 8;
+
+            const rightEdge =
+                listBounds.right - 8;
+
+            let next =
+                list.scrollLeft;
+
+            if (
+                itemBounds.left
+                < leftEdge
+            ) {
+                next +=
+                    itemBounds.left
+                    - leftEdge;
+            }
+
+            if (
+                itemBounds.right
+                > rightEdge
+            ) {
+                next +=
+                    itemBounds.right
+                    - rightEdge;
+            }
+
+            next =
+                Math.max(
+                    0,
+                    Math.min(
+                        next,
+                        list.scrollWidth
+                        - list.clientWidth
+                    )
+                );
+
+            if (
+                Math.abs(
+                    next
+                    - list.scrollLeft
+                ) > 1
+            ) {
+                list.scrollTo({
+                    left: next,
+                    behavior:
+                        options?.behavior
+                        === 'smooth'
+                            ? 'smooth'
+                            : 'auto'
+                });
+            }
+        };
 
     const init = () => {
         const section =
@@ -54,54 +94,27 @@
         }
 
         const wrapper =
-            document.createElement(
-                'div'
+            section.querySelector(
+                '[data-stay-scroll-navigation]'
             );
 
-        wrapper.className =
-            'place-stay-scroll-navigation';
-
-        wrapper.setAttribute(
-            'aria-label',
-            'Scroll overnight options'
-        );
-
         const back =
-            document.createElement(
-                'button'
+            wrapper?.querySelector(
+                '[data-stay-scroll-back]'
             );
 
         const next =
-            document.createElement(
-                'button'
+            wrapper?.querySelector(
+                '[data-stay-scroll-next]'
             );
 
-        back.type =
-            'button';
-
-        next.type =
-            'button';
-
-        back.textContent =
-            'â¹';
-
-        next.textContent =
-            'âº';
-
-        back.setAttribute(
-            'aria-label',
-            'Scroll to previous overnight options'
-        );
-
-        next.setAttribute(
-            'aria-label',
-            'Scroll to next overnight options'
-        );
-
-        wrapper.append(
-            back,
-            next
-        );
+        if (
+            !wrapper
+            || !back
+            || !next
+        ) {
+            return;
+        }
 
         let activeList = null;
         let observed = null;
@@ -122,16 +135,15 @@
                 || fallbackList;
 
             if (!list) {
-                wrapper.remove();
-                activeList = null;
+                wrapper.hidden =
+                    true;
+
+                activeList =
+                    null;
+
                 return;
             }
 
-            /*
-             * The arrows control this horizontal list, so keep them physically
-             * attached to it. They belong directly below the campsite cards,
-             * not below the selected campsite detail.
-             */
             if (
                 wrapper.previousElementSibling
                 !== list
@@ -141,7 +153,10 @@
                 );
             }
 
-            if (list === activeList) {
+            if (
+                list
+                === activeList
+            ) {
                 return;
             }
 
@@ -157,7 +172,8 @@
                     );
 
                 back.disabled =
-                    list.scrollLeft < 2;
+                    list.scrollLeft
+                    < 2;
 
                 next.disabled =
                     list.scrollLeft
@@ -167,33 +183,35 @@
                     limit < 5;
             };
 
-            back.onclick = () =>
-                list.scrollBy({
-                    left:
-                        -Math.max(
-                            170,
-                            Math.round(
-                                list.clientWidth
-                                * .82
-                            )
-                        ),
-                    behavior:
-                        'smooth'
-                });
+            back.onclick =
+                () =>
+                    list.scrollBy({
+                        left:
+                            -Math.max(
+                                170,
+                                Math.round(
+                                    list.clientWidth
+                                    * .82
+                                )
+                            ),
+                        behavior:
+                            'smooth'
+                    });
 
-            next.onclick = () =>
-                list.scrollBy({
-                    left:
-                        Math.max(
-                            170,
-                            Math.round(
-                                list.clientWidth
-                                * .82
-                            )
-                        ),
-                    behavior:
-                        'smooth'
-                });
+            next.onclick =
+                () =>
+                    list.scrollBy({
+                        left:
+                            Math.max(
+                                170,
+                                Math.round(
+                                    list.clientWidth
+                                    * .82
+                                )
+                            ),
+                        behavior:
+                            'smooth'
+                    });
 
             list.addEventListener(
                 'scroll',
