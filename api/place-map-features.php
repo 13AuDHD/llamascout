@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
+require_once dirname(__DIR__) . '/app/place-campsites.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,6 +21,92 @@ function llama_place_map_api_json(
     );
 
     exit;
+}
+
+function llama_place_map_api_features(
+    PDO $db,
+    int $placeId
+): array {
+    $features =
+        llama_place_map_features(
+            $db,
+            $placeId,
+            true
+        );
+
+    if (!$features) {
+        return [];
+    }
+
+    $associations =
+        llama_place_campsite_map_associations(
+            $db,
+            $placeId
+        );
+
+    foreach ($features as &$feature) {
+        if (
+            (string) ($feature['feature_type'] ?? '')
+            !== 'camping_site'
+        ) {
+            continue;
+        }
+
+        $featureId =
+            (int) (
+                $feature['id']
+                ?? 0
+            );
+
+        if (
+            $featureId < 1
+            || !isset(
+                $associations[
+                    $featureId
+                ]
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            !isset($feature['site_details'])
+            || !is_array(
+                $feature['site_details']
+            )
+        ) {
+            $feature['site_details'] = [];
+        }
+
+        $association =
+            $associations[
+                $featureId
+            ];
+
+        $feature['site_details']['canonical_campsite_id'] =
+            (int) $association['campsite_id'];
+
+        $feature['site_details']['canonical_campsite_label'] =
+            (string) $association['label'];
+
+        $feature['site_details']['canonical_campsite_conflict'] =
+            !empty(
+                $association['conflict']
+            );
+    }
+    unset($feature);
+
+    return $features;
+}
+
+function llama_place_map_api_campsites(
+    PDO $db,
+    int $placeId
+): array {
+    return llama_place_campsite_map_options(
+        $db,
+        $placeId
+    );
 }
 
 $input = [];
@@ -132,10 +219,12 @@ if (!$place) {
     );
 }
 
+$db = db();
+
 $canEdit =
     $userId > 0
     && llama_contributor_can(
-        db(),
+        $db,
         $userId,
         'field_report'
     );
@@ -174,11 +263,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'feature_types' =>
             llama_place_map_feature_types(),
 
+        'campsites' =>
+            llama_place_map_api_campsites(
+                $db,
+                $placeId
+            ),
+
         'features' =>
-            llama_place_map_features(
-                db(),
-                $placeId,
-                true
+            llama_place_map_api_features(
+                $db,
+                $placeId
             ),
     ]);
 }
@@ -240,24 +334,60 @@ $action =
 
 try {
     if ($action === 'delete') {
-        llama_place_map_feature_delete(
-            db(),
-            $placeId,
+        $featureId =
             (int) (
                 $input['feature_id']
                 ?? 0
-            ),
-            $userId
-        );
+            );
+
+        $ownsTransaction =
+            !$db->inTransaction();
+
+        if ($ownsTransaction) {
+            $db->beginTransaction();
+        }
+
+        try {
+            llama_place_map_feature_delete(
+                $db,
+                $placeId,
+                $featureId,
+                $userId
+            );
+
+            llama_place_campsite_map_association_clear(
+                $db,
+                $placeId,
+                $featureId
+            );
+
+            if ($ownsTransaction) {
+                $db->commit();
+            }
+        } catch (Throwable $exception) {
+            if (
+                $ownsTransaction
+                && $db->inTransaction()
+            ) {
+                $db->rollBack();
+            }
+
+            throw $exception;
+        }
 
         llama_place_map_api_json([
             'ok' => true,
 
+            'campsites' =>
+                llama_place_map_api_campsites(
+                    $db,
+                    $placeId
+                ),
+
             'features' =>
-                llama_place_map_features(
-                    db(),
-                    $placeId,
-                    true
+                llama_place_map_api_features(
+                    $db,
+                    $placeId
                 ),
         ]);
     }
@@ -278,41 +408,121 @@ try {
         );
     }
 
-    $featureId =
-        llama_place_map_feature_save(
-            db(),
-            $placeId,
-            $userId,
-            (string) (
-                $input['feature_type']
-                ?? ''
-            ),
-            (string) (
-                $input['label']
-                ?? ''
-            ),
-            $geometry,
-            (int) (
-                $input['feature_id']
-                ?? 0
-            ),
-            (string) (
-                $input['source_type']
-                ?? 'manual'
-            ),
-            $input['accuracy_m']
-                ?? null,
-            $input['metadata']
-                ?? [],
-            $input['area_details']
-                ?? [],
-            $input['site_details']
-                ?? [],
-            $input['rates']
-                ?? [],
-            $input['site_classes']
-                ?? []
+    $featureType =
+        strtolower(
+            trim(
+                (string) (
+                    $input['feature_type']
+                    ?? ''
+                )
+            )
         );
+
+    $siteDetails =
+        is_array(
+            $input['site_details']
+            ?? null
+        )
+            ? $input['site_details']
+            : [];
+
+    $canonicalCampsiteId =
+        $featureType === 'camping_site'
+            ? max(
+                0,
+                (int) (
+                    $siteDetails[
+                        'canonical_campsite_id'
+                    ]
+                    ?? 0
+                )
+            )
+            : 0;
+
+    /*
+     * canonical_campsite_id belongs to the canonical campsite record, not the
+     * place_map_camping_sites table. Remove it before passing site details to
+     * the existing map-feature service.
+     */
+    unset(
+        $siteDetails[
+            'canonical_campsite_id'
+        ]
+    );
+
+    $ownsTransaction =
+        !$db->inTransaction();
+
+    if ($ownsTransaction) {
+        $db->beginTransaction();
+    }
+
+    try {
+        $featureId =
+            llama_place_map_feature_save(
+                $db,
+                $placeId,
+                $userId,
+                $featureType,
+                (string) (
+                    $input['label']
+                    ?? ''
+                ),
+                $geometry,
+                (int) (
+                    $input['feature_id']
+                    ?? 0
+                ),
+                (string) (
+                    $input['source_type']
+                    ?? 'manual'
+                ),
+                $input['accuracy_m']
+                    ?? null,
+                $input['metadata']
+                    ?? [],
+                $input['area_details']
+                    ?? [],
+                $siteDetails,
+                $input['rates']
+                    ?? [],
+                $input['site_classes']
+                    ?? []
+            );
+
+        if ($featureType === 'camping_site') {
+            llama_place_campsite_map_association_save(
+                $db,
+                $placeId,
+                $featureId,
+                $canonicalCampsiteId
+            );
+        } else {
+            /*
+             * If an existing mapped Site is deliberately converted into an
+             * Area/boundary, it can no longer remain attached to a canonical
+             * campsite.
+             */
+            llama_place_campsite_map_association_clear(
+                $db,
+                $placeId,
+                $featureId
+            );
+        }
+
+        if ($ownsTransaction) {
+            $db->commit();
+        }
+    } catch (Throwable $exception) {
+        if (
+            $ownsTransaction
+            && $db->inTransaction()
+        ) {
+            $db->rollBack();
+        }
+
+        throw $exception;
+    }
 
     llama_place_map_api_json([
         'ok' => true,
@@ -320,11 +530,16 @@ try {
         'feature_id' =>
             $featureId,
 
+        'campsites' =>
+            llama_place_map_api_campsites(
+                $db,
+                $placeId
+            ),
+
         'features' =>
-            llama_place_map_features(
-                db(),
-                $placeId,
-                true
+            llama_place_map_api_features(
+                $db,
+                $placeId
             ),
     ]);
 
