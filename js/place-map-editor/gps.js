@@ -195,7 +195,7 @@
                             gpsPosition.accuracy
                             === null
                                 ? 'Unknown'
-                                : `Â±${Math.round(gpsPosition.accuracy)} m`;
+                                : `±${Math.round(gpsPosition.accuracy)} m`;
                     }
 
                     if (
@@ -286,7 +286,7 @@
                         gpsPosition.accuracy
                         === null
                             ? 'GPS active'
-                            : `Â±${Math.round(gpsPosition.accuracy)} m`,
+                            : `±${Math.round(gpsPosition.accuracy)} m`,
                         true
                     );
                 };
@@ -449,7 +449,7 @@
                     );
 
                     setStatus?.(
-                        `GPS point added${gpsPosition.accuracy === null ? '.' : ` at Â±${Math.round(gpsPosition.accuracy)} m accuracy.`}`
+                        `GPS point added${gpsPosition.accuracy === null ? '.' : ` at ±${Math.round(gpsPosition.accuracy)}m accuracy.`}`
                     );
                 };
 
