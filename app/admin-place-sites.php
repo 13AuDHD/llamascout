@@ -28,14 +28,19 @@ function admin_place_campsite_field_keys(): array
 
     foreach (llama_place_report_fields() as $key => $field) {
         /*
-         * Site ownership is canonical in flow-scopes.php. Do not infer it
-         * from a legacy presentation section such as "site_vehicle": Site
-         * accessibility and per-Site amenities deliberately originate from
-         * other historical sections but are still Site-owned facts.
+         * Admin Place edits Place-level and selected-Site facts in one shared
+         * form. The visible Site section changes target when a campsite is
+         * selected, so every field rendered there that legally allows Site
+         * scope belongs to the selected-Site load/save path.
+         *
+         * This deliberately includes both Site-only fields and canonical
+         * "all" fields such as sensory, safety, experience, and summaries.
+         * Place-section fields remain Place-level even when their canonical
+         * scope also permits Site exceptions.
          */
         if (
             (string) (
-                $field['report_scope_group']
+                $field['layout_section']
                 ?? ''
             ) !== 'site'
         ) {
