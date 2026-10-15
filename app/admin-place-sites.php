@@ -365,8 +365,18 @@ function admin_place_apply_site_overrides(array $values, array $overrides): arra
 
         if ($value === llama_place_report_unknown_token()) {
             $values[$key] = llama_place_report_unknown_token();
-        } elseif ($type === 'tri' && is_bool($value)) {
-            $values[$key] = $value ? '1' : '0';
+        } elseif (
+            in_array(
+                $type,
+                ['tri', 'checkbox'],
+                true
+            )
+            && is_bool($value)
+        ) {
+            $values[$key] =
+                $value
+                    ? '1'
+                    : '0';
         } elseif ($value !== null && !is_array($value)) {
             $values[$key] = (string) $value;
         }
@@ -925,11 +935,29 @@ function admin_place_save_selected_campsite_answers(
     $saved = 0;
 
     foreach (admin_place_campsite_field_keys() as $key) {
-        if (!array_key_exists($key, $input) || !isset($fields[$key])) {
+        if (!isset($fields[$key])) {
             continue;
         }
 
-        $raw = $input[$key];
+        $fieldType =
+            (string) (
+                $fields[$key]['type']
+                ?? ''
+            );
+
+        if (array_key_exists($key, $input)) {
+            $raw =
+                $input[$key];
+        } elseif ($fieldType === 'checkbox') {
+            /*
+             * Unchecked checkboxes are omitted by FormData. For an active
+             * selected Site that omission means an explicit unchecked value,
+             * not "leave the previous override unchanged".
+             */
+            $raw = '0';
+        } else {
+            continue;
+        }
 
         if (is_array($raw)) {
             continue;
