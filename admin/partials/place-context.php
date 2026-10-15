@@ -107,14 +107,7 @@ foreach (
 
     if (
         $scope !== 'site'
-        || !in_array(
-            $source,
-            [
-                'campsite_record',
-                'map_feature',
-            ],
-            true
-        )
+        || $source !== 'campsite_record'
     ) {
         continue;
     }
@@ -139,11 +132,7 @@ foreach (
         'map_feature_id' =>
             (int) (
                 $target['map_feature_id']
-                ?? (
-                    $source === 'map_feature'
-                        ? $targetId
-                        : 0
-                )
+                ?? 0
             ),
 
         'parent_area_id' =>
