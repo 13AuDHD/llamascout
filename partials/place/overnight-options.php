@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/place-map-features.php';
+require_once dirname(__DIR__, 2) . '/app/place-map-pricing.php';
 require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
 
 $placeId =
@@ -10,6 +11,11 @@ $placeId =
         $place['id']
         ?? 0
     );
+
+$baseCampingFee =
+    $rules['fee']
+    ?? $place['rules']['fee']
+    ?? null;
 
 $stayFeatures = [];
 
@@ -149,10 +155,26 @@ foreach ($stayFeatures as $feature) {
             )
         );
 
+    $effectiveRates =
+        llama_place_map_effective_rates_with_place_base(
+            (array) (
+                $feature['effective_rates']
+                ?? $feature['rates']
+                ?? []
+            ),
+            $baseCampingFee
+        );
+
+    $pricingSummary =
+        llama_place_map_rate_summary_label(
+            $effectiveRates
+        );
+
     $description =
         implode(
-            ' · ',
+            ' - ',
             array_filter([
+                $pricingSummary,
                 $type !== ''
                     ? ucwords(
                         str_replace(
@@ -307,7 +329,7 @@ foreach ($stayFeatures as $feature) {
 
         'summary' =>
             $feeLabel
-            . ' · '
+            . ' - '
             . $statusLabel,
 
         'cost' =>
