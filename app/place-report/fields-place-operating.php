@@ -309,32 +309,11 @@ function llama_place_report_add_operating_fields(callable $add): void
     );
 }
 
-function llama_place_report_apply_operating_metadata(array &$fields): void
-{
-    foreach ($fields as $key => &$field) {
-        if (
-            !str_starts_with((string) $key, 'place_open_')
-            && !str_starts_with((string) $key, 'place_operating_')
-            && !str_starts_with((string) $key, 'place_entrance_gate')
-            && !str_starts_with((string) $key, 'place_gate_')
-            && !str_starts_with((string) $key, 'place_reported_operating_')
-            && !str_starts_with((string) $key, 'place_closure_')
-            && $key !== 'place_expected_reopening'
-            && !in_array(
-                $key,
-                [
-                    'place_opening_time',
-                    'place_closing_time',
-                ],
-                true
-            )
-        ) {
-            continue;
-        }
-
-        $field['layout_section'] = 'place';
-        $field['layout_group'] = 'operating_closures';
-    }
-
-    unset($field);
+function llama_place_report_apply_operating_metadata(
+    array &$fields
+): void {
+    /*
+     * Active layout placement is owned by flow-layout.php.
+     * Keep this hook for operating-specific presentation metadata.
+     */
 }
