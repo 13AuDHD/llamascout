@@ -134,7 +134,7 @@ function llama_place_report_fields(): array
         [
             'entrance_facility_fee',
             'parking_fee',
-      ]
+        ]
         as $key
     ) {
         if (isset($f[$key])) {
@@ -173,26 +173,6 @@ function llama_place_report_fields(): array
 
     require_once __DIR__ . '/flow-form-cleanup.php';
     llama_place_report_apply_form_cleanup_metadata($f);
-
-    foreach (
-        [
-            'tent_camping_allowed',
-            'rv_camping_allowed',
-            'overnight_restrictions',
-            'overnight_vehicle_tent_permit_url',
-      ]
-        as $key
-    ) {
-        if (!isset($f[$key])) {
-            continue;
-        }
-
-        $f[$key]['layout_section'] =
-            'place';
-
-        $f[$key]['layout_group'] =
-            'overnight_stays';
-    }
 
     /*
      * The shared form consumes registry order directly. Reorder only after
