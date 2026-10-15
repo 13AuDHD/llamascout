@@ -70,6 +70,18 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
                 }
 
+                /*
+                 * Resolve the photo target from the same verified Place/Area/Site
+                 * reporting selectors used by the form. Never trust a separate
+                 * browser-supplied photo target.
+                 */
+                $photoTarget =
+                    admin_place_report_photo_target(
+                        $db,
+                        $placeId,
+                        $_POST
+                    );
+
                 admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
                 admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
 
@@ -86,14 +98,28 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                 $removePaths = is_array($_POST['remove_existing_photos'] ?? null)
                     ? array_values(array_unique(array_filter(array_map('strval', $_POST['remove_existing_photos']))))
                     : [];
+
                 if ($removePaths) {
-                    foreach (admin_place_images($db, $placeId) as $image) {
+                    foreach (
+                        admin_place_report_target_images(
+                            $db,
+                            $placeId,
+                            $photoTarget
+                        )
+                        as $image
+                    ) {
                         if (!in_array((string) ($image['src'] ?? ''), $removePaths, true)) {
                             continue;
                         }
+
                         $path = admin_place_delete_image_in_report_transaction(
-                            $db, $actorUserId, $placeId, (int) $image['id']
+                            $db,
+                            $actorUserId,
+                            $placeId,
+                            (int) $image['id'],
+                            $photoTarget
                         );
+
                         if ($path !== '') {
                             $deferredPhotoDeletes[] = $path;
                         }
@@ -102,33 +128,49 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
                 $photoToken = trim((string) ($_POST['photo_stage_token'] ?? ''));
                 $newPhotos = llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]');
+
                 if ($newPhotos) {
                     if ($photoToken === '') {
                         throw new RuntimeException('The photo upload session is missing. Upload the photos again.');
                     }
+
                     $manifest = llama_photo_read_manifest('admin-place', $actorUserId, $photoToken);
                     $manifestPaths = [];
+
                     foreach ($manifest as $photo) {
                         $path = trim((string) ($photo['path'] ?? ''));
+
                         if ($path !== '') {
                             $manifestPaths[$path] = true;
                         }
                     }
+
                     $submittedPaths = [];
+
                     foreach ($newPhotos as $photo) {
                         $path = trim((string) ($photo['path'] ?? ''));
+
                         if ($path !== '') {
                             $submittedPaths[$path] = true;
                         }
                     }
+
                     if (array_diff_key($submittedPaths, $manifestPaths)) {
                         throw new RuntimeException(
                             'One or more staged photos are no longer available. Upload those photos again before saving.'
                         );
                     }
+
                     $photosAdded = admin_place_add_photos_in_report_transaction(
-                        $db, $actorUserId, $placeId, $photoToken, $newPhotos, $committedPhotosForCleanup
+                        $db,
+                        $actorUserId,
+                        $placeId,
+                        $photoToken,
+                        $newPhotos,
+                        $photoTarget,
+                        $committedPhotosForCleanup
                     );
+
                     if ($photosAdded !== count($newPhotos)) {
                         throw new RuntimeException('The Place Report could not save all staged photos.');
                     }
@@ -139,28 +181,44 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                 if ($db->inTransaction()) {
                     $db->rollBack();
                 }
+
                 foreach ($committedPhotosForCleanup as $photo) {
                     llama_photo_delete_owned_permanent_path(
-                        (string) ($photo['path'] ?? ''), ['uploads/places']
+                        (string) ($photo['path'] ?? ''),
+                        ['uploads/places']
                     );
                 }
+
                 throw $saveException;
             }
 
             foreach (array_unique($deferredPhotoDeletes) as $path) {
                 if (!llama_photo_delete_owned_permanent_path((string) $path, ['uploads/places'])) {
-                    error_log('Llama Scout could not remove committed Place photo file: ' . (string) $path);
+                    error_log('Llama Scout could not remove committed reporting-target photo file: ' . (string) $path);
                 }
             }
+
             if ($backgroundPlaceSave) {
+                $photoTargetTotal =
+                    isset($photoTarget)
+                        ? count(
+                            admin_place_report_target_images(
+                                $db,
+                                $placeId,
+                                $photoTarget
+                            )
+                        )
+                        : 0;
+
                 admin_place_background_save_respond(200, [
                     'success' => true,
                     'message' => 'Place Report saved.',
                     'photos_added' => $photosAdded,
-                    'photo_total' => count(admin_place_images($db, $placeId)),
+                    'photo_total' => $photoTargetTotal,
                     'csrf_token' => moderation_csrf_token(),
                 ]);
             }
+
             header('Location: /place.php?id=' . $placeId . '&saved=report', true, 303);
             exit;
         }
@@ -203,6 +261,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
         }
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
+
         if ($backgroundPlaceSave && $action === 'save-report') {
             $status = $exception instanceof PDOException ? 500 : 422;
             $payload = [
@@ -210,14 +269,18 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                 'message' => $error !== '' ? $error : 'The Place Report could not be saved.',
                 'photos_added' => 0,
             ];
+
             if ($status === 500 && function_exists('llama_log_exception')) {
                 $payload['reference'] = llama_log_exception(
-                    $exception, 'admin.place_report_save',
+                    $exception,
+                    'admin.place_report_save',
                     ['place_id' => $placeId, 'actor_user_id' => $actorUserId]
                 );
             }
+
             admin_place_background_save_respond($status, $payload);
         }
     }
+
     return ['notice' => $notice, 'error' => $error, 'action' => $action];
 }
