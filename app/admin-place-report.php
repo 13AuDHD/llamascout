@@ -531,7 +531,7 @@ function admin_place_add_photos_in_report_transaction(
 
     $committed =
         llama_photo_commit_stage(
-            'add-place',
+            'admin-place',
             $actorUserId,
             $photoToken,
             $photos,
