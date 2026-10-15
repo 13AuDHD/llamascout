@@ -106,6 +106,7 @@ function llama_place_map_feature_validate_rates(
         llama_place_map_feature_rate_type_options();
 
     $clean = [];
+    $identities = [];
 
     foreach (
         array_values($rates)
@@ -147,6 +148,15 @@ function llama_place_map_feature_validate_rates(
         if (mb_strlen($label) > 80) {
             throw new InvalidArgumentException(
                 'Rate labels can be up to 80 characters.'
+            );
+        }
+
+        if (
+            $rateType === 'holiday'
+            && $label === ''
+        ) {
+            throw new InvalidArgumentException(
+                'Holiday rates need a holiday name.'
             );
         }
 
@@ -224,7 +234,7 @@ function llama_place_map_feature_validate_rates(
             );
         }
 
-        $clean[] = [
+        $cleanRate = [
             'rate_type' =>
                 $rateType,
 
@@ -250,6 +260,48 @@ function llama_place_map_feature_validate_rates(
                     ? $notes
                     : null,
         ];
+
+        $identity =
+            llama_place_map_rate_identity(
+                $cleanRate
+            );
+
+        if (
+            $identity !== ''
+            && isset(
+                $identities[
+                    $identity
+                ]
+            )
+        ) {
+            throw new InvalidArgumentException(
+                match ($rateType) {
+                    'holiday' =>
+                        'Holiday rate names must be unique within the same pricing layer.',
+
+                    'seasonal' =>
+                        'Seasonal date ranges must be unique within the same pricing layer.',
+
+                    default =>
+                        'Only one '
+                        . strtolower(
+                            $typeOptions[
+                                $rateType
+                            ]
+                        )
+                        . ' rate can exist within the same pricing layer.',
+                }
+            );
+        }
+
+        if ($identity !== '') {
+            $identities[
+                $identity
+            ] = true;
+        }
+
+        $clean[] =
+            $cleanRate;
     }
 
     return $clean;
