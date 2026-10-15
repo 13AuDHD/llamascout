@@ -59,90 +59,212 @@ $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
 $adminPlaceSiteAssociations = admin_place_site_association_catalog($db, $placeId);
 
 /*
- * Build one read-only browser catalog for the existing-photo panel.
- * The database remains the source of truth. This catalog only lets Admin
- * switch the visible gallery when the reporting target changes.
+ * Browser catalog for the shared Admin photo panel.
+ *
+ * This mirrors the real persistence owners:
+ * - Place photos: place_images
+ * - Site photos: place_campsite_images
+ *
+ * Areas are listed only so the browser can explicitly disable the photo
+ * uploader instead of pretending Area photos have a persistence owner.
  */
 $adminPlacePhotoTargets = [];
 
-$photoTargetAdd = static function (
-    array &$catalog,
-    string $key,
-    string $label,
-    array $target
-) use ($db, $placeId): void {
-    $photos = admin_place_report_target_images(
-        $db,
-        $placeId,
-        $target
-    );
+$serializePhotos =
+    static function (
+        array $photos
+    ): array {
+        return array_values(
+            array_map(
+                static fn (array $photo): array => [
+                    'id' =>
+                        (int) (
+                            $photo['id']
+                            ?? 0
+                        ),
 
-    $catalog[$key] = [
-        'label' => $label,
-        'scope' => (string) ($target['scope'] ?? ''),
-        'source' => (string) ($target['source'] ?? ''),
-        'id' => (int) ($target['id'] ?? 0),
-        'photos' => array_values(array_map(
-            static fn (array $photo): array => [
-                'id' => (int) ($photo['id'] ?? 0),
-                'src' => (string) ($photo['src'] ?? ''),
-                'url' => admin_place_photo_url($photo),
-                'alt' => (string) ($photo['alt_text'] ?? ''),
-            ],
-            $photos
-        )),
-    ];
-};
+                    'src' =>
+                        (string) (
+                            $photo['src']
+                            ?? ''
+                        ),
 
-$photoTargetAdd(
-    $adminPlacePhotoTargets,
-    'place:place:' . $placeId,
-    'Entire Place',
-    [
-        'scope' => 'place',
-        'source' => 'place',
-        'id' => $placeId,
-    ]
-);
+                    'url' =>
+                        admin_place_photo_url(
+                            $photo
+                        ),
+
+                    'alt' =>
+                        (string) (
+                            $photo['alt_text']
+                            ?? ''
+                        ),
+                ],
+                $photos
+            )
+        );
+    };
+
+$adminPlacePhotoTargets[
+    'place:place:' . $placeId
+] = [
+    'label' => 'Entire Place',
+    'scope' => 'place',
+    'source' => 'place',
+    'id' => $placeId,
+    'supported' => true,
+    'max' => 30,
+    'photos' =>
+        $serializePhotos(
+            $images
+        ),
+];
 
 foreach ($adminPlaceAreas as $area) {
-    $source = (string) ($area['scope_source'] ?? '');
-    $scopeId = (int) ($area['scope_id'] ?? 0);
+    $source =
+        (string) (
+            $area['scope_source']
+            ?? ''
+        );
 
-    if ($source === '' || $scopeId < 1) {
+    $scopeId =
+        (int) (
+            $area['scope_id']
+            ?? 0
+        );
+
+    if (
+        $source === ''
+        || $scopeId < 1
+    ) {
         continue;
     }
 
-    $photoTargetAdd(
-        $adminPlacePhotoTargets,
-        'area:' . $source . ':' . $scopeId,
-        (string) ($area['label'] ?? ('Area #' . $scopeId)),
-        [
-            'scope' => 'area',
-            'source' => $source,
-            'id' => $scopeId,
-        ]
-    );
+    $adminPlacePhotoTargets[
+        'area:'
+        . $source
+        . ':'
+        . $scopeId
+    ] = [
+        'label' =>
+            (string) (
+                $area['label']
+                ?? ('Area #' . $scopeId)
+            ),
+
+        'scope' => 'area',
+        'source' => $source,
+        'id' => $scopeId,
+        'supported' => false,
+        'max' => 0,
+        'photos' => [],
+    ];
 }
 
 foreach ($adminPlaceCampsites as $site) {
-    $source = (string) ($site['scope_source'] ?? '');
-    $scopeId = (int) ($site['scope_id'] ?? 0);
+    $selectorValue =
+        trim(
+            (string) (
+                $site['id']
+                ?? ''
+            )
+        );
 
-    if ($source === '' || $scopeId < 1) {
+    if ($selectorValue === '') {
         continue;
     }
 
-    $photoTargetAdd(
-        $adminPlacePhotoTargets,
-        'site:' . $source . ':' . $scopeId,
-        (string) ($site['label'] ?? ('Site #' . $scopeId)),
-        [
+    try {
+        $target =
+            admin_place_report_photo_target(
+                $db,
+                $placeId,
+                [
+                    'selected_campsite_id' =>
+                        $selectorValue,
+                ]
+            );
+
+        if (
+            (string) (
+                $target['scope']
+                ?? ''
+            ) !== 'site'
+        ) {
+            continue;
+        }
+
+        $photos =
+            admin_place_report_target_images(
+                $db,
+                $placeId,
+                $target
+            );
+
+        $adminPlacePhotoTargets[
+            'site:' . $selectorValue
+        ] = [
+            'label' =>
+                (string) (
+                    $site['label']
+                    ?? $target['label']
+                    ?? 'Site'
+                ),
+
             'scope' => 'site',
-            'source' => $source,
-            'id' => $scopeId,
-        ]
-    );
+            'source' => 'campsite_record',
+            'id' =>
+                (int) (
+                    $target['id']
+                    ?? 0
+                ),
+
+            'supported' => true,
+            'max' => 10,
+            'photos' =>
+                $serializePhotos(
+                    $photos
+                ),
+        ];
+    } catch (
+        InvalidArgumentException
+        | RuntimeException
+        $exception
+    ) {
+        /*
+         * A legacy map-only Site may still be visible until it is saved once
+         * through the updated map editor. Show the target, but do not allow a
+         * photo upload until canonical identity exists.
+         */
+        $adminPlacePhotoTargets[
+            'site:' . $selectorValue
+        ] = [
+            'label' =>
+                (string) (
+                    $site['label']
+                    ?? 'Site'
+                ),
+
+            'scope' => 'site',
+            'source' =>
+                (string) (
+                    $site['scope_source']
+                    ?? ''
+                ),
+
+            'id' =>
+                (int) (
+                    $site['scope_id']
+                    ?? 0
+                ),
+
+            'supported' => false,
+            'max' => 0,
+            'photos' => [],
+            'reason' =>
+                'Save this Individual campsite in the map editor once so it receives its canonical Site identity before adding photos.',
+        ];
+    }
 }
 
 $stats = admin_dashboard_stats($db);
@@ -178,15 +300,9 @@ $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
 $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
-
-/*
- * Admin can switch between Place, Area, and Site targets. Keep the browser
- * uploader batch size consistent at 10; backend target limits remain
- * authoritative.
- */
 $placeReportPhotoMax = 10;
 $placeReportPhotoTitle = 'Place photos';
-$placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Site reporting target.';
+$placeReportPhotoHelp = 'Add photos to the currently selected Place or canonical Site.';
 ?>
 
 <?php if ($notice !== ''): ?>
