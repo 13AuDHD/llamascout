@@ -3,19 +3,17 @@
 declare(strict_types=1);
 
 /**
- * Place-wide rules and restrictions.
+ * Rules and restrictions.
  *
- * Existing canonical answers are reused whenever possible. These questions
- * describe rules for the Place as a whole; individual campsite exceptions
- * belong in Site → Rules & Restrictions.
+ * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
+ * decides whether each rule is Place-only, Place/Area, or can have a Site
+ * override.
  */
 function llama_place_report_add_place_rules_fields(callable $add): void
 {
     $common = [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
-        'report_scopes' => ['place'],
-        'report_scope_group' => 'place',
     ];
 
     $conditional = [
@@ -60,6 +58,7 @@ function llama_place_report_add_place_rules_fields(callable $add): void
     );
 
     $hours = [];
+
     for ($hour = 0; $hour < 24; $hour++) {
         $value = sprintf('%02d:00', $hour);
         $hours[$value] = date('g A', strtotime('2000-01-01 ' . $value));
@@ -123,8 +122,8 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 }
 
 /**
- * Apply the approved Place-wide ordering and dependencies after the legacy
- * field registry has been assembled.
+ * Apply labels, layout, and dependencies after the legacy field registry has
+ * been assembled. Scope ownership remains exclusively in flow-scopes.php.
  */
 function llama_place_report_apply_place_rules_metadata(array &$fields): void
 {
@@ -160,16 +159,13 @@ function llama_place_report_apply_place_rules_metadata(array &$fields): void
             continue;
         }
 
-        $fields[$key]['report_scopes'] = ['place'];
-        $fields[$key]['report_scope_group'] = 'place';
-        $fields[$key]['scope_inheritance'] = 'nearest_recorded';
         $fields[$key]['layout_section'] = 'place';
         $fields[$key]['layout_group'] = 'place_rules';
     }
 
     if (isset($fields['pets_allowed'])) {
         $fields['pets_allowed']['label'] = 'Pets allowed?';
-        $fields['pets_allowed']['help'] = 'Answer for the Place as a whole. Individual campsite exceptions belong under Site rules.';
+        $fields['pets_allowed']['help'] = 'Answer for the current reporting target. Site exceptions remain possible where the canonical scope permits them.';
     }
 
     if (isset($fields['dogs_required_to_be_leashed'])) {
