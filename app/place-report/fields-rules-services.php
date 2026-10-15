@@ -163,6 +163,8 @@ function llama_place_report_add_rules_service_fields(
         'placeholder' => '0.00',
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
+        'help' =>
+            'A separate reservation or booking charge added to the stay. Do not enter the nightly camping price here.',
     ]);
 
     $add('membership_required', 'Membership required?', 'rules', 'tri', 'rules.membership_required', [
@@ -183,6 +185,8 @@ function llama_place_report_add_rules_service_fields(
         'placeholder' => '0.00',
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
+        'help' =>
+            'The cost of the required membership itself. Do not enter a nightly camping rate, reservation fee, entrance fee, or parking fee here.',
     ]);
 
     $add('check_in_required', 'Check-in required?', 'rules', 'tri', 'rules.check_in_required', [
@@ -227,13 +231,15 @@ function llama_place_report_add_rules_service_fields(
         'points_categories' => ['seasons_rules_services'],
     ]);
 
-    $add('fee', 'Camping fee', 'rules', 'number', 'rules.fee', [
+    $add('fee', 'Base camping fee', 'rules', 'number', 'rules.fee', [
         'step' => '.01',
         'min' => '0',
         'max' => '100000',
         'placeholder' => '0.00',
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
+        'help' =>
+            'The normal base overnight camping price for the Place when one simple amount accurately describes it. Use 0 for free camping. Detailed Area, Site, weekday, weekend, holiday, or seasonal nightly rates belong in the mapped rate system and take precedence for those mapped targets.',
     ]);
 
     $add('entrance_facility_fee', 'Entrance / day-use / facility fee', 'rules', 'number', 'rules.entrance_facility_fee', [
@@ -243,6 +249,8 @@ function llama_place_report_add_rules_service_fields(
         'placeholder' => '0.00',
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
+        'help' =>
+            'A separate entrance, day-use, recreation, or facility charge. Do not combine this with the overnight camping price or parking charge.',
     ]);
 
     $add('parking_fee', 'Parking fee / pass', 'rules', 'number', 'rules.parking_fee', [
@@ -252,6 +260,8 @@ function llama_place_report_add_rules_service_fields(
         'placeholder' => '0.00',
         'format' => 'currency',
         'points_categories' => ['seasons_rules_services'],
+        'help' =>
+            'A separate charge required to park a vehicle or hold a parking pass. Do not use this for the nightly camping price unless the documented charge is specifically a parking charge.',
     ]);
 
     $add('current_fire_restrictions_url', 'Current fire restrictions URL', 'rules', 'url', 'rules.current_fire_restrictions_url', [
