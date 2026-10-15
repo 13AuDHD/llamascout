@@ -57,6 +57,7 @@ function llama_place_report_layout_assignments(): array
             'approach_width_restricted', 'approach_narrowest_width_feet',
             'approach_turnaround_available', 'approach_overhead_obstacles',
             'approach_access_restrictions',
+            'access_summary',
         ],
 
         'getting_there:seasonal_access' => [
@@ -225,11 +226,8 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'site:parking_dimensions' => [
-            'rv_suitable',
-            'trailer_suitable',
             'max_vehicle_length_feet',
             'max_rv_length_feet',
-            'max_trailer_length_feet',
             'overhead_clearance_feet',
             'double_driveway',
             'parking_surface',
@@ -244,12 +242,10 @@ function llama_place_report_layout_assignments(): array
            'levelness',
            'leveling_required',
             'site_access_difficulty',
-            'walking_distance_from_vehicle',
             'hike_in_distance_feet',
       ],
 
         'site:camping_equipment' => [
-            'tent_camping_suitable',
             'tent_pad',
             'tent_pad_length_feet',
             'tent_pad_width_feet',
@@ -303,6 +299,7 @@ function llama_place_report_layout_assignments(): array
             'mobility_device_friendly',
             'flat_walking_surface',
             'step_free_access',
+            'walking_distance_from_vehicle',
         ],
 
         'site:experience_recommendations' => [
@@ -320,7 +317,6 @@ function llama_place_report_layout_assignments(): array
       ],
 
         'site:site_photos' => [
-            'access_summary',
             'contributor_notes',
             'scout_note_1',
             'scout_note_2',
