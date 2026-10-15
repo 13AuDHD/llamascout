@@ -807,10 +807,24 @@ function llama_place_map_features(
             ST_SRID(place_map_features.geometry)
                 AS geometry_srid,
 
-            ST_AsGeoJSON(
-                place_map_features.geometry,
-                7
-            ) AS geometry_geojson
+            ST_NumPoints(
+                ST_ExteriorRing(
+                    place_map_features.geometry
+                )
+            ) AS geometry_point_count,
+
+            CASE
+                WHEN ST_NumPoints(
+                    ST_ExteriorRing(
+                        place_map_features.geometry
+                    )
+                ) <= 501
+                THEN ST_AsGeoJSON(
+                    place_map_features.geometry,
+                    7
+                )
+                ELSE NULL
+            END AS geometry_geojson
 
          FROM place_map_features
 
@@ -848,6 +862,27 @@ function llama_place_map_features(
         ?: []
         as $row
     ) {
+        $geometryPointCount =
+            max(
+                0,
+                (int) (
+                    $row['geometry_point_count']
+                    ?? 0
+                )
+            );
+
+        if ($geometryPointCount > 501) {
+            error_log(
+                'Llama Scout skipped oversized map feature #'
+                . (int) ($row['id'] ?? 0)
+                . ' with '
+                . $geometryPointCount
+                . ' polygon points.'
+            );
+
+            continue;
+        }
+
         $geometry =
             json_decode(
                 (string) (
