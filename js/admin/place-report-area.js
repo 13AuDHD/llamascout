@@ -23,8 +23,6 @@
     const state = new Map(areas.map(area => [String(area.id), { ...area.form_values }]));
     let selected = '';
     let dirty = false;
-    // Preserve Place answers independently of Area answers.
-    const placeValues = read();
 
     const read = () => {
         const values = {};
@@ -39,6 +37,9 @@
         }
         return values;
     };
+
+    // Capture the initial Place answers after read() is initialized.
+    const placeValues = read();
 
     const write = values => {
         for (const input of inputs) {
