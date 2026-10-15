@@ -10,6 +10,7 @@ require_once dirname(__DIR__) . '/app/admin-place-areas.php';
 require_once dirname(__DIR__) . '/app/admin-place-report.php';
 require_once dirname(__DIR__) . '/app/admin-place-actions.php';
 require_once dirname(__DIR__) . '/app/place-verifications.php';
+require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -56,6 +57,25 @@ $remainingPhotos = max(0, 30 - count($images));
 $reportData = admin_place_shared_report_data($db, $placeId);
 $adminPlaceCampsites = admin_place_campsite_form_catalog($db, $placeId);
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
+
+$adminPlaceMapFeatures = array_values(
+    array_map(
+        static fn (array $feature): array => [
+            'id' => (int) ($feature['id'] ?? 0),
+            'place_id' => (int) ($feature['place_id'] ?? 0),
+            'feature_type' => (string) ($feature['feature_type'] ?? ''),
+            'label' => (string) ($feature['label'] ?? ''),
+            'geometry' => is_array($feature['geometry'] ?? null)
+                ? $feature['geometry']
+                : null,
+        ],
+        llama_place_map_features(
+            $db,
+            $placeId,
+            true
+        )
+    )
+);
 
 /*
  * Browser catalog for the shared Admin photo panel.
@@ -330,6 +350,8 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place or Site.';
 <script src="https://llamascout.com/js/place-report-form.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-save.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://llamascout.com/js/admin/place-map.js"></script>
 <script src="https://llamascout.com/js/admin/place-context.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-photos.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
