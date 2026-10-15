@@ -410,6 +410,78 @@ function llama_place_map_rates_with_source(
     );
 }
 
+function llama_place_map_rate_identity(
+    array $rate
+): string {
+    $type =
+        strtolower(
+            trim(
+                (string) (
+                    $rate['rate_type']
+                    ?? ''
+                )
+            )
+        );
+
+    if ($type === '') {
+        return '';
+    }
+
+    if ($type === 'seasonal') {
+        $start =
+            trim(
+                (string) (
+                    $rate['season_start']
+                    ?? ''
+                )
+            );
+
+        $end =
+            trim(
+                (string) (
+                    $rate['season_end']
+                    ?? ''
+                )
+            );
+
+        return implode(
+            '|',
+            [
+                $type,
+                $start,
+                $end,
+            ]
+        );
+    }
+
+    if ($type === 'holiday') {
+        $label =
+            mb_strtolower(
+                trim(
+                    preg_replace(
+                        '/\\s+/',
+                        ' ',
+                        (string) (
+                            $rate['label']
+                            ?? ''
+                        )
+                    )
+                    ?? ''
+                )
+            );
+
+        return implode(
+            '|',
+            [
+                $type,
+                $label,
+            ]
+        );
+    }
+
+    return $type;
+}
+
 function llama_place_map_merge_rate_layers(
     array ...$layers
 ): array {
@@ -417,20 +489,19 @@ function llama_place_map_merge_rate_layers(
 
     foreach ($layers as $layer) {
         foreach ($layer as $rate) {
-            $type =
-                (string) (
-                    $rate['rate_type']
-                    ?? ''
-                );
-
-            if ($type === '') {
+            if (!is_array($rate)) {
                 continue;
             }
 
-            /*
-             * Preserve the existing V1 rate rule: a more-specific rate
-             * of the same type replaces the less-specific rate.
-             */
+            $identity =
+                llama_place_map_rate_identity(
+                    $rate
+                );
+
+            if ($identity === '') {
+                continue;
+            }
+
             $result =
                 array_values(
                     array_filter(
@@ -438,10 +509,9 @@ function llama_place_map_merge_rate_layers(
                         static fn (
                             array $existing
                         ): bool =>
-                            (string) (
-                                $existing['rate_type']
-                                ?? ''
-                            ) !== $type
+                            llama_place_map_rate_identity(
+                                $existing
+                            ) !== $identity
                     )
                 );
 
