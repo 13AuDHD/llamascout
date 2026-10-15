@@ -92,7 +92,7 @@
                 || ''
         });
 
-    const rateField =
+    const rateFind =
         (
             labelText,
             control
@@ -438,12 +438,12 @@
                             );
 
                             heading.append(
-                                rateField(
+                                rateFinld(
                                     'Class name',
                                     nameInput
                                 ),
 
-                                rateField(
+                                rateFind(
                                     'Description',
                                     descriptionInput
                                 ),
@@ -612,17 +612,17 @@
                                     );
 
                                     row.append(
-                                        rateField(
+                                        rateFinld(
                                             'Rate type',
                                             typeSelect
                                         ),
 
-                                        rateField(
+                                        rateFind(
                                             'Label',
                                             labelInput
                                         ),
 
-                                        rateField(
+                                        rateFinld(
                                             'Nightly amount (USD)',
                                             amountInput
                                         )
@@ -699,12 +699,12 @@
                                         );
 
                                         row.append(
-                                            rateField(
+                                            rateFind(
                                                 'Season begins',
                                                 startInput
                                             ),
 
-                                            rateField(
+                                            rateFinld(
                                                 'Season ends',
                                                 endInput
                                             )
@@ -771,17 +771,17 @@
                                         }
                                     );
 
-                                    const notesField =
-                                        rateField(
+                                    const notesFinld =
+                                        rateFinld(
                                             'Notes',
                                             notesInput
                                         );
 
-                                    notesField.className =
+                                    notesFinld.className =
                                         'mapped-area-editor-site-class-rate-notes';
 
                                     row.append(
-                                        notesField,
+                                        notesFind,
                                         removeRateButton
                                     );
 
@@ -964,172 +964,28 @@
                         return;
                     }
 
-                    const parentRates =
-                        Array.isArray(
-                            parent.rates
-                        )
-                            ? parent.rates
-                            : [];
-
-                    const selectedClassId =
-                        Number(
-                            getSiteClassId?.()
-                            || 0
-                        );
-
-                    const selectedClass =
-                        (
-                            Array.isArray(
-                                parent.site_classes
-                            )
-                                ? parent.site_classes
-                                : []
-                        ).find(
-                            (item) =>
-                                Number(
-                                    item.id
-                                )
-                                === selectedClassId
-                        )
-                        || null;
-
-                    const classRates =
-                        Array.isArray(
-                            selectedClass?.rates
-                        )
-                            ? selectedClass.rates
-                            : [];
-
                     if (
-                        parentRates.length
-                        === 0
-                        && classRates.length
-                            === 0
+                        typeof namespace
+                            .renderPricingInheritance
+                        !== 'function'
                     ) {
                         return;
                     }
 
-                    const title =
-                        document.createElement(
-                            'strong'
-                        );
+                    namespace.renderPricingInheritance({
+                        container:
+                            rateInheritance,
 
-                    title.textContent =
-                        selectedClass
-                            ? `Inherited pricing: ${selectedClass.name}`
-                            : `Inherited pricing: ${parent.label || 'parent Camping area'}`;
+                        parent,
 
-                    const effectiveInherited =
-                        [];
+                        selectedClassId:
+                            Number(
+                                getSiteClassId?.()
+                                || 0
+                            ),
 
-                    parentRates.forEach(
-                        (rate) => {
-                            effectiveInherited.push({
-                                ...rate,
-                                source:
-                                    'campground'
-                            });
-                        }
-                    );
-
-                    classRates.forEach(
-                        (rate) => {
-                            const rateType =
-                                String(
-                                    rate.rate_type
-                                    || ''
-                                );
-
-                            for (
-                                let index =
-                                    effectiveInherited.length
-                                    - 1;
-                                index >= 0;
-                                index--
-                            ) {
-                                if (
-                                    String(
-                                        effectiveInherited[
-                                            index
-                                        ].rate_type
-                                        || ''
-                                    )
-                                    === rateType
-                                ) {
-                                    effectiveInherited.splice(
-                                        index,
-                                        1
-                                    );
-                                }
-                            }
-
-                            effectiveInherited.push({
-                                ...rate,
-                                source:
-                                    'class'
-                            });
-                        }
-                    );
-
-                    const summary =
-                        document.createElement(
-                            'span'
-                        );
-
-                    const amounts =
-                        effectiveInherited
-                            .map(
-                                (rate) =>
-                                    Number(
-                                        rate.amount
-                                    )
-                            )
-                            .filter(
-                                Number.isFinite
-                            );
-
-                    if (
-                        amounts.length
-                        > 0
-                    ) {
-                        const min =
-                            Math.min(
-                                ...amounts
-                            );
-
-                        const max =
-                            Math.max(
-                                ...amounts
-                            );
-
-                        summary.textContent =
-                            min === max
-                                ? `${rateMoney(min)} / night`
-                                : `${rateMoney(min)}â${rateMoney(max)} / night`;
-
-                    } else {
-                        summary.textContent =
-                            `${effectiveInherited.length} inherited rate${effectiveInherited.length === 1 ? '' : 's'}`;
-                    }
-
-                    const note =
-                        document.createElement(
-                            'small'
-                        );
-
-                    note.textContent =
-                        selectedClass
-                            ? 'Camping-area rates apply first, the pricing class replaces matching rate types, and this individual site can override either one.'
-                            : 'Camping-area rates apply unless this individual site has its own rate of the same type.';
-
-                    rateInheritance.append(
-                        title,
-                        summary,
-                        note
-                    );
-
-                    rateInheritance.hidden =
-                        false;
+                        rateMoney
+                    });
                 };
 
             const renderRates =
@@ -1187,7 +1043,7 @@
                                     'select'
                                 );
 
-                            Object.entries(
+                            Object.entrins(
                                 rateTypeLabels
                             ).forEach(
                                 ([
@@ -1455,17 +1311,17 @@
                             );
 
                             row.append(
-                                rateField(
+                                rateFinld(
                                     'Rate type',
                                     typeSelect
                                 ),
 
-                                rateField(
+                                rateFinld(
                                     'Label',
                                     labelInput
                                 ),
 
-                                rateField(
+                                rateFinld(
                                     'Nightly amount (USD)',
                                     amountInput
                                 )
@@ -1476,12 +1332,12 @@
                                 === 'seasonal'
                             ) {
                                 row.append(
-                                    rateField(
+                                    rateFinld(
                                         'Season begins',
                                         startInput
                                     ),
 
-                                    rateField(
+                                    rateFinld(
                                         'Season ends',
                                         endInput
                                     )
@@ -1489,7 +1345,7 @@
                             }
 
                             row.append(
-                                rateField(
+                                rateFinld(
                                     'Notes',
                                     notesInput
                                 ),
