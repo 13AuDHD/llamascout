@@ -446,6 +446,56 @@ function llama_place_campsites(
         $row
     );
 
+    /*
+     * Database string ordering puts 10 before 2. Site identifiers are
+     * human-facing labels, so use natural ordering after hydration:
+     * 1, 2, 3 ... 9, 10, 11 ... rather than 1, 10, 11 ... 2.
+     */
+    usort(
+        $rows,
+        static function (
+            array $left,
+            array $right
+        ): int {
+            $leftKey =
+                trim(
+                    (string) (
+                        $left['site_code']
+                        ?? $left['site_name']
+                        ?? $left['display_name']
+                        ?? $left['id']
+                        ?? ''
+                    )
+                );
+
+            $rightKey =
+                trim(
+                    (string) (
+                        $right['site_code']
+                        ?? $right['site_name']
+                        ?? $right['display_name']
+                        ?? $right['id']
+                        ?? ''
+                    )
+                );
+
+            $comparison =
+                strnatcasecmp(
+                    $leftKey,
+                    $rightKey
+                );
+
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+
+            return
+                (int) ($left['id'] ?? 0)
+                <=>
+                (int) ($right['id'] ?? 0);
+        }
+    );
+
     return $rows;
 }
 
@@ -634,6 +684,51 @@ function llama_place_campsite_map_options(
                     : null,
         ];
     }
+
+    usort(
+        $options,
+        static function (
+            array $left,
+            array $right
+        ): int {
+            $leftKey =
+                trim(
+                    (string) (
+                        $left['site_code']
+                        ?? $left['site_name']
+                        ?? $left['label']
+                        ?? $left['id']
+                        ?? ''
+                    )
+                );
+
+            $rightKey =
+                trim(
+                    (string) (
+                        $right['site_code']
+                        ?? $right['site_name']
+                        ?? $right['label']
+                        ?? $right['id']
+                        ?? ''
+                    )
+                );
+
+            $comparison =
+                strnatcasecmp(
+                    $leftKey,
+                    $rightKey
+                );
+
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+
+            return
+                (int) ($left['id'] ?? 0)
+                <=>
+                (int) ($right['id'] ?? 0);
+        }
+    );
 
     return $options;
 }
