@@ -326,8 +326,8 @@
                             target?.reason
                             || (
                                 target?.scope === 'area'
-                                    ? 'Area photos are not yet supported by a canonical Area media store.'
-                                    : 'This Site needs a canonical Site identity before photos can be added.'
+                                    ? 'Photos are not available for Areas yet.'
+                                    : 'Save this Site once before adding photos.'
                             )
                         );
                 }
@@ -379,7 +379,7 @@
                             || (
                                 target.scope === 'area'
                                     ? 'Area photos are not yet supported.'
-                                    : 'This Site needs a canonical Site identity before photos can be added.'
+                                    : 'Save this Site once before adding photos.'
                             )
                         );
             }
@@ -403,7 +403,7 @@
                 empty.textContent =
                     supported
                         ? 'No photos are attached to this reporting target yet.'
-                        : 'No canonical photo gallery is available for this target yet.';
+                        : 'No photo gallery is available for this selection yet.';
 
                 grid.appendChild(
                     empty
@@ -483,7 +483,7 @@
                 event.stopImmediatePropagation();
 
                 window.alert(
-                    'Save or remove the staged photos before changing the reporting target. This keeps photos from being attached to the wrong Place or Site.'
+                    'Save or remove these photos before switching to another Place, Area, or Site.'
                 );
 
                 return;
