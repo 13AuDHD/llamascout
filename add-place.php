@@ -336,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error =
                     $reference === null
                         ? $exception->getMessage()
-                        : llama_error_message_with_reference(
+                    : llama_error_message_with_reference(
                             'The Place could not be submitted. Please try again.',
                             $reference
                         );
@@ -370,11 +370,6 @@ require __DIR__ . '/partials/header.php';
 
 $placeReportValues = $_POST;
 $placeReportMode = 'contributor';
-$placeReportRequiredFields = [
-    'name',
-    'latitude',
-    'longitude',
-];
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
@@ -772,9 +767,10 @@ $placeReportCompletionConfig = [
                     data-place-report-minimum-status
                 >
                     <strong>Minimum to submit:</strong>
-                    name, exact location, 1 current photo.
+                    name, Place type, date visited, description,
+                    exact location, 1 current photo.
                 </span>
-                
+
             </span>
         </div>
 
