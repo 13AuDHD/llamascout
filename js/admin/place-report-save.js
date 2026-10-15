@@ -254,6 +254,17 @@
     };
 
 
+    const photoUploader =
+        form.querySelector(
+            '[data-photo-uploader]'
+        );
+
+    const photoContext =
+        String(
+            photoUploader?.dataset.photoContext
+            || 'admin-place'
+        );
+
     const campsiteConfigNode =
         form.querySelector(
             '[data-admin-place-campsites]'
@@ -984,7 +995,7 @@
                     {
                         detail: {
                             context:
-                                'add-place',
+                                photoContext,
                             count:
                                 photosAdded,
                             total:
