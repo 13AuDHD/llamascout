@@ -825,6 +825,7 @@ require __DIR__ . '/partials/header.php';
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/place-map-editor/site-fields.js"></script>
 <script src="/js/place-map-editor/pricing.js"></script>
+<script src="/js/place-map-editor/pricing-inheritance.js"></script>
 <script src="/js/place-map-editor/feature-state.js"></script>
 <script src="/js/place-map-editor/geometry.js"></script>
 <script src="/js/place-map-editor/gps.js"></script>
