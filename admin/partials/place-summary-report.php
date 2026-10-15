@@ -171,6 +171,19 @@ declare(strict_types=1);
             | JSON_HEX_QUOT
         ) ?></script>
 
+        <script type="application/json" data-admin-place-photo-targets><?= json_encode(
+            [
+                'place_id' => $placeId,
+                'targets' => $adminPlacePhotoTargets,
+            ],
+            JSON_UNESCAPED_SLASHES
+            | JSON_UNESCAPED_UNICODE
+            | JSON_HEX_TAG
+            | JSON_HEX_AMP
+            | JSON_HEX_APOS
+            | JSON_HEX_QUOT
+        ) ?></script>
+
         <?php
         $placeReportPhotoContext = 'admin-place';
         require dirname(__DIR__, 2) . '/partials/place-report/form.php';
