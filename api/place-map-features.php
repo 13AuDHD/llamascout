@@ -112,6 +112,263 @@ function llama_place_map_api_campsites(
     );
 }
 
+/**
+ * Every mapped Individual campsite must resolve to one canonical Site.
+ *
+ * The map feature owns geometry. place_campsites owns Site identity.
+ * This helper reuses an existing Site when possible and creates the canonical
+ * record only when the mapped Site does not already have one.
+ */
+function llama_place_map_api_ensure_canonical_campsite(
+    PDO $db,
+    int $placeId,
+    int $featureId,
+    string $label,
+    array $siteDetails
+): int {
+    if (
+        $placeId < 1
+        || $featureId < 1
+    ) {
+        throw new InvalidArgumentException(
+            'A valid mapped Site is required.'
+        );
+    }
+
+    /*
+     * If this mapped feature already has an active canonical Site, preserve
+     * that identity. Editing the polygon or Site details must never generate
+     * another campsite record.
+     */
+    $existingAssociation =
+        $db->prepare(
+            'SELECT id
+             FROM place_campsites
+             WHERE place_id = ?
+               AND map_feature_id = ?
+               AND is_active = 1
+             ORDER BY id ASC'
+        );
+
+    $existingAssociation->execute([
+        $placeId,
+        $featureId,
+    ]);
+
+    $associatedIds =
+        array_values(
+            array_map(
+                'intval',
+                $existingAssociation->fetchAll(
+                    PDO::FETCH_COLUMN
+                )
+                ?: []
+            )
+        );
+
+    if (count($associatedIds) > 1) {
+        throw new InvalidArgumentException(
+            'This mapped Site is linked to multiple active campsite records. Resolve that identity conflict before editing it.'
+        );
+    }
+
+    if (count($associatedIds) === 1) {
+        return $associatedIds[0];
+    }
+
+    $siteCode =
+        trim(
+            (string) (
+                $siteDetails['site_code']
+                ?? ''
+            )
+        );
+
+    if ($siteCode === '') {
+        throw new InvalidArgumentException(
+            'Enter a Site number or Site code for an Individual campsite.'
+        );
+    }
+
+    /*
+     * Prefer an existing unlinked canonical Site with the exact same Site
+     * code. This lets imported campground Sites acquire map geometry without
+     * creating a duplicate identity.
+     */
+    $matching =
+        $db->prepare(
+            'SELECT
+                id,
+                map_feature_id
+             FROM place_campsites
+             WHERE place_id = ?
+               AND site_code = ?
+               AND is_active = 1
+             ORDER BY id ASC
+             FOR UPDATE'
+        );
+
+    $matching->execute([
+        $placeId,
+        $siteCode,
+    ]);
+
+    $matches =
+        $matching->fetchAll(
+            PDO::FETCH_ASSOC
+        )
+        ?: [];
+
+    if (count($matches) > 1) {
+        throw new InvalidArgumentException(
+            'More than one active Site uses Site code "'
+            . $siteCode
+            . '". Resolve the duplicate Site identities before mapping this campsite.'
+        );
+    }
+
+    if (count($matches) === 1) {
+        $matchId =
+            (int) (
+                $matches[0]['id']
+                ?? 0
+            );
+
+        $matchFeatureId =
+            max(
+                0,
+                (int) (
+                    $matches[0]['map_feature_id']
+                    ?? 0
+                )
+            );
+
+        if (
+            $matchFeatureId > 0
+            && $matchFeatureId !== $featureId
+        ) {
+            throw new InvalidArgumentException(
+                'Site '
+                . $siteCode
+                . ' is already associated with another mapped Site.'
+            );
+        }
+
+        if ($matchId > 0) {
+            return $matchId;
+        }
+    }
+
+    $siteName =
+        trim(
+            $label
+        );
+
+    $siteType =
+        trim(
+            (string) (
+                $siteDetails['site_type']
+                ?? ''
+            )
+        );
+
+    $parkingStyle =
+        trim(
+            (string) (
+                $siteDetails['parking_style']
+                ?? ''
+            )
+        );
+
+    $hookupStatus =
+        trim(
+            (string) (
+                $siteDetails['hookup_status']
+                ?? ''
+            )
+        );
+
+    $accessibleStatus =
+        trim(
+            (string) (
+                $siteDetails['accessible_status']
+                ?? ''
+            )
+        );
+
+    $insert =
+        $db->prepare(
+            'INSERT INTO place_campsites
+            (
+                place_id,
+                map_feature_id,
+                site_code,
+                site_name,
+                raw_site_type,
+                site_type,
+                parking_style,
+                hookup_status,
+                accessible_status,
+                latitude,
+                longitude,
+                source_provider,
+                source_external_id,
+                is_active
+            )
+            VALUES
+            (
+                ?,
+                NULL,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                NULL,
+                NULL,
+                ?,
+                ?,
+                1
+            )'
+        );
+
+    $insert->execute([
+        $placeId,
+        $siteCode,
+        $siteName !== ''
+            ? $siteName
+            : null,
+        'Mapped Individual campsite',
+        $siteType !== ''
+            ? $siteType
+            : null,
+        $parkingStyle !== ''
+            ? $parkingStyle
+            : null,
+        $hookupStatus !== ''
+            ? $hookupStatus
+            : null,
+        $accessibleStatus !== ''
+            ? $accessibleStatus
+            : 'unknown',
+        'Llama Scout',
+        'mapped-site:' . $featureId,
+    ]);
+
+    $campsiteId =
+        (int) $db->lastInsertId();
+
+    if ($campsiteId < 1) {
+        throw new RuntimeException(
+            'The canonical Site record could not be created.'
+        );
+    }
+
+    return $campsiteId;
+}
+
 $input = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -465,16 +722,21 @@ try {
     }
 
     try {
+        $featureLabel =
+            trim(
+                (string) (
+                    $input['label']
+                    ?? ''
+                )
+            );
+
         $featureId =
             llama_place_map_feature_save(
                 $db,
                 $placeId,
                 $userId,
                 $featureType,
-                (string) (
-                    $input['label']
-                    ?? ''
-                ),
+                $featureLabel,
                 $geometry,
                 (int) (
                     $input['feature_id']
@@ -497,17 +759,38 @@ try {
             );
 
         if ($featureType === 'camping_site') {
+            /*
+             * Selecting an existing canonical campsite still wins. When no
+             * campsite was selected, create/reuse the canonical Site from the
+             * mapped Site code so map-only pseudo-Sites do not accumulate.
+             */
+            if ($canonicalCampsiteId < 1) {
+                $canonicalCampsiteId =
+                    llama_place_map_api_ensure_canonical_campsite(
+                        $db,
+                        $placeId,
+                        $featureId,
+                        $featureLabel,
+                        $siteDetails
+                    );
+            }
+
+            /*
+             * The existing association service merges any map-only scoped
+             * answers into the canonical Site before linking it.
+             */
             llama_place_campsite_map_association_save(
                 $db,
                 $placeId,
                 $featureId,
                 $canonicalCampsiteId
             );
+
         } else {
             /*
              * If an existing mapped Site is deliberately converted into an
              * Area/boundary, it can no longer remain attached to a canonical
-             * campsite.
+             * campsite. The canonical Site itself is preserved.
              */
             llama_place_campsite_map_association_clear(
                 $db,
