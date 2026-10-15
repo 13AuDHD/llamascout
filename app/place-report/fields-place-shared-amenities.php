@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 /**
- * Place-level shared facilities are deliberately distinct from campsite
- * equipment. Existing canonical amenity keys are reused so old answers remain
- * readable while their labels and report ownership become unambiguous.
+ * Shared facilities are deliberately distinct from campsite equipment.
+ * Existing canonical amenity keys are reused so old answers remain readable.
+ *
+ * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
+ * is the single canonical source for Place / Area / Site ownership.
  */
 function llama_place_report_add_shared_amenity_fields(
     array &$fields,
@@ -92,21 +95,16 @@ function llama_place_report_add_shared_amenity_fields(
 
         $fields[$key]['label'] = $label;
         $fields[$key]['help'] = $help;
-        $fields[$key]['report_scopes'] = ['place'];
-        $fields[$key]['report_scope_group'] = 'place';
-        $fields[$key]['scope_inheritance'] = 'nearest_recorded';
         $fields[$key]['layout_section'] = 'place';
         $fields[$key]['layout_group'] = 'shared_amenities';
     }
 
     /*
-     * These legacy amenity keys actually describe the campsite itself. Move
-     * them into Site -> Camping & Equipment without renaming their storage
-     * paths, so historical answers are not discarded.
+     * These legacy amenity keys describe the campsite itself. Move them into
+     * Site -> Camping & Equipment without renaming their storage paths.
      *
-     * section=site_vehicle is intentional: the existing admin campsite
-     * persistence layer discovers campsite-editable fields from that canonical
-     * section and will therefore save these values per selected campsite.
+     * section=site_vehicle is intentional: the existing Admin campsite
+     * persistence layer discovers campsite-editable fields from that section.
      */
     foreach ([
         'amenity_fire_ring',
@@ -120,9 +118,6 @@ function llama_place_report_add_shared_amenity_fields(
         }
 
         $fields[$key]['section'] = 'site_vehicle';
-        $fields[$key]['report_scopes'] = ['site'];
-        $fields[$key]['report_scope_group'] = 'site';
-        $fields[$key]['scope_inheritance'] = 'none';
         $fields[$key]['layout_section'] = 'site';
         $fields[$key]['layout_group'] = 'camping_equipment';
     }
@@ -130,9 +125,6 @@ function llama_place_report_add_shared_amenity_fields(
     $common = [
         'allow_unknown' => true,
         'points_categories' => ['amenities'],
-        'report_scopes' => ['place'],
-        'report_scope_group' => 'place',
-        'scope_inheritance' => 'nearest_recorded',
         'layout_section' => 'place',
         'layout_group' => 'shared_amenities',
     ];
