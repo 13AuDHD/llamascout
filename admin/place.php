@@ -56,7 +56,6 @@ $remainingPhotos = max(0, 30 - count($images));
 $reportData = admin_place_shared_report_data($db, $placeId);
 $adminPlaceCampsites = admin_place_campsite_form_catalog($db, $placeId);
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
-$adminPlaceSiteAssociations = admin_place_site_association_catalog($db, $placeId);
 
 /*
  * Browser catalog for the shared Admin photo panel.
@@ -262,7 +261,7 @@ foreach ($adminPlaceCampsites as $site) {
             'max' => 0,
             'photos' => [],
             'reason' =>
-                'Save this Individual campsite in the map editor once so it receives its canonical Site identity before adding photos.',
+                'Save this Site once before adding photos.',
         ];
     }
 }
@@ -302,7 +301,7 @@ $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoMax = 10;
 $placeReportPhotoTitle = 'Place photos';
-$placeReportPhotoHelp = 'Add photos to the currently selected Place or canonical Site.';
+$placeReportPhotoHelp = 'Add photos to the currently selected Place or Site.';
 ?>
 
 <?php if ($notice !== ''): ?>
