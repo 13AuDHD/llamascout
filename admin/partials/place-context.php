@@ -1,569 +1,176 @@
-(() => {
-    'use strict';
+<?php
 
-    const form =
-        document.getElementById(
-            'place-report'
+declare(strict_types=1);
+
+/**
+ * Shared Place / Area / Site selection context.
+ *
+ * Geometry is metadata attached to these records. It is never exposed as a
+ * second user-facing identity.
+ */
+$placeContextTargets = [
+    'place' => [
+        'place_id' => $placeId,
+        'map_feature_id' => null,
+        'label' => (string) ($place['name'] ?? 'Place'),
+    ],
+    'areas' => [],
+    'sites' => [],
+];
+
+$placeBoundaryStmt = $db->prepare(
+    'SELECT id
+     FROM place_map_features
+     WHERE place_id = ?
+       AND feature_type = "place_boundary"
+       AND is_active = 1
+     ORDER BY sort_order ASC, id ASC
+     LIMIT 1'
+);
+
+$placeBoundaryStmt->execute([
+    $placeId,
+]);
+
+$placeBoundaryId =
+    (int) (
+        $placeBoundaryStmt->fetchColumn()
+        ?: 0
+    );
+
+if ($placeBoundaryId > 0) {
+    $placeContextTargets['place']['map_feature_id'] =
+        $placeBoundaryId;
+}
+
+foreach (
+    llama_report_targets(
+        $db,
+        $placeId
+    )
+    as $target
+) {
+    $scope =
+        (string) (
+            $target['scope']
+            ?? ''
         );
 
-    const configNode =
-        form?.querySelector(
-            '[data-admin-place-context]'
+    $source =
+        (string) (
+            $target['source']
+            ?? ''
         );
 
-    if (!form || !configNode) {
-        return;
+    $targetId =
+        (int) (
+            $target['id']
+            ?? 0
+        );
+
+    if ($targetId < 1) {
+        continue;
     }
 
-    let config;
+    if (
+        $scope === 'area'
+        && $source === 'map_feature'
+    ) {
+        $selectorValue =
+            'map_feature:'
+            . $targetId;
 
-    try {
-        config =
-            JSON.parse(
-                configNode.textContent
-                || '{}'
-            );
-    } catch (_) {
-        return;
+        $placeContextTargets['areas'][
+            $selectorValue
+        ] = [
+            'selector_value' =>
+                $selectorValue,
+
+            'area_id' =>
+                $targetId,
+
+            'map_feature_id' =>
+                (int) (
+                    $target['map_feature_id']
+                    ?? $targetId
+                ),
+
+            'label' =>
+                (string) (
+                    $target['label']
+                    ?? ('Area ' . $targetId)
+                ),
+        ];
+
+        continue;
     }
 
-    const place =
-        config.place
-        && typeof config.place === 'object'
-            ? config.place
-            : {};
+    if (
+        $scope !== 'site'
+        || !in_array(
+            $source,
+            [
+                'campsite_record',
+                'map_feature',
+            ],
+            true
+        )
+    ) {
+        continue;
+    }
 
-    const areas =
-        config.areas
-        && typeof config.areas === 'object'
-            ? config.areas
-            : {};
+    $selectorValue =
+        $source
+        . ':'
+        . $targetId;
 
-    const sites =
-        config.sites
-        && typeof config.sites === 'object'
-            ? config.sites
-            : {};
+    $placeContextTargets['sites'][
+        $selectorValue
+    ] = [
+        'selector_value' =>
+            $selectorValue,
 
-    const areaSelector =
-        () =>
-            form.querySelector(
-                '[data-admin-area-selector]'
-            );
+        'site_id' =>
+            $targetId,
 
-    const siteSelector =
-        () =>
-            form.querySelector(
-                '[data-admin-campsite-selector]'
-            );
+        'source' =>
+            $source,
 
-    const current =
-        () => {
-            const siteValue =
-                String(
-                    siteSelector()?.value
-                    || ''
-                ).trim();
-
-            if (
-                siteValue !== ''
-                && sites[siteValue]
-            ) {
-                const site =
-                    sites[siteValue];
-
-                return {
-                    level:
-                        'site',
-
-                    place_id:
-                        Number(
-                            place.place_id
-                            || 0
-                        ),
-
-                    area_id:
-                        Number(
-                            site.parent_area_id
-                            || 0
-                        ),
-
-                    site_id:
-                        Number(
-                            site.site_id
-                            || 0
-                        ),
-
-                    selector_value:
-                        siteValue,
-
-                    map_feature_id:
-                        Number(
-                            site.map_feature_id
-                            || 0
-                        ),
-
-                    label:
-                        String(
-                            site.label
-                            || 'Site'
-                        )
-                };
-            }
-
-            const areaValue =
-                String(
-                    areaSelector()?.value
-                    || ''
-                ).trim();
-
-            if (
-                areaValue !== ''
-                && areas[areaValue]
-            ) {
-                const area =
-                    areas[areaValue];
-
-                return {
-                    level:
-                        'area',
-
-                    place_id:
-                        Number(
-                            place.place_id
-                            || 0
-                        ),
-
-                    area_id:
-                        Number(
-                            area.area_id
-                            || 0
-                        ),
-
-                    site_id:
-                        0,
-
-                    selector_value:
-                        areaValue,
-
-                    map_feature_id:
-                        Number(
-                            area.map_feature_id
-                            || 0
-                        ),
-
-                    label:
-                        String(
-                            area.label
-                            || 'Area'
-                        )
-                };
-            }
-
-            return {
-                level:
-                    'place',
-
-                place_id:
-                    Number(
-                        place.place_id
-                        || 0
-                    ),
-
-                area_id:
-                    0,
-
-                site_id:
-                    0,
-
-                selector_value:
-                    '',
-
-                map_feature_id:
-                    Number(
-                        place.map_feature_id
-                        || 0
-                    ),
-
-                label:
-                    String(
-                        place.label
-                        || 'Place'
-                    )
-            };
-        };
-
-    let lastSignature = '';
-
-    const emit =
-        (
-            source = 'ui'
-        ) => {
-            const context =
-                current();
-
-            const signature =
-                JSON.stringify(
-                    context
-                );
-
-            if (
-                signature === lastSignature
-                && source !== 'force'
-            ) {
-                return context;
-            }
-
-            lastSignature =
-                signature;
-
-            const detail = {
-                ...context,
-                source:
-                    source === 'force'
-                        ? 'ui'
-                        : source
-            };
-
-            form.dispatchEvent(
-                new CustomEvent(
-                    'llama:place-context-changed',
-                    {
-                        bubbles:
-                            true,
-
-                        detail
-                    }
+        'map_feature_id' =>
+            (int) (
+                $target['map_feature_id']
+                ?? (
+                    $source === 'map_feature'
+                        ? $targetId
+                        : 0
                 )
-            );
+            ),
 
-            window.dispatchEvent(
-                new CustomEvent(
-                    'llama:place-context-changed',
-                    {
-                        detail
-                    }
-                )
-            );
+        'parent_area_id' =>
+            (int) (
+                $target['parent_area_id']
+                ?? 0
+            ),
 
-            return context;
-        };
+        'label' =>
+            (string) (
+                $target['label']
+                ?? ('Site ' . $targetId)
+            ),
+    ];
+}
+?>
 
-    const dispatchChange =
-        (control) => {
-            control?.dispatchEvent(
-                new Event(
-                    'change',
-                    {
-                        bubbles:
-                            true
-                    }
-                )
-            );
-        };
-
-    const clearSite =
-        () => {
-            const control =
-                siteSelector();
-
-            if (
-                !control
-                || control.value === ''
-            ) {
-                return true;
-            }
-
-            control.value =
-                '';
-
-            dispatchChange(
-                control
-            );
-
-            return control.value === '';
-        };
-
-    const clearArea =
-        () => {
-            const control =
-                areaSelector();
-
-            if (
-                !control
-                || control.value === ''
-            ) {
-                return true;
-            }
-
-            control.value =
-                '';
-
-            dispatchChange(
-                control
-            );
-
-            return control.value === '';
-        };
-
-    const selectPlace =
-        () => {
-            if (!clearSite()) {
-                emit(
-                    'selection-rejected'
-                );
-
-                return false;
-            }
-
-            if (!clearArea()) {
-                emit(
-                    'selection-rejected'
-                );
-
-                return false;
-            }
-
-            queueMicrotask(
-                () =>
-                    emit(
-                        'place'
-                    )
-            );
-
-            return true;
-        };
-
-    const selectAreaByFeatureId =
-        (featureId) => {
-            const id =
-                Math.max(
-                    0,
-                    Number(
-                        featureId
-                        || 0
-                    )
-                );
-
-            const entry =
-                Object.values(
-                    areas
-                )
-                    .find(
-                        (area) =>
-                            Number(
-                                area.map_feature_id
-                                || area.area_id
-                                || 0
-                            ) === id
-                    );
-
-            if (!entry) {
-                return false;
-            }
-
-            if (!clearSite()) {
-                emit(
-                    'selection-rejected'
-                );
-
-                return false;
-            }
-
-            const control =
-                areaSelector();
-
-            if (!control) {
-                return false;
-            }
-
-            control.value =
-                String(
-                    entry.selector_value
-                    || ''
-                );
-
-            dispatchChange(
-                control
-            );
-
-            queueMicrotask(
-                () =>
-                    emit(
-                        'map'
-                    )
-            );
-
-            return control.value !== '';
-        };
-
-    const selectSiteByValue =
-        (selectorValue) => {
-            const value =
-                String(
-                    selectorValue
-                    || ''
-                ).trim();
-
-            if (
-                value === ''
-                || !sites[value]
-            ) {
-                return false;
-            }
-
-            if (!clearArea()) {
-                emit(
-                    'selection-rejected'
-                );
-
-                return false;
-            }
-
-            const control =
-                siteSelector();
-
-            if (!control) {
-                return false;
-            }
-
-            control.value =
-                value;
-
-            dispatchChange(
-                control
-            );
-
-            queueMicrotask(
-                () =>
-                    emit(
-                        'map'
-                    )
-            );
-
-            return control.value === value;
-        };
-
-    const selectSiteByMapFeatureId =
-        (featureId) => {
-            const id =
-                Math.max(
-                    0,
-                    Number(
-                        featureId
-                        || 0
-                    )
-                );
-
-            const entry =
-                Object.values(
-                    sites
-                )
-                    .find(
-                        (site) =>
-                            Number(
-                                site.map_feature_id
-                                || 0
-                            ) === id
-                    );
-
-            if (!entry) {
-                return false;
-            }
-
-            return selectSiteByValue(
-                entry.selector_value
-            );
-        };
-
-    const selectGeometryFeature =
-        (featureId) => {
-            const id =
-                Math.max(
-                    0,
-                    Number(
-                        featureId
-                        || 0
-                    )
-                );
-
-            if (id < 1) {
-                return false;
-            }
-
-            if (
-                Number(
-                    place.map_feature_id
-                    || 0
-                ) === id
-            ) {
-                return selectPlace();
-            }
-
-            if (
-                selectSiteByMapFeatureId(
-                    id
-                )
-            ) {
-                return true;
-            }
-
-            return selectAreaByFeatureId(
-                id
-            );
-        };
-
-    form.addEventListener(
-        'change',
-        (event) => {
-            const target =
-                event.target;
-
-            if (
-                target === areaSelector()
-                || target === siteSelector()
-            ) {
-                queueMicrotask(
-                    () =>
-                        emit(
-                            'selector'
-                        )
-                );
-            }
-        },
-        true
-    );
-
-    form.addEventListener(
-        'llama:campsite-selected',
-        () => {
-            queueMicrotask(
-                () =>
-                    emit(
-                        'site'
-                    )
-            );
-        }
-    );
-
-    window.LlamaPlaceContext = {
-        get:
-            current,
-
-        emit,
-
-        selectPlace,
-
-        selectAreaByFeatureId,
-
-        selectSiteByValue,
-
-        selectSiteByMapFeatureId,
-
-        selectGeometryFeature
-    };
-
-    emit(
-        'force'
-    );
-})();
+<script
+    type="application/json"
+    data-admin-place-context
+><?= json_encode(
+    $placeContextTargets,
+    JSON_UNESCAPED_SLASHES
+    | JSON_UNESCAPED_UNICODE
+    | JSON_HEX_TAG
+    | JSON_HEX_AMP
+    | JSON_HEX_APOS
+    | JSON_HEX_QUOT
+    | JSON_THROW_ON_ERROR
+) ?></script>
