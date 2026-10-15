@@ -244,14 +244,7 @@ function llama_place_report_scope_overrides(): array
             'site_number',
             'site_accessible',
             'max_people',
-            'vehicle_capacity',
-            'max_vehicle_length_feet',
-            'parking_surface',
-            'ground_condition',
-            'levelness',
-            'overhead_clearance_feet',
             'parking_length_feet',
-            'parking_grade',
             'site_length_feet',
             'site_width_feet',
             'tent_pad',
@@ -342,6 +335,22 @@ function llama_place_report_scope_overrides(): array
             'place_quiet_hours_end',
             'place_alcohol_permitted',
             'place_additional_rules',
+
+            /*
+             * Shared parking facts can describe an entire Place, a mapped Area,
+             * or one individual Site. At Place/Area scope they act as the shared
+             * or default condition; a Site can record a more specific override.
+             *
+             * Individual parking-space length and Site dimensions remain
+             * Site-only because those measurements identify one physical space.
+             */
+            'vehicle_capacity',
+            'max_vehicle_length_feet',
+            'parking_surface',
+            'ground_condition',
+            'levelness',
+            'overhead_clearance_feet',
+            'parking_grade',
 
             /*
              * Environment, sensory, safety and experience can describe a
