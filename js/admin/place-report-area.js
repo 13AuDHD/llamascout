@@ -4,7 +4,8 @@
     const form = document.getElementById('place-report');
     const catalogNode = form?.querySelector('[data-admin-place-areas]');
     const selector = form?.querySelector('[data-admin-area-selector]');
-    if (!form || !catalogNode || !selector) return;
+    const targetField = form?.querySelector('[name="selected_area_id"]');
+    if (!form || !catalogNode || !selector || !targetField) return;
 
     let catalog;
     try {
@@ -16,13 +17,12 @@
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
     const keys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const inputs = [...form.elements].filter(input => keys.has(input.name));
-    const areaId = form.querySelector('[name="selected_area_id"]');
-    if (!areaId || !inputs.length) return;
+    if (!inputs.length) return;
 
-    // This is a field-state controller only. The PHP action remains the save owner.
-    const state = new Map(areas.map(area => [String(area.id), { ...area.form_values }]));
+    const state = new Map(areas.map(area => [String(area.id), { ...(area.form_values || {}) }]));
     let selected = '';
     let dirty = false;
+    let swapping = false;
 
     const read = () => {
         const values = {};
@@ -38,10 +38,9 @@
         return values;
     };
 
-    // Capture the initial Place answers after read() is initialized.
     const placeValues = read();
-
     const write = values => {
+        swapping = true;
         for (const input of inputs) {
             const value = values[input.name] ?? '';
             if (input.type === 'radio') {
@@ -52,8 +51,19 @@
                 input.value = String(value);
             }
         }
+        swapping = false;
         form.dispatchEvent(new Event('change', { bubbles: true }));
     };
+
+    // The field values for an Area are never sent as Place answers.
+    // The server receives a separate JSON payload with its own verified target.
+    let payloadField = form.querySelector('[name="admin_area_answers_json"]');
+    if (!payloadField) {
+        payloadField = document.createElement('input');
+        payloadField.type = 'hidden';
+        payloadField.name = 'admin_area_answers_json';
+        form.appendChild(payloadField);
+    }
 
     selector.addEventListener('change', () => {
         const next = selector.value;
@@ -62,45 +72,37 @@
             selector.value = selected;
             return;
         }
-        if (!selected) {
-            Object.assign(placeValues, read());
-        } else {
-            state.set(selected, read());
-        }
+        if (!selected) Object.assign(placeValues, read());
         selected = next;
-        areaId.value = selected;
+        targetField.value = selected;
         dirty = false;
         write(selected ? state.get(selected) || {} : placeValues);
     });
 
     for (const input of inputs) {
         const markDirty = () => {
-            if (!selected) return;
+            if (swapping || !selected) return;
             dirty = true;
-            state.set(selected, read());
         };
         input.addEventListener('input', markDirty);
         input.addEventListener('change', markDirty);
     }
 
-    // The save owner fires this event before constructing FormData. Prevent
-    // Area answers from being submitted as Place-level answer values.
     form.addEventListener('llama:admin-place-report-save-starting', () => {
+        payloadField.value = '';
         if (!selected) return;
-        state.set(selected, read());
+        const answers = read();
+        payloadField.value = JSON.stringify(answers);
+        // Restore Place field values prior to the existing save owner's FormData call.
         write(placeValues);
-        // Do not send the Area target with Place answers until the backend
-        // supports a separate, atomic Area-answer payload.
-        areaId.value = '';
-        selector.value = '';
-        selected = '';
-        dirty = false;
+        // Preserve the selected Area's target for the backend's separate save.
+        targetField.value = selected;
     });
 
     window.addEventListener('llama:admin-place-report-saved', () => {
-        if (selected) {
-            state.set(selected, read());
-            dirty = false;
-        }
+        if (!selected) return;
+        state.set(selected, JSON.parse(payloadField.value || '{}'));
+        dirty = false;
+        write(state.get(selected));
     });
 })();
