@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+/**
+ * Camping-property profiles.
+ *
+ * Place type describes what the Place is. It must not silently answer a rule
+ * question. Developed campground, RV park, and dispersed-camping labels never
+ * substitute for explicit permission/restriction answers.
+ */
 function llama_place_report_apply_camping_profiles(
     array &$fields
 ): void {
@@ -64,34 +71,11 @@ function llama_place_report_apply_camping_profiles(
         ]
     );
 
-    llama_place_report_append_applicable(
-        $fields,
-        [
-            'overnight_camping_allowed',
-            'designated_sites_only',
-            'target_shooting_allowed',
-            'residential_use_prohibited',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'not_equals',
-            'value' => 'developed-campground',
-        ]]
-    );
-
-    llama_place_report_append_applicable(
-        $fields,
-        [
-            'overnight_camping_allowed',
-            'designated_sites_only',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'not_equals',
-            'value' => 'rv-park-resort',
-        ]]
-    );
-
+    /*
+     * Hosted/private/fairground Places are not public-land management units.
+     * Keep Region out of their normal profile unless a later dedicated field
+     * gives that concept a different meaning.
+     */
     llama_place_report_append_applicable(
         $fields,
         ['region'],
@@ -102,6 +86,11 @@ function llama_place_report_apply_camping_profiles(
         ]]
     );
 
+    /*
+     * Fairgrounds describe a venue containing possible overnight spaces.
+     * Whole-venue vehicle capacity is misleading; campsite/space count is the
+     * appropriate Place/Area fact.
+     */
     llama_place_report_append_applicable(
         $fields,
         ['vehicle_capacity'],
@@ -109,16 +98,6 @@ function llama_place_report_apply_camping_profiles(
             'field' => 'type',
             'operator' => 'not_equals',
             'value' => 'fairgrounds',
-        ]]
-    );
-
-    llama_place_report_append_applicable(
-        $fields,
-        ['dispersed_camping_allowed'],
-        [[
-            'field' => 'type',
-            'operator' => 'not_equals',
-            'value' => 'dispersed-camping',
         ]]
     );
 }
