@@ -258,6 +258,58 @@
     backdrop-filter: blur(10px);
 }
 
+.admin-place-report-savebar.has-save-status {
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-place-report-save-status {
+    display: block;
+    width: 100%;
+    color: var(--text-muted);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.admin-place-report-save-status.is-error {
+    color: #dfb94f;
+}
+
+.admin-place-report-savebar .admin-button.is-saving {
+    border-color: #c94a4a;
+    background: rgba(201, 74, 74, .18);
+    color: #e26a6a;
+}
+
+.admin-place-report-savebar .admin-button.is-saved {
+    border-color: #2e9d58;
+    background: rgba(46, 157, 88, .18);
+    color: #55b978;
+}
+
+.admin-place-report-savebar .admin-button.is-error {
+    border-color: #d2a62d;
+    background: rgba(210, 166, 45, .18);
+    color: #dfb94f;
+}
+
+.admin-place-save-spinner {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: llama-admin-place-save-spin .75s linear infinite;
+}
+
+@keyframes llama-admin-place-save-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .admin-place-photo-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
