@@ -763,7 +763,8 @@ function llama_place_map_feature_validate_metadata(
 function llama_place_map_features(
     PDO $db,
     int $placeId,
-    bool $activeOnly = true
+    bool $activeOnly = true,
+    bool $linkedSitesOnly = false
 ): array {
     if ($placeId < 1) {
         return [];
@@ -845,6 +846,29 @@ function llama_place_map_features(
     if ($activeOnly) {
         $sql .=
             ' AND place_map_features.is_active = 1';
+    }
+
+    /*
+     * The production map editor works with the unified Site identity. A
+     * camping_site polygon is part of that Site only when an active
+     * place_campsites row points at it. Historical orphan map-only Site
+     * geometry is deliberately excluded from the normal editor before any
+     * GeoJSON conversion or pricing hydration occurs.
+     */
+    if ($linkedSitesOnly) {
+        $sql .=
+            ' AND (
+                place_map_features.feature_type <> "camping_site"
+                OR EXISTS (
+                    SELECT 1
+                    FROM place_campsites AS linked_site
+                    WHERE linked_site.place_id =
+                        place_map_features.place_id
+                      AND linked_site.map_feature_id =
+                        place_map_features.id
+                      AND linked_site.is_active = 1
+                )
+            )';
     }
 
     $sql .=
