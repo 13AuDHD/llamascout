@@ -14,12 +14,27 @@ function llama_place_report_apply_site_applicability(
     $types =
         llama_place_report_applicability_types();
 
+    /*
+     * A Site is a child record, not a synonym for "campground campsite".
+     * Travel centers, truck stops, parking Places, rest areas, pull-offs,
+     * trailheads and similar Places can all contain legitimate individual
+     * overnight Sites/spaces.
+     */
     $sitePlaceTypes =
-        $types['camping'];
+        array_values(
+            array_unique(
+                array_merge(
+                    $types['camping'],
+                    $types['travel_center'],
+                    $types['commercial_parking'],
+                    $types['roadside_parking'],
+                    $types['natural_day_use']
+                )
+            )
+        );
 
     /*
-     * Objective Site facts belong only where individual overnight Sites are
-     * meaningful.
+     * Objective Site facts belong wherever individual Sites are meaningful.
      */
     llama_place_report_set_applicable(
         $fields,
@@ -42,6 +57,9 @@ function llama_place_report_apply_site_applicability(
             'hike_in_distance_feet',
             'capacity_size_rating',
             'site_hookups_available',
+            'hookup_electric',
+            'hookup_water',
+            'hookup_sewer',
             'max_rv_length_feet',
             'pull_through',
             'back_in',
@@ -115,7 +133,9 @@ function llama_place_report_apply_site_applicability(
     );
 
     /*
-     * Hookup children require the Site-level parent to be Yes.
+     * Utility questions stay visible independently. A Scout/Admin may know
+     * exactly which utility is present even when the broad "any hookups?"
+     * answer is blank or Unknown.
      */
     llama_place_report_set_applicable(
         $fields,
@@ -124,18 +144,11 @@ function llama_place_report_apply_site_applicability(
             'hookup_water',
             'hookup_sewer',
         ],
-        [
-            [
-                'field' => 'type',
-                'operator' => 'in',
-                'value' => $sitePlaceTypes,
-            ],
-            [
-                'field' => 'site_hookups_available',
-                'operator' => 'equals',
-                'value' => '1',
-            ],
-        ]
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => $sitePlaceTypes,
+        ]]
     );
 
     llama_place_report_set_applicable(
@@ -146,11 +159,6 @@ function llama_place_report_apply_site_applicability(
                 'field' => 'type',
                 'operator' => 'in',
                 'value' => $sitePlaceTypes,
-            ],
-            [
-                'field' => 'site_hookups_available',
-                'operator' => 'equals',
-                'value' => '1',
             ],
             [
                 'field' => 'hookup_electric',
