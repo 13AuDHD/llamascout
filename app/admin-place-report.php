@@ -481,7 +481,7 @@ function admin_place_photo_url(
  * Resolve the currently selected photo owner.
  *
  * Place photos remain in place_images.
- * Site photos use the existing canonical place_campsite_images table.
+ * Site photos use the existing place_campsite_images table.
  * Area photos are not given a second ad-hoc persistence system.
  */
 function admin_place_report_photo_target(
@@ -562,7 +562,7 @@ function admin_place_report_photo_target(
 
             if (count($ids) !== 1) {
                 throw new InvalidArgumentException(
-                    'This mapped Site does not yet have one canonical campsite record. Save the Individual campsite in the map editor first.'
+                    'This Site could not be prepared for editing. Save the Site again and try once more.'
                 );
             }
 
@@ -578,7 +578,7 @@ function admin_place_report_photo_target(
             )
         ) {
             throw new InvalidArgumentException(
-                'The selected canonical Site is not available for this Place.'
+                'The selected Site is not available for this Place.'
             );
         }
 
@@ -681,7 +681,7 @@ function admin_place_report_target_images(
 
     /*
      * Area photo persistence is intentionally not invented here. A proper
-     * canonical Area-media owner can be added later without polluting
+     * Area-media owner can be added later without polluting
      * place_images or place_campsite_images.
      */
     return [];
@@ -691,7 +691,7 @@ function admin_place_report_target_images(
 /**
  * Add photos while the outer Place Report transaction is active.
  *
- * Site photos use the existing canonical campsite-media persistence layer.
+ * Site photos use the existing campsite-media persistence layer.
  * Place photos continue using place_images.
  */
 function admin_place_add_photos_in_report_transaction(
@@ -717,7 +717,7 @@ function admin_place_add_photos_in_report_transaction(
 
     if ($scope === 'area') {
         throw new RuntimeException(
-            'Area photos are not yet supported by a canonical Area media store.'
+            'Photos are not available for Areas yet.'
         );
     }
 
@@ -826,7 +826,7 @@ function admin_place_add_photos_in_report_transaction(
             'place.campsite_photos_added';
 
         $auditMessage =
-            'Added canonical Site photos.';
+            'Added Site photos.';
 
         $auditMeta = [
             'place_id' => $placeId,
@@ -942,7 +942,7 @@ function admin_place_add_photos_in_report_transaction(
 
 
 /**
- * Remove a Place or canonical Site image record inside the outer transaction.
+ * Remove a Place or Site image record inside the outer transaction.
  * Physical-file deletion remains deferred until after commit.
  */
 function admin_place_delete_image_in_report_transaction(
@@ -1058,7 +1058,7 @@ function admin_place_delete_image_in_report_transaction(
             $actorUserId,
             null,
             'place.campsite_photo_deleted',
-            'Deleted a canonical Site photo.',
+            'Deleted a Site photo.',
             [
                 'place_id' => $placeId,
                 'campsite_id' => $campsiteId,
@@ -1071,7 +1071,7 @@ function admin_place_delete_image_in_report_transaction(
 
     if ($scope !== 'place') {
         throw new RuntimeException(
-            'Area photos are not yet supported by a canonical Area media store.'
+            'Photos are not available for Areas yet.'
         );
     }
 
