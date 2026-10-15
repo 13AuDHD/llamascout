@@ -3,34 +3,43 @@
 declare(strict_types=1);
 
 /**
- * Site sensory, safety, and experience cleanup.
+ * Site experience and recommendation terminology.
  *
- * The prior fallback placed sensory, safety, and recommendation fields into
- * one oversized Sensory & Environment subsection. This pass keeps the
- * individual campsite observations but separates them into coherent groups.
+ * Scout experience ratings are deliberately subjective and are kept separate
+ * from objective Site facts such as dimensions, surface, clearance, hookups,
+ * and access. Imported/source classifications remain fallback source data and
+ * are not reinterpreted as Scout ratings.
  */
 function llama_place_report_apply_site_experience_metadata(
     array &$fields
 ): void {
-    foreach (
-        [
-            'site_rating' =>
-                'Overall campsite rating',
+    $ratings = [
+        'site_rating' => [
+            'Scout Site rating',
+            'Your overall Scout rating of this individual Site based on the experience you observed. This is subjective and must not replace objective Site facts.',
+        ],
 
-            'condition_rating' =>
-                'Campsite condition rating',
+        'condition_rating' => [
+            'Scout condition rating',
+            'Your Scout rating of the Site condition and upkeep when observed. Record measurable condition facts elsewhere when a specific field exists.',
+        ],
 
-            'location_rating' =>
-                'Campsite location rating',
-        ]
-        as $key => $label
-    ) {
+        'location_rating' => [
+            'Scout location rating',
+            'Your Scout rating of this Site position within the surrounding Place, including privacy, convenience, views, and nearby activity.',
+        ],
+    ];
+
+    foreach ($ratings as $key => [$label, $help]) {
         if (!isset($fields[$key])) {
             continue;
         }
 
         $fields[$key]['label'] =
             $label;
+
+        $fields[$key]['help'] =
+            $help;
 
         $fields[$key]['layout_section'] =
             'site';
@@ -40,9 +49,9 @@ function llama_place_report_apply_site_experience_metadata(
     }
 
     /*
-     * These recommendations are already derived from their paired 1-5
-     * experience ratings. Keep the historical keys available to readers and
-     * imports, but do not show duplicate contributor questions.
+     * These recommendation flags duplicate a paired 1-5 experience rating.
+     * Keep historical keys readable, but do not ask the Scout the same
+     * subjective question twice.
      */
     foreach (
         [
@@ -69,24 +78,24 @@ function llama_place_report_apply_site_experience_metadata(
             false;
     }
 
-    $help = [
-        'site_rating' =>
-            'Your overall rating of this individual campsite.',
+    $recommendationHelp = [
+        'recommended_solo_travel' =>
+            'Whether this Place, Area, or Site felt like a good match for solo travel based on your observed experience. Use objective safety, access, and facility fields separately.',
 
-        'condition_rating' =>
-            'Condition and upkeep of this individual campsite when observed.',
+        'recommended_families' =>
+            'Whether this Place, Area, or Site felt like a good match for families based on your observed experience. This is a recommendation, not a safety certification.',
 
-        'location_rating' =>
-            'How good this individual campsite is within the surrounding Place, including position, convenience, privacy, views, and nearby activity.',
+        'recommended_large_groups' =>
+            'Whether this Place, Area, or Site felt like a good match for larger groups. Use capacity limits and Site dimensions for objective limits.',
 
         'not_recommended_for' =>
-            'Anything that makes this campsite a poor match for certain vehicles, equipment, sensitivities, group sizes, or travel styles.',
+            'Describe travel styles, equipment, sensitivities, or group needs that were a poor match in your observed experience. Do not use this instead of recording objective restrictions, dimensions, hazards, or accessibility facts.',
     ];
 
-    foreach ($help as $key => $text) {
+    foreach ($recommendationHelp as $key => $help) {
         if (isset($fields[$key])) {
             $fields[$key]['help'] =
-                $text;
+                $help;
         }
     }
 }
