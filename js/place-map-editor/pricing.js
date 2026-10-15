@@ -266,7 +266,8 @@
                     markDirty,
                     normalizeRates,
                     ratePayload,
-                    rateField,
+                    rateField:
+                        rateFind,
                     rateTypeLabels
                 });
 
@@ -352,7 +353,8 @@
                     markDirty,
                     normalizeRates,
                     ratePayload,
-                    rateField,
+                    rateField:
+                        rateFind,
                     rateTypeLabels,
                     updateInheritance:
                         updateRateInheritance
