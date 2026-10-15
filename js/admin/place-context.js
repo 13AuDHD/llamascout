@@ -546,6 +546,39 @@
         }
     );
 
+
+    window.addEventListener(
+        'llama:map-feature-selected',
+        (event) => {
+            const detail =
+                event?.detail;
+
+            if (
+                !detail
+                || typeof detail !== 'object'
+            ) {
+                return;
+            }
+
+            const featureId =
+                Math.max(
+                    0,
+                    Number(
+                        detail.map_feature_id
+                        || 0
+                    )
+                );
+
+            if (featureId < 1) {
+                return;
+            }
+
+            selectGeometryFeature(
+                featureId
+            );
+        }
+    );
+
     window.LlamaPlaceContext = {
         get:
             current,
