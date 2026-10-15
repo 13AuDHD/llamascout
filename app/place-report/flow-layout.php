@@ -145,7 +145,6 @@ function llama_place_report_layout_assignments(): array
             'shared_accessible_facilities',
             'shared_accessible_facility_types',
             'accessible_toilet',
-            'accessible_picnic_table',
             'facility_map_url',
         ],
 
@@ -242,7 +241,6 @@ function llama_place_report_layout_assignments(): array
         'site:selection_type' => [
             'site_number',
             'max_people',
-            'capacity_size_rating',
             'vehicle_capacity',
         ],
 
@@ -253,6 +251,7 @@ function llama_place_report_layout_assignments(): array
         'site:site_dimensions' => [
             'site_length_feet',
             'site_width_feet',
+            'capacity_size_rating',
             'parking_length_feet',
             'overhead_clearance_feet',
         ],
@@ -338,6 +337,7 @@ function llama_place_report_layout_assignments(): array
             'flat_walking_surface',
             'step_free_access',
             'walking_distance_from_vehicle',
+            'accessible_picnic_table',
         ],
 
         'site:experience_recommendations' => [
