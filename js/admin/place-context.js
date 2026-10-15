@@ -453,6 +453,82 @@
             return control.value !== '';
         };
 
+    const areaEntryForSite =
+        (site) => {
+            const parentAreaId =
+                Math.max(
+                    0,
+                    Number(
+                        site?.parent_area_id
+                        || 0
+                    )
+                );
+
+            if (parentAreaId < 1) {
+                return null;
+            }
+
+            return (
+                Object.values(
+                    areas
+                )
+                    .find(
+                        (area) =>
+                            Number(
+                                area.area_id
+                                || area.map_feature_id
+                                || 0
+                            ) === parentAreaId
+                    )
+                || null
+            );
+        };
+
+    const syncParentAreaForSite =
+        (site) => {
+            const control =
+                areaSelector();
+
+            if (!control) {
+                return true;
+            }
+
+            const area =
+                areaEntryForSite(
+                    site
+                );
+
+            const next =
+                area
+                    ? String(
+                        area.selector_value
+                        || ''
+                    )
+                    : '';
+
+            if (
+                control.value
+                === next
+            ) {
+                return true;
+            }
+
+            const previous =
+                control.value;
+
+            control.value =
+                next;
+
+            dispatchChange(
+                control
+            );
+
+            return control.value
+                === next
+                || control.value
+                    === previous;
+        };
+
     const selectSiteByValue =
         (selectorValue) => {
             const value =
@@ -465,14 +541,6 @@
                 value === ''
                 || !sites[value]
             ) {
-                return false;
-            }
-
-            if (!clearArea()) {
-                emit(
-                    'selection-rejected'
-                );
-
                 return false;
             }
 
@@ -490,6 +558,21 @@
                 control
             );
 
+            if (
+                control.value
+                !== value
+            ) {
+                emit(
+                    'selection-rejected'
+                );
+
+                return false;
+            }
+
+            syncParentAreaForSite(
+                sites[value]
+            );
+
             queueMicrotask(
                 () =>
                     emit(
@@ -497,7 +580,7 @@
                     )
             );
 
-            return control.value === value;
+            return true;
         };
 
     const selectSiteByMapFeatureId =
@@ -574,6 +657,36 @@
         (event) => {
             const target =
                 event.target;
+
+            if (
+                target
+                === siteSelector()
+            ) {
+                const value =
+                    String(
+                        target.value
+                        || ''
+                    ).trim();
+
+                if (
+                    value !== ''
+                    && sites[value]
+                ) {
+                    queueMicrotask(
+                        () => {
+                            syncParentAreaForSite(
+                                sites[value]
+                            );
+
+                            emit(
+                                'selector'
+                            );
+                        }
+                    );
+
+                    return;
+                }
+            }
 
             if (
                 target === areaSelector()
@@ -671,7 +784,11 @@
 
         selectSiteByMapFeatureId,
 
-        selectGeometryFeature
+        selectGeometryFeature,
+
+        areaEntryForSite,
+
+        syncParentAreaForSite
     };
 
     emit(
