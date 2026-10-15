@@ -57,6 +57,94 @@ $reportData = admin_place_shared_report_data($db, $placeId);
 $adminPlaceCampsites = admin_place_campsite_form_catalog($db, $placeId);
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
 $adminPlaceSiteAssociations = admin_place_site_association_catalog($db, $placeId);
+
+/*
+ * Build one read-only browser catalog for the existing-photo panel.
+ * The database remains the source of truth. This catalog only lets Admin
+ * switch the visible gallery when the reporting target changes.
+ */
+$adminPlacePhotoTargets = [];
+
+$photoTargetAdd = static function (
+    array &$catalog,
+    string $key,
+    string $label,
+    array $target
+) use ($db, $placeId): void {
+    $photos = admin_place_report_target_images(
+        $db,
+        $placeId,
+        $target
+    );
+
+    $catalog[$key] = [
+        'label' => $label,
+        'scope' => (string) ($target['scope'] ?? ''),
+        'source' => (string) ($target['source'] ?? ''),
+        'id' => (int) ($target['id'] ?? 0),
+        'photos' => array_values(array_map(
+            static fn (array $photo): array => [
+                'id' => (int) ($photo['id'] ?? 0),
+                'src' => (string) ($photo['src'] ?? ''),
+                'url' => admin_place_photo_url($photo),
+                'alt' => (string) ($photo['alt_text'] ?? ''),
+            ],
+            $photos
+        )),
+    ];
+};
+
+$photoTargetAdd(
+    $adminPlacePhotoTargets,
+    'place:place:' . $placeId,
+    'Entire Place',
+    [
+        'scope' => 'place',
+        'source' => 'place',
+        'id' => $placeId,
+    ]
+);
+
+foreach ($adminPlaceAreas as $area) {
+    $source = (string) ($area['scope_source'] ?? '');
+    $scopeId = (int) ($area['scope_id'] ?? 0);
+
+    if ($source === '' || $scopeId < 1) {
+        continue;
+    }
+
+    $photoTargetAdd(
+        $adminPlacePhotoTargets,
+        'area:' . $source . ':' . $scopeId,
+        (string) ($area['label'] ?? ('Area #' . $scopeId)),
+        [
+            'scope' => 'area',
+            'source' => $source,
+            'id' => $scopeId,
+        ]
+    );
+}
+
+foreach ($adminPlaceCampsites as $site) {
+    $source = (string) ($site['scope_source'] ?? '');
+    $scopeId = (int) ($site['scope_id'] ?? 0);
+
+    if ($source === '' || $scopeId < 1) {
+        continue;
+    }
+
+    $photoTargetAdd(
+        $adminPlacePhotoTargets,
+        'site:' . $source . ':' . $scopeId,
+        (string) ($site['label'] ?? ('Site #' . $scopeId)),
+        [
+            'scope' => 'site',
+            'source' => $source,
+            'id' => $scopeId,
+        ]
+    );
+}
+
 $stats = admin_dashboard_stats($db);
 $adminNavCounts = [
     'new_places' => $stats['new_places'],
@@ -90,11 +178,15 @@ $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
 $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
-$placeReportPhotoMax = max(1, min(10, $remainingPhotos > 0 ? $remainingPhotos : 1));
+
+/*
+ * Admin can switch between Place, Area, and Site targets. Keep the browser
+ * uploader batch size consistent at 10; backend target limits remain
+ * authoritative.
+ */
+$placeReportPhotoMax = 10;
 $placeReportPhotoTitle = 'Place photos';
-$placeReportPhotoHelp = $remainingPhotos > 0
-    ? 'Add up to ' . min(10, $remainingPhotos) . ' new photos in this batch.'
-    : 'This Place already has the maximum of 30 photos.';
+$placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Site reporting target.';
 ?>
 
 <?php if ($notice !== ''): ?>
@@ -123,6 +215,7 @@ $placeReportPhotoHelp = $remainingPhotos > 0
 <script src="https://llamascout.com/js/place-report-form.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-save.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
+<script src="https://llamascout.com/js/admin/place-report-photos.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
 
 <?php
