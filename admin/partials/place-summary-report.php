@@ -127,7 +127,7 @@ declare(strict_types=1);
 >
     <header>
         <p>Site identity</p>
-        <h2>Canonical Site to mapped Site</h2>
+        <h2>Canonical Site â mapped Site</h2>
 
         <span class="admin-place-muted">
             This controls which mapped campsite polygon belongs to a canonical
@@ -379,6 +379,7 @@ declare(strict_types=1);
             [
                 'sites' => $adminPlaceCampsites,
                 'site_field_keys' => admin_place_campsite_field_keys(),
+                'place_field_keys' => admin_place_site_section_place_field_keys(),
                 'unknown_token' => llama_place_report_unknown_token(),
                 'unanswered_token' => llama_place_report_unanswered_token(),
             ],
