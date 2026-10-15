@@ -19,6 +19,7 @@ function llama_place_map_api_json(
         $payload,
         JSON_UNESCAPED_SLASHES
         | JSON_UNESCAPED_UNICODE
+        | JSON_INVALID_UTF8_SUBSTITUTE
     );
 
     exit;
@@ -40,9 +41,107 @@ function llama_place_map_api_features(
     return llama_place_map_features(
         $db,
         $placeId,
+        true,
         true
     );
 }
+
+function llama_place_map_api_stats(
+    PDO $db,
+    int $placeId
+): array {
+    $featureStmt = $db->prepare(
+        'SELECT
+            COUNT(*) AS active_features,
+            SUM(feature_type = "place_boundary")
+                AS place_boundaries,
+            SUM(feature_type IN ("camping_area", "parking_area"))
+                AS areas,
+            SUM(feature_type = "camping_site")
+                AS site_features
+         FROM place_map_features
+         WHERE place_id = ?
+           AND is_active = 1'
+    );
+
+    $featureStmt->execute([
+        $placeId,
+    ]);
+
+    $featureStats =
+        $featureStmt->fetch(PDO::FETCH_ASSOC)
+        ?: [];
+
+    $linkedStmt = $db->prepare(
+        'SELECT COUNT(DISTINCT map_feature_id)
+         FROM place_campsites
+         WHERE place_id = ?
+           AND is_active = 1
+           AND map_feature_id IS NOT NULL'
+    );
+
+    $linkedStmt->execute([
+        $placeId,
+    ]);
+
+    $linkedSiteFeatures =
+        max(
+            0,
+            (int) $linkedStmt->fetchColumn()
+        );
+
+    $siteFeatures =
+        max(
+            0,
+            (int) (
+                $featureStats['site_features']
+                ?? 0
+            )
+        );
+
+    return [
+        'active_features' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['active_features']
+                    ?? 0
+                )
+            ),
+
+        'place_boundaries' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['place_boundaries']
+                    ?? 0
+                )
+            ),
+
+        'areas' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['areas']
+                    ?? 0
+                )
+            ),
+
+        'site_features' =>
+            $siteFeatures,
+
+        'linked_site_features' =>
+            $linkedSiteFeatures,
+
+        'orphan_site_features' =>
+            max(
+                0,
+                $siteFeatures
+                - $linkedSiteFeatures
+            ),
+    ];
+}
+
 
 function llama_place_map_api_campsites(
     PDO $db,
@@ -174,7 +273,49 @@ $canEdit =
         'field_report'
     );
 
+$mapStats =
+    llama_place_map_api_stats(
+        $db,
+        $placeId
+    );
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'GET'
+    && isset($_GET['diagnostic'])
+) {
+    llama_place_map_api_json([
+        'ok' => true,
+        'place_id' => $placeId,
+        'slug' => (string) $place['slug'],
+        'map' => $mapStats,
+    ]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    /*
+     * Protect the shared host from pathological historical data. Normal
+     * Places are far below this threshold. If legitimate linked geometry ever
+     * grows beyond it, the editor should be paged/lazy-loaded rather than
+     * attempting to create hundreds of Leaflet layers in one request.
+     */
+    $editorFeatureCount =
+        (int) $mapStats['place_boundaries']
+        + (int) $mapStats['areas']
+        + (int) $mapStats['linked_site_features'];
+
+    if ($editorFeatureCount > 300) {
+        llama_place_map_api_json(
+            [
+                'ok' => false,
+                'error' =>
+                    'This Place has '
+                    . $editorFeatureCount
+                    . ' active mapped records. The editor stopped before loading them all to protect site resources.',
+                'map' => $mapStats,
+            ],
+            409
+        );
+    }
     llama_place_map_api_json([
         'ok' => true,
 
@@ -207,6 +348,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         'feature_types' =>
             llama_place_map_feature_types(),
+
+        'map' =>
+            $mapStats,
+
         'features' =>
             llama_place_map_api_features(
                 $db,
