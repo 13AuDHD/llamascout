@@ -569,3 +569,85 @@ function llama_place_map_effective_rates_with_place_base(
     );
 }
 
+function llama_place_map_rate_amount_label(
+    float $amount
+): string {
+    if (abs($amount) < 0.005) {
+        return '$0';
+    }
+
+    $formatted =
+        number_format(
+            $amount,
+            2,
+            '.',
+            ''
+        );
+
+    $formatted =
+        rtrim(
+            rtrim(
+                $formatted,
+                '0'
+            ),
+            '.'
+        );
+
+    return '$' . $formatted;
+}
+
+function llama_place_map_rate_summary_label(
+    array $rates
+): string {
+    $summary =
+        llama_place_map_feature_rate_summary(
+            $rates
+        );
+
+    if (!$summary) {
+        return '';
+    }
+
+    $minimum =
+        (float) (
+            $summary['minimum']
+            ?? 0
+        );
+
+    $maximum =
+        (float) (
+            $summary['maximum']
+            ?? $minimum
+        );
+
+    if (
+        abs($minimum) < 0.005
+        && abs($maximum) < 0.005
+    ) {
+        return 'Free';
+    }
+
+    if (
+        abs(
+            $minimum
+            - $maximum
+        ) < 0.005
+    ) {
+        return
+            llama_place_map_rate_amount_label(
+                $minimum
+            )
+            . ' / night';
+    }
+
+    return
+        llama_place_map_rate_amount_label(
+            $minimum
+        )
+        . '-'
+        . llama_place_map_rate_amount_label(
+            $maximum
+        )
+        . ' / night';
+}
+
