@@ -233,7 +233,6 @@ function llama_place_report_scope_overrides(): array
             'shared_accessible_facilities',
             'shared_accessible_facility_types',
             'accessible_toilet',
-            'accessible_picnic_table',
         ],
 
         'site' => [
@@ -280,6 +279,7 @@ function llama_place_report_scope_overrides(): array
              * Equipment physically present at one Site.
              */
             'amenity_picnic_table',
+            'accessible_picnic_table',
             'amenity_fire_ring',
             'amenity_grill',
             'amenity_bear_box',
