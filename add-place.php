@@ -22,11 +22,6 @@ $currentContributionShortLabel =
         $currentContributionLevel
     );
 
-$currentContributionLabel =
-    llama_contribution_level_label(
-        $currentContributionLevel
-    );
-
 if (
     !llama_contributor_can(
         db(),
