@@ -19,13 +19,33 @@ declare(strict_types=1);
 function llama_place_report_apply_site_selection_metadata(
     array &$fields
 ): void {
+    /*
+     * Any Place type that can legitimately contain individually identified
+     * overnight spaces must expose the Site selector. This includes conventional
+     * campgrounds as well as travel centers and parking-based overnight Places.
+     *
+     * Admin uses the site_number control as the insertion point for the stored
+     * Site reporting-target selector, so omitting a legitimate Place type here
+     * also makes mapped Sites impossible to select in Admin.
+     */
     $individualSiteTypes = [
         'developed-campground',
         'camping-area',
         'rv-park-resort',
         'membership-host',
         'private-property',
+        'rest-area',
+        'public-parking',
+        'travel-center',
+        'retail-parking',
+        'restaurant-parking',
+        'casino-parking',
+        'medical-office-parking',
+        'hospital-parking',
+        'church-parking',
         'fairgrounds',
+        'street-parking',
+        'other-parking',
     ];
 
     if (isset($fields['campsite_count'])) {
