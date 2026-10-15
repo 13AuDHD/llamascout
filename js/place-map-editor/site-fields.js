@@ -89,8 +89,7 @@
     const createOption =
         (
             value,
-            label,
-            disabled = false
+            label
         ) => {
             const option =
                 document.createElement(
@@ -103,9 +102,6 @@
             option.textContent =
                 String(label);
 
-            option.disabled =
-                disabled === true;
-
             return option;
         };
 
@@ -116,11 +112,11 @@
         ) =>
             Boolean(
                 select
-                ?.querySelector(
-                    `option[value="${CSS.escape(
-                        String(value)
-                    )}"]`
-                )
+                    ?.querySelector(
+                        `option[value="${CSS.escape(
+                            String(value)
+                        )}"]`
+                    )
             );
 
     namespace.createSiteFields =
@@ -128,8 +124,6 @@
             editor,
             getFeatureType,
             getFeatures,
-            getCampsites,
-            getSelectedFeatureId,
             markDirty,
             renderFeatureList,
             renderRates
@@ -145,10 +139,20 @@
                     '[data-site-details]'
                 );
 
-            const siteCanonical =
+            /*
+             * Site identity is automatic. The legacy identity selector is
+             * removed from the production UI if older markup still contains it.
+             * Geometry belongs to the Site record; admins do not manually link
+             * a second "mapped Site" identity.
+             */
+            const legacyIdentityControl =
                 editor.querySelector(
                     '[data-site-canonical]'
                 );
+
+            legacyIdentityControl
+                ?.closest('label')
+                ?.remove();
 
             const siteParent =
                 editor.querySelector(
@@ -198,22 +202,6 @@
                         getFeatures?.()
                     );
 
-            const currentCampsites =
-                () =>
-                    normalizeArray(
-                        getCampsites?.()
-                    );
-
-            const currentSelectedFeatureId =
-                () =>
-                    Math.max(
-                        0,
-                        Number(
-                            getSelectedFeatureId?.()
-                            || 0
-                        )
-                    );
-
             const isSite =
                 () =>
                     currentFeatureType()
@@ -239,8 +227,12 @@
                                         feature.id
                                     )
                                     === parentId
-                                    && feature.feature_type
-                                        === 'camping_area'
+                                    && (
+                                        feature.feature_type
+                                            === 'camping_area'
+                                        || feature.feature_type
+                                            === 'parking_area'
+                                    )
                             )
                         || null
                     );
@@ -301,114 +293,6 @@
                             : '';
                 };
 
-            const syncCanonicalCampsiteOptions =
-                (
-                    details = {}
-                ) => {
-                    if (!siteCanonical) {
-                        return;
-                    }
-
-                    const selectedFeatureId =
-                        currentSelectedFeatureId();
-
-                    const desired =
-                        isSite()
-                            ? String(
-                                details
-                                    .canonical_campsite_id
-                                || ''
-                            )
-                            : '';
-
-                    siteCanonical.replaceChildren();
-
-                    siteCanonical.append(
-                        createOption(
-                            '',
-                            'Map-only Site'
-                        )
-                    );
-
-                    currentCampsites()
-                        .forEach(
-                            (campsite) => {
-                                const campsiteId =
-                                    String(
-                                        campsite.id
-                                        || ''
-                                    );
-
-                                if (
-                                    campsiteId
-                                    === ''
-                                ) {
-                                    return;
-                                }
-
-                                const mappedFeatureId =
-                                    Math.max(
-                                        0,
-                                        Number(
-                                            campsite
-                                                .map_feature_id
-                                            || 0
-                                        )
-                                    );
-
-                                const mappedElsewhere =
-                                    mappedFeatureId > 0
-                                    && mappedFeatureId
-                                        !== selectedFeatureId;
-
-                                const option =
-                                    createOption(
-                                        campsiteId,
-                                        campsite.label
-                                        || `Site #${campsiteId}`,
-                                        mappedElsewhere
-                                    );
-
-                                if (
-                                    mappedElsewhere
-                                ) {
-                                    option.textContent +=
-                                        ' · mapped elsewhere';
-                                }
-
-                                /*
-                                 * Historical data can contain a stale or
-                                 * conflicting association. The currently
-                                 * selected value must remain visible so the
-                                 * editor can surface and repair it rather than
-                                 * silently replacing it.
-                                 */
-                                if (
-                                    campsiteId
-                                    === desired
-                                ) {
-                                    option.disabled =
-                                        false;
-                                }
-
-                                siteCanonical.append(
-                                    option
-                                );
-                            }
-                        );
-
-                    siteCanonical.value =
-                        optionExists(
-                            siteCanonical,
-                            desired
-                        )
-                            ? desired
-                            : '';
-
-                    siteCanonical.disabled =
-                        !isSite();
-                };
-
             const sync =
                 (
                     details = {}
@@ -421,10 +305,6 @@
                             !active;
                     }
 
-                    syncCanonicalCampsiteOptions(
-                        details
-                    );
-
                     if (!siteParent) {
                         return;
                     }
@@ -436,12 +316,16 @@
                             || ''
                         );
 
-                    const campingAreas =
+                    const areas =
                         currentFeatures()
                             .filter(
                                 (feature) =>
-                                    feature.feature_type
-                                        === 'camping_area'
+                                    (
+                                        feature.feature_type
+                                            === 'camping_area'
+                                        || feature.feature_type
+                                            === 'parking_area'
+                                    )
                                     && feature.is_active
                                         !== false
                             );
@@ -451,19 +335,19 @@
                     siteParent.append(
                         createOption(
                             '',
-                            campingAreas.length > 0
-                                ? 'Choose a Camping area'
-                                : 'Create a Camping area first'
+                            areas.length > 0
+                                ? 'Choose an Area'
+                                : 'Create an Area first'
                         )
                     );
 
-                    campingAreas.forEach(
+                    areas.forEach(
                         (feature) => {
                             siteParent.append(
                                 createOption(
                                     feature.id,
                                     feature.label
-                                    || `Camping area #${feature.id}`
+                                    || `Area #${feature.id}`
                                 )
                             );
                         }
@@ -481,12 +365,11 @@
                                 desiredParent;
 
                         } else if (
-                            campingAreas.length
-                            === 1
+                            areas.length === 1
                         ) {
                             siteParent.value =
                                 String(
-                                    campingAreas[0].id
+                                    areas[0].id
                                 );
 
                         } else {
@@ -573,10 +456,6 @@
                     }
 
                     return {
-                        canonical_campsite_id:
-                            siteCanonical?.value
-                            || '',
-
                         camping_area_feature_id:
                             siteParent?.value
                             || '',
@@ -616,24 +495,6 @@
                     if (details.site_code) {
                         labels.push(
                             `Site ${details.site_code}`
-                        );
-                    }
-
-                    if (
-                        details
-                            .canonical_campsite_label
-                    ) {
-                        labels.push(
-                            `Linked: ${details.canonical_campsite_label}`
-                        );
-                    }
-
-                    if (
-                        details
-                            .canonical_campsite_conflict
-                    ) {
-                        labels.push(
-                            'Association conflict'
                         );
                     }
 
@@ -709,8 +570,7 @@
                 siteType,
                 siteParkingStyle,
                 siteHookups,
-                siteAccessible,
-                siteCanonical
+                siteAccessible
             ]
                 .forEach(
                     (control) => {
@@ -739,11 +599,9 @@
                 payload,
                 detailLabels,
                 syncSiteClassOptions,
-                syncCanonicalCampsiteOptions,
 
                 controls: {
                     siteDetails,
-                    siteCanonical,
                     siteParent,
                     siteClass,
                     siteCode,
