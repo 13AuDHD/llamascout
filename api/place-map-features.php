@@ -23,6 +23,38 @@ function llama_place_map_api_json(
     exit;
 }
 
+/**
+ * fee_status belongs only to parking_area.
+ *
+ * Camping Areas and Sites use the normalized nightly-rate model instead.
+ * This prevents a second manual cost status from contradicting actual rates.
+ */
+function llama_place_map_api_normalize_area_details(
+    string $featureType,
+    mixed $details
+): array {
+    $details =
+        is_array($details)
+            ? $details
+            : [];
+
+    $featureType =
+        strtolower(
+            trim(
+                $featureType
+            )
+        );
+
+    if ($featureType !== 'parking_area') {
+        unset(
+            $details['fee_status'],
+            $details['overnight_status']
+        );
+    }
+
+    return $details;
+}
+
 function llama_place_map_api_features(
     PDO $db,
     int $placeId
@@ -45,10 +77,24 @@ function llama_place_map_api_features(
         );
 
     foreach ($features as &$feature) {
-        if (
-            (string) ($feature['feature_type'] ?? '')
-            !== 'camping_site'
-        ) {
+        $featureType =
+            (string) (
+                $feature['feature_type']
+                ?? ''
+            );
+
+        /*
+         * Never expose historical camping-Area fee_status through the API.
+         * Detailed mapped rates are authoritative for camping pricing.
+         */
+        $feature['area_details'] =
+            llama_place_map_api_normalize_area_details(
+                $featureType,
+                $feature['area_details']
+                ?? []
+            );
+
+        if ($featureType !== 'camping_site') {
             continue;
         }
 
@@ -418,6 +464,13 @@ try {
             )
         );
 
+    $areaDetails =
+        llama_place_map_api_normalize_area_details(
+            $featureType,
+            $input['area_details']
+            ?? []
+        );
+
     $siteDetails =
         is_array(
             $input['site_details']
@@ -481,8 +534,7 @@ try {
                     ?? null,
                 $input['metadata']
                     ?? [],
-                $input['area_details']
-                    ?? [],
+                $areaDetails,
                 $siteDetails,
                 $input['rates']
                     ?? [],
