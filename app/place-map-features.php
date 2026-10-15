@@ -1093,66 +1093,24 @@ function llama_place_map_features(
                     ?? []
                 );
 
-            if ($feature['rates']) {
-                $siteRateTypes =
-                    array_fill_keys(
-                        array_map(
-                            static fn (array $rate): string =>
-                                (string) ($rate['rate_type'] ?? ''),
-                            $feature['rates']
-                        ),
-                        true
-                    );
-
-                $inheritedRates =
-                    array_values(
-                        array_filter(
-                            $feature['parent_rates'],
-                            static fn (array $rate): bool =>
-                                !isset(
-                                    $siteRateTypes[
-                                        (string) (
-                                            $rate['rate_type']
-                                            ?? ''
-                                        )
-                                    ]
-                                )
-                        )
-                    );
-
-                $feature['effective_rates'] =
-                    array_values(
-                        array_merge(
-                            $inheritedRates,
-                            $feature['rates']
-                        )
-                    );
-
-                $feature['effective_rate_source'] =
-                    $feature['parent_rates']
-                        ? 'site_override'
-                        : 'site';
-            } else {
-                $feature['effective_rates'] =
-                    $feature['parent_rates'];
-
-                $feature['effective_rate_source'] =
-                    $feature['parent_rates']
-                        ? 'camping_area'
-                        : '';
-            }
-
-            $feature['effective_rate_summary'] =
-                llama_place_map_feature_rate_summary(
-                    $feature['effective_rates']
-                );
+            /*
+             * Effective Site pricing is hydrated once, after Site pricing
+             * classes are loaded. That layer owns Area -> class -> Site
+             * precedence and canonical rate-identity matching.
+             */
+            $feature['effective_rates'] = [];
+            $feature['effective_rate_source'] = '';
+            $feature['effective_rate_summary'] = [];
         } else {
             $feature['parent_rates'] = [];
-            $feature['effective_rates'] = $feature['rates'];
+            $feature['effective_rates'] =
+                $feature['rates'];
+
             $feature['effective_rate_source'] =
                 $feature['rates']
                     ? 'feature'
                     : '';
+
             $feature['effective_rate_summary'] =
                 $feature['rate_summary'];
         }
