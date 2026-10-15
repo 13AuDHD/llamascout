@@ -442,3 +442,97 @@ function llama_place_site_identity_ensure_target(
         $targetId
     );
 }
+
+/**
+ * Normalize every active mapped Site for one Place to a real Site record.
+ *
+ * This is an Admin integrity guard for historical data. New Site polygons are
+ * normalized during map save, so in steady state this function is read-only.
+ * It deliberately returns conflicts instead of guessing through ambiguous
+ * historical data.
+ */
+function llama_place_site_identity_normalize_place(
+    PDO $db,
+    int $placeId
+): array {
+    if ($placeId < 1) {
+        return [
+            'normalized' => 0,
+            'site_ids' => [],
+            'errors' => [],
+        ];
+    }
+
+    $stmt =
+        $db->prepare(
+            'SELECT id
+             FROM place_map_features
+             WHERE place_id = ?
+               AND feature_type = "camping_site"
+               AND is_active = 1
+             ORDER BY sort_order ASC, id ASC'
+        );
+
+    $stmt->execute([
+        $placeId,
+    ]);
+
+    $normalized = 0;
+    $siteIds = [];
+    $errors = [];
+
+    foreach (
+        $stmt->fetchAll(
+            PDO::FETCH_COLUMN
+        )
+        ?: []
+        as $rawFeatureId
+    ) {
+        $featureId =
+            (int) $rawFeatureId;
+
+        if ($featureId < 1) {
+            continue;
+        }
+
+        try {
+            $siteId =
+                llama_place_site_identity_ensure(
+                    $db,
+                    $placeId,
+                    $featureId
+                );
+
+            if ($siteId > 0) {
+                $siteIds[
+                    $featureId
+                ] =
+                    $siteId;
+
+                $normalized++;
+            }
+
+        } catch (Throwable $exception) {
+            $errors[] = [
+                'feature_id' =>
+                    $featureId,
+
+                'message' =>
+                    $exception
+                        ->getMessage(),
+            ];
+        }
+    }
+
+    return [
+        'normalized' =>
+            $normalized,
+
+        'site_ids' =>
+            $siteIds,
+
+        'errors' =>
+            $errors,
+    ];
+}
+
