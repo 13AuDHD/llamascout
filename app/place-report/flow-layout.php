@@ -22,6 +22,9 @@ function llama_place_report_layout_groups(): array
             'overnight_stays' => 'Camping & Overnight Stays',
             'reservations_pricing' => 'Reservations & Pricing',
             'shared_amenities' => 'Facilities & Amenities',
+            'place_accessibility' => 'Accessibility',
+            'activities_recreation' => 'Activities & Recreation',
+            'seasonal_conditions' => 'Seasonal Conditions',
             'connectivity_services' => 'Connectivity & Services',
             'place_rules' => 'Rules & Restrictions',
             'operating_closures' => 'Operating Hours & Closures',
@@ -141,6 +144,22 @@ function llama_place_report_layout_assignments(): array
             'shared_accessible_facility_types',
             'accessible_toilet',
             'accessible_picnic_table',
+            'facility_map_url',
+        ],
+
+        'place:place_accessibility' => [
+            'place_accessible',
+            'accessibility_notes',
+        ],
+
+        'place:activities_recreation' => [
+            'activities',
+        ],
+
+        'place:seasonal_conditions' => [
+            'best_months',
+            'hurricane_risk',
+            'heat_season_risk',
         ],
 
         'place:connectivity_services' => [
@@ -248,7 +267,7 @@ function llama_place_report_layout_assignments(): array
         'site:camping_equipment' => [
             'tent_pad',
             'tent_pad_length_feet',
-            'tent_pad_width_feet',
+     'tent_pad_width_feet',
             'site_hookups_available',
             'hookup_electric',
             'hookup_electric_service',
@@ -386,9 +405,47 @@ function llama_place_report_apply_layout_metadata(
 
         $field['layout_group'] =
             $group;
+
+        $field['layout_definition_explicit'] =
+            array_key_exists(
+                $key,
+                $lookup
+            );
     }
 
     unset($field);
+}
+
+/**
+ * Return active canonical fields that still rely on a legacy-section
+ * fallback instead of an explicit shared-layout assignment.
+ */
+function llama_place_report_unclassified_layout_fields(
+    array $fields
+): array {
+    $missing = [];
+
+    foreach ($fields as $key => $field) {
+        if (
+            (string) (
+                $field['layout_section']
+                ?? ''
+            ) === 'compatibility'
+            || !empty(
+                $field['layout_definition_explicit']
+            )
+        ) {
+            continue;
+        }
+
+        $missing[$key] = [
+            'section' => (string) ($field['section'] ?? ''),
+            'layout_section' => (string) ($field['layout_section'] ?? ''),
+            'layout_group' => (string) ($field['layout_group'] ?? ''),
+        ];
+    }
+
+    return $missing;
 }
 
 /**
