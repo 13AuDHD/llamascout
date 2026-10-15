@@ -353,18 +353,10 @@ require __DIR__ . '/partials/header.php';
                 hidden
             >
                 <label>
-                    <span>Canonical campsite</span>
-
-                    <select data-site-canonical>
-                        <option value="">Map-only Site</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Parent Camping area</span>
+                    <span>Parent Area</span>
 
                     <select data-site-parent>
-                        <option value="">Choose a Camping area</option>
+                        <option value="">Choose an Area</option>
                     </select>
                 </label>
 
@@ -496,9 +488,9 @@ require __DIR__ . '/partials/header.php';
                 </label>
 
                 <p class="mapped-area-editor-area-note">
-                    Individual campsites belong to a Camping area. Put objective
-                    site facts here. Sensory observations can be added later
-                    through site reports.
+                    Individual Sites belong to an Area. Put objective Site facts
+                    here. Sensory observations can be added later through Site
+                    reports.
                 </p>
             </div>
 
@@ -596,12 +588,12 @@ require __DIR__ . '/partials/header.php';
                 class="mapped-area-editor-help"
                 data-site-class-empty
             >
-                No site pricing classes have been entered for this Camping area yet.
+                No site pricing classes have been entered for this Area yet.
             </p>
 
             <p class="mapped-area-editor-help">
-                Individual campsites can inherit a pricing class, then override
-                any rate that is genuinely different for that specific site.
+                Individual Sites can inherit a pricing class, then override
+                any rate that is genuinely different for that specific Site.
             </p>
         </section>
 
@@ -614,7 +606,7 @@ require __DIR__ . '/partials/header.php';
                 <div>
                     <h2>Rates</h2>
                     <p class="mapped-area-editor-card-subtitle">
-                        General nightly pricing for this Camping area, or site-specific overrides for an individual campsite.
+                        General nightly pricing for this Area, or Site-specific overrides for an individual Site.
                     </p>
                 </div>
 
