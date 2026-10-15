@@ -34,6 +34,7 @@ function llama_photo_contexts(): array
         'add-place' => ['max' => 10, 'label' => 'Place photos'],
         'update-place' => ['max' => 5, 'label' => 'Update photos'],
         'place-report' => ['max' => 5, 'label' => 'Report photos'],
+        'admin-place' => ['max' => 10, 'label' => 'Admin Place photos'],
         'profile-images' => ['max' => 5, 'label' => 'Profile images'],
         'shop-products' => ['max' => 20, 'label' => 'Product photos'],
         'badges' => ['max' => 1, 'label' => 'Badge image'],
@@ -550,13 +551,6 @@ function llama_photo_stage_update_metadata(
     string $token,
     array $submittedPhotos
 ): array {
-    /*
-     * Metadata updates are only valid for an existing staging batch.
-     * Previously a stale/consumed token could reach this function, read as an
-     * empty manifest, and then llama_photo_write_manifest() would create a new
-     * empty stage. That phantom stage could later be mistaken for an explicit
-     * "remove every photo" action and wipe a saved draft's real photos.
-     */
     if (
         !llama_photo_stage_manifest_exists(
             $context,
