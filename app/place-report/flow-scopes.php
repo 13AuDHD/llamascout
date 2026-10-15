@@ -246,6 +246,7 @@ function llama_place_report_scope_overrides(): array
             'max_vehicle_length_feet',
             'parking_surface',
             'ground_condition',
+            'levelness',
             'overhead_clearance_feet',
             'parking_length_feet',
             'parking_grade',
