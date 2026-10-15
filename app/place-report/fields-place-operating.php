@@ -1,21 +1,22 @@
 <?php
+
 declare(strict_types=1);
 
 /**
- * Place-level operating hours and closure observations.
+ * Place operating hours and closure observations.
  *
- * Operating schedules are normal Place facts. A reported closure/reopening is
- * evidence for the administrative closure workflow: it enters the Closed
- * Places verification queue but never changes the public closure marker until
- * an authorized administrator verifies it.
+ * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
+ * is the single canonical source for Place / Area / Site ownership.
+ *
+ * A reported closure/reopening is evidence for the administrative closure
+ * workflow. It enters the Closed Places verification queue but never changes
+ * the public closure marker until an authorized administrator verifies it.
  */
 function llama_place_report_add_operating_fields(callable $add): void
 {
     $base = [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
-        'report_scopes' => ['place'],
-        'report_scope_group' => 'place',
     ];
 
     $yes = static fn (string $key): array => [
@@ -31,19 +32,24 @@ function llama_place_report_add_operating_fields(callable $add): void
     ];
 
     $months = [];
+
     for ($month = 1; $month <= 12; $month++) {
         $months[(string) $month] =
             date('F', mktime(0, 0, 0, $month, 1));
     }
 
     $days = [];
+
     for ($day = 1; $day <= 31; $day++) {
-        $days[(string) $day] = (string) $day;
+        $days[(string) $day] =
+            (string) $day;
     }
 
     $hours = [];
+
     for ($hour = 0; $hour < 24; $hour++) {
         $key = sprintf('%02d:00', $hour);
+
         $hours[$key] =
             date('g A', strtotime('2000-01-01 ' . $key));
     }
@@ -64,10 +70,13 @@ function llama_place_report_add_operating_fields(callable $add): void
     foreach ([
         'place_operating_start_month' =>
             ['Operating season begins: month', $months],
+
         'place_operating_start_day' =>
             ['Operating season begins: day', $days],
+
         'place_operating_end_month' =>
             ['Operating season ends: month', $months],
+
         'place_operating_end_day' =>
             ['Operating season ends: day', $days],
     ] as $key => [$label, $options]) {
@@ -119,11 +128,13 @@ function llama_place_report_add_operating_fields(callable $add): void
         $base + [
             'help' =>
                 'This is the gate at the Place itself. Record an access-road '
-                . 'gate under Getting There â Access Restrictions.',
+                . 'gate under Getting There / Access Restrictions.',
         ]
     );
 
-    $gateCondition = [$yes('place_entrance_gate')];
+    $gateCondition = [
+        $yes('place_entrance_gate'),
+    ];
 
     $gateOptions = [
         'always_open' => 'Always open',
@@ -170,11 +181,6 @@ function llama_place_report_add_operating_fields(callable $add): void
         );
     }
 
-    /*
-     * Closure observations deliberately do not count toward report
-     * completeness. They are time-sensitive evidence and feed the admin
-     * verification queue instead of becoming public closure truth directly.
-     */
     $closure = $base + [
         'counts_toward_completion' => false,
     ];
@@ -317,17 +323,19 @@ function llama_place_report_apply_operating_metadata(array &$fields): void
             && $key !== 'place_expected_reopening'
             && !in_array(
                 $key,
-                ['place_opening_time', 'place_closing_time'],
+                [
+                    'place_opening_time',
+                    'place_closing_time',
+                ],
                 true
             )
         ) {
             continue;
         }
 
-        $field['report_scopes'] = ['place'];
-        $field['report_scope_group'] = 'place';
         $field['layout_section'] = 'place';
         $field['layout_group'] = 'operating_closures';
     }
+
     unset($field);
 }
