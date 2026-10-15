@@ -196,6 +196,202 @@
                     );
                 };
 
+            const selectionDetail =
+                (feature) => {
+                    const featureId =
+                        Number(
+                            feature?.id
+                            || 0
+                        );
+
+                    const placeId =
+                        Number(
+                            feature?.place_id
+                            || 0
+                        );
+
+                    const type =
+                        String(
+                            feature?.feature_type
+                            || ''
+                        );
+
+                    const label =
+                        String(
+                            feature?.label
+                            || featureTypeLabel(type)
+                            || ''
+                        );
+
+                    if (type === 'place_boundary') {
+                        return {
+                            level:
+                                'place',
+
+                            place_id:
+                                placeId,
+
+                            area_id:
+                                0,
+
+                            site_id:
+                                0,
+
+                            selector_value:
+                                '',
+
+                            map_feature_id:
+                                featureId,
+
+                            parent_area_id:
+                                0,
+
+                            label
+                        };
+                    }
+
+                    if (
+                        type === 'camping_area'
+                        || type === 'parking_area'
+                    ) {
+                        return {
+                            level:
+                                'area',
+
+                            place_id:
+                                placeId,
+
+                            area_id:
+                                featureId,
+
+                            site_id:
+                                0,
+
+                            selector_value:
+                                `map_feature:${featureId}`,
+
+                            map_feature_id:
+                                featureId,
+
+                            parent_area_id:
+                                0,
+
+                            label
+                        };
+                    }
+
+                    if (type === 'camping_site') {
+                        const campsiteId =
+                            Number(
+                                feature
+                                    ?.site_details
+                                    ?.canonical_campsite_id
+                                || 0
+                            );
+
+                        const parentAreaId =
+                            Number(
+                                feature
+                                    ?.site_details
+                                    ?.camping_area_feature_id
+                                || 0
+                            );
+
+                        const siteCode =
+                            String(
+                                feature
+                                    ?.site_details
+                                    ?.site_code
+                                || ''
+                            ).trim();
+
+                        const siteLabel =
+                            siteCode !== ''
+                                ? `Site ${siteCode}`
+                                : (
+                                    label !== ''
+                                        ? label
+                                        : 'Site'
+                                );
+
+                        return {
+                            level:
+                                'site',
+
+                            place_id:
+                                placeId,
+
+                            area_id:
+                                parentAreaId,
+
+                            site_id:
+                                campsiteId > 0
+                                    ? campsiteId
+                                    : featureId,
+
+                            selector_value:
+                                campsiteId > 0
+                                    ? `campsite_record:${campsiteId}`
+                                    : `map_feature:${featureId}`,
+
+                            map_feature_id:
+                                featureId,
+
+                            parent_area_id:
+                                parentAreaId,
+
+                            label:
+                                siteLabel
+                        };
+                    }
+
+                    return {
+                        level:
+                            'place',
+
+                        place_id:
+                            placeId,
+
+                        area_id:
+                            0,
+
+                        site_id:
+                            0,
+
+                        selector_value:
+                            '',
+
+                        map_feature_id:
+                            featureId,
+
+                        parent_area_id:
+                            0,
+
+                        label
+                    };
+                };
+
+            const announceSelection =
+                (feature) => {
+                    if (!feature) {
+                        return;
+                    }
+
+                    const detail =
+                        selectionDetail(
+                            feature
+                        );
+
+                    window.dispatchEvent(
+                        new CustomEvent(
+                            'llama:map-feature-selected',
+                            {
+                                detail
+                            }
+                        )
+                    );
+                };
+
             let chooseFeature =
                 () => {};
 
@@ -292,7 +488,7 @@
                                     ? (
                                         minimum === maximum
                                             ? `${rateMoney?.(minimum) || ''} / night`
-                                            : `${rateMoney?.(minimum) || ''}â${rateMoney?.(maximum) || ''} / night`
+                                            : `${rateMoney?.(minimum) || ''} - ${rateMoney?.(maximum) || ''} / night`
                                     )
                                     : '';
 
@@ -336,7 +532,7 @@
                                     source
                                 ]
                                     .filter(Boolean)
-                                    .join(' · ');
+                                    .join(' Â· ');
 
                             button.append(
                                 name,
@@ -447,7 +643,10 @@
                 };
 
             const selectFeature =
-                (id) => {
+                (
+                    id,
+                    announce = true
+                ) => {
                     const feature =
                         currentFeatures()
                             .find(
@@ -570,6 +769,12 @@
                             }
                         );
                     }
+
+                    if (announce) {
+                        announceSelection(
+                            feature
+                        );
+                    }
                 };
 
             chooseFeature =
@@ -579,14 +784,66 @@
                         && Number(id)
                             !== currentSelectedFeatureId()
                         && !window.confirm(
-                            'Discard the unsaved mapped-area changes?'
+                            'Discard the unsaved map changes?'
                         )
                     ) {
                         return;
                     }
 
-                    selectFeature(id);
+                    selectFeature(
+                        id,
+                        true
+                    );
                 };
+
+            const selectFromPlaceContext =
+                (event) => {
+                    const detail =
+                        event?.detail;
+
+                    if (
+                        !detail
+                        || typeof detail !== 'object'
+                    ) {
+                        return;
+                    }
+
+                    const featureId =
+                        Math.max(
+                            0,
+                            Number(
+                                detail.map_feature_id
+                                || 0
+                            )
+                        );
+
+                    if (
+                        featureId < 1
+                        || featureId
+                            === currentSelectedFeatureId()
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        getDirty?.()
+                        && !window.confirm(
+                            'Discard the unsaved map changes?'
+                        )
+                    ) {
+                        return;
+                    }
+
+                    selectFeature(
+                        featureId,
+                        false
+                    );
+                };
+
+            window.addEventListener(
+                'llama:place-context-changed',
+                selectFromPlaceContext
+            );
 
             fitAllAreasButton
                 ?.addEventListener(
@@ -602,7 +859,8 @@
                 chooseFeature,
                 featureTypeLabel,
                 geometryToPoints,
-                metadataForFeature
+                metadataForFeature,
+                selectionDetail
             };
         };
 })();
