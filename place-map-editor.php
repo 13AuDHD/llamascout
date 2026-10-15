@@ -314,8 +314,8 @@ require __DIR__ . '/partials/header.php';
                     </select>
                 </label>
 
-                <label>
-                    <span>Cost</span>
+                <label data-fee-status-field>
+                    <span>Parking cost status</span>
 
                     <select data-fee-status>
                         <option value="">Not specified</option>
@@ -829,6 +829,7 @@ require __DIR__ . '/partials/header.php';
 <script src="/js/place-map-editor/geometry.js"></script>
 <script src="/js/place-map-editor/gps.js"></script>
 <script src="/js/place-map-editor/map-styles.js"></script>
+<script src="/js/place-map-editor/cost-status.js"></script>
 <script src="/js/place-map-editor.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
