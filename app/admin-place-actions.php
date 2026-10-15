@@ -6,6 +6,7 @@ require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/admin-place-areas.php';
 require_once __DIR__ . '/admin-place-report.php';
 require_once __DIR__ . '/place-verifications.php';
+require_once __DIR__ . '/place-site-identity.php';
 
 /** POST controller for the existing Admin Place page. */
 function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): array
@@ -68,6 +69,33 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                         throw new InvalidArgumentException('Invalid Area answer format.');
                     }
                     llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
+                }
+
+                $selectedSiteTarget =
+                    trim(
+                        (string) (
+                            $_POST['selected_campsite_id']
+                            ?? ''
+                        )
+                    );
+
+                if ($selectedSiteTarget !== '') {
+                    $parsedSiteTarget =
+                        admin_place_parse_site_target(
+                            $selectedSiteTarget
+                        );
+
+                    $siteId =
+                        llama_place_site_identity_ensure_target(
+                            $db,
+                            $placeId,
+                            (string) $parsedSiteTarget['source'],
+                            (int) $parsedSiteTarget['id']
+                        );
+
+                    $_POST['selected_campsite_id'] =
+                        'campsite_record:'
+                        . $siteId;
                 }
 
                 $photoTarget =
