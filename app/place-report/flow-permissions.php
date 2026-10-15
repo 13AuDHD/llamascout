@@ -5,9 +5,12 @@ declare(strict_types=1);
 /**
  * Canonical permission answers.
  *
- * Permission means whether an activity is allowed under the applicable rule.
- * It never means that the physical space is suitable, comfortable, or large
- * enough for a particular vehicle or camping setup.
+ * Permission means the documented or posted rule for an activity.
+ * It never means:
+ * - that the activity is physically suitable for the Site;
+ * - that people commonly do it;
+ * - that staff currently enforce it;
+ * - or that ordinary parking is permitted.
  *
  * Legacy values 0, 1, and 2 retain their meanings. A value of 3 represents
  * Conditional.
@@ -37,30 +40,61 @@ function llama_place_report_apply_permission_flows(
             continue;
         }
 
-        $fields[$key]['type'] =
-            'select';
-
-        $fields[$key]['options'] =
-            $options;
-
-        $fields[$key]['allow_unknown'] =
-            true;
+        $fields[$key]['type'] = 'select';
+        $fields[$key]['options'] = $options;
+        $fields[$key]['allow_unknown'] = true;
     }
 
-    if (isset($fields['overnight_camping_allowed'])) {
-        $fields['overnight_camping_allowed']['label'] =
-            'Overnight stay permitted?';
+    $labels = [
+        'overnight_camping_allowed' =>
+            'Overnight stay permitted?',
 
-        $fields['overnight_camping_allowed']['help'] =
-            'The overall official rule for remaining overnight at this Place or Area. This is separate from whether tents, sleeping inside a vehicle, or RV/trailer camping are individually permitted.';
+        'dispersed_camping_allowed' =>
+            'Dispersed camping permitted?',
+
+        'campfire_allowed' =>
+            'Campfires permitted?',
+
+        'collecting_firewood' =>
+            'Collecting firewood permitted?',
+
+        'drone_use_legal' =>
+            'Drone use permitted?',
+
+        'target_shooting_allowed' =>
+            'Target shooting permitted?',
+    ];
+
+    foreach ($labels as $key => $label) {
+        if (isset($fields[$key])) {
+            $fields[$key]['label'] = $label;
+        }
     }
 
-    if (isset($fields['dispersed_camping_allowed'])) {
-        $fields['dispersed_camping_allowed']['label'] =
-            'Dispersed camping permitted?';
+    $help = [
+        'overnight_camping_allowed' =>
+            'Record the documented or posted rule for remaining overnight at this Place or Area. This does not answer whether ordinary parking is permitted and does not imply that tents, sleeping inside a vehicle, or RV/trailer camping are individually permitted.',
 
-        $fields['dispersed_camping_allowed']['help'] =
-            'Whether camping outside a developed campground or formally assigned campsite is permitted under the applicable rules.';
+        'dispersed_camping_allowed' =>
+            'Record the documented or posted rule for camping outside a developed campground or formally assigned Site.',
+
+        'campfire_allowed' =>
+            'Record the normal documented or posted rule for campfires. Current temporary fire restrictions are recorded separately and may override this normal rule.',
+
+        'collecting_firewood' =>
+            'Record the documented or posted rule for gathering firewood. This is separate from whether firewood is available or whether campfires are currently allowed.',
+
+        'drone_use_legal' =>
+            'Record the documented or posted rule for recreational drone use at this location. Do not infer permission from seeing other people fly drones.',
+
+        'target_shooting_allowed' =>
+            'Record the documented or posted rule for recreational target shooting. Do not infer permission from evidence that others have shot here.',
+    ];
+
+    foreach ($help as $key => $text) {
+        if (isset($fields[$key])) {
+            $fields[$key]['help'] = $text;
+        }
     }
 
     $add(
@@ -74,7 +108,7 @@ function llama_place_report_apply_permission_flows(
             'options' => $options,
             'points_categories' => ['seasons_rules_services'],
             'help' =>
-                'Whether overnight sleeping or camping inside a car, SUV, van, pickup, or similar non-RV vehicle is permitted. This is separate from permission to park the vehicle.',
+                'Record the documented or posted rule for sleeping overnight inside a car, SUV, van, pickup, or similar non-RV vehicle. This is not a parking-permission question: a vehicle may be allowed to park while sleeping in it is prohibited.',
         ]
     );
 
@@ -90,12 +124,12 @@ function llama_place_report_apply_permission_flows(
             ],
 
             'help' =>
-                'Explain permits, conditions, limitations, or exceptions affecting the overall overnight rule, dispersed camping, or sleeping inside a vehicle.',
+                'Explain documented permits, conditions, limitations, or exceptions affecting the overall overnight rule, dispersed camping, or sleeping inside a vehicle. Observed behavior is not a substitute for the rule.',
         ],
 
         'fire_activities' => [
             'label' =>
-                'Fire and activity permits / conditions',
+                'Fire and activity permit / conditions',
 
             'fields' => [
                 'campfire_allowed',
@@ -105,14 +139,12 @@ function llama_place_report_apply_permission_flows(
             ],
 
             'help' =>
-                'Explain permit requirements or other conditions for campfires, collecting firewood, drones, or shooting. Verify current fire restrictions separately.',
+                'Explain documented permit requirements or conditions for campfires, collecting firewood, drones, or target shooting. Current temporary fire restrictions are recorded separately.',
         ],
     ];
 
     foreach ($groups as $suffix => $group) {
-        $key =
-            $suffix
-            . '_conditional_details';
+        $key = $suffix . '_conditional_details';
 
         $add(
             $key,
@@ -151,7 +183,7 @@ function llama_place_report_apply_permission_flows(
                 $groups['camping']['fields'],
 
             'help' =>
-                'Link to the official permit application or permit information page. This is not a booking URL.',
+                'Link to the official permit application or permit-information page. This is not a reservation or booking URL.',
         ],
 
         'fire_activity_permit_url' => [
@@ -232,15 +264,12 @@ function llama_place_report_apply_permission_flows(
                     true
                 )
             ) {
-                $node['value'][] =
-                    '3';
+                $node['value'][] = '3';
             }
 
             foreach ($node as &$child) {
                 if (is_array($child)) {
-                    $expandConditionalOvernight(
-                        $child
-                    );
+                    $expandConditionalOvernight($child);
                 }
             }
 
