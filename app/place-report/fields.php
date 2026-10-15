@@ -45,14 +45,24 @@ function llama_place_report_fields(): array
 
     require_once __DIR__ . '/fields-road-conditions.php';
     llama_place_report_add_road_condition_questions($add);
+
     require_once __DIR__ . '/fields-road-access-additions.php';
     llama_place_report_add_road_access_questions($add);
+
     require_once __DIR__ . '/fields-road-seasonal.php';
     llama_place_report_add_road_seasonal_questions($add);
+
     require_once __DIR__ . '/fields-road-restrictions.php';
     llama_place_report_add_road_restriction_questions($add);
 
-    foreach (['landscape_primary', 'landscape_details', 'landscape_views'] as $key) {
+    foreach (
+        [
+            'landscape_primary',
+            'landscape_details',
+            'landscape_views',
+        ]
+        as $key
+    ) {
         if (isset($f[$key])) {
             $f[$key]['wide'] = false;
         }
@@ -62,55 +72,16 @@ function llama_place_report_fields(): array
     llama_place_report_add_season_fields($f, $add);
 
     llama_place_report_add_summary_fields($f, $add);
+
     require_once __DIR__ . '/flow-conditions.php';
     llama_place_report_add_flow_condition_fields($f, $add);
+
     llama_place_report_apply_applicability($f);
     llama_place_report_apply_flow_conditions($f);
     llama_place_report_apply_road_hazard_dependencies($f);
 
     require_once __DIR__ . '/flow-metadata.php';
     llama_place_report_apply_flow_metadata($f);
-
-    require_once __DIR__ . '/flow-scopes.php';
-    llama_place_report_apply_flow_scopes($f);
-
-    /*
-     * Source-fed place facts are ordinary Scout Report answers. Keep their
-     * ownership explicit so they never become campsite defaults by accident.
-     */
-    foreach ([
-        'place_accessible',
-        'facility_map_url',
-        'activities',
-        'accessibility_notes',
-    ] as $key) {
-        if (!isset($f[$key])) {
-            continue;
-        }
-
-        $f[$key]['report_scopes'] = ['place'];
-        $f[$key]['report_scope_group'] = 'place';
-        $f[$key]['scope_inheritance'] = 'none';
-    }
-
-    foreach ([
-        'approach_width_restricted', 'approach_narrowest_width_feet',
-        'approach_turnaround_available', 'approach_overhead_obstacles',
-        'approach_access_restrictions',
-        'approach_year_round', 'approach_seasonal_closure',
-        'approach_closure_month', 'approach_closure_day',
-        'approach_reopening_month', 'approach_reopening_day',
-        'approach_winter_maintenance', 'approach_snow_chains',
-        'approach_seasonal_restrictions', 'approach_road_conditions_url',
-        'approach_road_type', 'approach_permit_required',
-        'approach_fee_required', 'approach_gate_present',
-        'approach_gate_access_type', 'approach_gate_opens',
-        'approach_gate_closes', 'approach_restriction_details',
-        'approach_access_info_url',
-    ] as $key) {
-        $f[$key]['report_scopes'] = ['place'];
-        $f[$key]['report_scope_group'] = 'place';
-    }
 
     require_once __DIR__ . '/flow-access-options.php';
     llama_place_report_apply_access_options($f);
@@ -130,9 +101,16 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-place-operating.php';
     llama_place_report_add_operating_fields($add);
 
-    foreach (['entrance_facility_fee', 'parking_fee'] as $key) {
+    foreach (
+        [
+            'entrance_facility_fee',
+            'parking_fee',
+        ]
+        as $key
+    ) {
         if (isset($f[$key])) {
-            $f[$key]['display_section'] = 'location';
+            $f[$key]['display_section'] =
+                'location';
         }
     }
 
@@ -162,15 +140,37 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-form-cleanup.php';
     llama_place_report_apply_form_cleanup_metadata($f);
 
-    foreach ([
-        'tent_camping_allowed',
-        'rv_camping_allowed',
-        'overnight_restrictions',
-        'overnight_vehicle_tent_permit_url',
-    ] as $key) {
-        $f[$key]['layout_section'] = 'place';
-        $f[$key]['layout_group'] = 'overnight_stays';
+    foreach (
+        [
+            'tent_camping_allowed',
+            'rv_camping_allowed',
+            'overnight_restrictions',
+            'overnight_vehicle_tent_permit_url',
+        ]
+        as $key
+    ) {
+        if (!isset($f[$key])) {
+            continue;
+        }
+
+        $f[$key]['layout_section'] =
+            'place';
+
+        $f[$key]['layout_group'] =
+            'overnight_stays';
     }
+
+    /*
+     * Scope ownership is intentionally applied LAST.
+     *
+     * Several modern field groups are added after the original report fields
+     * are assembled. Applying ownership earlier allowed those newer fields to
+     * retain ad-hoc or missing scope metadata. flow-scopes.php is now the one
+     * canonical source of Place / Area / Site ownership for the complete
+     * registry.
+     */
+    require_once __DIR__ . '/flow-scopes.php';
+    llama_place_report_apply_flow_scopes($f);
 
     return $f;
 }
