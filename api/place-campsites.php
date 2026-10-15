@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -49,6 +50,85 @@ try {
     $db = db();
     $sites = llama_place_campsites($db, $placeId);
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
+
+    $baseCampingFee =
+        $place['rules']['fee']
+        ?? null;
+
+    $mappedSitePricing = [];
+
+    foreach (
+        llama_place_map_features(
+            $db,
+            $placeId,
+            true
+        )
+        as $feature
+    ) {
+        if (
+            (string) (
+                $feature['feature_type']
+                ?? ''
+            ) !== 'camping_site'
+        ) {
+            continue;
+        }
+
+        $featureId =
+            (int) (
+                $feature['id']
+                ?? 0
+            );
+
+        if ($featureId < 1) {
+            continue;
+        }
+
+        $mappedSitePricing[
+            $featureId
+        ] =
+            (array) (
+                $feature['effective_rates']
+                ?? $feature['rates']
+                ?? []
+            );
+    }
+
+    foreach ($sites as &$site) {
+        $mapFeatureId =
+            max(
+                0,
+                (int) (
+                    $site['map_feature_id']
+                    ?? 0
+                )
+            );
+
+        $effectiveRates =
+            llama_place_map_effective_rates_with_place_base(
+                (array) (
+                    $mappedSitePricing[
+                        $mapFeatureId
+                    ]
+                    ?? []
+                ),
+                $baseCampingFee
+            );
+
+        $site['effective_rates'] =
+            $effectiveRates;
+
+        $site['effective_rate_summary'] =
+            llama_place_map_feature_rate_summary(
+                $effectiveRates
+            );
+
+        $site['pricing_summary'] =
+            llama_place_map_rate_summary_label(
+                $effectiveRates
+            );
+    }
+    unset($site);
     $facilityFacts = llama_place_facility_facts($db, $placeId);
     $facilityFeatures = llama_place_facility_features($db, $placeId);
     $state = llama_place_campsite_browser_state($place, $sites);
@@ -75,15 +155,75 @@ try {
         'browser' => $state,
         'facility_facts' => $facilityFacts,
         'facility_features' => $facilityFeatures,
-        'sites' => array_map(static function (array $site): array {
-            $site['summary'] = llama_place_campsite_summary($site);
-            return $site;
-        }, $sites),
-        'selected_site' => $selectedSite
-            ? array_merge($selectedSite, [
-                'summary' => llama_place_campsite_summary($selectedSite),
-            ])
-            : null,
+        'sites' => array_map(
+            static function (
+                array $site
+            ): array {
+                $summary =
+                    llama_place_campsite_summary(
+                        $site
+                    );
+
+                $pricingSummary =
+                    trim(
+                        (string) (
+                            $site['pricing_summary']
+                            ?? ''
+                        )
+                    );
+
+                if ($pricingSummary !== '') {
+                    array_unshift(
+                        $summary,
+                        $pricingSummary
+                    );
+                }
+
+                $site['summary'] =
+                    array_values(
+                        array_unique(
+                            $summary
+                        )
+                    );
+
+                return $site;
+            },
+            $sites
+        ),
+        'selected_site' =>
+            $selectedSite
+                ? array_merge(
+                    $selectedSite,
+                    [
+                        'summary' =>
+                            array_values(
+                                array_unique(
+                                    array_filter(
+                                        [
+                                            trim(
+                                                (string) (
+                                                    $selectedSite[
+                                                        'pricing_summary'
+                                                    ]
+                                                    ?? ''
+                                                )
+                                            ),
+                                            ...llama_place_campsite_summary(
+                                                $selectedSite
+                                            ),
+                                        ],
+                                        static fn (
+                                            mixed $value
+                                        ): bool =>
+                                            trim(
+                                                (string) $value
+                                            ) !== ''
+                                    )
+                                )
+                            ),
+                    ]
+                )
+                : null,
     ]);
 } catch (Throwable $exception) {
     llama_log_caught_exception($exception, 'place.campsites.api', [
