@@ -379,14 +379,12 @@
     };
 
     /*
-     * IMPORTANT:
-     * This renderer intentionally creates only the selected-site shell.
+     * This renderer intentionally creates only the selected-Site shell.
+     * Site facts belong in the Scout Report. The old duplicate Site Details /
+     * Parking / Hookups / Amenities / Environment / Operations renderer has
+     * been removed, not hidden.
      *
-     * Canonical campsite facts belong in the Scout Report. The old duplicate
-     * Site Details / Parking / Hookups / Amenities / Environment / Operations
-     * renderer has been removed, not hidden.
-     *
-     * The companion rich-detail script adds only site photos, permitted
+     * The companion rich-detail script adds only Site photos, permitted
      * equipment, and source-specific RIDB metadata.
      */
     const renderSiteDetail = (
@@ -399,7 +397,7 @@
             <header class="place-campsite-detail-heading">
                 <div>
                     <p class="eyebrow">
-                        Selected campsite
+                        Selected Site
                     </p>
 
                     <h3>
@@ -867,28 +865,28 @@
                 <div class="place-campsites-heading">
                     <div>
                         <p class="eyebrow">
-                            Campsites
+                            Sites
                         </p>
 
                         <h2 id="place-campsites-heading">
-                            Choose a campsite
+                            Choose a Site
                         </h2>
 
                         <p>
-                            Choose a site to update its details in the Scout Report below.
+                            Choose a Site to view its details in the Scout Report below.
                         </p>
                     </div>
 
                     <strong class="place-campsites-count">
                         ${sites.length.toLocaleString()}
-                        ${sites.length === 1 ? 'site' : 'sites'}
+                        ${sites.length === 1 ? 'Site' : 'Sites'}
                     </strong>
                 </div>
 
                 <div class="place-campsites-tools">
                     <label class="place-campsites-search">
                         <span>
-                            Find a site
+                            Find a Site
                         </span>
 
                         <input
@@ -902,7 +900,7 @@
                     <div
                         class="place-campsites-filters"
                         role="group"
-                        aria-label="Filter campsites"
+                        aria-label="Filter Sites"
                     >
                         <button
                             type="button"
@@ -952,7 +950,7 @@
                 <div
                     class="place-campsites-list"
                     data-campsite-list
-                    aria-label="Campsites"
+                    aria-label="Sites"
                 ></div>
 
                 <div
@@ -1160,15 +1158,15 @@
             ) {
                 list.innerHTML = `
                     <div class="place-campsites-empty">
-                        No campsites match those filters.
+                        No Sites match those filters.
                     </div>
                 `;
 
                 /*
                  * Filtering the list must never rerender or expose a second
-                 * campsite-facts presentation. Leave the current selected
-                 * detail and Scout Report untouched until the user chooses a
-                 * different site.
+                 * Site-facts presentation. Leave the current selected detail
+                 * and Scout Report untouched until the user chooses a
+                 * different Site.
                  */
                 return;
             }
@@ -1249,8 +1247,8 @@
                 );
 
             /*
-             * If the active filter excludes the current site, select the first
-             * visible result. If the current site is still visible, do not
+             * If the active filter excludes the current Site, select the first
+             * visible result. If the current Site is still visible, do not
              * rerender it merely because a filter/search changed.
              */
             if (
@@ -1347,7 +1345,7 @@
 
         } catch (error) {
             console.error(
-                'Llama Scout campsite browser error:',
+                'Llama Scout Site browser error:',
                 error
             );
 
