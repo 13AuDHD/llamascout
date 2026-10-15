@@ -7,6 +7,7 @@ require_once __DIR__ . '/admin-users.php';
 require_once __DIR__ . '/place-report.php';
 require_once __DIR__ . '/photo-upload.php';
 require_once __DIR__ . '/admin-place-sites.php';
+require_once __DIR__ . '/place-campsite-media.php';
 
 /**
  * Shared Admin Place Report service.
@@ -477,9 +478,11 @@ function admin_place_photo_url(
 
 
 /**
- * Resolve the canonical photo target from the currently selected reporting
- * target. Site wins when both selectors are populated because the photo
- * uploader lives in the Site section.
+ * Resolve the currently selected photo owner.
+ *
+ * Place photos remain in place_images.
+ * Site photos use the existing canonical place_campsite_images table.
+ * Area photos are not given a second ad-hoc persistence system.
  */
 function admin_place_report_photo_target(
     PDO $db,
@@ -500,7 +503,7 @@ function admin_place_report_photo_target(
                 $siteTarget
             );
 
-        return
+        $verified =
             llama_report_verified_target(
                 $db,
                 $placeId,
@@ -508,6 +511,87 @@ function admin_place_report_photo_target(
                 (string) $parsed['source'],
                 (int) $parsed['id']
             );
+
+        $source =
+            (string) (
+                $verified['source']
+                ?? $parsed['source']
+            );
+
+        $targetId =
+            (int) (
+                $verified['id']
+                ?? $parsed['id']
+            );
+
+        if ($source === 'campsite_record') {
+            $campsiteId =
+                $targetId;
+        } else {
+            $featureId =
+                (int) (
+                    $verified['map_feature_id']
+                    ?? $targetId
+                );
+
+            $stmt =
+                $db->prepare(
+                    'SELECT id
+                     FROM place_campsites
+                     WHERE place_id = ?
+                       AND map_feature_id = ?
+                       AND is_active = 1
+                     ORDER BY id ASC'
+                );
+
+            $stmt->execute([
+                $placeId,
+                $featureId,
+            ]);
+
+            $ids =
+                array_values(
+                    array_map(
+                        'intval',
+                        $stmt->fetchAll(
+                            PDO::FETCH_COLUMN
+                        )
+                        ?: []
+                    )
+                );
+
+            if (count($ids) !== 1) {
+                throw new InvalidArgumentException(
+                    'This mapped Site does not yet have one canonical campsite record. Save the Individual campsite in the map editor first.'
+                );
+            }
+
+            $campsiteId =
+                $ids[0];
+        }
+
+        if (
+            !llama_place_campsite(
+                $db,
+                $placeId,
+                $campsiteId
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'The selected canonical Site is not available for this Place.'
+            );
+        }
+
+        return [
+            'scope' => 'site',
+            'source' => 'campsite_record',
+            'id' => $campsiteId,
+            'label' =>
+                (string) (
+                    $verified['label']
+                    ?? ('Site #' . $campsiteId)
+                ),
+        ];
     }
 
     $areaTarget =
@@ -527,11 +611,11 @@ function admin_place_report_photo_target(
             ) !== 1
         ) {
             throw new InvalidArgumentException(
-                'Invalid Area photo target.'
+                'Invalid Area reporting target.'
             );
         }
 
-        return
+        $verified =
             llama_report_verified_target(
                 $db,
                 $placeId,
@@ -539,62 +623,76 @@ function admin_place_report_photo_target(
                 'map_feature',
                 (int) $matches[1]
             );
+
+        return [
+            'scope' => 'area',
+            'source' => 'map_feature',
+            'id' => (int) $matches[1],
+            'label' =>
+                (string) (
+                    $verified['label']
+                    ?? ('Area #' . (int) $matches[1])
+                ),
+        ];
     }
 
     return [
         'scope' => 'place',
         'source' => 'place',
         'id' => $placeId,
-        'parent_area_id' => null,
-        'map_feature_id' => null,
         'label' => 'Entire Place',
     ];
 }
 
 
 /**
- * Read only photos belonging to one canonical reporting target.
+ * Return the gallery owned by one reporting target.
  */
 function admin_place_report_target_images(
     PDO $db,
     int $placeId,
     array $target
 ): array {
-    $stmt =
-        $db->prepare(
-            'SELECT *
-             FROM place_images
-             WHERE place_id = ?
-               AND report_scope = ?
-               AND scope_source = ?
-               AND scope_id = ?
-             ORDER BY
-                is_featured DESC,
-                sort_order ASC,
-                id ASC'
+    $scope =
+        (string) (
+            $target['scope']
+            ?? ''
         );
 
-    $stmt->execute([
-        $placeId,
-        (string) $target['scope'],
-        (string) $target['source'],
-        (int) $target['id'],
-    ]);
+    if ($scope === 'site') {
+        return
+            llama_place_campsite_images(
+                $db,
+                $placeId,
+                (int) (
+                    $target['id']
+                    ?? 0
+                )
+            );
+    }
 
-    return
-        $stmt->fetchAll(
-            PDO::FETCH_ASSOC
-        )
-        ?: [];
+    if ($scope === 'place') {
+        return
+            admin_place_images(
+                $db,
+                $placeId
+            );
+    }
+
+    /*
+     * Area photo persistence is intentionally not invented here. A proper
+     * canonical Area-media owner can be added later without polluting
+     * place_images or place_campsite_images.
+     */
+    return [];
 }
 
 
-/*
- * Add photos while an outer database transaction is already active.
+/**
+ * Add photos while the outer Place Report transaction is active.
  *
- * The selected Place / Area / Site target is stored on the existing
- * place_images row. This keeps one image system while allowing individual
- * Areas and Sites to own their own photo galleries.
+ * Site photos use the existing canonical campsite-media persistence layer.
+ * Place photos continue using place_images.
  */
 function admin_place_add_photos_in_report_transaction(
     PDO $db,
@@ -611,6 +709,18 @@ function admin_place_add_photos_in_report_transaction(
         );
     }
 
+    $scope =
+        (string) (
+            $target['scope']
+            ?? ''
+        );
+
+    if ($scope === 'area') {
+        throw new RuntimeException(
+            'Area photos are not yet supported by a canonical Area media store.'
+        );
+    }
+
     $existing =
         admin_place_report_target_images(
             $db,
@@ -618,16 +728,10 @@ function admin_place_add_photos_in_report_transaction(
             $target
         );
 
-    $scope =
-        (string) (
-            $target['scope']
-            ?? ''
-        );
-
     $limit =
-        $scope === 'place'
-            ? 30
-            : 10;
+        $scope === 'site'
+            ? 10
+            : 30;
 
     $remaining =
         max(
@@ -637,9 +741,9 @@ function admin_place_add_photos_in_report_transaction(
 
     if ($remaining < 1) {
         throw new RuntimeException(
-            $scope === 'place'
-                ? 'This Place already has the maximum of 30 photos.'
-                : 'This reporting target already has the maximum of 10 photos.'
+            $scope === 'site'
+                ? 'This Site already has the maximum of 10 photos.'
+                : 'This Place already has the maximum of 30 photos.'
         );
     }
 
@@ -647,38 +751,28 @@ function admin_place_add_photos_in_report_transaction(
         throw new RuntimeException(
             'You can add only '
             . $remaining
-            . ' more photos to this reporting target.'
+            . ' more photos here.'
         );
     }
 
-    $source =
-        (string) (
-            $target['source']
-            ?? ''
-        );
+    if ($scope === 'site') {
+        $campsiteId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
 
-    $scopeId =
-        (int) (
-            $target['id']
-            ?? 0
-        );
+        $destination =
+            '/uploads/places/'
+            . $placeId
+            . '/sites/'
+            . $campsiteId;
+    } else {
+        $campsiteId = 0;
 
-    $destination =
-        '/uploads/places/'
-        . $placeId;
-
-    if ($scope === 'area') {
-        $destination .=
-            '/areas/'
-            . $source
-            . '-'
-            . $scopeId;
-    } elseif ($scope === 'site') {
-        $destination .=
-            '/sites/'
-            . $source
-            . '-'
-            . $scopeId;
+        $destination =
+            '/uploads/places/'
+            . $placeId;
     }
 
     $committed =
@@ -690,42 +784,74 @@ function admin_place_add_photos_in_report_transaction(
             $destination
         );
 
-    /*
-     * Expose moved files immediately. Anything below this point can
-     * still throw, including a DB insert or the outer transaction commit.
-     */
     $committedForCleanup =
         $committed;
 
-    $orderStmt =
-        $db->prepare(
-            'SELECT COALESCE(MAX(sort_order), -1)
-             FROM place_images
-             WHERE place_id = ?
-               AND report_scope = ?
-               AND scope_source = ?
-               AND scope_id = ?'
-        );
+    $inserted = 0;
 
-    $orderStmt->execute([
-        $placeId,
-        $scope,
-        $source,
-        $scopeId,
-    ]);
+    if ($scope === 'site') {
+        foreach ($committed as $photo) {
+            $path =
+                trim(
+                    (string) (
+                        $photo['path']
+                        ?? ''
+                    )
+                );
 
-    $sortOrder =
-        (int) $orderStmt->fetchColumn()
-        + 1;
+            if ($path === '') {
+                continue;
+            }
 
-    /*
-     * Only Place-level photos participate in the Place featured-image system.
-     * Area and Site images are target-specific evidence/gallery photos.
-     */
-    $hasFeatured =
-        $scope !== 'place';
+            llama_place_campsite_image_insert(
+                $db,
+                $placeId,
+                $campsiteId,
+                $path,
+                trim(
+                    (string) (
+                        $photo['alt']
+                        ?? ''
+                    )
+                ) ?: null,
+                null,
+                $actorUserId,
+                'Llama Scout'
+            );
 
-    if (!$hasFeatured) {
+            $inserted++;
+        }
+
+        $auditAction =
+            'place.campsite_photos_added';
+
+        $auditMessage =
+            'Added canonical Site photos.';
+
+        $auditMeta = [
+            'place_id' => $placeId,
+            'campsite_id' => $campsiteId,
+            'count' => $inserted,
+        ];
+
+    } else {
+        $orderStmt =
+            $db->prepare(
+                'SELECT COALESCE(MAX(sort_order), -1)
+                 FROM place_images
+                 WHERE place_id = ?'
+            );
+
+        $orderStmt->execute([
+            $placeId,
+        ]);
+
+        $sortOrder =
+            (int) $orderStmt->fetchColumn()
+            + 1;
+
+        $hasFeatured = false;
+
         foreach ($existing as $image) {
             if (
                 (int) (
@@ -733,67 +859,67 @@ function admin_place_add_photos_in_report_transaction(
                     ?? 0
                 ) === 1
             ) {
-                $hasFeatured =
-                    true;
-
+                $hasFeatured = true;
                 break;
             }
         }
-    }
 
-    $insert =
-        $db->prepare(
-            'INSERT INTO place_images (
-                place_id,
-                report_scope,
-                scope_source,
-                scope_id,
-                src,
-                alt_text,
-                is_featured,
-                sort_order,
-                uploaded_by
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-
-    $inserted =
-        0;
-
-    foreach ($committed as $photo) {
-        $path =
-            trim(
-                (string) (
-                    $photo['path']
-                    ?? ''
-                )
+        $insert =
+            $db->prepare(
+                'INSERT INTO place_images (
+                    place_id,
+                    src,
+                    alt_text,
+                    is_featured,
+                    sort_order,
+                    uploaded_by
+                 ) VALUES (?, ?, ?, ?, ?, ?)'
             );
 
-        if ($path === '') {
-            continue;
+        foreach ($committed as $photo) {
+            $path =
+                trim(
+                    (string) (
+                        $photo['path']
+                        ?? ''
+                    )
+                );
+
+            if ($path === '') {
+                continue;
+            }
+
+            $isFeatured =
+                !$hasFeatured
+                && $inserted === 0;
+
+            $insert->execute([
+                $placeId,
+                $path,
+                trim(
+                    (string) (
+                        $photo['alt']
+                        ?? ''
+                    )
+                ) ?: null,
+                $isFeatured ? 1 : 0,
+                $sortOrder++,
+                $actorUserId,
+            ]);
+
+            $inserted++;
         }
 
-        $isFeatured =
-            !$hasFeatured
-            && $inserted === 0;
+        $auditAction =
+            'place.photos_added';
 
-        $insert->execute([
-            $placeId,
-            $scope,
-            $source,
-            $scopeId,
-            $path,
-            trim(
-                (string) (
-                    $photo['alt']
-                    ?? ''
-                )
-            ) ?: null,
-            $isFeatured ? 1 : 0,
-            $sortOrder++,
-            $actorUserId,
-        ]);
+        $auditMessage =
+            'Added Place photos.';
 
-        $inserted++;
+        $auditMeta = [
+            'place_id' => $placeId,
+            'count' => $inserted,
+        ];
     }
 
     if ($inserted !== count($committed)) {
@@ -806,37 +932,18 @@ function admin_place_add_photos_in_report_transaction(
         $db,
         $actorUserId,
         null,
-        'place.report_target_photos_added',
-        'Added photos to a reporting target.',
-        [
-            'place_id' =>
-                $placeId,
-
-            'report_scope' =>
-                $scope,
-
-            'scope_source' =>
-                $source,
-
-            'scope_id' =>
-                $scopeId,
-
-            'count' =>
-                $inserted,
-        ]
+        $auditAction,
+        $auditMessage,
+        $auditMeta
     );
 
-    return
-        $inserted;
+    return $inserted;
 }
 
 
-/*
- * Remove one image record inside the outer Place Report transaction, but
- * deliberately leave the physical file alone until AFTER commit.
- *
- * The supplied target prevents a Site save from deleting a Place or Area photo
- * that merely happened to be visible in stale browser markup.
+/**
+ * Remove a Place or canonical Site image record inside the outer transaction.
+ * Physical-file deletion remains deferred until after commit.
  */
 function admin_place_delete_image_in_report_transaction(
     PDO $db,
@@ -851,24 +958,135 @@ function admin_place_delete_image_in_report_transaction(
         );
     }
 
+    $scope =
+        (string) (
+            $target['scope']
+            ?? ''
+        );
+
+    if ($scope === 'site') {
+        $campsiteId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
+
+        $image =
+            llama_place_campsite_image(
+                $db,
+                $placeId,
+                $campsiteId,
+                $imageId
+            );
+
+        if (!$image) {
+            throw new RuntimeException(
+                'Site photo not found.'
+            );
+        }
+
+        $path =
+            trim(
+                (string) (
+                    $image['src']
+                    ?? ''
+                )
+            );
+
+        $wasFeatured =
+            (int) (
+                $image['is_featured']
+                ?? 0
+            ) === 1;
+
+        $delete =
+            $db->prepare(
+                'DELETE FROM place_campsite_images
+                 WHERE id = ?
+                   AND place_id = ?
+                   AND campsite_id = ?'
+            );
+
+        $delete->execute([
+            $imageId,
+            $placeId,
+            $campsiteId,
+        ]);
+
+        if ($delete->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Site photo could not be removed.'
+            );
+        }
+
+        if ($wasFeatured) {
+            $next =
+                $db->prepare(
+                    'SELECT id
+                     FROM place_campsite_images
+                     WHERE place_id = ?
+                       AND campsite_id = ?
+                     ORDER BY
+                        sort_order ASC,
+                        id ASC
+                     LIMIT 1'
+                );
+
+            $next->execute([
+                $placeId,
+                $campsiteId,
+            ]);
+
+            $nextId =
+                (int) (
+                    $next->fetchColumn()
+                    ?: 0
+                );
+
+            if ($nextId > 0) {
+                llama_place_campsite_image_set_featured(
+                    $db,
+                    $placeId,
+                    $campsiteId,
+                    $nextId
+                );
+            }
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'place.campsite_photo_deleted',
+            'Deleted a canonical Site photo.',
+            [
+                'place_id' => $placeId,
+                'campsite_id' => $campsiteId,
+                'image_id' => $imageId,
+            ]
+        );
+
+        return $path;
+    }
+
+    if ($scope !== 'place') {
+        throw new RuntimeException(
+            'Area photos are not yet supported by a canonical Area media store.'
+        );
+    }
+
     $stmt =
         $db->prepare(
             'SELECT *
              FROM place_images
              WHERE id = ?
                AND place_id = ?
-               AND report_scope = ?
-               AND scope_source = ?
-               AND scope_id = ?
              LIMIT 1'
         );
 
     $stmt->execute([
         $imageId,
         $placeId,
-        (string) $target['scope'],
-        (string) $target['source'],
-        (int) $target['id'],
     ]);
 
     $image =
@@ -878,7 +1096,7 @@ function admin_place_delete_image_in_report_transaction(
 
     if (!$image) {
         throw new RuntimeException(
-            'Photo not found for the selected reporting target.'
+            'Place image not found.'
         );
     }
 
@@ -910,22 +1128,16 @@ function admin_place_delete_image_in_report_transaction(
 
     if ($delete->rowCount() !== 1) {
         throw new RuntimeException(
-            'Photo could not be removed.'
+            'Place image could not be removed.'
         );
     }
 
-    if (
-        $wasFeatured
-        && (string) $target['scope'] === 'place'
-    ) {
+    if ($wasFeatured) {
         $next =
             $db->prepare(
                 'SELECT id
                  FROM place_images
                  WHERE place_id = ?
-                   AND report_scope = "place"
-                   AND scope_source = "place"
-                   AND scope_id = ?
                  ORDER BY
                     sort_order ASC,
                     id ASC
@@ -933,7 +1145,6 @@ function admin_place_delete_image_in_report_transaction(
             );
 
         $next->execute([
-            $placeId,
             $placeId,
         ]);
 
@@ -958,28 +1169,15 @@ function admin_place_delete_image_in_report_transaction(
         $db,
         $actorUserId,
         null,
-        'place.report_target_photo_deleted',
-        'Deleted a reporting-target photo.',
+        'place.image_deleted',
+        'Deleted a Place image.',
         [
-            'place_id' =>
-                $placeId,
-
-            'image_id' =>
-                $imageId,
-
-            'report_scope' =>
-                (string) $target['scope'],
-
-            'scope_source' =>
-                (string) $target['source'],
-
-            'scope_id' =>
-                (int) $target['id'],
+            'place_id' => $placeId,
+            'image_id' => $imageId,
         ]
     );
 
-    return
-        $path;
+    return $path;
 }
 
 
