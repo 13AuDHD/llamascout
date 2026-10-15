@@ -36,6 +36,14 @@ function llama_place_report_fields(): array
         );
     };
 
+    /*
+     * ---------------------------------------------------------
+     * 1. Register every canonical field first.
+     * ---------------------------------------------------------
+     *
+     * Applicability must never depend on whether a field happened to be
+     * registered before or after the applicability pass.
+     */
     llama_place_report_add_basic_location_fields($add);
     llama_place_report_add_site_fields($add);
     llama_place_report_add_experience_fields($f, $add, $distance);
@@ -55,19 +63,6 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-road-restrictions.php';
     llama_place_report_add_road_restriction_questions($add);
 
-    foreach (
-        [
-            'landscape_primary',
-            'landscape_details',
-            'landscape_views',
-        ]
-        as $key
-    ) {
-        if (isset($f[$key])) {
-            $f[$key]['wide'] = false;
-        }
-    }
-
     require_once __DIR__ . '/fields-seasons.php';
     llama_place_report_add_season_fields($f, $add);
 
@@ -76,18 +71,8 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-conditions.php';
     llama_place_report_add_flow_condition_fields($f, $add);
 
-    llama_place_report_apply_applicability($f);
-    llama_place_report_apply_flow_conditions($f);
-    llama_place_report_apply_road_hazard_dependencies($f);
-
-    require_once __DIR__ . '/flow-metadata.php';
-    llama_place_report_apply_flow_metadata($f);
-
-    require_once __DIR__ . '/flow-access-options.php';
-    llama_place_report_apply_access_options($f);
-
     require_once __DIR__ . '/flow-permissions.php';
-    llama_place_report_apply_permission_flows($f, $add);
+    llama_place_report_add_permission_fields($f, $add);
 
     require_once __DIR__ . '/fields-place-overnight.php';
     llama_place_report_add_overnight_permission_fields($add);
@@ -100,6 +85,40 @@ function llama_place_report_fields(): array
 
     require_once __DIR__ . '/fields-place-operating.php';
     llama_place_report_add_operating_fields($add);
+
+    /*
+     * ---------------------------------------------------------
+     * 2. Apply behavior only after the registry is complete.
+     * ---------------------------------------------------------
+     */
+    llama_place_report_apply_applicability($f);
+
+    llama_place_report_apply_flow_conditions($f);
+
+    llama_place_report_apply_permission_applicability(
+        $f
+    );
+
+    llama_place_report_apply_road_hazard_dependencies($f);
+
+    require_once __DIR__ . '/flow-metadata.php';
+    llama_place_report_apply_flow_metadata($f);
+
+    require_once __DIR__ . '/flow-access-options.php';
+    llama_place_report_apply_access_options($f);
+
+    foreach (
+        [
+            'landscape_primary',
+            'landscape_details',
+            'landscape_views',
+        ]
+        as $key
+    ) {
+        if (isset($f[$key])) {
+            $f[$key]['wide'] = false;
+        }
+    }
 
     foreach (
         [
@@ -114,6 +133,11 @@ function llama_place_report_fields(): array
         }
     }
 
+    /*
+     * ---------------------------------------------------------
+     * 3. Apply presentation metadata.
+     * ---------------------------------------------------------
+     */
     require_once __DIR__ . '/flow-layout.php';
     llama_place_report_apply_layout_metadata($f);
     llama_place_report_apply_place_rules_metadata($f);
@@ -161,13 +185,9 @@ function llama_place_report_fields(): array
     }
 
     /*
-     * Scope ownership is intentionally applied LAST.
-     *
-     * Several modern field groups are added after the original report fields
-     * are assembled. Applying ownership earlier allowed those newer fields to
-     * retain ad-hoc or missing scope metadata. flow-scopes.php is now the one
-     * canonical source of Place / Area / Site ownership for the complete
-     * registry.
+     * ---------------------------------------------------------
+     * 4. Apply ownership last.
+     * ---------------------------------------------------------
      */
     require_once __DIR__ . '/flow-scopes.php';
     llama_place_report_apply_flow_scopes($f);
