@@ -932,6 +932,24 @@ function admin_place_save_selected_campsite_answers(
     $fields = llama_place_report_fields();
     $unknownToken = llama_place_report_unknown_token();
     $unansweredToken = llama_place_report_unanswered_token();
+    $importedBaseline = [];
+
+    if ($source === 'campsite_record') {
+        $site =
+            llama_place_campsite(
+                $db,
+                $placeId,
+                $siteId
+            );
+
+        if (is_array($site)) {
+            $importedBaseline =
+                admin_place_campsite_imported_form_values(
+                    $site
+                );
+        }
+    }
+
     $saved = 0;
 
     foreach (admin_place_campsite_field_keys() as $key) {
@@ -987,6 +1005,54 @@ function admin_place_save_selected_campsite_answers(
                 $raw,
                 $unknownFields
             );
+        }
+
+        /*
+         * Imported campsite data is the canonical baseline, not an Admin
+         * override. Saving an unchanged imported value must not duplicate it
+         * into place_report_scoped_answers or it would shadow future import
+         * updates for that Site.
+         */
+        if (
+            $source === 'campsite_record'
+            && array_key_exists(
+                $key,
+                $importedBaseline
+            )
+        ) {
+            $baselineRaw =
+                $importedBaseline[$key];
+
+            if ($baselineRaw === $unknownToken) {
+                $baselineValue =
+                    $unknownToken;
+            } else {
+                $baselineUnknownFields = [];
+                $baselineValue =
+                    llama_place_report_parse_field(
+                        $fields[$key],
+                        $baselineRaw,
+                        $baselineUnknownFields
+                    );
+            }
+
+            if (
+                llama_scoped_report_values_equal(
+                    $value,
+                    $baselineValue
+                )
+            ) {
+                llama_scoped_report_clear_override(
+                    $db,
+                    $placeId,
+                    'site',
+                    $siteId,
+                    $source,
+                    $key
+                );
+
+                continue;
+            }
         }
 
         llama_scoped_report_save(
