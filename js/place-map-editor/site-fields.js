@@ -130,7 +130,7 @@
         }) => {
             if (!editor) {
                 throw new Error(
-                    'Mapped Site fields require an editor element.'
+                    'Site fields require an editor element.'
                 );
             }
 
@@ -138,21 +138,6 @@
                 editor.querySelector(
                     '[data-site-details]'
                 );
-
-            /*
-             * Site identity is automatic. The legacy identity selector is
-             * removed from the production UI if older markup still contains it.
-             * Geometry belongs to the Site record; admins do not manually link
-             * a second "mapped Site" identity.
-             */
-            const legacyIdentityControl =
-                editor.querySelector(
-                    '[data-site-canonical]'
-                );
-
-            legacyIdentityControl
-                ?.closest('label')
-                ?.remove();
 
             const siteParent =
                 editor.querySelector(
