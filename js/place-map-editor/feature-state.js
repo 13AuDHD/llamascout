@@ -63,6 +63,227 @@
                         || 0
                     );
 
+            const editorRoot =
+                featureType
+                    ?.closest(
+                        '[data-mapped-area-editor]'
+                    )
+                || null;
+
+            const featureLanguage =
+                (type) => {
+                    const value =
+                        String(
+                            type
+                            || ''
+                        );
+
+                    if (value === 'place_boundary') {
+                        return {
+                            noun:
+                                'Place boundary',
+
+                            shortNoun:
+                                'boundary',
+
+                            newLabel:
+                                'New boundary',
+
+                            saveLabel:
+                                'Save boundary',
+
+                            moveLabel:
+                                'Move boundary',
+
+                            createHelp:
+                                'Draw the Place boundary on the map, or use device GPS to collect its points.',
+
+                            editHelp:
+                                'Drag any point to correct this Place boundary. Save when finished.'
+                        };
+                    }
+
+                    if (value === 'camping_site') {
+                        return {
+                            noun:
+                                'Site details',
+
+                            shortNoun:
+                                'Site',
+
+                            newLabel:
+                                'New Site',
+
+                            saveLabel:
+                                'Save Site',
+
+                            moveLabel:
+                                'Move Site',
+
+                            createHelp:
+                                'Draw this Site on the map, or use device GPS to collect its corners.',
+
+                            editHelp:
+                                'Drag any point to correct this Site. Save when finished.'
+                        };
+                    }
+
+                    if (
+                        value === 'camping_area'
+                        || value === 'parking_area'
+                    ) {
+                        return {
+                            noun:
+                                'Area details',
+
+                            shortNoun:
+                                'Area',
+
+                            newLabel:
+                                'New Area',
+
+                            saveLabel:
+                                'Save Area',
+
+                            moveLabel:
+                                'Move Area',
+
+                            createHelp:
+                                'Draw this Area on the map, or use device GPS to collect its boundary points.',
+
+                            editHelp:
+                                'Drag any point to correct this Area. Save when finished.'
+                        };
+                    }
+
+                    return {
+                        noun:
+                            'Map details',
+
+                        shortNoun:
+                            'feature',
+
+                        newLabel:
+                            'New feature',
+
+                        saveLabel:
+                            'Save',
+
+                        moveLabel:
+                            'Move shape',
+
+                        createHelp:
+                            'Draw this feature on the map, or use device GPS to collect its points.',
+
+                        editHelp:
+                            'Drag any point to correct this feature. Save when finished.'
+                    };
+                };
+
+            const syncProductionLanguage =
+                (
+                    type = featureType?.value
+                    || 'camping_area',
+                    editing = currentSelectedFeatureId() > 0
+                ) => {
+                    if (!editorRoot) {
+                        return;
+                    }
+
+                    const language =
+                        featureLanguage(
+                            type
+                        );
+
+                    const eyebrow =
+                        editorRoot.querySelector(
+                            '.mapped-area-editor-header .eyebrow'
+                        );
+
+                    if (eyebrow) {
+                        eyebrow.textContent =
+                            'Place layout';
+                    }
+
+                    const intro =
+                        editorRoot.querySelector(
+                            '.mapped-area-editor-header > div > p:last-child'
+                        );
+
+                    if (intro) {
+                        intro.textContent =
+                            'Map the Place boundary, Areas, and individual Sites. Geometry is part of each record and is not a separate identity.';
+                    }
+
+                    const mapElement =
+                        editorRoot.querySelector(
+                            '#mapped-area-editor-map'
+                        );
+
+                    if (mapElement) {
+                        mapElement.setAttribute(
+                            'aria-label',
+                            'Place layout editor'
+                        );
+                    }
+
+                    const detailsHeading =
+                        editorRoot.querySelector(
+                            '.mapped-area-editor-area-card h2'
+                        );
+
+                    if (detailsHeading) {
+                        detailsHeading.textContent =
+                            language.noun;
+                    }
+
+                    const newButton =
+                        editorRoot.querySelector(
+                            '[data-new-feature]'
+                        );
+
+                    if (newButton) {
+                        newButton.textContent =
+                            language.newLabel;
+                    }
+
+                    if (saveButton) {
+                        saveButton.textContent =
+                            language.saveLabel;
+                    }
+
+                    if (moveAreaButton) {
+                        moveAreaButton.textContent =
+                            language.moveLabel;
+                    }
+
+                    const existingHeading =
+                        editorRoot.querySelector(
+                            '.mapped-area-editor-existing h2'
+                        );
+
+                    if (existingHeading) {
+                        existingHeading.textContent =
+                            'Place layout';
+                    }
+
+                    const fitButton =
+                        editorRoot.querySelector(
+                            '[data-fit-all-areas]'
+                        );
+
+                    if (fitButton) {
+                        fitButton.textContent =
+                            'Fit all';
+                    }
+
+                    setHelp?.(
+                        editing
+                            ? language.editHelp
+                            : language.createHelp
+                    );
+                };
+
             const featureTypeLabel =
                 (value) => {
                     const option =
@@ -397,6 +618,12 @@
 
             const renderFeatureList =
                 () => {
+                    syncProductionLanguage(
+                        featureType?.value
+                        || 'camping_area',
+                        currentSelectedFeatureId() > 0
+                    );
+
                     if (!featureList) {
                         return;
                     }
@@ -418,7 +645,7 @@
                             );
 
                         empty.textContent =
-                            'No mapped areas yet.';
+                            'No mapped features yet.';
 
                         featureList.append(
                             empty
@@ -625,13 +852,18 @@
                             true;
 
                         moveAreaButton.textContent =
-                            'Move whole area';
+                            featureLanguage(
+                                featureType?.value
+                                || 'camping_area'
+                            ).moveLabel;
                     }
 
                     syncFeatureSummary?.();
 
-                    setHelp?.(
-                        'Choose Draw area and tap around the outside edge, or use device GPS below to collect the points while in the field.'
+                    syncProductionLanguage(
+                        featureType?.value
+                        || 'camping_area',
+                        false
                     );
 
                     if (!keepStatus) {
@@ -737,11 +969,15 @@
                             points.length < 3;
 
                         moveAreaButton.textContent =
-                            'Move whole area';
+                            featureLanguage(
+                                featureType?.value
+                                || 'camping_area'
+                            ).moveLabel;
                     }
 
-                    setHelp?.(
-                        'Drag any point to correct this area. Save when finished. Choose Draw area if you want to replace the shape completely.'
+                    syncProductionLanguage(
+                        feature.feature_type,
+                        true
                     );
 
                     setStatus?.('');
@@ -860,7 +1096,9 @@
                 featureTypeLabel,
                 geometryToPoints,
                 metadataForFeature,
-                selectionDetail
+                selectionDetail,
+                featureLanguage,
+                syncProductionLanguage
             };
         };
 })();
