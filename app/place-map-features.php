@@ -92,16 +92,16 @@ function llama_place_map_feature_validate_site_details(
 
     if ($parentFeatureId < 1) {
         throw new InvalidArgumentException(
-            'Choose the Camping area that contains this campsite.'
+            'Choose the Area that contains this Site.'
         );
     }
 
     $parentStmt = $db->prepare(
-        'SELECT id
+        'SELECT feature_type
          FROM place_map_features
          WHERE id = ?
            AND place_id = ?
-           AND feature_type = ?
+           AND feature_type IN ("camping_area", "parking_area")
            AND is_active = 1
          LIMIT 1'
     );
@@ -109,12 +109,17 @@ function llama_place_map_feature_validate_site_details(
     $parentStmt->execute([
         $parentFeatureId,
         $placeId,
-        'camping_area',
     ]);
 
-    if (!$parentStmt->fetchColumn()) {
+    $parentFeatureType =
+        (string) (
+            $parentStmt->fetchColumn()
+            ?: ''
+        );
+
+    if ($parentFeatureType === '') {
         throw new InvalidArgumentException(
-            'The selected parent Camping area is not available.'
+            'The selected parent Area is not available.'
         );
     }
 
@@ -129,6 +134,15 @@ function llama_place_map_feature_validate_site_details(
 
     if (
         $siteClassId > 0
+        && $parentFeatureType !== 'camping_area'
+    ) {
+        throw new InvalidArgumentException(
+            'Site pricing classes are only available for Sites inside a Camping area.'
+        );
+    }
+
+    if (
+        $siteClassId > 0
         && !llama_place_map_site_class_belongs_to_area(
             $db,
             $siteClassId,
@@ -136,7 +150,7 @@ function llama_place_map_feature_validate_site_details(
         )
     ) {
         throw new InvalidArgumentException(
-            'The selected site pricing class does not belong to this Camping area.'
+            'The selected Site pricing class does not belong to this Area.'
         );
     }
 
@@ -150,7 +164,7 @@ function llama_place_map_feature_validate_site_details(
 
     if (mb_strlen($siteCode) > 60) {
         throw new InvalidArgumentException(
-            'Campsite identifiers can be up to 60 characters.'
+            'Site identifiers can be up to 60 characters.'
         );
     }
 
@@ -170,7 +184,7 @@ function llama_place_map_feature_validate_site_details(
         )
     ) {
         throw new InvalidArgumentException(
-            'Choose a valid campsite type.'
+            'Choose a valid Site type.'
         );
     }
 
@@ -190,7 +204,7 @@ function llama_place_map_feature_validate_site_details(
         )
     ) {
         throw new InvalidArgumentException(
-            'Choose a valid campsite parking style.'
+            'Choose a valid Site parking style.'
         );
     }
 
@@ -210,7 +224,7 @@ function llama_place_map_feature_validate_site_details(
         )
     ) {
         throw new InvalidArgumentException(
-            'Choose a valid campsite hookup status.'
+            'Choose a valid Site hookup status.'
         );
     }
 
