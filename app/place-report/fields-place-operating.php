@@ -3,14 +3,14 @@
 declare(strict_types=1);
 
 /**
- * Place operating hours and closure observations.
+ * Place operating schedule and observed closure evidence.
  *
- * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
- * is the single canonical source for Place / Area / Site ownership.
+ * Normal opening hours and gate schedules describe the Place's documented
+ * operating pattern. Closure-report fields are observations/evidence only:
+ * they do not become verified public closure status until moderation confirms
+ * them.
  *
- * A reported closure/reopening is evidence for the administrative closure
- * workflow. It enters the Closed Places verification queue but never changes
- * the public closure marker until an authorized administrator verifies it.
+ * Ownership is defined only by app/place-report/flow-scopes.php.
  */
 function llama_place_report_add_operating_fields(callable $add): void
 {
@@ -49,36 +49,34 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     for ($hour = 0; $hour < 24; $hour++) {
         $key = sprintf('%02d:00', $hour);
-
         $hours[$key] =
             date('g A', strtotime('2000-01-01 ' . $key));
     }
 
     $add(
         'place_open_year_round',
-        'Open year-round?',
+        'Normally open year-round?',
         'rules',
         'tri',
         'rules.place_open_year_round',
         $base + [
             'help' =>
-                'This describes the Place operating season, not seasonal '
-                . 'closure of the approach road.',
+                'Record the normal documented operating season for the Place. This is not a temporary closure report and is separate from seasonal closure of the approach road.',
         ]
     );
 
     foreach ([
         'place_operating_start_month' =>
-            ['Operating season begins: month', $months],
+            ['Normal operating season begins: month', $months],
 
         'place_operating_start_day' =>
-            ['Operating season begins: day', $days],
+            ['Normal operating season begins: day', $days],
 
         'place_operating_end_month' =>
-            ['Operating season ends: month', $months],
+            ['Normal operating season ends: month', $months],
 
         'place_operating_end_day' =>
-            ['Operating season ends: day', $days],
+            ['Normal operating season ends: day', $days],
     ] as $key => [$label, $options]) {
         $add(
             $key,
@@ -95,16 +93,19 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_open_24_hours',
-        'Open 24 hours?',
+        'Normally open 24 hours?',
         'rules',
         'tri',
         'rules.place_open_24_hours',
-        $base
+        $base + [
+            'help' =>
+                'Record the normal documented daily operating schedule, not whether the Place happened to be accessible at the time of one visit.',
+        ]
     );
 
     foreach ([
-        'place_opening_time' => 'Daily opening time',
-        'place_closing_time' => 'Daily closing time',
+        'place_opening_time' => 'Normal daily opening time',
+        'place_closing_time' => 'Normal daily closing time',
     ] as $key => $label) {
         $add(
             $key,
@@ -121,14 +122,13 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_entrance_gate',
-        'Property entrance gate present?',
+        'Place entrance gate present?',
         'rules',
         'tri',
         'rules.place_entrance_gate',
         $base + [
             'help' =>
-                'This is the gate at the Place itself. Record an access-road '
-                . 'gate under Getting There / Access Restrictions.',
+                'This is the gate at the Place itself. Record a gate on the approach road under Getting There / Access Restrictions.',
         ]
     );
 
@@ -137,7 +137,7 @@ function llama_place_report_add_operating_fields(callable $add): void
     ];
 
     $gateOptions = [
-        'always_open' => 'Always open',
+        'always_open' => 'Normally left open',
         'scheduled' => 'Scheduled hours',
         'code_key' => 'Code or key required',
         'staff' => 'Staff-controlled',
@@ -145,7 +145,7 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_gate_access_type',
-        'Property gate access type',
+        'Place gate access type',
         'rules',
         'select',
         'rules.place_gate_access_type',
@@ -165,8 +165,8 @@ function llama_place_report_add_operating_fields(callable $add): void
     );
 
     foreach ([
-        'place_gate_opening_time' => 'Property gate opening time',
-        'place_gate_closing_time' => 'Property gate closing time',
+        'place_gate_opening_time' => 'Normal gate opening time',
+        'place_gate_closing_time' => 'Normal gate closing time',
     ] as $key => $label) {
         $add(
             $key,
@@ -181,29 +181,32 @@ function llama_place_report_add_operating_fields(callable $add): void
         );
     }
 
+    /*
+     * Closure evidence deliberately does not count toward completeness.
+     * These fields describe what the contributor observed or what a source
+     * reported. They never directly establish verified public status.
+     */
     $closure = $base + [
         'counts_toward_completion' => false,
     ];
 
     $statusOptions = [
-        'open' => 'Open',
-        'temporary' => 'Temporarily closed',
-        'seasonal' => 'Seasonally closed',
-        'permanent' => 'Permanently closed',
+        'open' => 'Appeared open',
+        'temporary' => 'Appeared temporarily closed',
+        'seasonal' => 'Appeared seasonally closed',
+        'permanent' => 'Appeared permanently closed',
     ];
 
     $add(
         'place_reported_operating_status',
-        'Observed operating status',
+        'Observed Place status',
         'rules',
         'select',
         'rules.place_reported_operating_status',
         $closure + [
             'options' => $statusOptions,
             'help' =>
-                'A reported closure or reopening is sent to the Closed Places '
-                . 'verification queue. It does not change the public marker '
-                . 'until an administrator verifies it.',
+                'Record what you observed or what a source reported. This is closure evidence, not verified public truth. It enters the Closed Places verification queue and does not change the public marker until an administrator verifies it.',
         ]
     );
 
@@ -221,7 +224,7 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_closure_reason',
-        'Observed closure reason',
+        'Observed / reported closure reason',
         'rules',
         'select',
         'rules.place_closure_reason',
@@ -243,7 +246,7 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_closure_began',
-        'Observed closure began',
+        'Observed / reported closure began',
         'rules',
         'date',
         'rules.place_closure_began',
@@ -261,42 +264,39 @@ function llama_place_report_add_operating_fields(callable $add): void
         $closure + [
             'applicable_if' => [$temporaryWhen],
             'help' =>
-                'Use an officially reported estimate when one exists. '
-                . 'This date never reopens the Place automatically.',
+                'Use a reported estimate when one exists. This date never reopens the Place automatically and remains unverified until moderation.',
         ]
     );
 
     $add(
         'place_closure_source_url',
-        'Closure / reopening source URL',
+        'Closure / reopening evidence URL',
         'rules',
         'url',
         'rules.place_closure_source_url',
         $closure + [
             'wide' => true,
             'help' =>
-                'Link to the official or best available source supporting '
-                . 'the observed status.',
+                'Link to the official or best available source supporting the observed or reported status.',
         ]
     );
 
     $add(
         'place_closure_review_date',
-        'Suggested check-back date',
+        'Suggested status check date',
         'rules',
         'date',
         'rules.place_closure_review_date',
         $closure + [
             'applicable_if' => [$closedWhen],
             'help' =>
-                'Optional suggestion for when staff should check the closure '
-                . 'again. Administrators set the verified review schedule.',
+                'Optional suggestion for when staff should check the reported closure again. Administrators own the verified review schedule.',
         ]
     );
 
     $add(
         'place_closure_notes',
-        'Closure / reopening notes',
+        'Closure / reopening evidence notes',
         'rules',
         'textarea',
         'rules.place_closure_notes',
@@ -304,8 +304,7 @@ function llama_place_report_add_operating_fields(callable $add): void
             'wide' => true,
             'rows' => 3,
             'help' =>
-                'Add useful context that is not captured by the status, '
-                . 'reason, dates, or source.',
+                'Add observations or source context that support the reported status. Do not present an unverified observation as an official closure determination.',
         ]
     );
 }
