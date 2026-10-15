@@ -134,7 +134,7 @@ function llama_place_report_fields(): array
         [
             'entrance_facility_fee',
             'parking_fee',
-        ]
+      ]
         as $key
     ) {
         if (isset($f[$key])) {
@@ -146,7 +146,7 @@ function llama_place_report_fields(): array
     /*
      * ---------------------------------------------------------
      * 3. Apply presentation metadata.
-     * ---------------------------------------------------------
+     * -----------------------------------------------------------
      */
     require_once __DIR__ . '/flow-layout.php';
     llama_place_report_apply_layout_metadata($f);
@@ -180,7 +180,7 @@ function llama_place_report_fields(): array
             'rv_camping_allowed',
             'overnight_restrictions',
             'overnight_vehicle_tent_permit_url',
-        ]
+      ]
         as $key
     ) {
         if (!isset($f[$key])) {
@@ -195,7 +195,16 @@ function llama_place_report_fields(): array
     }
 
     /*
-     * ---------------------------------------------------------
+     * The shared form consumes registry order directly. Reorder only after
+     * every presentation-metadata pass has finished so every field-driven
+     * consumer sees the same final sequence.
+     */
+    llama_place_report_reorder_layout_fields(
+        $f
+    );
+
+    /*
+     * ----------------------------------------------------------
      * 4. Apply ownership last.
      * ---------------------------------------------------------
      */
