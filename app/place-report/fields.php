@@ -104,6 +104,16 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-metadata.php';
     llama_place_report_apply_flow_metadata($f);
 
+    require_once __DIR__ . '/flow-pricing.php';
+
+    foreach (llama_place_report_pricing_semantics() as $key => $pricingMeta) {
+        if (!isset($f[$key])) {
+            continue;
+        }
+
+        $f[$key]['pricing'] = $pricingMeta;
+    }
+
     require_once __DIR__ . '/flow-access-options.php';
     llama_place_report_apply_access_options($f);
 
