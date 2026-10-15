@@ -72,7 +72,20 @@ if (
 }
 
 $reportData = admin_place_shared_report_data($db, $placeId);
-$adminPlaceCampsites = admin_place_campsite_form_catalog($db, $placeId);
+$adminPlaceCampsites =
+    array_values(
+        array_filter(
+            admin_place_campsite_form_catalog(
+                $db,
+                $placeId
+            ),
+            static fn (array $site): bool =>
+                (string) (
+                    $site['scope_source']
+                    ?? ''
+                ) === 'campsite_record'
+        )
+    );
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
 
 $adminPlaceMapFeatures = array_values(
@@ -268,38 +281,11 @@ foreach ($adminPlaceCampsites as $site) {
         $exception
     ) {
         /*
-         * A legacy map-only Site may still be visible until it is saved once
-         * through the updated map editor. Show the target, but do not allow a
-         * photo upload until canonical identity exists.
+         * Site identity normalization runs before this catalog is built.
+         * A failure here is an integrity problem, not a second kind of Site.
+         * Keep it out of the normal photo target list.
          */
-        $adminPlacePhotoTargets[
-            'site:' . $selectorValue
-        ] = [
-            'label' =>
-                (string) (
-                    $site['label']
-                    ?? 'Site'
-                ),
-
-            'scope' => 'site',
-            'source' =>
-                (string) (
-                    $site['scope_source']
-                    ?? ''
-                ),
-
-            'id' =>
-                (int) (
-                    $site['scope_id']
-                    ?? 0
-                ),
-
-            'supported' => false,
-            'max' => 0,
-            'photos' => [],
-            'reason' =>
-                'Save this Site once before adding photos.',
-        ];
+        continue;
     }
 }
 
