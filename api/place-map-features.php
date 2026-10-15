@@ -28,79 +28,20 @@ function llama_place_map_api_features(
     PDO $db,
     int $placeId
 ): array {
-    $features =
-        llama_place_map_features(
-            $db,
-            $placeId,
-            true
-        );
-
-    if (!$features) {
-        return [];
-    }
-
-    $associations =
-        llama_place_campsite_map_associations(
-            $db,
-            $placeId
-        );
-
-    foreach ($features as &$feature) {
-        $featureType =
-            (string) (
-                $feature['feature_type']
-                ?? ''
-            );
-
-        if ($featureType !== 'camping_site') {
-            continue;
-        }
-
-        $featureId =
-            (int) (
-                $feature['id']
-                ?? 0
-            );
-
-        if (
-            $featureId < 1
-            || !isset(
-                $associations[
-                    $featureId
-                ]
-            )
-        ) {
-            continue;
-        }
-
-        if (
-            !isset($feature['site_details'])
-            || !is_array(
-                $feature['site_details']
-            )
-        ) {
-            $feature['site_details'] = [];
-        }
-
-        $association =
-            $associations[
-                $featureId
-            ];
-
-        $feature['site_details']['canonical_campsite_id'] =
-            (int) $association['campsite_id'];
-
-        $feature['site_details']['canonical_campsite_label'] =
-            (string) $association['label'];
-
-        $feature['site_details']['canonical_campsite_conflict'] =
-            !empty(
-                $association['conflict']
-            );
-    }
-    unset($feature);
-
-    return $features;
+    /*
+     * The map editor only needs map features here. Site identity is persisted
+     * by the save path, and the production editor no longer exposes a separate
+     * campsite-to-geometry linker.
+     *
+     * Avoid loading every active campsite and association just to decorate the
+     * feature payload. On Places with imported or duplicated Site rows that
+     * redundant work can be dramatically more expensive than the map itself.
+     */
+    return llama_place_map_features(
+        $db,
+        $placeId,
+        true
+    );
 }
 
 function llama_place_map_api_campsites(
@@ -266,13 +207,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         'feature_types' =>
             llama_place_map_feature_types(),
-
-        'campsites' =>
-            llama_place_map_api_campsites(
-                $db,
-                $placeId
-            ),
-
         'features' =>
             llama_place_map_api_features(
                 $db,
@@ -381,13 +315,6 @@ try {
 
         llama_place_map_api_json([
             'ok' => true,
-
-            'campsites' =>
-                llama_place_map_api_campsites(
-                    $db,
-                    $placeId
-                ),
-
             'features' =>
                 llama_place_map_api_features(
                     $db,
@@ -563,13 +490,6 @@ try {
 
         'feature_id' =>
             $featureId,
-
-        'campsites' =>
-            llama_place_map_api_campsites(
-                $db,
-                $placeId
-            ),
-
         'features' =>
             llama_place_map_api_features(
                 $db,
