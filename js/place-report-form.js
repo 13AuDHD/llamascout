@@ -570,12 +570,9 @@ status.setAttribute(
 'polite'
 );
 
-status.style.display = 'block';
-status.style.width = '100%';
-status.style.color =
-'var(--text-muted)';
-status.style.fontSize = '.68rem';
-status.style.lineHeight = '1.35';
+status.classList.add(
+'place-report-recovery-status'
+);
 
 const adminBar =
 form.querySelector(
@@ -588,13 +585,14 @@ form.querySelector(
 );
 
 if (adminBar) {
-adminBar.style.flexWrap =
-'wrap';
-adminBar.style.gap = '7px';
+adminBar.classList.add(
+'has-recovery-status'
+);
 adminBar.appendChild(status);
 } else if (contributionBar) {
-status.style.gridColumn =
-'1 / -1';
+contributionBar.classList.add(
+'has-recovery-status'
+);
 contributionBar.appendChild(
 status
 );
@@ -1566,10 +1564,8 @@ wrapper.hidden ? '1' : '0';
 
 if (!applicable) {
 wrapper.hidden = true;
-wrapper.style.setProperty(
-'display',
-'none',
-'important'
+wrapper.classList.add(
+'is-applicability-hidden'
 );
 wrapper.dataset.placeReportApplicabilityHidden =
 '1';
@@ -1584,17 +1580,9 @@ wrapper.hidden =
 wrapper.dataset.placeReportOriginalHidden
 === '1';
 
-if (wrapper.hidden) {
-wrapper.style.setProperty(
-'display',
-'none',
-'important'
+wrapper.classList.remove(
+'is-applicability-hidden'
 );
-} else {
-wrapper.style.removeProperty(
-'display'
-);
-}
 
 delete wrapper.dataset.placeReportApplicabilityHidden;
 }
@@ -1632,10 +1620,8 @@ return !applicabilityHidden;
 
 if (!hasVisibleField) {
 section.hidden = true;
-section.style.setProperty(
-'display',
-'none',
-'important'
+section.classList.add(
+'is-applicability-hidden'
 );
 section.dataset.placeReportApplicabilityHidden =
 '1';
@@ -1647,8 +1633,8 @@ section.dataset.placeReportApplicabilityHidden
 === '1'
 ) {
 section.hidden = false;
-section.style.removeProperty(
-'display'
+section.classList.remove(
+'is-applicability-hidden'
 );
 delete section.dataset.placeReportApplicabilityHidden;
 }
@@ -1697,12 +1683,6 @@ String(field.key);
 counter.className =
 'place-report-character-counter';
 
-counter.style.display = 'block';
-counter.style.marginTop = '6px';
-counter.style.fontWeight = '600';
-counter.style.color =
-'var(--text-muted)';
-
 input.insertAdjacentElement(
 'afterend',
 counter
@@ -1726,11 +1706,6 @@ count.toLocaleString()
 
 counter.dataset.minimumMet =
 met ? '1' : '0';
-
-counter.style.color =
-met
-? 'var(--success, #2f9e44)'
-: 'var(--text-muted)';
 };
 
 input.addEventListener(
@@ -1997,7 +1972,6 @@ form
 setupFieldHelp(
 form
 );
-
 const config =
 readPlaceReportConfig(form);
 
@@ -2088,6 +2062,7 @@ existing++;
 
 return staged + existing;
 };
+
 
 const setupLiveCompletion = (
 form,
@@ -2200,17 +2175,10 @@ if (panel) {
 panel.hidden =
 !missingPanelOpened;
 
-if (missingPanelOpened) {
-panel.style.removeProperty(
-'display'
+panel.classList.toggle(
+'is-force-hidden',
+!missingPanelOpened
 );
-} else {
-panel.style.setProperty(
-'display',
-'none',
-'important'
-);
-}
 }
 
 if (toggle) {
@@ -2238,17 +2206,10 @@ return;
 toggle.hidden =
 !available;
 
-if (available) {
-toggle.style.removeProperty(
-'display'
+toggle.classList.toggle(
+'is-force-hidden',
+!available
 );
-} else {
-toggle.style.setProperty(
-'display',
-'none',
-'important'
-);
-}
 };
 
 const calculate = () => {
@@ -2738,10 +2699,10 @@ isError = false
 status.textContent =
 message;
 
-status.style.color =
+status.classList.toggle(
+'is-error',
 isError
-? '#d96a62'
-: 'var(--text-muted)';
+);
 };
 
 const removeRecovery = () => {
