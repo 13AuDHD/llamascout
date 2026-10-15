@@ -5,9 +5,8 @@ declare(strict_types=1);
 /**
  * Final report notes and summary placement.
  *
- * The Access Summary belongs with Getting There, not in the Site photo group.
- * Sensory Summary already lives with Site -> Sensory & Environment.
- * Scout notes and private reviewer notes belong beside the report photos.
+ * Approach Access Summary belongs with Getting There and describes reaching
+ * the Place. Site access facts describe only the selected Site.
  */
 function llama_place_report_apply_site_notes_metadata(
     array &$fields
@@ -20,10 +19,13 @@ function llama_place_report_apply_site_notes_metadata(
             'vehicle_access';
 
         $fields['access_summary']['label'] =
-            'Access summary';
+            'Approach access summary';
+
+        $fields['access_summary']['placeholder'] =
+            'Summarize the route to the Place, road condition, vehicle requirements, difficult turns, gates, restrictions, and other important approach information.';
 
         $fields['access_summary']['help'] =
-            'Summarize the complete approach and access experience, including road condition, vehicle requirements, difficult turns, gates or restrictions, parking approach, and anything important someone should know before trying to reach the Place.';
+            'Summarize reaching the Place from the normal road network. Do not use this for the final maneuver into an individual Site; Site entry and Site accessibility have their own fields.';
     }
 
     if (isset($fields['sensory_summary'])) {
@@ -67,7 +69,7 @@ function llama_place_report_apply_site_notes_metadata(
         }
 
         $fields[$key]['help'] =
-            'Use this for a short useful observation that does not fit cleanly into another question. Keep it specific and useful to someone evaluating this Place or campsite.';
+            'Use this for a short observation that does not fit a more specific canonical field. Prefer the specific field whenever one exists.';
     }
 
     if (isset($fields['contributor_notes'])) {
