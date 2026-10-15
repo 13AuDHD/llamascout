@@ -31,8 +31,10 @@ function llama_place_report_layout_groups(): array
         ],
         'site' => [
             'selection_type' => 'Site Selection & Type',
-            'parking_dimensions' => 'Parking & Dimensions',
-            'camping_equipment' => 'Camping & Equipment',
+            'site_dimensions' => 'Site Dimensions',
+            'parking_maneuvering' => 'Parking & Maneuvering',
+            'published_fit' => 'Published Fit Limits',
+            'camping_equipment' => 'Utilities & Equipment',
             'sensory_environment' => 'Sensory & Environment',
             'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
@@ -178,7 +180,7 @@ function llama_place_report_layout_assignments(): array
             'nearest_propane',
             'nearest_grocery',
             'nearest_water',
-           'nearest_toilet',
+            'nearest_toilet',
             'nearest_hospital',
         ],
 
@@ -206,7 +208,7 @@ function llama_place_report_layout_assignments(): array
             'existing_sites_encouraged',
             'pack_it_in_pack_it_out',
             'residential_use_prohibited',
-             'place_quiet_hours',
+            'place_quiet_hours',
             'place_quiet_hours_begin',
             'place_quiet_hours_end',
             'place_alcohol_permitted',
@@ -223,18 +225,18 @@ function llama_place_report_layout_assignments(): array
             'place_operating_end_day',
             'place_open_24_hours',
             'place_opening_time',
-             'place_closing_time',
+            'place_closing_time',
             'place_entrance_gate',
             'place_gate_access_type',
-             'place_gate_opening_time',
+            'place_gate_opening_time',
             'place_gate_closing_time',
             'place_reported_operating_status',
-             'place_closure_reason',
+            'place_closure_reason',
             'place_closure_began',
-             'place_expected_reopening',
+            'place_expected_reopening',
             'place_closure_source_url',
-             'place_closure_review_date',
-             'place_closure_notes',
+            'place_closure_review_date',
+            'place_closure_notes',
         ],
 
         'site:selection_type' => [
@@ -244,30 +246,47 @@ function llama_place_report_layout_assignments(): array
             'vehicle_capacity',
         ],
 
-        'site:parking_dimensions' => [
-            'max_vehicle_length_feet',
-            'max_rv_length_feet',
-            'overhead_clearance_feet',
-            'double_driveway',
-            'parking_surface',
+        /*
+         * Physical dimensions come first. These answer "How big is the
+         * actual space?" independently from any published vehicle/RV limit.
+         */
+        'site:site_dimensions' => [
+            'site_length_feet',
+            'site_width_feet',
             'parking_length_feet',
+            'overhead_clearance_feet',
+        ],
+
+        /*
+         * How the Site is surfaced, positioned, and entered.
+         */
+        'site:parking_maneuvering' => [
+            'parking_surface',
+            'ground_condition',
+            'levelness',
             'parking_grade',
+            'leveling_required',
+            'double_driveway',
             'pull_through',
             'back_in',
             'turnaround_space',
-            'site_length_feet',
-            'site_width_feet',
-            'ground_condition',
-           'levelness',
-           'leveling_required',
             'site_access_difficulty',
             'hike_in_distance_feet',
-      ],
+        ],
+
+        /*
+         * Published or observed fit limits are secondary facts. They must not
+         * substitute for the Site's actual physical dimensions.
+         */
+        'site:published_fit' => [
+            'max_vehicle_length_feet',
+            'max_rv_length_feet',
+        ],
 
         'site:camping_equipment' => [
             'tent_pad',
             'tent_pad_length_feet',
-     'tent_pad_width_feet',
+            'tent_pad_width_feet',
             'site_hookups_available',
             'hookup_electric',
             'hookup_electric_service',
@@ -278,7 +297,7 @@ function llama_place_report_layout_assignments(): array
             'amenity_grill',
             'amenity_bear_box',
             'amenity_lantern_post',
-      ],
+        ],
 
         'site:sensory_environment' => [
             'site_shade', 'tree_cover', 'site_open_sky',
@@ -292,7 +311,7 @@ function llama_place_report_layout_assignments(): array
             'daytime_sensory_comfort', 'daytime_social_interaction',
             'nighttime_noise', 'nighttime_traffic', 'nighttime_crowds',
             'nighttime_privacy', 'nighttime_light_pollution',
-            'nighttime_sensory_comfort','nighttime_social_interaction',
+            'nighttime_sensory_comfort', 'nighttime_social_interaction',
             'sensory_dust_from_traffic', 'sensory_generator_noise',
             'sensory_aircraft_noise', 'sensory_train_noise',
             'sensory_dog_barking', 'sensory_road_noise',
@@ -308,9 +327,9 @@ function llama_place_report_layout_assignments(): array
             'cliff_exposure', 'rockfall_risk', 'wildlife_risk',
             'traffic_hazard', 'emergency_access',
             'warning_passing_vehicle_dust',
-             'warning_motorized_recreation_traffic',
+            'warning_motorized_recreation_traffic',
             'warning_blind_turn_traffic_nearby',
-      ],
+        ],
 
         'site:site_accessibility' => [
             'site_accessible',
@@ -333,14 +352,14 @@ function llama_place_report_layout_assignments(): array
             'recommended_stargazing', 'recommended_remote_work',
             'recommended_solo_travel', 'recommended_families',
             'recommended_large_groups', 'not_recommended_for',
-      ],
+        ],
 
         'site:site_photos' => [
             'contributor_notes',
             'scout_note_1',
             'scout_note_2',
             'scout_note_3',
-      ],
+        ],
     ];
 }
 
@@ -451,20 +470,65 @@ function llama_place_report_unclassified_layout_fields(
 /**
  * Reorder the canonical registry from its final layout metadata.
  *
- * Run this after every presentation-metadata pass. Consumers can then filter
- * the shared field registry without inventing their own local ordering rules.
+ * Explicit assignment order is authoritative inside each layout group. Fields
+ * that rely on a fallback retain their relative registry order after explicitly
+ * assigned fields in that group.
  */
 function llama_place_report_reorder_layout_fields(
     array &$fields
 ): void {
     $ordered = [];
     $used = [];
+    $assignments =
+        llama_place_report_layout_assignments();
 
     foreach (
         llama_place_report_layout_groups()
         as $section => $groups
     ) {
         foreach ($groups as $group => $_label) {
+            $assignmentKey =
+                $section . ':' . $group;
+
+            foreach (
+                $assignments[$assignmentKey]
+                ?? []
+                as $key
+            ) {
+                if (
+                    isset($used[$key])
+                    || !isset($fields[$key])
+                ) {
+                    continue;
+                }
+
+                $field =
+                    $fields[$key];
+
+                if (
+                    (string) (
+                        $field['layout_section']
+                        ?? ''
+                    ) !== $section
+                    || (string) (
+                        $field['layout_group']
+                        ?? ''
+                    ) !== $group
+                ) {
+                    continue;
+                }
+
+                $ordered[$key] =
+                    $field;
+
+                $used[$key] =
+                    true;
+            }
+
+            /*
+             * Preserve active fallback fields that legitimately belong to this
+             * group but are not yet part of its explicit ordered inventory.
+             */
             foreach ($fields as $key => $field) {
                 if (
                     isset($used[$key])
@@ -480,8 +544,11 @@ function llama_place_report_reorder_layout_fields(
                     continue;
                 }
 
-                $ordered[$key] = $field;
-                $used[$key] = true;
+                $ordered[$key] =
+                    $field;
+
+                $used[$key] =
+                    true;
             }
         }
     }
@@ -495,8 +562,10 @@ function llama_place_report_reorder_layout_fields(
             continue;
         }
 
-        $ordered[$key] = $field;
+        $ordered[$key] =
+            $field;
     }
 
-    $fields = $ordered;
+    $fields =
+        $ordered;
 }
