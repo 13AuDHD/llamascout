@@ -108,6 +108,7 @@ function llama_place_report_scope_overrides(): array
             'accessibility_notes',
             'facility_map_url',
             'activities',
+            'access_summary',
 
             /*
              * Connectivity and nearby services are Place-level context.
@@ -274,6 +275,10 @@ function llama_place_report_scope_overrides(): array
             'leveling_required',
             'site_access_difficulty',
             'walking_distance_from_vehicle',
+            'wheelchair_friendly',
+            'mobility_device_friendly',
+            'flat_walking_surface',
+            'step_free_access',
             'site_shade',
             'site_open_sky',
 
@@ -403,11 +408,6 @@ function llama_place_report_scope_overrides(): array
              * Place to Area to Site. Shared-facility accessibility above is
              * deliberately Place/Area-only.
              */
-            'wheelchair_friendly',
-            'mobility_device_friendly',
-            'flat_walking_surface',
-            'step_free_access',
-
             'experience_sunrise_view',
             'experience_sunset_view',
             'experience_overall_scenery',
@@ -433,8 +433,10 @@ function llama_place_report_scope_overrides(): array
              * Narrative summaries and reviewer notes may describe whichever
              * target is currently being reported.
              */
-            'access_summary',
             'sensory_summary',
+            'scout_note_1',
+            'scout_note_2',
+            'scout_note_3',
             'contributor_notes',
         ],
     ];
