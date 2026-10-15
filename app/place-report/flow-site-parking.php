@@ -7,6 +7,9 @@ declare(strict_types=1);
  *
  * Physical-fit questions are objective Site facts. They remain independent of
  * camping permission and of historical subjective suitability answers.
+ *
+ * "Getting There" describes the route to the Place. "Final Site entry"
+ * describes only the last maneuver into the selected Site or overnight space.
  */
 function llama_place_report_apply_site_parking_metadata(
     array &$fields
@@ -44,28 +47,28 @@ function llama_place_report_apply_site_parking_metadata(
 
     $labels = [
         'parking_surface' =>
-            'Parking / driveway surface',
+            'Site parking / driveway surface',
 
         'ground_condition' =>
-            'Campsite ground condition',
+            'Site ground condition',
 
         'parking_grade' =>
-            'Parking / driveway grade',
+            'Site parking / driveway grade',
 
         'levelness' =>
-            'Campsite levelness',
+            'Site levelness',
 
         'parking_length_feet' =>
-            'Parking / driveway length (ft)',
+            'Site parking / driveway length (ft)',
 
         'site_length_feet' =>
-            'Usable campsite length (ft)',
+            'Usable Site length (ft)',
 
         'site_width_feet' =>
-            'Usable campsite width (ft)',
+            'Usable Site width (ft)',
 
         'overhead_clearance_feet' =>
-            'Overhead clearance (ft)',
+            'Site overhead clearance (ft)',
 
         'max_vehicle_length_feet' =>
             'Maximum vehicle length',
@@ -74,22 +77,22 @@ function llama_place_report_apply_site_parking_metadata(
             'Maximum RV / trailer length',
 
         'turnaround_space' =>
-            'Turnaround space?',
+            'Turnaround at Site?',
 
         'pull_through' =>
-            'Pull-through?',
+            'Pull-through Site?',
 
         'back_in' =>
-            'Back-in?',
+            'Back-in Site?',
 
         'double_driveway' =>
-            'Double-width driveway?',
+            'Double-width Site driveway?',
 
         'hike_in_distance_feet' =>
-            'Hike-in distance (ft)',
+            'Distance from vehicle parking to Site (ft)',
 
         'site_access_difficulty' =>
-            'Campsite access difficulty',
+            'Final Site entry difficulty',
     ];
 
     foreach ($labels as $key => $label) {
@@ -101,46 +104,49 @@ function llama_place_report_apply_site_parking_metadata(
 
     $help = [
         'parking_surface' =>
-            'Surface where the vehicle or RV actually parks at this campsite.',
+            'Surface where the vehicle or RV actually parks at this Site. The approach-road surface belongs under Getting There.',
 
         'ground_condition' =>
-            'Ground condition of the usable camping area, not the access road.',
+            'Ground condition of the usable Site area, not the approach road.',
+
+        'parking_grade' =>
+            'Slope of the parking or driveway area within this Site.',
 
         'parking_length_feet' =>
-            'Approximate usable parking or driveway length at this campsite.',
+            'Approximate usable parking or driveway length within this Site.',
 
         'site_length_feet' =>
-            'Approximate usable length of the overall campsite area.',
+            'Approximate usable length of the individual Site or overnight space.',
 
         'site_width_feet' =>
-            'Approximate usable width of the overall campsite area.',
+            'Approximate usable width of the individual Site or overnight space.',
 
         'overhead_clearance_feet' =>
-            'Lowest practical overhead clearance at the campsite or its immediate parking space.',
+            'Lowest practical overhead clearance within the Site or its immediate entry.',
 
         'max_vehicle_length_feet' =>
-            'Largest single vehicle that can physically use this campsite based on the parking space, maneuvering room, clearance, and immediate Site access.',
+            'Largest single vehicle that can physically use this Site based on the parking space, maneuvering room, clearance, and immediate Site entry.',
 
         'max_rv_length_feet' =>
-            'Largest RV, travel trailer, fifth wheel, motorhome, or similar camping rig that can physically use this campsite. Record physical fit even when overnight RV use is prohibited or unknown.',
+            'Largest RV, travel trailer, fifth wheel, motorhome, or similar camping rig that can physically use this Site. Record physical fit even when overnight RV use is prohibited or unknown.',
 
         'turnaround_space' =>
-            'Whether a vehicle can turn around at or immediately beside this campsite without backing a long distance.',
+            'Whether a vehicle can turn around at or immediately beside this Site without backing a long distance.',
 
         'pull_through' =>
-            'Whether the campsite can be entered and exited without backing out.',
+            'Whether the Site can be entered and exited without backing out.',
 
         'back_in' =>
             'Whether the primary parking position is a back-in space.',
 
         'double_driveway' =>
-            'Whether the parking/driveway area is wide enough for two vehicles side by side.',
+            'Whether the Site parking or driveway area is wide enough for two vehicles side by side.',
 
         'hike_in_distance_feet' =>
-            'Approximate walking distance from the nearest vehicle parking point to the campsite.',
+            'Approximate distance from the nearest practical vehicle parking point to the usable Site area.',
 
         'site_access_difficulty' =>
-            'Difficulty of getting a vehicle into the campsite itself. Road difficulty belongs under Getting There.',
+            'Difficulty of the final maneuver or route into this individual Site. Road and route difficulty before reaching the Place belongs under Getting There.',
     ];
 
     foreach ($help as $key => $text) {
@@ -150,13 +156,6 @@ function llama_place_report_apply_site_parking_metadata(
         }
     }
 
-    /*
-     * Deliberately no rv_suitable dependency here.
-     *
-     * A measurable maximum length remains useful even if RV use is prohibited,
-     * conditional, unknown, or simply not recommended by a prior subjective
-     * report.
-     */
     if (isset($fields['max_rv_length_feet'])) {
         $fields['max_rv_length_feet']['applicable_if'] =
             [];
