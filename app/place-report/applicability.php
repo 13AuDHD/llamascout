@@ -11,6 +11,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/applicability/common.php';
 require_once __DIR__ . '/applicability/camping.php';
+require_once __DIR__ . '/applicability/overnight.php';
 require_once __DIR__ . '/applicability/parking.php';
 
 function llama_place_report_apply_applicability(
@@ -21,6 +22,10 @@ function llama_place_report_apply_applicability(
     );
 
     llama_place_report_apply_camping_profiles(
+        $fields
+    );
+
+    llama_place_report_apply_overnight_applicability(
         $fields
     );
 
