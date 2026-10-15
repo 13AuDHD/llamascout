@@ -288,7 +288,7 @@
                 )
             };
         } catch (_) {
-            // Leave the campsite editor unavailable if its page data is invalid.
+            // Leave the Site editor unavailable if its page data is invalid.
         }
     }
 
@@ -360,8 +360,8 @@
         choose.value = '';
         choose.textContent =
             campsiteSites.length > 0
-                ? 'Place-level Site section'
-                : 'Place-level Site section - no campsite records';
+                ? 'Place'
+                : 'Place - no Sites yet';
         campsiteSelect.appendChild(choose);
 
         campsiteSites.forEach(site => {
@@ -396,7 +396,7 @@
 
         if (label) {
             label.textContent =
-                'Site reporting target';
+                'Site';
         }
 
         siteNumberInput.replaceWith(
@@ -708,7 +708,7 @@
                     detail: {
                         campsiteId: '',
                         label:
-                            'Place-level Site section',
+                            'Place',
                         scope:
                             'place',
                     },
@@ -760,7 +760,7 @@
         campsiteDirty = false;
         placeSiteDirty = false;
         // Programmatically populating fields doesn't emit input/change events.
-        // Notify the section-completion view after every campsite switch.
+        // Notify the section-completion view after every Site switch.
         form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
             detail: {
                 campsiteId: activeCampsiteId,
@@ -801,7 +801,7 @@
                     && placeSiteDirty
                     && next !== ''
                     && !window.confirm(
-                        'Switch to a campsite and discard unsaved Place-level Site-section changes?'
+                        'Switch to a Site and discard unsaved Place Site-section changes?'
                     )
                 ) {
                     campsiteSelect.value = '';
@@ -813,7 +813,7 @@
                     && activeCampsiteId !== ''
                     && next !== activeCampsiteId
                     && !window.confirm(
-                        'Switch campsites and discard unsaved changes to the current campsite?'
+                        'Switch Sites and discard unsaved changes to the current Site?'
                     )
                 ) {
                     campsiteSelect.value =
