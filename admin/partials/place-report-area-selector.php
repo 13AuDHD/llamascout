@@ -3,40 +3,94 @@
 declare(strict_types=1);
 
 /**
- * Area reporting target picker for the existing Admin Place Report form.
+ * Area picker for the shared Admin Place editor.
  *
- * The surrounding form owns the submission; this partial adds only the
- * selector and serialised catalog. It does not create a second save form.
- *
- * Expects $adminPlaceAreas from admin_place_area_form_catalog().
+ * The surrounding form owns submission. This partial only switches the
+ * currently edited Place / Area context and serializes Area values.
  */
-$areas = is_array($adminPlaceAreas ?? null) ? $adminPlaceAreas : [];
-$areaFields = array_keys(admin_place_area_fields());
-$encode = static fn (string $value): string => htmlspecialchars(
-    $value,
-    ENT_QUOTES,
-    'UTF-8'
-);
+$areas =
+    is_array(
+        $adminPlaceAreas
+        ?? null
+    )
+        ? $adminPlaceAreas
+        : [];
+
+$areaFields =
+    array_keys(
+        admin_place_area_fields()
+    );
+
+$encode =
+    static fn (string $value): string =>
+        htmlspecialchars(
+            $value,
+            ENT_QUOTES,
+            'UTF-8'
+        );
 ?>
-<section class="admin-place-area-picker" aria-labelledby="admin-place-area-heading">
+
+<section
+    class="admin-place-area-picker"
+    aria-labelledby="admin-place-area-heading"
+>
     <header>
-        <h3 id="admin-place-area-heading">Area reporting</h3>
-        <p>Choose a mapped Area to edit its own report answers.</p>
+        <h3 id="admin-place-area-heading">
+            Area
+        </h3>
+
+        <p>
+            Choose an Area to edit information that applies to that part of the Place.
+        </p>
     </header>
-    <label for="admin-place-area-target">Reporting Area</label>
-    <select id="admin-place-area-target" data-admin-area-selector>
-        <option value="">Place-wide answers</option>
+
+    <label for="admin-place-area-target">
+        Area
+    </label>
+
+    <select
+        id="admin-place-area-target"
+        data-admin-area-selector
+    >
+        <option value="">
+            Place
+        </option>
+
         <?php foreach ($areas as $area): ?>
-            <option value="<?= $encode((string) ($area['id'] ?? '')) ?>">
-                <?= $encode((string) ($area['label'] ?? 'Unnamed Area')) ?>
+            <option
+                value="<?= $encode(
+                    (string) (
+                        $area['id']
+                        ?? ''
+                    )
+                ) ?>"
+            >
+                <?= $encode(
+                    (string) (
+                        $area['label']
+                        ?? 'Unnamed Area'
+                    )
+                ) ?>
             </option>
         <?php endforeach; ?>
     </select>
-    <input type="hidden" name="selected_area_id" value="">
-    <script type="application/json" data-admin-place-areas><?= json_encode(
+
+    <input
+        type="hidden"
+        name="selected_area_id"
+        value=""
+    >
+
+    <script
+        type="application/json"
+        data-admin-place-areas
+    ><?= json_encode(
         [
-            'areas' => $areas,
-            'field_keys' => $areaFields,
+            'areas' =>
+                $areas,
+
+            'field_keys' =>
+                $areaFields,
         ],
         JSON_UNESCAPED_SLASHES
         | JSON_UNESCAPED_UNICODE
