@@ -111,6 +111,12 @@ function llama_place_report_scope_overrides(): array
             'access_summary',
 
             /*
+             * Base/default pricing. Detailed mapped Area/Site nightly rates
+             * live in place_map_feature_rates and supersede this fallback.
+             */
+            'fee',
+
+            /*
              * Connectivity and nearby services are Place-level context.
              */
             'connectivity_overall',
@@ -154,11 +160,6 @@ function llama_place_report_scope_overrides(): array
             'place_closure_review_date',
             'place_closure_notes',
 
-            /*
-             * This legacy JSON rate-card field is explicitly a Place default.
-             * Area/Site pricing is owned by the mapped-rate model.
-             */
-            'place_rate_cards_json',
         ],
 
         'place_area' => [
@@ -318,7 +319,6 @@ function llama_place_report_scope_overrides(): array
             'check_in_begins',
             'check_out_required',
             'checkout_ends',
-            'fee',
 
             /*
              * Rules that can genuinely differ by Area or individual Site.
