@@ -7,6 +7,37 @@ declare(strict_types=1);
 function llama_place_report_add_site_fields(
     callable $add
 ): void {
+    $range = static function (
+        int $start,
+        int $end,
+        int $step = 1
+    ): array {
+        $values = [];
+
+        for (
+            $value = $start;
+            $value <= $end;
+            $value += $step
+        ) {
+            $values[] = $value;
+        }
+
+        return $values;
+    };
+
+    $feetOptions = static function (
+        array $values
+    ): array {
+        $options = [];
+
+        foreach ($values as $value) {
+            $options[(string) $value] =
+                (string) $value . ' ft';
+        }
+
+        return $options;
+    };
+
     /* Site and vehicle */
     $add('campsite_count', 'Number of campsites', 'campground', 'number', 'details.campsite_count', [
         'step' => '1',
@@ -68,26 +99,41 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('max_people', 'Maximum people', 'site_vehicle', 'number', 'details.max_people', [
-        'step' => '1',
-        'min' => '1',
-        'max' => '500',
+    $maxPeopleOptions = [];
+
+    foreach ($range(1, 20) as $value) {
+        $maxPeopleOptions[(string) $value] =
+            $value
+            . ' '
+            . ($value === 1 ? 'person' : 'people');
+    }
+
+    foreach ([25, 30, 40, 50, 100] as $value) {
+        $maxPeopleOptions[(string) $value] =
+            $value . ' people';
+    }
+
+    $add('max_people', 'Maximum people', 'site_vehicle', 'select', 'details.max_people', [
+        'options' => $maxPeopleOptions,
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('overhead_clearance_feet', 'Overhead clearance (ft)', 'site_vehicle', 'number', 'details.overhead_clearance_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '100',
+    $add('overhead_clearance_feet', 'Overhead clearance (ft)', 'site_vehicle', 'select', 'details.overhead_clearance_feet', [
+        'options' => $feetOptions([
+            ...$range(8, 20),
+            22, 24, 25, 30,
+        ]),
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('parking_length_feet', 'Parking / driveway length (ft)', 'site_vehicle', 'number', 'details.parking_length_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '2000',
+    $add('parking_length_feet', 'Parking / driveway length (ft)', 'site_vehicle', 'select', 'details.parking_length_feet', [
+        'options' => $feetOptions([
+            ...$range(10, 100, 5),
+            110, 120, 130, 140, 150,
+            175, 200, 250, 300, 400, 500,
+        ]),
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
@@ -105,18 +151,21 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('site_length_feet', 'Site length (ft)', 'site_vehicle', 'number', 'details.site_length_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '2000',
+    $add('site_length_feet', 'Site length (ft)', 'site_vehicle', 'select', 'details.site_length_feet', [
+        'options' => $feetOptions([
+            ...$range(10, 100, 5),
+            110, 120, 130, 140, 150,
+            175, 200, 250, 300,
+        ]),
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('site_width_feet', 'Site width (ft)', 'site_vehicle', 'number', 'details.site_width_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '2000',
+    $add('site_width_feet', 'Site width (ft)', 'site_vehicle', 'select', 'details.site_width_feet', [
+        'options' => $feetOptions([
+            8, 10, 12, 15, 20, 25,
+            30, 35, 40, 50, 60, 75, 100,
+        ]),
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
@@ -126,18 +175,19 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('tent_pad_length_feet', 'Tent pad length (ft)', 'site_vehicle', 'number', 'details.tent_pad_length_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '500',
+    $tentPadOptions = $feetOptions([
+        6, 8, 10, 12, 15, 20,
+        25, 30, 40, 50,
+    ]);
+
+    $add('tent_pad_length_feet', 'Tent pad length (ft)', 'site_vehicle', 'select', 'details.tent_pad_length_feet', [
+        'options' => $tentPadOptions,
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('tent_pad_width_feet', 'Tent pad width (ft)', 'site_vehicle', 'number', 'details.tent_pad_width_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '500',
+    $add('tent_pad_width_feet', 'Tent pad width (ft)', 'site_vehicle', 'select', 'details.tent_pad_width_feet', [
+        'options' => $tentPadOptions,
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
@@ -147,27 +197,70 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('hike_in_distance_feet', 'Hike-in distance (ft)', 'site_vehicle', 'number', 'details.hike_in_distance_feet', [
-        'step' => '.1',
-        'min' => '0',
-        'max' => '100000',
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
-    $add('capacity_size_rating', 'Capacity / size rating', 'site_vehicle', 'text', 'details.capacity_size_rating', [
-        'maxlength' => 80,
+    $add('hike_in_distance_feet', 'Hike-in distance (ft)', 'site_vehicle', 'select', 'details.hike_in_distance_feet', [
+        'options' => [
+            '0' => 'At the vehicle / 0 ft',
+            '25' => 'About 25 ft',
+            '50' => 'About 50 ft',
+            '100' => 'About 100 ft',
+            '250' => 'About 250 ft',
+            '500' => 'About 500 ft',
+            '1000' => 'About 1,000 ft',
+            '2640' => 'About 1/2 mile',
+            '5280' => 'About 1 mile',
+        ],
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
 
-    foreach ([
-        'site_rating' => 'Site rating',
-        'condition_rating' => 'Condition rating',
-        'location_rating' => 'Location rating',
-    ] as $key => $label) {
-        $add($key, $label, 'site_vehicle', 'text', 'details.' . $key, [
+    $add('capacity_size_rating', 'Capacity / size rating', 'site_vehicle', 'select', 'details.capacity_size_rating', [
+        'options' => [
+            'Single' => 'Single',
+            'Double' => 'Double',
+            'Triple' => 'Triple',
+            'Group' => 'Group',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    $siteRatings = [
+        'site_rating' => [
+            'label' => 'Site rating',
+            'options' => [
+                'Basic' => 'Basic',
+                'Standard' => 'Standard',
+                'Preferred' => 'Preferred',
+                'Prime' => 'Prime',
+                'N/A' => 'Not applicable',
+            ],
+        ],
+        'condition_rating' => [
+            'label' => 'Condition rating',
+            'options' => [
+                'Basic' => 'Basic',
+                'Standard' => 'Standard',
+                'Good' => 'Good',
+                'Prime' => 'Prime',
+                'N/A' => 'Not applicable',
+            ],
+        ],
+        'location_rating' => [
+            'label' => 'Location rating',
+            'options' => [
+                'Basic' => 'Basic',
+                'Standard' => 'Standard',
+                'Good' => 'Good',
+                'Prime' => 'Prime',
+                'N/A' => 'Not applicable',
+            ],
+        ],
+    ];
+
+    foreach ($siteRatings as $key => $definition) {
+        $add($key, $definition['label'], 'site_vehicle', 'select', 'details.' . $key, [
             'display_section' => 'experience',
-            'maxlength' => 80,
+            'options' => $definition['options'],
             'allow_unknown' => true,
             'points_categories' => ['experience_recommendations'],
         ]);
