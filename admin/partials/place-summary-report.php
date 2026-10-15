@@ -126,6 +126,8 @@ declare(strict_types=1);
             | JSON_HEX_QUOT
         ) ?></script>
 
+        <?php require __DIR__ . '/place-context.php'; ?>
+
         <?php
         $placeReportPhotoContext = 'admin-place';
         require dirname(__DIR__, 2) . '/partials/place-report/form.php';
