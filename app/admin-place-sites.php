@@ -74,6 +74,48 @@ function admin_place_campsite_field_keys(): array
     return $keys;
 }
 
+function admin_place_site_section_place_field_keys(): array
+{
+    $keys = [];
+
+    foreach (llama_place_report_fields() as $key => $field) {
+        if (
+            (string) (
+                $field['layout_section']
+                ?? ''
+            ) !== 'site'
+        ) {
+            continue;
+        }
+
+        if (
+            !in_array(
+                'place',
+                (array) (
+                    $field['report_scopes']
+                    ?? []
+                ),
+                true
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            !empty($field['derived'])
+            || $key === 'site_number'
+        ) {
+            continue;
+        }
+
+        $keys[] =
+            (string) $key;
+    }
+
+    return $keys;
+}
+
+
 function admin_place_without_campsite_fields(array $input): array
 {
     if (trim((string) ($input['selected_campsite_id'] ?? '')) === '') {
