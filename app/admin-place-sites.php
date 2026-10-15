@@ -27,19 +27,43 @@ function admin_place_campsite_field_keys(): array
     $keys = [];
 
     foreach (llama_place_report_fields() as $key => $field) {
-        if ((string) ($field['section'] ?? '') !== 'site_vehicle') {
+        /*
+         * Site ownership is canonical in flow-scopes.php. Do not infer it
+         * from a legacy presentation section such as "site_vehicle": Site
+         * accessibility and per-Site amenities deliberately originate from
+         * other historical sections but are still Site-owned facts.
+         */
+        if (
+            (string) (
+                $field['report_scope_group']
+                ?? ''
+            ) !== 'site'
+        ) {
             continue;
         }
 
-        if (!in_array('site', (array) ($field['report_scopes'] ?? []), true)) {
+        if (
+            !in_array(
+                'site',
+                (array) (
+                    $field['report_scopes']
+                    ?? []
+                ),
+                true
+            )
+        ) {
             continue;
         }
 
-        if (!empty($field['derived']) || $key === 'site_number') {
+        if (
+            !empty($field['derived'])
+            || $key === 'site_number'
+        ) {
             continue;
         }
 
-        $keys[] = (string) $key;
+        $keys[] =
+            (string) $key;
     }
 
     return $keys;
