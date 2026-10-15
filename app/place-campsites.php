@@ -568,7 +568,7 @@ function llama_place_campsite_map_options(
             $label =
                 'Site '
                 . $siteCode
-                . ' · '
+                . ' Â· '
                 . $siteName;
 
         } elseif ($siteCode !== '') {
@@ -994,23 +994,19 @@ function llama_place_campsite_browser_state(
             $sites
         );
 
-    $siteCapableMode =
-        in_array(
-            $mode,
-            [
-                'campground',
-                'camping',
-            ],
-            true
-        );
-
+    /*
+     * Site existence determines Site visibility.
+     *
+     * A Place may contain legitimate Sites regardless of whether its overall
+     * experience mode is campground, camping, parking, or another Place type.
+     * The mode still describes the Place and can influence presentation, but
+     * it must never hide real Site records.
+     */
     $showBrowser =
-        $siteCapableMode
-        && $siteCount > 1;
+        $siteCount > 1;
 
     $showSingleSite =
-        $siteCapableMode
-        && $siteCount === 1;
+        $siteCount === 1;
 
     return [
         'mode' =>
@@ -1026,8 +1022,7 @@ function llama_place_campsite_browser_state(
             $showSingleSite,
 
         'show_site_layer' =>
-            $showBrowser
-            || $showSingleSite,
+            $siteCount > 0,
     ];
 }
 
