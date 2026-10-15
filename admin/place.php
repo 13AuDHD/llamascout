@@ -11,6 +11,7 @@ require_once dirname(__DIR__) . '/app/admin-place-report.php';
 require_once dirname(__DIR__) . '/app/admin-place-actions.php';
 require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
+require_once dirname(__DIR__) . '/app/place-site-identity.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -54,6 +55,22 @@ $placeAuditHistory = admin_place_audit_history($db, $placeId);
 $llamaScouted = admin_place_llama_scouted_state($db, $placeId);
 $operationalCounts = admin_place_operational_counts($db, $placeId);
 $remainingPhotos = max(0, 30 - count($images));
+$siteIdentityState =
+    llama_place_site_identity_normalize_place(
+        $db,
+        $placeId
+    );
+
+if (
+    $error === ''
+    && !empty(
+        $siteIdentityState['errors']
+    )
+) {
+    $error =
+        'One or more Sites could not be prepared for editing. Review the Site layout before making changes.';
+}
+
 $reportData = admin_place_shared_report_data($db, $placeId);
 $adminPlaceCampsites = admin_place_campsite_form_catalog($db, $placeId);
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
