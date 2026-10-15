@@ -624,3 +624,47 @@ input[type="checkbox"] {
 .place-report-form .place-report-multiselect-option[hidden] {
     display: none !important;
 }
+
+/* =========================================================
+   SHARED RUNTIME STATES
+   Presentation stays in CSS; shared JS only toggles state classes.
+   ========================================================= */
+
+.place-report-form .place-report-recovery-status {
+    display: block;
+    width: 100%;
+    color: var(--text-muted);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.place-report-form .place-report-recovery-status.is-error {
+    color: #d96a62;
+}
+
+.place-report-form .admin-place-report-savebar.has-recovery-status {
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.place-report-form .add-place-submit-bar.has-recovery-status
+.place-report-recovery-status {
+    grid-column: 1 / -1;
+}
+
+.place-report-form .is-applicability-hidden,
+.place-report-form .is-force-hidden {
+    display: none !important;
+}
+
+.place-report-form .place-report-character-counter {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.place-report-form
+.place-report-character-counter[data-minimum-met="1"] {
+    color: var(--success, #2f9e44);
+}
