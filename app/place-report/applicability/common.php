@@ -154,6 +154,35 @@ function llama_place_report_applicability_types(): array
             'vehicle-pulloff',
             'day-use',
         ],
+
+        'tent_overnight' =>
+            array_values(
+                array_unique(
+                    array_merge(
+                        $camping,
+                        [
+                            'trailhead',
+                            'scenic-overlook',
+                            'vehicle-pulloff',
+                            'day-use',
+                        ]
+                    )
+                )
+            ),
+    ];
+}
+
+
+function llama_place_report_overnight_positive_rule(): array
+{
+    return [
+        'field' => 'overnight_camping_allowed',
+        'operator' => 'in',
+        'value' => [
+            '1',
+            '2',
+            '3',
+        ],
     ];
 }
 
@@ -415,26 +444,9 @@ function llama_place_report_apply_common_applicability(
             'experience_quiet_evening',
             'experience_extended_stay_comfort',
         ],
-        [[
-            'operator' => 'any',
-            'rules' => [
-                [
-                    'field' => 'type',
-                    'operator' => 'in',
-                    'value' =>
-                        $types['intrinsically_overnight'],
-                ],
-                [
-                    'field' => 'overnight_camping_allowed',
-                    'operator' => 'in',
-                    'value' => [
-                        '1',
-                        '2',
-                        '3',
-                    ],
-                ],
-            ],
-        ]]
+        [
+            llama_place_report_overnight_positive_rule(),
+        ]
     );
 
     llama_place_report_set_applicable(
