@@ -56,14 +56,16 @@ function llama_place_report_pricing_semantics(): array
 /**
  * Detailed mapped nightly rates have precedence for their mapped target.
  *
- * Site rates override matching parent Area rate types. Parent Area rate types
- * that the Site does not override continue to inherit. If no mapped rate
- * applies, consumers may fall back to the Place-level base camping fee.
+ * Site rates override matching Site pricing-class rates, and Site pricing
+ * classes override matching parent Area rates. Unmatched rates continue to
+ * inherit from the less-specific layer. If no mapped rate applies, consumers
+ * may fall back to the Place-level base camping fee.
  */
 function llama_place_report_pricing_precedence(): array
 {
     return [
         'site_mapped_rate',
+        'site_pricing_class_rate',
         'parent_area_mapped_rate',
         'place_base_fee',
     ];
