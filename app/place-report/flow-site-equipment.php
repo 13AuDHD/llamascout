@@ -12,34 +12,6 @@ declare(strict_types=1);
 function llama_place_report_apply_site_equipment_metadata(
     array &$fields
 ): void {
-    $siteEquipmentFields = [
-        'tent_pad',
-        'tent_pad_length_feet',
-        'tent_pad_width_feet',
-        'site_hookups_available',
-        'hookup_electric',
-        'hookup_electric_service',
-        'hookup_water',
-        'hookup_sewer',
-        'amenity_fire_ring',
-        'amenity_grill',
-        'amenity_picnic_table',
-        'amenity_bear_box',
-        'amenity_lantern_post',
-    ];
-
-    foreach ($siteEquipmentFields as $key) {
-        if (!isset($fields[$key])) {
-            continue;
-        }
-
-        $fields[$key]['layout_section'] =
-            'site';
-
-        $fields[$key]['layout_group'] =
-            'camping_equipment';
-    }
-
     $labels = [
         'tent_pad' =>
             'Tent pad / platform?',
