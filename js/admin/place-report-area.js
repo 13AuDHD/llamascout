@@ -4,8 +4,8 @@
     const form = document.getElementById('place-report');
     const catalogNode = form?.querySelector('[data-admin-place-areas]');
     const selector = form?.querySelector('[data-admin-area-selector]');
-    const targetField = form?.querySelector('[name="selected_area_id"]');
-    if (!form || !catalogNode || !selector || !targetField) return;
+    const target = form?.querySelector('[name="selected_area_id"]');
+    if (!form || !catalogNode || !selector || !target) return;
 
     let catalog;
     try {
@@ -15,27 +15,25 @@
     }
 
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
-    const keys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
+    const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const controls = new Map();
-    for (const input of form.elements) {
-        if (!keys.has(input.name)) continue;
-        if (!controls.has(input.name)) controls.set(input.name, []);
-        controls.get(input.name).push(input);
+    for (const control of form.elements) {
+        if (!fieldKeys.has(control.name)) continue;
+        if (!controls.has(control.name)) controls.set(control.name, []);
+        controls.get(control.name).push(control);
     }
     if (!controls.size) return;
 
-    const initial = new Map(areas.map(area => [
-        String(area.id), { ...(area.form_values || {}) },
+    const original = new Map(areas.map(area => [
+        String(area.id), structuredClone(area.form_values || {}),
     ]));
-    const current = new Map([...initial].map(([id, values]) => [id, { ...values }]));
-    const allowed = new Set(initial.keys());
-
-    let payload = form.querySelector('[name="admin_area_answers_json"]');
-    if (!payload) {
-        payload = document.createElement('input');
-        payload.type = 'hidden';
-        payload.name = 'admin_area_answers_json';
-        form.appendChild(payload);
+    const allowed = new Set(original.keys());
+    let answersField = form.querySelector('[name="admin_area_answers_json"]');
+    if (!answersField) {
+        answersField = document.createElement('input');
+        answersField.type = 'hidden';
+        answersField.name = 'admin_area_answers_json';
+        form.appendChild(answersField);
     }
 
     const read = () => {
@@ -43,11 +41,11 @@
         for (const [name, group] of controls) {
             const first = group[0];
             if (first.type === 'radio') {
-                values[name] = group.find(input => input.checked)?.value ?? '';
+                values[name] = group.find(control => control.checked)?.value ?? '';
             } else if (first.type === 'checkbox' && group.length === 1) {
                 values[name] = first.checked ? '1' : '0';
             } else if (first.type === 'checkbox') {
-                values[name] = group.filter(input => input.checked).map(input => input.value);
+                values[name] = group.filter(control => control.checked).map(control => control.value);
             } else if (first instanceof HTMLSelectElement && first.multiple) {
                 values[name] = [...first.selectedOptions].map(option => option.value);
             } else {
@@ -57,53 +55,76 @@
         return values;
     };
 
-    let changing = false;
+    let applying = false;
     const write = values => {
-        changing = true;
+        applying = true;
         try {
             for (const [name, group] of controls) {
                 const value = values[name] ?? '';
-                for (const input of group) {
-                    if (input.type === 'radio') {
-                        input.checked = input.value === String(value);
-                    } else if (input.type === 'checkbox') {
-                        input.checked = Array.isArray(value)
-                            ? value.includes(input.value)
+                for (const control of group) {
+                    if (control.type === 'radio') {
+                        control.checked = control.value === String(value);
+                    } else if (control.type === 'checkbox') {
+                        control.checked = Array.isArray(value)
+                            ? value.includes(control.value)
                             : value === true || value === '1' || value === 1;
-                    } else if (input instanceof HTMLSelectElement && input.multiple) {
-                        for (const option of input.options) {
+                    } else if (control instanceof HTMLSelectElement && control.multiple) {
+                        for (const option of control.options) {
                             option.selected = Array.isArray(value) && value.includes(option.value);
                         }
                     } else {
-                        input.value = String(value);
+                        control.value = String(value);
                     }
                 }
             }
         } finally {
-            changing = false;
+            applying = false;
         }
         form.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
-    let place = read();
+    const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const changes = (before, after) => {
+        const result = {};
+        for (const key of controls.keys()) {
+            const value = after[key];
+            const existed = Object.prototype.hasOwnProperty.call(before, key);
+            // Empty without a prior Area override means unanswered/inherited.
+            if (!existed && (value === '' || value === null ||
+                (Array.isArray(value) && value.length === 0))) continue;
+            if (!existed && value === '0' && controls.get(key)?.[0]?.type === 'checkbox') continue;
+            if (existed && equal(before[key], value)) continue;
+            result[key] = value;
+        }
+        return result;
+    };
+
+    let placeValues = read();
     let selected = '';
     let dirty = false;
     let saving = false;
     let pending = null;
+    let pendingChanges = null;
 
     const finish = success => {
         if (!saving) return;
         saving = false;
         if (selected && pending) {
             if (success) {
-                current.set(selected, { ...pending });
+                const newBaseline = { ...(original.get(selected) || {}) };
+                for (const [key, value] of Object.entries(pendingChanges || {})) {
+                    if (value === '' || value === null) delete newBaseline[key];
+                    else newBaseline[key] = value;
+                }
+                original.set(selected, newBaseline);
                 dirty = false;
             }
             write(pending);
         }
         pending = null;
-        payload.value = '';
-        targetField.value = selected;
+        pendingChanges = null;
+        answersField.value = '';
+        target.value = selected;
     };
 
     selector.addEventListener('change', () => {
@@ -120,51 +141,44 @@
             selector.value = selected;
             return;
         }
-        if (selected) {
-            // A discarded edit must not silently become another Area's data.
-            current.set(selected, { ...(initial.get(selected) || {}) });
-        } else {
-            place = read();
-        }
+        if (!selected) placeValues = read();
         selected = next;
-        targetField.value = selected;
-        payload.value = '';
         dirty = false;
-        write(selected ? current.get(selected) || {} : place);
+        answersField.value = '';
+        target.value = selected;
+        write(selected ? original.get(selected) || {} : placeValues);
     });
 
     for (const group of controls.values()) {
-        for (const input of group) {
+        for (const control of group) {
             const markDirty = () => {
-                if (!changing && !saving && selected) dirty = true;
+                if (!applying && !saving && selected) dirty = true;
             };
-            input.addEventListener('input', markDirty);
-            input.addEventListener('change', markDirty);
+            control.addEventListener('input', markDirty);
+            control.addEventListener('change', markDirty);
         }
     }
 
     form.addEventListener('llama:admin-place-report-save-starting', () => {
-        payload.value = '';
+        answersField.value = '';
         if (!selected || !allowed.has(selected)) {
-            targetField.value = '';
+            target.value = '';
             return;
         }
         pending = read();
-        payload.value = JSON.stringify(pending);
-        targetField.value = selected;
+        pendingChanges = changes(original.get(selected) || {}, pending);
+        answersField.value = JSON.stringify(pendingChanges);
+        target.value = selected;
         saving = true;
-        // Restore Place answers before the canonical saver builds FormData.
-        write(place);
+        // The canonical Place save must receive Place values, not Area values.
+        write(placeValues);
     });
 
     window.addEventListener('llama:admin-place-report-saved', () => finish(true));
-
     const observer = new MutationObserver(() => {
         if (!saving) return;
         const status = form.querySelector('[data-place-report-direct-save-status]');
-        if (status && /Not saved\./i.test(status.textContent || '')) {
-            finish(false);
-        }
+        if (status && /Not saved\./i.test(status.textContent || '')) finish(false);
     });
     observer.observe(form, { childList: true, subtree: true, characterData: true });
 })();
