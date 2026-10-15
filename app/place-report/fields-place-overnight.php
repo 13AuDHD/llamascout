@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 /**
- * Place-wide overnight permissions.
+ * Place-wide overnight permission questions.
+ *
+ * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
+ * is the single canonical source for Place / Area / Site ownership.
  *
  * RVs and trailers are intentionally represented by one question because a
  * trailer is functionally part of the same overnight vehicle permission for
@@ -18,8 +21,6 @@ function llama_place_report_add_overnight_permission_fields(callable $add): void
     $common = [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
-        'report_scopes' => ['place'],
-        'report_scope_group' => 'place',
         'layout_section' => 'place',
         'layout_group' => 'overnight_stays',
     ];
@@ -62,10 +63,6 @@ function llama_place_report_add_overnight_permission_fields(callable $add): void
         ]
     );
 
-    /*
-     * One permit URL supports either camping mode. The old standalone
-     * trailer permission is no longer an active contributor question.
-     */
     $requiresPermit = [];
 
     foreach (
