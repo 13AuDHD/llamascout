@@ -39,11 +39,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
-        if ($action === 'save-site-association') {
-            admin_place_save_site_association($db, $actorUserId, $placeId, $_POST);
-            $notice = 'Site map association updated.';
-
-        } elseif ($action === 'save-report') {
+        if ($action === 'save-report') {
             $photosAdded = 0;
             $committedPhotosForCleanup = [];
             $deferredPhotoDeletes = [];
