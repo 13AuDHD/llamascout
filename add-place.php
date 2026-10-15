@@ -381,80 +381,10 @@ $placeReportPhotoHelp =
 
 
 /*
- * =========================================================
- * PLACE REPORT COMPLETION BRIDGE
- *
- * PHP remains the source of truth. The browser receives only
- * the metadata needed to mirror the same completion rules live.
- * No question list or applicability rule is hard-coded here.
- * =========================================================
+ * The shared renderer emits the canonical browser schema used for
+ * applicability and live completion. Add Place only owns its page-level
+ * completion display and photo count.
  */
-
-$placeReportCompletionFields = [];
-
-foreach (
-    llama_place_report_fields()
-    as $fieldKey => $field
-) {
-    $placeReportCompletionFields[] = [
-        'key' =>
-            (string) $fieldKey,
-
-        'label' =>
-            (string) (
-                $field['label']
-                ?? $fieldKey
-            ),
-
-        'type' =>
-            (string) (
-                $field['type']
-                ?? ''
-            ),
-
-        'completion_group' =>
-            (
-                isset($field['completion_group'])
-                && $field['completion_group'] !== null
-            )
-                ? (string) $field['completion_group']
-                : null,
-
-        'min_characters' =>
-            max(
-                0,
-                (int) (
-                    $field['min_characters']
-                    ?? 0
-                )
-            ),
-
-        'counts_toward_completion' =>
-            !array_key_exists(
-                'counts_toward_completion',
-                $field
-            )
-            || (bool) $field['counts_toward_completion'],
-
-        'applicable_if' =>
-            array_values(
-                (array) (
-                    $field['applicable_if']
-                    ?? []
-                )
-            ),
-
-        'derived' =>
-            !empty(
-                $field['derived']
-            ),
-
-        'hide_form' =>
-            !empty(
-                $field['hide_form']
-            ),
-    ];
-}
 
 $stagedPhotoData =
     json_decode(
@@ -517,24 +447,6 @@ $placeReportInitialCompletion =
         $placeReportInitialPhotoCount
     );
 
-$placeReportCompletionConfig = [
-    'unknown_token' =>
-        llama_place_report_unknown_token(),
-
-    'unanswered_token' =>
-        llama_place_report_unanswered_token(),
-
-    'fields' =>
-        $placeReportCompletionFields,
-
-    'photo_item' => [
-        'key' => 'evidence:photo',
-        'label' => '1 current photo',
-    ],
-
-    'initial' =>
-        $placeReportInitialCompletion,
-];
 ?>
 
 <section class="contribution-page add-place-page">
@@ -811,20 +723,6 @@ $placeReportCompletionConfig = [
                 <?php endif; ?>
             </div>
         </div>
-
-        <script
-            type="application/json"
-            data-place-report-completion-config
-        ><?= json_encode(
-            $placeReportCompletionConfig,
-            JSON_UNESCAPED_SLASHES
-            | JSON_UNESCAPED_UNICODE
-            | JSON_HEX_TAG
-            | JSON_HEX_AMP
-            | JSON_HEX_APOS
-            | JSON_HEX_QUOT
-        ) ?></script>
-
         <?php
         require __DIR__
             . '/partials/place-report/form.php';
