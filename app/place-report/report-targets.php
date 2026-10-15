@@ -57,6 +57,35 @@ function llama_report_campsite_label(
     return 'Site #' . $campsiteId;
 }
 
+function llama_report_mapped_site_label(
+    array $row,
+    int $featureId,
+    string $mappedLabel = ''
+): string {
+    $siteCode =
+        trim(
+            (string) (
+                $row['mapped_site_code']
+                ?? ''
+            )
+        );
+
+    if ($siteCode !== '') {
+        return 'Site ' . $siteCode;
+    }
+
+    $mappedLabel =
+        trim(
+            $mappedLabel
+        );
+
+    if ($mappedLabel !== '') {
+        return $mappedLabel;
+    }
+
+    return 'Site #' . $featureId;
+}
+
 
 function llama_report_targets(
     PDO $db,
@@ -105,6 +134,7 @@ function llama_report_targets(
                 mf.label,
 
                 sd.camping_area_feature_id,
+                sd.site_code AS mapped_site_code,
 
                 cs.id AS campsite_id,
                 cs.site_code,
@@ -312,9 +342,11 @@ function llama_report_targets(
                 (int) $featureId,
 
             'label' =>
-                $mappedLabel !== ''
-                    ? $mappedLabel
-                    : 'Site #' . $featureId,
+                llama_report_mapped_site_label(
+                    $row,
+                    (int) $featureId,
+                    $mappedLabel
+                ),
         ];
     }
 
