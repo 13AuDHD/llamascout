@@ -40,12 +40,6 @@ function llama_place_report_apply_site_experience_metadata(
 
         $fields[$key]['help'] =
             $help;
-
-        $fields[$key]['layout_section'] =
-            'site';
-
-        $fields[$key]['layout_group'] =
-            'experience_recommendations';
     }
 
     /*
