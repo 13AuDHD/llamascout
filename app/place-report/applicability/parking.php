@@ -178,32 +178,4 @@ function llama_place_report_apply_parking_profiles(
         ]]
     );
 
-    $overnightUseForNaturalDayUse = [[
-        'operator' => 'any',
-        'rules' => [
-            [
-                'field' => 'type',
-                'operator' => 'not_in',
-                'value' => $types['natural_day_use'],
-            ],
-            [
-                'field' => 'overnight_camping_allowed',
-                'operator' => 'in',
-                'value' => [
-                    '1',
-                    '2',
-                    '3',
-                ],
-            ],
-        ],
-    ]];
-
-    llama_place_report_append_applicable(
-        $fields,
-        [
-            'fee',
-            'experience_overnight_comfort',
-        ],
-        $overnightUseForNaturalDayUse
-    );
 }
