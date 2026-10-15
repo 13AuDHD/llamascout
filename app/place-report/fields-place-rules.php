@@ -131,47 +131,11 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 }
 
 /**
- * Apply labels, layout, and dependencies after the legacy field registry has
+ * Apply labels and dependencies after the legacy field registry has
  * been assembled. Scope ownership remains exclusively in flow-scopes.php.
  */
 function llama_place_report_apply_place_rules_metadata(array &$fields): void
 {
-    $placeRuleKeys = [
-        'pets_allowed',
-        'dogs_required_to_be_leashed',
-        'generator_restrictions',
-        'generator_prohibited',
-        'generator_quiet_hours',
-        'generator_quiet_hours_begin',
-        'generator_quiet_hours_end',
-        'generator_run_restrictions',
-        'generator_max_run_hours',
-        'generator_restriction_details',
-        'campfire_allowed',
-        'collecting_firewood',
-        'place_charcoal_grills_allowed',
-        'place_propane_fire_pits_allowed',
-        'current_fire_restrictions_url',
-        'fire_activities_conditional_details',
-        'fire_activity_permit_url',
-        'place_quiet_hours',
-        'place_quiet_hours_begin',
-        'place_quiet_hours_end',
-        'place_alcohol_permitted',
-        'drone_use_legal',
-        'target_shooting_allowed',
-        'place_additional_rules',
-    ];
-
-    foreach ($placeRuleKeys as $key) {
-        if (!isset($fields[$key])) {
-            continue;
-        }
-
-        $fields[$key]['layout_section'] = 'place';
-        $fields[$key]['layout_group'] = 'place_rules';
-    }
-
     $labels = [
         'pets_allowed' =>
             'Pets permitted?',
