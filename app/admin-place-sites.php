@@ -15,7 +15,7 @@ require_once __DIR__ . '/place-report/report-targets.php';
  * Owns:
  * - Site field discovery for Admin Place.
  * - Imported campsite-to-form translation.
- * - Canonical Site target discovery.
+ * - Site target discovery.
  * - Scoped Site override loading/saving.
  *
  * Does not own:
@@ -33,9 +33,9 @@ function admin_place_campsite_field_keys(): array
          * selected, so every field rendered there that legally allows Site
          * scope belongs to the selected-Site load/save path.
          *
-         * This deliberately includes both Site-only fields and canonical
+         * This deliberately includes both Site-only fields and shared
          * "all" fields such as sensory, safety, experience, and summaries.
-         * Place-section fields remain Place-level even when their canonical
+         * Place-section fields remain Place-level even when their defined
          * scope also permits Site exceptions.
          */
         if (
@@ -114,7 +114,6 @@ function admin_place_site_section_place_field_keys(): array
 
     return $keys;
 }
-
 
 function admin_place_without_campsite_fields(array $input): array
 {
@@ -577,359 +576,6 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
     return $catalog;
 }
 
-
-function admin_place_site_association_catalog(PDO $db, int $placeId): array
-{
-    if ($placeId < 1) {
-        return [
-            'campsites' => [],
-            'mapped_sites' => [],
-        ];
-    }
-
-    $associations =
-        llama_place_campsite_map_associations(
-            $db,
-            $placeId
-        );
-
-    $mapFeatures =
-        llama_place_map_features(
-            $db,
-            $placeId
-        );
-
-    $activeMappedSiteIds = [];
-
-    foreach ($mapFeatures as $feature) {
-        if (
-            (string) (
-                $feature['feature_type']
-                ?? ''
-            ) !== 'camping_site'
-        ) {
-            continue;
-        }
-
-        $featureId =
-            (int) (
-                $feature['id']
-                ?? 0
-            );
-
-        if ($featureId > 0) {
-            $activeMappedSiteIds[
-                $featureId
-            ] = true;
-        }
-    }
-
-    $campsites = [];
-
-    foreach (
-        llama_place_campsite_map_options(
-            $db,
-            $placeId
-        )
-        as $site
-    ) {
-        $campsiteId =
-            (int) (
-                $site['id']
-                ?? 0
-            );
-
-        if ($campsiteId < 1) {
-            continue;
-        }
-
-        $mapFeatureId =
-            max(
-                0,
-                (int) (
-                    $site['map_feature_id']
-                    ?? 0
-                )
-            );
-
-        $staleMapFeatureId =
-            max(
-                0,
-                (int) (
-                    $site['stale_map_feature_id']
-                    ?? 0
-                )
-            );
-
-        $label =
-            trim(
-                (string) (
-                    $site['label']
-                    ?? ''
-                )
-            );
-
-        if ($label === '') {
-            $label =
-                'Site #'
-                . $campsiteId;
-        }
-
-        if ($mapFeatureId > 0) {
-            $mappingLabel =
-                ' - mapped to feature #'
-                . $mapFeatureId;
-        } elseif ($staleMapFeatureId > 0) {
-            $mappingLabel =
-                ' - stale mapping reference #'
-                . $staleMapFeatureId;
-        } else {
-            $mappingLabel =
-                ' - not mapped';
-        }
-
-        $campsites[] = [
-            'id' => $campsiteId,
-            'label' => $label,
-            'map_feature_id' =>
-                $mapFeatureId > 0
-                    ? $mapFeatureId
-                    : null,
-            'stale_map_feature_id' =>
-                $staleMapFeatureId > 0
-                    ? $staleMapFeatureId
-                    : null,
-            'display_label' =>
-                $label
-                . $mappingLabel,
-        ];
-    }
-
-    $mappedSites = [];
-
-    foreach ($mapFeatures as $feature) {
-        if (
-            (string) (
-                $feature['feature_type']
-                ?? ''
-            ) !== 'camping_site'
-        ) {
-            continue;
-        }
-
-        $featureId =
-            (int) (
-                $feature['id']
-                ?? 0
-            );
-
-        if ($featureId < 1) {
-            continue;
-        }
-
-        $siteCode =
-            trim(
-                (string) (
-                    $feature['site_details']['site_code']
-                    ?? ''
-                )
-            );
-
-        $featureLabel =
-            trim(
-                (string) (
-                    $feature['label']
-                    ?? ''
-                )
-            );
-
-        if ($siteCode !== '') {
-            $label =
-                'Site '
-                . $siteCode;
-
-            if (
-                $featureLabel !== ''
-                && $featureLabel !== $label
-            ) {
-                $label .=
-                    ' - '
-                    . $featureLabel;
-            }
-        } elseif ($featureLabel !== '') {
-            $label =
-                $featureLabel;
-        } else {
-            $label =
-                'Mapped Site #'
-                . $featureId;
-        }
-
-        $owner =
-            $associations[
-                $featureId
-            ]
-            ?? null;
-
-        $ownerCampsiteId =
-            is_array($owner)
-                ? (int) (
-                    $owner['campsite_id']
-                    ?? 0
-                )
-                : 0;
-
-        $ownerLabel =
-            is_array($owner)
-                ? trim(
-                    (string) (
-                        $owner['label']
-                        ?? ''
-                    )
-                )
-                : '';
-
-        $conflict =
-            is_array($owner)
-            && !empty(
-                $owner['conflict']
-            );
-
-        $displayLabel =
-            $label
-            . ' - feature #'
-            . $featureId;
-
-        if ($conflict) {
-            $displayLabel .=
-                ' - association conflict';
-        } elseif ($ownerCampsiteId > 0) {
-            $displayLabel .=
-                ' - linked to '
-                . (
-                    $ownerLabel !== ''
-                        ? $ownerLabel
-                        : 'campsite #'
-                            . $ownerCampsiteId
-                );
-        } else {
-            $displayLabel .=
-                ' - available';
-        }
-
-        $mappedSites[] = [
-            'id' => $featureId,
-            'label' => $label,
-            'display_label' => $displayLabel,
-            'campsite_id' =>
-                $ownerCampsiteId > 0
-                    ? $ownerCampsiteId
-                    : null,
-            'conflict' => $conflict,
-        ];
-    }
-
-    return [
-        'campsites' => $campsites,
-        'mapped_sites' => $mappedSites,
-    ];
-}
-
-
-function admin_place_save_site_association(
-    PDO $db,
-    int $actorUserId,
-    int $placeId,
-    array $input
-): void {
-    $campsiteId =
-        max(
-            0,
-            (int) (
-                $input['canonical_campsite_id']
-                ?? 0
-            )
-        );
-
-    if ($campsiteId < 1) {
-        throw new InvalidArgumentException(
-            'Choose a canonical campsite.'
-        );
-    }
-
-    $site =
-        llama_place_campsite(
-            $db,
-            $placeId,
-            $campsiteId
-        );
-
-    if (!$site) {
-        throw new InvalidArgumentException(
-            'The selected campsite is not available for this Place.'
-        );
-    }
-
-    $currentFeatureId =
-        max(
-            0,
-            (int) (
-                $site['map_feature_id']
-                ?? 0
-            )
-        );
-
-    $nextFeatureId =
-        max(
-            0,
-            (int) (
-                $input['mapped_site_feature_id']
-                ?? 0
-            )
-        );
-
-    if ($nextFeatureId === $currentFeatureId) {
-        return;
-    }
-
-    if ($nextFeatureId < 1) {
-        if ($currentFeatureId > 0) {
-            llama_place_campsite_map_association_clear(
-                $db,
-                $placeId,
-                $currentFeatureId
-            );
-        }
-    } else {
-        llama_place_campsite_map_association_save(
-            $db,
-            $placeId,
-            $nextFeatureId,
-            $campsiteId
-        );
-    }
-
-    admin_users_audit(
-        $db,
-        $actorUserId,
-        null,
-        'place.site_map_association_updated',
-        'Updated a canonical Site to mapped Site association.',
-        [
-            'place_id' => $placeId,
-            'campsite_id' => $campsiteId,
-            'previous_map_feature_id' =>
-                $currentFeatureId > 0
-                    ? $currentFeatureId
-                    : null,
-            'map_feature_id' =>
-                $nextFeatureId > 0
-                    ? $nextFeatureId
-                    : null,
-        ]
-    );
-}
-
 function admin_place_parse_site_target(string $value): array
 {
     if (
@@ -1055,7 +701,7 @@ function admin_place_save_selected_campsite_answers(
         }
 
         /*
-         * Imported campsite data is the canonical baseline, not an Admin
+         * Imported campsite data is the source baseline, not an Admin
          * override. Saving an unchanged imported value must not duplicate it
          * into place_report_scoped_answers or it would shadow future import
          * updates for that Site.
