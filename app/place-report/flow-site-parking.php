@@ -5,9 +5,8 @@ declare(strict_types=1);
 /**
  * Site -> Parking & Dimensions organization.
  *
- * This pass does not change storage or persistence. It only places the
- * existing canonical campsite geometry/vehicle-fit questions together and
- * improves a few labels so the section reads as one coherent site profile.
+ * Physical-fit questions are objective Site facts. They remain independent of
+ * camping permission and of historical subjective suitability answers.
  */
 function llama_place_report_apply_site_parking_metadata(
     array &$fields
@@ -120,10 +119,10 @@ function llama_place_report_apply_site_parking_metadata(
             'Lowest practical overhead clearance at the campsite or its immediate parking space.',
 
         'max_vehicle_length_feet' =>
-            'Largest single vehicle that can reasonably fit without blocking access or leaving the usable site.',
+            'Largest single vehicle that can physically use this campsite based on the parking space, maneuvering room, clearance, and immediate Site access.',
 
         'max_rv_length_feet' =>
-            'Largest RV, travel trailer, fifth wheel, motorhome, or similar camping rig that can reasonably fit.',
+            'Largest RV, travel trailer, fifth wheel, motorhome, or similar camping rig that can physically use this campsite. Record physical fit even when overnight RV use is prohibited or unknown.',
 
         'turnaround_space' =>
             'Whether a vehicle can turn around at or immediately beside this campsite without backing a long distance.',
@@ -152,14 +151,14 @@ function llama_place_report_apply_site_parking_metadata(
     }
 
     /*
-     * The combined RV/trailer length should only appear when the combined
-     * RV/trailer suitability answer is Yes.
+     * Deliberately no rv_suitable dependency here.
+     *
+     * A measurable maximum length remains useful even if RV use is prohibited,
+     * conditional, unknown, or simply not recommended by a prior subjective
+     * report.
      */
     if (isset($fields['max_rv_length_feet'])) {
-        $fields['max_rv_length_feet']['applicable_if'] = [[
-            'field' => 'rv_suitable',
-            'operator' => 'equals',
-            'value' => '1',
-        ]];
+        $fields['max_rv_length_feet']['applicable_if'] =
+            [];
     }
 }
