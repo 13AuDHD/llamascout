@@ -3,21 +3,17 @@
 declare(strict_types=1);
 
 /**
- * Place-wide overnight permission questions.
+ * Overnight-mode permission questions.
  *
- * Ownership is intentionally not defined here. app/place-report/flow-scopes.php
- * is the single canonical source for Place / Area / Site ownership.
+ * Permission is kept separate from physical Site fit. A Site may physically
+ * fit an RV or tent even when that use is prohibited, and permission does not
+ * imply that every Site can physically accommodate the equipment.
  *
- * RVs and trailers are intentionally represented by one question because a
- * trailer is functionally part of the same overnight vehicle permission for
- * the Place form. Historical trailer_camping_allowed data can remain in
- * storage, but new reports use rv_camping_allowed as the canonical combined
- * RV / trailer answer.
- *
- * All values use the existing 0/1/2/3 permission convention.
+ * Ownership is defined only by app/place-report/flow-scopes.php.
  */
-function llama_place_report_add_overnight_permission_fields(callable $add): void
-{
+function llama_place_report_add_overnight_permission_fields(
+    callable $add
+): void {
     $common = [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
@@ -32,18 +28,34 @@ function llama_place_report_add_overnight_permission_fields(callable $add): void
         '3' => 'Conditional',
     ];
 
-    foreach ([
-        'tent_camping_allowed' => 'Tent camping permitted?',
-        'rv_camping_allowed' => 'RV / trailer camping permitted?',
-    ] as $key => $label) {
+    $definitions = [
+        'tent_camping_allowed' => [
+            'label' =>
+                'Tent camping permitted?',
+
+            'help' =>
+                'Whether setting up and using a tent is permitted under the applicable rules. This does not say whether an individual Site has a tent pad or enough usable ground for a tent.',
+        ],
+
+        'rv_camping_allowed' => [
+            'label' =>
+                'RV / trailer camping permitted?',
+
+            'help' =>
+                'Whether overnight use of an RV, motorhome, travel trailer, fifth wheel, truck camper, or similar camping rig is permitted. Physical size and fit are recorded separately for an individual Site.',
+        ],
+    ];
+
+    foreach ($definitions as $key => $definition) {
         $add(
             $key,
-            $label,
+            $definition['label'],
             'rules',
             'select',
             'rules.' . $key,
             $common + [
                 'options' => $permission,
+                'help' => $definition['help'],
             ]
         );
     }
@@ -60,6 +72,8 @@ function llama_place_report_add_overnight_permission_fields(callable $add): void
             'counts_toward_completion' => false,
             'placeholder' =>
                 'Only include restrictions that affect overnight stays.',
+            'help' =>
+                'Use this for overnight restrictions that are not already represented by the specific permission questions.',
         ]
     );
 
@@ -91,6 +105,8 @@ function llama_place_report_add_overnight_permission_fields(callable $add): void
                 'rules' => $requiresPermit,
             ]],
             'counts_toward_completion' => false,
+            'help' =>
+                'Link to the official permit information for tent or RV/trailer overnight use. This is separate from a reservation or booking page.',
         ]
     );
 }
