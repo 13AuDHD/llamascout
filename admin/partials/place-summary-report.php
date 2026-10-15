@@ -127,7 +127,7 @@ declare(strict_types=1);
 >
     <header>
         <p>Site identity</p>
-        <h2>Canonical Site â mapped Site</h2>
+        <h2>Canonical Site to mapped Site</h2>
 
         <span class="admin-place-muted">
             This controls which mapped campsite polygon belongs to a canonical
