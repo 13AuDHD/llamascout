@@ -8,6 +8,8 @@ declare(strict_types=1);
  * An official accessible / not-accessible designation is one fact, not a
  * verdict about whether a particular traveler can use the site. Practical
  * access questions remain available regardless of that designation.
+ *
+ * Ownership is defined only by app/place-report/flow-scopes.php.
  */
 function llama_place_report_apply_site_accessibility_metadata(
     array &$fields
@@ -32,15 +34,6 @@ function llama_place_report_apply_site_accessibility_metadata(
         $fields[$key]['layout_group'] =
             'site_accessibility';
 
-        $fields[$key]['report_scopes'] =
-            ['site'];
-
-        $fields[$key]['report_scope_group'] =
-            'site';
-
-        $fields[$key]['scope_inheritance'] =
-            'none';
-
         /*
          * Do not make practical access questions conditional on the official
          * designation. "Not marked accessible" must never hide them.
@@ -52,11 +45,6 @@ function llama_place_report_apply_site_accessibility_metadata(
     }
 
     if (isset($fields['site_accessible'])) {
-        /*
-         * Keep the official designation first in Site & vehicle fit.
-         * The practical accessibility questions remain in the separate
-         * Accessibility section and are never hidden by a No answer here.
-         */
         $fields['site_accessible']['display_section'] =
             'site_vehicle';
     }
