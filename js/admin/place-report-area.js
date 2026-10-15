@@ -23,6 +23,8 @@
     const state = new Map(areas.map(area => [String(area.id), { ...area.form_values }]));
     let selected = '';
     let dirty = false;
+    // Preserve Place answers independently of Area answers.
+    const placeValues = read();
 
     const read = () => {
         const values = {};
@@ -59,10 +61,15 @@
             selector.value = selected;
             return;
         }
+        if (!selected) {
+            Object.assign(placeValues, read());
+        } else {
+            state.set(selected, read());
+        }
         selected = next;
         areaId.value = selected;
         dirty = false;
-        write(state.get(selected) || {});
+        write(selected ? state.get(selected) || {} : placeValues);
     });
 
     for (const input of inputs) {
@@ -74,6 +81,20 @@
         input.addEventListener('input', markDirty);
         input.addEventListener('change', markDirty);
     }
+
+    // The save owner fires this event before constructing FormData. Prevent
+    // Area answers from being submitted as Place-level answer values.
+    form.addEventListener('llama:admin-place-report-save-starting', () => {
+        if (!selected) return;
+        state.set(selected, read());
+        write(placeValues);
+        // Do not send the Area target with Place answers until the backend
+        // supports a separate, atomic Area-answer payload.
+        areaId.value = '';
+        selector.value = '';
+        selected = '';
+        dirty = false;
+    });
 
     window.addEventListener('llama:admin-place-report-saved', () => {
         if (selected) {
