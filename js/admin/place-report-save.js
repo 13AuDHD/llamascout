@@ -33,10 +33,6 @@
     const originalHtml =
         button.innerHTML;
 
-    const originalStyle =
-        button.getAttribute('style')
-        || '';
-
     const saveBar =
         button.closest(
             '.admin-place-report-savebar'
@@ -68,26 +64,12 @@
             'polite'
         );
 
-        status.style.display =
-            'block';
+        status.className =
+            'admin-place-report-save-status';
 
-        status.style.width =
-            '100%';
-
-        status.style.fontSize =
-            '.68rem';
-
-        status.style.lineHeight =
-            '1.35';
-
-        status.style.color =
-            'var(--text-muted)';
-
-        saveBar.style.flexWrap =
-            'wrap';
-
-        saveBar.style.gap =
-            '7px';
+        saveBar.classList.add(
+            'has-save-status'
+        );
 
         saveBar.appendChild(
             status
@@ -105,10 +87,10 @@
         status.textContent =
             message;
 
-        status.style.color =
+        status.classList.toggle(
+            'is-error',
             isError
-                ? '#dfb94f'
-                : 'var(--text-muted)';
+        );
     };
 
     const resetButton = () => {
@@ -119,8 +101,11 @@
         button.disabled =
             false;
 
-        button.style.cssText =
-            originalStyle;
+        button.classList.remove(
+            'is-saving',
+            'is-saved',
+            'is-error'
+        );
 
         button.innerHTML =
             originalHtml;
@@ -133,34 +118,23 @@
             resetTimer
         );
 
-        button.style.cssText =
-            originalStyle;
+        button.classList.remove(
+            'is-saving',
+            'is-saved',
+            'is-error'
+        );
 
         if (state === 'saving') {
             button.disabled = true;
 
-            button.style.borderColor =
-                '#c94a4a';
-
-            button.style.background =
-                'rgba(201, 74, 74, .18)';
-
-            button.style.color =
-                '#e26a6a';
+            button.classList.add(
+                'is-saving'
+            );
 
             button.innerHTML = `
                 <span
+                    class="admin-place-save-spinner"
                     aria-hidden="true"
-                    style="
-                        width:14px;
-                        height:14px;
-                        display:inline-block;
-                        box-sizing:border-box;
-                        border:2px solid currentColor;
-                        border-right-color:transparent;
-                        border-radius:50%;
-                        animation:llama-admin-place-save-spin .75s linear infinite;
-                    "
                 ></span>
                 Saving...
             `;
@@ -171,14 +145,9 @@
         if (state === 'saved') {
             button.disabled = false;
 
-            button.style.borderColor =
-                '#2e9d58';
-
-            button.style.background =
-                'rgba(46, 157, 88, .18)';
-
-            button.style.color =
-                '#55b978';
+            button.classList.add(
+                'is-saved'
+            );
 
             button.innerHTML =
                 'Saved';
@@ -195,14 +164,9 @@
         if (state === 'error') {
             button.disabled = false;
 
-            button.style.borderColor =
-                '#d2a62d';
-
-            button.style.background =
-                'rgba(210, 166, 45, .18)';
-
-            button.style.color =
-                '#dfb94f';
+            button.classList.add(
+                'is-error'
+            );
 
             button.innerHTML =
                 'Not saved';
@@ -1252,29 +1216,4 @@
         }
     );
 
-    if (
-        !document.getElementById(
-            'llama-admin-place-save-animation'
-        )
-    ) {
-        const style =
-            document.createElement(
-                'style'
-            );
-
-        style.id =
-            'llama-admin-place-save-animation';
-
-        style.textContent = `
-            @keyframes llama-admin-place-save-spin {
-                to {
-                    transform: rotate(360deg);
-                }
-            }
-        `;
-
-        document.head.appendChild(
-            style
-        );
-    }
 })();
