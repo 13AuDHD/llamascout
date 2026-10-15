@@ -14,37 +14,6 @@ declare(strict_types=1);
 function llama_place_report_apply_site_parking_metadata(
     array &$fields
 ): void {
-    $parkingFields = [
-        'parking_surface',
-        'ground_condition',
-        'parking_grade',
-        'levelness',
-        'parking_length_feet',
-        'site_length_feet',
-        'site_width_feet',
-        'overhead_clearance_feet',
-        'max_vehicle_length_feet',
-        'max_rv_length_feet',
-        'turnaround_space',
-        'pull_through',
-        'back_in',
-        'double_driveway',
-        'hike_in_distance_feet',
-        'site_access_difficulty',
-    ];
-
-    foreach ($parkingFields as $key) {
-        if (!isset($fields[$key])) {
-            continue;
-        }
-
-        $fields[$key]['layout_section'] =
-            'site';
-
-        $fields[$key]['layout_group'] =
-            'parking_dimensions';
-    }
-
     $labels = [
         'parking_surface' =>
             'Site parking / driveway surface',
