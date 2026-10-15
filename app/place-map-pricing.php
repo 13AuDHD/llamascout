@@ -369,3 +369,203 @@ function llama_place_map_feature_rate_summary(
             count($rates),
     ];
 }
+
+function llama_place_map_rates_with_source(
+    array $rates,
+    string $source,
+    string $sourceLabel = ''
+): array {
+    return array_map(
+        static function (
+            array $rate
+        ) use (
+            $source,
+            $sourceLabel
+        ): array {
+            $rate['inheritance_source'] =
+                $source;
+
+            if ($sourceLabel !== '') {
+                $rate['inheritance_label'] =
+                    $sourceLabel;
+            }
+
+            return $rate;
+        },
+        $rates
+    );
+}
+
+function llama_place_map_rate_identity(
+    array $rate
+): string {
+    $type =
+        strtolower(
+            trim(
+                (string) (
+                    $rate['rate_type']
+                    ?? ''
+                )
+            )
+        );
+
+    if ($type === '') {
+        return '';
+    }
+
+    if ($type === 'seasonal') {
+        return implode(
+            '|',
+            [
+                $type,
+                trim(
+                    (string) (
+                        $rate['season_start']
+                        ?? ''
+                    )
+                ),
+                trim(
+                    (string) (
+                        $rate['season_end']
+                        ?? ''
+                    )
+                ),
+            ]
+        );
+    }
+
+    if ($type === 'holiday') {
+        $label =
+            mb_strtolower(
+                trim(
+                    preg_replace(
+                        '/\\s+/',
+                        ' ',
+                        (string) (
+                            $rate['label']
+                            ?? ''
+                        )
+                    )
+                    ?? ''
+                )
+            );
+
+        return implode(
+            '|',
+            [
+                $type,
+                $label,
+            ]
+        );
+    }
+
+    return $type;
+}
+
+function llama_place_map_merge_rate_layers(
+    array ...$layers
+): array {
+    $result = [];
+
+    foreach ($layers as $layer) {
+        foreach ($layer as $rate) {
+            if (!is_array($rate)) {
+                continue;
+            }
+
+            $identity =
+                llama_place_map_rate_identity(
+                    $rate
+                );
+
+            if ($identity === '') {
+                continue;
+            }
+
+            $result =
+                array_values(
+                    array_filter(
+                        $result,
+                        static fn (
+                            array $existing
+                        ): bool =>
+                            llama_place_map_rate_identity(
+                                $existing
+                            ) !== $identity
+                    )
+                );
+
+            $result[] =
+                $rate;
+        }
+    }
+
+    return $result;
+}
+
+function llama_place_map_place_base_rate(
+    mixed $baseFee
+): array {
+    if (
+        $baseFee === null
+        || $baseFee === ''
+        || !is_numeric($baseFee)
+    ) {
+        return [];
+    }
+
+    $amount =
+        round(
+            (float) $baseFee,
+            2
+        );
+
+    if (
+        $amount < 0
+        || $amount > 100000
+    ) {
+        return [];
+    }
+
+    return [[
+        'rate_type' =>
+            'standard',
+
+        'label' =>
+            'Base camping fee',
+
+        'amount' =>
+            $amount,
+
+        'currency' =>
+            'USD',
+
+        'season_start' =>
+            null,
+
+        'season_end' =>
+            null,
+
+        'notes' =>
+            null,
+
+        'inheritance_source' =>
+            'place',
+
+        'inheritance_label' =>
+            'Place base camping fee',
+    ]];
+}
+
+function llama_place_map_effective_rates_with_place_base(
+    array $mappedRates,
+    mixed $baseFee
+): array {
+    return llama_place_map_merge_rate_layers(
+        llama_place_map_place_base_rate(
+            $baseFee
+        ),
+        $mappedRates
+    );
+}
+
