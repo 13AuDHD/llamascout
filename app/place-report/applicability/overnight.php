@@ -49,6 +49,32 @@ function llama_place_report_apply_overnight_applicability(
     );
 
     /*
+     * Overnight-only rules, nighttime observations, and experience.
+     */
+    llama_place_report_set_applicable(
+        $fields,
+        [
+            'stay_limit_days',
+            'generator_restrictions',
+            'residential_use_prohibited',
+            'nighttime_noise',
+            'nighttime_traffic',
+            'nighttime_crowds',
+            'nighttime_privacy',
+            'nighttime_light_pollution',
+            'nighttime_sensory_comfort',
+            'nighttime_social_interaction',
+            'experience_night_sky',
+            'experience_stargazing',
+            'experience_quiet_evening',
+            'experience_extended_stay_comfort',
+        ],
+        [
+            $overnightPositive,
+        ]
+    );
+
+    /*
      * Overnight logistics and costs. Entrance/day-use/facility and parking
      * fees stay independent because they can apply without an overnight stay.
      */
