@@ -861,6 +861,27 @@ function llama_place_map_features(
             continue;
         }
 
+        /*
+         * Historical geometry should never be allowed to crash the editor.
+         * Validate each stored polygon before it reaches Leaflet; skip a bad
+         * record and leave the rest of the Place layout usable.
+         */
+        try {
+            $geometry =
+                llama_place_map_feature_validate_polygon(
+                    $geometry
+                );
+        } catch (InvalidArgumentException $exception) {
+            error_log(
+                'Llama Scout skipped invalid map feature #'
+                . (int) ($row['id'] ?? 0)
+                . ': '
+                . $exception->getMessage()
+            );
+
+            continue;
+        }
+
         $metadata =
             json_decode(
                 (string) (
