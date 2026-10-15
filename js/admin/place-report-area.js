@@ -16,39 +16,38 @@
 
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
     const keys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
-    const controlsByName = new Map();
+    const controls = new Map();
     for (const input of form.elements) {
         if (!keys.has(input.name)) continue;
-        if (!controlsByName.has(input.name)) controlsByName.set(input.name, []);
-        controlsByName.get(input.name).push(input);
+        if (!controls.has(input.name)) controls.set(input.name, []);
+        controls.get(input.name).push(input);
     }
-    if (!controlsByName.size) return;
+    if (!controls.size) return;
 
-    const initialStates = new Map(areas.map(area => [
+    const initial = new Map(areas.map(area => [
         String(area.id), { ...(area.form_values || {}) },
     ]));
-    const allowedTargets = new Set(initialStates.keys());
-    const states = new Map(initialStates);
+    const current = new Map([...initial].map(([id, values]) => [id, { ...values }]));
+    const allowed = new Set(initial.keys());
 
-    let payloadField = form.querySelector('[name="admin_area_answers_json"]');
-    if (!payloadField) {
-        payloadField = document.createElement('input');
-        payloadField.type = 'hidden';
-        payloadField.name = 'admin_area_answers_json';
-        form.appendChild(payloadField);
+    let payload = form.querySelector('[name="admin_area_answers_json"]');
+    if (!payload) {
+        payload = document.createElement('input');
+        payload.type = 'hidden';
+        payload.name = 'admin_area_answers_json';
+        form.appendChild(payload);
     }
 
     const read = () => {
         const values = {};
-        for (const [name, controls] of controlsByName) {
-            const first = controls[0];
+        for (const [name, group] of controls) {
+            const first = group[0];
             if (first.type === 'radio') {
-                const checked = controls.find(control => control.checked);
-                values[name] = checked ? checked.value : '';
-            } else if (first.type === 'checkbox' && controls.length === 1) {
+                values[name] = group.find(input => input.checked)?.value ?? '';
+            } else if (first.type === 'checkbox' && group.length === 1) {
                 values[name] = first.checked ? '1' : '0';
             } else if (first.type === 'checkbox') {
-                values[name] = controls.filter(control => control.checked).map(control => control.value);
+                values[name] = group.filter(input => input.checked).map(input => input.value);
             } else if (first instanceof HTMLSelectElement && first.multiple) {
                 values[name] = [...first.selectedOptions].map(option => option.value);
             } else {
@@ -58,13 +57,13 @@
         return values;
     };
 
-    let swapping = false;
+    let changing = false;
     const write = values => {
-        swapping = true;
+        changing = true;
         try {
-            for (const [name, controls] of controlsByName) {
+            for (const [name, group] of controls) {
                 const value = values[name] ?? '';
-                for (const input of controls) {
+                for (const input of group) {
                     if (input.type === 'radio') {
                         input.checked = input.value === String(value);
                     } else if (input.type === 'checkbox') {
@@ -72,9 +71,8 @@
                             ? value.includes(input.value)
                             : value === true || value === '1' || value === 1;
                     } else if (input instanceof HTMLSelectElement && input.multiple) {
-                        const selected = Array.isArray(value) ? value : [];
                         for (const option of input.options) {
-                            option.selected = selected.includes(option.value);
+                            option.selected = Array.isArray(value) && value.includes(option.value);
                         }
                     } else {
                         input.value = String(value);
@@ -82,29 +80,30 @@
                 }
             }
         } finally {
-            swapping = false;
+            changing = false;
         }
         form.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
-    let placeValues = read();
+    let place = read();
     let selected = '';
     let dirty = false;
     let saving = false;
-    let pendingValues = null;
+    let pending = null;
 
-    const restoreAreaAfterSave = successful => {
+    const finish = success => {
         if (!saving) return;
         saving = false;
-        if (selected && pendingValues) {
-            if (successful) {
-                states.set(selected, pendingValues);
+        if (selected && pending) {
+            if (success) {
+                current.set(selected, { ...pending });
                 dirty = false;
             }
-            write(pendingValues);
+            write(pending);
         }
-        pendingValues = null;
-        payloadField.value = '';
+        pending = null;
+        payload.value = '';
+        targetField.value = selected;
     };
 
     selector.addEventListener('change', () => {
@@ -113,63 +112,58 @@
             return;
         }
         const next = selector.value;
-        if (next && !allowedTargets.has(next)) {
+        if ((next && !allowed.has(next)) || next === selected) {
             selector.value = selected;
             return;
         }
-        if (next === selected) return;
         if (dirty && selected && !window.confirm('Discard unsaved Area answers?')) {
             selector.value = selected;
             return;
         }
         if (selected) {
-            // Unsaved Area edits must not leak into another Area's answers.
-            states.set(selected, { ...(initialStates.get(selected) || {}) });
+            // A discarded edit must not silently become another Area's data.
+            current.set(selected, { ...(initial.get(selected) || {}) });
         } else {
-            placeValues = read();
+            place = read();
         }
         selected = next;
-        targetField.value = next;
+        targetField.value = selected;
+        payload.value = '';
         dirty = false;
-        payloadField.value = '';
-        write(next ? states.get(next) || {} : placeValues);
+        write(selected ? current.get(selected) || {} : place);
     });
 
-    const markDirty = () => {
-        if (!swapping && !saving && selected) dirty = true;
-    };
-    for (const controls of controlsByName.values()) {
-        for (const input of controls) {
+    for (const group of controls.values()) {
+        for (const input of group) {
+            const markDirty = () => {
+                if (!changing && !saving && selected) dirty = true;
+            };
             input.addEventListener('input', markDirty);
             input.addEventListener('change', markDirty);
         }
     }
 
     form.addEventListener('llama:admin-place-report-save-starting', () => {
-        payloadField.value = '';
-        if (!selected || !allowedTargets.has(selected)) {
+        payload.value = '';
+        if (!selected || !allowed.has(selected)) {
             targetField.value = '';
             return;
         }
-        pendingValues = read();
-        payloadField.value = JSON.stringify(pendingValues);
+        pending = read();
+        payload.value = JSON.stringify(pending);
         targetField.value = selected;
         saving = true;
-        // The Place save sees only Place answers. Area data uses its own payload.
-        write(placeValues);
+        // Restore Place answers before the canonical saver builds FormData.
+        write(place);
     });
 
-    window.addEventListener('llama:admin-place-report-saved', () => {
-        restoreAreaAfterSave(true);
-    });
+    window.addEventListener('llama:admin-place-report-saved', () => finish(true));
 
-    // The existing Admin saver owns network requests and error messages.
-    // Restore the selected Area after it reports a failed save.
     const observer = new MutationObserver(() => {
         if (!saving) return;
         const status = form.querySelector('[data-place-report-direct-save-status]');
         if (status && /Not saved\./i.test(status.textContent || '')) {
-            restoreAreaAfterSave(false);
+            finish(false);
         }
     });
     observer.observe(form, { childList: true, subtree: true, characterData: true });
