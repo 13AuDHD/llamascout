@@ -15,7 +15,8 @@ declare(strict_types=1);
  * Legacy values 0, 1, and 2 retain their meanings. A value of 3 represents
  * Conditional.
  */
-function llama_place_report_apply_permission_flows(
+
+function llama_place_report_add_permission_fields(
     array &$fields,
     callable $add
 ): void {
@@ -225,12 +226,18 @@ function llama_place_report_apply_permission_flows(
             ]
         );
     }
+}
 
-    /*
-     * Conditional overnight permission still means overnight use is possible.
-     * Existing applicability that recognized Yes or Permit must also recognize
-     * Conditional.
-     */
+/**
+ * Post-applicability adjustment.
+ *
+ * Applicability profiles are applied after all fields exist. This pass only
+ * expands older Yes/Permit overnight conditions so Conditional is treated as
+ * an overnight-positive answer too.
+ */
+function llama_place_report_apply_permission_applicability(
+    array &$fields
+): void {
     $expandConditionalOvernight =
         static function (mixed &$node) use (
             &$expandConditionalOvernight
@@ -242,27 +249,11 @@ function llama_place_report_apply_permission_flows(
             if (
                 ($node['field'] ?? null)
                 === 'overnight_camping_allowed'
-                && ($node['operator'] ?? null)
-                    === 'in'
-                && is_array(
-                    $node['value']
-                    ?? null
-                )
-                && in_array(
-                    '1',
-                    $node['value'],
-                    true
-                )
-                && in_array(
-                    '2',
-                    $node['value'],
-                    true
-                )
-                && !in_array(
-                    '3',
-                    $node['value'],
-                    true
-                )
+                && ($node['operator'] ?? null) === 'in'
+                && is_array($node['value'] ?? null)
+                && in_array('1', $node['value'], true)
+                && in_array('2', $node['value'], true)
+                && !in_array('3', $node['value'], true)
             ) {
                 $node['value'][] = '3';
             }
@@ -279,9 +270,7 @@ function llama_place_report_apply_permission_flows(
     foreach ($fields as &$field) {
         if (
             isset($field['applicable_if'])
-            && is_array(
-                $field['applicable_if']
-            )
+            && is_array($field['applicable_if'])
         ) {
             $expandConditionalOvernight(
                 $field['applicable_if']
@@ -290,4 +279,23 @@ function llama_place_report_apply_permission_flows(
     }
 
     unset($field);
+}
+
+/**
+ * Compatibility wrapper for older callers.
+ *
+ * New registry assembly should call the two phases explicitly.
+ */
+function llama_place_report_apply_permission_flows(
+    array &$fields,
+    callable $add
+): void {
+    llama_place_report_add_permission_fields(
+        $fields,
+        $add
+    );
+
+    llama_place_report_apply_permission_applicability(
+        $fields
+    );
 }
