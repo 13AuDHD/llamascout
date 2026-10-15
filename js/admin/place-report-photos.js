@@ -176,6 +176,16 @@
         return;
     }
 
+    const photoInput =
+        uploader.querySelector(
+            '[data-photo-files]'
+        );
+
+    const photoDrop =
+        uploader.querySelector(
+            '[data-photo-drop]'
+        );
+
     const makePhoto =
         (photo) => {
             const label =
@@ -244,71 +254,22 @@
             return label;
         };
 
-    const render =
-        () => {
-            const target =
-                currentTarget();
-
-            grid.replaceChildren();
-
-            const photos =
-                Array.isArray(
-                    target?.photos
-                )
-                    ? target.photos
-                    : [];
-
-            existingShell.hidden =
-                false;
-
-            if (help) {
-                help.textContent =
-                    target
-                        ? (
-                            'Showing photos attached to '
-                            + String(
-                                target.label
-                                || 'this reporting target'
-                            )
-                            + '.'
-                        )
-                        : 'No reporting target is selected.';
+    const setUploaderSupported =
+        (
+            supported,
+            target
+        ) => {
+            if (photoInput) {
+                photoInput.disabled =
+                    !supported;
             }
 
-            if (photos.length < 1) {
-                const empty =
-                    document.createElement(
-                        'p'
-                    );
-
-                empty.className =
-                    'admin-place-muted';
-
-                empty.textContent =
-                    'No photos are attached to this reporting target yet.';
-
-                grid.appendChild(
-                    empty
-                );
-            } else {
-                photos.forEach(
-                    (photo) => {
-                        if (
-                            !photo
-                            || !String(
-                                photo.src
-                                || ''
-                            ).trim()
-                        ) {
-                            return;
-                        }
-
-                        grid.appendChild(
-                            makePhoto(
-                                photo
-                            )
-                        );
-                    }
+            if (photoDrop) {
+                photoDrop.setAttribute(
+                    'aria-disabled',
+                    supported
+                        ? 'false'
+                        : 'true'
                 );
             }
 
@@ -322,19 +283,154 @@
                     '.llama-photo-heading p'
                 );
 
-            if (heading && target) {
+            if (heading) {
                 heading.textContent =
-                    'Photos for '
-                    + String(
-                        target.label
-                        || 'selected target'
-                    );
+                    supported
+                        ? (
+                            'Photos for '
+                            + String(
+                                target?.label
+                                || 'selected target'
+                            )
+                        )
+                        : 'Photos unavailable for this target';
             }
 
             if (description) {
-                description.textContent =
-                    'Add photos to the currently selected reporting target.';
+                if (supported) {
+                    const max =
+                        Math.max(
+                            1,
+                            Number(
+                                target?.max
+                                || (
+                                    target?.scope === 'site'
+                                        ? 10
+                                        : 30
+                                )
+                            )
+                        );
+
+                    description.textContent =
+                        'Add photos to '
+                        + String(
+                            target?.label
+                            || 'the selected target'
+                        )
+                        + '. Up to '
+                        + max
+                        + ' saved photos are supported for this gallery.';
+                } else {
+                    description.textContent =
+                        String(
+                            target?.reason
+                            || (
+                                target?.scope === 'area'
+                                    ? 'Area photos are not yet supported by a canonical Area media store.'
+                                    : 'This Site needs a canonical Site identity before photos can be added.'
+                            )
+                        );
+                }
             }
+        };
+
+    const render =
+        () => {
+            const target =
+                currentTarget();
+
+            grid.replaceChildren();
+
+            if (!target) {
+                setUploaderSupported(
+                    false,
+                    null
+                );
+
+                if (help) {
+                    help.textContent =
+                        'No valid reporting target is selected.';
+                }
+
+                return;
+            }
+
+            const supported =
+                target.supported !== false;
+
+            setUploaderSupported(
+                supported,
+                target
+            );
+
+            if (help) {
+                help.textContent =
+                    supported
+                        ? (
+                            'Showing photos attached to '
+                            + String(
+                                target.label
+                                || 'this reporting target'
+                            )
+                            + '.'
+                        )
+                        : String(
+                            target.reason
+                            || (
+                                target.scope === 'area'
+                                    ? 'Area photos are not yet supported.'
+                                    : 'This Site needs a canonical Site identity before photos can be added.'
+                            )
+                        );
+            }
+
+            const photos =
+                Array.isArray(
+                    target.photos
+                )
+                    ? target.photos
+                    : [];
+
+            if (photos.length < 1) {
+                const empty =
+                    document.createElement(
+                        'p'
+                    );
+
+                empty.className =
+                    'admin-place-muted';
+
+                empty.textContent =
+                    supported
+                        ? 'No photos are attached to this reporting target yet.'
+                        : 'No canonical photo gallery is available for this target yet.';
+
+                grid.appendChild(
+                    empty
+                );
+
+                return;
+            }
+
+            photos.forEach(
+                (photo) => {
+                    if (
+                        !photo
+                        || !String(
+                            photo.src
+                            || ''
+                        ).trim()
+                    ) {
+                        return;
+                    }
+
+                    grid.appendChild(
+                        makePhoto(
+                            photo
+                        )
+                    );
+                }
+            );
         };
 
     let previousArea =
@@ -387,7 +483,7 @@
                 event.stopImmediatePropagation();
 
                 window.alert(
-                    'Save or remove the staged photos before changing the reporting target. This keeps photos from being attached to the wrong Place, Area, or Site.'
+                    'Save or remove the staged photos before changing the reporting target. This keeps photos from being attached to the wrong Place or Site.'
                 );
 
                 return;
@@ -415,11 +511,6 @@
     window.addEventListener(
         'llama:admin-place-report-saved',
         () => {
-            /*
-             * The server has committed staged photos. The current page catalog
-             * is intentionally not guessed forward; a reload will fetch the
-             * authoritative saved gallery.
-             */
             render();
         }
     );
