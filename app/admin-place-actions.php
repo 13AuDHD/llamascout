@@ -218,7 +218,7 @@ function admin_place_handle_actions(
                      */
                     $manifest =
                         llama_photo_read_manifest(
-                            'add-place',
+                            'admin-place',
                             $actorUserId,
                             $photoToken
                         );
