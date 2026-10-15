@@ -115,10 +115,28 @@
         };
 
     const currentTarget =
-        () =>
-            targets[currentTargetKey()]
-            || targets['place:place:' + placeId]
-            || null;
+        () => {
+            const key =
+                currentTargetKey();
+
+            /*
+             * Never fall back to the Place gallery when an Area or Site is
+             * selected. A missing scoped target means that selection has no
+             * gallery, not that the previously viewed Place/Site photos should
+             * remain visible.
+             */
+            if (
+                key.startsWith('site:')
+                || key.startsWith('area:')
+            ) {
+                return targets[key]
+                    || null;
+            }
+
+            return targets[key]
+                || targets['place:place:' + placeId]
+                || null;
+        };
 
     const photoBody =
         uploader.closest(
