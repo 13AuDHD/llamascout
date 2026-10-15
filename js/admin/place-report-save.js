@@ -262,6 +262,7 @@
     let campsiteConfig = {
         sites: [],
         site_field_keys: [],
+        place_field_keys: [],
         unknown_token: '__LLAMA_UNKNOWN__',
         unanswered_token: '__LLAMA_UNANSWERED__'
     };
@@ -289,6 +290,14 @@
         Array.isArray(campsiteConfig.site_field_keys)
             ? campsiteConfig.site_field_keys
             : [];
+
+    const placeSiteFieldKeys =
+        Array.isArray(campsiteConfig.place_field_keys)
+            ? campsiteConfig.place_field_keys
+            : [];
+
+    const placeSiteFieldLookup =
+        new Set(placeSiteFieldKeys);
 
     const campsiteUnknown =
         String(
@@ -340,8 +349,8 @@
         choose.value = '';
         choose.textContent =
             campsiteSites.length > 0
-                ? 'Select campsite...'
-                : 'No campsite records available';
+                ? 'Place-level Site section'
+                : 'Place-level Site section - no campsite records';
         campsiteSelect.appendChild(choose);
 
         campsiteSites.forEach(site => {
@@ -376,7 +385,7 @@
 
         if (label) {
             label.textContent =
-                'Campsite';
+                'Site reporting target';
         }
 
         siteNumberInput.replaceWith(
@@ -384,10 +393,17 @@
         );
     }
 
-    const setSiteControlsEnabled = (
-        enabled
+    const setSiteControlMode = (
+        mode
     ) => {
         campsiteFieldKeys.forEach(key => {
+            const enabled =
+                mode === 'site'
+                || (
+                    mode === 'place'
+                    && placeSiteFieldLookup.has(key)
+                );
+
             controlsFor(key).forEach(control => {
                 control.disabled = !enabled;
             });
@@ -600,6 +616,31 @@
         return values;
     };
 
+    const currentPlaceSiteSectionValues = () => {
+        const values =
+            currentCampsiteFormValues();
+
+        return Object.fromEntries(
+            Object.entries(values)
+                .filter(
+                    ([key]) =>
+                        placeSiteFieldLookup.has(key)
+                )
+        );
+    };
+
+    let placeSiteSectionValues =
+        currentPlaceSiteSectionValues();
+
+    let placeSiteDirty = false;
+
+    const rememberSavedPlaceSiteSection = () => {
+        placeSiteSectionValues =
+            currentPlaceSiteSectionValues();
+
+        placeSiteDirty = false;
+    };
+
     const rememberSavedCampsite = () => {
         if (activeCampsiteId === '') {
             return;
@@ -626,6 +667,45 @@
     };
 
 
+    const loadPlaceSiteSection = () => {
+        clearSiteFields();
+
+        Object.entries(
+            placeSiteSectionValues
+        ).forEach(
+            ([key, value]) => {
+                if (
+                    placeSiteFieldLookup.has(key)
+                ) {
+                    setSiteFieldValue(
+                        key,
+                        value
+                    );
+                }
+            }
+        );
+
+        activeCampsiteId = '';
+        setSiteControlMode('place');
+        campsiteDirty = false;
+        placeSiteDirty = false;
+
+        form.dispatchEvent(
+            new CustomEvent(
+                'llama:campsite-selected',
+                {
+                    detail: {
+                        campsiteId: '',
+                        label:
+                            'Place-level Site section',
+                        scope:
+                            'place',
+                    },
+                }
+            )
+        );
+    };
+
     const loadCampsite = (
         siteId
     ) => {
@@ -636,17 +716,12 @@
                     String(siteId)
             );
 
-        clearSiteFields();
-
         if (!site) {
-            activeCampsiteId = '';
-            setSiteControlsEnabled(false);
-            campsiteDirty = false;
-            form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
-                detail: { campsiteId: '', label: '' }
-            }));
+            loadPlaceSiteSection();
             return;
         }
+
+        clearSiteFields();
 
         const values =
             site.form_values
@@ -670,8 +745,9 @@
 
         activeCampsiteId =
             String(site.id);
-        setSiteControlsEnabled(true);
+        setSiteControlMode('site');
         campsiteDirty = false;
+        placeSiteDirty = false;
         // Programmatically populating fields doesn't emit input/change events.
         // Notify the section-completion view after every campsite switch.
         form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
@@ -689,6 +765,13 @@
                 () => {
                     if (activeCampsiteId !== '') {
                         campsiteDirty = true;
+                        return;
+                    }
+
+                    if (
+                        placeSiteFieldLookup.has(key)
+                    ) {
+                        placeSiteDirty = true;
                     }
                 }
             );
@@ -703,6 +786,18 @@
                     campsiteSelect.value;
 
                 if (
+                    activeCampsiteId === ''
+                    && placeSiteDirty
+                    && next !== ''
+                    && !window.confirm(
+                        'Switch to a campsite and discard unsaved Place-level Site-section changes?'
+                    )
+                ) {
+                    campsiteSelect.value = '';
+                    return;
+                }
+
+                if (
                     campsiteDirty
                     && activeCampsiteId !== ''
                     && next !== activeCampsiteId
@@ -715,11 +810,16 @@
                     return;
                 }
 
+                if (
+                    activeCampsiteId === ''
+                    && next !== ''
+                ) {
+                    placeSiteDirty = false;
+                }
+
                 loadCampsite(next);
             }
         );
-
-        setSiteControlsEnabled(false);
 
         if (campsiteSites.length === 1) {
             campsiteSelect.value =
@@ -859,10 +959,23 @@
             }
 
             clearRecoveryCopies();
-            rememberSavedCampsite();
-            campsiteDirty = false;
+
+            if (activeCampsiteId === '') {
+                rememberSavedPlaceSiteSection();
+            } else {
+                rememberSavedCampsite();
+                campsiteDirty = false;
+            }
+
             form.dispatchEvent(new CustomEvent('llama:campsite-saved', {
-                detail: { campsiteId: activeCampsiteId }
+                detail: {
+                    campsiteId:
+                        activeCampsiteId,
+                    scope:
+                        activeCampsiteId === ''
+                            ? 'place'
+                            : 'site',
+                }
             }));
 
             form.dispatchEvent(
