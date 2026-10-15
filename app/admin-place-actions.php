@@ -70,11 +70,6 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
                 }
 
-                /*
-                 * Resolve the photo target from the same verified Place/Area/Site
-                 * reporting selectors used by the form. Never trust a separate
-                 * browser-supplied photo target.
-                 */
                 $photoTarget =
                     admin_place_report_photo_target(
                         $db,
@@ -194,7 +189,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
             foreach (array_unique($deferredPhotoDeletes) as $path) {
                 if (!llama_photo_delete_owned_permanent_path((string) $path, ['uploads/places'])) {
-                    error_log('Llama Scout could not remove committed reporting-target photo file: ' . (string) $path);
+                    error_log('Llama Scout could not remove committed photo file: ' . (string) $path);
                 }
             }
 
