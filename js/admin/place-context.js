@@ -57,62 +57,6 @@
                 '[data-admin-campsite-selector]'
             );
 
-    const normalizeSelectionLabels =
-        () => {
-            const selector =
-                siteSelector();
-
-            if (!selector) {
-                return false;
-            }
-
-            const wrapper =
-                selector.closest(
-                    '.contribution-field'
-                );
-
-            const label =
-                wrapper?.querySelector(
-                    '.place-report-field-label > span:first-child'
-                );
-
-            if (label) {
-                label.textContent =
-                    'Site';
-            }
-
-            const first =
-                selector.options[0];
-
-            if (first) {
-                first.textContent =
-                    selector.options.length > 1
-                        ? 'Place'
-                        : 'Place - no Sites yet';
-            }
-
-            Array.from(
-                selector.options
-            )
-                .slice(1)
-                .forEach(
-                    (option) => {
-                        option.textContent =
-                            option.textContent
-                                .replace(
-                                    /\s+-\s+Mapped$/i,
-                                    ''
-                                )
-                                .replace(
-                                    /\s+-\s+No mapped geometry$/i,
-                                    ''
-                                );
-                    }
-                );
-
-            return true;
-        };
-
     const current =
         () => {
             const siteValue =
@@ -747,28 +691,6 @@
             );
         }
     );
-
-    if (!normalizeSelectionLabels()) {
-        const labelObserver =
-            new MutationObserver(
-                () => {
-                    if (normalizeSelectionLabels()) {
-                        labelObserver.disconnect();
-                    }
-                }
-            );
-
-        labelObserver.observe(
-            form,
-            {
-                childList:
-                    true,
-
-                subtree:
-                    true
-            }
-        );
-    }
 
     window.LlamaPlaceContext = {
         get:
