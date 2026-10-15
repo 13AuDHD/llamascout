@@ -6,7 +6,8 @@ declare(strict_types=1);
  * Site -> Camping & Equipment organization.
  *
  * These questions describe the individual campsite, not the parent Place.
- * Storage keys remain unchanged.
+ * Storage keys remain unchanged. Ownership is defined only by
+ * app/place-report/flow-scopes.php.
  */
 function llama_place_report_apply_site_equipment_metadata(
     array &$fields
@@ -37,15 +38,6 @@ function llama_place_report_apply_site_equipment_metadata(
 
         $fields[$key]['layout_group'] =
             'camping_equipment';
-
-        $fields[$key]['report_scopes'] =
-            ['site'];
-
-        $fields[$key]['report_scope_group'] =
-            'site';
-
-        $fields[$key]['scope_inheritance'] =
-            'none';
     }
 
     $labels = [
@@ -144,9 +136,6 @@ function llama_place_report_apply_site_equipment_metadata(
         }
     }
 
-    /*
-     * Tent-pad dimensions should only appear after confirming a tent pad.
-     */
     foreach (
         [
             'tent_pad_length_feet',
@@ -165,10 +154,6 @@ function llama_place_report_apply_site_equipment_metadata(
         ]];
     }
 
-    /*
-     * Individual hookup types should only appear when this campsite has
-     * hookups. Electric service is one step deeper.
-     */
     foreach (
         [
             'hookup_electric',
