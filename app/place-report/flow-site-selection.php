@@ -5,6 +5,10 @@ declare(strict_types=1);
 /**
  * Site identity and legacy suitability cleanup.
  *
+ * "Site" is the canonical target term. A Site may be a campground campsite,
+ * an individually mapped designated campsite, an RV space, or another
+ * individually identified overnight space.
+ *
  * Permission answers whether an overnight use is allowed.
  * Objective Site facts describe the actual physical space.
  *
@@ -24,9 +28,17 @@ function llama_place_report_apply_site_selection_metadata(
         'fairgrounds',
     ];
 
+    if (isset($fields['campsite_count'])) {
+        $fields['campsite_count']['label'] =
+            'Number of campsites / overnight spaces';
+
+        $fields['campsite_count']['help'] =
+            'Enter the number of individual overnight Sites when this Place or Area has defined campsites, RV spaces, or other assigned overnight spaces. Leave unanswered when there are no individually defined Sites.';
+    }
+
     if (isset($fields['site_number'])) {
         $fields['site_number']['label'] =
-            'Campsite number / name';
+            'Site / space number or name';
 
         $fields['site_number']['applicable_if'] = [[
             'field' => 'type',
@@ -34,8 +46,11 @@ function llama_place_report_apply_site_selection_metadata(
             'value' => $individualSiteTypes,
         ]];
 
+        $fields['site_number']['placeholder'] =
+            'Example: 14, B-27, Loop C #8, RV Space 4';
+
         $fields['site_number']['help'] =
-            'Use the posted campsite number or name. For an existing Llama Scout Place, select the matching stored campsite whenever one exists so the identifier stays consistent.';
+            'Use the posted identifier for this individual overnight Site. This may be a campground campsite number, an RV-space number, or another assigned Site name. For an existing Llama Scout Place, select the matching stored Site whenever one exists.';
     }
 
     if (isset($fields['max_rv_length_feet'])) {
@@ -43,7 +58,7 @@ function llama_place_report_apply_site_selection_metadata(
             'Maximum RV / trailer length';
 
         $fields['max_rv_length_feet']['help'] =
-            'Record the longest RV or trailer that can physically use this campsite based on the usable parking space, turning room, clearance, and immediate Site access. This is a physical-fit fact, not a permission question.';
+            'Record the longest RV or trailer that can physically use this Site based on the usable parking space, turning room, clearance, and immediate Site access. This is a physical-fit fact, not a permission question.';
     }
 
     /*
