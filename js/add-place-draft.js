@@ -1,67 +1,6 @@
 (() => {
     'use strict';
 
-    /*
-     * =====================================================
-     * NO AMENITIES
-     * =====================================================
-     */
-
-    const none =
-        document.querySelector(
-            'input[name="amenity_none"]'
-        );
-
-    if (none) {
-        const amenityBoxes = [
-            ...document.querySelectorAll(
-                'input[name^="amenity_"]'
-            ),
-        ].filter(
-            (input) =>
-                input !== none
-        );
-
-        const syncFromNone = () => {
-            if (!none.checked) {
-                return;
-            }
-
-            amenityBoxes.forEach(
-                (input) => {
-                    input.checked = false;
-                }
-            );
-        };
-
-        none.addEventListener(
-            'change',
-            syncFromNone
-        );
-
-        amenityBoxes.forEach(
-            (input) => {
-                input.addEventListener(
-                    'change',
-                    () => {
-                        if (input.checked) {
-                            none.checked = false;
-                        }
-                    }
-                );
-            }
-        );
-
-        syncFromNone();
-    }
-
-
-    /*
-     * =====================================================
-     * ADD PLACE FORM
-     * =====================================================
-     */
-
     const form =
         document.querySelector(
             '.add-place-form'
@@ -107,16 +46,10 @@
         }
     );
 
-
     /*
-     * =====================================================
-     * SAVE FOR LATER
-     *
-     * Draft saving deliberately uses its own endpoint rather
-     * than the Add a Place form's normal submission path.
-     * =====================================================
+     * Save for Later deliberately uses its own endpoint rather
+     * than the Add Place form's normal submission path.
      */
-
     const saveButton =
         form.querySelector(
             'button[name="save_for_later"]'
@@ -132,7 +65,7 @@
         saveButton.innerHTML;
 
     let status =
-        document.querySelector(
+        form.querySelector(
             '[data-draft-save-status]'
         );
 
@@ -157,14 +90,8 @@
             'polite'
         );
 
-        status.style.marginTop =
-            '0.5rem';
-
-        status.style.fontSize =
-            '0.8rem';
-
-        status.style.width =
-            '100%';
+        status.className =
+            'add-place-draft-save-status';
 
         const actionBar =
             saveButton.closest(
@@ -189,10 +116,10 @@
         status.textContent =
             message;
 
-        status.style.color =
+        status.classList.toggle(
+            'is-error',
             isError
-                ? '#ef8b8b'
-                : '';
+        );
     };
 
     const resetButton = () => {
@@ -230,14 +157,8 @@
                 'is-saving'
             );
 
-            saveButton.innerHTML = `
-                <i
-                    class="llama-icon-mask is-spinning"
-                    style="--llama-icon-mask:url('/assets/icons/loader-2.svg')"
-                    aria-hidden="true"
-                ></i>
-                Saving...
-            `;
+            saveButton.textContent =
+                'Saving...';
 
             setStatus(
                 'Saving this Place for later...'
@@ -270,12 +191,8 @@
             }
 
             /*
-             * The shared report-recovery script normally learns about saves
-             * through the form submit event. Save for Later bypasses that event
-             * entirely, so explicitly tell it that a real server save is
-             * starting. This prevents its local crash-recovery copy from racing
-             * the draft save and later resurrecting a staging token that the
-             * server has already consumed.
+             * Save for Later bypasses the normal submit event, so explicitly
+             * tell shared crash recovery that a server save is starting.
              */
             form.dispatchEvent(
                 new CustomEvent(
@@ -286,11 +203,6 @@
             const body =
                 new FormData(form);
 
-            /*
-             * Make the draft action explicit. The normal
-             * Submit for Review button is not part of this
-             * request.
-             */
             body.delete(
                 'submit_for_review'
             );
@@ -378,10 +290,6 @@
                     'Saved. Opening Saved for Later...'
                 );
 
-                /*
-                 * Clear the local crash-recovery snapshot before navigation.
-                 * The saved draft in the database is now authoritative.
-                 */
                 form.dispatchEvent(
                     new CustomEvent(
                         'llama:place-draft-saved',
@@ -432,7 +340,6 @@
         }
     );
 
-
     window.addEventListener(
         'pageshow',
         () => {
@@ -441,5 +348,4 @@
             }
         }
     );
-
 })();
