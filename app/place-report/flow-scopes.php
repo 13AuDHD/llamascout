@@ -3,139 +3,569 @@
 declare(strict_types=1);
 
 /**
- * Phase 3C: canonical Place / Area / Site scope definitions.
+ * Canonical Place / Area / Site ownership for every Scout Report field.
  *
- * These annotations deliberately do not modify existing answers,
- * applicability, scoring, public rendering, or database tables. They allow
- * the next persistence layer to validate which level owns an answer.
+ * Ownership groups:
+ * - place: Place only.
+ * - place_area: Place or Area. A Site may inherit the nearest recorded value
+ *   but cannot record its own override for this field.
+ * - site: Site only. Never inherits from Place or Area.
+ * - all: Place, Area, or Site. The nearest recorded value wins.
  *
- * A missing value inherits. A recorded No, Unknown, 0, or empty multiselect
- * is an explicit answer and must not silently inherit an ancestor's value.
+ * Explicit No, Unknown, numeric 0, and an explicitly recorded empty list are
+ * answers. Only a genuinely unrecorded field inherits from an ancestor.
  */
 function llama_place_report_scope_groups(): array
 {
     return [
         'place' => ['place'],
         'place_area' => ['place', 'area'],
-        'all' => ['place', 'area', 'site'],
         'site' => ['site'],
+        'all' => ['place', 'area', 'site'],
     ];
 }
 
+/**
+ * Current canonical ownership inventory.
+ *
+ * Keep this list semantic, not presentation-driven. Layout groups can move
+ * without changing which entity owns the underlying fact.
+ */
 function llama_place_report_scope_overrides(): array
 {
-    return [
-        // Place identity and geography cannot be overridden by a campsite.
-        'name' => 'place',
-        'type' => 'place',
-        'description' => 'place',
-        'visited_at' => 'place',
-        'latitude' => 'place',
-        'longitude' => 'place',
-        'elevation_feet' => 'place',
-        'road' => 'place',
-        'city' => 'place',
-        'county' => 'place',
-        'state' => 'place',
-        'region' => 'place',
-        'land_type' => 'place',
-        'land_manager' => 'place',
+    $byGroup = [
+        'place' => [
+            /*
+             * Place identity and geography.
+             */
+            'name',
+            'type',
+            'description',
+            'visited_at',
+            'latitude',
+            'longitude',
+            'elevation_feet',
+            'road',
+            'city',
+            'county',
+            'state',
+            'region',
+            'land_type',
+            'land_manager',
 
-        // Property access costs: not individual campsite rates.
-        'entrance_facility_fee' => 'place',
-        'parking_fee' => 'place',
-        'campsite_count' => 'place_area',
+            /*
+             * Getting there describes the route to the Place. Site parking
+             * and Site access have separate Site-owned fields below.
+             */
+            'road_surface',
+            'road_width',
+            'approach_road_condition',
+            'approach_road_hazards',
+            'approach_deep_ruts',
+            'road_overall_difficulty',
+            'road_stress',
+            'rocks',
+            'washboards',
+            'potholes',
+            'mud_risk',
+            'steep_grades',
+            'drop_off_exposure',
+            'water_crossings',
+            'downed_tree_risk',
+            'sedan_accessible',
+            'high_clearance_recommended',
+            'four_wheel_drive_recommended',
+            'road_exposure',
+            'approach_width_restricted',
+            'approach_narrowest_width_feet',
+            'approach_turnaround_available',
+            'approach_overhead_obstacles',
+            'approach_access_restrictions',
+            'approach_year_round',
+            'approach_seasonal_closure',
+            'approach_closure_month',
+            'approach_closure_day',
+            'approach_reopening_month',
+            'approach_reopening_day',
+            'approach_winter_maintenance',
+            'approach_snow_chains',
+            'approach_seasonal_restrictions',
+            'approach_road_conditions_url',
+            'approach_road_type',
+            'approach_permit_required',
+            'approach_fee_required',
+            'approach_gate_present',
+            'approach_gate_access_type',
+            'approach_gate_opens',
+            'approach_gate_closes',
+            'approach_restriction_details',
+            'approach_access_info_url',
 
-        // Connectivity describes the Place as a whole in the canonical
-        // Place Report. Individual campsite records do not override it.
-        'connectivity_overall' => 'place',
-        'connectivity_t_mobile' => 'place',
-        'connectivity_verizon' => 'place',
-        'connectivity_att' => 'place',
-        'connectivity_other_cell' => 'place',
-        'connectivity_starlink' => 'place',
-        'connectivity_starlink_tested' => 'place',
-        'connectivity_starlink_note' => 'place',
+            /*
+             * Place-wide source/context facts.
+             */
+            'place_accessible',
+            'accessibility_notes',
+            'facility_map_url',
+            'activities',
 
-        // Nearby services describe the Place, not an individual campsite.
-        'nearest_town' => 'place',
-        'nearest_fuel' => 'place',
-        'nearest_ev_charging' => 'place',
-        'nearest_alcohol_sales' => 'place',
-        'nearest_propane' => 'place',
-        'nearest_grocery' => 'place',
-        'nearest_water' => 'place',
-        'nearest_toilet' => 'place',
-        'nearest_hospital' => 'place',
+            /*
+             * Connectivity and nearby services are Place-level context.
+             */
+            'connectivity_overall',
+            'connectivity_t_mobile',
+            'connectivity_verizon',
+            'connectivity_att',
+            'connectivity_other_cell',
+            'connectivity_starlink',
+            'connectivity_starlink_tested',
+            'connectivity_starlink_note',
+            'nearest_town',
+            'nearest_fuel',
+            'nearest_ev_charging',
+            'nearest_alcohol_sales',
+            'nearest_propane',
+            'nearest_grocery',
+            'nearest_water',
+            'nearest_toilet',
+            'nearest_hospital',
 
-        // Physical campsite layout and utilities cannot be Place defaults.
-        'site_number' => 'site',
-        'site_accessible' => 'site',
-        'max_people' => 'site',
-        'overhead_clearance_feet' => 'site',
-        'parking_length_feet' => 'site',
-        'parking_grade' => 'site',
-        'site_length_feet' => 'site',
-        'site_width_feet' => 'site',
-        'tent_pad' => 'site',
-        'tent_pad_length_feet' => 'site',
-        'tent_pad_width_feet' => 'site',
-        'double_driveway' => 'site',
-        'hike_in_distance_feet' => 'site',
-        'site_hookups_available' => 'site',
-        'hookup_electric' => 'site',
-        'hookup_electric_service' => 'site',
-        'hookup_water' => 'site',
-        'hookup_sewer' => 'site',
-        'capacity_size_rating' => 'site',
-        'site_rating' => 'site',
-        'condition_rating' => 'site',
-        'location_rating' => 'site',
+            /*
+             * Place operating schedule and closure observations.
+             */
+            'place_open_year_round',
+            'place_operating_start_month',
+            'place_operating_start_day',
+            'place_operating_end_month',
+            'place_operating_end_day',
+            'place_open_24_hours',
+            'place_opening_time',
+            'place_closing_time',
+            'place_entrance_gate',
+            'place_gate_access_type',
+            'place_gate_opening_time',
+            'place_gate_closing_time',
+            'place_reported_operating_status',
+            'place_closure_reason',
+            'place_closure_began',
+            'place_expected_reopening',
+            'place_closure_source_url',
+            'place_closure_review_date',
+            'place_closure_notes',
 
-        // Shared facilities describe Place or Area, not a hookup at a site.
-        'amenity_none' => 'place_area',
-        'amenity_toilets' => 'place_area',
-        'amenity_potable_water' => 'place_area',
-        'amenity_trash' => 'place_area',
-        'amenity_showers' => 'place_area',
-        'amenity_dump_station' => 'place_area',
-        'amenity_wifi' => 'place_area',
-        'amenity_laundry' => 'place_area',
-        'amenity_electricity' => 'place_area',
-        'amenity_recycling' => 'place_area',
-        'accessible_toilet' => 'place_area',
-        'accessible_picnic_table' => 'place_area',
+            /*
+             * This legacy JSON rate-card field is explicitly a Place default.
+             * Area/Site pricing is owned by the mapped-rate model.
+             */
+            'place_rate_cards_json',
+        ],
 
-        // Official restrictions are always discoverable independently.
-        'current_fire_restrictions_url' => 'place_area',
-        'contributor_notes' => 'all',
+        'place_area' => [
+            /*
+             * Shared campground/Area capacity and seasonal operation.
+             */
+            'campsite_count',
+            'season_begins',
+            'season_ends',
+            'best_months',
+            'winter_access',
+            'seasonal_closure',
+            'seasonal_access_note',
+            'snow_risk',
+            'mud_season_risk',
+            'monsoon_risk',
+            'hurricane_risk',
+            'heat_season_risk',
+
+            /*
+             * Rules whose meaning is inherently Place/Area-wide rather than a
+             * physical attribute of one campsite.
+             */
+            'dispersed_camping_allowed',
+            'designated_sites_only',
+            'stay_limit_days',
+            'membership_required',
+            'membership_url',
+            'membership_fee',
+            'entrance_facility_fee',
+            'parking_fee',
+            'collecting_firewood',
+            'drone_use_legal',
+            'target_shooting_allowed',
+            'food_storage_required',
+            'existing_sites_encouraged',
+            'pack_it_in_pack_it_out',
+            'residential_use_prohibited',
+            'current_fire_restrictions_url',
+            'camping_permit_url',
+            'fire_activity_permit_url',
+            'overnight_vehicle_tent_permit_url',
+
+            /*
+             * Shared facilities. A Site's own equipment has separate Site
+             * fields and must not inherit as if it were a shared amenity.
+             */
+            'amenity_none',
+            'amenity_toilets',
+            'amenity_potable_water',
+            'amenity_water_filling_station',
+            'amenity_dishwashing_station',
+            'amenity_trash',
+            'amenity_recycling',
+            'amenity_showers',
+            'amenity_accessible_showers',
+            'amenity_laundry',
+            'amenity_wifi',
+            'amenity_dump_station',
+            'amenity_electricity',
+            'amenity_picnic_shelter',
+            'amenity_playground',
+            'amenity_amphitheater',
+            'amenity_fishing_pier',
+            'amenity_lake_access',
+            'amenity_river_access',
+            'amenity_trailhead',
+            'amenity_trailhead_parking',
+            'amenity_camp_store',
+            'amenity_campground_host',
+            'shared_accessible_facilities',
+            'shared_accessible_facility_types',
+            'accessible_toilet',
+            'accessible_picnic_table',
+        ],
+
+        'site' => [
+            /*
+             * Canonical campsite identity and physical Site facts.
+             * These never inherit from the Place.
+             */
+            'site_number',
+            'site_accessible',
+            'max_people',
+            'vehicle_capacity',
+            'max_vehicle_length_feet',
+            'parking_surface',
+            'ground_condition',
+            'overhead_clearance_feet',
+            'parking_length_feet',
+            'parking_grade',
+            'site_length_feet',
+            'site_width_feet',
+            'tent_pad',
+            'tent_pad_length_feet',
+            'tent_pad_width_feet',
+            'double_driveway',
+            'hike_in_distance_feet',
+            'capacity_size_rating',
+            'site_hookups_available',
+            'hookup_electric',
+            'hookup_electric_service',
+            'hookup_water',
+            'hookup_sewer',
+            'trailer_suitable',
+            'max_trailer_length_feet',
+            'rv_suitable',
+            'max_rv_length_feet',
+            'tent_camping_suitable',
+            'pull_through',
+            'back_in',
+            'turnaround_space',
+            'leveling_required',
+            'site_access_difficulty',
+            'walking_distance_from_vehicle',
+            'site_shade',
+            'site_open_sky',
+
+            /*
+             * Equipment physically present at one Site.
+             */
+            'amenity_picnic_table',
+            'amenity_fire_ring',
+            'amenity_grill',
+            'amenity_bear_box',
+            'amenity_lantern_post',
+
+            /*
+             * Ratings whose labels explicitly refer to the individual Site.
+             */
+            'site_rating',
+            'condition_rating',
+            'location_rating',
+        ],
+
+        'all' => [
+            /*
+             * Overnight permissions and operating details may have legitimate
+             * Site exceptions. They inherit until an Area or Site records an
+             * explicit answer.
+             */
+            'overnight_camping_allowed',
+            'tent_camping_allowed',
+            'rv_camping_allowed',
+            'car_truck_camping',
+            'overnight_restrictions',
+            'camping_conditional_details',
+            'reservation_required',
+            'reservation_url',
+            'reservation_fee',
+            'check_in_required',
+            'check_in_begins',
+            'check_out_required',
+            'checkout_ends',
+            'fee',
+
+            /*
+             * Rules that can genuinely differ by Area or individual Site.
+             */
+            'pets_allowed',
+            'dogs_required_to_be_leashed',
+            'generator_restrictions',
+            'generator_prohibited',
+            'generator_quiet_hours',
+            'generator_quiet_hours_begin',
+            'generator_quiet_hours_end',
+            'generator_run_restrictions',
+            'generator_max_run_hours',
+            'generator_restriction_details',
+            'campfire_allowed',
+            'fire_activities_conditional_details',
+            'place_charcoal_grills_allowed',
+            'place_propane_fire_pits_allowed',
+            'place_quiet_hours',
+            'place_quiet_hours_begin',
+            'place_quiet_hours_end',
+            'place_alcohol_permitted',
+            'place_additional_rules',
+
+            /*
+             * Environment, sensory, safety and experience can describe a
+             * single-location Place, a mapped Area, or a selected Site.
+             */
+            'tree_cover',
+            'landscape_primary',
+            'landscape_details',
+            'landscape_views',
+            'environment_water_nearby',
+            'environment_wildlife',
+            'environment_bugs',
+            'environment_wind_exposure',
+            'environment_sun_exposure',
+            'environment_shade',
+            'environment_open_sky',
+            'critter_activity',
+
+            'daytime_noise',
+            'daytime_traffic',
+            'daytime_crowds',
+            'daytime_privacy',
+            'daytime_light_pollution',
+            'daytime_sensory_comfort',
+            'daytime_social_interaction',
+            'nighttime_noise',
+            'nighttime_traffic',
+            'nighttime_crowds',
+            'nighttime_privacy',
+            'nighttime_light_pollution',
+            'nighttime_sensory_comfort',
+            'nighttime_social_interaction',
+            'sensory_dust_from_traffic',
+            'sensory_generator_noise',
+            'sensory_aircraft_noise',
+            'sensory_train_noise',
+            'sensory_dog_barking',
+            'sensory_road_noise',
+            'sensory_human_activity',
+            'sensory_wildlife_noise',
+            'sensory_wind_noise',
+            'sensory_smoke_risk',
+            'sensory_strong_odors',
+            'sensory_visual_exposure',
+            'sensory_predictability',
+
+            'felt_safe_daytime',
+            'felt_safe_nighttime',
+            'flash_flood_risk',
+            'wildfire_risk',
+            'fall_hazard',
+            'cliff_exposure',
+            'rockfall_risk',
+            'wildlife_risk',
+            'traffic_hazard',
+            'emergency_access',
+            'warning_possible_downed_trees',
+            'warning_passing_vehicle_dust',
+            'warning_motorized_recreation_traffic',
+            'warning_blind_turn_traffic_nearby',
+
+            /*
+             * Generic accessibility observations can legitimately narrow from
+             * Place to Area to Site. Shared-facility accessibility above is
+             * deliberately Place/Area-only.
+             */
+            'wheelchair_friendly',
+            'mobility_device_friendly',
+            'flat_walking_surface',
+            'step_free_access',
+
+            'experience_sunrise_view',
+            'experience_sunset_view',
+            'experience_overall_scenery',
+            'experience_night_sky',
+            'experience_stargazing',
+            'experience_quiet_evening',
+            'experience_overnight_comfort',
+            'experience_extended_stay_comfort',
+            'experience_sensory_retreat',
+            'experience_remote_work',
+            'recommended_overnight_stop',
+            'recommended_quiet_evening',
+            'recommended_extended_stay',
+            'recommended_sensory_retreat',
+            'recommended_stargazing',
+            'recommended_remote_work',
+            'recommended_solo_travel',
+            'recommended_families',
+            'recommended_large_groups',
+            'not_recommended_for',
+
+            /*
+             * Narrative summaries and reviewer notes may describe whichever
+             * target is currently being reported.
+             */
+            'access_summary',
+            'sensory_summary',
+            'contributor_notes',
+        ],
     ];
+
+    $result = [];
+
+    foreach ($byGroup as $group => $keys) {
+        foreach ($keys as $key) {
+            if (isset($result[$key])) {
+                throw new LogicException(
+                    'Duplicate Scout Report scope ownership for field: '
+                    . $key
+                );
+            }
+
+            $result[$key] = $group;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Conservative ownership for future fields that have not yet been added to
+ * the explicit current-field inventory above.
+ *
+ * Current fields should all be in llama_place_report_scope_overrides(). This
+ * fallback prevents a future new field from accidentally gaining every scope
+ * merely because its author forgot to classify it.
+ */
+function llama_place_report_scope_default_for_section(string $section): string
+{
+    return match ($section) {
+        'site_vehicle' => 'site',
+
+        'sensory',
+        'landscape_setting',
+        'safety',
+        'experience',
+        'summaries' => 'all',
+
+        'amenities' => 'place_area',
+
+        default => 'place',
+    };
 }
 
 function llama_place_report_apply_flow_scopes(array &$fields): void
 {
     $groups = llama_place_report_scope_groups();
     $overrides = llama_place_report_scope_overrides();
+
     foreach ($fields as $key => &$field) {
-        $group = $overrides[$key] ?? 'all';
-        // Other amenities are normally shared facilities as well.
-        if (!isset($overrides[$key]) && str_starts_with((string) $key, 'amenity_')) {
-            $group = 'place_area';
+        $group =
+            $overrides[$key]
+            ?? llama_place_report_scope_default_for_section(
+                (string) (
+                    $field['section']
+                    ?? ''
+                )
+            );
+
+        if (!isset($groups[$group])) {
+            throw new LogicException(
+                'Invalid Scout Report scope group for field: '
+                . (string) $key
+            );
         }
-        $field['report_scopes'] = $groups[$group];
-        $field['report_scope_group'] = $group;
-        $field['scope_inheritance'] = $group === 'site' ? 'none' : 'nearest_recorded';
+
+        $field['report_scopes'] =
+            $groups[$group];
+
+        $field['report_scope_group'] =
+            $group;
+
+        $field['scope_inheritance'] =
+            $group === 'site'
+                ? 'none'
+                : 'nearest_recorded';
+
+        $field['scope_definition_explicit'] =
+            array_key_exists(
+                $key,
+                $overrides
+            );
     }
+
     unset($field);
 }
 
 /**
- * Resolve a field from a set of flat answer maps keyed by canonical field ID.
- * Arrays use field keys, not storage paths. No DB operations occur here.
+ * Return current canonical fields that are relying on the future-field
+ * fallback rather than the audited ownership inventory.
  *
- * Recorded answers must be represented by array_key_exists, even when
- * their value is null, empty, '0', or the canonical unknown token.
- * A 'site' only field never falls back to the Place by accident.
+ * This is intentionally side-effect free so admin/testing code can inspect it
+ * without changing report behavior.
+ */
+function llama_place_report_unclassified_scope_fields(array $fields): array
+{
+    $overrides =
+        llama_place_report_scope_overrides();
+
+    $missing = [];
+
+    foreach ($fields as $key => $field) {
+        if (!array_key_exists($key, $overrides)) {
+            $missing[$key] = [
+                'section' =>
+                    (string) (
+                        $field['section']
+                        ?? ''
+                    ),
+
+                'fallback_group' =>
+                    llama_place_report_scope_default_for_section(
+                        (string) (
+                            $field['section']
+                            ?? ''
+                        )
+                    ),
+            ];
+        }
+    }
+
+    return $missing;
+}
+
+/**
+ * Resolve a field from flat answer maps keyed by canonical field ID.
+ *
+ * array_key_exists() is deliberate: explicit No, Unknown, 0, null, or an
+ * explicit empty-list answer is recorded and therefore stops inheritance.
  */
 function llama_place_report_resolve_scoped_answer(
     array $field,
@@ -145,32 +575,85 @@ function llama_place_report_resolve_scoped_answer(
     string $target = 'place'
 ): array {
     if (!in_array($target, ['place', 'area', 'site'], true)) {
-        throw new InvalidArgumentException('Invalid reporting target.');
+        throw new InvalidArgumentException(
+            'Invalid reporting target.'
+        );
     }
-    $key = (string) ($field['key'] ?? '');
+
+    $key =
+        (string) (
+            $field['key']
+            ?? ''
+        );
+
     if ($key === '') {
-        throw new InvalidArgumentException('A canonical field key is required.');
+        throw new InvalidArgumentException(
+            'A canonical field key is required.'
+        );
     }
-    $allowed = (array) ($field['report_scopes'] ?? ['place']);
+
+    $allowed =
+        (array) (
+            $field['report_scopes']
+            ?? ['place']
+        );
+
     $sources = match ($target) {
-        'site' => ['site' => $siteAnswers, 'area' => $areaAnswers, 'place' => $placeAnswers],
-        'area' => ['area' => $areaAnswers, 'place' => $placeAnswers],
-        default => ['place' => $placeAnswers],
+        'site' => [
+            'site' => $siteAnswers,
+            'area' => $areaAnswers,
+            'place' => $placeAnswers,
+        ],
+
+        'area' => [
+            'area' => $areaAnswers,
+            'place' => $placeAnswers,
+        ],
+
+        default => [
+            'place' => $placeAnswers,
+        ],
     };
+
     foreach ($sources as $scope => $answers) {
-        if (in_array($scope, $allowed, true) && array_key_exists($key, $answers)) {
+        if (
+            in_array(
+                $scope,
+                $allowed,
+                true
+            )
+            && array_key_exists(
+                $key,
+                $answers
+            )
+        ) {
             return [
-                'recorded' => true,
-                'value' => $answers[$key],
-                'source_scope' => $scope,
-                'inherited' => $scope !== $target,
+                'recorded' =>
+                    true,
+
+                'value' =>
+                    $answers[$key],
+
+                'source_scope' =>
+                    $scope,
+
+                'inherited' =>
+                    $scope !== $target,
             ];
         }
     }
+
     return [
-        'recorded' => false,
-        'value' => null,
-        'source_scope' => null,
-        'inherited' => false,
+        'recorded' =>
+            false,
+
+        'value' =>
+            null,
+
+        'source_scope' =>
+            null,
+
+        'inherited' =>
+            false,
     ];
 }
