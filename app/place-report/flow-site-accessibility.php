@@ -14,36 +14,6 @@ declare(strict_types=1);
 function llama_place_report_apply_site_accessibility_metadata(
     array &$fields
 ): void {
-    $siteAccessibilityFields = [
-        'site_accessible',
-        'wheelchair_friendly',
-        'mobility_device_friendly',
-        'flat_walking_surface',
-        'step_free_access',
-        'walking_distance_from_vehicle',
-    ];
-
-    foreach ($siteAccessibilityFields as $key) {
-        if (!isset($fields[$key])) {
-            continue;
-        }
-
-        $fields[$key]['layout_section'] =
-            'site';
-
-        $fields[$key]['layout_group'] =
-            'site_accessibility';
-
-        /*
-         * Do not make practical access questions conditional on the official
-         * designation. "Not marked accessible" must never hide them.
-         */
-        if ($key !== 'site_accessible') {
-            $fields[$key]['applicable_if'] =
-                [];
-        }
-    }
-
     if (isset($fields['site_accessible'])) {
         $fields['site_accessible']['display_section'] =
             'site_vehicle';
