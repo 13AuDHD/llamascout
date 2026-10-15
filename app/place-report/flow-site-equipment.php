@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Site -> Camping & Equipment organization.
+ * Site -> Utilities & Equipment organization.
  *
- * These questions describe the individual campsite, not the parent Place.
+ * These questions describe the individual Site, not the parent Place.
  * Storage keys remain unchanged. Ownership is defined only by
  * app/place-report/flow-scopes.php.
  */
@@ -23,13 +23,13 @@ function llama_place_report_apply_site_equipment_metadata(
             'Tent pad width (ft)',
 
         'site_hookups_available' =>
-            'Utility hookups at this campsite?',
+            'Any utility hookups at this Site?',
 
         'hookup_electric' =>
-            'Electric hookup?',
+            'Power / electric hookup?',
 
         'hookup_electric_service' =>
-            'Electric service',
+            'Electrical service',
 
         'hookup_water' =>
             'Water hookup?',
@@ -38,19 +38,19 @@ function llama_place_report_apply_site_equipment_metadata(
             'Sewer hookup?',
 
         'amenity_fire_ring' =>
-            'Fire ring at campsite?',
+            'Fire ring at this Site?',
 
         'amenity_grill' =>
-            'Grill at campsite?',
+            'Grill at this Site?',
 
         'amenity_picnic_table' =>
-            'Picnic table at campsite?',
+            'Picnic table at this Site?',
 
         'amenity_bear_box' =>
-            'Food-storage / bear box at campsite?',
+            'Food-storage / bear box at this Site?',
 
         'amenity_lantern_post' =>
-            'Lantern post at campsite?',
+            'Lantern post at this Site?',
     ];
 
     foreach ($labels as $key => $label) {
@@ -62,7 +62,7 @@ function llama_place_report_apply_site_equipment_metadata(
 
     $help = [
         'tent_pad' =>
-            'A defined tent pad, platform, or prepared tent area belonging to this campsite.',
+            'A defined tent pad, platform, or prepared tent area belonging to this Site.',
 
         'tent_pad_length_feet' =>
             'Approximate usable length of the tent pad or platform.',
@@ -71,34 +71,34 @@ function llama_place_report_apply_site_equipment_metadata(
             'Approximate usable width of the tent pad or platform.',
 
         'site_hookups_available' =>
-            'Whether this individual campsite has any utility hookups. Shared campground utilities belong under Place facilities.',
+            'Whether this individual Site has any utility hookups. Shared Place utilities belong under Facilities & Amenities.',
 
         'hookup_electric' =>
-            'Electric connection available directly at this campsite.',
+            'Power or electrical connection available directly at this Site.',
 
         'hookup_electric_service' =>
-            'Electrical service available directly at this campsite.',
+            'Electrical service available directly at this Site.',
 
         'hookup_water' =>
-            'Water connection available directly at this campsite, not a shared filling station.',
+            'Water connection available directly at this Site, not a shared filling station.',
 
         'hookup_sewer' =>
-            'Sewer connection available directly at this campsite, not a shared dump station.',
+            'Sewer connection available directly at this Site, not a shared dump station.',
 
         'amenity_fire_ring' =>
-            'A permanent or designated fire ring belonging to this campsite.',
+            'A permanent or designated fire ring belonging to this Site.',
 
         'amenity_grill' =>
-            'A permanent grill provided at this campsite.',
+            'A permanent grill provided at this Site.',
 
         'amenity_picnic_table' =>
-            'A picnic table assigned to or located within this campsite.',
+            'A picnic table assigned to or located within this Site.',
 
         'amenity_bear_box' =>
-            'A dedicated food-storage locker or bear box provided at this campsite.',
+            'A dedicated food-storage locker or bear box provided at this Site.',
 
         'amenity_lantern_post' =>
-            'A lantern hook or post provided at this campsite.',
+            'A lantern hook or post provided at this Site.',
     ];
 
     foreach ($help as $key => $text) {
@@ -126,6 +126,10 @@ function llama_place_report_apply_site_equipment_metadata(
         ]];
     }
 
+    /*
+     * Keep the individual utility questions visible. The broad hookup answer
+     * is useful context, but it must not hide known electric/water/sewer facts.
+     */
     foreach (
         [
             'hookup_electric',
@@ -134,29 +138,17 @@ function llama_place_report_apply_site_equipment_metadata(
         ]
         as $key
     ) {
-        if (!isset($fields[$key])) {
-            continue;
+        if (isset($fields[$key])) {
+            $fields[$key]['applicable_if'] =
+                [];
         }
-
-        $fields[$key]['applicable_if'] = [[
-            'field' => 'site_hookups_available',
-            'operator' => 'equals',
-            'value' => '1',
-        ]];
     }
 
     if (isset($fields['hookup_electric_service'])) {
-        $fields['hookup_electric_service']['applicable_if'] = [
-            [
-                'field' => 'site_hookups_available',
-                'operator' => 'equals',
-                'value' => '1',
-            ],
-            [
-                'field' => 'hookup_electric',
-                'operator' => 'equals',
-                'value' => '1',
-            ],
-        ];
+        $fields['hookup_electric_service']['applicable_if'] = [[
+            'field' => 'hookup_electric',
+            'operator' => 'equals',
+            'value' => '1',
+        ]];
     }
 }
