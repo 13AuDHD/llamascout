@@ -159,36 +159,24 @@ $localIcon =
         return 'info-circle';
     };
 
-$campsiteSwitchableFields = [
-    'site_accessible',
-    'vehicle_capacity',
-    'max_vehicle_length_feet',
-    'parking_surface',
-    'max_people',
-    'overhead_clearance_feet',
-    'parking_length_feet',
-    'parking_grade',
-    'site_length_feet',
-    'site_width_feet',
-    'tent_pad',
-    'tent_pad_length_feet',
-    'tent_pad_width_feet',
-    'double_driveway',
-    'hike_in_distance_feet',
-    'site_rating',
-    'condition_rating',
-    'location_rating',
-    'capacity_size_rating',
-    'site_hookups_available',
-    'hookup_electric',
-    'hookup_electric_service',
-    'hookup_water',
-    'hookup_sewer',
-    'tent_camping_suitable',
-    'rv_suitable',
-    'pull_through',
-    'back_in',
-];
+$campsiteSwitchableFields =
+    array_keys(
+        array_filter(
+            $placeReportFields,
+            static function (
+                array $field
+            ): bool {
+                return in_array(
+                    'site',
+                    (array) (
+                        $field['report_scopes']
+                        ?? []
+                    ),
+                    true
+                );
+            }
+        )
+    );
 
 $renderValue =
     static function (
@@ -651,17 +639,7 @@ foreach (
     $reportedFields =
         $answeredFields;
 
-    if (
-        $placeReportReadMode === 'scout-report'
-        && in_array(
-            $sectionKey,
-            [
-                'site_vehicle',
-                'experience',
-            ],
-            true
-        )
-    ) {
+    if ($placeReportReadMode === 'scout-report') {
         foreach (
             $applicableFields
             as $fieldKey => $field
