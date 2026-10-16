@@ -249,7 +249,10 @@ $related =
         $db,
         $reportId,
         (int) $item['place_id'],
-        (string) $item['problem_type']
+        (string) $item['problem_type'],
+        $targetScope,
+        $targetSource,
+        $targetId
     );
 
 $history =
@@ -900,7 +903,7 @@ $openMeta =
     <div>
         <p>Pattern Detection</p>
         <h2>
-            Other reports of the same problem type
+            Other reports of the same problem on this target
         </h2>
     </div>
 
