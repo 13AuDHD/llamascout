@@ -267,9 +267,6 @@ foreach ($stayFeatures as $feature) {
         continue;
     }
 
-    if ($overnight === 'prohibited') {
-        continue;
-    }
 
     $id =
         (int) (
@@ -336,6 +333,9 @@ foreach ($stayFeatures as $feature) {
         match ($overnight) {
             'allowed' =>
                 'Overnight allowed',
+
+            'prohibited' =>
+                'Overnight prohibited',
 
             'varies' =>
                 'Rules vary',
@@ -424,16 +424,16 @@ $hasSupplementalStayOptions =
     <header class="place-overnight-options-heading">
         <div>
             <p class="eyebrow">
-                Overnight options
+                Stay and parking options
             </p>
 
             <h2 id="place-overnight-options-heading">
-                Where you can stay
+                Where you can park or stay
             </h2>
 
             <p class="place-stay-intro">
-                Browse Sites and mapped overnight Areas. Select an option to
-                see its details in the Scout Report.
+                Browse Sites and mapped Areas, including places where overnight
+                use is prohibited. Select an option to see its details in the Scout Report.
             </p>
         </div>
 
