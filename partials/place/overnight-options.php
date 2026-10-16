@@ -138,7 +138,7 @@ foreach ($stayFeatures as $feature) {
             : (
                 $name !== ''
                     ? $name
-                    : 'Campsite ' . $id
+                    : 'Site ' . $id
             );
 
     $style =
@@ -172,9 +172,8 @@ foreach ($stayFeatures as $feature) {
             $effectiveRates
         );
 
-    $description =
-        implode(
-            ' - ',
+    $summaryParts =
+        array_values(
             array_filter([
                 $pricingSummary,
                 $type !== ''
@@ -185,7 +184,7 @@ foreach ($stayFeatures as $feature) {
                             $type
                         )
                     )
-                    : 'Campsite',
+                    : 'Site',
 
                 $style !== ''
                     ? ucwords(
@@ -206,8 +205,8 @@ foreach ($stayFeatures as $feature) {
         'name' =>
             $label,
 
-        'summary' =>
-            $description,
+        'summary_parts' =>
+            $summaryParts,
 
         'area' =>
             trim(
@@ -355,16 +354,11 @@ foreach ($stayFeatures as $feature) {
         'name' =>
             $name,
 
-        'summary' =>
-            $feeLabel
-            . ' - '
-            . $statusLabel,
-
-        'cost' =>
-            $feeLabel,
-
-        'status' =>
-            $statusLabel,
+        'summary_parts' =>
+            [
+                $feeLabel,
+                $statusLabel,
+            ],
 
         /*
          * These are direct Area overrides only. The client first restores the
@@ -411,7 +405,7 @@ $hasSupplementalStayOptions =
             </h2>
 
             <p class="place-stay-intro">
-                Browse campsites and overnight parking areas. Select an area to
+                Browse Sites and overnight parking areas. Select an option to
                 see its details in the Scout Report.
             </p>
         </div>
@@ -453,7 +447,7 @@ $hasSupplementalStayOptions =
     <div
         class="place-stay-parking-list"
         data-stay-parking-list
-        aria-label="Mapped campsites and overnight parking areas"
+        aria-label="Mapped Sites and overnight parking areas"
         <?= $hasSupplementalStayOptions ? '' : 'hidden' ?>
     >
         <?php foreach ($stayMappedSites as $site): ?>
@@ -463,14 +457,27 @@ $hasSupplementalStayOptions =
                 data-stay-map-site-id="<?= (int) $site['id'] ?>"
                 data-stay-map-site-name="<?= place_h($site['name']) ?>"
                 data-stay-map-site-area="<?= place_h($site['area']) ?>"
-                data-stay-map-site-summary="<?= place_h($site['summary']) ?>"
+                data-stay-map-site-meta="<?= place_h(
+                    json_encode(
+                        $site['summary_parts'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '[]'
+                ) ?>"
             >
                 <span class="place-campsite-row-name">
                     <?= place_h($site['name']) ?>
                 </span>
 
                 <span class="place-campsite-row-summary">
-                    <?= place_h($site['summary']) ?>
+                    <?php foreach ($site['summary_parts'] as $index => $part): ?>
+                        <?php if ($index > 0): ?>
+                            <?= llama_icon('separator-dot') ?>
+                        <?php endif; ?>
+
+                        <span><?= place_h($part) ?></span>
+                    <?php endforeach; ?>
                 </span>
             </button>
         <?php endforeach; ?>
@@ -481,8 +488,14 @@ $hasSupplementalStayOptions =
                 class="place-campsite-row place-stay-parking-row"
                 data-stay-parking-id="<?= (int) $parking['id'] ?>"
                 data-stay-parking-name="<?= place_h($parking['name']) ?>"
-                data-stay-parking-cost="<?= place_h($parking['cost']) ?>"
-                data-stay-parking-status="<?= place_h($parking['status']) ?>"
+                data-stay-parking-meta="<?= place_h(
+                    json_encode(
+                        $parking['summary_parts'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '[]'
+                ) ?>"
                 data-stay-report-values="<?= place_h(
                     json_encode(
                         $parking['report_values'],
@@ -497,7 +510,13 @@ $hasSupplementalStayOptions =
                 </span>
 
                 <span class="place-campsite-row-summary">
-                    <?= place_h($parking['summary']) ?>
+                    <?php foreach ($parking['summary_parts'] as $index => $part): ?>
+                        <?php if ($index > 0): ?>
+                            <?= llama_icon('separator-dot') ?>
+                        <?php endif; ?>
+
+                        <span><?= place_h($part) ?></span>
+                    <?php endforeach; ?>
                 </span>
             </button>
         <?php endforeach; ?>
