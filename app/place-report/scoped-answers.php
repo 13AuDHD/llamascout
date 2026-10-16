@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 /**
- * Phase 3D: scoped-answer persistence service.
- *
  * This service deliberately does not alter the legacy Place Report JSON,
  * scoring, moderation, or public display. Its SQL table must be installed
  * before using it. Callers are responsible for authentication, authorization,
