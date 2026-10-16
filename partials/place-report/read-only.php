@@ -665,6 +665,47 @@ foreach (
             - count($answeredFields)
         );
 
+    $switchableApplicableCount = 0;
+    $switchableAnsweredCount = 0;
+
+    if ($placeReportReadMode === 'scout-report') {
+        foreach (
+            $applicableFields
+            as $fieldKey => $field
+        ) {
+            if (
+                !in_array(
+                    (string) $fieldKey,
+                    $campsiteSwitchableFields,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $switchableApplicableCount++;
+
+            if (
+                llama_place_report_answer_state(
+                    $placeReportData,
+                    (string) $fieldKey
+                ) !== 'unanswered'
+            ) {
+                $switchableAnsweredCount++;
+            }
+        }
+    }
+
+    $fixedMissingCount =
+        max(
+            0,
+            $missingApplicableCount
+            - (
+                $switchableApplicableCount
+                - $switchableAnsweredCount
+            )
+        );
+
     $sectionHasReportedData =
         count($reportedFields) > 0;
 ?>
@@ -680,7 +721,22 @@ foreach (
         );
     ?>
 
-    <section class="scout-report-section">
+    <section
+        class="scout-report-section"
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $switchableApplicableCount > 0
+        ): ?>
+            data-report-target-section="1"
+            data-report-section-label="<?= $e(
+                (string) $section['label']
+            ) ?>"
+            data-report-applicable-count="<?= count(
+                $applicableFields
+            ) ?>"
+            data-report-fixed-missing="<?= $fixedMissingCount ?>"
+        <?php endif; ?>
+    >
         <h3>
             <?= llama_icon($sectionIcon) ?>
 
@@ -920,6 +976,35 @@ foreach (
                 );
                 ?>
             <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $switchableApplicableCount > 0
+        ): ?>
+            <div
+                class="scout-report-contribution-prompt is-partial"
+                data-target-report-prompt
+                hidden
+            >
+                <div class="scout-report-contribution-copy">
+                    <strong>
+                        Know something we are missing?
+                    </strong>
+
+                    <p></p>
+                </div>
+
+                <?php if ($placeReportUpdateUrl !== ''): ?>
+                    <a
+                        href="<?= $e($placeReportUpdateUrl) ?>"
+                        class="scout-report-contribution-action"
+                    >
+                        <?= llama_icon('edit') ?>
+                        Update this Place
+                    </a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
     </section>
 <?php endforeach; ?>
