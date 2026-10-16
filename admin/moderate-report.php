@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-reports.php';
+require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 
 function admin_report_problem_icon_name(string $problemType): string
 {
@@ -152,6 +153,92 @@ if (
     }
 }
 
+$targetScope =
+    trim(
+        (string) (
+            $item['target_scope']
+            ?? 'place'
+        )
+    );
+
+$targetSource =
+    trim(
+        (string) (
+            $item['target_source']
+            ?? 'place'
+        )
+    );
+
+$targetId =
+    (int) (
+        $item['target_id']
+        ?? $item['place_id']
+    );
+
+if ($targetId < 1) {
+    $targetId =
+        (int) $item['place_id'];
+}
+
+$reportTargetLabel =
+    'Entire Place';
+
+try {
+    $reportTarget =
+        llama_report_verified_target(
+            $db,
+            (int) $item['place_id'],
+            $targetScope,
+            $targetSource,
+            $targetId
+        );
+
+    $resolvedTargetLabel =
+        trim(
+            (string) (
+                $reportTarget['label']
+                ?? ''
+            )
+        );
+
+    if ($targetScope === 'area') {
+        $reportTargetLabel =
+            'Area: '
+            . (
+                $resolvedTargetLabel !== ''
+                    ? $resolvedTargetLabel
+                    : 'Area #' . $targetId
+            );
+    } elseif ($targetScope === 'site') {
+        $reportTargetLabel =
+            'Site: '
+            . (
+                $resolvedTargetLabel !== ''
+                    ? $resolvedTargetLabel
+                    : 'Site #' . $targetId
+            );
+    }
+} catch (Throwable $exception) {
+    if ($targetScope === 'area') {
+        $reportTargetLabel =
+            'Area #' . $targetId;
+    } elseif ($targetScope === 'site') {
+        $reportTargetLabel =
+            'Site #' . $targetId;
+    }
+}
+
+$reportTargetEditUrl =
+    '/place.php?id='
+    . (int) $item['place_id']
+    . '&report_scope='
+    . rawurlencode($targetScope)
+    . '&report_source='
+    . rawurlencode($targetSource)
+    . '&report_target='
+    . $targetId
+    . '#place-report';
+
 $meta =
     admin_report_problem_meta(
         (string) $item['problem_type']
@@ -284,6 +371,8 @@ require __DIR__ . '/_header.php';
     <?= moderation_e(
         $meta['label']
     ) ?>
+    &middot;
+    <?= moderation_e($reportTargetLabel) ?>
     &middot; reported by
     <?= moderation_e(
         $item['display_name']
@@ -311,9 +400,7 @@ require __DIR__ . '/_header.php';
 
 <a
     class="admin-button"
-    href="/place.php?id=<?= (int) $item['place_id'] ?>#<?= moderation_e(
-        $meta['place_anchor']
-    ) ?>"
+    href="<?= moderation_e($reportTargetEditUrl) ?>"
 >
     <?= moderation_e(
         $meta['place_action']
@@ -509,11 +596,9 @@ require __DIR__ . '/_header.php';
 
     <a
         class="admin-button is-muted"
-        href="/place.php?id=<?= (int) $item['place_id'] ?>#<?= moderation_e(
-            $meta['place_anchor']
-        ) ?>"
+        href="<?= moderation_e($reportTargetEditUrl) ?>"
     >
-        Edit this section
+        Edit affected target
     </a>
 </header>
 
@@ -906,9 +991,7 @@ $openMeta =
 <div class="admin-report-operation-links">
 
 <a
-    href="/place.php?id=<?= (int) $item['place_id'] ?>#<?= moderation_e(
-        $meta['place_anchor']
-    ) ?>"
+    href="<?= moderation_e($reportTargetEditUrl) ?>"
 >
     <i
         aria-hidden="true"
@@ -919,7 +1002,9 @@ $openMeta =
                 $meta['place_action']
             ) ?>
         </strong>
-        <small>Jump to the affected Place section.</small>
+        <small>
+            Open the exact Place, Area, or Site named by this report.
+        </small>
     </span>
 </a>
 
