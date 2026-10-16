@@ -38,6 +38,156 @@
             '.admin-place-report-savebar'
         );
 
+    const reportShell =
+        form.closest(
+            '.admin-place-report-shell'
+        );
+
+    const reportHeader =
+        reportShell?.querySelector(
+            '.admin-place-report-header'
+        );
+
+    let showInapplicable =
+        false;
+
+    let applicabilityToggle =
+        null;
+
+    let applicabilityNotice =
+        null;
+
+    const syncModeratorApplicability =
+        () => {
+            const hiddenFields =
+                Array.from(
+                    form.querySelectorAll(
+                        '.contribution-field.is-applicability-hidden, .contribution-check.is-applicability-hidden'
+                    )
+                );
+
+            if (showInapplicable) {
+                hiddenFields.forEach(
+                    (wrapper) => {
+                        wrapper.hidden =
+                            false;
+
+                        wrapper.dataset.adminApplicabilityOverride =
+                            '1';
+                    }
+                );
+            } else {
+                form
+                    .querySelectorAll(
+                        '[data-admin-applicability-override="1"]'
+                    )
+                    .forEach(
+                        (wrapper) => {
+                            wrapper.hidden =
+                                true;
+
+                            delete wrapper.dataset
+                                .adminApplicabilityOverride;
+                        }
+                    );
+            }
+
+            if (applicabilityToggle) {
+                applicabilityToggle.setAttribute(
+                    'aria-pressed',
+                    showInapplicable
+                        ? 'true'
+                        : 'false'
+                );
+
+                applicabilityToggle.textContent =
+                    showInapplicable
+                        ? 'Hide normally inapplicable questions'
+                        : 'Show normally inapplicable questions';
+            }
+
+            if (applicabilityNotice) {
+                applicabilityNotice.hidden =
+                    !showInapplicable;
+            }
+        };
+
+    if (reportHeader) {
+        applicabilityToggle =
+            document.createElement(
+                'button'
+            );
+
+        applicabilityToggle.type =
+            'button';
+
+        applicabilityToggle.className =
+            'admin-button is-muted';
+
+        applicabilityToggle.setAttribute(
+            'aria-pressed',
+            'false'
+        );
+
+        applicabilityToggle.textContent =
+            'Show normally inapplicable questions';
+
+        applicabilityNotice =
+            document.createElement(
+                'span'
+            );
+
+        applicabilityNotice.className =
+            'admin-place-muted';
+
+        applicabilityNotice.hidden =
+            true;
+
+        applicabilityNotice.textContent =
+            'Admin override is active. Normally inapplicable questions are visible and can be edited, but they still do not count toward completion.';
+
+        applicabilityToggle.addEventListener(
+            'click',
+            () => {
+                showInapplicable =
+                    !showInapplicable;
+
+                syncModeratorApplicability();
+            }
+        );
+
+        reportHeader.append(
+            applicabilityToggle,
+            applicabilityNotice
+        );
+
+        form.addEventListener(
+            'input',
+            () => {
+                if (!showInapplicable) {
+                    return;
+                }
+
+                queueMicrotask(
+                    syncModeratorApplicability
+                );
+            }
+        );
+
+        form.addEventListener(
+            'change',
+            () => {
+                if (!showInapplicable) {
+                    return;
+                }
+
+                queueMicrotask(
+                    syncModeratorApplicability
+                );
+            }
+        );
+    }
+
     let status =
         form.querySelector(
             '[data-place-report-recovery-status]'
