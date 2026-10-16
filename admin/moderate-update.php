@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/mail.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
+require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
 
 
 $adminUser =
@@ -259,34 +260,51 @@ if (
                 )
                 : [];
 
-        if (isset($actionProposed['__scoped_report__'])) {
-            // Scoped questions are not eligible for Place-level point estimates.
-            $points = 0;
+        if (
+            is_array(
+                $actionProposed[
+                    '__scoped_report__'
+                ]
+                ?? null
+            )
+        ) {
+            $actionPointEstimate =
+                llama_scoped_update_point_estimate(
+                    $db,
+                    (int) $item['place_id'],
+                    (string) (
+                        $item['place_slug']
+                        ?? ''
+                    ),
+                    $actionProposed[
+                        '__scoped_report__'
+                    ]
+                );
         } else {
-        $actionFinalInput =
-            llama_place_update_shared_form_values(
-                $actionCurrentValues,
-                $actionCurrentUnknownFields,
-                $actionProposed,
-                $actionProposedUnknownFields
-            );
+            $actionFinalInput =
+                llama_place_update_shared_form_values(
+                    $actionCurrentValues,
+                    $actionCurrentUnknownFields,
+                    $actionProposed,
+                    $actionProposedUnknownFields
+                );
 
-        $actionPointEstimate =
-            llama_points_estimate_place_update(
-                $db,
-                $actionFinalInput,
-                $actionProposed
-            );
+            $actionPointEstimate =
+                llama_points_estimate_place_update(
+                    $db,
+                    $actionFinalInput,
+                    $actionProposed
+                );
+        }
 
 
         $points =
             (int) (
-                $actionPointEstimate['estimated_points']
+                $actionPointEstimate[
+                    'estimated_points'
+                ]
                 ?? 0
             );
-
-
-        }
 
         $db->beginTransaction();
 
@@ -666,21 +684,43 @@ $proposedUnknownFields =
         )
         : [];
 
-$finalPointInput =
-    llama_place_update_shared_form_values(
-        $currentValues,
-        $currentUnknownFields,
-        $proposed,
-        $proposedUnknownFields
-    );
+if (
+    is_array(
+        $proposed[
+            '__scoped_report__'
+        ]
+        ?? null
+    )
+) {
+    $updatePointEstimate =
+        llama_scoped_update_point_estimate(
+            $db,
+            (int) $item['place_id'],
+            (string) (
+                $item['place_slug']
+                ?? ''
+            ),
+            $proposed[
+                '__scoped_report__'
+            ]
+        );
+} else {
+    $finalPointInput =
+        llama_place_update_shared_form_values(
+            $currentValues,
+            $currentUnknownFields,
+            $proposed,
+            $proposedUnknownFields
+        );
 
-$updatePointEstimate =
-    llama_points_estimate_place_update(
-        $db,
-        $finalPointInput,
-        $proposed,
-        count($photos)
-    );
+    $updatePointEstimate =
+        llama_points_estimate_place_update(
+            $db,
+            $finalPointInput,
+            $proposed,
+            count($photos)
+        );
+}
 
 
 $definitions =
