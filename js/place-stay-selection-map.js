@@ -552,7 +552,7 @@
             label.textContent =
                 kind === 'parking'
                     ? 'Selected parking area: '
-                    : 'Viewing campsite: ';
+                    : 'Viewing Site: ';
 
             const strong =
                 document.createElement(
@@ -644,7 +644,7 @@
                     );
 
                 caution.textContent =
-                    'Individual campsite location not mapped. Map shows the campground, not this site.';
+                    'Individual Site location not mapped. Map shows the Place, not this Site.';
 
                 wrapper.append(
                     caution
@@ -897,6 +897,34 @@
             }
         };
 
+    const readMeta =
+        (value) => {
+            try {
+                const parsed =
+                    JSON.parse(
+                        String(
+                            value
+                            || '[]'
+                        )
+                    );
+
+                return Array.isArray(parsed)
+                    ? parsed
+                        .map(
+                            (item) =>
+                                String(
+                                    item
+                                    ?? ''
+                                ).trim()
+                        )
+                        .filter(Boolean)
+                    : [];
+            } catch (_) {
+                return [];
+            }
+        };
+
+
     const choose =
         (
             row,
@@ -934,11 +962,11 @@
                     ? row.querySelector(
                         '.place-campsite-row-name'
                     )?.textContent.trim()
-                        || 'Campsite'
+                        || 'Site'
                     : isMapSite
                         ? row.dataset
                             .stayMapSiteName
-                            || 'Campsite'
+                            || 'Site'
                         : row.dataset
                             .stayParkingName
                             || 'Parking area';
@@ -946,18 +974,22 @@
             const lines =
                 isCanonical
                     ? []
-                    : [
-                        row.dataset
-                            .stayMapSiteSummary
-                        || row.dataset
-                            .stayParkingCost
-                        || '',
-                        row.dataset
-                            .stayMapSiteArea
-                        || row.dataset
-                            .stayParkingStatus
-                        || '',
-                    ].filter(
+                    : (
+                        isMapSite
+                            ? [
+                                ...readMeta(
+                                    row.dataset
+                                        .stayMapSiteMeta
+                                ),
+                                row.dataset
+                                    .stayMapSiteArea
+                                || '',
+                            ]
+                            : readMeta(
+                                row.dataset
+                                    .stayParkingMeta
+                            )
+                    ).filter(
                         Boolean
                     );
 
