@@ -30,11 +30,12 @@ function llama_place_report_layout_groups(): array
             'operating_closures' => 'Operating Hours & Closures',
         ],
         'site' => [
-            'selection_type' => 'Site Selection & Type',
+            'selection_type' => 'Site Identification & Capacity',
             'site_dimensions' => 'Site Dimensions',
             'parking_maneuvering' => 'Parking & Maneuvering',
+            'camping_equipment' => 'Utilities & Hookups',
+            'site_features' => 'Site Features & Equipment',
             'published_fit' => 'Published Fit Limits',
-            'camping_equipment' => 'Utilities & Equipment',
             'sensory_environment' => 'Sensory & Environment',
             'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
@@ -127,7 +128,6 @@ function llama_place_report_layout_assignments(): array
             'amenity_trash',
             'amenity_recycling',
             'amenity_showers',
-            'amenity_accessible_showers',
             'amenity_laundry',
             'amenity_wifi',
             'amenity_dump_station',
@@ -142,14 +142,15 @@ function llama_place_report_layout_assignments(): array
             'amenity_trailhead_parking',
             'amenity_camp_store',
             'amenity_campground_host',
-            'shared_accessible_facilities',
-            'shared_accessible_facility_types',
-            'accessible_toilet',
             'facility_map_url',
         ],
 
         'place:place_accessibility' => [
             'place_accessible',
+            'shared_accessible_facilities',
+            'shared_accessible_facility_types',
+            'accessible_toilet',
+            'amenity_accessible_showers',
             'accessibility_notes',
         ],
 
@@ -242,6 +243,7 @@ function llama_place_report_layout_assignments(): array
             'site_number',
             'max_people',
             'vehicle_capacity',
+            'capacity_size_rating',
         ],
 
         /*
@@ -251,7 +253,6 @@ function llama_place_report_layout_assignments(): array
         'site:site_dimensions' => [
             'site_length_feet',
             'site_width_feet',
-            'capacity_size_rating',
             'parking_length_feet',
             'overhead_clearance_feet',
         ],
@@ -269,8 +270,6 @@ function llama_place_report_layout_assignments(): array
             'pull_through',
             'back_in',
             'turnaround_space',
-            'site_access_difficulty',
-            'hike_in_distance_feet',
         ],
 
         /*
@@ -283,14 +282,17 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'site:camping_equipment' => [
-            'tent_pad',
-            'tent_pad_length_feet',
-            'tent_pad_width_feet',
             'site_hookups_available',
             'hookup_electric',
             'hookup_electric_service',
             'hookup_water',
             'hookup_sewer',
+        ],
+
+        'site:site_features' => [
+            'tent_pad',
+            'tent_pad_length_feet',
+            'tent_pad_width_feet',
             'amenity_picnic_table',
             'amenity_fire_ring',
             'amenity_grill',
@@ -332,11 +334,13 @@ function llama_place_report_layout_assignments(): array
 
         'site:site_accessibility' => [
             'site_accessible',
+            'site_access_difficulty',
+            'hike_in_distance_feet',
+            'walking_distance_from_vehicle',
             'wheelchair_friendly',
             'mobility_device_friendly',
             'flat_walking_surface',
             'step_free_access',
-            'walking_distance_from_vehicle',
             'accessible_picnic_table',
         ],
 
