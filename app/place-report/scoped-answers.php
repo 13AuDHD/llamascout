@@ -1203,6 +1203,6 @@ function llama_scoped_report_merge_site_identity(
             $migrated,
 
         'deduped' =>
-            $eduped,
+            $deduped,
     ];
 }
