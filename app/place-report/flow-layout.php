@@ -30,7 +30,7 @@ function llama_place_report_layout_groups(): array
             'operating_closures' => 'Operating Hours & Closures',
         ],
         'site' => [
-            'selection_type' => 'Site Identification & Capacity',
+            'selection_type' => 'Site & Capacity',
             'site_dimensions' => 'Site Dimensions',
             'parking_maneuvering' => 'Parking & Maneuvering',
             'camping_equipment' => 'Utilities & Hookups',
@@ -241,9 +241,9 @@ function llama_place_report_layout_assignments(): array
 
         'site:selection_type' => [
             'site_number',
+            'capacity_size_rating',
             'max_people',
             'vehicle_capacity',
-            'capacity_size_rating',
         ],
 
         /*
@@ -434,6 +434,11 @@ function llama_place_report_apply_layout_metadata(
                 $key,
                 $lookup
             );
+
+        if ($key === 'capacity_size_rating') {
+            $field['label'] =
+                'Site size / capacity type';
+        }
     }
 
     unset($field);
