@@ -781,6 +781,10 @@ foreach (
     as $path => $newValue
 ) {
 
+    if ($path === '__scoped_report__') {
+        continue;
+    }
+
     $definition =
         $definitions[$path]
         ?? [
@@ -1012,12 +1016,44 @@ $formatTime =
 
         <span class="admin-update-change-count">
 
-            <?= count(
-                $proposed
-            ) ?>
+            <?= isset(
+                $proposed['__scoped_report__']['answers']
+            )
+                ? count(
+                    (array) $proposed[
+                        '__scoped_report__'
+                    ]['answers']
+                )
+                : count(
+                    array_filter(
+                        array_keys($proposed),
+                        static fn (
+                            string $key
+                        ): bool =>
+                            $key !==
+                            '__scoped_report__'
+                    )
+                ) ?>
 
-            field<?= count(
-                $proposed
+            field<?= (
+                isset(
+                    $proposed['__scoped_report__']['answers']
+                )
+                    ? count(
+                        (array) $proposed[
+                            '__scoped_report__'
+                        ]['answers']
+                    )
+                    : count(
+                        array_filter(
+                            array_keys($proposed),
+                            static fn (
+                                string $key
+                            ): bool =>
+                                $key !==
+                                '__scoped_report__'
+                        )
+                    )
             ) === 1
                 ? ''
                 : 's' ?>
@@ -1027,7 +1063,9 @@ $formatTime =
     </header>
 
 
-    <?php if (!$proposed): ?>
+    <?php if (
+        !$proposed
+    ): ?>
 
         <div class="admin-update-empty">
             No field changes are currently proposed.
@@ -1558,7 +1596,7 @@ $formatTime =
                                                     $beforeText
                                                 ) ?>
 
-                                                ÃÂ¢ÃÂÃÂ
+                                                &rarr;
 
                                                 <?= $e(
                                                     $afterText
@@ -1599,7 +1637,7 @@ $formatTime =
                                     ?? 0
                                 ) ?>
 
-                                ÃÂ¢ÃÂÃÂ
+                                &rarr;
 
                                 <?= (int) (
                                     $event['photo_count_after']
@@ -1755,26 +1793,367 @@ require __DIR__
 
 
 <?php
-    $scopedReview = is_array($proposed['__scoped_report__'] ?? null)
-        ? $proposed['__scoped_report__'] : null;
+$scopedReview =
+    is_array(
+        $proposed[
+            '__scoped_report__'
+        ]
+        ?? null
+    )
+        ? $proposed[
+            '__scoped_report__'
+        ]
+        : null;
+
+$scopedOriginal =
+    is_array(
+        $original[
+            '__scoped_report__'
+        ]
+        ?? null
+    )
+        ? $original[
+            '__scoped_report__'
+        ]
+        : [];
+
+$scopedFields =
+    llama_place_report_fields();
+
+$scopedScope =
+    (string) (
+        $scopedReview['scope']
+        ?? ''
+    );
+
+$scopedAnswers =
+    (array) (
+        $scopedReview['answers']
+        ?? []
+    );
+
+if (
+    $scopedReview
+    && !$scopedAnswers
+    && isset(
+        $scopedReview[
+            'field_key'
+        ]
+    )
+) {
+    $scopedAnswers = [
+        (string) $scopedReview[
+            'field_key'
+        ] =>
+            $scopedReview[
+                'value'
+            ]
+            ?? null,
+    ];
+}
+
+$scopedOriginalAnswers =
+    (array) (
+        $scopedOriginal[
+            'answers'
+        ]
+        ?? []
+    );
+
+$scopedTargetId =
+    (int) (
+        $scopedReview['id']
+        ?? 0
+    );
+
+$scopedSource =
+    (string) (
+        $scopedReview['source']
+        ?? ''
+    );
+
+$scopedInheritedDisplay =
+    [];
+
+if (
+    $scopedReview
+    && $scopedScope !== ''
+    && $scopedTargetId > 0
+) {
+    try {
+        $publishedPlace =
+            place_member_by_slug(
+                (string) (
+                    $item[
+                        'place_slug'
+                    ]
+                    ?? ''
+                )
+            );
+
+        if ($publishedPlace) {
+            $placeReportValues =
+                llama_place_report_data_from_published_place(
+                    $publishedPlace,
+                    llama_place_report_published_answer_state(
+                        $db,
+                        (int) $item['place_id']
+                    )
+                );
+
+            $resolved =
+                llama_scoped_report_effective_answers(
+                    $db,
+                    (int) $item['place_id'],
+                    $placeReportValues,
+                    $scopedScope,
+                    $scopedTargetId,
+                    $scopedSource
+                );
+
+            $scopedInheritedDisplay =
+                llama_scoped_report_display_values(
+                    (array) (
+                        $resolved[
+                            'inherited'
+                        ]
+                        ?? []
+                    )
+                );
+        }
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'admin.moderate_update.scoped_display',
+            [
+                'update_id' =>
+                    $updateId,
+                'place_id' =>
+                    (int) $item['place_id'],
+                'scope' =>
+                    $scopedScope,
+                'source' =>
+                    $scopedSource,
+                'target_id' =>
+                    $scopedTargetId,
+            ]
+        );
+    }
+}
+
+$displayScopedValue =
+    static function (
+        string $fieldKey,
+        mixed $value
+    ) use (
+        $scopedFields
+    ): string {
+        $field =
+            $scopedFields[
+                $fieldKey
+            ]
+            ?? null;
+
+        if (!is_array($field)) {
+            if (is_scalar($value)) {
+                return (string) $value;
+            }
+
+            return
+                json_encode(
+                    $value,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                )
+                ?: 'Not provided';
+        }
+
+        $data = [];
+        $storage =
+            (string) (
+                $field['storage']
+                ?? ''
+            );
+
+        if ($storage === '') {
+            if (is_scalar($value)) {
+                return (string) $value;
+            }
+
+            return
+                json_encode(
+                    $value,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                )
+                ?: 'Not provided';
+        }
+
+        llama_place_report_set_path(
+            $data,
+            $storage,
+            $value
+        );
+
+        return
+            llama_place_report_display_value(
+                $data,
+                $fieldKey
+            )
+            ?? 'Not provided';
+    };
 ?>
+
 <?php if ($scopedReview): ?>
     <section class="contribution-section">
-        <h3>Area / Site update</h3>
-        <p><strong>Target:</strong> <?= htmlspecialchars((string)($scopedReview['target_label']??''), ENT_QUOTES, 'UTF-8') ?></p>
-        <?php $scopedAnswers = (array)($scopedReview['answers'] ?? []);
-              if (!$scopedAnswers && isset($scopedReview['field_key'])) {
-                  $scopedAnswers = [(string)$scopedReview['field_key'] => $scopedReview['value'] ?? ''];
-              } ?>
-        <ul>
-        <?php foreach ($scopedAnswers as $question => $answer): ?>
-            <li><strong><?= htmlspecialchars((string)$question, ENT_QUOTES, 'UTF-8') ?>:</strong>
-                <?= htmlspecialchars(is_scalar($answer)?(string)$answer:json_encode($answer), ENT_QUOTES, 'UTF-8') ?></li>
-        <?php endforeach; ?>
-        </ul>
-        <p>Approved answers are saved only to the selected Area or Site. Scoped point calculations are not active yet.</p>
+
+        <h3>
+            <?= moderation_e(
+                ucfirst(
+                    $scopedScope
+                )
+            ) ?>
+            update
+        </h3>
+
+        <p>
+            <strong>Target:</strong>
+            <?= moderation_e(
+                (string) (
+                    $scopedReview[
+                        'target_label'
+                    ]
+                    ?? ''
+                )
+            ) ?>
+        </p>
+
+        <div class="admin-moderation-change-list">
+
+            <?php foreach (
+                $scopedAnswers
+                as $fieldKey => $answer
+            ): ?>
+
+                <?php
+
+                $fieldKey =
+                    (string) $fieldKey;
+
+                $field =
+                    $scopedFields[
+                        $fieldKey
+                    ]
+                    ?? [];
+
+                $label =
+                    trim(
+                        (string) (
+                            $field['label']
+                            ?? ''
+                        )
+                    );
+
+                if ($label === '') {
+                    $label =
+                        ucwords(
+                            str_replace(
+                                '_',
+                                ' ',
+                                $fieldKey
+                            )
+                        );
+                }
+
+                $originalState =
+                    $scopedOriginalAnswers[
+                        $fieldKey
+                    ]
+                    ?? [];
+
+                $hadOverride =
+                    !empty(
+                        $originalState[
+                            'recorded'
+                        ]
+                    );
+
+                $beforeValue =
+                    $hadOverride
+                        ? $displayScopedValue(
+                            $fieldKey,
+                            $originalState[
+                                'value'
+                            ]
+                            ?? null
+                        )
+                        : (
+                            $scopedInheritedDisplay[
+                                $fieldKey
+                            ]
+                            ?? 'Not provided'
+                        );
+
+                $afterValue =
+                    $displayScopedValue(
+                        $fieldKey,
+                        $answer
+                    );
+
+                ?>
+
+                <article>
+
+                    <h4>
+                        <?= moderation_e(
+                            $label
+                        ) ?>
+                    </h4>
+
+                    <div>
+                        <span>
+                            <?= $hadOverride
+                                ? 'Current target answer'
+                                : 'Inherited value' ?>
+                        </span>
+
+                        <strong>
+                            <?= moderation_e(
+                                $beforeValue
+                            ) ?>
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>
+                            Proposed target answer
+                        </span>
+
+                        <strong>
+                            <?= moderation_e(
+                                $afterValue
+                            ) ?>
+                        </strong>
+                    </div>
+
+                </article>
+
+            <?php endforeach; ?>
+
+        </div>
+
+        <p>
+            Approval changes only this
+            <?= moderation_e(
+                $scopedScope
+            ) ?>
+            target. Inherited Place or Area answers remain unchanged.
+        </p>
+
     </section>
 <?php endif; ?>
+
+
 <section class="admin-update-decision">
 
     <h2>
