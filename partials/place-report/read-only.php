@@ -263,6 +263,7 @@ $renderValue =
             class="<?= $e($class) ?>"
             <?php if ($isCampsiteSwitchable): ?>
                 data-campsite-report-field="<?= $e($key) ?>"
+                data-campsite-report-type="<?= $e($type) ?>"
             <?php endif; ?>
             <?= $hideUntilCampsite ? 'hidden' : '' ?>
         >
