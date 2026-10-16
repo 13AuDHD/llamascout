@@ -295,17 +295,6 @@ function llama_place_map_api_stats(
     ];
 }
 
-
-function llama_place_map_api_campsites(
-    PDO $db,
-    int $placeId
-): array {
-    return llama_place_campsite_map_options(
-        $db,
-        $placeId
-    );
-}
-
 $input = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -469,6 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             409
         );
     }
+
     llama_place_map_api_json([
         'ok' => true,
 
@@ -659,30 +649,6 @@ try {
             ? $input['site_details']
             : [];
 
-    $canonicalCampsiteId =
-        $featureType === 'camping_site'
-            ? max(
-                0,
-                (int) (
-                    $siteDetails[
-                        'canonical_campsite_id'
-                    ]
-                    ?? 0
-                )
-            )
-            : 0;
-
-    /*
-     * canonical_campsite_id belongs to the canonical campsite record, not the
-     * place_map_camping_sites table. Remove it before passing site details to
-     * the existing map-feature service.
-     */
-    unset(
-        $siteDetails[
-            'canonical_campsite_id'
-        ]
-    );
-
     $ownsTransaction =
         !$db->inTransaction();
 
@@ -729,38 +695,23 @@ try {
 
         if ($featureType === 'camping_site') {
             /*
-             * Selecting an existing canonical campsite still wins. When no
-             * campsite was selected, create/reuse the canonical Site from the
-             * mapped Site code so map-only pseudo-Sites do not accumulate.
+             * Every mapped Site has one real Site identity. The identity
+             * service reuses the existing Site when possible and creates one
+             * only when no valid Site record exists.
              */
-            if ($canonicalCampsiteId < 1) {
-                $canonicalCampsiteId =
-                    llama_place_site_identity_ensure(
-                        $db,
-                        $placeId,
-                        $featureId,
-                        $featureLabel,
-                        $siteDetails
-                    );
-            } else {
-                /*
-                 * Compatibility path for an older client that explicitly
-                 * supplies an existing Site. Normal production UI no longer
-                 * exposes Site-to-geometry linking.
-                 */
-                llama_place_campsite_map_association_save(
-                    $db,
-                    $placeId,
-                    $featureId,
-                    $canonicalCampsiteId
-                );
-            }
+            llama_place_site_identity_ensure(
+                $db,
+                $placeId,
+                $featureId,
+                $featureLabel,
+                $siteDetails
+            );
 
         } else {
             /*
              * If an existing mapped Site is deliberately converted into an
-             * Area/boundary, it can no longer remain attached to a canonical
-             * campsite. The canonical Site itself is preserved.
+             * Area/boundary, it can no longer remain attached to a Site
+             * record. The Site record itself is preserved.
              */
             llama_place_campsite_map_association_clear(
                 $db,
@@ -788,6 +739,7 @@ try {
 
         'feature_id' =>
             $featureId,
+
         'features' =>
             llama_place_map_api_features(
                 $db,
