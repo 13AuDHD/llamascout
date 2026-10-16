@@ -843,8 +843,49 @@
                             .toLowerCase()
                         === 'unknown';
 
-                    strong.textContent =
-                        value;
+                    const fieldType =
+                        clean(
+                            card.dataset
+                                .campsiteReportType
+                        );
+
+                    if (
+                        fieldType === 'url'
+                        && /^https?:\/\//i.test(
+                            value
+                        )
+                    ) {
+                        let link =
+                            strong.querySelector(
+                                'a'
+                            );
+
+                        if (!link) {
+                            link =
+                                document.createElement(
+                                    'a'
+                                );
+
+                            link.target =
+                                '_blank';
+
+                            link.rel =
+                                'noopener noreferrer';
+
+                            strong.replaceChildren(
+                                link
+                            );
+                        }
+
+                        link.href =
+                            value;
+
+                        link.textContent =
+                            value;
+                    } else {
+                        strong.textContent =
+                            value;
+                    }
 
                     card.hidden =
                         false;
