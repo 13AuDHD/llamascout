@@ -273,12 +273,18 @@ function admin_reports_queue(
                 FROM place_reports related
                 WHERE related.place_id = pr.place_id
                   AND related.problem_type = pr.problem_type
+                  AND related.target_scope = pr.target_scope
+                  AND related.target_source = pr.target_source
+                  AND related.target_id = pr.target_id
             ) AS matching_report_count,
             (
                 SELECT COUNT(*)
                 FROM place_reports related_open
                 WHERE related_open.place_id = pr.place_id
                   AND related_open.problem_type = pr.problem_type
+                  AND related_open.target_scope = pr.target_scope
+                  AND related_open.target_source = pr.target_source
+                  AND related_open.target_id = pr.target_id
                   AND related_open.status IN (
                     "open",
                     "investigating"
@@ -451,7 +457,10 @@ function admin_report_related(
     PDO $db,
     int $reportId,
     int $placeId,
-    string $problemType
+    string $problemType,
+    string $targetScope,
+    string $targetSource,
+    int $targetId
 ): array {
     $stmt = $db->prepare(
         'SELECT
@@ -459,6 +468,9 @@ function admin_report_related(
             pr.status,
             pr.details,
             pr.created_at,
+            pr.target_scope,
+            pr.target_source,
+            pr.target_id,
             COALESCE(
                 NULLIF(u.display_name, ""),
                 NULLIF(u.username, ""),
@@ -469,6 +481,9 @@ function admin_report_related(
             ON u.id = pr.user_id
          WHERE pr.place_id = ?
            AND pr.problem_type = ?
+           AND pr.target_scope = ?
+           AND pr.target_source = ?
+           AND pr.target_id = ?
            AND pr.id <> ?
          ORDER BY
             CASE
@@ -485,6 +500,9 @@ function admin_report_related(
     $stmt->execute([
         $placeId,
         $problemType,
+        $targetScope,
+        $targetSource,
+        $targetId,
         $reportId,
     ]);
 
