@@ -24,9 +24,16 @@
     }
     if (!controls.size) return;
 
+    /*
+     * `original` stores only explicit Area overrides. Effective values are
+     * composed from the current Place values plus those overrides when an Area
+     * is selected. This keeps inheritance visible without silently turning
+     * inherited Place answers into Area overrides on save.
+     */
     const original = new Map(areas.map(area => [
         String(area.id), structuredClone(area.form_values || {}),
     ]));
+
     const allowed = new Set(original.keys());
     let answersField = form.querySelector('[name="admin_area_answers_json"]');
     if (!answersField) {
@@ -56,6 +63,7 @@
     };
 
     let applying = false;
+
     const write = values => {
         applying = true;
         try {
@@ -80,105 +88,370 @@
         } finally {
             applying = false;
         }
-        form.dispatchEvent(new Event('change', { bubbles: true }));
+
+        form.dispatchEvent(
+            new Event(
+                'change',
+                {
+                    bubbles: true
+                }
+            )
+        );
     };
 
-    const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-    const changes = (before, after) => {
-        const result = {};
-        for (const key of controls.keys()) {
-            const value = after[key];
-            const existed = Object.prototype.hasOwnProperty.call(before, key);
-            // Empty without a prior Area override means unanswered/inherited.
-            if (!existed && (value === '' || value === null ||
-                (Array.isArray(value) && value.length === 0))) continue;
-            if (!existed && value === '0' && controls.get(key)?.[0]?.type === 'checkbox') continue;
-            if (existed && equal(before[key], value)) continue;
-            result[key] = value;
-        }
-        return result;
-    };
+    const equal =
+        (a, b) =>
+            JSON.stringify(a)
+            === JSON.stringify(b);
 
-    let placeValues = read();
+    let placeValues =
+        read();
+
+    const effectiveValues =
+        (areaId) => ({
+            ...placeValues,
+            ...(
+                original.get(areaId)
+                || {}
+            ),
+        });
+
+    /*
+     * Calculate only the explicit Area changes that need persistence.
+     *
+     * If the displayed value still equals the inherited Place value, no Area
+     * override is created. If an existing Area override is changed back to the
+     * Place value, submit an empty value so the override is cleared and normal
+     * inheritance resumes.
+     */
+    const changes =
+        (
+            beforeOverrides,
+            after
+        ) => {
+            const result = {};
+
+            for (
+                const key
+                of controls.keys()
+            ) {
+                const inherited =
+                    Object.prototype.hasOwnProperty.call(
+                        placeValues,
+                        key
+                    )
+                        ? placeValues[key]
+                        : '';
+
+                const hadOverride =
+                    Object.prototype.hasOwnProperty.call(
+                        beforeOverrides,
+                        key
+                    );
+
+                const beforeEffective =
+                    hadOverride
+                        ? beforeOverrides[key]
+                        : inherited;
+
+                const value =
+                    after[key];
+
+                if (
+                    equal(
+                        beforeEffective,
+                        value
+                    )
+                ) {
+                    continue;
+                }
+
+                if (
+                    hadOverride
+                    && equal(
+                        inherited,
+                        value
+                    )
+                ) {
+                    result[key] =
+                        '';
+                    continue;
+                }
+
+                if (
+                    !hadOverride
+                    && equal(
+                        inherited,
+                        value
+                    )
+                ) {
+                    continue;
+                }
+
+                result[key] =
+                    value;
+            }
+
+            return result;
+        };
+
     let selected = '';
     let dirty = false;
     let saving = false;
     let pending = null;
     let pendingChanges = null;
 
-    const finish = success => {
-        if (!saving) return;
-        saving = false;
-        if (selected && pending) {
-            if (success) {
-                const newBaseline = { ...(original.get(selected) || {}) };
-                for (const [key, value] of Object.entries(pendingChanges || {})) {
-                    if (value === '' || value === null) delete newBaseline[key];
-                    else newBaseline[key] = value;
+    const finish =
+        (success) => {
+            if (!saving) return;
+
+            saving = false;
+
+            if (
+                selected
+                && pending
+            ) {
+                if (success) {
+                    const newBaseline = {
+                        ...(
+                            original.get(
+                                selected
+                            )
+                            || {}
+                        )
+                    };
+
+                    for (
+                        const [key, value]
+                        of Object.entries(
+                            pendingChanges
+                            || {}
+                        )
+                    ) {
+                        if (
+                            value === ''
+                            || value === null
+                            || (
+                                Array.isArray(value)
+                                && value.length === 0
+                            )
+                        ) {
+                            delete newBaseline[key];
+                        } else {
+                            newBaseline[key] =
+                                value;
+                        }
+                    }
+
+                    original.set(
+                        selected,
+                        newBaseline
+                    );
+
+                    dirty =
+                        false;
                 }
-                original.set(selected, newBaseline);
-                dirty = false;
+
+                write(
+                    success
+                        ? effectiveValues(
+                            selected
+                        )
+                        : pending
+                );
             }
-            write(pending);
-        }
-        pending = null;
-        pendingChanges = null;
-        answersField.value = '';
-        target.value = selected;
-    };
 
-    selector.addEventListener('change', () => {
-        if (saving) {
-            selector.value = selected;
-            return;
-        }
-        const next = selector.value;
-        if ((next && !allowed.has(next)) || next === selected) {
-            selector.value = selected;
-            return;
-        }
-        if (dirty && selected && !window.confirm('Discard unsaved Area answers?')) {
-            selector.value = selected;
-            return;
-        }
-        if (!selected) placeValues = read();
-        selected = next;
-        dirty = false;
-        answersField.value = '';
-        target.value = selected;
-        write(selected ? original.get(selected) || {} : placeValues);
-    });
+            pending = null;
+            pendingChanges = null;
+            answersField.value = '';
+            target.value = selected;
+        };
 
-    for (const group of controls.values()) {
-        for (const control of group) {
-            const markDirty = () => {
-                if (!applying && !saving && selected) dirty = true;
-            };
-            control.addEventListener('input', markDirty);
-            control.addEventListener('change', markDirty);
+    selector.addEventListener(
+        'change',
+        () => {
+            if (saving) {
+                selector.value =
+                    selected;
+                return;
+            }
+
+            const next =
+                selector.value;
+
+            if (
+                (
+                    next
+                    && !allowed.has(next)
+                )
+                || next === selected
+            ) {
+                selector.value =
+                    selected;
+                return;
+            }
+
+            if (
+                dirty
+                && selected
+                && !window.confirm(
+                    'Discard unsaved Area answers?'
+                )
+            ) {
+                selector.value =
+                    selected;
+                return;
+            }
+
+            if (!selected) {
+                placeValues =
+                    read();
+            }
+
+            selected =
+                next;
+
+            dirty =
+                false;
+
+            answersField.value =
+                '';
+
+            target.value =
+                selected;
+
+            write(
+                selected
+                    ? effectiveValues(
+                        selected
+                    )
+                    : placeValues
+            );
+        }
+    );
+
+    for (
+        const group
+        of controls.values()
+    ) {
+        for (
+            const control
+            of group
+        ) {
+            const markDirty =
+                () => {
+                    if (
+                        !applying
+                        && !saving
+                        && selected
+                    ) {
+                        dirty =
+                            true;
+                    }
+                };
+
+            control.addEventListener(
+                'input',
+                markDirty
+            );
+
+            control.addEventListener(
+                'change',
+                markDirty
+            );
         }
     }
 
-    form.addEventListener('llama:admin-place-report-save-starting', () => {
-        answersField.value = '';
-        if (!selected || !allowed.has(selected)) {
-            target.value = '';
-            return;
-        }
-        pending = read();
-        pendingChanges = changes(original.get(selected) || {}, pending);
-        answersField.value = JSON.stringify(pendingChanges);
-        target.value = selected;
-        saving = true;
-        // The canonical Place save must receive Place values, not Area values.
-        write(placeValues);
-    });
+    form.addEventListener(
+        'llama:admin-place-report-save-starting',
+        () => {
+            answersField.value =
+                '';
 
-    window.addEventListener('llama:admin-place-report-saved', () => finish(true));
-    const observer = new MutationObserver(() => {
-        if (!saving) return;
-        const status = form.querySelector('[data-place-report-direct-save-status]');
-        if (status && /Not saved\./i.test(status.textContent || '')) finish(false);
-    });
-    observer.observe(form, { childList: true, subtree: true, characterData: true });
+            if (
+                !selected
+                || !allowed.has(
+                    selected
+                )
+            ) {
+                target.value =
+                    '';
+                return;
+            }
+
+            pending =
+                read();
+
+            pendingChanges =
+                changes(
+                    original.get(
+                        selected
+                    )
+                    || {},
+                    pending
+                );
+
+            answersField.value =
+                JSON.stringify(
+                    pendingChanges
+                );
+
+            target.value =
+                selected;
+
+            saving =
+                true;
+
+            /*
+             * The canonical Place save must receive Place values, not the
+             * Area's effective/inherited display values.
+             */
+            write(
+                placeValues
+            );
+        }
+    );
+
+    window.addEventListener(
+        'llama:admin-place-report-saved',
+        () =>
+            finish(
+                true
+            )
+    );
+
+    const observer =
+        new MutationObserver(
+            () => {
+                if (!saving) {
+                    return;
+                }
+
+                const status =
+                    form.querySelector(
+                        '[data-place-report-direct-save-status]'
+                    );
+
+                if (
+                    status
+                    && /Not saved\./i.test(
+                        status.textContent
+                        || ''
+                    )
+                ) {
+                    finish(
+                        false
+                    );
+                }
+            }
+        );
+
+    observer.observe(
+        form,
+        {
+            childList: true,
+            subtree: true,
+            characterData: true
+        }
+    );
 })();
