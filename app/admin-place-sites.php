@@ -497,36 +497,6 @@ function admin_place_campsite_effective_form_values(
     return admin_place_apply_site_overrides($values, $overrides);
 }
 
-function admin_place_map_site_effective_form_values(
-    PDO $db,
-    int $placeId,
-    int $featureId
-): array {
-    if ($featureId < 1) {
-        return [];
-    }
-
-    try {
-        $overrides = llama_scoped_report_load(
-            $db,
-            $placeId,
-            'site',
-            $featureId,
-            'map_feature'
-        );
-    } catch (PDOException $exception) {
-        $code = (string) ($exception->errorInfo[1] ?? '');
-
-        if ($code === '1146' || $code === '42S02') {
-            return [];
-        }
-
-        throw $exception;
-    }
-
-    return admin_place_apply_site_overrides([], $overrides);
-}
-
 function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
 {
     $catalog = [];
@@ -548,10 +518,21 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
         $targetId = (int) ($target['id'] ?? 0);
         $source = (string) ($target['source'] ?? '');
 
+        /*
+         * Admin Place runs Site identity normalization before this catalog is
+         * built. A Site that is still map_feature-only at this point is an
+         * integrity conflict, not a second editable Site type.
+         */
         if (
             $targetId < 1
-            || !in_array($source, ['campsite_record', 'map_feature'], true)
+            || $source !== 'campsite_record'
         ) {
+            continue;
+        }
+
+        $site = $canonicalSites[$targetId] ?? null;
+
+        if (!is_array($site)) {
             continue;
         }
 
@@ -561,9 +542,14 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
             $label = 'Site #' . $targetId;
         }
 
-        $mapFeatureId = max(0, (int) ($target['map_feature_id'] ?? 0));
-        $sourceProvider = '';
-        $sourceExternalId = '';
+        $mapFeatureId =
+            max(
+                0,
+                (int) (
+                    $target['map_feature_id']
+                    ?? 0
+                )
+            );
 
         $parentAreaId =
             max(
@@ -574,60 +560,67 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
                 )
             );
 
-        $importedValues = [];
-        $overrideValues = [];
+        $importedValues =
+            admin_place_campsite_imported_form_values(
+                $site
+            );
 
-        if ($source === 'campsite_record') {
-            $site = $canonicalSites[$targetId] ?? null;
+        $overrideValues =
+            admin_place_campsite_override_form_values(
+                $db,
+                $placeId,
+                $targetId
+            );
 
-            if (!is_array($site)) {
-                continue;
-            }
-
-            $importedValues =
-                admin_place_campsite_imported_form_values(
-                    $site
-                );
-
-            $overrideValues =
-                admin_place_campsite_override_form_values(
-                    $db,
-                    $placeId,
-                    $targetId
-                );
-
-            $formValues =
-                admin_place_apply_site_overrides(
-                    $importedValues,
-                    $overrideValues
-                );
-
-            $sourceProvider = (string) ($site['source_provider'] ?? '');
-            $sourceExternalId = (string) ($site['source_external_id'] ?? '');
-        } else {
-            $overrideValues =
-                admin_place_map_site_effective_form_values(
-                    $db,
-                    $placeId,
-                    $targetId
-                );
-
-            $formValues =
-                $overrideValues;
-        }
+        $formValues =
+            admin_place_apply_site_overrides(
+                $importedValues,
+                $overrideValues
+            );
 
         $catalog[] = [
-            'id' => $source . ':' . $targetId,
-            'scope_id' => $targetId,
-            'scope_source' => $source,
-            'map_feature_id' => $mapFeatureId > 0 ? $mapFeatureId : null,
-            'parent_area_id' => $parentAreaId > 0 ? $parentAreaId : null,
-            'label' => $label,
-            'source_provider' => $sourceProvider,
-            'source_external_id' => $sourceExternalId,
-            'imported_values' => $importedValues,
-            'override_values' => $overrideValues,
-            'form_values' => $formValues,
+            'id' =>
+                'campsite_record:' . $targetId,
+
+            'scope_id' =>
+                $targetId,
+
+            'scope_source' =>
+                'campsite_record',
+
+            'map_feature_id' =>
+                $mapFeatureId > 0
+                    ? $mapFeatureId
+                    : null,
+
+            'parent_area_id' =>
+                $parentAreaId > 0
+                    ? $parentAreaId
+                    : null,
+
+            'label' =>
+                $label,
+
+            'source_provider' =>
+                (string) (
+                    $site['source_provider']
+                    ?? ''
+                ),
+
+            'source_external_id' =>
+                (string) (
+                    $site['source_external_id']
+                    ?? ''
+                ),
+
+            'imported_values' =>
+                $importedValues,
+
+            'override_values' =>
+                $overrideValues,
+
+            'form_values' =>
+                $formValues,
         ];
     }
 
@@ -638,7 +631,7 @@ function admin_place_parse_site_target(string $value): array
 {
     if (
         preg_match(
-            '/^(campsite_record|map_feature):([1-9][0-9]*)$/D',
+            '/^campsite_record:([1-9][0-9]*)$/D',
             trim($value),
             $matches
         ) !== 1
@@ -649,8 +642,11 @@ function admin_place_parse_site_target(string $value): array
     }
 
     return [
-        'source' => (string) $matches[1],
-        'id' => (int) $matches[2],
+        'source' =>
+            'campsite_record',
+
+        'id' =>
+            (int) $matches[1],
     ];
 }
 
@@ -683,7 +679,24 @@ function admin_place_save_selected_campsite_answers(
     $fields = llama_place_report_fields();
     $unknownToken = llama_place_report_unknown_token();
     $unansweredToken = llama_place_report_unanswered_token();
-    $importedBaseline = [];
+
+    $site =
+        llama_place_campsite(
+            $db,
+            $placeId,
+            $siteId
+        );
+
+    if (!is_array($site)) {
+        throw new InvalidArgumentException(
+            'The selected Site is not available for this Place.'
+        );
+    }
+
+    $importedBaseline =
+        admin_place_campsite_imported_form_values(
+            $site
+        );
 
     $sitePayload =
         trim(
@@ -693,50 +706,36 @@ function admin_place_save_selected_campsite_answers(
             )
         );
 
-    $submittedAnswers = null;
-
-    if ($sitePayload !== '') {
-        if (strlen($sitePayload) > 200000) {
-            throw new InvalidArgumentException(
-                'Site answers are too large.'
-            );
-        }
-
-        $submittedAnswers =
-            json_decode(
-                $sitePayload,
-                true,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-
-        if (
-            !is_array($submittedAnswers)
-            || (
-                array_is_list($submittedAnswers)
-                && $submittedAnswers !== []
-            )
-        ) {
-            throw new InvalidArgumentException(
-                'Invalid Site answer format.'
-            );
-        }
+    if ($sitePayload === '') {
+        throw new InvalidArgumentException(
+            'The Site answer payload is missing. Reload the Admin Place editor and try again.'
+        );
     }
 
-    if ($source === 'campsite_record') {
-        $site =
-            llama_place_campsite(
-                $db,
-                $placeId,
-                $siteId
-            );
+    if (strlen($sitePayload) > 200000) {
+        throw new InvalidArgumentException(
+            'Site answers are too large.'
+        );
+    }
 
-        if (is_array($site)) {
-            $importedBaseline =
-                admin_place_campsite_imported_form_values(
-                    $site
-                );
-        }
+    $submittedAnswers =
+        json_decode(
+            $sitePayload,
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+    if (
+        !is_array($submittedAnswers)
+        || (
+            array_is_list($submittedAnswers)
+            && $submittedAnswers !== []
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid Site answer format.'
+        );
     }
 
     $saved = 0;
@@ -746,34 +745,16 @@ function admin_place_save_selected_campsite_answers(
             continue;
         }
 
-        $fieldType =
-            (string) (
-                $fields[$key]['type']
-                ?? ''
-            );
-
-        if ($submittedAnswers !== null) {
-            if (!array_key_exists($key, $submittedAnswers)) {
-                continue;
-            }
-
-            $raw =
-                $submittedAnswers[$key];
-        } elseif (array_key_exists($key, $input)) {
-            $raw =
-                $input[$key];
-        } elseif ($fieldType === 'checkbox') {
-            /*
-             * Compatibility fallback for older Admin clients that still post
-             * the whole form instead of the dedicated Site payload.
-             */
-            $raw = '0';
-        } else {
+        if (!array_key_exists($key, $submittedAnswers)) {
             continue;
         }
 
+        $raw =
+            $submittedAnswers[$key];
+
         if (is_array($raw)) {
             $unknownFields = [];
+
             $value =
                 llama_place_report_parse_field(
                     $fields[$key],
@@ -814,11 +795,13 @@ function admin_place_save_selected_campsite_answers(
             $value = $unknownToken;
         } else {
             $unknownFields = [];
-            $value = llama_place_report_parse_field(
-                $fields[$key],
-                $raw,
-                $unknownFields
-            );
+
+            $value =
+                llama_place_report_parse_field(
+                    $fields[$key],
+                    $raw,
+                    $unknownFields
+                );
         }
 
         /*
@@ -828,8 +811,7 @@ function admin_place_save_selected_campsite_answers(
          * updates for that Site.
          */
         if (
-            $source === 'campsite_record'
-            && array_key_exists(
+            array_key_exists(
                 $key,
                 $importedBaseline
             )
@@ -842,6 +824,7 @@ function admin_place_save_selected_campsite_answers(
                     $unknownToken;
             } else {
                 $baselineUnknownFields = [];
+
                 $baselineValue =
                     llama_place_report_parse_field(
                         $fields[$key],
@@ -889,11 +872,21 @@ function admin_place_save_selected_campsite_answers(
         'place.site_report_updated',
         'Updated an individual Site report.',
         [
-            'place_id' => $placeId,
-            'site_id' => $siteId,
-            'site_source' => $source,
-            'map_feature_id' => $target['map_feature_id'] ?? null,
-            'answers_saved' => $saved,
+            'place_id' =>
+                $placeId,
+
+            'site_id' =>
+                $siteId,
+
+            'site_source' =>
+                $source,
+
+            'map_feature_id' =>
+                $target['map_feature_id']
+                ?? null,
+
+            'answers_saved' =>
+                $saved,
         ]
     );
 
