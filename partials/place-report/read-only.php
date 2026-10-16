@@ -166,8 +166,7 @@ $campsiteSwitchableFields =
             static function (
                 array $field
             ): bool {
-                return (
-                    string) (
+                return (string) (
                         $field[
                             'report_scope_group'
                         ]
