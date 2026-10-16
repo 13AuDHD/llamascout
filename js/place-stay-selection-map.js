@@ -267,7 +267,6 @@
                 if (value === '') {
                     continue;
                 }
-
                 const ratingStrong =
                     card.querySelector(
                         '.scout-rating-content strong'
@@ -550,8 +549,8 @@
                 );
 
             label.textContent =
-                kind === 'parking'
-                    ? 'Selected parking area: '
+                kind === 'area'
+                    ? 'Selected Area: '
                     : 'Viewing Site: ';
 
             const strong =
@@ -944,15 +943,15 @@
                     'data-stay-map-site-id'
                 );
 
-            const isParking =
+            const isArea =
                 row.hasAttribute(
-                    'data-stay-parking-id'
+                    'data-stay-area-id'
                 );
 
             if (
                 !isCanonical
                 && !isMapSite
-                && !isParking
+                && !isArea
             ) {
                 return;
             }
@@ -968,8 +967,8 @@
                             .stayMapSiteName
                             || 'Site'
                         : row.dataset
-                            .stayParkingName
-                            || 'Parking area';
+                            .stayAreaName
+                            || 'Area';
 
             const lines =
                 isCanonical
@@ -987,7 +986,7 @@
                             ]
                             : readMeta(
                                 row.dataset
-                                    .stayParkingMeta
+                                    .stayAreaMeta
                             )
                     ).filter(
                         Boolean
@@ -1003,7 +1002,7 @@
                         : (
                             isMapSite
                                 ? 'mapped'
-                                : 'parking'
+                                : 'area'
                         ),
                 id:
                     row.dataset
@@ -1014,7 +1013,7 @@
                         row.dataset
                             .stayMapSiteId
                         || row.dataset
-                            .stayParkingId
+                            .stayAreaId
                     )
                     || 0,
             };
@@ -1023,10 +1022,10 @@
              * Canonical Site clicks are handled by place-campsites.js, which
              * already applies Place -> Area -> Site effective answers.
              *
-             * Parking rows represent Areas, so restore the original Place
-             * report and then apply only that Area's direct overrides.
+             * Area rows restore the original Place report and then apply only
+             * that selected Area's direct overrides.
              */
-            if (isParking) {
+            if (isArea) {
                 applyAreaReport(
                     row
                 );
@@ -1037,8 +1036,8 @@
 
             showContext(
                 name,
-                isParking
-                    ? 'parking'
+                isArea
+                    ? 'area'
                     : 'campsite',
                 lastSelection
             );
@@ -1055,7 +1054,7 @@
         (event) => {
             const row =
                 event.target.closest(
-                    '[data-campsite-id], [data-stay-map-site-id], [data-stay-parking-id]'
+                    '[data-campsite-id], [data-stay-map-site-id], [data-stay-area-id]'
                 );
 
             if (
