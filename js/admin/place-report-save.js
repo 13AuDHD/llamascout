@@ -421,6 +421,63 @@
         });
     };
 
+    const selectedCampsite =
+        () => {
+            const selected =
+                String(
+                    campsiteSelect?.value
+                    || ''
+                ).trim();
+
+            if (selected === '') {
+                return null;
+            }
+
+            return (
+                campsiteSites.find(
+                    (site) =>
+                        String(
+                            site.id
+                            || ''
+                        ) === selected
+                )
+                || null
+            );
+        };
+
+    const syncSiteControlModeFromSelection =
+        () => {
+            const site =
+                selectedCampsite();
+
+            if (site) {
+                activeCampsiteId =
+                    String(
+                        site.id
+                    );
+
+                setSiteControlMode(
+                    'site'
+                );
+
+                return;
+            }
+
+            if (
+                String(
+                    campsiteSelect?.value
+                    || ''
+                ).trim() === ''
+            ) {
+                activeCampsiteId =
+                    '';
+
+                setSiteControlMode(
+                    'place'
+                );
+            }
+        };
+
     const importedSelectLabel = (
         key,
         value
@@ -842,6 +899,39 @@
             loadCampsite('');
         }
     }
+
+    /*
+     * Place / Area / Site context can also be changed by the embedded map or
+     * the shared context controller. Always derive enabled Site controls from
+     * the actual Site selector after those changes instead of relying only on
+     * this file's internal activeCampsiteId state.
+     */
+    form.addEventListener(
+        'llama:place-context-changed',
+        () => {
+            queueMicrotask(
+                syncSiteControlModeFromSelection
+            );
+        }
+    );
+
+    form.addEventListener(
+        'llama:campsite-selected',
+        () => {
+            queueMicrotask(
+                syncSiteControlModeFromSelection
+            );
+        }
+    );
+
+    window.addEventListener(
+        'llama:place-context-changed',
+        () => {
+            queueMicrotask(
+                syncSiteControlModeFromSelection
+            );
+        }
+    );
 
     const save = async () => {
         if (busy) {
