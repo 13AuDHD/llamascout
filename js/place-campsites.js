@@ -378,15 +378,6 @@
         `;
     };
 
-    /*
-     * This renderer intentionally creates only the selected-Site shell.
-     * Site facts belong in the Scout Report. The old duplicate Site Details /
-     * Parking / Hookups / Amenities / Environment / Operations renderer has
-     * been removed, not hidden.
-     *
-     * The companion rich-detail script adds only Site photos, permitted
-     * equipment, and source-specific RIDB metadata.
-     */
     const renderSiteDetail = (
         site
     ) => `
@@ -509,12 +500,6 @@
             );
         };
 
-        /*
-         * Start with inherited Place / Area answers.
-         *
-         * Canonical campsite facts below may replace those values where the
-         * campsite record contains a more specific physical Site fact.
-         */
         mergeReportValues(
             site.report_inherited_values
         );
@@ -793,13 +778,6 @@
             );
         }
 
-        /*
-         * Explicit Scout/admin Site answers are the highest-priority layer.
-         *
-         * This intentionally happens after canonical/imported campsite facts
-         * so a direct Site override wins without destroying the imported
-         * fallback.
-         */
         mergeReportValues(
             site.report_override_values
         );
@@ -835,21 +813,35 @@
                             ? values[key]
                             : '';
 
-                    const strong =
-                        card.querySelector(
-                            '.scout-report-value-content strong'
-                        );
-
-                    if (!strong) {
-                        return;
-                    }
-
                     if (value === '') {
                         card.hidden =
                             true;
 
                         return;
                     }
+
+                    const ratingStrong =
+                        card.querySelector(
+                            '.scout-rating-content strong'
+                        );
+
+                    const valueStrong =
+                        card.querySelector(
+                            '.scout-report-value-content strong'
+                        );
+
+                    const strong =
+                        ratingStrong
+                        || valueStrong;
+
+                    if (!strong) {
+                        return;
+                    }
+
+                    const isUnknown =
+                        clean(value)
+                            .toLowerCase()
+                        === 'unknown';
 
                     strong.textContent =
                         value;
@@ -858,9 +850,59 @@
                         false;
 
                     card.classList.remove(
-                        'is-unanswered',
-                        'is-explicit-unknown'
+                        'is-unanswered'
                     );
+
+                    card.classList.toggle(
+                        'is-explicit-unknown',
+                        isUnknown
+                    );
+
+                    if (ratingStrong) {
+                        const ratingMatch =
+                            String(value)
+                                .match(
+                                    /^([1-5])(?:\/5)?$/
+                                );
+
+                        const rating =
+                            ratingMatch
+                                ? Number(
+                                    ratingMatch[1]
+                                )
+                                : 0;
+
+                        card
+                            .querySelectorAll(
+                                '.scout-rating-dot'
+                            )
+                            .forEach(
+                                (
+                                    dot,
+                                    index
+                                ) => {
+                                    dot.classList.toggle(
+                                        'is-filled',
+                                        rating > 0
+                                        && index < rating
+                                    );
+                                }
+                            );
+
+                        const dots =
+                            card.querySelector(
+                                '.scout-rating-dots'
+                            );
+
+                        if (dots) {
+                            dots.setAttribute(
+                                'aria-label',
+                                rating > 0
+                                    ? `${rating} out of 5`
+                                    : value
+                            );
+                        }
+                    }
                 }
             );
     };
@@ -1216,12 +1258,6 @@
                     </div>
                 `;
 
-                /*
-                 * Filtering the list must never rerender or expose a second
-                 * Site-facts presentation. Leave the current selected detail
-                 * and Scout Report untouched until the user chooses a
-                 * different Site.
-                 */
                 return;
             }
 
@@ -1300,11 +1336,6 @@
                     }
                 );
 
-            /*
-             * If the active filter excludes the current Site, select the first
-             * visible result. If the current Site is still visible, do not
-             * rerender it merely because a filter/search changed.
-             */
             if (
                 !visible.some(
                     (site) =>
@@ -1356,11 +1387,6 @@
 
         renderList();
 
-        /*
-         * Initial selection is the one deliberate render after the list is
-         * built. Filters/search thereafter leave it alone unless selection
-         * actually changes.
-         */
         selectSite(
             selectedId,
             false
