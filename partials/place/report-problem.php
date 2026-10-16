@@ -1,5 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+$reportProblemTargets = [];
+
+try {
+    $reportProblemTargets =
+        llama_report_targets(
+            db(),
+            (int) (
+                $place['id']
+                ?? 0
+            )
+        );
+} catch (Throwable $exception) {
+    llama_log_caught_exception(
+        $exception,
+        'place.report-problem.targets',
+        [
+            'place_id' =>
+                (int) (
+                    $place['id']
+                    ?? 0
+                ),
+        ]
+    );
+
+    $reportProblemTargets = [[
+        'scope' =>
+            'place',
+
+        'source' =>
+            'place',
+
+        'id' =>
+            (int) (
+                $place['id']
+                ?? 0
+            ),
+
+        'label' =>
+            'Entire Place',
+    ]];
+}
+
+$selectedReportTarget =
+    trim(
+        (string) (
+            $_POST['report_target']
+            ?? (
+                'place|place|'
+                . (int) (
+                    $place['id']
+                    ?? 0
+                )
+            )
+        )
+    );
+?>
+
 <section class="place-report-section" id="report-place">
-    <details class="place-report"<?= !empty($reportOpen) || $reportError !== null ? ' open' : '' ?>>
+    <details
+        class="place-report"
+        <?= !empty($reportOpen) || $reportError !== null ? ' open' : '' ?>
+    >
         <summary>
             <i aria-hidden="true"><?= llama_icon('flag') ?></i>
             Report a problem with this place
@@ -7,47 +71,193 @@
 
         <div class="place-report-body">
             <?php if ($reportSubmitted): ?>
-                <div class="place-report-message is-success" role="status">
-                    <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
-                    <p>Thanks. Your report has been submitted for review.</p>
+                <div
+                    class="place-report-message is-success"
+                    role="status"
+                >
+                    <i aria-hidden="true">
+                        <?= llama_icon('circle-check') ?>
+                    </i>
+
+                    <p>
+                        Thanks. Your report has been submitted for review.
+                    </p>
                 </div>
             <?php endif; ?>
 
             <?php if ($reportError !== null): ?>
-                <div class="place-report-message is-error" role="alert">
-                    <i aria-hidden="true"><?= llama_icon('alert-triangle') ?></i>
+                <div
+                    class="place-report-message is-error"
+                    role="alert"
+                >
+                    <i aria-hidden="true">
+                        <?= llama_icon('alert-triangle') ?>
+                    </i>
+
                     <p><?= place_h($reportError) ?></p>
                 </div>
             <?php endif; ?>
 
             <?php if (!empty($canReportProblem)): ?>
                 <p>
-                    Tell us what changed or what looks wrong. Reports are reviewed before
-                    information on the place is changed.
+                    Tell us what changed or what looks wrong. Reports are
+                    reviewed before information on the place is changed.
                 </p>
 
-                <form method="post" class="place-report-form">
-                    <input type="hidden" name="csrf_token" value="<?= place_h(place_report_csrf_token()) ?>">
-                    <input type="hidden" name="place_report_action" value="submit">
-                    <input type="hidden" name="photo_stage_token" value="<?= place_h((string) ($_POST['photo_stage_token'] ?? '')) ?>">
-                    <input type="hidden" name="photos_json" value="<?= place_h((string) ($_POST['photos_json'] ?? '[]')) ?>">
+                <form
+                    method="post"
+                    class="place-report-form"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= place_h(place_report_csrf_token()) ?>"
+                    >
 
-                    <label for="problem-type">What is the problem?</label>
-                    <select id="problem-type" name="problem_type" required>
-                        <option value="">Choose one</option>
-                        <?php foreach (place_report_problem_types() as $value => $label): ?>
-                            <option value="<?= place_h($value) ?>" <?= isset($problemType) && $problemType === $value ? 'selected' : '' ?>>
+                    <input
+                        type="hidden"
+                        name="place_report_action"
+                        value="submit"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="photo_stage_token"
+                        value="<?= place_h((string) ($_POST['photo_stage_token'] ?? '')) ?>"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="photos_json"
+                        value="<?= place_h((string) ($_POST['photos_json'] ?? '[]')) ?>"
+                    >
+
+                    <label for="report-target">
+                        What does the problem apply to?
+                    </label>
+
+                    <select
+                        id="report-target"
+                        name="report_target"
+                        required
+                    >
+                        <?php foreach ($reportProblemTargets as $target): ?>
+                            <?php
+                            $targetScope =
+                                (string) (
+                                    $target['scope']
+                                    ?? ''
+                                );
+
+                            $targetSource =
+                                (string) (
+                                    $target['source']
+                                    ?? ''
+                                );
+
+                            $targetId =
+                                (int) (
+                                    $target['id']
+                                    ?? 0
+                                );
+
+                            if (
+                                $targetScope === ''
+                                || $targetSource === ''
+                                || $targetId < 1
+                            ) {
+                                continue;
+                            }
+
+                            $targetValue =
+                                $targetScope
+                                . '|'
+                                . $targetSource
+                                . '|'
+                                . $targetId;
+
+                            $targetLabel =
+                                trim(
+                                    (string) (
+                                        $target['label']
+                                        ?? ''
+                                    )
+                                );
+
+                            if ($targetLabel === '') {
+                                $targetLabel =
+                                    ucfirst(
+                                        $targetScope
+                                    )
+                                    . ' #'
+                                    . $targetId;
+                            }
+
+                            if ($targetScope === 'area') {
+                                $targetLabel =
+                                    'Area: '
+                                    . $targetLabel;
+                            } elseif ($targetScope === 'site') {
+                                $targetLabel =
+                                    'Site: '
+                                    . $targetLabel;
+                            }
+                            ?>
+
+                            <option
+                                value="<?= place_h($targetValue) ?>"
+                                <?= $selectedReportTarget === $targetValue ? 'selected' : '' ?>
+                            >
+                                <?= place_h($targetLabel) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label for="problem-type">
+                        What is the problem?
+                    </label>
+
+                    <select
+                        id="problem-type"
+                        name="problem_type"
+                        required
+                    >
+                        <option value="">
+                            Choose one
+                        </option>
+
+                        <?php foreach (
+                            place_report_problem_types()
+                            as $value => $label
+                        ): ?>
+                            <option
+                                value="<?= place_h($value) ?>"
+                                <?= isset($problemType) && $problemType === $value ? 'selected' : '' ?>
+                            >
                                 <?= place_h($label) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
 
-                    <label for="report-details">What should we know?</label>
-                    <textarea id="report-details" name="report_details" rows="5" maxlength="4000" required><?= place_h($reportDetails ?? '') ?></textarea>
+                    <label for="report-details">
+                        What should we know?
+                    </label>
+
+                    <textarea
+                        id="report-details"
+                        name="report_details"
+                        rows="5"
+                        maxlength="4000"
+                        required
+                    ><?= place_h($reportDetails ?? '') ?></textarea>
 
                     <div class="place-report-photo-section">
                         <p>
-                            <strong>Road closure and closure/status reports require at least one current photo.</strong>
+                            <strong>
+                                Road closure and closure/status reports require
+                                at least one current photo.
+                            </strong>
+
                             Photos are optional for the other report types.
                         </p>
 
@@ -62,14 +272,28 @@
                         ></div>
                     </div>
 
-                    <button type="submit" class="place-report-submit">
-                        <i aria-hidden="true"><?= llama_icon('send') ?></i>
+                    <button
+                        type="submit"
+                        class="place-report-submit"
+                    >
+                        <i aria-hidden="true">
+                            <?= llama_icon('send') ?>
+                        </i>
+
                         Submit report
                     </button>
                 </form>
             <?php else: ?>
-                <p>You need to be signed in to submit a place report.</p>
-                <a class="place-report-signin" href="https://account.llamascout.com/login.php">Sign in</a>
+                <p>
+                    You need to be signed in to submit a place report.
+                </p>
+
+                <a
+                    class="place-report-signin"
+                    href="https://account.llamascout.com/login.php"
+                >
+                    Sign in
+                </a>
             <?php endif; ?>
         </div>
     </details>
@@ -79,8 +303,13 @@
             class="place-report-message is-success place-report-persistent-success"
             role="status"
         >
-            <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
-            <p>Thanks. Your report has been submitted for review.</p>
+            <i aria-hidden="true">
+                <?= llama_icon('circle-check') ?>
+            </i>
+
+            <p>
+                Thanks. Your report has been submitted for review.
+            </p>
         </div>
     <?php endif; ?>
 </section>
