@@ -38,24 +38,25 @@
             'Unknown'
         ]);
 
-    const syncCostField = () => {
-        const parking =
-            featureType?.value
-            === 'parking_area';
+    const syncCostField =
+        () => {
+            const parking =
+                featureType?.value
+                === 'parking_area';
 
-        if (feeStatusField) {
-            feeStatusField.hidden =
-                !parking;
-        }
+            if (feeStatusField) {
+                feeStatusField.hidden =
+                    !parking;
+            }
 
-        if (
-            !parking
-            && feeStatus
-        ) {
-            feeStatus.value =
-                '';
-        }
-    };
+            if (
+                !parking
+                && feeStatus
+            ) {
+                feeStatus.value =
+                    '';
+            }
+        };
 
     const removeLegacyCampingCostLabels =
         () => {
@@ -69,12 +70,15 @@
                 )
                 .forEach(
                     (detail) => {
-                        const parts =
+                        const current =
                             String(
                                 detail.textContent
                                 || ''
-                            )
-                                .split(' Â· ')
+                            );
+
+                        const parts =
+                            current
+                                .split(' ÃÂ· ')
                                 .map(
                                     (part) =>
                                         part.trim()
@@ -88,7 +92,7 @@
                             return;
                         }
 
-                        detail.textContent =
+                        const next =
                             parts
                                 .filter(
                                     (part, index) =>
@@ -96,18 +100,29 @@
                                         || !parkingCostLabels
                                             .has(part)
                                 )
-                                .join(' Â· ');
+                                .join(' ÃÂ· ');
+
+                        /*
+                         * Do not write the same text back into the observed
+                         * subtree. Setting textContent creates a child-list
+                         * mutation even when the visible text is unchanged.
+                         * The old implementation did that on every observer
+                         * callback and could create an endless MutationObserver
+                         * feedback loop that pegged Safari and server activity.
+                         */
+                        if (next !== current) {
+                            detail.textContent =
+                                next;
+                        }
                     }
                 );
         };
 
-    const refresh = () => {
-        syncCostField();
-
-        queueMicrotask(
-            removeLegacyCampingCostLabels
-        );
-    };
+    const refresh =
+        () => {
+            syncCostField();
+            removeLegacyCampingCostLabels();
+        };
 
     featureType
         ?.addEventListener(
@@ -131,15 +146,39 @@
     );
 
     if (featureList) {
-        new MutationObserver(
-            removeLegacyCampingCostLabels
-        ).observe(
-            featureList,
-            {
-                childList: true,
-                subtree: true
-            }
-        );
+        let observer = null;
+
+        const observe =
+            () => {
+                observer?.observe(
+                    featureList,
+                    {
+                        childList:
+                            true,
+
+                        subtree:
+                            true
+                    }
+                );
+            };
+
+        observer =
+            new MutationObserver(
+                () => {
+                    /*
+                     * Disconnect while normalizing the rendered labels so our
+                     * own textContent changes cannot recursively schedule the
+                     * observer again.
+                     */
+                    observer.disconnect();
+
+                    removeLegacyCampingCostLabels();
+
+                    observe();
+                }
+            );
+
+        observe();
     }
 
     refresh();
