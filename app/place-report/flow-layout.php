@@ -35,7 +35,6 @@ function llama_place_report_layout_groups(): array
             'parking_maneuvering' => 'Parking & Maneuvering',
             'camping_equipment' => 'Utilities & Hookups',
             'site_features' => 'Site Features & Equipment',
-            'published_fit' => 'Published Fit Limits',
             'sensory_environment' => 'Sensory & Environment',
             'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
@@ -272,15 +271,6 @@ function llama_place_report_layout_assignments(): array
             'turnaround_space',
         ],
 
-        /*
-         * Published or observed fit limits are secondary facts. They must not
-         * substitute for the Site's actual physical dimensions.
-         */
-        'site:published_fit' => [
-            'max_vehicle_length_feet',
-            'max_rv_length_feet',
-        ],
-
         'site:camping_equipment' => [
             'site_hookups_available',
             'hookup_electric',
@@ -438,6 +428,36 @@ function llama_place_report_apply_layout_metadata(
         if ($key === 'capacity_size_rating') {
             $field['label'] =
                 'Site size / capacity type';
+        }
+
+        if (
+            in_array(
+                $key,
+                [
+                    'max_vehicle_length_feet',
+                    'max_trailer_length_feet',
+                    'max_rv_length_feet',
+                    'trailer_suitable',
+                    'rv_suitable',
+                    'tent_camping_suitable',
+                ],
+                true
+            )
+        ) {
+            /*
+             * Compatibility only. Llama Scout now records objective Site
+             * dimensions and capacity instead of asking contributors to make
+             * vehicle/RV suitability judgments or duplicate those dimensions
+             * with published-fit limits.
+             */
+            $field['layout_section'] =
+                'compatibility';
+
+            $field['layout_group'] =
+                'legacy_fit';
+
+            $field['counts_toward_completion'] =
+                false;
         }
     }
 
