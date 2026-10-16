@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/place-report/report-targets.php';
+
 function place_report_csrf_token(): string
 {
     if (empty($_SESSION['place_report_csrf'])) {
@@ -45,12 +47,17 @@ function submit_place_report(
     string $problemType,
     string $details,
     string $photoToken = '',
-    array $submittedPhotos = []
+    array $submittedPhotos = [],
+    string $targetScope = 'place',
+    string $targetSource = 'place',
+    int $targetId = 0
 ): int {
+    $db = db();
+
     if (
         $userId < 1
         || !llama_contributor_can(
-            db(),
+            $db,
             $userId,
             'report_problem'
         )
@@ -76,6 +83,33 @@ function submit_place_report(
         throw new InvalidArgumentException('Report details are too long.');
     }
 
+    $targetScope =
+        trim(
+            $targetScope
+        );
+
+    $targetSource =
+        trim(
+            $targetSource
+        );
+
+    if (
+        $targetScope === 'place'
+        && $targetSource === 'place'
+        && $targetId < 1
+    ) {
+        $targetId = $placeId;
+    }
+
+    $target =
+        llama_report_verified_target(
+            $db,
+            $placeId,
+            $targetScope,
+            $targetSource,
+            $targetId
+        );
+
     /*
      * LS-017: a closure/status claim must include current photo evidence.
      *
@@ -96,10 +130,11 @@ function submit_place_report(
     }
 
     if ($submittedPhotos && trim($photoToken) === '') {
-        throw new InvalidArgumentException('The photo upload session is missing. Please upload the photos again.');
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
     }
 
-    $db = db();
     $reportId = 0;
 
     try {
@@ -107,13 +142,26 @@ function submit_place_report(
 
         $stmt = $db->prepare(
             "INSERT INTO place_reports
-                (place_id, user_id, problem_type, details, status, created_at)
+                (
+                    place_id,
+                    target_scope,
+                    target_source,
+                    target_id,
+                    user_id,
+                    problem_type,
+                    details,
+                    status,
+                    created_at
+                )
              VALUES
-                (?, ?, ?, ?, 'open', UTC_TIMESTAMP())"
+                (?, ?, ?, ?, ?, ?, ?, 'open', UTC_TIMESTAMP())"
         );
 
         $stmt->execute([
             $placeId,
+            (string) $target['scope'],
+            (string) $target['source'],
+            (int) $target['id'],
             $userId,
             $problemType,
             $details,
@@ -152,9 +200,23 @@ function submit_place_report(
             if ($photos) {
                 $imageStmt = $db->prepare(
                     'INSERT INTO place_report_images
-                        (report_id, file_path, original_name, mime_type, file_size, sort_order)
+                        (
+                            report_id,
+                            file_path,
+                            original_name,
+                            mime_type,
+                            file_size,
+                            sort_order
+                        )
                      VALUES
-                        (:report_id, :file_path, :original_name, :mime_type, :file_size, :sort_order)'
+                        (
+                            :report_id,
+                            :file_path,
+                            :original_name,
+                            :mime_type,
+                            :file_size,
+                            :sort_order
+                        )'
                 );
 
                 foreach ($photos as $index => $photo) {
@@ -177,7 +239,11 @@ function submit_place_report(
         }
 
         if ($reportId > 0) {
-            llama_photo_remove_tree(dirname(__DIR__) . '/uploads/place-reports/' . $reportId);
+            llama_photo_remove_tree(
+                dirname(__DIR__)
+                . '/uploads/place-reports/'
+                . $reportId
+            );
         }
 
         throw $exception;
