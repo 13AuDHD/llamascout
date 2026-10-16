@@ -431,6 +431,39 @@ function admin_place_apply_site_overrides(array $values, array $overrides): arra
     return $values;
 }
 
+function admin_place_campsite_override_form_values(
+    PDO $db,
+    int $placeId,
+    int $siteId
+): array {
+    if ($siteId < 1) {
+        return [];
+    }
+
+    try {
+        $overrides = llama_scoped_report_load(
+            $db,
+            $placeId,
+            'site',
+            $siteId,
+            'campsite_record'
+        );
+    } catch (PDOException $exception) {
+        $code = (string) ($exception->errorInfo[1] ?? '');
+
+        if ($code === '1146' || $code === '42S02') {
+            return [];
+        }
+
+        throw $exception;
+    }
+
+    return admin_place_apply_site_overrides(
+        [],
+        $overrides
+    );
+}
+
 function admin_place_campsite_effective_form_values(
     PDO $db,
     int $placeId,
@@ -532,6 +565,18 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
         $sourceProvider = '';
         $sourceExternalId = '';
 
+        $parentAreaId =
+            max(
+                0,
+                (int) (
+                    $target['parent_area_id']
+                    ?? 0
+                )
+            );
+
+        $importedValues = [];
+        $overrideValues = [];
+
         if ($source === 'campsite_record') {
             $site = $canonicalSites[$targetId] ?? null;
 
@@ -539,20 +584,36 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
                 continue;
             }
 
-            $formValues = admin_place_campsite_effective_form_values(
-                $db,
-                $placeId,
-                $site
-            );
+            $importedValues =
+                admin_place_campsite_imported_form_values(
+                    $site
+                );
+
+            $overrideValues =
+                admin_place_campsite_override_form_values(
+                    $db,
+                    $placeId,
+                    $targetId
+                );
+
+            $formValues =
+                admin_place_apply_site_overrides(
+                    $importedValues,
+                    $overrideValues
+                );
 
             $sourceProvider = (string) ($site['source_provider'] ?? '');
             $sourceExternalId = (string) ($site['source_external_id'] ?? '');
         } else {
-            $formValues = admin_place_map_site_effective_form_values(
-                $db,
-                $placeId,
-                $targetId
-            );
+            $overrideValues =
+                admin_place_map_site_effective_form_values(
+                    $db,
+                    $placeId,
+                    $targetId
+                );
+
+            $formValues =
+                $overrideValues;
         }
 
         $catalog[] = [
@@ -560,15 +621,12 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
             'scope_id' => $targetId,
             'scope_source' => $source,
             'map_feature_id' => $mapFeatureId > 0 ? $mapFeatureId : null,
-            'label' =>
-                $label
-                . (
-                    $mapFeatureId > 0
-                        ? ' - Mapped'
-                        : ' - No mapped geometry'
-                ),
+            'parent_area_id' => $parentAreaId > 0 ? $parentAreaId : null,
+            'label' => $label,
             'source_provider' => $sourceProvider,
             'source_external_id' => $sourceExternalId,
+            'imported_values' => $importedValues,
+            'override_values' => $overrideValues,
             'form_values' => $formValues,
         ];
     }
@@ -627,6 +685,44 @@ function admin_place_save_selected_campsite_answers(
     $unansweredToken = llama_place_report_unanswered_token();
     $importedBaseline = [];
 
+    $sitePayload =
+        trim(
+            (string) (
+                $input['admin_site_answers_json']
+                ?? ''
+            )
+        );
+
+    $submittedAnswers = null;
+
+    if ($sitePayload !== '') {
+        if (strlen($sitePayload) > 200000) {
+            throw new InvalidArgumentException(
+                'Site answers are too large.'
+            );
+        }
+
+        $submittedAnswers =
+            json_decode(
+                $sitePayload,
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+
+        if (
+            !is_array($submittedAnswers)
+            || (
+                array_is_list($submittedAnswers)
+                && $submittedAnswers !== []
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid Site answer format.'
+            );
+        }
+    }
+
     if ($source === 'campsite_record') {
         $site =
             llama_place_campsite(
@@ -656,14 +752,20 @@ function admin_place_save_selected_campsite_answers(
                 ?? ''
             );
 
-        if (array_key_exists($key, $input)) {
+        if ($submittedAnswers !== null) {
+            if (!array_key_exists($key, $submittedAnswers)) {
+                continue;
+            }
+
+            $raw =
+                $submittedAnswers[$key];
+        } elseif (array_key_exists($key, $input)) {
             $raw =
                 $input[$key];
         } elseif ($fieldType === 'checkbox') {
             /*
-             * Unchecked checkboxes are omitted by FormData. For an active
-             * selected Site that omission means an explicit unchecked value,
-             * not "leave the previous override unchanged".
+             * Compatibility fallback for older Admin clients that still post
+             * the whole form instead of the dedicated Site payload.
              */
             $raw = '0';
         } else {
@@ -671,6 +773,25 @@ function admin_place_save_selected_campsite_answers(
         }
 
         if (is_array($raw)) {
+            $unknownFields = [];
+            $value =
+                llama_place_report_parse_field(
+                    $fields[$key],
+                    $raw,
+                    $unknownFields
+                );
+
+            llama_scoped_report_save(
+                $db,
+                $placeId,
+                'site',
+                $siteId,
+                $source,
+                $key,
+                $value
+            );
+
+            $saved++;
             continue;
         }
 
