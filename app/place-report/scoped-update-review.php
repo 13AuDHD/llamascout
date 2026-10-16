@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/report-targets.php';
 require_once __DIR__ . '/scoped-answers.php';
 require_once dirname(__DIR__) . '/photo-staging.php';
+require_once dirname(__DIR__) . '/points.php';
 
 /**
  * Parse and validate one Area/Site correction payload against the current
@@ -841,6 +842,7 @@ function llama_scoped_update_resubmit(
                     $newCommittedPhotos
                 )
             );
+
         $stmt =
             $db->prepare(
                 'UPDATE place_update_submissions
@@ -993,6 +995,164 @@ function llama_scoped_update_resubmit(
         throw $exception;
     }
 }
+
+/**
+ * Calculate scoped completion and update points against the target's effective
+ * Place -> Area -> Site answer state.
+ *
+ * Inherited answers participate in applicability/completion, but only the
+ * direct answers in this contribution count as changed items for points.
+ */
+function llama_scoped_update_point_estimate(
+    PDO $db,
+    int $placeId,
+    string $placeSlug,
+    array $payload
+): array {
+    if ($placeId < 1) {
+        throw new InvalidArgumentException(
+            'Invalid Place ID.'
+        );
+    }
+
+    $scope =
+        (string) (
+            $payload['scope']
+            ?? ''
+        );
+
+    $source =
+        (string) (
+            $payload['source']
+            ?? ''
+        );
+
+    $targetId =
+        (int) (
+            $payload['id']
+            ?? 0
+        );
+
+    $target =
+        llama_report_verified_target(
+            $db,
+            $placeId,
+            $scope,
+            $source,
+            $targetId
+        );
+
+    $answers =
+        (array) (
+            $payload['answers']
+            ?? []
+        );
+
+    if (
+        !$answers
+        && isset(
+            $payload['field_key']
+        )
+    ) {
+        $answers = [
+            (string) $payload['field_key'] =>
+                $payload['value']
+                ?? null,
+        ];
+    }
+
+    if (!$answers) {
+        throw new RuntimeException(
+            'Invalid scoped update answers.'
+        );
+    }
+
+    $placeSlug =
+        trim(
+            $placeSlug
+        );
+
+    if ($placeSlug === '') {
+        throw new RuntimeException(
+            'The Place slug is unavailable for scoped point calculation.'
+        );
+    }
+
+    $publishedPlace =
+        place_member_by_slug(
+            $placeSlug
+        );
+
+    if (!$publishedPlace) {
+        throw new RuntimeException(
+            'The published Place could not be loaded for scoped point calculation.'
+        );
+    }
+
+    $placeData =
+        llama_place_report_data_from_published_place(
+            $publishedPlace,
+            llama_place_report_published_answer_state(
+                $db,
+                $placeId
+            )
+        );
+
+    $placeValues =
+        llama_place_report_scoring_input_from_data(
+            $placeData
+        );
+
+    $resolved =
+        llama_scoped_report_effective_answers(
+            $db,
+            $placeId,
+            $placeValues,
+            $scope,
+            $targetId,
+            $source,
+            !empty(
+                $target['parent_area_id']
+            )
+                ? (int) $target['parent_area_id']
+                : null
+        );
+
+    $effectiveInput =
+        (array) (
+            $resolved['values']
+            ?? []
+        );
+
+    foreach (
+        $answers
+        as $fieldKey => $value
+    ) {
+        $fieldKey =
+            (string) $fieldKey;
+
+        llama_scoped_report_field(
+            $fieldKey,
+            $scope
+        );
+
+        $effectiveInput[
+            $fieldKey
+        ] =
+            $value;
+    }
+
+    return
+        llama_points_estimate_scoped_update(
+            $db,
+            $effectiveInput,
+            $scope,
+            array_keys(
+                $answers
+            )
+        );
+}
+
 
 /** Called inside the moderator's existing approval transaction. */
 function llama_scoped_update_approve(
@@ -1149,6 +1309,25 @@ function llama_scoped_update_approve(
         }
     }
 
+    $pointEstimate =
+        llama_scoped_update_point_estimate(
+            $db,
+            $placeId,
+            (string) (
+                $update['place_slug']
+                ?? ''
+            ),
+            $payload
+        );
+
+    $points =
+        (int) (
+            $pointEstimate[
+                'estimated_points'
+            ]
+            ?? 0
+        );
+
     foreach ($answers as $key => $value) {
         llama_scoped_report_save(
             $db,
@@ -1160,12 +1339,6 @@ function llama_scoped_update_approve(
             $value
         );
     }
-
-    /*
-     * Scoped point accounting is deliberately not guessed from Place-level
-     * scoring. Award zero until Phase 15 defines scoped contribution points.
-     */
-    $points = 0;
 
     $contributionId =
         moderation_insert_contribution(
@@ -1225,7 +1398,10 @@ function llama_scoped_update_approve(
             ? $notes
             : null,
         $contributionId,
-        0,
+        max(
+            0,
+            $points
+        ),
         $updateId,
     ]);
 
