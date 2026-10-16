@@ -335,6 +335,42 @@ if (
                 )
             );
 
+        $reportTarget =
+            trim(
+                (string) (
+                    $_POST['report_target']
+                    ?? ''
+                )
+            );
+
+        $reportTargetParts =
+            explode(
+                '|',
+                $reportTarget
+            );
+
+        $reportTargetScope =
+            trim(
+                (string) (
+                    $reportTargetParts[0]
+                    ?? ''
+                )
+            );
+
+        $reportTargetSource =
+            trim(
+                (string) (
+                    $reportTargetParts[1]
+                    ?? ''
+                )
+            );
+
+        $reportTargetId =
+            (int) (
+                $reportTargetParts[2]
+                ?? 0
+            );
+
         $reportPhotoToken =
             trim(
                 (string) (
@@ -376,7 +412,10 @@ if (
                 $problemType,
                 $reportDetails,
                 $reportPhotoToken,
-                $reportPhotos
+                $reportPhotos,
+                $reportTargetScope,
+                $reportTargetSource,
+                $reportTargetId
             );
 
             header(
