@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-reports.php';
+require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 require_once __DIR__ . '/_dashboard.php';
 
 function admin_report_problem_icon_name(string $problemType): string
@@ -68,10 +69,148 @@ $reportStats =
     admin_report_stats($db);
 
 $placeGroups = [];
+$reportTargetCatalogs = [];
 
 foreach ($items as $reportItem) {
     $placeId =
         (int) $reportItem['place_id'];
+
+    if (!isset($reportTargetCatalogs[$placeId])) {
+        $reportTargetCatalogs[$placeId] = [];
+
+        try {
+            foreach (
+                llama_report_targets(
+                    $db,
+                    $placeId
+                )
+                as $target
+            ) {
+                $scope =
+                    (string) (
+                        $target['scope']
+                        ?? ''
+                    );
+
+                $source =
+                    (string) (
+                        $target['source']
+                        ?? ''
+                    );
+
+                $targetId =
+                    (int) (
+                        $target['id']
+                        ?? 0
+                    );
+
+                if (
+                    $scope === ''
+                    || $source === ''
+                    || $targetId < 1
+                ) {
+                    continue;
+                }
+
+                $reportTargetCatalogs[$placeId][
+                    $scope
+                    . '|'
+                    . $source
+                    . '|'
+                    . $targetId
+                ] =
+                    $target;
+            }
+        } catch (Throwable $exception) {
+            llama_log_caught_exception(
+                $exception,
+                'admin.reports.targets',
+                [
+                    'place_id' =>
+                        $placeId,
+                ]
+            );
+        }
+    }
+
+    $targetScope =
+        trim(
+            (string) (
+                $reportItem['target_scope']
+                ?? 'place'
+            )
+        );
+
+    $targetSource =
+        trim(
+            (string) (
+                $reportItem['target_source']
+                ?? 'place'
+            )
+        );
+
+    $targetId =
+        (int) (
+            $reportItem['target_id']
+            ?? $placeId
+        );
+
+    if ($targetId < 1) {
+        $targetId =
+            $placeId;
+    }
+
+    $targetKey =
+        $targetScope
+        . '|'
+        . $targetSource
+        . '|'
+        . $targetId;
+
+    $target =
+        $reportTargetCatalogs[$placeId][$targetKey]
+        ?? null;
+
+    $targetLabel =
+        is_array($target)
+            ? trim(
+                (string) (
+                    $target['label']
+                    ?? ''
+                )
+            )
+            : '';
+
+    if ($targetScope === 'place') {
+        $targetLabel =
+            'Entire Place';
+    } elseif ($targetScope === 'area') {
+        $targetLabel =
+            'Area: '
+            . (
+                $targetLabel !== ''
+                    ? $targetLabel
+                    : 'Area #' . $targetId
+            );
+    } elseif ($targetScope === 'site') {
+        $targetLabel =
+            'Site: '
+            . (
+                $targetLabel !== ''
+                    ? $targetLabel
+                    : 'Site #' . $targetId
+            );
+    } elseif ($targetLabel === '') {
+        $targetLabel =
+            ucfirst(
+                $targetScope
+            )
+            . ' #'
+            . $targetId;
+    }
+
+    $reportItem['report_target_label'] =
+        $targetLabel;
 
     if (
         !isset(
@@ -637,6 +776,19 @@ $meta =
     photo<?= (int) $item['image_count'] === 1 ? '' : 's' ?>
 </p>
 
+<div class="admin-report-related-pill">
+    <i
+        aria-hidden="true"
+    ><?= llama_icon('map-pin') ?></i>
+
+    <?= moderation_e(
+        (string) (
+            $item['report_target_label']
+            ?? 'Entire Place'
+        )
+    ) ?>
+</div>
+
 <?php if ((int) $item['matching_report_count'] > 1): ?>
 
 <div class="admin-report-related-pill">
@@ -673,11 +825,9 @@ $meta =
 
 <a
     class="admin-button is-muted"
-    href="/place.php?id=<?= (int) $item['place_id'] ?>#<?= moderation_e(
-        $meta['place_anchor']
-    ) ?>"
+    href="/place.php?id=<?= (int) $item['place_id'] ?>#place-report"
 >
-    Fix section
+    Open Place editor
 </a>
 
 </div>
