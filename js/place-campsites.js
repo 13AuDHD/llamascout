@@ -480,6 +480,45 @@
     ) => {
         const values = {};
 
+        const mergeReportValues = (
+            source
+        ) => {
+            if (
+                !source
+                || typeof source !== 'object'
+                || Array.isArray(source)
+            ) {
+                return;
+            }
+
+            Object.entries(
+                source
+            ).forEach(
+                ([
+                    key,
+                    value
+                ]) => {
+                    const text =
+                        clean(value);
+
+                    if (text !== '') {
+                        values[key] =
+                            text;
+                    }
+                }
+            );
+        };
+
+        /*
+         * Start with inherited Place / Area answers.
+         *
+         * Canonical campsite facts below may replace those values where the
+         * campsite record contains a more specific physical Site fact.
+         */
+        mergeReportValues(
+            site.report_inherited_values
+        );
+
         const set = (
             key,
             value
@@ -754,6 +793,17 @@
             );
         }
 
+        /*
+         * Explicit Scout/admin Site answers are the highest-priority layer.
+         *
+         * This intentionally happens after canonical/imported campsite facts
+         * so a direct Site override wins without destroying the imported
+         * fallback.
+         */
+        mergeReportValues(
+            site.report_override_values
+        );
+
         return values;
     };
 
@@ -778,8 +828,12 @@
                         );
 
                     const value =
-                        values[key]
-                        || '';
+                        Object.prototype.hasOwnProperty.call(
+                            values,
+                            key
+                        )
+                            ? values[key]
+                            : '';
 
                     const strong =
                         card.querySelector(
