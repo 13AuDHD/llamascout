@@ -748,13 +748,15 @@ foreach (
             $placeReportReadMode === 'scout-report'
             && !$sectionHasReportedData
         ): ?>
-            <?php
-            $renderContributionPrompt(
-                (string) $section['label'],
-                count($applicableFields),
-                true
-            );
-            ?>
+            <?php if ($switchableApplicableCount < 1): ?>
+                <?php
+                $renderContributionPrompt(
+                    (string) $section['label'],
+                    count($applicableFields),
+                    true
+                );
+                ?>
+            <?php endif; ?>
 
         <?php elseif ($sectionKey === 'sensory'): ?>
             <?php foreach (
@@ -838,6 +840,7 @@ foreach (
             <?php if (
                 $placeReportReadMode === 'scout-report'
                 && $missingApplicableCount > 0
+                && $switchableApplicableCount < 1
             ): ?>
                 <?php
                 $renderContributionPrompt(
@@ -966,6 +969,7 @@ foreach (
             <?php if (
                 $placeReportReadMode === 'scout-report'
                 && $missingApplicableCount > 0
+                && $switchableApplicableCount < 1
             ): ?>
                 <?php
                 $renderContributionPrompt(
@@ -980,18 +984,52 @@ foreach (
         <?php if (
             $placeReportReadMode === 'scout-report'
             && $switchableApplicableCount > 0
+            && $missingApplicableCount > 0
         ): ?>
+            <?php
+            $targetPromptEmpty =
+                count($applicableFields) > 0
+                && $missingApplicableCount >= count($applicableFields);
+
+            $targetPromptMessage =
+                $targetPromptEmpty
+                    ? (
+                        'No one has reported '
+                        . strtolower(
+                            (string) $section['label']
+                        )
+                        . ' information here yet.'
+                    )
+                    : (
+                        $missingApplicableCount
+                        . ' applicable detail'
+                        . (
+                            $missingApplicableCount === 1
+                                ? ''
+                                : 's'
+                        )
+                        . ' in this section '
+                        . (
+                            $missingApplicableCount === 1
+                                ? 'has'
+                                : 'have'
+                        )
+                        . ' not been reported yet.'
+                    );
+            ?>
+
             <div
-                class="scout-report-contribution-prompt is-partial"
+                class="scout-report-contribution-prompt<?= $targetPromptEmpty ? ' is-empty' : ' is-partial' ?>"
                 data-target-report-prompt
-                hidden
             >
                 <div class="scout-report-contribution-copy">
                     <strong>
-                        Know something we are missing?
+                        <?= $targetPromptEmpty
+                            ? 'Be the first to add this'
+                            : 'Know something we are missing?' ?>
                     </strong>
 
-                    <p></p>
+                    <p><?= $e($targetPromptMessage) ?></p>
                 </div>
 
                 <?php if ($placeReportUpdateUrl !== ''): ?>
