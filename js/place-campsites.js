@@ -32,57 +32,12 @@
         return node.innerHTML;
     };
 
-    const repairMojibake = (value) => {
-        let text =
-            String(
-                value ?? ''
-            ).trim();
-
-        if (!text) {
-            return '';
-        }
-
-        if (
-            /(?:Â|Ã|â€|â€™|â€œ|â€|â€“|â€”|â€¦)/.test(
-                text
-            )
-        ) {
-            try {
-                const bytes =
-                    Uint8Array.from(
-                        Array.from(text).map(
-                            (character) =>
-                                character.charCodeAt(0)
-                                & 0xff
-                        )
-                    );
-
-                const repaired =
-                    new TextDecoder(
-                        'utf-8',
-                        {
-                            fatal: true
-                        }
-                    ).decode(bytes);
-
-                if (repaired) {
-                    text = repaired;
-                }
-            } catch (error) {
-                text = text
-                    .replaceAll('Â·', '')
-                    .replaceAll('Â×', 'x')
-                    .replaceAll('Â', '');
-            }
-        }
-
-        return text
+    const clean = (value) =>
+        String(
+            value ?? ''
+        )
             .replace(/\s+/g, ' ')
             .trim();
-    };
-
-    const clean = (value) =>
-        repairMojibake(value);
 
     const updateTargetContributionPrompts =
         () => {
@@ -476,7 +431,7 @@
                 role="status"
             >
                 <strong>
-                    🚫 ${escapeHtml(status)}
+                    ð« ${escapeHtml(status)}
                 </strong>
 
                 ${
@@ -1462,7 +1417,7 @@
 
                                     ${
                                         closureStatus(site)
-                                            ? '<span class="place-campsite-closed-badge">🚫 Closed</span>'
+                                            ? '<span class="place-campsite-closed-badge">ð« Closed</span>'
                                             : ''
                                     }
 
