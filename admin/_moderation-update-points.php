@@ -2,13 +2,276 @@
 
 declare(strict_types=1);
 
+$renderUpdatePoints =
+    static function (
+        array $estimate,
+        bool $scoped = false
+    ): void {
+        $estimatedPoints =
+            (int) (
+                $estimate[
+                    'estimated_points'
+                ]
+                ?? 0
+            );
+
+        $maxPoints =
+            (int) (
+                $estimate[
+                    'max_points'
+                ]
+                ?? 0
+            );
+
+        $basePoints =
+            (int) (
+                $estimate[
+                    'base_points'
+                ]
+                ?? 0
+            );
+
+        $changedItems =
+            (int) (
+                $estimate[
+                    'changed_items'
+                ]
+                ?? 0
+            );
+
+        $applicableItems =
+            (int) (
+                $estimate[
+                    'applicable_items'
+                ]
+                ?? 0
+            );
+
+        $changedPercent =
+            (float) (
+                $estimate[
+                    'changed_percent'
+                ]
+                ?? 0
+            );
+
+        $percentPerPoint =
+            max(
+                1,
+                (int) (
+                    $estimate[
+                        'percent_per_point'
+                    ]
+                    ?? 1
+                )
+            );
+
+        $multiplierPercent =
+            (int) (
+                $estimate[
+                    'multiplier_percent'
+                ]
+                ?? 100
+            );
+
+        $multiplier =
+            $multiplierPercent
+            / 100;
+
+        $completionPercent =
+            (int) (
+                $estimate[
+                    'completion_percent'
+                ]
+                ?? 0
+            );
+
+        $completionAnswered =
+            (int) (
+                $estimate[
+                    'completion_answered'
+                ]
+                ?? 0
+            );
+
+        $completionTotal =
+            (int) (
+                $estimate[
+                    'completion_total'
+                ]
+                ?? 0
+            );
+
+        ?>
+
+        <link
+            rel="stylesheet"
+            href="https://llamascout.com/css/admin/features/moderation-points.css"
+        >
+
+        <section
+            class="admin-moderation-detail admin-moderation-points"
+            aria-labelledby="update-points-heading"
+        >
+            <header class="admin-moderation-points-header">
+                <div>
+                    <p class="admin-moderation-eyebrow">
+                        <i aria-hidden="true">
+                            <?= llama_icon('star') ?>
+                        </i>
+                        Points
+                    </p>
+
+                    <h2 id="update-points-heading">
+                        <?= $scoped
+                            ? 'Area / Site Update Points'
+                            : 'Update Points' ?>
+                    </h2>
+
+                    <p>
+                        <?php if ($scoped): ?>
+                            Only questions that can belong directly to this
+                            selected Area or Site are included. Inherited
+                            Place or Area facts can affect applicability and
+                            completion, but they do not earn duplicate points.
+                        <?php else: ?>
+                            Corrections and additions are scored the same way.
+                            The award is based on the percentage of applicable
+                            Place Report questions changed by this approved update.
+                        <?php endif; ?>
+                    </p>
+                </div>
+
+                <strong class="admin-moderation-points-total">
+                    <?= number_format($estimatedPoints) ?>
+                    <span>
+                        /
+                        <?= number_format($maxPoints) ?>
+                    </span>
+                </strong>
+            </header>
+
+            <div class="admin-moderation-points-grid">
+
+                <?php if ($scoped): ?>
+                    <div class="admin-moderation-points-row">
+                        <span>
+                            <strong>
+                                Target completion
+                            </strong>
+
+                            <small>
+                                Applicable questions answered for this Area or Site
+                            </small>
+                        </span>
+
+                        <strong>
+                            <?= number_format($completionPercent) ?>%
+                            <small>
+                                <?= number_format($completionAnswered) ?>
+                                /
+                                <?= number_format($completionTotal) ?>
+                            </small>
+                        </strong>
+                    </div>
+                <?php endif; ?>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            Questions changed
+                        </strong>
+
+                        <small>
+                            Applicable completion items changed by this update
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($changedItems) ?>
+                        <small>
+                            /
+                            <?= number_format($applicableItems) ?>
+                        </small>
+                    </strong>
+                </div>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            Report changed
+                        </strong>
+
+                        <small>
+                            Changed questions divided by applicable questions
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($changedPercent, 2) ?>%
+                    </strong>
+                </div>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            Base award
+                        </strong>
+
+                        <small>
+                            1 point for each
+                            <?= number_format($percentPerPoint) ?>%
+                            changed
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($basePoints) ?>
+                    </strong>
+                </div>
+
+                <div class="admin-moderation-points-row">
+                    <span>
+                        <strong>
+                            Points multiplier
+                        </strong>
+
+                        <small>
+                            Applied after the normal update cap
+                        </small>
+                    </span>
+
+                    <strong>
+                        <?= number_format($multiplier, 2) ?>x
+                    </strong>
+                </div>
+
+            </div>
+
+            <?php if ($changedItems < 1): ?>
+                <p class="admin-moderation-points-note">
+                    This update does not change an applicable completion
+                    item, so it does not earn update points.
+                </p>
+            <?php endif; ?>
+        </section>
+
+        <?php
+    };
+
+
 $scopedReview =
     is_array(
-        $proposed['__scoped_report__']
+        $proposed[
+            '__scoped_report__'
+        ]
         ?? null
     )
-        ? $proposed['__scoped_report__']
+        ? $proposed[
+            '__scoped_report__'
+        ]
         : null;
+
 
 if ($scopedReview) {
     require_once dirname(__DIR__)
@@ -17,10 +280,16 @@ if ($scopedReview) {
     require_once dirname(__DIR__)
         . '/app/place-report/scoped-answers.php';
 
+    require_once dirname(__DIR__)
+        . '/app/place-report/scoped-update-review.php';
+
+
     $scopedScope =
         trim(
             (string) (
-                $scopedReview['scope']
+                $scopedReview[
+                    'scope'
+                ]
                 ?? ''
             )
         );
@@ -28,21 +297,27 @@ if ($scopedReview) {
     $scopedSource =
         trim(
             (string) (
-                $scopedReview['source']
+                $scopedReview[
+                    'source'
+                ]
                 ?? ''
             )
         );
 
     $scopedTargetId =
         (int) (
-            $scopedReview['id']
+            $scopedReview[
+                'id'
+            ]
             ?? 0
         );
 
     $scopedTargetLabel =
         trim(
             (string) (
-                $scopedReview['target_label']
+                $scopedReview[
+                    'target_label'
+                ]
                 ?? ''
             )
         );
@@ -58,65 +333,83 @@ if ($scopedReview) {
 
     $scopedAnswers =
         (array) (
-            $scopedReview['answers']
+            $scopedReview[
+                'answers'
+            ]
             ?? []
         );
 
-    /*
-     * Compatibility with the original single-answer scoped-update payload.
-     */
     if (
         !$scopedAnswers
         && isset(
-            $scopedReview['field_key']
+            $scopedReview[
+                'field_key'
+            ]
         )
     ) {
         $scopedAnswers = [
-            (string) $scopedReview['field_key'] =>
-                $scopedReview['value']
+            (string) $scopedReview[
+                'field_key'
+            ] =>
+                $scopedReview[
+                    'value'
+                ]
                 ?? null,
         ];
     }
 
+
     $scopedOriginal =
         is_array(
-            $original['__scoped_report__']
+            $original[
+                '__scoped_report__'
+            ]
             ?? null
         )
-            ? $original['__scoped_report__']
+            ? $original[
+                '__scoped_report__'
+            ]
             : [];
 
     $scopedOriginalAnswers =
         (array) (
-            $scopedOriginal['answers']
+            $scopedOriginal[
+                'answers'
+            ]
             ?? []
         );
 
-    /*
-     * Compatibility with the original single-answer original snapshot.
-     */
     if (
         !$scopedOriginalAnswers
         && isset(
-            $scopedReview['field_key']
+            $scopedReview[
+                'field_key'
+            ]
         )
     ) {
         $legacyKey =
-            (string) $scopedReview['field_key'];
+            (string) $scopedReview[
+                'field_key'
+            ];
 
         $scopedOriginalAnswers = [
             $legacyKey => [
                 'recorded' =>
                     !empty(
-                        $scopedOriginal['recorded']
+                        $scopedOriginal[
+                            'recorded'
+                        ]
                     ),
 
                 'value' =>
-                    $scopedOriginal['value']
+                    $scopedOriginal[
+                        'value'
+                    ]
                     ?? null,
             ],
         ];
     }
+
 
     $scopedFields =
         llama_place_report_fields();
@@ -127,20 +420,16 @@ if ($scopedReview) {
     $scopedUnknownToken =
         llama_place_report_unknown_token();
 
-    $scopedInherited =
-        [];
+    $scopedInherited = [];
 
-    /*
-     * Build the effective parent inheritance visible to the moderator.
-     *
-     * Direct target answers are intentionally not included here. Those are
-     * represented by the original snapshot below.
-     */
+
     try {
         $verifiedTarget =
             llama_report_verified_target(
                 $db,
-                (int) $item['place_id'],
+                (int) $item[
+                    'place_id'
+                ],
                 $scopedScope,
                 $scopedSource,
                 $scopedTargetId
@@ -149,7 +438,9 @@ if ($scopedReview) {
         if ($scopedTargetLabel === '') {
             $scopedTargetLabel =
                 (string) (
-                    $verifiedTarget['label']
+                    $verifiedTarget[
+                        'label'
+                    ]
                     ?? ''
                 );
         }
@@ -158,11 +449,15 @@ if ($scopedReview) {
             llama_place_update_shared_form_values(
                 llama_place_update_current_values(
                     $db,
-                    (int) $item['place_id']
+                    (int) $item[
+                        'place_id'
+                    ]
                 ),
                 llama_place_report_published_answer_state(
                     $db,
-                    (int) $item['place_id']
+                    (int) $item[
+                        'place_id'
+                    ]
                 )
             );
 
@@ -174,7 +469,9 @@ if ($scopedReview) {
                 !in_array(
                     $scopedScope,
                     (array) (
-                        $field['report_scopes']
+                        $field[
+                            'report_scopes'
+                        ]
                         ?? []
                     ),
                     true
@@ -189,9 +486,13 @@ if ($scopedReview) {
                     $placeValues
                 )
             ) {
-                $scopedInherited[$fieldKey] = [
+                $scopedInherited[
+                    $fieldKey
+                ] = [
                     'value' =>
-                        $placeValues[$fieldKey],
+                        $placeValues[
+                            $fieldKey
+                        ],
 
                     'from' =>
                         'Place',
@@ -199,27 +500,38 @@ if ($scopedReview) {
             }
         }
 
+
         if (
             $scopedScope === 'site'
             && !empty(
-                $verifiedTarget['parent_area_id']
+                $verifiedTarget[
+                    'parent_area_id'
+                ]
             )
         ) {
             $parentArea =
                 llama_report_verified_target(
                     $db,
-                    (int) $item['place_id'],
+                    (int) $item[
+                        'place_id'
+                    ],
                     'area',
                     'map_feature',
-                    (int) $verifiedTarget['parent_area_id']
+                    (int) $verifiedTarget[
+                        'parent_area_id'
+                    ]
                 );
 
             $parentAnswers =
                 llama_scoped_report_load(
                     $db,
-                    (int) $item['place_id'],
+                    (int) $item[
+                        'place_id'
+                    ],
                     'area',
-                    (int) $parentArea['id'],
+                    (int) $parentArea[
+                        'id'
+                    ],
                     'map_feature'
                 );
 
@@ -227,7 +539,9 @@ if ($scopedReview) {
                 $parentAnswers
                 as $fieldKey => $value
             ) {
-                $scopedInherited[$fieldKey] = [
+                $scopedInherited[
+                    $fieldKey
+                ] = [
                     'value' =>
                         $value,
 
@@ -235,7 +549,9 @@ if ($scopedReview) {
                         'Area: '
                         . (
                             (string) (
-                                $parentArea['label']
+                                $parentArea[
+                                    'label'
+                                ]
                                 ?? ''
                             )
                         ),
@@ -243,12 +559,36 @@ if ($scopedReview) {
             }
         }
     } catch (Throwable $exception) {
-        /*
-         * The approval service performs authoritative target and conflict
-         * validation. A display-only inheritance lookup must not make the
-         * moderation page unusable.
-         */
+        llama_log_caught_exception(
+            $exception,
+            'admin.moderate_update.scoped_preview',
+            [
+                'update_id' =>
+                    (int) (
+                        $updateId
+                        ?? 0
+                    ),
+
+                'place_id' =>
+                    (int) (
+                        $item[
+                            'place_id'
+                        ]
+                        ?? 0
+                    ),
+
+                'scope' =>
+                    $scopedScope,
+
+                'source' =>
+                    $scopedSource,
+
+                'target_id' =>
+                    $scopedTargetId,
+            ]
+        );
     }
+
 
     $formatScopedValue =
         static function (
@@ -270,7 +610,9 @@ if ($scopedReview) {
 
             $type =
                 (string) (
-                    $field['type']
+                    $field[
+                        'type'
+                    ]
                     ?? ''
                 );
 
@@ -294,7 +636,9 @@ if ($scopedReview) {
             }
 
             if ($type === 'permission') {
-                return match ((string) $value) {
+                return match (
+                    (string) $value
+                ) {
                     '1' => 'Yes',
                     '2' => 'With Permit',
                     '3' => 'Conditional',
@@ -320,7 +664,9 @@ if ($scopedReview) {
             ) {
                 $options =
                     (array) (
-                        $field['options']
+                        $field[
+                            'options'
+                        ]
                         ?? []
                     );
 
@@ -339,7 +685,9 @@ if ($scopedReview) {
             ) {
                 $options =
                     (array) (
-                        $field['options']
+                        $field[
+                            'options'
+                        ]
                         ?? []
                     );
 
@@ -380,14 +728,15 @@ if ($scopedReview) {
             }
 
             if (is_scalar($value)) {
-                return (string) $value;
+                return
+                    (string) $value;
             }
 
             return 'Recorded';
         };
 
-    $groupedScopedChanges =
-        [];
+
+    $groupedScopedChanges = [];
 
     foreach (
         $scopedAnswers
@@ -397,16 +746,20 @@ if ($scopedReview) {
             (string) $fieldKey;
 
         $field =
-            $scopedFields[$fieldKey]
+            $scopedFields[
+                $fieldKey
+            ]
             ?? null;
 
-        /*
-         * Do not silently invent labels or field ownership for data that no
-         * longer exists in the canonical question catalog.
-         */
         if (!is_array($field)) {
-            $groupedScopedChanges['other']['meta'] =
-                $scopedSections['other']
+            $groupedScopedChanges[
+                'other'
+            ][
+                'meta'
+            ] =
+                $scopedSections[
+                    'other'
+                ]
                 ?? [
                     'label' =>
                         'Other',
@@ -415,7 +768,11 @@ if ($scopedReview) {
                         'edit',
                 ];
 
-            $groupedScopedChanges['other']['changes'][] = [
+            $groupedScopedChanges[
+                'other'
+            ][
+                'changes'
+            ][] = [
                 'label' =>
                     $fieldKey,
 
@@ -423,7 +780,9 @@ if ($scopedReview) {
                     'Canonical field definition unavailable',
 
                 'after' =>
-                    is_scalar($proposedValue)
+                    is_scalar(
+                        $proposedValue
+                    )
                         ? (string) $proposedValue
                         : 'Recorded',
 
@@ -436,16 +795,26 @@ if ($scopedReview) {
 
         $section =
             (string) (
-                $field['section']
+                $field[
+                    'section'
+                ]
                 ?? 'other'
             );
 
-        $groupedScopedChanges[$section]['meta'] =
-            $scopedSections[$section]
+        $groupedScopedChanges[
+            $section
+        ][
+            'meta'
+        ] =
+            $scopedSections[
+                $section
+            ]
             ?? [
                 'label' =>
                     (string) (
-                        $field['group']
+                        $field[
+                            'group'
+                        ]
                         ?? 'Other'
                     ),
 
@@ -454,7 +823,9 @@ if ($scopedReview) {
             ];
 
         $prior =
-            $scopedOriginalAnswers[$fieldKey]
+            $scopedOriginalAnswers[
+                $fieldKey
+            ]
             ?? [
                 'recorded' =>
                     false,
@@ -466,7 +837,9 @@ if ($scopedReview) {
         $priorRecorded =
             is_array($prior)
             && !empty(
-                $prior['recorded']
+                $prior[
+                    'recorded'
+                ]
             );
 
         if ($priorRecorded) {
@@ -476,26 +849,38 @@ if ($scopedReview) {
                 . ' override: '
                 . $formatScopedValue(
                     $field,
-                    $prior['value']
+                    $prior[
+                        'value'
+                    ]
                     ?? null
                 );
         } elseif (
             isset(
-                $scopedInherited[$fieldKey]
+                $scopedInherited[
+                    $fieldKey
+                ]
             )
         ) {
             $beforeText =
                 'Inherited from '
                 . (
                     (string) (
-                        $scopedInherited[$fieldKey]['from']
+                        $scopedInherited[
+                            $fieldKey
+                        ][
+                            'from'
+                        ]
                         ?? 'parent'
                     )
                 )
                 . ': '
                 . $formatScopedValue(
                     $field,
-                    $scopedInherited[$fieldKey]['value']
+                    $scopedInherited[
+                        $fieldKey
+                    ][
+                        'value'
+                    ]
                     ?? null
                 );
         } else {
@@ -505,10 +890,16 @@ if ($scopedReview) {
                 . ' answer or inherited value';
         }
 
-        $groupedScopedChanges[$section]['changes'][] = [
+        $groupedScopedChanges[
+            $section
+        ][
+            'changes'
+        ][] = [
             'label' =>
                 (string) (
-                    $field['label']
+                    $field[
+                        'label'
+                    ]
                     ?? $fieldKey
                 ),
 
@@ -534,9 +925,7 @@ if ($scopedReview) {
     <section class="admin-update-changes">
 
         <header>
-
             <div>
-
                 <p class="admin-update-eyebrow">
                     Scoped update
                 </p>
@@ -563,23 +952,18 @@ if ($scopedReview) {
                             )
                     ) ?>
                 </p>
-
             </div>
 
             <span class="admin-update-change-count">
-
                 <?= count(
                     $scopedAnswers
                 ) ?>
-
                 question<?= count(
                     $scopedAnswers
                 ) === 1
                     ? ''
                     : 's' ?>
-
             </span>
-
         </header>
 
 
@@ -589,37 +973,40 @@ if ($scopedReview) {
         ): ?>
 
             <?php
-
             $meta =
-                $group['meta']
+                $group[
+                    'meta'
+                ]
                 ?? [];
 
             $changes =
-                $group['changes']
+                $group[
+                    'changes'
+                ]
                 ?? [];
-
             ?>
 
             <section class="admin-update-change-group">
 
                 <h3>
-
                     <i aria-hidden="true">
                         <?= llama_icon(
                             (string) (
-                                $meta['icon']
+                                $meta[
+                                    'icon'
+                                ]
                                 ?? 'edit'
                             )
                         ) ?>
                     </i>
 
                     <?= moderation_e(
-                        $meta['label']
+                        $meta[
+                            'label'
+                        ]
                         ?? 'Other'
                     ) ?>
-
                 </h3>
-
 
                 <div class="admin-update-change-grid">
 
@@ -632,29 +1019,29 @@ if ($scopedReview) {
 
                             <h4>
                                 <?= moderation_e(
-                                    $change['label']
+                                    $change[
+                                        'label'
+                                    ]
                                     ?? ''
                                 ) ?>
                             </h4>
 
-
                             <div class="admin-update-before-after">
 
                                 <div class="is-before">
-
                                     <span>
                                         Current / inherited
                                     </span>
 
                                     <strong>
                                         <?= moderation_e(
-                                            $change['before']
+                                            $change[
+                                                'before'
+                                            ]
                                             ?? ''
                                         ) ?>
                                     </strong>
-
                                 </div>
-
 
                                 <i aria-hidden="true">
                                     <?= llama_icon(
@@ -662,28 +1049,28 @@ if ($scopedReview) {
                                     ) ?>
                                 </i>
 
-
                                 <div class="is-after">
-
                                     <span>
                                         Proposed
                                     </span>
 
                                     <strong>
                                         <?= moderation_e(
-                                            $change['after']
+                                            $change[
+                                                'after'
+                                            ]
                                             ?? ''
                                         ) ?>
                                     </strong>
-
                                 </div>
 
                             </div>
 
-
                             <?php if (
                                 !empty(
-                                    $change['warning']
+                                    $change[
+                                        'warning'
+                                    ]
                                 )
                             ): ?>
 
@@ -712,209 +1099,55 @@ if ($scopedReview) {
                 $scopedTargetType
             ) ?>.
             Parent Place and sibling Area/Site answers are not changed.
-            Scoped contribution points remain disabled until Phase 15.
+            Inherited facts can affect applicability and completion, but only
+            direct answers in this contribution earn scoped update points.
         </p>
 
     </section>
 
     <?php
 
+    if (
+        isset(
+            $updatePointEstimate
+        )
+        && is_array(
+            $updatePointEstimate
+        )
+    ) {
+        $renderUpdatePoints(
+            $updatePointEstimate,
+            true
+        );
+    }
+
+
     /*
      * The canonical scoped review is rendered above. Prevent the legacy raw
      * field-key list below moderate-update.php from rendering a second copy.
      */
-    $proposed['__scoped_report__'] =
+    $proposed[
+        '__scoped_report__'
+    ] =
         null;
 
     return;
 }
 
+
 if (
-    !isset($updatePointEstimate)
-    || !is_array($updatePointEstimate)
+    !isset(
+        $updatePointEstimate
+    )
+    || !is_array(
+        $updatePointEstimate
+    )
 ) {
     return;
 }
 
-$estimatedPoints =
-    (int) (
-        $updatePointEstimate['estimated_points']
-        ?? 0
-    );
 
-$maxPoints =
-    (int) (
-        $updatePointEstimate['max_points']
-        ?? 0
-    );
-
-$basePoints =
-    (int) (
-        $updatePointEstimate['base_points']
-        ?? 0
-    );
-
-$changedItems =
-    (int) (
-        $updatePointEstimate['changed_items']
-        ?? 0
-    );
-
-$applicableItems =
-    (int) (
-        $updatePointEstimate['applicable_items']
-        ?? 0
-    );
-
-$changedPercent =
-    (float) (
-        $updatePointEstimate['changed_percent']
-        ?? 0
-    );
-
-$percentPerPoint =
-    max(
-        1,
-        (int) (
-            $updatePointEstimate['percent_per_point']
-            ?? 1
-        )
-    );
-
-$multiplierPercent =
-    (int) (
-        $updatePointEstimate['multiplier_percent']
-        ?? 100
-    );
-
-$multiplier =
-    $multiplierPercent
-    / 100;
-?>
-
-<link
-    rel="stylesheet"
-    href="https://llamascout.com/css/admin/features/moderation-points.css"
->
-
-
-<section
-    class="admin-moderation-detail admin-moderation-points"
-    aria-labelledby="update-points-heading"
->
-    <header class="admin-moderation-points-header">
-        <div>
-            <p class="admin-moderation-eyebrow">
-                <i aria-hidden="true">
-                    <?= llama_icon('star') ?>
-                </i>
-                Points
-            </p>
-
-            <h2 id="update-points-heading">
-                Update Points
-            </h2>
-
-            <p>
-                Corrections and additions are scored the same way.
-                The award is based on the percentage of applicable
-                Place Report questions changed by this approved update.
-            </p>
-        </div>
-
-        <strong class="admin-moderation-points-total">
-            <?= number_format($estimatedPoints) ?>
-            <span>
-                /
-                <?= number_format($maxPoints) ?>
-            </span>
-        </strong>
-    </header>
-
-
-    <div class="admin-moderation-points-grid">
-
-        <div class="admin-moderation-points-row">
-            <span>
-                <strong>
-                    Questions changed
-                </strong>
-
-                <small>
-                    Completion items changed by this update
-                </small>
-            </span>
-
-            <strong>
-                <?= number_format($changedItems) ?>
-                <small>
-                    /
-                    <?= number_format($applicableItems) ?>
-                </small>
-            </strong>
-        </div>
-
-
-        <div class="admin-moderation-points-row">
-            <span>
-                <strong>
-                    Report changed
-                </strong>
-
-                <small>
-                    Changed questions divided by applicable questions
-                </small>
-            </span>
-
-            <strong>
-                <?= number_format($changedPercent, 2) ?>%
-            </strong>
-        </div>
-
-
-        <div class="admin-moderation-points-row">
-            <span>
-                <strong>
-                    Base award
-                </strong>
-
-                <small>
-                    1 point for each
-                    <?= number_format($percentPerPoint) ?>%
-                    changed
-                </small>
-            </span>
-
-            <strong>
-                <?= number_format($basePoints) ?>
-            </strong>
-        </div>
-
-
-        <div class="admin-moderation-points-row">
-            <span>
-                <strong>
-                    Points multiplier
-                </strong>
-
-                <small>
-                    Applied after the normal update cap
-                </small>
-            </span>
-
-            <strong>
-                <?= number_format($multiplier, 2) ?>x
-            </strong>
-        </div>
-
-    </div>
-
-
-    <?php if ($changedItems < 1): ?>
-        <p class="admin-moderation-points-note">
-            This update does not change an applicable Place Report
-            completion item, so it does not earn update points.
-        </p>
-    <?php endif; ?>
-
-</section>
+$renderUpdatePoints(
+    $updatePointEstimate,
+    false
+);
