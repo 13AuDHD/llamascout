@@ -70,7 +70,7 @@
                 }
             } catch (error) {
                 text = text
-                    .replaceAll('Â·', '-')
+                    .replaceAll('Â·', '')
                     .replaceAll('Â×', 'x')
                     .replaceAll('Â', '');
             }
@@ -328,8 +328,7 @@
             other: 'Other'
         };
 
-        return labels[value]
-            || smartCase(
+        return labels[value]             || smartCase(
                 clean(value)
                     .replaceAll('_', ' ')
             );
@@ -1403,7 +1402,7 @@
                             ),
                             hookupLabel(
                                 site.hookup_status
-                            )
+                             )
                         ]
                             .map(clean)
                             .join(' ')
@@ -1468,16 +1467,18 @@
                                     }
 
                                     <span class="place-campsite-row-summary">
-                                        ${escapeHtml(
-                                            summary
-                                                .slice(
-                                                    0,
-                                                    3
-                                                )
-                                                .join(
-                                                    ' - '
-                                                )
-                                        )}
+                                        ${summary
+                                            .slice(
+                                                0,
+                                                3
+                                            )
+                                            .map(
+                                                (part) =>
+                                                    `<span>${escapeHtml(part)}</span>`
+                                            )
+                                            .join(
+                                                '<img width="10" height="10" src="/assets/icons/separator-dot.svg" alt="" aria-hidden="true">'
+                                            )}
                                     </span>
                                 </button>
                             `;
