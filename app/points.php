@@ -963,3 +963,479 @@ function llama_points_estimate_place_update(
             [],
     ];
 }
+
+
+/* =========================================================
+   SCOPED AREA / SITE UPDATE POINTS
+
+   Scoped updates reuse the normal Place-update point policy,
+   but their denominator contains only completion items that
+   can legitimately be owned by the selected Area or Site.
+
+   Inherited facts may affect applicability, but they never
+   count as changed items unless this contribution records a
+   direct override for that target.
+   ========================================================= */
+
+function llama_points_scoped_completion_items(
+    array $effectiveInput,
+    string $scope
+): array {
+    if (
+        !in_array(
+            $scope,
+            [
+                'area',
+                'site',
+            ],
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Scoped completion requires an Area or Site.'
+        );
+    }
+
+    $definitions =
+        llama_place_report_fields();
+
+    $items = [];
+
+    foreach (
+        llama_place_report_completion_items(
+            $effectiveInput
+        )
+        as $item
+    ) {
+        $scopedFields = [];
+
+        foreach (
+            (array) (
+                $item['fields']
+                ?? []
+            )
+            as $fieldKey
+        ) {
+            $fieldKey =
+                (string) $fieldKey;
+
+            $field =
+                $definitions[
+                    $fieldKey
+                ]
+                ?? null;
+
+            if (
+                !is_array($field)
+                || !in_array(
+                    $scope,
+                    (array) (
+                        $field[
+                            'report_scopes'
+                        ]
+                        ?? []
+                    ),
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $scopedFields[] =
+                $fieldKey;
+        }
+
+        if (!$scopedFields) {
+            continue;
+        }
+
+        $answered = false;
+
+        foreach (
+            $scopedFields
+            as $fieldKey
+        ) {
+            if (
+                llama_place_report_question_answered(
+                    $effectiveInput,
+                    $fieldKey
+                )
+            ) {
+                $answered = true;
+                break;
+            }
+        }
+
+        $items[] = [
+            'key' =>
+                (string) (
+                    $item['key']
+                    ?? ''
+                ),
+
+            'label' =>
+                (string) (
+                    $item['label']
+                    ?? ''
+                ),
+
+            'fields' =>
+                array_values(
+                    $scopedFields
+                ),
+
+            'answered' =>
+                $answered,
+        ];
+    }
+
+    return $items;
+}
+
+
+function llama_points_scoped_completion_summary(
+    array $effectiveInput,
+    string $scope
+): array {
+    $items =
+        llama_points_scoped_completion_items(
+            $effectiveInput,
+            $scope
+        );
+
+    $answered = 0;
+    $missing = [];
+
+    foreach ($items as $item) {
+        if (!empty($item['answered'])) {
+            $answered++;
+            continue;
+        }
+
+        $missing[] = [
+            'key' =>
+                (string) (
+                    $item['key']
+                    ?? ''
+                ),
+
+            'label' =>
+                (string) (
+                    $item['label']
+                    ?? ''
+                ),
+
+            'fields' =>
+                array_values(
+                    (array) (
+                        $item['fields']
+                        ?? []
+                    )
+                ),
+        ];
+    }
+
+    $total =
+        count($items);
+
+    return [
+        'answered' =>
+            $answered,
+
+        'total' =>
+            $total,
+
+        'percent' =>
+            $total > 0
+                ? (int) round(
+                    100
+                    * (
+                        $answered
+                        / $total
+                    )
+                )
+                : 0,
+
+        'missing' =>
+            $missing,
+    ];
+}
+
+
+/*
+ * Estimate the award for one approved Area/Site correction.
+ *
+ * The normal update policy remains authoritative:
+ * - place_update_percent_per_point
+ * - place_update_max_points
+ * - points_global_multiplier
+ *
+ * Evidence photos are intentionally not a scoped completion
+ * item. They may support moderation, but only direct canonical
+ * Area/Site answers earn scoped update points.
+ */
+function llama_points_estimate_scoped_update(
+    PDO $db,
+    array $effectiveInput,
+    string $scope,
+    array $changedFieldKeys
+): array {
+    $items =
+        llama_points_scoped_completion_items(
+            $effectiveInput,
+            $scope
+        );
+
+    $fieldToItem = [];
+
+    foreach ($items as $item) {
+        $itemKey =
+            (string) (
+                $item['key']
+                ?? ''
+            );
+
+        if ($itemKey === '') {
+            continue;
+        }
+
+        foreach (
+            (array) (
+                $item['fields']
+                ?? []
+            )
+            as $fieldKey
+        ) {
+            $fieldToItem[
+                (string) $fieldKey
+            ] =
+                $itemKey;
+        }
+    }
+
+    $changedItems = [];
+
+    foreach (
+        array_values(
+            array_unique(
+                array_map(
+                    'strval',
+                    $changedFieldKeys
+                )
+            )
+        )
+        as $fieldKey
+    ) {
+        $itemKey =
+            $fieldToItem[
+                $fieldKey
+            ]
+            ?? '';
+
+        if ($itemKey === '') {
+            continue;
+        }
+
+        $changedItems[
+            $itemKey
+        ] = true;
+    }
+
+    $applicableItemCount =
+        count($items);
+
+    $changedItemKeys =
+        array_values(
+            array_keys(
+                $changedItems
+            )
+        );
+
+    $changedItemCount =
+        count(
+            $changedItemKeys
+        );
+
+    $changedPercent =
+        $applicableItemCount > 0
+            ? (
+                100
+                * (
+                    $changedItemCount
+                    / $applicableItemCount
+                )
+            )
+            : 0.0;
+
+    $percentPerPoint =
+        max(
+            1,
+            llama_points_policy_required(
+                $db,
+                'place_update_percent_per_point'
+            )
+        );
+
+    $rawBasePoints =
+        (int) round(
+            $changedPercent
+            / $percentPerPoint
+        );
+
+    $baseMaxPoints =
+        llama_points_policy_required(
+            $db,
+            'place_update_max_points'
+        );
+
+    $basePoints =
+        max(
+            0,
+            min(
+                $baseMaxPoints,
+                $rawBasePoints
+            )
+        );
+
+    $multiplierPercent =
+        llama_points_multiplier_percent(
+            $db
+        );
+
+    $estimatedPoints =
+        llama_points_apply_multiplier(
+            $basePoints,
+            $multiplierPercent
+        );
+
+    $effectiveMaxPoints =
+        llama_points_apply_multiplier(
+            $baseMaxPoints,
+            $multiplierPercent
+        );
+
+    $completion =
+        llama_points_scoped_completion_summary(
+            $effectiveInput,
+            $scope
+        );
+
+    $uniqueChangedFields =
+        array_values(
+            array_unique(
+                array_map(
+                    'strval',
+                    $changedFieldKeys
+                )
+            )
+        );
+
+    $scoredChangedFields =
+        array_values(
+            array_unique(
+                array_intersect(
+                    array_keys(
+                        $fieldToItem
+                    ),
+                    $uniqueChangedFields
+                )
+            )
+        );
+
+    return [
+        'scope' =>
+            $scope,
+
+        'changed_items' =>
+            $changedItemCount,
+
+        'applicable_items' =>
+            $applicableItemCount,
+
+        'changed_percent' =>
+            round(
+                $changedPercent,
+                2
+            ),
+
+        'percent_per_point' =>
+            $percentPerPoint,
+
+        'base_points' =>
+            $basePoints,
+
+        'estimated_points' =>
+            $estimatedPoints,
+
+        'base_max_points' =>
+            $baseMaxPoints,
+
+        'max_points' =>
+            $effectiveMaxPoints,
+
+        'multiplier_percent' =>
+            $multiplierPercent,
+
+        'changed_item_keys' =>
+            $changedItemKeys,
+
+        'changed_fields' =>
+            count(
+                $uniqueChangedFields
+            ),
+
+        'scored_changed_fields' =>
+            count(
+                $scoredChangedFields
+            ),
+
+        'unscored_changed_fields' =>
+            max(
+                0,
+                count(
+                    $uniqueChangedFields
+                )
+                - count(
+                    $scoredChangedFields
+                )
+            ),
+
+        'completion_answered' =>
+            (int) (
+                $completion['answered']
+                ?? 0
+            ),
+
+        'completion_total' =>
+            (int) (
+                $completion['total']
+                ?? 0
+            ),
+
+        'completion_percent' =>
+            (int) (
+                $completion['percent']
+                ?? 0
+            ),
+
+        'completion_missing' =>
+            array_values(
+                (array) (
+                    $completion['missing']
+                    ?? []
+                )
+            ),
+
+        'categories_started' =>
+            0,
+
+        'category_count' =>
+            0,
+
+        'categories' =>
+            [],
+
+        'standalone_fields' =>
+            [],
+    ];
+}
