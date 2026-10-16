@@ -297,6 +297,52 @@
             ? campsiteConfig.sites
             : [];
 
+    const areaConfigNode =
+        form.querySelector(
+            '[data-admin-place-areas]'
+        );
+
+    let areaCatalog = {
+        areas: []
+    };
+
+    if (areaConfigNode) {
+        try {
+            areaCatalog =
+                JSON.parse(
+                    areaConfigNode.textContent
+                    || '{}'
+                );
+        } catch (_) {
+            areaCatalog = {
+                areas: []
+            };
+        }
+    }
+
+    const campsiteAreas =
+        Array.isArray(areaCatalog.areas)
+            ? areaCatalog.areas
+            : [];
+
+    const areaByScopeId =
+        new Map(
+            campsiteAreas
+                .map(
+                    (area) => [
+                        Number(
+                            area.scope_id
+                            || 0
+                        ),
+                        area
+                    ]
+                )
+                .filter(
+                    ([id]) =>
+                        id > 0
+                )
+        );
+
     const campsiteFieldKeys =
         Array.isArray(campsiteConfig.site_field_keys)
             ? campsiteConfig.site_field_keys
@@ -324,6 +370,31 @@
 
     let campsiteDirty = false;
     let activeCampsiteId = '';
+
+    let siteAnswersField =
+        form.querySelector(
+            '[name="admin_site_answers_json"]'
+        );
+
+    if (!siteAnswersField) {
+        siteAnswersField =
+            document.createElement(
+                'input'
+            );
+
+        siteAnswersField.type =
+            'hidden';
+
+        siteAnswersField.name =
+            'admin_site_answers_json';
+
+        form.appendChild(
+            siteAnswersField
+        );
+    }
+
+    let pendingSiteChanges =
+        null;
 
     const controlsFor = (name) =>
         Array.from(
@@ -709,6 +780,213 @@
         placeSiteDirty = false;
     };
 
+    const valuesEqual =
+        (left, right) =>
+            JSON.stringify(left)
+            === JSON.stringify(right);
+
+    const siteAreaOverrides =
+        (site) => {
+            const areaId =
+                Number(
+                    site?.parent_area_id
+                    || 0
+                );
+
+            if (areaId < 1) {
+                return {};
+            }
+
+            const area =
+                areaByScopeId.get(
+                    areaId
+                );
+
+            return (
+                area?.form_values
+                && typeof area.form_values === 'object'
+                    ? area.form_values
+                    : {}
+            );
+        };
+
+    const siteBaseValues =
+        (site) => {
+            const values = {};
+
+            campsiteFieldKeys.forEach(
+                (key) => {
+                    if (
+                        placeSiteFieldLookup.has(
+                            key
+                        )
+                        && Object.prototype.hasOwnProperty.call(
+                            placeSiteSectionValues,
+                            key
+                        )
+                    ) {
+                        values[key] =
+                            placeSiteSectionValues[key];
+                    }
+                }
+            );
+
+            const areaValues =
+                siteAreaOverrides(
+                    site
+                );
+
+            Object.entries(
+                areaValues
+            ).forEach(
+                ([key, value]) => {
+                    if (
+                        placeSiteFieldLookup.has(
+                            key
+                        )
+                        && campsiteFieldKeys.includes(
+                            key
+                        )
+                    ) {
+                        values[key] =
+                            value;
+                    }
+                }
+            );
+
+            const imported =
+                site?.imported_values
+                && typeof site.imported_values === 'object'
+                    ? site.imported_values
+                    : {};
+
+            Object.entries(
+                imported
+            ).forEach(
+                ([key, value]) => {
+                    if (
+                        campsiteFieldKeys.includes(
+                            key
+                        )
+                    ) {
+                        values[key] =
+                            value;
+                    }
+                }
+            );
+
+            return values;
+        };
+
+    const siteOverrideValues =
+        (site) =>
+            (
+                site?.override_values
+                && typeof site.override_values === 'object'
+                    ? site.override_values
+                    : {}
+            );
+
+    const siteEffectiveValues =
+        (site) => ({
+            ...siteBaseValues(
+                site
+            ),
+            ...siteOverrideValues(
+                site
+            ),
+        });
+
+    const siteChanges =
+        (
+            site,
+            current
+        ) => {
+            const result = {};
+            const base =
+                siteBaseValues(
+                    site
+                );
+            const overrides =
+                siteOverrideValues(
+                    site
+                );
+
+            campsiteFieldKeys.forEach(
+                (key) => {
+                    if (
+                        controlsFor(key).length
+                        === 0
+                    ) {
+                        return;
+                    }
+
+                    const baseValue =
+                        Object.prototype.hasOwnProperty.call(
+                            base,
+                            key
+                        )
+                            ? base[key]
+                            : '';
+
+                    const hasOverride =
+                        Object.prototype.hasOwnProperty.call(
+                            overrides,
+                            key
+                        );
+
+                    const beforeEffective =
+                        hasOverride
+                            ? overrides[key]
+                            : baseValue;
+
+                    const value =
+                        Object.prototype.hasOwnProperty.call(
+                            current,
+                            key
+                        )
+                            ? current[key]
+                            : '';
+
+                    if (
+                        valuesEqual(
+                            beforeEffective,
+                            value
+                        )
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        hasOverride
+                        && valuesEqual(
+                            baseValue,
+                            value
+                        )
+                    ) {
+                        result[key] =
+                            campsiteUnanswered;
+                        return;
+                    }
+
+                    if (
+                        !hasOverride
+                        && valuesEqual(
+                            baseValue,
+                            value
+                        )
+                    ) {
+                        return;
+                    }
+
+                    result[key] =
+                        value;
+                }
+            );
+
+            return result;
+        };
+
     const rememberSavedCampsite = () => {
         if (activeCampsiteId === '') {
             return;
@@ -725,13 +1003,42 @@
             return;
         }
 
-        site.form_values = {
-            ...(site.form_values
-                && typeof site.form_values === 'object'
-                    ? site.form_values
-                    : {}),
-            ...currentCampsiteFormValues()
+        const overrides = {
+            ...siteOverrideValues(
+                site
+            )
         };
+
+        Object.entries(
+            pendingSiteChanges
+            || {}
+        ).forEach(
+            ([key, value]) => {
+                if (
+                    value === ''
+                    || value === campsiteUnanswered
+                ) {
+                    delete overrides[key];
+                } else {
+                    overrides[key] =
+                        value;
+                }
+            }
+        );
+
+        site.override_values =
+            overrides;
+
+        site.form_values =
+            siteEffectiveValues(
+                site
+            );
+
+        pendingSiteChanges =
+            null;
+
+        siteAnswersField.value =
+            '';
     };
 
 
@@ -792,10 +1099,9 @@
         clearSiteFields();
 
         const values =
-            site.form_values
-            && typeof site.form_values === 'object'
-                ? site.form_values
-                : {};
+            siteEffectiveValues(
+                site
+            );
 
         Object.entries(values)
             .forEach(
@@ -899,6 +1205,47 @@
             loadCampsite('');
         }
     }
+
+    form.addEventListener(
+        'llama:admin-place-report-save-starting',
+        () => {
+            siteAnswersField.value =
+                '';
+
+            pendingSiteChanges =
+                null;
+
+            if (
+                activeCampsiteId === ''
+            ) {
+                return;
+            }
+
+            const site =
+                campsiteSites.find(
+                    (item) =>
+                        String(
+                            item.id
+                            || ''
+                        ) === activeCampsiteId
+                );
+
+            if (!site) {
+                return;
+            }
+
+            pendingSiteChanges =
+                siteChanges(
+                    site,
+                    currentCampsiteFormValues()
+                );
+
+            siteAnswersField.value =
+                JSON.stringify(
+                    pendingSiteChanges
+                );
+        }
+    );
 
     /*
      * Place / Area / Site context can also be changed by the embedded map or
