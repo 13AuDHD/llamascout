@@ -327,7 +327,7 @@ $combinedLongitude =
 $combinedCoordinates =
     (
         $combinedLatitude !== ''
-        && $combinedLongitude !== ''
+     && $combinedLongitude !== ''
     )
         ? $combinedLatitude
             . ', '
@@ -1450,3 +1450,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 
 <script defer src="/js/place-report-section-completion.js"></script>
 <script defer src="/js/place-report-road-hazards.js"></script>
+
+<script
+    src="https://llamascout.com/js/place-report-form/recovery.js"
+></script>
