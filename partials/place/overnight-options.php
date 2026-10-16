@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/app/place-map-features.php';
 require_once dirname(__DIR__, 2) . '/app/place-map-pricing.php';
 require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
+require_once dirname(__DIR__, 2) . '/app/place-report/scoped-answers.php';
 
 $placeId =
     (int) (
@@ -18,11 +19,12 @@ $baseCampingFee =
     ?? null;
 
 $stayFeatures = [];
+$stayDb = db();
 
 try {
     $stayFeatures =
         llama_place_map_features(
-            db(),
+            $stayDb,
             $placeId,
             true
         );
@@ -44,7 +46,7 @@ $canonicalMappedSiteIds = [];
 try {
     foreach (
         llama_place_campsites(
-            db(),
+            $stayDb,
             $placeId
         )
         as $campsite
@@ -73,11 +75,11 @@ try {
 
 
 /*
- * Only map-only Site polygons belong in this supplemental list.
+ * Only historical map-only Site polygons belong in this supplemental list.
  *
- * A mapped Site associated with place_campsites is already represented by its
- * canonical campsite row. Rendering the polygon here too would present one
- * physical Site as two overnight options.
+ * New mapped Sites receive a canonical place_campsites identity during map
+ * save. Admin Place also normalizes older map-only Sites. Keeping this fallback
+ * prevents a legacy orphan from disappearing before it has been repaired.
  */
 $stayMappedSites = [];
 
@@ -320,6 +322,32 @@ foreach ($stayFeatures as $feature) {
                 'Overnight status unknown',
         };
 
+    $reportValues = [];
+
+    try {
+        $reportValues =
+            llama_scoped_report_display_values(
+                llama_scoped_report_load(
+                    $stayDb,
+                    $placeId,
+                    'area',
+                    $id,
+                    'map_feature'
+                )
+            );
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'public.overnight_options.area_report',
+            [
+                'place_id' =>
+                    $placeId,
+                'area_id' =>
+                    $id,
+            ]
+        );
+    }
+
     $stayParking[] = [
         'id' =>
             $id,
@@ -337,6 +365,14 @@ foreach ($stayFeatures as $feature) {
 
         'status' =>
             $statusLabel,
+
+        /*
+         * These are direct Area overrides only. The client first restores the
+         * original Place report, then layers these values on top. That mirrors
+         * normal Place -> Area inheritance without duplicating report logic.
+         */
+        'report_values' =>
+            $reportValues,
     ];
 }
 
@@ -447,6 +483,14 @@ $hasSupplementalStayOptions =
                 data-stay-parking-name="<?= place_h($parking['name']) ?>"
                 data-stay-parking-cost="<?= place_h($parking['cost']) ?>"
                 data-stay-parking-status="<?= place_h($parking['status']) ?>"
+                data-stay-report-values="<?= place_h(
+                    json_encode(
+                        $parking['report_values'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '{}'
+                ) ?>"
             >
                 <span class="place-campsite-row-name">
                     <?= place_h($parking['name']) ?>
