@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/report-targets.php';
 require_once __DIR__ . '/scoped-answers.php';
+require_once dirname(__DIR__) . '/photo-staging.php';
 
 /**
  * Parse and validate one Area/Site correction payload against the current
@@ -419,6 +420,40 @@ function llama_scoped_update_submit(
     $visited =
         $built['visited'];
 
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
+
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+    if (
+        count($submittedPhotos)
+        > 5
+    ) {
+        throw new InvalidArgumentException(
+            'Add no more than 5 evidence photos to an Area or Site update.'
+        );
+    }
+
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
+    }
+
+    $updateId = 0;
+
     $db->beginTransaction();
 
     try {
@@ -485,6 +520,39 @@ function llama_scoped_update_submit(
         $updateId =
             (int) $db->lastInsertId();
 
+        $committedPhotos = [];
+
+        if ($photoToken !== '') {
+            $committedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/'
+                    . $updateId
+                );
+
+            $photoUpdate =
+                $db->prepare(
+                    'UPDATE place_update_submissions
+                     SET photos = ?
+                     WHERE id = ?
+                       AND user_id = ?'
+                );
+
+            $photoUpdate->execute([
+                json_encode(
+                    $committedPhotos,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                ),
+                $updateId,
+                $userId,
+            ]);
+        }
+
         llama_place_update_append_history(
             $db,
             $updateId,
@@ -512,7 +580,9 @@ function llama_scoped_update_submit(
                     [],
 
                 'photo_count' =>
-                    0,
+                    count(
+                        $committedPhotos
+                    ),
 
                 'visited_at' =>
                     $visited,
@@ -531,6 +601,14 @@ function llama_scoped_update_submit(
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();
+        }
+
+        if ($updateId > 0) {
+            llama_photo_remove_tree(
+                dirname(__DIR__, 2)
+                . '/uploads/place-updates/'
+                . $updateId
+            );
         }
 
         throw $exception;
@@ -700,15 +778,69 @@ function llama_scoped_update_resubmit(
             )
         );
 
-    $photos =
+    $existingPhotos =
         llama_place_update_decode_json(
             $before['photos']
             ?? '[]'
         );
 
+    $photoToken =
+        trim(
+            (string) (
+                $input['photo_stage_token']
+                ?? ''
+            )
+        );
+
+    $submittedPhotos =
+        llama_photo_decode_form_photos(
+            $input['photos_json']
+            ?? '[]'
+        );
+
+    if (
+        count($existingPhotos)
+        + count($submittedPhotos)
+        > 5
+    ) {
+        throw new InvalidArgumentException(
+            'An Area or Site update can have no more than 5 evidence photos.'
+        );
+    }
+
+    if (
+        $submittedPhotos
+        && $photoToken === ''
+    ) {
+        throw new InvalidArgumentException(
+            'The photo upload session is missing. Please upload the photos again.'
+        );
+    }
+
+    $newCommittedPhotos = [];
+
     $db->beginTransaction();
 
     try {
+        if ($photoToken !== '') {
+            $newCommittedPhotos =
+                llama_photo_commit_stage(
+                    'update-place',
+                    $userId,
+                    $photoToken,
+                    $submittedPhotos,
+                    '/uploads/place-updates/'
+                    . $updateId
+                );
+        }
+
+        $photos =
+            array_values(
+                array_merge(
+                    $existingPhotos,
+                    $newCommittedPhotos
+                )
+            );
         $stmt =
             $db->prepare(
                 'UPDATE place_update_submissions
@@ -718,6 +850,7 @@ function llama_scoped_update_resubmit(
                     visited_at = ?,
                     proposed_changes = ?,
                     original_values = ?,
+                    photos = ?,
                     contributor_notes = ?,
                     submitted_at = CURRENT_TIMESTAMP,
                     reviewed_at = NULL,
@@ -756,6 +889,12 @@ function llama_scoped_update_resubmit(
                     '__scoped_report__' =>
                         $original,
                 ],
+                JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+            ),
+            json_encode(
+                $photos,
                 JSON_UNESCAPED_SLASHES
                 | JSON_UNESCAPED_UNICODE
                 | JSON_THROW_ON_ERROR
@@ -804,10 +943,14 @@ function llama_scoped_update_resubmit(
                     [],
 
                 'photo_count_before' =>
-                    count($photos),
+                    count(
+                        $existingPhotos
+                    ),
 
                 'photo_count_after' =>
-                    count($photos),
+                    count(
+                        $photos
+                    ),
 
                 'visited_at' =>
                     $visited,
@@ -823,6 +966,28 @@ function llama_scoped_update_resubmit(
     } catch (Throwable $exception) {
         if ($db->inTransaction()) {
             $db->rollBack();
+        }
+
+        foreach (
+            $newCommittedPhotos
+            as $photo
+        ) {
+            $src =
+                llama_place_report_photo_path(
+                    $photo
+                );
+
+            if ($src === '') {
+                continue;
+            }
+
+            $absolute =
+                dirname(__DIR__, 2)
+                . $src;
+
+            if (is_file($absolute)) {
+                @unlink($absolute);
+            }
         }
 
         throw $exception;
