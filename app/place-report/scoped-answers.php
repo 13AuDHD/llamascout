@@ -191,6 +191,252 @@ function llama_scoped_report_load(
     return $answers;
 }
 
+
+/**
+ * Resolve the effective Place Report answer set for an Area or Site.
+ *
+ * Precedence is deterministic:
+ * Place -> parent Area -> selected Site.
+ *
+ * The caller supplies canonical Place Report values keyed by field key. Scoped
+ * layers are loaded from place_report_scoped_answers. Stale scoped rows whose
+ * field definitions no longer permit that reporting level are ignored rather
+ * than exposed publicly.
+ *
+ * @return array{
+ *     values:array<string,mixed>,
+ *     provenance:array<string,array{scope:string,source:string,id:int}>,
+ *     direct:array<string,mixed>,
+ *     area:array<string,mixed>,
+ *     site:array<string,mixed>
+ * }
+ */
+function llama_scoped_report_effective_answers(
+    PDO $db,
+    int $placeId,
+    array $placeValues,
+    string $scope,
+    int $scopeId,
+    string $source,
+    ?int $parentAreaId = null
+): array {
+    if ($placeId < 1) {
+        throw new InvalidArgumentException(
+            'Invalid Place ID.'
+        );
+    }
+
+    llama_scoped_report_validate_target(
+        $scope,
+        $scopeId
+    );
+
+    llama_scoped_report_validate_source(
+        $scope,
+        $source
+    );
+
+    if (
+        $parentAreaId !== null
+        && $parentAreaId < 1
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid parent Area ID.'
+        );
+    }
+
+    $definitions =
+        llama_place_report_fields();
+
+    $values =
+        [];
+
+    $provenance =
+        [];
+
+    foreach (
+        $placeValues
+        as $fieldKey => $value
+    ) {
+        $fieldKey =
+            (string) $fieldKey;
+
+        if (
+            $fieldKey === ''
+            || !isset(
+                $definitions[$fieldKey]
+            )
+        ) {
+            continue;
+        }
+
+        $values[$fieldKey] =
+            $value;
+
+        $provenance[$fieldKey] = [
+            'scope' =>
+                'place',
+
+            'source' =>
+                'place',
+
+            'id' =>
+                $placeId,
+        ];
+    }
+
+    $applyLayer =
+        static function (
+            array $answers,
+            string $layerScope,
+            string $layerSource,
+            int $layerId
+        ) use (
+            $definitions,
+            &$values,
+            &$provenance
+        ): void {
+            foreach (
+                $answers
+                as $fieldKey => $value
+            ) {
+                $fieldKey =
+                    (string) $fieldKey;
+
+                $field =
+                    $definitions[$fieldKey]
+                    ?? null;
+
+                if (
+                    !is_array($field)
+                    || !in_array(
+                        $layerScope,
+                        (array) (
+                            $field['report_scopes']
+                            ?? []
+                        ),
+                        true
+                    )
+                    || !empty(
+                        $field['derived']
+                    )
+                    || !empty(
+                        $field['location_field']
+                    )
+                ) {
+                    continue;
+                }
+
+                $values[$fieldKey] =
+                    $value;
+
+                $provenance[$fieldKey] = [
+                    'scope' =>
+                        $layerScope,
+
+                    'source' =>
+                        $layerSource,
+
+                    'id' =>
+                        $layerId,
+                ];
+            }
+        };
+
+    $areaAnswers =
+        [];
+
+    $siteAnswers =
+        [];
+
+    if ($scope === 'area') {
+        $areaAnswers =
+            llama_scoped_report_load(
+                $db,
+                $placeId,
+                'area',
+                $scopeId,
+                $source
+            );
+
+        $applyLayer(
+            $areaAnswers,
+            'area',
+            $source,
+            $scopeId
+        );
+
+        return [
+            'values' =>
+                $values,
+
+            'provenance' =>
+                $provenance,
+
+            'direct' =>
+                $areaAnswers,
+
+            'area' =>
+                $areaAnswers,
+
+            'site' =>
+                [],
+        ];
+    }
+
+    if ($parentAreaId !== null) {
+        $areaAnswers =
+            llama_scoped_report_load(
+                $db,
+                $placeId,
+                'area',
+                $parentAreaId,
+                'map_feature'
+            );
+
+        $applyLayer(
+            $areaAnswers,
+            'area',
+            'map_feature',
+            $parentAreaId
+        );
+    }
+
+    $siteAnswers =
+        llama_scoped_report_load(
+            $db,
+            $placeId,
+            'site',
+            $scopeId,
+            $source
+        );
+
+    $applyLayer(
+        $siteAnswers,
+        'site',
+        $source,
+        $scopeId
+    );
+
+    return [
+        'values' =>
+            $values,
+
+        'provenance' =>
+            $provenance,
+
+        'direct' =>
+            $siteAnswers,
+
+        'area' =>
+            $areaAnswers,
+
+        'site' =>
+            $siteAnswers,
+    ];
+}
+
+
 /** Explicitly remove a scoped override so the field inherits again. */
 function llama_scoped_report_clear_override(
     PDO $db,
