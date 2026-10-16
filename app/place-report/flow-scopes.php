@@ -243,9 +243,11 @@ function llama_place_report_scope_overrides(): array
             'site_number',
             'site_accessible',
             'max_people',
+            'vehicle_capacity',
             'parking_length_feet',
             'site_length_feet',
             'site_width_feet',
+            'overhead_clearance_feet',
             'tent_pad',
             'tent_pad_length_feet',
             'tent_pad_width_feet',
@@ -341,15 +343,14 @@ function llama_place_report_scope_overrides(): array
              * or one individual Site. At Place/Area scope they act as the shared
              * or default condition; a Site can record a more specific override.
              *
-             * Individual parking-space length and Site dimensions remain
-             * Site-only because those measurements identify one physical space.
+             * Individual capacity, parking-space length, Site dimensions, and
+             * Site overhead clearance remain Site-only because those facts
+             * identify one physical space.
              */
-            'vehicle_capacity',
             'max_vehicle_length_feet',
             'parking_surface',
             'ground_condition',
             'levelness',
-            'overhead_clearance_feet',
             'parking_grade',
 
             /*
