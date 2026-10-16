@@ -466,4 +466,133 @@
             characterData: true
         }
     );
+
+    /*
+     * Problem-report links can open this editor directly on the affected
+     * Area or Site. Reuse the existing selectors so all normal loading,
+     * inheritance, photo, and save behavior still runs through the same code.
+     */
+    const openRequestedReportTarget = () => {
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const scope =
+            String(
+                params.get(
+                    'report_scope'
+                )
+                || ''
+            ).trim();
+
+        const source =
+            String(
+                params.get(
+                    'report_source'
+                )
+                || ''
+            ).trim();
+
+        const id =
+            String(
+                params.get(
+                    'report_target'
+                )
+                || ''
+            ).trim();
+
+        if (
+            id === ''
+            || ![
+                'area',
+                'site'
+            ].includes(
+                scope
+            )
+        ) {
+            return;
+        }
+
+        if (scope === 'area') {
+            const area =
+                areas.find(
+                    (candidate) =>
+                        String(
+                            candidate.scope_id
+                            || candidate.id
+                            || ''
+                        ) === id
+                        && (
+                            source === ''
+                            || String(
+                                candidate.scope_source
+                                || 'map_feature'
+                            ) === source
+                        )
+                );
+
+            if (!area) {
+                return;
+            }
+
+            selector.value =
+                String(
+                    area.id
+                );
+
+            selector.dispatchEvent(
+                new Event(
+                    'change',
+                    {
+                        bubbles: true
+                    }
+                )
+            );
+
+            form.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+            return;
+        }
+
+        if (!siteSelector) {
+            return;
+        }
+
+        const siteOption =
+            Array.from(
+                siteSelector.options
+            ).find(
+                (option) =>
+                    option.value === id
+            );
+
+        if (!siteOption) {
+            return;
+        }
+
+        siteSelector.value =
+            id;
+
+        siteSelector.dispatchEvent(
+            new Event(
+                'change',
+                {
+                    bubbles: true
+                }
+            )
+        );
+
+        form.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    };
+
+    queueMicrotask(
+        openRequestedReportTarget
+    );
 })();
