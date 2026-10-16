@@ -219,14 +219,24 @@ foreach ($stayFeatures as $feature) {
 }
 
 
-$stayParking = [];
+$stayAreas = [];
 
 foreach ($stayFeatures as $feature) {
-    if (
+    $featureType =
         (string) (
             $feature['feature_type']
             ?? ''
-        ) !== 'parking_area'
+        );
+
+    if (
+        !in_array(
+            $featureType,
+            [
+                'camping_area',
+                'parking_area',
+            ],
+            true
+        )
     ) {
         continue;
     }
@@ -250,15 +260,13 @@ foreach ($stayFeatures as $feature) {
         );
 
     if (
-        $use !== 'overnight_vehicle_parking'
+        $featureType === 'parking_area'
+        && $use !== 'overnight_vehicle_parking'
         && $overnight === ''
     ) {
         continue;
     }
 
-    /*
-     * Explicitly prohibited parking is not an overnight option.
-     */
     if ($overnight === 'prohibited') {
         continue;
     }
@@ -281,12 +289,22 @@ foreach ($stayFeatures as $feature) {
             )
         );
 
+    $areaKind =
+        $featureType === 'camping_area'
+            ? 'Camping area'
+            : 'Parking area';
+
     if ($name === '') {
         $name =
-            $use === 'overnight_vehicle_parking'
+            $featureType === 'parking_area'
+            && $use === 'overnight_vehicle_parking'
                 ? 'Overnight vehicle parking'
-                : 'Parking area';
+                : $areaKind;
     }
+
+    $summaryParts = [
+        $areaKind,
+    ];
 
     $fee =
         (string) (
@@ -306,8 +324,13 @@ foreach ($stayFeatures as $feature) {
                 'Cost varies',
 
             default =>
-                'Cost unknown',
+                '',
         };
+
+    if ($feeLabel !== '') {
+        $summaryParts[] =
+            $feeLabel;
+    }
 
     $statusLabel =
         match ($overnight) {
@@ -318,8 +341,13 @@ foreach ($stayFeatures as $feature) {
                 'Rules vary',
 
             default =>
-                'Overnight status unknown',
+                '',
         };
+
+    if ($statusLabel !== '') {
+        $summaryParts[] =
+            $statusLabel;
+    }
 
     $reportValues = [];
 
@@ -337,41 +365,40 @@ foreach ($stayFeatures as $feature) {
     } catch (Throwable $exception) {
         llama_log_caught_exception(
             $exception,
-            'public.overnight_options.area_report',
+            'public.overnight-options.area_report',
             [
                 'place_id' =>
                     $placeId,
+
                 'area_id' =>
                     $id,
             ]
         );
     }
 
-    $stayParking[] = [
+    $stayAreas[] = [
         'id' =>
             $id,
 
         'name' =>
             $name,
 
-        'summary_parts' =>
-            [
-                $feeLabel,
-                $statusLabel,
-            ],
+        'kind' =>
+            $featureType === 'camping_area'
+                ? 'camping'
+                : 'parking',
 
-        /*
-         * These are direct Area overrides only. The client first restores the
-         * original Place report, then layers these values on top. That mirrors
-         * normal Place -> Area inheritance without duplicating report logic.
-         */
+        'summary_parts' =>
+            $summaryParts,
+
         'report_values' =>
             $reportValues,
     ];
 }
 
+
 $hasSupplementalStayOptions =
-    $stayParking
+    $stayAreas
     || $stayMappedSites;
 ?>
 
@@ -405,7 +432,7 @@ $hasSupplementalStayOptions =
             </h2>
 
             <p class="place-stay-intro">
-                Browse Sites and overnight parking areas. Select an option to
+                Browse Sites and mapped overnight Areas. Select an option to
                 see its details in the Scout Report.
             </p>
         </div>
@@ -447,7 +474,7 @@ $hasSupplementalStayOptions =
     <div
         class="place-stay-parking-list"
         data-stay-parking-list
-        aria-label="Mapped Sites and overnight parking areas"
+        aria-label="Mapped Sites and overnight Areas"
         <?= $hasSupplementalStayOptions ? '' : 'hidden' ?>
     >
         <?php foreach ($stayMappedSites as $site): ?>
@@ -482,15 +509,16 @@ $hasSupplementalStayOptions =
             </button>
         <?php endforeach; ?>
 
-        <?php foreach ($stayParking as $parking): ?>
+        <?php foreach ($stayAreas as $area): ?>
             <button
                 type="button"
-                class="place-campsite-row place-stay-parking-row"
-                data-stay-parking-id="<?= (int) $parking['id'] ?>"
-                data-stay-parking-name="<?= place_h($parking['name']) ?>"
-                data-stay-parking-meta="<?= place_h(
+                class="place-campsite-row place-stay-parking-row place-stay-area-row"
+                data-stay-area-id="<?= (int) $area['id'] ?>"
+                data-stay-area-name="<?= place_h($area['name']) ?>"
+                data-stay-area-kind="<?= place_h($area['kind']) ?>"
+                data-stay-area-meta="<?= place_h(
                     json_encode(
-                        $parking['summary_parts'],
+                        $area['summary_parts'],
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
                     )
@@ -498,7 +526,7 @@ $hasSupplementalStayOptions =
                 ) ?>"
                 data-stay-report-values="<?= place_h(
                     json_encode(
-                        $parking['report_values'],
+                        $area['report_values'],
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
                     )
@@ -506,11 +534,11 @@ $hasSupplementalStayOptions =
                 ) ?>"
             >
                 <span class="place-campsite-row-name">
-                    <?= place_h($parking['name']) ?>
+                    <?= place_h($area['name']) ?>
                 </span>
 
                 <span class="place-campsite-row-summary">
-                    <?php foreach ($parking['summary_parts'] as $index => $part): ?>
+                    <?php foreach ($area['summary_parts'] as $index => $part): ?>
                         <?php if ($index > 0): ?>
                             <?= llama_icon('separator-dot') ?>
                         <?php endif; ?>
