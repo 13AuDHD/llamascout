@@ -165,21 +165,45 @@
                     value.toLowerCase()
                     === 'unknown';
 
-                const existingLink =
-                    strong.querySelector(
-                        'a'
-                    );
+                const fieldType =
+                    String(
+                        card.dataset
+                            .campsiteReportType
+                        || ''
+                    ).trim();
 
                 if (
-                    existingLink
+                    fieldType === 'url'
                     && /^https?:\/\//i.test(
                         value
                     )
                 ) {
-                    existingLink.href =
+                    let link =
+                        strong.querySelector(
+                            'a'
+                        );
+
+                    if (!link) {
+                        link =
+                            document.createElement(
+                                'a'
+                            );
+
+                        link.target =
+                            '_blank';
+
+                        link.rel =
+                            'noopener noreferrer';
+
+                        strong.replaceChildren(
+                            link
+                        );
+                    }
+
+                    link.href =
                         value;
 
-                    existingLink.textContent =
+                    link.textContent =
                         value;
                 } else {
                     strong.textContent =
