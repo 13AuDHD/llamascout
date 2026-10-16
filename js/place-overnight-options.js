@@ -35,7 +35,7 @@
     /*
      * The server has already removed mapped Site polygons that are associated
      * with canonical campsite records. Rows remaining here are either genuine
-     * map-only Sites or overnight parking areas.
+     * map-only Sites or mapped overnight Areas.
      */
     const mappedRows = [
         ...fallbackList.querySelectorAll(
@@ -43,15 +43,15 @@
         ),
     ];
 
-    const parkingRows = [
+    const areaRows = [
         ...fallbackList.querySelectorAll(
-            '[data-stay-parking-id]'
+            '[data-stay-area-id]'
         ),
     ];
 
     const extraRows = [
         ...mappedRows,
-        ...parkingRows,
+        ...areaRows,
     ];
 
     if (mount) {
