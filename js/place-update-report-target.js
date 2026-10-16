@@ -13,12 +13,16 @@
     const notice = q('[data-scoped-field-notice]');
     const targetData = q('#place-update-report-target-data');
     const fieldData = q('#place-update-scoped-fields-data');
+    const initialData = q('#place-update-report-initial-data');
     if (![search, scope, source, id, status, placeFields, scopedFields, questions, queueInput, targetData, fieldData].every(Boolean)) return;
 
-    let targets, fields;
+    let targets, fields, initial;
     try {
         targets = JSON.parse(targetData.textContent);
         fields = JSON.parse(fieldData.textContent);
+        initial = initialData
+            ? JSON.parse(initialData.textContent || '{}')
+            : {};
     } catch (_) { return; }
 
     const labels = new Map(targets.map(t => [`${t.label} (#${t.id}, ${t.scope}, ${t.source})`, t]));
@@ -29,10 +33,35 @@
     list.replaceChildren();
     for (const label of labels.keys()) list.append(new Option('', label));
 
-    search.value = [...labels.keys()].find(k => labels.get(k) === place) || '';
+    const initialTarget =
+        targets.find(
+            target =>
+                target.scope === String(initial.scope || 'place')
+                && target.source === String(initial.source || 'place')
+                && Number(target.id) === Number(initial.id || place.id)
+        )
+        || place;
+
+    search.value =
+        [...labels.keys()]
+            .find(key => labels.get(key) === initialTarget)
+        || '';
+
+    if (initial.locked === true) {
+        search.readOnly = true;
+        search.setAttribute('aria-readonly', 'true');
+    }
 
     const form = search.closest('form');
-    const values = new Map();
+    const values =
+        new Map(
+            Object.entries(
+                initial.answers
+                && typeof initial.answers === 'object'
+                    ? initial.answers
+                    : {}
+            ).map(([key, value]) => [key, String(value)])
+        );
     const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
     const unknown = '__LLAMA_UNKNOWN__';
     let activeTarget = '';
@@ -323,6 +352,19 @@
         }
 
         const targetKey = `${t.scope}:${t.source}:${t.id}`;
+
+        if (
+            initial.locked === true
+            && activeTarget !== ''
+            && targetKey !== activeTarget
+        ) {
+            search.value =
+                [...labels.keys()]
+                    .find(key => labels.get(key) === initialTarget)
+                || '';
+            return;
+        }
+
         const switched = targetKey !== activeTarget;
 
         activeTarget = targetKey;
@@ -340,7 +382,16 @@
         }
 
         if (switched) {
-            values.clear();
+            const initialKey =
+                `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
+
+            if (
+                targetKey !== initialKey
+                || initial.locked !== true
+            ) {
+                values.clear();
+            }
+
             queueInput.value = '[]';
 
             if (scoped) {
@@ -352,7 +403,11 @@
         }
 
         status.textContent = scoped
-            ? 'This Area or Site report will be reviewed before any changes are published.'
+            ? (
+                initial.locked === true
+                    ? 'Revise the requested Area or Site answers below. The reporting target cannot be changed for this revision.'
+                    : 'This Area or Site report will be reviewed before any changes are published.'
+            )
             : 'Entire Place uses the existing Scout Report.';
     }
 
