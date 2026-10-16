@@ -435,6 +435,439 @@ function llama_scoped_report_effective_answers(
 }
 
 
+/**
+ * Resolve multiple Area/Site targets with one scoped-answer read.
+ *
+ * This is the public-rendering path for large campgrounds. It avoids one or
+ * two database queries per Site while preserving the same Place -> Area ->
+ * Site precedence used by llama_scoped_report_effective_answers().
+ *
+ * @param array<int,array<string,mixed>> $targets
+ * @return array<string,array<string,mixed>>
+ */
+function llama_scoped_report_effective_answers_for_targets(
+    PDO $db,
+    int $placeId,
+    array $placeValues,
+    array $targets
+): array {
+    if ($placeId < 1) {
+        throw new InvalidArgumentException(
+            'Invalid Place ID.'
+        );
+    }
+
+    if (!$targets) {
+        return [];
+    }
+
+    $stmt =
+        $db->prepare(
+            'SELECT
+                scope_type,
+                scope_source,
+                scope_id,
+                field_key,
+                value_json
+             FROM place_report_scoped_answers
+             WHERE place_id = ?'
+        );
+
+    $stmt->execute([
+        $placeId,
+    ]);
+
+    $layers =
+        [];
+
+    foreach (
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ?: []
+        as $row
+    ) {
+        $scope =
+            (string) (
+                $row['scope_type']
+                ?? ''
+            );
+
+        $source =
+            (string) (
+                $row['scope_source']
+                ?? ''
+            );
+
+        $scopeId =
+            (int) (
+                $row['scope_id']
+                ?? 0
+            );
+
+        $fieldKey =
+            (string) (
+                $row['field_key']
+                ?? ''
+            );
+
+        if (
+            $fieldKey === ''
+            || $scopeId < 1
+        ) {
+            continue;
+        }
+
+        $layers[
+            $scope
+        ][
+            $source
+        ][
+            $scopeId
+        ][
+            $fieldKey
+        ] =
+            json_decode(
+                (string) (
+                    $row['value_json']
+                    ?? 'null'
+                ),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+    }
+
+    $definitions =
+        llama_place_report_fields();
+
+    $applyLayer =
+        static function (
+            array &$values,
+            array &$provenance,
+            array $answers,
+            string $layerScope,
+            string $layerSource,
+            int $layerId
+        ) use (
+            $definitions
+        ): void {
+            foreach (
+                $answers
+                as $fieldKey => $value
+            ) {
+                $fieldKey =
+                    (string) $fieldKey;
+
+                $field =
+                    $definitions[$fieldKey]
+                    ?? null;
+
+                if (
+                    !is_array($field)
+                    || !in_array(
+                        $layerScope,
+                        (array) (
+                            $field['report_scopes']
+                            ?? []
+                        ),
+                        true
+                    )
+                    || !empty(
+                        $field['derived']
+                    )
+                    || !empty(
+                        $field['location_field']
+                    )
+                ) {
+                    continue;
+                }
+
+                $values[$fieldKey] =
+                    $value;
+
+                $provenance[$fieldKey] = [
+                    'scope' =>
+                        $layerScope,
+
+                    'source' =>
+                        $layerSource,
+
+                    'id' =>
+                        $layerId,
+                ];
+            }
+        };
+
+    $results =
+        [];
+
+    foreach ($targets as $target) {
+        if (!is_array($target)) {
+            continue;
+        }
+
+        $scope =
+            (string) (
+                $target['scope']
+                ?? ''
+            );
+
+        $source =
+            (string) (
+                $target['source']
+                ?? ''
+            );
+
+        $scopeId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
+
+        llama_scoped_report_validate_target(
+            $scope,
+            $scopeId
+        );
+
+        llama_scoped_report_validate_source(
+            $scope,
+            $source
+        );
+
+        $values =
+            [];
+
+        $provenance =
+            [];
+
+        foreach (
+            $placeValues
+            as $fieldKey => $value
+        ) {
+            $fieldKey =
+                (string) $fieldKey;
+
+            if (
+                $fieldKey === ''
+                || !isset(
+                    $definitions[$fieldKey]
+                )
+            ) {
+                continue;
+            }
+
+            $values[$fieldKey] =
+                $value;
+
+            $provenance[$fieldKey] = [
+                'scope' =>
+                    'place',
+
+                'source' =>
+                    'place',
+
+                'id' =>
+                    $placeId,
+            ];
+        }
+
+        $areaAnswers =
+            [];
+
+        if (
+            $scope === 'site'
+            && !empty(
+                $target['parent_area_id']
+            )
+        ) {
+            $parentAreaId =
+                (int) $target[
+                    'parent_area_id'
+                ];
+
+            $areaAnswers =
+                (array) (
+                    $layers['area']['map_feature'][
+                        $parentAreaId
+                    ]
+                    ?? []
+                );
+
+            $applyLayer(
+                $values,
+                $provenance,
+                $areaAnswers,
+                'area',
+                'map_feature',
+                $parentAreaId
+            );
+        } elseif ($scope === 'area') {
+            $areaAnswers =
+                (array) (
+                    $layers['area'][$source][
+                        $scopeId
+                    ]
+                    ?? []
+                );
+
+            $applyLayer(
+                $values,
+                $provenance,
+                $areaAnswers,
+                'area',
+                $source,
+                $scopeId
+            );
+        }
+
+        $inheritedValues =
+            $values;
+
+        $siteAnswers =
+            [];
+
+        if ($scope === 'site') {
+            $siteAnswers =
+                (array) (
+                    $layers['site'][$source][
+                        $scopeId
+                    ]
+                    ?? []
+                );
+
+            $applyLayer(
+                $values,
+                $provenance,
+                $siteAnswers,
+                'site',
+                $source,
+                $scopeId
+            );
+        }
+
+        $key =
+            $scope
+            . ':'
+            . $source
+            . ':'
+            . $scopeId;
+
+        $results[$key] = [
+            'values' =>
+                $values,
+
+            'inherited' =>
+                $inheritedValues,
+
+            'provenance' =>
+                $provenance,
+
+            'direct' =>
+                $scope === 'site'
+                    ? $siteAnswers
+                    : $areaAnswers,
+
+            'area' =>
+                $areaAnswers,
+
+            'site' =>
+                $siteAnswers,
+        ];
+    }
+
+    return $results;
+}
+
+
+/**
+ * Convert flat canonical report answers to the same display strings used by
+ * the public read-only Place Report renderer.
+ *
+ * @return array<string,string>
+ */
+function llama_scoped_report_display_values(
+    array $values
+): array {
+    if (!$values) {
+        return [];
+    }
+
+    $definitions =
+        llama_place_report_fields();
+
+    $data =
+        [];
+
+    $unknownFields =
+        [];
+
+    $unknownToken =
+        llama_place_report_unknown_token();
+
+    foreach (
+        $values
+        as $fieldKey => $value
+    ) {
+        $fieldKey =
+            (string) $fieldKey;
+
+        $field =
+            $definitions[$fieldKey]
+            ?? null;
+
+        if (!is_array($field)) {
+            continue;
+        }
+
+        if ($value === $unknownToken) {
+            $unknownFields[] =
+                $fieldKey;
+
+            continue;
+        }
+
+        llama_place_report_set_path(
+            $data,
+            (string) (
+                $field['storage']
+                ?? ''
+            ),
+            $value
+        );
+    }
+
+    $data['_answer_state'] =
+        array_values(
+            array_unique(
+                $unknownFields
+            )
+        );
+
+    $display =
+        [];
+
+    foreach (
+        array_keys($values)
+        as $fieldKey
+    ) {
+        $fieldKey =
+            (string) $fieldKey;
+
+        $value =
+            llama_place_report_display_value(
+                $data,
+                $fieldKey
+            );
+
+        if ($value !== null) {
+            $display[$fieldKey] =
+                $value;
+        }
+    }
+
+    return $display;
+}
+
+
 /** Explicitly remove a scoped override so the field inherits again. */
 function llama_scoped_report_clear_override(
     PDO $db,
@@ -770,6 +1203,6 @@ function llama_scoped_report_merge_site_identity(
             $migrated,
 
         'deduped' =>
-            $deduped,
+            $eduped,
     ];
 }
