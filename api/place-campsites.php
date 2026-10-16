@@ -6,6 +6,8 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
+require_once dirname(__DIR__) . '/app/place-report.php';
+require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -50,6 +52,171 @@ try {
     $db = db();
     $sites = llama_place_campsites($db, $placeId);
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
+
+    /*
+     * Resolve Place -> Area -> Site Scout Report layers in one bulk read.
+     *
+     * Canonical campsite facts are still carried on each Site row. The client
+     * will apply inherited report values first, canonical Site facts second,
+     * and direct Site overrides last.
+     */
+    $publishedUnknownFields =
+        llama_place_report_published_answer_state(
+            $db,
+            $placeId
+        );
+
+    $placeReportData =
+        llama_place_report_data_from_published_place(
+            $place,
+            $publishedUnknownFields
+        );
+
+    $placeReportValues =
+        [];
+
+    foreach (
+        llama_place_report_fields()
+        as $fieldKey => $field
+    ) {
+        $state =
+            llama_place_report_answer_state(
+                $placeReportData,
+                (string) $fieldKey
+            );
+
+        if ($state === 'unknown') {
+            $placeReportValues[
+                (string) $fieldKey
+            ] =
+                llama_place_report_unknown_token();
+
+            continue;
+        }
+
+        if ($state !== 'answered') {
+            continue;
+        }
+
+        $placeReportValues[
+            (string) $fieldKey
+        ] =
+            llama_place_report_form_value_from_data(
+                $placeReportData,
+                (string) $fieldKey
+            );
+    }
+
+    $siteTargets =
+        [];
+
+    $siteTargetsById =
+        [];
+
+    foreach (
+        llama_report_targets(
+            $db,
+            $placeId
+        )
+        as $target
+    ) {
+        if (
+            (string) (
+                $target['scope']
+                ?? ''
+            ) !== 'site'
+            || (string) (
+                $target['source']
+                ?? ''
+            ) !== 'campsite_record'
+        ) {
+            continue;
+        }
+
+        $siteId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
+
+        if ($siteId < 1) {
+            continue;
+        }
+
+        $siteTargets[] =
+            $target;
+
+        $siteTargetsById[
+            $siteId
+        ] =
+            $target;
+    }
+
+    $resolvedSiteReports =
+        llama_scoped_report_effective_answers_for_targets(
+            $db,
+            $placeId,
+            $placeReportValues,
+            $siteTargets
+        );
+
+    foreach ($sites as &$site) {
+        $siteId =
+            (int) (
+                $site['id']
+                ?? 0
+            );
+
+        $target =
+            $siteTargetsById[
+                $siteId
+            ]
+            ?? null;
+
+        $resolved =
+            is_array($target)
+                ? (
+                    $resolvedSiteReports[
+                        'site:campsite_record:'
+                        . $siteId
+                    ]
+                    ?? null
+                )
+                : null;
+
+        $site['report_inherited_values'] =
+            is_array($resolved)
+                ? llama_scoped_report_display_values(
+                    (array) (
+                        $resolved['inherited']
+                        ?? []
+                    )
+                )
+                : [];
+
+        $site['report_override_values'] =
+            is_array($resolved)
+                ? llama_scoped_report_display_values(
+                    (array) (
+                        $resolved['direct']
+                        ?? []
+                    )
+                )
+                : [];
+
+        $site['report_override_keys'] =
+            is_array($resolved)
+                ? array_values(
+                    array_keys(
+                        (array) (
+                            $resolved['direct']
+                            ?? []
+                        )
+                    )
+                )
+                : [];
+    }
+    unset($site);
 
     $baseCampingFee =
         $place['rules']['fee']
