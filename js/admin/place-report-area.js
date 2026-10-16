@@ -5,6 +5,7 @@
     const catalogNode = form?.querySelector('[data-admin-place-areas]');
     const selector = form?.querySelector('[data-admin-area-selector]');
     const target = form?.querySelector('[name="selected_area_id"]');
+    const siteSelector = form?.querySelector('[data-admin-campsite-selector]');
     if (!form || !catalogNode || !selector || !target) return;
 
     let catalog;
@@ -367,6 +368,17 @@
         () => {
             answersField.value =
                 '';
+
+            if (
+                String(
+                    siteSelector?.value
+                    || ''
+                ).trim() !== ''
+            ) {
+                target.value =
+                    '';
+                return;
+            }
 
             if (
                 !selected
