@@ -60,6 +60,131 @@
             )
         );
 
+
+    const updateTargetContributionPrompts =
+        () => {
+            document
+                .querySelectorAll(
+                    '[data-report-target-section]'
+                )
+                .forEach(
+                    (reportSection) => {
+                        const prompt =
+                            reportSection.querySelector(
+                                '[data-target-report-prompt]'
+                            );
+
+                        if (!prompt) {
+                            return;
+                        }
+
+                        reportSection
+                            .querySelectorAll(
+                                '.scout-report-contribution-prompt:not([data-target-report-prompt])'
+                            )
+                            .forEach(
+                                (originalPrompt) => {
+                                    originalPrompt.hidden =
+                                        true;
+                                }
+                            );
+
+                        const fixedMissing =
+                            Number(
+                                reportSection.dataset
+                                    .reportFixedMissing
+                                || 0
+                            );
+
+                        const applicableCount =
+                            Number(
+                                reportSection.dataset
+                                    .reportApplicableCount
+                                || 0
+                            );
+
+                        const switchableCards =
+                            Array.from(
+                                reportSection
+                                    .querySelectorAll(
+                                        '[data-campsite-report-field]'
+                                    )
+                            );
+
+                        const switchableMissing =
+                            switchableCards
+                                .filter(
+                                    (card) =>
+                                        card.hidden
+                                )
+                                .length;
+
+                        const missingCount =
+                            Math.max(
+                                0,
+                                fixedMissing
+                                + switchableMissing
+                            );
+
+                        if (missingCount < 1) {
+                            prompt.hidden =
+                                true;
+
+                            return;
+                        }
+
+                        const empty =
+                            applicableCount > 0
+                            && missingCount
+                                >= applicableCount;
+
+                        prompt.classList.toggle(
+                            'is-empty',
+                            empty
+                        );
+
+                        prompt.classList.toggle(
+                            'is-partial',
+                            !empty
+                        );
+
+                        const heading =
+                            prompt.querySelector(
+                                'strong'
+                            );
+
+                        const copy =
+                            prompt.querySelector(
+                                'p'
+                            );
+
+                        const sectionLabel =
+                            String(
+                                reportSection.dataset
+                                    .reportSectionLabel
+                                || 'this section'
+                            );
+
+                        if (heading) {
+                            heading.textContent =
+                                empty
+                                    ? 'Be the first to add this'
+                                    : 'Know something we are missing?';
+                        }
+
+                        if (copy) {
+                            copy.textContent =
+                                empty
+                                    ? `No one has reported ${sectionLabel.toLowerCase()} information here yet.`
+                                    : `${missingCount} applicable detail${missingCount === 1 ? '' : 's'} in this section ${missingCount === 1 ? 'has' : 'have'} not been reported yet.`;
+                        }
+
+                        prompt.hidden =
+                            false;
+                    }
+                );
+        };
+
     const restorePlaceReport =
         () => {
             reportBaseline.forEach(
@@ -266,6 +391,8 @@
                     }
                 }
             }
+
+            updateTargetContributionPrompts();
         };
 
     const getJson =
@@ -873,6 +1000,7 @@
                 );
             } else if (isMapSite) {
                 restorePlaceReport();
+                updateTargetContributionPrompts();
             }
 
             showContext(
