@@ -223,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
                 $inherited[$key] = ['value' => $placeValues[$key], 'from' => 'Place'];
             }
         }
-        if ($scope === 'site' && $source === 'map_feature' && !empty($target['parent_area_id'])) {
+        if ($scope === 'site' && !empty($target['parent_area_id'])) {
             $parent = llama_report_verified_target($db, $placeId, 'area', 'map_feature', (int) $target['parent_area_id']);
             $parentAnswers = llama_scoped_report_load($db, $placeId, 'area', (int) $parent['id'], 'map_feature');
             foreach ($parentAnswers as $key => $value) {
@@ -302,6 +302,12 @@ $editContributorNotes =
 $editProposedUnknownFields =
     [];
 
+$editScopedPayload =
+    null;
+
+$isScopedNeedsChanges =
+    false;
+
 
 if ($isNeedsChanges) {
 
@@ -360,24 +366,74 @@ if ($isNeedsChanges) {
                 $editHistoryRow
             );
     }
+
+    $candidateScopedPayload =
+        $editProposed[
+            '__scoped_report__'
+        ]
+        ?? null;
+
+    if (is_array($candidateScopedPayload)) {
+        $candidateScope =
+            trim((string) ($candidateScopedPayload['scope'] ?? ''));
+
+        $candidateSource =
+            trim((string) ($candidateScopedPayload['source'] ?? ''));
+
+        $candidateId =
+            (int) ($candidateScopedPayload['id'] ?? 0);
+
+        if (
+            in_array($candidateScope, ['area', 'site'], true)
+            && $candidateSource !== ''
+            && $candidateId > 0
+        ) {
+            $editScopedPayload =
+                $candidateScopedPayload;
+
+            $isScopedNeedsChanges =
+                true;
+        }
+    }
 }
 
 
-/*
- * Only the Entire Place submission path has moderation and point handling.
- * Until Area and Site approval is connected, never silently save a scoped
- * answer as a Place-wide change.
- */
-$reportTargetScope = trim((string) ($_POST['report_target_scope'] ?? 'place'));
-$reportTargetSource = trim((string) ($_POST['report_target_source'] ?? 'place'));
-$reportTargetId = (int) ($_POST['report_target_id'] ?? $placeId);
-if ($reportTargetScope !== 'place'
-    || $reportTargetSource !== 'place'
-    || $reportTargetId !== $placeId) {
-    $reportTargetIsScoped = true;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $reportTargetScope =
+        trim((string) ($_POST['report_target_scope'] ?? 'place'));
+
+    $reportTargetSource =
+        trim((string) ($_POST['report_target_source'] ?? 'place'));
+
+    $reportTargetId =
+        (int) ($_POST['report_target_id'] ?? $placeId);
+} elseif (
+    $isScopedNeedsChanges
+    && is_array($editScopedPayload)
+) {
+    $reportTargetScope =
+        (string) $editScopedPayload['scope'];
+
+    $reportTargetSource =
+        (string) $editScopedPayload['source'];
+
+    $reportTargetId =
+        (int) $editScopedPayload['id'];
 } else {
-    $reportTargetIsScoped = false;
+    $reportTargetScope =
+        'place';
+
+    $reportTargetSource =
+        'place';
+
+    $reportTargetId =
+        $placeId;
 }
+
+$reportTargetIsScoped =
+    $reportTargetScope !== 'place'
+    || $reportTargetSource !== 'place'
+    || $reportTargetId !== $placeId;
 
 /*
  * =========================================================
@@ -404,13 +460,40 @@ if (
     } else {
 
         try {
-            if ($reportTargetIsScoped) {
-                if ($isNeedsChanges) {
-                    throw new InvalidArgumentException('Area and Site revisions requested by a moderator are not yet supported.');
-                }
+            if ($isScopedNeedsChanges) {
                 require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
-                llama_scoped_update_submit($userId, $place, $_POST);
-                header('Location: https://account.llamascout.com/contributions.php?submitted=update', true, 303);
+
+                llama_scoped_update_resubmit(
+                    $userId,
+                    $place,
+                    (int) $openUpdate['id'],
+                    $_POST
+                );
+
+                header(
+                    'Location: https://account.llamascout.com/contributions.php?submitted=update-resubmitted',
+                    true,
+                    303
+                );
+
+                exit;
+            }
+
+            if ($reportTargetIsScoped) {
+                require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
+
+                llama_scoped_update_submit(
+                    $userId,
+                    $place,
+                    $_POST
+                );
+
+                header(
+                    'Location: https://account.llamascout.com/contributions.php?submitted=update',
+                    true,
+                    303
+                );
+
                 exit;
             }
 
@@ -963,6 +1046,68 @@ $e =
             /* Reporting target is displayed inside the established update form. */
             require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
             $availableReportTargets = llama_report_targets(db(), $placeId);
+
+            $initialScopedAnswers =
+                [];
+
+            if (
+                $_SERVER['REQUEST_METHOD'] === 'POST'
+                && $reportTargetIsScoped
+            ) {
+                $postedScopedAnswers =
+                    json_decode(
+                        (string) ($_POST['scoped_answers_json'] ?? '[]'),
+                        true
+                    );
+
+                if (is_array($postedScopedAnswers)) {
+                    foreach ($postedScopedAnswers as $answer) {
+                        if (!is_array($answer)) {
+                            continue;
+                        }
+
+                        $answerKey =
+                            trim((string) ($answer['key'] ?? ''));
+
+                        $answerValue =
+                            $answer['value']
+                            ?? null;
+
+                        if (
+                            $answerKey !== ''
+                            && is_scalar($answerValue)
+                        ) {
+                            $initialScopedAnswers[$answerKey] =
+                                (string) $answerValue;
+                        }
+                    }
+                }
+            } elseif (
+                $isScopedNeedsChanges
+                && is_array($editScopedPayload)
+            ) {
+                foreach (
+                    (array) ($editScopedPayload['answers'] ?? [])
+                    as $answerKey => $answerValue
+                ) {
+                    if (
+                        is_string($answerKey)
+                        && $answerKey !== ''
+                        && is_scalar($answerValue)
+                    ) {
+                        $initialScopedAnswers[$answerKey] =
+                            (string) $answerValue;
+                    }
+                }
+            }
+
+            $initialReportTarget = [
+                'scope' => $reportTargetScope,
+                'source' => $reportTargetSource,
+                'id' => $reportTargetId,
+                'answers' => $initialScopedAnswers,
+                'locked' => $isScopedNeedsChanges,
+            ];
             ?>
             <section class="contribution-section place-update-report-target">
                 <h3>What are you reporting?</h3>
@@ -972,7 +1117,7 @@ $e =
                     id="place-update-report-target"
                     type="search"
                     list="place-update-report-target-options"
-                    value="<?= $e('Entire Place (#' . $placeId . ', place)') ?>"
+                    value=""
                     autocomplete="off"
                     data-report-target-search
                 >
@@ -981,15 +1126,19 @@ $e =
                         <option value="<?= $e((string) $target['label'] . ' (#' . $target['id'] . ', ' . $target['scope'] . ')') ?>"></option>
                     <?php endforeach; ?>
                 </datalist>
-                <input type="hidden" name="report_target_scope" value="place" data-report-target-scope>
-                <input type="hidden" name="report_target_source" value="place" data-report-target-source>
-                <input type="hidden" name="report_target_id" value="<?= (int) $placeId ?>" data-report-target-id>
+                <input type="hidden" name="report_target_scope" value="<?= $e($reportTargetScope) ?>" data-report-target-scope>
+                <input type="hidden" name="report_target_source" value="<?= $e($reportTargetSource) ?>" data-report-target-source>
+                <input type="hidden" name="report_target_id" value="<?= (int) $reportTargetId ?>" data-report-target-id>
                 <p class="place-update-report-target-status" data-report-target-status role="status">
                     Entire Place updates use the existing review process.
                 </p>
             </section>
             <script type="application/json" id="place-update-report-target-data"><?= json_encode(
                 $availableReportTargets,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
+            ) ?></script>
+            <script type="application/json" id="place-update-report-initial-data"><?= json_encode(
+                $initialReportTarget,
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
             ) ?></script>
             <script defer src="/js/place-update-report-target.js"></script>
