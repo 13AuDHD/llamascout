@@ -58,7 +58,35 @@ function llama_place_map_api_stats(
             SUM(feature_type IN ("camping_area", "parking_area"))
                 AS areas,
             SUM(feature_type = "camping_site")
-                AS site_features
+                AS site_features,
+            COALESCE(
+                SUM(
+                    ST_NumPoints(
+                        ST_ExteriorRing(geometry)
+                    )
+                ),
+                0
+            ) AS total_polygon_points,
+            COALESCE(
+                MAX(
+                    ST_NumPoints(
+                        ST_ExteriorRing(geometry)
+                    )
+                ),
+                0
+            ) AS max_polygon_points,
+            COALESCE(
+                SUM(
+                    OCTET_LENGTH(metadata_json)
+                ),
+                0
+            ) AS metadata_bytes,
+            COALESCE(
+                MAX(
+                    OCTET_LENGTH(metadata_json)
+                ),
+                0
+            ) AS max_metadata_bytes
          FROM place_map_features
          WHERE place_id = ?
            AND is_active = 1'
@@ -73,28 +101,81 @@ function llama_place_map_api_stats(
         ?: [];
 
     $linkedStmt = $db->prepare(
-        'SELECT COUNT(DISTINCT map_feature_id)
+        'SELECT
+            COUNT(*) AS active_sites,
+            COUNT(DISTINCT map_feature_id)
+                AS linked_site_features
          FROM place_campsites
          WHERE place_id = ?
-           AND is_active = 1
-           AND map_feature_id IS NOT NULL'
+           AND is_active = 1'
     );
 
     $linkedStmt->execute([
         $placeId,
     ]);
 
-    $linkedSiteFeatures =
-        max(
-            0,
-            (int) $linkedStmt->fetchColumn()
-        );
+    $siteStats =
+        $linkedStmt->fetch(PDO::FETCH_ASSOC)
+        ?: [];
+
+    $pricingStmt = $db->prepare(
+        'SELECT
+            (
+                SELECT COUNT(*)
+                FROM place_map_feature_rates AS r
+                INNER JOIN place_map_features AS f
+                    ON f.id = r.feature_id
+                WHERE f.place_id = ?
+                  AND f.is_active = 1
+                  AND r.is_active = 1
+            ) AS feature_rates,
+            (
+                SELECT COUNT(*)
+                FROM place_map_camping_site_classes AS c
+                INNER JOIN place_map_features AS f
+                    ON f.id = c.camping_area_feature_id
+                WHERE f.place_id = ?
+                  AND f.is_active = 1
+                  AND c.is_active = 1
+            ) AS site_classes,
+            (
+                SELECT COUNT(*)
+                FROM place_map_camping_site_class_rates AS cr
+                INNER JOIN place_map_camping_site_classes AS c
+                    ON c.id = cr.site_class_id
+                INNER JOIN place_map_features AS f
+                    ON f.id = c.camping_area_feature_id
+                WHERE f.place_id = ?
+                  AND f.is_active = 1
+                  AND c.is_active = 1
+                  AND cr.is_active = 1
+            ) AS site_class_rates'
+    );
+
+    $pricingStmt->execute([
+        $placeId,
+        $placeId,
+        $placeId,
+    ]);
+
+    $pricingStats =
+        $pricingStmt->fetch(PDO::FETCH_ASSOC)
+        ?: [];
 
     $siteFeatures =
         max(
             0,
             (int) (
                 $featureStats['site_features']
+                ?? 0
+            )
+        );
+
+    $linkedSiteFeatures =
+        max(
+            0,
+            (int) (
+                $siteStats['linked_site_features']
                 ?? 0
             )
         );
@@ -130,6 +211,15 @@ function llama_place_map_api_stats(
         'site_features' =>
             $siteFeatures,
 
+        'active_sites' =>
+            max(
+                0,
+                (int) (
+                    $siteStats['active_sites']
+                    ?? 0
+                )
+            ),
+
         'linked_site_features' =>
             $linkedSiteFeatures,
 
@@ -138,6 +228,69 @@ function llama_place_map_api_stats(
                 0,
                 $siteFeatures
                 - $linkedSiteFeatures
+            ),
+
+        'total_polygon_points' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['total_polygon_points']
+                    ?? 0
+                )
+            ),
+
+        'max_polygon_points' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['max_polygon_points']
+                    ?? 0
+                )
+            ),
+
+        'metadata_bytes' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['metadata_bytes']
+                    ?? 0
+                )
+            ),
+
+        'max_metadata_bytes' =>
+            max(
+                0,
+                (int) (
+                    $featureStats['max_metadata_bytes']
+                    ?? 0
+                )
+            ),
+
+        'feature_rates' =>
+            max(
+                0,
+                (int) (
+                    $pricingStats['feature_rates']
+                    ?? 0
+                )
+            ),
+
+        'site_classes' =>
+            max(
+                0,
+                (int) (
+                    $pricingStats['site_classes']
+                    ?? 0
+                )
+            ),
+
+        'site_class_rates' =>
+            max(
+                0,
+                (int) (
+                    $pricingStats['site_class_rates']
+                    ?? 0
+                )
             ),
     ];
 }
