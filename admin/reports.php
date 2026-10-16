@@ -825,9 +825,22 @@ $meta =
 
 <a
     class="admin-button is-muted"
-    href="/place.php?id=<?= (int) $item['place_id'] ?>#place-report"
+    href="/place.php?id=<?= (int) $item['place_id'] ?>&amp;report_scope=<?= rawurlencode(
+        (string) (
+            $item['target_scope']
+            ?? 'place'
+        )
+    ) ?>&amp;report_source=<?= rawurlencode(
+        (string) (
+            $item['target_source']
+            ?? 'place'
+        )
+    ) ?>&amp;report_target=<?= (int) (
+        $item['target_id']
+        ?? $item['place_id']
+    ) ?>#place-report"
 >
-    Open Place editor
+    Open affected target
 </a>
 
 </div>
