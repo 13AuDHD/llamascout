@@ -358,7 +358,6 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place or Site.';
 <script src="https://llamascout.com/js/admin/place-context.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-photos.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
-<script src="https://llamascout.com/js/admin/place-report-diagnostic.js"></script>
 
 <?php
 require __DIR__ . '/_footer.php';
