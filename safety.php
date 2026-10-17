@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/app/branding.php';
+
 /*
  * Llama Scout safety/error landing page.
  *
