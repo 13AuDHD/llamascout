@@ -581,6 +581,14 @@ function e(
 
 <head>
 
+<link rel="icon" type="image/svg+xml" href="https://llamascout.com/favicon.svg">
+<link rel="icon" type="image/x-icon" href="https://llamascout.com/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="https://llamascout.com/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://llamascout.com/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://llamascout.com/apple-touch-icon.png">
+<link rel="manifest" href="https://llamascout.com/site.webmanifest">
+<meta name="theme-color" content="#0A3D25">
+
 <meta charset="utf-8">
 
 <meta
@@ -625,7 +633,7 @@ function e(
   <a href="https://llamascout.com">
 
     <img
-      src="https://llamascout.com/images/logo.png"
+      src="https://llamascout.com/images/logo.svg"
       alt="Llama Scout"
       class="account-auth-logo"
     >
