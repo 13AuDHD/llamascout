@@ -75,7 +75,6 @@ function llama_place_report_scope_overrides(): array
             'sedan_accessible',
             'high_clearance_recommended',
             'four_wheel_drive_recommended',
-            'road_exposure',
             'approach_width_restricted',
             'approach_narrowest_width_feet',
             'approach_turnaround_available',
@@ -109,6 +108,7 @@ function llama_place_report_scope_overrides(): array
             'facility_map_url',
             'activities',
             'access_summary',
+            'emergency_access',
 
             /*
              * Base/default pricing. Detailed mapped Area/Site nightly rates
@@ -117,16 +117,8 @@ function llama_place_report_scope_overrides(): array
             'fee',
 
             /*
-             * Connectivity and nearby services are Place-level context.
+             * Nearby services are Place-level context.
              */
-            'connectivity_overall',
-            'connectivity_t_mobile',
-            'connectivity_verizon',
-            'connectivity_att',
-            'connectivity_other_cell',
-            'connectivity_starlink',
-            'connectivity_starlink_tested',
-            'connectivity_starlink_note',
             'nearest_town',
             'nearest_fuel',
             'nearest_ev_charging',
@@ -207,7 +199,6 @@ function llama_place_report_scope_overrides(): array
              * Shared facilities. A Site's own equipment has separate Site
              * fields and must not inherit as if it were a shared amenity.
              */
-            'amenity_none',
             'amenity_toilets',
             'amenity_potable_water',
             'amenity_water_filling_station',
@@ -244,6 +235,8 @@ function llama_place_report_scope_overrides(): array
             'site_accessible',
             'max_people',
             'vehicle_capacity',
+            'max_vehicle_length_feet',
+            'levelness',
             'parking_length_feet',
             'site_length_feet',
             'site_width_feet',
@@ -260,7 +253,6 @@ function llama_place_report_scope_overrides(): array
             'hookup_water',
             'hookup_sewer',
             'trailer_suitable',
-            'max_trailer_length_feet',
             'rv_suitable',
             'max_rv_length_feet',
             'tent_camping_suitable',
@@ -347,10 +339,8 @@ function llama_place_report_scope_overrides(): array
              * Site overhead clearance remain Site-only because those facts
              * identify one physical space.
              */
-            'max_vehicle_length_feet',
             'parking_surface',
             'ground_condition',
-            'levelness',
             'parking_grade',
 
             /*
@@ -397,6 +387,19 @@ function llama_place_report_scope_overrides(): array
             'sensory_strong_odors',
             'sensory_visual_exposure',
             'sensory_predictability',
+            'road_exposure',
+
+            /*
+             * Connectivity can change materially between Areas and Sites.
+             */
+            'connectivity_overall',
+            'connectivity_t_mobile',
+            'connectivity_verizon',
+            'connectivity_att',
+            'connectivity_other_cell',
+            'connectivity_starlink',
+            'connectivity_starlink_tested',
+            'connectivity_starlink_note',
 
             'felt_safe_daytime',
             'felt_safe_nighttime',
@@ -407,9 +410,7 @@ function llama_place_report_scope_overrides(): array
             'rockfall_risk',
             'wildlife_risk',
             'traffic_hazard',
-            'emergency_access',
             'warning_possible_downed_trees',
-            'warning_passing_vehicle_dust',
             'warning_motorized_recreation_traffic',
             'warning_blind_turn_traffic_nearby',
 
