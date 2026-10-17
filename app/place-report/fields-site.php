@@ -69,6 +69,7 @@ function llama_place_report_add_site_fields(
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
+
     $add('max_vehicle_length_feet', 'Maximum vehicle length', 'site_vehicle', 'select', 'details.max_vehicle_length_feet', [
         'options' => [
             '15' => 'About 15 ft', '20' => 'About 20 ft', '25' => 'About 25 ft',
@@ -78,11 +79,13 @@ function llama_place_report_add_site_fields(
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
+
     $add('parking_surface', 'Parking surface', 'site_vehicle', 'select', 'details.parking_surface', [
         'options' => llama_place_report_surface_options(),
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
+
     $add('ground_condition', 'Ground condition', 'site_vehicle', 'select', 'details.ground_condition', [
         'options' => [
             'paved' => 'Paved',
@@ -299,19 +302,8 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    /* Each length question follows its own suitability answer. */
+    /* Suitability */
     $add('trailer_suitable', 'Trailer suitable?', 'site_vehicle', 'tri', 'details.trailer_suitable', [
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
-
-    $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle', 'select', 'details.max_trailer_length_feet', [
-        'options' => [
-            '10' => 'About 10 ft', '15' => 'About 15 ft', '20' => 'About 20 ft',
-            '25' => 'About 25 ft', '30' => 'About 30 ft', '35' => 'About 35 ft',
-            '40' => 'About 40 ft', '45' => 'About 45 ft', '50' => 'About 50 ft',
-            '60' => '50+ ft',
-        ],
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
@@ -373,6 +365,7 @@ function llama_place_report_add_site_fields(
         'allow_unknown' => true,
         'points_categories' => ['road_access'],
     ]);
+
     $add('road_width', 'Road width', 'road_access', 'select', 'details.road_width', [
         'options' => [
             'one-lane' => 'One lane',
@@ -418,10 +411,6 @@ function llama_place_report_add_site_fields(
     }
 
     /* Amenities */
-    $add('amenity_none', 'No amenities', 'amenities', 'checkbox', 'details.warning_no_amenities', [
-        'points_categories' => ['amenities', 'safety_warnings'],
-        'completion_group' => 'amenities',
-    ]);
     foreach ([
         'toilets' => 'Toilets',
         'potable_water' => 'Potable water',
@@ -451,5 +440,4 @@ function llama_place_report_add_site_fields(
             'completion_group' => 'amenities',
         ]);
     }
-
 }
