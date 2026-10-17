@@ -492,7 +492,7 @@ if (
   >
 
     <img
-      src="https://llamascout.com/images/logo.png"
+      src="https://llamascout.com/images/logo.svg"
       alt="Llama Scout"
       class="account-auth-logo"
     >
