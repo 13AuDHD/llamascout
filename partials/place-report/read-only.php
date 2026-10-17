@@ -201,9 +201,8 @@ $renderValue =
             );
 
         /*
-         * Moderation remains a diagnostic view and can still show unanswered
-         * values. The public Scout Report filters unanswered fields before
-         * calling this renderer.
+         * During Issue #5 reconciliation, unanswered values stay visible in
+         * every read-only flow so they can be compared against editable input.
          */
         if ($state === 'unanswered') {
             $value = 'Not provided';
@@ -253,9 +252,12 @@ $renderValue =
                 true
             );
 
+        /*
+         * Reconciliation mode keeps unanswered Site/Area-capable questions
+         * visible instead of waiting for a Site selection.
+         */
         $hideUntilCampsite =
-            $isCampsiteSwitchable
-            && $state === 'unanswered';
+            false;
         ?>
 
         <div
@@ -628,26 +630,15 @@ foreach (
     $applicableFields =
         $fields;
 
+    /*
+     * Issue #5 reconciliation mode:
+     *
+     * Do not remove unanswered questions from the Scout Report. The public
+     * read-only view now exposes the same question inventory and sequence as
+     * the editable flows so answer-state mismatches can be found directly.
+     */
     $answeredFields =
-        $placeReportReadMode === 'scout-report'
-            ? array_filter(
-                $applicableFields,
-                static function (
-                    array $field,
-                    string|int $fieldKey
-                ) use (
-                    $placeReportData
-                ): bool {
-                    return
-                        llama_place_report_answer_state(
-                            $placeReportData,
-                            (string) $fieldKey
-                        )
-                        !== 'unanswered';
-                },
-                ARRAY_FILTER_USE_BOTH
-            )
-            : $applicableFields;
+        $applicableFields;
 
     $reportedFields =
         $answeredFields;
