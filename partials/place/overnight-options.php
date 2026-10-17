@@ -469,11 +469,12 @@ $hasSupplementalStayOptions =
         >
             <?= llama_icon('chevron-right') ?>
         </button>
+
     </div>
 
     <div
-        class="place-stay-parking-list"
-        data-stay-parking-list
+        class="place-stay-options-list"
+        data-stay-options-list
         aria-label="Mapped Sites and overnight Areas"
         <?= $hasSupplementalStayOptions ? '' : 'hidden' ?>
     >
@@ -512,7 +513,7 @@ $hasSupplementalStayOptions =
         <?php foreach ($stayAreas as $area): ?>
             <button
                 type="button"
-                class="place-campsite-row place-stay-parking-row place-stay-area-row"
+                class="place-campsite-row place-stay-area-row"
                 data-stay-area-id="<?= (int) $area['id'] ?>"
                 data-stay-area-name="<?= place_h($area['name']) ?>"
                 data-stay-area-kind="<?= place_h($area['kind']) ?>"
@@ -548,6 +549,7 @@ $hasSupplementalStayOptions =
                 </span>
             </button>
         <?php endforeach; ?>
+
     </div>
 </section>
 
