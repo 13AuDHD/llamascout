@@ -582,7 +582,7 @@
         choose.textContent =
             campsiteSites.length > 0
                 ? 'Place'
-                : 'Place - no Sites yet';
+                : 'Place (no Sites yet)';
         campsiteSelect.appendChild(choose);
 
         campsiteSites.forEach(site => {
@@ -1333,7 +1333,6 @@
                         activeCampsiteId;
                     return;
                 }
-
                 if (
                     activeCampsiteId === ''
                     && next !== ''
