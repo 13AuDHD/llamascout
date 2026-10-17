@@ -413,7 +413,7 @@
 
             if (!response.ok) {
                 throw new Error(
-                    'Unable to retrieve mapped campsite information.'
+                    'Unable to retrieve mapped Site and Area information.'
                 );
             }
 
