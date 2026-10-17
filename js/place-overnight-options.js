@@ -22,7 +22,7 @@
 
     const fallbackList =
         section.querySelector(
-            '[data-stay-parking-list]'
+            '[data-stay-options-list]'
         );
 
     if (
