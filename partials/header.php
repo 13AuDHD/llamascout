@@ -319,7 +319,7 @@ $promotionBannerEndsAt = $activeWebsitePromotion
             aria-label="Llama Scout home"
         >
             <img
-                src="<?= htmlspecialchars($siteUrl . '/images/logo.svg', ENT_QUOTES, 'UTF-8') ?>"
+                src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
                 alt="Llama Scout"
             >
         </a>
