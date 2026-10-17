@@ -57,7 +57,7 @@ if ($slug === '' || $campsiteId < 1) {
     llama_place_campsite_detail_json(
         [
             'ok' => false,
-            'error' => 'A Place and campsite are required.',
+            'error' => 'A Place and Site are required.',
         ],
         400
     );
@@ -125,7 +125,7 @@ try {
         llama_place_campsite_detail_json(
             [
                 'ok' => false,
-                'error' => 'Campsite not found.',
+                'error' => 'Site not found.',
             ],
             404
         );
@@ -158,7 +158,7 @@ try {
     llama_place_campsite_detail_json(
         [
             'ok' => false,
-            'error' => 'Campsite details could not be loaded.',
+            'error' => 'Site details could not be loaded.',
         ],
         500
     );
