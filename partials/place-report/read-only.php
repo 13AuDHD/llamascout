@@ -427,27 +427,36 @@ $renderContributionPrompt =
     };
 
 /*
- * Quick warnings are calculated from the canonical Place Report answers.
- * Do not maintain a second set of warning flags here.
+ * Warning rules come from the shared Scout Report runtime. Keep a stable
+ * container in the page even when the Place itself has no warnings so an Area
+ * or Site selection can reveal its own warning set without rebuilding layout.
  */
 $warnings =
     llama_place_report_quick_warnings(
         $placeReportData
     );
-
-if ($warnings):
 ?>
-    <section class="scout-report-section scout-report-warning-section">
+    <section
+        class="scout-report-section scout-report-warning-section"
+        data-report-warnings
+        <?= $warnings ? '' : 'hidden' ?>
+    >
         <h3>
             <?= llama_icon('alert-triangle') ?>
             Quick warnings
         </h3>
 
-        <p class="scout-report-summary">
+        <p
+            class="scout-report-summary"
+            data-report-warning-summary
+        >
             Important conditions reported for this Place.
         </p>
 
-        <div class="scout-report-grid">
+        <div
+            class="scout-report-grid"
+            data-report-warning-grid
+        >
             <?php foreach ($warnings as $key => $warning): ?>
                 <?php
                 $warningIcon =
@@ -486,8 +495,12 @@ if ($warnings):
             <?php endforeach; ?>
         </div>
     </section>
+
+<script
+    src="/js/place-report-warnings.js"
+    defer
+></script>
 <?php
-endif;
 
 foreach (
     $placeReportSections
