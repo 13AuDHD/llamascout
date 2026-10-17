@@ -74,39 +74,9 @@ try {
         );
 
     $placeReportValues =
-        [];
-
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        $state =
-            llama_place_report_answer_state(
-                $placeReportData,
-                (string) $fieldKey
-            );
-
-        if ($state === 'unknown') {
-            $placeReportValues[
-                (string) $fieldKey
-            ] =
-                llama_place_report_unknown_token();
-
-            continue;
-        }
-
-        if ($state !== 'answered') {
-            continue;
-        }
-
-        $placeReportValues[
-            (string) $fieldKey
-        ] =
-            llama_place_report_form_value_from_data(
-                $placeReportData,
-                (string) $fieldKey
-            );
-    }
+        llama_scoped_report_values_from_data(
+            $placeReportData
+        );
 
     $siteTargets =
         [];
