@@ -465,7 +465,7 @@ function llama_email_html_shell(
   <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
     <div style="padding:0 0 18px;text-align:center;">
       <img
-        src="https://llamascout.com/images/logo.png"
+        src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
         alt="Llama Scout"
         width="220"
         style="display:inline-block;max-width:220px;height:auto;border:0;"
