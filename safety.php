@@ -178,7 +178,7 @@ function safety_e(string $value): string
 
     <link
         rel="icon"
-        href="https://llamascout.com/images/logo.png"
+        href="https://llamascout.com/images/logo.svg"
     >
 
     <link
@@ -197,7 +197,7 @@ function safety_e(string $value): string
         aria-label="Llama Scout home"
     >
         <img
-            src="https://llamascout.com/images/logo.png"
+            src="https://llamascout.com/images/logo.svg"
             alt="Llama Scout"
         >
     </a>
