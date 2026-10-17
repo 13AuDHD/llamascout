@@ -748,7 +748,7 @@ $displayName =
   <a href="https://llamascout.com">
 
     <img
-      src="https://llamascout.com/images/logo.svg"
+      src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
       alt="Llama Scout"
       class="account-auth-logo"
     >
