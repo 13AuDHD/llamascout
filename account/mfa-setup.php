@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once 
+   dirname(__DIR__) 
+   . '/app/branding.php';
 
 /* =========================================================
    LLAMA SCOUT
