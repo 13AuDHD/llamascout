@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/branding.php';
 require_once dirname(__DIR__) . '/app/icons.php';
 
 if (!isset($adminUser) || !is_array($adminUser)) {
