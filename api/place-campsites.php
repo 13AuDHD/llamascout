@@ -399,6 +399,6 @@ try {
     ]);
     llama_place_campsites_api_json([
         'ok' => false,
-        'error' => 'Campsite data could not be loaded.',
+        'error' => 'Site data could not be loaded.',
     ], 500);
 }
