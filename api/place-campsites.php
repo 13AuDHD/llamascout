@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
 require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
+require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -56,9 +57,9 @@ try {
     /*
      * Resolve Place -> Area -> Site Scout Report layers in one bulk read.
      *
-     * Canonical campsite facts are still carried on each Site row. The client
-     * will apply inherited report values first, canonical Site facts second,
-     * and direct Site overrides last.
+     * Site facts are still carried on each Site row. The client applies
+     * inherited report values first, Site facts second, and direct Site
+     * overrides last.
      */
     $publishedUnknownFields =
         llama_place_report_published_answer_state(
@@ -215,6 +216,20 @@ try {
                     )
                 )
                 : [];
+
+        /*
+         * Warning rules stay server-side. These are calculated from the same
+         * effective Place -> Area -> Site answers used by the Scout Report.
+         */
+        $site['report_warnings'] =
+            is_array($resolved)
+                ? llama_scoped_report_quick_warnings(
+                    (array) (
+                        $resolved['values']
+                        ?? []
+                    )
+                )
+                : [];
     }
     unset($site);
 
@@ -296,11 +311,13 @@ try {
             );
     }
     unset($site);
+
     $facilityFacts = llama_place_facility_facts($db, $placeId);
     $facilityFeatures = llama_place_facility_features($db, $placeId);
     $state = llama_place_campsite_browser_state($place, $sites);
     $selectedFeatureId = max(0, (int) ($_GET['site'] ?? 0));
     $selectedSite = null;
+
     if ($selectedFeatureId > 0) {
         foreach ($sites as $site) {
             if ((int) ($site['id'] ?? 0) === $selectedFeatureId) {
@@ -397,6 +414,7 @@ try {
         'place_id' => $placeId,
         'user_id' => $userId,
     ]);
+
     llama_place_campsites_api_json([
         'ok' => false,
         'error' => 'Site data could not be loaded.',
