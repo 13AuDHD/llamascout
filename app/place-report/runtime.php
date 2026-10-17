@@ -68,31 +68,50 @@ function llama_place_report_quick_warnings(array $data): array
         ];
     };
 
-    /* Amenities */
-    if ($state('amenity_none') === 'answered' && $isYes($value('amenity_none'))) {
-        $add('amenity_none', 'No amenities', 'amenity_none');
-    }
-
-    /* Connectivity */
+    /*
+     * A 1/5 overall connectivity rating means no usable cellular service.
+     * Keep this explicit so it cannot be mistaken for merely weak service.
+     */
     if (
         $state('connectivity_overall') === 'answered'
         && is_numeric($value('connectivity_overall'))
         && (int) $value('connectivity_overall') === 1
     ) {
-        $add('warning_no_cell_service', 'No cell service', 'warning_no_cell_service');
+        $add(
+            'warning_no_cell_service',
+            'No cell service',
+            'warning_no_cell_service'
+        );
     }
 
     /* Safety answers that become warnings when the answer is No. */
     foreach ([
-        'felt_safe_daytime' => ['Did not feel safe during the day', 'felt_safe_daytime'],
-        'emergency_access' => ['No emergency vehicle access', 'emergency_access'],
+        'felt_safe_daytime' => [
+            'Did not feel safe during the day',
+            'felt_safe_daytime',
+        ],
+        'felt_safe_nighttime' => [
+            'Did not feel safe overnight',
+            'felt_safe_nighttime',
+        ],
+        'emergency_access' => [
+            'No emergency vehicle access',
+            'emergency_access',
+        ],
     ] as $key => [$label, $iconKey]) {
-        if ($state($key) === 'answered' && $isNo($value($key))) {
-            $add($key . '_warning', $label, $iconKey);
+        if (
+            $state($key) === 'answered'
+            && $isNo($value($key))
+        ) {
+            $add(
+                $key . '_warning',
+                $label,
+                $iconKey
+            );
         }
     }
 
-    /* Safety answers that become warnings when the answer is Yes. */
+    /* Actual hazards that become warnings when the answer is Yes. */
     foreach ([
         'flash_flood_risk' => 'Flash-flood risk',
         'wildfire_risk' => 'Wildfire risk',
@@ -102,94 +121,16 @@ function llama_place_report_quick_warnings(array $data): array
         'wildlife_risk' => 'Wildlife risk',
         'traffic_hazard' => 'Traffic hazard',
         'warning_possible_downed_trees' => 'Downed trees possible at the campsite',
-        'warning_passing_vehicle_dust' => 'Passing vehicle dust',
-        'warning_motorized_recreation_traffic' => 'Motorized recreation traffic',
         'warning_blind_turn_traffic_nearby' => 'Blind-turn traffic nearby',
     ] as $key => $label) {
-        if ($state($key) === 'answered' && $isYes($value($key))) {
-            $add($key, $label, $key);
-        }
-    }
-
-    /* Site + vehicle answers */
-    if (
-        $state('tent_camping_suitable') === 'answered'
-        && $isNo($value('tent_camping_suitable'))
-    ) {
-        $add(
-            'warning_no_tent_camping_derived',
-            'No tent camping',
-            'warning_no_tent_camping_derived'
-        );
-    }
-
-    if (
-        $state('levelness') === 'answered'
-        && is_numeric($value('levelness'))
-        && (int) $value('levelness') <= 2
-    ) {
-        $add(
-            'warning_leveling_required_derived',
-            'Leveling may be required',
-            'warning_leveling_required_derived'
-        );
-    }
-
-    /* Sensory privacy */
-    foreach (['daytime_privacy', 'nighttime_privacy'] as $privacyKey) {
         if (
-            $state($privacyKey) === 'answered'
-            && is_numeric($value($privacyKey))
-            && (int) $value($privacyKey) === 1
-        ) {
-            $add('warning_no_privacy', 'No privacy', 'warning_no_privacy');
-            break;
-        }
-    }
-
-    /* Road exposure */
-    if (
-        $state('road_exposure') === 'answered'
-        && is_numeric($value('road_exposure'))
-        && (int) $value('road_exposure') === 5
-    ) {
-        $add(
-            'warning_high_road_exposure',
-            'Highly exposed to road',
-            'warning_high_road_exposure'
-        );
-    }
-
-    /* Vehicle and trailer fit */
-    if (
-        $state('max_vehicle_length_feet') === 'answered'
-        && is_numeric($value('max_vehicle_length_feet'))
-        && (float) $value('max_vehicle_length_feet') <= 25
-    ) {
-        $add(
-            'warning_limited_vehicle_length_derived',
-            'Limited vehicle length',
-            'warning_limited_vehicle_length_derived'
-        );
-    }
-
-    if ($state('max_trailer_length_feet') === 'answered') {
-        $maxTrailer = $value('max_trailer_length_feet');
-
-        if ((string) $maxTrailer === 'not-recommended') {
-            $add(
-                'warning_limited_trailer_length',
-                'Trailers not recommended',
-                'warning_limited_trailer_length'
-            );
-        } elseif (
-            is_numeric($maxTrailer)
-            && (float) $maxTrailer <= 25
+            $state($key) === 'answered'
+            && $isYes($value($key))
         ) {
             $add(
-                'warning_limited_trailer_length',
-                'Limited trailer length',
-                'warning_limited_trailer_length'
+                $key,
+                $label,
+                $key
             );
         }
     }
@@ -621,25 +562,6 @@ function llama_place_report_build_data(
             (string) $field['storage'],
             $value
         );
-    }
-
-    $noAmenities =
-        !empty(
-            $data['details']['warning_no_amenities']
-            ?? false
-        );
-
-    if ($noAmenities) {
-        foreach ((array) ($data['amenities'] ?? []) as $amenity => $_) {
-            $data['amenities'][$amenity] = false;
-        }
-    } else {
-        foreach ((array) ($data['amenities'] ?? []) as $value) {
-            if ($value) {
-                $data['details']['warning_no_amenities'] = false;
-                break;
-            }
-        }
     }
 
     if (isset($data['details']) && is_array($data['details'])) {
@@ -1284,8 +1206,7 @@ function llama_place_report_question_completion_summary(
             'label' =>
                 (string) (
                     $item['label']
-                    ?? ''
-                ),
+                    ?? ''),
 
             'fields' =>
                 array_values(
@@ -1423,10 +1344,10 @@ function llama_place_report_display_value(
     $value =
         llama_place_report_get_path(
             $data,
-            (string) $field['storage']
+            (string) $field['ustorage']
         );
 
-    $type = (string) $field['type'];
+   $type = (string) $field['type'];
 
     if ($type === 'tri') {
         return $value ? 'Yes' : 'No';
@@ -1784,8 +1705,8 @@ function llama_place_report_resubmit_new_place(
         )
     ) {
         throw new RuntimeException(
-            'Your account is not eligible to submit new Places.'
-        );
+            'Your account is not longer available for resubmission.'
+       );
     }
 
     $existing =
@@ -2070,7 +1991,7 @@ function llama_place_report_data_from_published_place(
     /*
      * Recompute derived recommendation flags at read time as well so older
      * published rows cannot display a stale recommendation that conflicts
-     * with the current 1â5 experience rating.
+     * with the current 1-5 experience rating.
      */
     $deriveRecommendation =
         static function (mixed $rating): ?bool {
