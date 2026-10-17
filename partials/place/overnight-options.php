@@ -5,7 +5,9 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/app/place-map-features.php';
 require_once dirname(__DIR__, 2) . '/app/place-map-pricing.php';
 require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
+require_once dirname(__DIR__, 2) . '/app/place-report.php';
 require_once dirname(__DIR__, 2) . '/app/place-report/scoped-answers.php';
+require_once dirname(__DIR__, 2) . '/app/place-report/scoped-warnings.php';
 
 $placeId =
     (int) (
@@ -20,6 +22,32 @@ $baseCampingFee =
 
 $stayFeatures = [];
 $stayDb = db();
+$stayPlaceReportValues = [];
+
+try {
+    $stayPlaceReportData =
+        llama_place_report_data_from_published_place(
+            $place,
+            llama_place_report_published_answer_state(
+                $stayDb,
+                $placeId
+            )
+        );
+
+    $stayPlaceReportValues =
+        llama_scoped_report_values_from_data(
+            $stayPlaceReportData
+        );
+} catch (Throwable $exception) {
+    llama_log_caught_exception(
+        $exception,
+        'public.overnight-options.place_report',
+        [
+            'place_id' =>
+                $placeId,
+        ]
+    );
+}
 
 try {
     $stayFeatures =
@@ -350,16 +378,32 @@ foreach ($stayFeatures as $feature) {
     }
 
     $reportValues = [];
+    $reportWarnings = [];
 
     try {
+        $resolvedAreaReport =
+            llama_scoped_report_effective_answers(
+                $stayDb,
+                $placeId,
+                $stayPlaceReportValues,
+                'area',
+                $id,
+                'map_feature'
+            );
+
         $reportValues =
             llama_scoped_report_display_values(
-                llama_scoped_report_load(
-                    $stayDb,
-                    $placeId,
-                    'area',
-                    $id,
-                    'map_feature'
+                (array) (
+                    $resolvedAreaReport['direct']
+                    ?? []
+                )
+            );
+
+        $reportWarnings =
+            llama_scoped_report_quick_warnings(
+                (array) (
+                    $resolvedAreaReport['values']
+                    ?? []
                 )
             );
     } catch (Throwable $exception) {
@@ -393,6 +437,9 @@ foreach ($stayFeatures as $feature) {
 
         'report_values' =>
             $reportValues,
+
+        'report_warnings' =>
+            $reportWarnings,
     ];
 }
 
@@ -528,6 +575,14 @@ $hasSupplementalStayOptions =
                 data-stay-report-values="<?= place_h(
                     json_encode(
                         $area['report_values'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '{}'
+                ) ?>"
+                data-stay-report-warnings="<?= place_h(
+                    json_encode(
+                        $area['report_warnings'],
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
                     )
