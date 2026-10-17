@@ -894,19 +894,15 @@ if (field.derived) {
 return false;
 }
 
-const rules =
-Array.isArray(field.applicable_if)
-? field.applicable_if
-: [];
-
-return rules.every(
-(rule) =>
-completionRuleMatches(
-form,
-rule,
-config
-)
-);
+/*
+ * Issue #5 reconciliation mode:
+ *
+ * Keep applicable_if metadata in the shared schema, but do not enforce
+ * question-to-question dependencies yet. Every real editable question stays
+ * available in the same shared flow until visibility rules are reintroduced
+ * and tested in small groups.
+ */
+return true;
 };
 
 const fieldCountsTowardCompletion = (
