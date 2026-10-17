@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/branding.php';
 require_once dirname(__DIR__) . '/app/shop-cart.php';
 require_once dirname(__DIR__) . '/app/promotion-banner.php';
 require_once dirname(__DIR__) . '/app/page-styles.php';
