@@ -56,6 +56,7 @@ function llama_place_report_add_experience_fields(
         'nighttime_sensory_comfort' => ['Sensory comfort', 'Difficult', 'Excellent', 'sensory.nighttime.sensory_comfort', 'Nighttime'],
         'nighttime_social_interaction' => ['Chance of social interaction', 'Very low', 'Very high', 'sensory.nighttime.social_interaction_likelihood', 'Nighttime'],
         'sensory_dust_from_traffic' => ['Dust from traffic', 'Low', 'High', 'sensory.details.dust_from_traffic', 'Specific sensory conditions'],
+        'road_exposure' => ['Road exposure', 'Not exposed', 'Very exposed', 'details.road_exposure', 'Specific sensory conditions'],
         'sensory_generator_noise' => ['Generator noise', 'Low', 'High', 'sensory.details.generator_noise', 'Specific sensory conditions'],
         'sensory_aircraft_noise' => ['Aircraft noise', 'Low', 'High', 'sensory.details.aircraft_noise', 'Specific sensory conditions'],
         'sensory_train_noise' => ['Train noise', 'Low', 'High', 'sensory.details.train_noise', 'Specific sensory conditions'],
@@ -199,9 +200,23 @@ function llama_place_report_add_experience_fields(
         'points_categories' => ['accessibility'],
     ]);
 
+    $add(
+        'warning_motorized_recreation_traffic',
+        'Motorized recreation traffic?',
+        'sensory',
+        'tri',
+        'details.warning_motorized_recreation_traffic',
+        [
+            'allow_unknown' => true,
+            'subsection' => 'Specific sensory conditions',
+            'points_categories' => ['sensory'],
+        ]
+    );
+
     /* Safety and warnings */
     foreach ([
         'felt_safe_daytime' => ['Felt safe during the day?', 'details.felt_safe_daytime'],
+        'felt_safe_nighttime' => ['Felt safe at night?', 'details.felt_safe_nighttime'],
         'flash_flood_risk' => ['Flash-flood risk?', 'details.flash_flood_risk'],
         'wildfire_risk' => ['Wildfire risk?', 'details.wildfire_risk'],
         'fall_hazard' => ['Trip/Fall Hazard?', 'details.fall_hazard'],
@@ -211,8 +226,6 @@ function llama_place_report_add_experience_fields(
         'traffic_hazard' => ['Traffic hazard?', 'details.traffic_hazard'],
         'emergency_access' => ['Emergency vehicle access?', 'details.emergency_access'],
         'warning_possible_downed_trees' => ['Downed trees possible at the campsite?', 'details.warning_possible_downed_trees'],
-        'warning_passing_vehicle_dust' => ['Passing vehicle dust?', 'details.warning_passing_vehicle_dust'],
-        'warning_motorized_recreation_traffic' => ['Motorized recreation traffic?', 'details.warning_motorized_recreation_traffic'],
         'warning_blind_turn_traffic_nearby' => ['Blind-turn traffic nearby?', 'details.warning_blind_turn_traffic_nearby'],
     ] as $key => [$label, $storage]) {
         $add($key, $label, 'safety', 'tri', $storage, [
@@ -220,25 +233,6 @@ function llama_place_report_add_experience_fields(
             'points_categories' => ['safety_warnings'],
         ]);
     }
-
-    if (isset($f['felt_safe_nighttime'])) {
-        $f['felt_safe_nighttime']['derived'] = true;
-        $f['felt_safe_nighttime']['counts_toward_completion'] = false;
-        $f['felt_safe_nighttime']['points_categories'] = [];
-    }
-
-    $add('felt_safe_nighttime', 'Felt safe at night?', 'safety', 'derived', 'details.felt_safe_nighttime', [
-        'derived' => true,
-        'counts_toward_completion' => false,
-        'points_categories' => [],
-    ]);
-
-    $add('road_exposure', 'Road exposure', 'safety', 'rating', 'details.road_exposure', [
-        'allow_unknown' => true,
-        'low' => 'Not exposed',
-        'high' => 'Very exposed',
-        'points_categories' => ['safety_warnings'],
-    ]);
 
     require_once __DIR__ . '/fields-rules-services.php';
     llama_place_report_add_rules_service_fields(
