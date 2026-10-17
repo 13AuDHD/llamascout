@@ -431,7 +431,7 @@
                 role="status"
             >
                 <strong>
-                    ð« ${escapeHtml(status)}
+                    🚫 ${escapeHtml(status)}
                 </strong>
 
                 ${
@@ -1026,6 +1026,27 @@
             );
 
         updateTargetContributionPrompts();
+
+        const warningState = {
+            warnings:
+                site.report_warnings
+                || {},
+            target:
+                'Site',
+        };
+
+        window.LlamaScoutReportWarningsState =
+            warningState;
+
+        window.dispatchEvent(
+            new CustomEvent(
+                'llama:report-warnings-change',
+                {
+                    detail:
+                        warningState,
+                }
+            )
+        );
     };
 
     const renderBrowser = (
@@ -1417,7 +1438,7 @@
 
                                     ${
                                         closureStatus(site)
-                                            ? '<span class="place-campsite-closed-badge">ð« Closed</span>'
+                                            ? '<span class="place-campsite-closed-badge">🚫 Closed</span>'
                                             : ''
                                     }
 

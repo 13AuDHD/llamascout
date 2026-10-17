@@ -204,6 +204,22 @@
             );
         };
 
+    const publishWarnings =
+        (state) => {
+            window.LlamaScoutReportWarningsState =
+                state;
+
+            window.dispatchEvent(
+                new CustomEvent(
+                    'llama:report-warnings-change',
+                    {
+                        detail:
+                            state,
+                    }
+                )
+            );
+        };
+
     const applyAreaReport =
         (row) => {
             restorePlaceReport();
@@ -391,7 +407,31 @@
                 }
             }
 
-            updateTargetContributionPrompts();
+            let warnings = {};
+
+        try {
+            warnings =
+                JSON.parse(
+                    row.dataset
+                        .stayReportWarnings
+                    || '{}'
+                );
+        } catch (error) {
+            console.error(
+                'Llama Scout Area warning payload error:',
+                error
+            );
+
+            warnings = {};
+        }
+
+        publishWarnings({
+            warnings,
+            target:
+                'Area',
+        });
+
+        updateTargetContributionPrompts();
         };
 
     const getJson =
@@ -1031,6 +1071,10 @@
                 );
             } else if (isMapSite) {
                 restorePlaceReport();
+                publishWarnings({
+                    restore:
+                        true,
+                });
                 updateTargetContributionPrompts();
             }
 
