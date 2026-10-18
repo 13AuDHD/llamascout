@@ -1115,23 +1115,57 @@ $renderField =
 
 /* Exactly three top-level sections; nested groups reuse canonical field renderers. */
 $reportLayoutGroups = llama_place_report_layout_groups();
+
+$reportLayoutGroups['legacy_review'] = [
+    'review' => 'Questions for Review',
+];
+
 $reportMainLabels = [
     'getting_there' => ['Getting There', 'road'],
     'place' => ['Place', 'info-circle'],
     'site' => ['Site', 'camper'],
+    'legacy_review' => ['Legacy Review', 'info-circle'],
 ];
+
 $placeReportVisibleFields = [];
+
 foreach ($placeReportFields as $fieldKey => $field) {
-    $legacySection = (string) ($field['display_section'] ?? $field['section'] ?? '');
+    $legacySection = (string) (
+        $field['display_section']
+        ?? $field['section']
+        ?? ''
+    );
+
     if (
         $legacySection === 'location'
         && $placeReportShowLocate
-        && in_array((string) $fieldKey, ['latitude','longitude'], true)
+        && in_array(
+            (string) $fieldKey,
+            ['latitude', 'longitude'],
+            true
+        )
     ) {
         continue;
     }
+
+    $section = (string) ($field['layout_section'] ?? '');
+    $group = (string) ($field['layout_group'] ?? '');
+
+    if (
+        !isset($reportLayoutGroups[$section])
+        || !array_key_exists(
+            $group,
+            $reportLayoutGroups[$section]
+        )
+    ) {
+        $field['layout_section'] = 'legacy_review';
+        $field['layout_group'] = 'review';
+    }
+
     $placeReportVisibleFields[$fieldKey] = $field;
 }
+
+
 foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIcon]):
     $reportMainFields = array_filter(
         $placeReportVisibleFields,
