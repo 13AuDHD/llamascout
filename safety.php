@@ -199,7 +199,13 @@ function safety_e(string $value): string
         aria-label="Llama Scout home"
     >
         <img
-            src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
+            class="llama-brand-logo--light"
+            src="<?= htmlspecialchars(llama_brand_logo_dark_url(), ENT_QUOTES, 'UTF-8') ?>"
+            alt="Llama Scout"
+        >
+        <img
+            class="llama-brand-logo--dark"
+            src="<?= htmlspecialchars(llama_brand_logo_light_url(), ENT_QUOTES, 'UTF-8') ?>"
             alt="Llama Scout"
         >
     </a>
