@@ -1537,7 +1537,43 @@
         );
     };
 
+    const showLoading = () => {
+        mount.innerHTML = `
+            <section class="place-section place-campsites" aria-labelledby="place-campsites-heading" data-place-campsites>
+                <div class="place-campsites-heading">
+                    <div>
+                        <p class="eyebrow">Sites</p>
+                        <h2 id="place-campsites-heading">Choose a Site</h2>
+                    </div>
+                </div>
+                <div class="place-campsites-empty" role="status" aria-live="polite">
+                    Loading Sites…
+                </div>
+            </section>
+        `;
+    };
+
+    const showLoadError = () => {
+        mount.innerHTML = `
+            <section class="place-section place-campsites" aria-labelledby="place-campsites-heading" data-place-campsites>
+                <div class="place-campsites-heading">
+                    <div>
+                        <p class="eyebrow">Sites</p>
+                        <h2 id="place-campsites-heading">Choose a Site</h2>
+                    </div>
+                </div>
+                <div class="place-campsites-empty" role="alert">
+                    Sites couldn't be loaded right now.
+                    <button type="button" data-campsites-retry>Try again</button>
+                </div>
+            </section>
+        `;
+        mount.querySelector('[data-campsites-retry]')?.addEventListener('click', load);
+    };
+
     const load = async () => {
+        showLoading();
+
         try {
             const response =
                 await fetch(
@@ -1551,7 +1587,7 @@
                 );
 
             if (!response.ok) {
-                mount.remove();
+                showLoadError();
                 return;
             }
 
@@ -1559,7 +1595,7 @@
                 await response.json();
 
             if (!payload.ok) {
-                mount.remove();
+                showLoadError();
                 return;
             }
 
@@ -1573,7 +1609,7 @@
                 error
             );
 
-            mount.remove();
+            showLoadError();
         }
     };
 
