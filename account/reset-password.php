@@ -555,9 +555,14 @@ $tokenValid =
   <a href="https://llamascout.com">
 
     <img
-      src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
-      alt="Llama Scout"
-      class="account-auth-logo"
+        class="account-auth-logo llama-brand-logo--light"
+        src="<?= htmlspecialchars(llama_brand_logo_dark_url(), ENT_QUOTES, 'UTF-8') ?>"
+        alt="Llama Scout"
+    >
+    <img
+        class="account-auth-logo llama-brand-logo--dark"
+        src="<?= htmlspecialchars(llama_brand_logo_light_url(), ENT_QUOTES, 'UTF-8') ?>"
+        alt="Llama Scout"
     >
 
   </a>
