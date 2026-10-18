@@ -692,10 +692,15 @@
                     .campsiteDetailId
             );
 
+        if (!campsiteId) {
+            return;
+        }
+        
         if (
-            !campsiteId
-            || campsiteId
-                === activeId
+            campsiteId === activeId
+            && detail.querySelector(
+                '[data-campsite-rich-detail]'
+            )
         ) {
             return;
         }
