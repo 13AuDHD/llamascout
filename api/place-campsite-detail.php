@@ -20,6 +20,44 @@ function llama_place_campsite_detail_json(array $payload, int $status = 200): ne
     exit;
 }
 
+/**
+ * Avoid transferring the same Site photograph repeatedly when an import
+ * has created multiple image rows referencing the same asset.
+ *
+ * Distinct images remain untouched. Records aren't deleted or changed.
+ */
+function llama_place_campsite_detail_unique_images(array $images): array
+{
+    $unique = [];
+    $seen = [];
+
+    foreach ($images as $image) {
+        if (!is_array($image)) {
+            continue;
+        }
+
+        $src = trim((string) ($image['src'] ?? ''));
+        if ($src === '') {
+            continue;
+        }
+
+        // The same URL may occur with a different fragment or query ordering.
+        // Ignore fragment identifiers, but preserve query parameters since they
+        // can identify legitimately different image variants/assets.
+        $withoutFragment = explode('#', $src, 2)[0];
+        $key = strtolower($withoutFragment);
+
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $unique[] = $image;
+    }
+
+    return $unique;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     llama_place_campsite_detail_json(['ok' => false, 'error' => 'Method not allowed.'], 405);
 }
@@ -50,13 +88,14 @@ try {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
 
-    // Existing media clients retain their unchanged response contract.
-    // Report requests do not query or transmit the photo gallery.
+    // Media and report consumers continue using their existing response shape.
     if (($_GET['mode'] ?? '') !== 'report') {
+        $images = llama_place_campsite_images($db, $placeId, $campsiteId);
+
         llama_place_campsite_detail_json([
             'ok' => true,
             'site' => $site,
-            'images' => llama_place_campsite_images($db, $placeId, $campsiteId),
+            'images' => llama_place_campsite_detail_unique_images($images),
         ]);
     }
 
