@@ -125,17 +125,38 @@
         questions.replaceChildren();
         const sections = new Map();
 
+        // The PHP registry has already applied the canonical field order.
+        // Use its final section and group metadata without re-sorting fields.
         for (const f of fields.filter(eligible)) {
-            const title = f.section || 'Other';
-            let grid = sections.get(title);
+            const sectionKey = f.layout_section || 'legacy_review';
+            const groupKey = f.layout_group || 'review';
+            let sectionState = sections.get(sectionKey);
+
+            if (!sectionState) {
+                const section = make('section', 'place-report-flow-group');
+                section.append(make(
+                    'h3',
+                    'place-report-flow-heading',
+                    f.layout_section_label || 'Legacy Review'
+                ));
+                questions.append(section);
+                sectionState = {element: section, groups: new Map()};
+                sections.set(sectionKey, sectionState);
+            }
+
+            let grid = sectionState.groups.get(groupKey);
 
             if (!grid) {
-                const section = make('section', 'place-report-flow-group');
-                section.append(make('h3', 'place-report-flow-heading', title.replaceAll('_', ' ')));
+                const group = make('section', 'place-report-flow-group');
+                group.append(make(
+                    'h4',
+                    'place-report-flow-heading',
+                    f.layout_group_label || 'Questions for Review'
+                ));
                 grid = make('div', 'contribution-grid');
-                section.append(grid);
-                questions.append(section);
-                sections.set(title, grid);
+                group.append(grid);
+                sectionState.element.append(group);
+                sectionState.groups.set(groupKey, grid);
             }
 
             const card = make('div', 'contribution-field');
