@@ -570,6 +570,31 @@
 
 
 /* =========================================================
+   Branding
+   ========================================================= */
+
+
+.account-auth-brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto -28px;
+    position: relative;
+    z-index: 2;
+}
+
+.account-auth-logo {
+    display: block;
+    width: min(420px, 72vw);
+    height: auto;
+}
+
+.account-auth-card {
+    position: relative;
+}
+
+/* =========================================================
    RESPONSIVE + REDUCED MOTION
    ========================================================= */
 
@@ -583,18 +608,8 @@
         padding: 26px 0 42px;
     }
 
-    .account-auth-logo {
-        width: min(280px, 78vw);
-    }
-
     .account-auth > a:first-child {
         margin-bottom: -10px;
-    }
-
-    .account-auth-card {
-        padding: 30px 18px 22px;
-
-        border-radius: 14px;
     }
 
     .mfa-enrollment-grid,
@@ -602,6 +617,8 @@
         grid-template-columns: 1fr;
     }
 }
+
+
 
 @media (prefers-reduced-motion: reduce) {
 
