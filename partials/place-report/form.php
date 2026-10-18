@@ -878,41 +878,10 @@ $renderField =
                         ?? []
                     );
 
-                $multiSummary =
-                    (string) (
-                        $field['summary']
-                        ?? 'Choose options'
-                    );
                 ?>
 
-                <details
-                    class="place-report-multiselect"
-                    data-place-report-multiselect
-                >
-                    <summary
-                        data-place-report-multiselect-summary
-                        data-default-summary="<?= $e($multiSummary) ?>"
-                    >
-                        <?= $selectedValues
-                            ? number_format(count($selectedValues)) . ' selected'
-                            : $e($multiSummary) ?>
-                    </summary>
-
-                    <div class="place-report-multiselect-panel">
-                        <?php if ($key !== 'approach_road_hazards'): ?>
-                        <input
-                            type="search"
-                            class="place-report-multiselect-search"
-                            placeholder="<?= $e(
-                                $field['search_placeholder']
-                                ?? 'Search options...'
-                            ) ?>"
-                            autocomplete="off"
-                            data-place-report-multiselect-search
-                        >
-                        <?php endif; ?>
-
-                        <div class="place-report-multiselect-options">
+                <div class="place-report-multiselect" data-place-report-multiselect>
+                    <div class="place-report-multiselect-options">
                             <?php foreach (
                                 $multiOptions
                                 as $optionValue => $optionLabel
@@ -938,9 +907,8 @@ $renderField =
                                     <span><?= $e($optionLabel) ?></span>
                                 </label>
                             <?php endforeach; ?>
-                        </div>
                     </div>
-                </details>
+                </div>
 
 
             <?php elseif (
