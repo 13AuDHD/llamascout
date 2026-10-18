@@ -463,7 +463,16 @@ function admin_shell_nav_class(string $key, string $active): string
             rel="noopener"
             aria-label="Open the Llama Scout public site"
         >
-            <img src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>" alt="Llama Scout">
+            <img
+                class="llama-brand-logo--light"
+                src="<?= htmlspecialchars(llama_brand_logo_dark_url(), ENT_QUOTES, 'UTF-8') ?>"
+                alt="Llama Scout"
+            >
+            <img
+                class="llama-brand-logo--dark"
+                src="<?= htmlspecialchars(llama_brand_logo_light_url(), ENT_QUOTES, 'UTF-8') ?>"
+                alt="Llama Scout"
+            >
             <span><?= moderation_e($adminShellRole) ?></span>
         </a>
 
