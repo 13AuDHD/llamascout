@@ -1153,21 +1153,60 @@ $e =
                 <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
                 <p data-scoped-field-notice role="status"></p>
             </section>
-            <script type="application/json" id="place-update-scoped-fields-data"><?= json_encode(
-                array_values(array_map(static function (array $field): array {
+            <?php
+            /* Use the same final layout definitions as the shared editable form. */
+            $scopedReportLayoutGroups = llama_place_report_layout_groups();
+            $scopedReportLayoutGroups['legacy_review'] = [
+                'review' => 'Questions for Review',
+            ];
+            $scopedReportLayoutSections = [
+                'getting_there' => 'Getting There',
+                'place' => 'Place',
+                'site' => 'Site',
+                'legacy_review' => 'Legacy Review',
+            ];
+            $scopedReportFieldData = array_values(array_map(
+                static function (array $field) use (
+                    $scopedReportLayoutGroups,
+                    $scopedReportLayoutSections
+                ): array {
+                    $layoutSection = (string) ($field['layout_section'] ?? '');
+                    $layoutGroup = (string) ($field['layout_group'] ?? '');
+
+                    if (
+                        !isset($scopedReportLayoutGroups[$layoutSection])
+                        || !array_key_exists(
+                            $layoutGroup,
+                            $scopedReportLayoutGroups[$layoutSection]
+                        )
+                    ) {
+                        $layoutSection = 'legacy_review';
+                        $layoutGroup = 'review';
+                    }
+
                     return [
-                        'key'=>(string)$field['key'],
-                        'label'=>(string)$field['label'],
-                        'section'=>(string)($field['section']??'Other'),
-                        'applicable_if'=>(array)($field['applicable_if']??[]),
-                        'type'=>(string)$field['type'],
-                        'scopes'=>array_values((array)($field['report_scopes']??['place'])),
-                        'options'=>(array)($field['options']??[]),
-                        'unknown'=>!empty($field['allow_unknown']),
-                        'derived'=>!empty($field['derived']),
-                        'location'=>!empty($field['location_field']),
+                        'key' => (string) $field['key'],
+                        'label' => (string) $field['label'],
+                        'layout_section' => $layoutSection,
+                        'layout_group' => $layoutGroup,
+                        'layout_section_label' => $scopedReportLayoutSections[$layoutSection],
+                        'layout_group_label' => $scopedReportLayoutGroups[$layoutSection][$layoutGroup],
+                        'applicable_if' => (array) ($field['applicable_if'] ?? []),
+                        'type' => (string) $field['type'],
+                        'scopes' => array_values((array) ($field['report_scopes'] ?? ['place'])),
+                        'options' => (array) ($field['options'] ?? []),
+                        'unknown' => !empty($field['allow_unknown']),
+                        'derived' => !empty($field['derived']),
+                        'location' => !empty($field['location_field']),
                     ];
-                }, llama_place_report_fields())), JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
+                },
+                llama_place_report_fields()
+            ));
+            ?>
+            <script type="application/json" id="place-update-scoped-fields-data"><?= json_encode(
+                $scopedReportFieldData,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
+            ) ?></script>
 
             ?>
 
