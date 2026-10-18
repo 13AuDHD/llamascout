@@ -923,15 +923,7 @@ form,
 config
 ) => {
 config.fields.forEach((field) => {
-const applicable =
-fieldContextuallyApplicable(
-form,
-field,
-config
-);
-
-const key =
-String(field.key || '');
+const key = String(field.key || '');
 
 if (!key) {
 return;
@@ -944,8 +936,7 @@ const controls = [
 ];
 
 controls.forEach((control) => {
-const wrapper =
-control.closest(
+const wrapper = control.closest(
 '.contribution-field, .contribution-check'
 );
 
@@ -953,87 +944,25 @@ if (!wrapper) {
 return;
 }
 
-if (
-!Object.prototype.hasOwnProperty.call(
-wrapper.dataset,
-'placeReportOriginalHidden'
-)
-) {
-wrapper.dataset.placeReportOriginalHidden =
-wrapper.hidden ? '1' : '0';
-}
-
-if (!applicable) {
-wrapper.hidden = true;
-wrapper.classList.add(
-'is-applicability-hidden'
-);
-wrapper.dataset.placeReportApplicabilityHidden =
-'1';
-return;
-}
-
-if (
-wrapper.dataset.placeReportApplicabilityHidden
-=== '1'
-) {
-wrapper.hidden =
-wrapper.dataset.placeReportOriginalHidden
-=== '1';
-
+wrapper.hidden = false;
 wrapper.classList.remove(
 'is-applicability-hidden'
 );
 
 delete wrapper.dataset.placeReportApplicabilityHidden;
-}
+delete wrapper.dataset.placeReportOriginalHidden;
 });
 });
 
-form
-.querySelectorAll(
+form.querySelectorAll(
 '.contribution-section'
-)
-.forEach((section) => {
-const wrappers = [
-...section.querySelectorAll(
-'.contribution-field, .contribution-check'
-),
-];
-
-if (!wrappers.length) {
-return;
-}
-
-const hasVisibleField =
-wrappers.some((wrapper) => {
-const applicabilityHidden =
-wrapper.dataset.placeReportApplicabilityHidden
-=== '1';
-
-return !applicabilityHidden;
-});
-
-if (!hasVisibleField) {
-section.hidden = true;
-section.classList.add(
-'is-applicability-hidden'
-);
-section.dataset.placeReportApplicabilityHidden =
-'1';
-return;
-}
-
-if (
-section.dataset.placeReportApplicabilityHidden
-=== '1'
-) {
+).forEach((section) => {
 section.hidden = false;
 section.classList.remove(
 'is-applicability-hidden'
 );
+
 delete section.dataset.placeReportApplicabilityHidden;
-}
 });
 };
 
