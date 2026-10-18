@@ -93,7 +93,9 @@
                             switchableCards
                                 .filter(
                                     (card) =>
-                                        card.hidden
+                                        card.classList.contains(
+                                            'is-unanswered'
+                                        )
                                 )
                                 .length;
 
@@ -891,12 +893,12 @@
                             ? values[key]
                             : '';
 
-                    if (value === '') {
-                        card.hidden =
-                            true;
-
-                        return;
-                    }
+                    // Reconciliation mode keeps unreported Site questions
+                    // visible rather than removing them from the report.
+                    const isUnanswered = value === '';
+                    const displayValue = isUnanswered
+                        ? 'Not provided'
+                        : value;
 
                     const ratingStrong =
                         card.querySelector(
@@ -962,14 +964,15 @@
                             value;
                     } else {
                         strong.textContent =
-                            value;
+                            displayValue;
                     }
 
                     card.hidden =
                         false;
 
-                    card.classList.remove(
-                        'is-unanswered'
+                    card.classList.toggle(
+                        'is-unanswered',
+                        isUnanswered
                     );
 
                     card.classList.toggle(
@@ -1018,7 +1021,7 @@
                                 'aria-label',
                                 rating > 0
                                     ? `${rating} out of 5`
-                                    : value
+                                    : displayValue
                             );
                         }
                     }
