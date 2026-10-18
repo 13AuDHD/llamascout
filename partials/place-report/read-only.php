@@ -508,26 +508,6 @@ foreach (
     $placeReportSections
     as $sectionKey => $section
 ):
-    if (
-        $placeReportReadMode === 'scout-report'
-        && in_array(
-            $sectionKey,
-            [
-                'basic',
-                'location',
-                'amenities',
-            ],
-            true
-        )
-    ) {
-        /*
-         * The public Place wrapper already presents basic identity,
-         * exact location, weather, and map context. The field
-         * definitions still originate here.
-         */
-        continue;
-    }
-
     $fields =
         array_filter(
             $placeReportFields,
@@ -556,20 +536,6 @@ foreach (
                     return false;
                 }
 
-                /*
-                 * This is the key Fix: use the same applicability function that
-                 * controls Add Place and the completion denominator.
-                 */
-                if (
-                    $placeReportReadMode === 'scout-report'
-                    && !llama_place_report_question_applicable(
-                        $placeReportApplicabilityInput,
-                        (string) $fieldKey
-                    )
-                ) {
-                    return false;
-                }
-
                 return true;
             },
             ARRAY_FILTER_USE_BOTH
@@ -577,54 +543,6 @@ foreach (
 
     if (!$fields) {
         continue;
-    }
-
-    /*
-     * Scout notes are free-form observations. Keep their existing behavior:
-     * do not create an empty contribution section when nobody wrote a note.
-     */
-    if (
-        $sectionKey === 'scout_notes'
-        && $placeReportReadMode === 'scout-report'
-    ) {
-        $fields = array_filter(
-            $fields,
-            static function (
-                array $field
-            ) use (
-                $placeReportData
-            ): bool {
-                $key =
-                    (string) (
-                        $field['key']
-                        ?? ''
-                    );
-
-                if (
-                    $key === ''
-                    || llama_place_report_answer_state(
-                        $placeReportData,
-                        $key
-                    ) !== 'answered'
-                ) {
-                    return false;
-                }
-
-                return trim(
-                    (string) llama_place_report_get_path(
-                        $placeReportData,
-                        (string) (
-                            $field['storage']
-                            ?? ''
-                        )
-                    )
-                ) !== '';
-            }
-        );
-
-        if (!$fields) {
-            continue;
-        }
     }
 
     $applicableFields =
