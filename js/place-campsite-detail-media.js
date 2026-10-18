@@ -710,7 +710,7 @@
         if (
             campsiteId === activeId
             && detail.querySelector(
-                '[data-campsite-rich-detail]'
+                '[data-campsite-rich-detail], .place-campsite-photo-loading'
             )
         ) {
             return;
