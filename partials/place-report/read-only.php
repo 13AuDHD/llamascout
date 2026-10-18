@@ -786,16 +786,9 @@ foreach (
                             (string) $key
                         );
 
-                    if (
-                        $placeReportReadMode === 'scout-report'
-                        && (
-                            $note === null
-                            || trim(
-                                (string) $note
-                            ) === ''
-                        )
-                    ) {
-                        continue;
+                    /* Issue #6: unanswered notes remain visible for review. */
+                    if ($note === null || trim((string) $note) === '') {
+                        $note = 'Not provided';
                     }
                     ?>
 
@@ -825,12 +818,16 @@ foreach (
                             (string) $field['storage']
                         );
 
-                    $amenityValue =
-                        !empty(
-                            $rawAmenityValue
-                        )
-                            ? 'Yes'
-                            : 'No';
+                    /* Missing must not be misrepresented as an explicit No. */
+                    $amenityState = llama_place_report_answer_state(
+                        $placeReportData,
+                        (string) $key
+                    );
+                    $amenityValue = $amenityState === 'unanswered'
+                        ? 'Not provided'
+                        : ($amenityState === 'unknown'
+                            ? 'Unknown'
+                            : (!empty($rawAmenityValue) ? 'Yes' : 'No'));
 
                     $amenityIcon =
                         $localIcon(
@@ -874,19 +871,48 @@ foreach (
             </div>
 
         <?php else: ?>
-            <div class="scout-report-grid">
-                <?php foreach (
-                    $reportedFields
-                    as $key => $field
-                ): ?>
-                    <?php
-                    $renderValue(
-                        (string) $key,
-                        $field
-                    );
-                    ?>
-                <?php endforeach; ?>
-            </div>
+            <?php
+            /* Canonical layout-group order within the existing report section.
+             * Keep the surrounding section and Site-switching hooks intact.
+             */
+            $layoutGroups = llama_place_report_layout_groups();
+            $fieldBuckets = [];
+            foreach ($reportedFields as $fieldKey => $fieldDefinition) {
+                $layoutSection = (string) ($fieldDefinition['layout_section'] ?? '');
+                $layoutGroup = (string) ($fieldDefinition['layout_group'] ?? '');
+                $bucketKey = $layoutSection . ':' . $layoutGroup;
+                $fieldBuckets[$bucketKey][$fieldKey] = $fieldDefinition;
+            }
+            $orderedBuckets = [];
+            foreach ($layoutGroups as $layoutSection => $groups) {
+                foreach ($groups as $groupKey => $groupLabel) {
+                    $bucketKey = $layoutSection . ':' . $groupKey;
+                    if (isset($fieldBuckets[$bucketKey])) {
+                        $orderedBuckets[$bucketKey] = [
+                            'label' => $groupLabel,
+                            'fields' => $fieldBuckets[$bucketKey],
+                        ];
+                        unset($fieldBuckets[$bucketKey]);
+                    }
+                }
+            }
+            foreach ($fieldBuckets as $bucketKey => $remainingFields) {
+                $orderedBuckets[$bucketKey] = [
+                    'label' => 'Legacy Review',
+                    'fields' => $remainingFields,
+                ];
+            }
+            ?>
+            <?php foreach ($orderedBuckets as $bucket): ?>
+                <div class="scout-report-subsection">
+                    <h4><?= $e($bucket['label']) ?></h4>
+                    <div class="scout-report-grid">
+                        <?php foreach ($bucket['fields'] as $key => $field): ?>
+                            <?php $renderValue((string) $key, $field); ?>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
 
             <?php if (
                 $placeReportReadMode === 'scout-report'
