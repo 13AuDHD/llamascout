@@ -75,6 +75,10 @@ DirectoryIndex index.php index.html
         Header always set Cache-Control "public, max-age=86400"
     </FilesMatch>
 
+    <FilesMatch "^logo\.(png|svg)$">
+        Header always set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
     Header unset ETag
 
 </IfModule>
