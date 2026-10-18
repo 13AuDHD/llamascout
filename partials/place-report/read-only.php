@@ -166,14 +166,13 @@ $campsiteSwitchableFields =
             static function (
                 array $field
             ): bool {
-                return in_array(
-                    'site',
-                    (array) (
-                        $field['report_scopes']
-                        ?? []
-                    ),
-                    true
-                );
+                return (string) (
+                        $field[
+                            'report_scope_group'
+                        ]
+                        ?? 'place'
+                    )
+                    !== 'place';
             }
         )
     );
@@ -202,9 +201,8 @@ $renderValue =
             );
 
         /*
-         * Moderation remains a diagnostic view and can still show unanswered
-         * values. The public Scout Report filters unanswered fields before
-         * calling this renderer.
+         * During Issue #5 reconciliation, unanswered values stay visible in
+         * every read-only flow so they can be compared against editable input.
          */
         if ($state === 'unanswered') {
             $value = 'Not provided';
@@ -254,15 +252,19 @@ $renderValue =
                 true
             );
 
+        /*
+         * Reconciliation mode keeps unanswered Site/Area-capable questions
+         * visible instead of waiting for a Site selection.
+         */
         $hideUntilCampsite =
-            $isCampsiteSwitchable
-            && $state === 'unanswered';
+            false;
         ?>
 
         <div
             class="<?= $e($class) ?>"
             <?php if ($isCampsiteSwitchable): ?>
                 data-campsite-report-field="<?= $e($key) ?>"
+                data-campsite-report-type="<?= $e($type) ?>"
             <?php endif; ?>
             <?= $hideUntilCampsite ? 'hidden' : '' ?>
         >
@@ -427,27 +429,36 @@ $renderContributionPrompt =
     };
 
 /*
- * Quick warnings are calculated from the canonical Place Report answers.
- * Do not maintain a second set of warning flags here.
+ * Warning rules come from the shared Scout Report runtime. Keep a stable
+ * container in the page even when the Place itself has no warnings so an Area
+ * or Site selection can reveal its own warning set without rebuilding layout.
  */
 $warnings =
     llama_place_report_quick_warnings(
         $placeReportData
     );
-
-if ($warnings):
 ?>
-    <section class="scout-report-section scout-report-warning-section">
+    <section
+        class="scout-report-section scout-report-warning-section"
+        data-report-warnings
+        <?= $warnings ? '' : 'hidden' ?>
+    >
         <h3>
             <?= llama_icon('alert-triangle') ?>
             Quick warnings
         </h3>
 
-        <p class="scout-report-summary">
+        <p
+            class="scout-report-summary"
+            data-report-warning-summary
+        >
             Important conditions reported for this Place.
         </p>
 
-        <div class="scout-report-grid">
+        <div
+            class="scout-report-grid"
+            data-report-warning-grid
+        >
             <?php foreach ($warnings as $key => $warning): ?>
                 <?php
                 $warningIcon =
@@ -486,13 +497,37 @@ if ($warnings):
             <?php endforeach; ?>
         </div>
     </section>
+
+<script
+    src="/js/place-report-warnings.js"
+    defer
+></script>
 <?php
-endif;
 
 foreach (
     $placeReportSections
     as $sectionKey => $section
 ):
+    if (
+        $placeReportReadMode === 'scout-report'
+        && in_array(
+            $sectionKey,
+            [
+                'basic',
+                'location',
+                'amenities',
+            ],
+            true
+        )
+    ) {
+        /*
+         * The public Place wrapper already presents basic identity,
+         * exact location, weather, and map context. The field
+         * definitions still originate here.
+         */
+        continue;
+    }
+
     $fields =
         array_filter(
             $placeReportFields,
@@ -521,6 +556,20 @@ foreach (
                     return false;
                 }
 
+                /*
+                 * This is the key Fix: use the same applicability function that
+                 * controls Add Place and the completion denominator.
+                 */
+                if (
+                    $placeReportReadMode === 'scout-report'
+                    && !llama_place_report_question_applicable(
+                        $placeReportApplicabilityInput,
+                        (string) $fieldKey
+                    )
+                ) {
+                    return false;
+                }
+
                 return true;
             },
             ARRAY_FILTER_USE_BOTH
@@ -530,9 +579,64 @@ foreach (
         continue;
     }
 
+    /*
+     * Scout notes are free-form observations. Keep their existing behavior:
+     * do not create an empty contribution section when nobody wrote a note.
+     */
+    if (
+        $sectionKey === 'scout_notes'
+        && $placeReportReadMode === 'scout-report'
+    ) {
+        $fields = array_filter(
+            $fields,
+            static function (
+                array $field
+            ) use (
+                $placeReportData
+            ): bool {
+                $key =
+                    (string) (
+                        $field['key']
+                        ?? ''
+                    );
+
+                if (
+                    $key === ''
+                    || llama_place_report_answer_state(
+                        $placeReportData,
+                        $key
+                    ) !== 'answered'
+                ) {
+                    return false;
+                }
+
+                return trim(
+                    (string) llama_place_report_get_path(
+                        $placeReportData,
+                        (string) (
+                            $field['storage']
+                            ?? ''
+                        )
+                    )
+                ) !== '';
+            }
+        );
+
+        if (!$fields) {
+            continue;
+        }
+    }
+
     $applicableFields =
         $fields;
 
+    /*
+     * Issue #5 reconciliation mode:
+     *
+     * Do not remove unanswered questions from the Scout Report. The public
+     * read-only view now exposes the same question inventory and sequence as
+     * the editable flows so answer-state mismatches can be found directly.
+     */
     $answeredFields =
         $applicableFields;
 
@@ -564,6 +668,47 @@ foreach (
             - count($answeredFields)
         );
 
+    $switchableApplicableCount = 0;
+    $switchableAnsweredCount = 0;
+
+    if ($placeReportReadMode === 'scout-report') {
+        foreach (
+            $applicableFields
+            as $fieldKey => $field
+        ) {
+            if (
+                !in_array(
+                    (string) $fieldKey,
+                    $campsiteSwitchableFields,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $switchableApplicableCount++;
+
+            if (
+                llama_place_report_answer_state(
+                    $placeReportData,
+                    (string) $fieldKey
+                ) !== 'unanswered'
+            ) {
+                $switchableAnsweredCount++;
+            }
+        }
+    }
+
+    $fixedMissingCount =
+        max(
+            0,
+            $missingApplicableCount
+            - (
+                $switchableApplicableCount
+                - $switchableAnsweredCount
+            )
+        );
+
     $sectionHasReportedData =
         count($reportedFields) > 0;
 ?>
@@ -579,7 +724,22 @@ foreach (
         );
     ?>
 
-    <section class="scout-report-section">
+    <section
+        class="scout-report-section"
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $switchableApplicableCount > 0
+        ): ?>
+            data-report-target-section="1"
+            data-report-section-label="<?= $e(
+                (string) $section['label']
+            ) ?>"
+            data-report-applicable-count="<?= count(
+                $applicableFields
+            ) ?>"
+            data-report-fixed-missing="<?= $fixedMissingCount ?>"
+        <?php endif; ?>
+    >
         <h3>
             <?= llama_icon($sectionIcon) ?>
 
@@ -592,13 +752,15 @@ foreach (
             $placeReportReadMode === 'scout-report'
             && !$sectionHasReportedData
         ): ?>
-            <?php
-            $renderContributionPrompt(
-                (string) $section['label'],
-                count($applicableFields),
-                true
-            );
-            ?>
+            <?php if ($switchableApplicableCount < 1): ?>
+                <?php
+                $renderContributionPrompt(
+                    (string) $section['label'],
+                    count($applicableFields),
+                    true
+                );
+                ?>
+            <?php endif; ?>
 
         <?php elseif ($sectionKey === 'sensory'): ?>
             <?php foreach (
@@ -682,6 +844,7 @@ foreach (
             <?php if (
                 $placeReportReadMode === 'scout-report'
                 && $missingApplicableCount > 0
+                && $switchableApplicableCount < 1
             ): ?>
                 <?php
                 $renderContributionPrompt(
@@ -810,6 +973,7 @@ foreach (
             <?php if (
                 $placeReportReadMode === 'scout-report'
                 && $missingApplicableCount > 0
+                && $switchableApplicableCount < 1
             ): ?>
                 <?php
                 $renderContributionPrompt(
@@ -819,6 +983,69 @@ foreach (
                 );
                 ?>
             <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $switchableApplicableCount > 0
+            && $missingApplicableCount > 0
+        ): ?>
+            <?php
+            $targetPromptEmpty =
+                count($applicableFields) > 0
+                && $missingApplicableCount >= count($applicableFields);
+
+            $targetPromptMessage =
+                $targetPromptEmpty
+                    ? (
+                        'No one has reported '
+                        . strtolower(
+                            (string) $section['label']
+                        )
+                        . ' information here yet.'
+                    )
+                    : (
+                        $missingApplicableCount
+                        . ' applicable detail'
+                        . (
+                            $missingApplicableCount === 1
+                                ? ''
+                                : 's'
+                        )
+                        . ' in this section '
+                        . (
+                            $missingApplicableCount === 1
+                                ? 'has'
+                                : 'have'
+                        )
+                        . ' not been reported yet.'
+                    );
+            ?>
+
+            <div
+                class="scout-report-contribution-prompt<?= $targetPromptEmpty ? ' is-empty' : ' is-partial' ?>"
+                data-target-report-prompt
+            >
+                <div class="scout-report-contribution-copy">
+                    <strong>
+                        <?= $targetPromptEmpty
+                            ? 'Be the first to add this'
+                            : 'Know something we are missing?' ?>
+                    </strong>
+
+                    <p><?= $e($targetPromptMessage) ?></p>
+                </div>
+
+                <?php if ($placeReportUpdateUrl !== ''): ?>
+                    <a
+                        href="<?= $e($placeReportUpdateUrl) ?>"
+                        class="scout-report-contribution-action"
+                    >
+                        <?= llama_icon('edit') ?>
+                        Update this Place
+                    </a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
     </section>
 <?php endforeach; ?>
