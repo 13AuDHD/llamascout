@@ -1344,7 +1344,7 @@ function llama_place_report_display_value(
     $value =
         llama_place_report_get_path(
             $data,
-            (string) $field['ustorage']
+            (string) $field['storage']
         );
 
    $type = (string) $field['type'];
