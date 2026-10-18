@@ -11,7 +11,7 @@ declare(strict_types=1);
 function llama_brand_logo_url(): string
 {
     // Single-image fallback for emails and existing templates.
-    return 'https://llamascout.com/images/logo-png.png';
+    return 'https://llamascout.com/images/logo-lt.png';
 }
 
 function llama_brand_logo_dark_url(): string
