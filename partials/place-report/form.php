@@ -130,6 +130,14 @@ $placeReportAllowedStoragePaths =
         )
         : null;
 
+/*
+ * Issue #5 reconciliation: show the entire canonical question set.
+ * Visibility is independent of the current workflow's save capabilities.
+ * Set false only when restoring workflow storage filtering intentionally.
+ */
+$placeReportReconciliationMode =
+    (bool) ($placeReportReconciliationMode ?? true);
+
 $placeReportAllowedStorageLookup =
     $placeReportAllowedStoragePaths !== null
         ? array_fill_keys(
@@ -193,7 +201,8 @@ foreach ($placeReportRequiredFields as $requiredFieldKey) {
  * storage path is not available to that workflow.
  */
 if (
-    is_array(
+    !$placeReportReconciliationMode
+    && is_array(
         $placeReportAllowedStorageLookup
     )
 ) {
