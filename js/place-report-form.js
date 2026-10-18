@@ -890,19 +890,9 @@ form,
 field,
 config
 ) => {
-if (field.derived) {
-return false;
-}
-
-/*
- * Issue #5 reconciliation mode:
- *
- * Keep applicable_if metadata in the shared schema, but do not enforce
- * question-to-question dependencies yet. Every real editable question stays
- * available in the same shared flow until visibility rules are reintroduced
- * and tested in small groups.
- */
-return true;
+// Issue #5 reconciliation: keep dependency rules as metadata only.
+// Derived fields are not editable questions.
+return !field.derived;
 };
 
 const fieldCountsTowardCompletion = (
@@ -922,46 +912,34 @@ const syncApplicabilityVisibility = (
 form,
 config
 ) => {
+// Reconciliation mode: show every question belonging to this form.
+// Scope routing is handled by the form renderer, not dependencies.
 config.fields.forEach((field) => {
 const key = String(field.key || '');
-
-if (!key) {
-return;
-}
+if (!key || field.derived) return;
 
 const controls = [
 ...form.querySelectorAll(
 `[name="${CSS.escape(key)}"], [name="${CSS.escape(key + '[]')}"]`
-),
+)
 ];
 
 controls.forEach((control) => {
 const wrapper = control.closest(
 '.contribution-field, .contribution-check'
 );
-
-if (!wrapper) {
-return;
-}
+if (!wrapper) return;
 
 wrapper.hidden = false;
-wrapper.classList.remove(
-'is-applicability-hidden'
-);
-
+wrapper.classList.remove('is-applicability-hidden');
 delete wrapper.dataset.placeReportApplicabilityHidden;
 delete wrapper.dataset.placeReportOriginalHidden;
 });
 });
 
-form.querySelectorAll(
-'.contribution-section'
-).forEach((section) => {
+form.querySelectorAll('.contribution-section').forEach((section) => {
 section.hidden = false;
-section.classList.remove(
-'is-applicability-hidden'
-);
-
+section.classList.remove('is-applicability-hidden');
 delete section.dataset.placeReportApplicabilityHidden;
 });
 };
