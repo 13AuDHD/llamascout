@@ -9,5 +9,5 @@ declare(strict_types=1);
  */
 function llama_brand_logo_url(): string
 {
-    return 'https://llamascout.com/images/logo.svg';
+    return 'https://llamascout.com/images/logo.png';
 }
