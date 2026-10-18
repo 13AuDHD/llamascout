@@ -630,6 +630,13 @@
             return;
         }
 
+        const loading = document.createElement('p');
+            loading.className = 'place-campsite-photo-loading';
+            loading.textContent = 'Loading Site photos…';
+            loading.setAttribute('role', 'status');
+        
+        detail.appendChild(loading);
+
         try {
             const response =
                 await fetch(
@@ -673,7 +680,11 @@
                 'Llama Scout campsite detail error:',
                 error
             );
+            
+        } finally {
+            loading.remove();
         }
+        
     };
 
     const refresh = () => {
