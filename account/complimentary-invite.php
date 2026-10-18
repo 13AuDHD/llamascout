@@ -460,7 +460,7 @@ $registerUrl =
 <main class="complimentary-invite-page">
 
     <a
-        class="complimentary-invite-logo-link"
+        class="complimentary-invite-logo-link account-auth-brand"
         href="https://llamascout.com"
         aria-label="Llama Scout home"
     >
