@@ -1,7 +1,7 @@
 (() => {
     'use strict';
     const q = (selector) => document.querySelector(selector);
-    const search = q('[data-report-target-search]');
+    let search = q('[data-report-target-search]');
     const scope = q('[data-report-target-scope]');
     const source = q('[data-report-target-source]');
     const id = q('[data-report-target-id]');
@@ -29,28 +29,38 @@
     const place = targets.find(t => t.scope === 'place');
     if (!place) return;
 
-    const list = q('#place-update-report-target-options');
-    list.replaceChildren();
-    for (const label of labels.keys()) list.append(new Option('', label));
-
+    // A native select makes switching targets possible in one action on mobile.
+    // Keep the existing target labels and hidden scope/source/id persistence.
     const initialTarget =
         targets.find(
             target =>
                 target.scope === String(initial.scope || 'place')
                 && target.source === String(initial.source || 'place')
                 && Number(target.id) === Number(initial.id || place.id)
-        )
-        || place;
+        ) || place;
 
-    search.value =
-        [...labels.keys()]
-            .find(key => labels.get(key) === initialTarget)
-        || '';
+    const selector = document.createElement('select');
+    selector.id = search.id;
+    selector.className = search.className;
+    selector.name = search.name;
+    selector.setAttribute('data-report-target-search', '');
+    selector.setAttribute('aria-label', 'Reporting target');
+
+    for (const [label, target] of labels) {
+        const option = new Option(label, label);
+        option.selected = target === initialTarget;
+        selector.add(option);
+    }
 
     if (initial.locked === true) {
-        search.readOnly = true;
-        search.setAttribute('aria-readonly', 'true');
+        selector.disabled = true;
     }
+
+    search.replaceWith(selector);
+    search = selector;
+
+    // Remove the old datalist: it is no longer needed by the native select.
+    q('#place-update-report-target-options')?.remove();
 
     const form = search.closest('form');
     const values =
@@ -336,7 +346,7 @@
         const t = labels.get(search.value.trim());
 
         if (!t) {
-            status.textContent = 'Choose an exact reporting target from the suggestions.';
+            status.textContent = 'Choose a reporting target.';
             scope.value = '';
             source.value = '';
             id.value = '';
@@ -398,20 +408,19 @@
             ? (
                 initial.locked === true
                     ? 'Revise the requested Area or Site answers below. The reporting target cannot be changed for this revision.'
-                    : 'This Area or Site report will be reviewed before any changes are published.'
+                    : `Updating: ${t.label}`
             )
-            : 'Entire Place uses the existing Scout Report.';
+            : 'Updating: Entire Place';
     }
 
     search.addEventListener('change', update);
-    search.addEventListener('input', update);
 
     form?.addEventListener('submit', event => {
         const t = labels.get(search.value.trim());
 
         if (!t) {
             event.preventDefault();
-            status.textContent = 'Choose a listed reporting target.';
+            status.textContent = 'Choose a reporting target.';
             return;
         }
 
