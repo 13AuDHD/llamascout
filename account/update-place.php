@@ -1110,28 +1110,56 @@ $e =
             ];
             ?>
             <section class="contribution-section place-update-report-target">
-                <h3>What are you reporting?</h3>
-                <p>Choose the entire Place or find a camping Area or Site.</p>
-                <label for="place-update-report-target">Reporting target</label>
-                <input
-                    id="place-update-report-target"
-                    type="search"
-                    list="place-update-report-target-options"
-                    value=""
-                    autocomplete="off"
-                    data-report-target-search
-                >
-                <datalist id="place-update-report-target-options">
-                    <?php foreach ($availableReportTargets as $target): ?>
-                        <option value="<?= $e((string) $target['label'] . ' (#' . $target['id'] . ', ' . $target['scope'] . ')') ?>"></option>
-                    <?php endforeach; ?>
-                </datalist>
-                <input type="hidden" name="report_target_scope" value="<?= $e($reportTargetScope) ?>" data-report-target-scope>
-                <input type="hidden" name="report_target_source" value="<?= $e($reportTargetSource) ?>" data-report-target-source>
-                <input type="hidden" name="report_target_id" value="<?= (int) $reportTargetId ?>" data-report-target-id>
-                <p class="place-update-report-target-status" data-report-target-status role="status">
-                    Entire Place updates use the existing review process.
-                </p>
+                <div class="contribution-section-body">
+                    <h3>What are you reporting?</h3>
+                    <p>Choose the entire Place or an individual camping Area or Site.</p>
+                    <div class="contribution-field contribution-field-wide">
+                        <label for="place-update-report-target">Reporting target</label>
+                        <select
+                            id="place-update-report-target"
+                            class="contribution-input"
+                            data-report-target-search
+                            <?= $isScopedNeedsChanges ? 'disabled' : '' ?>
+                        >
+                            <?php foreach (['place' => 'Entire Place', 'area' => 'Areas', 'site' => 'Sites'] as $targetGroup => $targetGroupLabel): ?>
+                                <?php
+                                $groupTargets = array_values(array_filter(
+                                    $availableReportTargets,
+                                    static fn (array $target): bool =>
+                                        (string) ($target['scope'] ?? '') === $targetGroup
+                                ));
+                                if (!$groupTargets) {
+                                    continue;
+                                }
+                                ?>
+                                <optgroup label="<?= $e($targetGroupLabel) ?>">
+                                    <?php foreach ($groupTargets as $target): ?>
+                                        <?php
+                                        $targetKey =
+                                            (string) $target['scope'] . ':'
+                                            . (string) $target['source'] . ':'
+                                            . (int) $target['id'];
+                                        $isSelected =
+                                            (string) $target['scope'] === (string) $reportTargetScope
+                                            && (string) $target['source'] === (string) $reportTargetSource
+                                            && (int) $target['id'] === (int) $reportTargetId;
+                                        ?>
+                                        <option
+                                            value="<?= $e($targetKey) ?>"
+                                            <?= $isSelected ? 'selected' : '' ?>
+                                        ><?= $e((string) $target['label']) ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <input type="hidden" name="report_target_scope" value="<?= $e($reportTargetScope) ?>" data-report-target-scope>
+                    <input type="hidden" name="report_target_source" value="<?= $e($reportTargetSource) ?>" data-report-target-source>
+                    <input type="hidden" name="report_target_id" value="<?= (int) $reportTargetId ?>" data-report-target-id>
+                    <p class="place-update-report-target-status" data-report-target-status role="status">
+                        Entire Place updates use the existing review process.
+                    </p>
+                </div>
             </section>
             <script type="application/json" id="place-update-report-target-data"><?= json_encode(
                 $availableReportTargets,
@@ -1142,7 +1170,6 @@ $e =
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
             ) ?></script>
             <script defer src="/js/place-update-report-target.js"></script>
-            ?>
             <div data-place-update-place-fields>
             <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
             </div>
