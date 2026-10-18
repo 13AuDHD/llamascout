@@ -244,13 +244,6 @@
             };
 
             showExisting();
-
-            /*
-             * Applicability must use the effective existing answer chain too,
-             * not only answers the contributor has typed during this session.
-             * This keeps legitimate child questions visible when their parent
-             * answer is already recorded on the Site/Area or inherited.
-             */
             applyDependencies();
         } catch (_) {
             if (sequence === loadSequence) {
@@ -296,19 +289,18 @@
     }
 
     function applyDependencies() {
+        // Issue #5 reconciliation mode: expose all eligible scoped questions.
+        // Keep eligibility, target ownership, and answer persistence unchanged.
         for (const f of fields.filter(eligible)) {
             const card = [...questions.querySelectorAll('[data-scoped-question]')]
                 .find(el => el.dataset.scopedQuestion === f.key);
 
             if (!card) continue;
 
-            const rules = f.applicable_if || [];
-            const applicable = !rules.length || rules.every(matchesRule);
-
-            card.hidden = !applicable;
+            card.hidden = false;
 
             const input = card.querySelector('[data-scoped-control]');
-            if (input) input.disabled = !applicable;
+            if (input) input.disabled = false;
         }
 
         sync();
