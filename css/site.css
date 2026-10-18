@@ -433,7 +433,7 @@ form {
 
     display: block;
 
-    transform: translateY(5px);
+    transform: none;
 }
 
 .site-nav {
