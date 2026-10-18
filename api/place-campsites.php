@@ -54,6 +54,41 @@ try {
     $sites = llama_place_campsites($db, $placeId);
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
 
+    // The Site picker never needs every Site's full Scout Report.
+    // Preserve the existing full-response contract for older consumers.
+    if (($_GET['mode'] ?? '') === 'catalog') {
+        $state = llama_place_campsite_browser_state($place, $sites);
+        $catalog = [];
+
+        foreach ($sites as $site) {
+            $catalog[] = [
+                'id' => (int) ($site['id'] ?? 0),
+                'feature_id' => (int) ($site['id'] ?? 0),
+                'display_name' => (string) ($site['display_name'] ?? ''),
+                'site_code' => (string) ($site['site_code'] ?? ''),
+                'site_name' => (string) ($site['site_name'] ?? ''),
+                'site_type' => (string) ($site['site_type'] ?? ''),
+                'parking_style' => (string) ($site['parking_style'] ?? ''),
+                'hookup_status' => (string) ($site['hookup_status'] ?? ''),
+                'accessible_status' => (string) ($site['accessible_status'] ?? ''),
+                'electric_hookup' => $site['electric_hookup'] ?? null,
+                'is_closed' => (bool) ($site['is_closed'] ?? false),
+                'operating_status' => $site['operating_status'] ?? null,
+                'closure_reason' => $site['closure_reason'] ?? null,
+                'expected_reopening' => $site['expected_reopening'] ?? null,
+                'closure_verified_at' => $site['closure_verified_at'] ?? null,
+                'summary' => llama_place_campsite_summary($site),
+            ];
+        }
+
+        llama_place_campsites_api_json([
+            'ok' => true,
+            'browser' => $state,
+            'sites' => $catalog,
+        ]);
+    }
+
+
     /*
      * Resolve Place -> Area -> Site Scout Report layers in one bulk read.
      *
@@ -74,9 +109,39 @@ try {
         );
 
     $placeReportValues =
-        llama_scoped_report_values_from_data(
-            $placeReportData
-        );
+        [];
+
+    foreach (
+        llama_place_report_fields()
+        as $fieldKey => $field
+    ) {
+        $state =
+            llama_place_report_answer_state(
+                $placeReportData,
+                (string) $fieldKey
+            );
+
+        if ($state === 'unknown') {
+            $placeReportValues[
+                (string) $fieldKey
+            ] =
+                llama_place_report_unknown_token();
+
+            continue;
+        }
+
+        if ($state !== 'answered') {
+            continue;
+        }
+
+        $placeReportValues[
+            (string) $fieldKey
+        ] =
+            llama_place_report_form_value_from_data(
+                $placeReportData,
+                (string) $fieldKey
+            );
+    }
 
     $siteTargets =
         [];
