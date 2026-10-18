@@ -745,7 +745,7 @@ $displayName =
 >
 
 
-  <a href="https://llamascout.com">
+  <a href="https://llamascout.com" class="account-auth-brand">
 
    <img
        class="account-auth-logo llama-brand-logo--light"
