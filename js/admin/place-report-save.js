@@ -628,16 +628,11 @@
     const setSiteControlMode = (
         mode
     ) => {
+        // Reconciliation keeps every Site question interactive.
+        // Ownership is enforced when constructing the save payload.
         campsiteFieldKeys.forEach(key => {
-            const enabled =
-                mode === 'site'
-                || (
-                    mode === 'place'
-                    && placeSiteFieldLookup.has(key)
-                );
-
             controlsFor(key).forEach(control => {
-                control.disabled = !enabled;
+                control.disabled = false;
             });
         });
     };
@@ -1467,6 +1462,20 @@
             );
 
         try {
+            const saveData = new FormData(form);
+
+            // Previously disabled Site-only fields were not submitted on
+            // the Place target. Keep that persistence boundary intact while
+            // exposing the controls for reconciliation.
+            if (!selectedCampsite()) {
+                campsiteFieldKeys.forEach(key => {
+                    if (!placeSiteFieldLookup.has(key)) {
+                        saveData.delete(key);
+                        saveData.delete(`${key}[]`);
+                    }
+                });
+            }
+
             const response =
                 await fetch(
                     form.action
@@ -1474,7 +1483,7 @@
                     {
                         method: 'POST',
                         body:
-                            new FormData(form),
+                            saveData,
                         credentials:
                             'same-origin',
                         cache:
