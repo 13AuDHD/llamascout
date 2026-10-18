@@ -180,7 +180,8 @@ function safety_e(string $value): string
 
     <link
         rel="icon"
-        href="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
+        type="image/svg+xml"
+        href="https://llamascout.com/favicon.svg"
     >
 
     <link
