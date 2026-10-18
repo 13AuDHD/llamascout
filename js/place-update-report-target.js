@@ -25,42 +25,23 @@
             : {};
     } catch (_) { return; }
 
-    const labels = new Map(targets.map(t => [`${t.label} (#${t.id}, ${t.scope}, ${t.source})`, t]));
+    // PHP renders the native select, grouping Place, Areas, and Sites.
+    // There must be no second search control or dynamic replacement.
+    const labels = new Map(
+        targets.map(t => [`${t.scope}:${t.source}:${t.id}`, t])
+    );
     const place = targets.find(t => t.scope === 'place');
     if (!place) return;
 
-    // A native select makes switching targets possible in one action on mobile.
-    // Keep the existing target labels and hidden scope/source/id persistence.
     const initialTarget =
-        targets.find(
-            target =>
-                target.scope === String(initial.scope || 'place')
-                && target.source === String(initial.source || 'place')
-                && Number(target.id) === Number(initial.id || place.id)
+        targets.find(target =>
+            target.scope === String(initial.scope || 'place')
+            && target.source === String(initial.source || 'place')
+            && Number(target.id) === Number(initial.id || place.id)
         ) || place;
 
-    const selector = document.createElement('select');
-    selector.id = search.id;
-    selector.className = search.className;
-    selector.name = search.name;
-    selector.setAttribute('data-report-target-search', '');
-    selector.setAttribute('aria-label', 'Reporting target');
-
-    for (const [label, target] of labels) {
-        const option = new Option(label, label);
-        option.selected = target === initialTarget;
-        selector.add(option);
-    }
-
-    if (initial.locked === true) {
-        selector.disabled = true;
-    }
-
-    search.replaceWith(selector);
-    search = selector;
-
-    // Remove the old datalist: it is no longer needed by the native select.
-    q('#place-update-report-target-options')?.remove();
+    search.value = `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
+    if (initial.locked === true) search.disabled = true;
 
     const form = search.closest('form');
     const values =
@@ -364,7 +345,7 @@
     }
 
     function update() {
-        const t = labels.get(search.value.trim());
+        const t = labels.get(search.value);
 
         if (!t) {
             status.textContent = 'Choose a reporting target.';
@@ -381,10 +362,7 @@
             && activeTarget !== ''
             && targetKey !== activeTarget
         ) {
-            search.value =
-                [...labels.keys()]
-                    .find(key => labels.get(key) === initialTarget)
-                || '';
+            search.value = `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
             return;
         }
 
@@ -437,7 +415,7 @@
     search.addEventListener('change', update);
 
     form?.addEventListener('submit', event => {
-        const t = labels.get(search.value.trim());
+        const t = labels.get(search.value);
 
         if (!t) {
             event.preventDefault();
