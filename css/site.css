@@ -607,7 +607,7 @@ form {
 
     .site-brand img {
         max-width: 225px;
-        max-height: 64px;
+        max-height: 76px;
     }
 
     .site-nav {
@@ -632,7 +632,7 @@ form {
 
 @media (min-width: 861px) and (max-width: 1180px) {
     .site-brand img {
-        max-width: 190px;
+        max-width: 215px;
     }
 
     .site-nav {
