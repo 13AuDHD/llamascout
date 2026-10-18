@@ -281,3 +281,24 @@ body {
         color: #ffffff;
     }
 }
+
+
+/* Theme-aware safety page branding */
+
+.safety-brand .llama-brand-logo--light {
+    display: none;
+}
+
+.safety-brand .llama-brand-logo--dark {
+    display: block;
+}
+
+@media (prefers-color-scheme: light) {
+    .safety-brand .llama-brand-logo--light {
+        display: block;
+    }
+
+    .safety-brand .llama-brand-logo--dark {
+        display: none;
+    }
+}
