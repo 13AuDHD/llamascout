@@ -447,7 +447,11 @@ function llama_email_html_shell(
         ENT_QUOTES | ENT_SUBSTITUTE,
         'UTF-8'
     );
-
+$logoUrl = htmlspecialchars(
+    llama_brand_logo_dark_url(),
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
     return <<<HTML
 <!doctype html>
 <html lang="en">
@@ -465,7 +469,7 @@ function llama_email_html_shell(
   <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
     <div style="padding:0 0 18px;text-align:center;">
       <img
-        src="<?= htmlspecialchars(llama_brand_logo_url(), ENT_QUOTES, 'UTF-8') ?>"
+        src="{$logoUrl}"
         alt="Llama Scout"
         width="220"
         style="display:inline-block;max-width:220px;height:auto;border:0;"
