@@ -1059,6 +1059,9 @@
                 ? payload.sites
                 : [];
 
+        const siteDetails = new Map();
+        let selectionRequest = 0;
+
         const browser =
             payload.browser
             || {};
@@ -1241,9 +1244,46 @@
                     site.feature_id
                 );
 
-            updateScoutReport(
-                site
-            );
+            const request = ++selectionRequest;
+            const resolved = siteDetails.get(selectedId);
+
+            // The catalog deliberately contains no full Scout Report.
+            // Never overwrite it with incomplete catalog answers.
+            if (resolved) {
+                updateScoutReport(resolved);
+            } else {
+                // Clear the previous Site while its replacement loads.
+                updateScoutReport({ report_warnings: {} });
+                const activeId = selectedId;
+                fetch(
+                    `/api/place-campsite-detail.php?slug=${encodeURIComponent(slug)}&site=${encodeURIComponent(activeId)}&mode=report`,
+                    { cache: 'no-store', credentials: 'same-origin' }
+                )
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('Unable to load Site details');
+                        }
+                        return response.json();
+                    })
+                    .then((payload) => {
+                        if (!payload.ok || !payload.site) {
+                            throw new Error('Site details unavailable');
+                        }
+                        siteDetails.set(activeId, payload.site);
+                        if (selectionRequest === request && selectedId === activeId) {
+                            updateScoutReport(payload.site);
+                            const selectedRow = sites.find(
+                                (candidate) => String(candidate.feature_id) === activeId
+                            );
+                            if (selectedRow) {
+                                selectedRow.summary = payload.site.summary || selectedRow.summary;
+                            }
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Llama Scout Site detail error:', error);
+                    });
+            }
 
             const detailMount =
                 mount.querySelector(
@@ -1577,7 +1617,7 @@
         try {
             const response =
                 await fetch(
-                    `/api/place-campsites.php?slug=${encodeURIComponent(slug)}`,
+                    `/api/place-campsites.php?slug=${encodeURIComponent(slug)}&mode=catalog`,
                     {
                         cache:
                             'no-store',
