@@ -28,8 +28,7 @@ function llama_nps_match_words(string $name): array
     $unimportant = [
         'campground' => true, 'campgrounds' => true, 'camping' => true,
         'campsite' => true, 'campsites' => true, 'park' => true,
-        'national' => true, 'rv' => true, 'south' => true,
-        'north' => true, 'rim' => true, 'primitive' => true,
+        'national' => true, 'rv' => true, 'primitive' => true,
         'reservations' => true, 'required' => true,
     ];
 
@@ -106,11 +105,14 @@ function llama_nps_match_category(
     if ($sameId && $distance !== null && $distance > 25.0) {
         return ['Identifier conflict', 0, 'Same reservation ID, but coordinates differ by over 25 miles'];
     }
-    if ($sameId && $distance !== null && $distance <= 5.0 && $nameScore >= 0.4) {
+    if ($sameId && $distance !== null && $distance > 5.0) {
+        return ['Identifier needs review', 65, 'Matching reservation ID, but coordinates are more than 5 miles apart'];
+    }
+    if ($sameId && $distance !== null && $nameScore >= 0.4) {
         return ['Strong candidate — review', 100, 'Recreation.gov ID, name, and coordinates agree'];
     }
-    if ($sameId && $nameScore >= 0.5) {
-        return ['Strong candidate — review', 95, 'Recreation.gov ID and name agree'];
+    if ($sameId && $distance === null && $nameScore >= 0.6) {
+        return ['Strong candidate — review', 95, 'Recreation.gov ID and name agree; coordinates unavailable'];
     }
     if ($sameId) {
         return ['Identifier needs review', 65, 'Reservation ID matches; name or position needs checking'];
@@ -239,6 +241,16 @@ function llama_nps_match_candidates(
         return $byRank !== 0 ? $byRank : strcmp($a['ridb_id'], $b['ridb_id']);
     });
 
+    // When official IDs agree, nearby but unrelated campgrounds/visitor
+    // centers must not appear as competing source-identity candidates.
+    if ($facilityId !== '') {
+        foreach ($ranked as $candidate) {
+            if ($candidate['ridb_id'] === $facilityId
+                && $candidate['category'] === 'Strong candidate — review') {
+                return [$candidate];
+            }
+        }
+    }
     return array_slice($ranked, 0, 3);
 }
 
@@ -270,7 +282,8 @@ function llama_nps_match_existing_places(PDO $main, array $ridbIds): array
 function llama_nps_match_audit(PDO $nps, PDO $ridb, ?PDO $main): array
 {
     $stmt = $nps->query(
-        "SELECT record_id, park_code, record_name, source_url, source_json
+        "SELECT record_id, park_code, record_name, source_url, source_json,
+                  source_hash
            FROM nps_raw_records
           WHERE resource_type = 'campgrounds'
           ORDER BY park_code, record_name
@@ -306,6 +319,7 @@ function llama_nps_match_audit(PDO $nps, PDO $ridb, ?PDO $main): array
         $rows[] = [
             'park' => (string) $item['park_code'],
             'nps_id' => (string) $item['record_id'],
+            'nps_source_hash' => (string) $item['source_hash'],
             'name' => $name,
             'nps_url' => (string) ($item['source_url'] ?? ''),
             'reservation_id' => llama_nps_match_ridb_id($json),
@@ -360,10 +374,176 @@ function llama_nps_match_uncached_ridb_ids(PDO $ridb, array $audit): array
     return $missing;
 }
 
+/**
+ * Review events are append-only. The latest event per park and NPS record
+ * governs its review state; source records and published Places are untouched.
+ */
+function llama_nps_match_review_history(PDO $nps, array $audit): array
+{
+    // Bound the review lookup to the campground records currently on screen.
+    // The complete historical log can grow without slowing each page load.
+    $where = [];
+    $parameters = [];
+    foreach ($audit['rows'] as $row) {
+        $where[] = '(nps_park_code = ? AND nps_record_id = ?)';
+        $parameters[] = (string) $row['park'];
+        $parameters[] = (string) $row['nps_id'];
+    }
+    if (!$where) {
+        return [];
+    }
+    $statement = $nps->prepare(
+        'SELECT id, nps_park_code, nps_record_id, decision, ridb_facility_id,
+                nps_source_hash, ridb_name_at_review, reviewer_user_id,
+                review_note, reviewed_at
+           FROM nps_ridb_review_events
+          WHERE ' . implode(' OR ', $where) . '
+          ORDER BY id DESC'
+    );
+    $statement->execute($parameters);
+    $latest = [];
+    while (($row = $statement->fetch(PDO::FETCH_ASSOC)) !== false) {
+        $key = (string) $row['nps_park_code'] . ':' . (string) $row['nps_record_id'];
+        if (!isset($latest[$key])) {
+            $latest[$key] = $row;
+        }
+    }
+    return $latest;
+}
+
+/**
+ * A unique exact Recreation.gov identifier is required for pair confirmation.
+ * Fuzzy suggestions can never produce a permanent source-identity decision.
+ */
+function llama_nps_match_confirmable(array $row): ?array
+{
+    $reservationId = (string) ($row['reservation_id'] ?? '');
+    if ($reservationId === '') {
+        return null;
+    }
+    foreach ($row['matches'] as $candidate) {
+        if ((string) $candidate['ridb_id'] !== $reservationId
+            || (string) $candidate['category'] !== 'Strong candidate — review') {
+            continue;
+        }
+        return $candidate;
+    }
+    return null;
+}
+
+function llama_nps_match_review_write(
+    PDO $nps,
+    PDO $ridb,
+    array $audit,
+    array $existing,
+    string $action,
+    string $park,
+    string $id,
+    string $notes,
+    int $reviewer
+): void {
+    if (!in_array($action, ['confirm_pair', 'nps_only_reviewed', 'reopen_review'], true)) {
+        throw new InvalidArgumentException('Unknown review action.');
+    }
+    $target = null;
+    foreach ($audit['rows'] as $row) {
+        if ($row['park'] === $park && $row['nps_id'] === $id) {
+            $target = $row;
+            break;
+        }
+    }
+    if ($target === null) {
+        throw new RuntimeException('That NPS campground is not in the current comparison.');
+    }
+    $decision = $action === 'confirm_pair' ? 'confirmed_match'
+        : ($action === 'nps_only_reviewed' ? 'nps_only_reviewed' : 'unresolved');
+    $ridbId = null;
+    $ridbName = null;
+    if ($action === 'confirm_pair') {
+        $candidate = llama_nps_match_confirmable($target);
+        if ($candidate === null) {
+            throw new RuntimeException(
+                'No verified exact-ID candidate is available. Do not confirm a nearby facility.'
+            );
+        }
+        $ridbId = (string) $candidate['ridb_id'];
+        $ridbName = (string) $candidate['ridb_name'];
+        // Check the latest review for *every* NPS record, not merely the
+        // currently displayed pilot parks. An older superseded review does
+        // not reserve its former RIDB facility.
+        $conflicts = $nps->prepare(
+            'SELECT e.nps_park_code, e.nps_record_id
+               FROM nps_ridb_review_events e
+          LEFT JOIN nps_ridb_review_events later
+                 ON later.nps_park_code = e.nps_park_code
+                AND later.nps_record_id = e.nps_record_id
+                AND later.id > e.id
+              WHERE e.ridb_facility_id = ?
+                AND e.decision = ?
+                AND later.id IS NULL'
+        );
+        $conflicts->execute([$ridbId, 'confirmed_match']);
+        foreach ($conflicts->fetchAll(PDO::FETCH_ASSOC) ?: [] as $link) {
+            if ((string) $link['nps_record_id'] !== $id) {
+                throw new RuntimeException(
+                    'This RIDB facility has already been confirmed for a different NPS record.'
+                );
+            }
+        }
+        $check = $ridb->prepare(
+            'SELECT facility_name FROM ridb_facilities WHERE ridb_facility_id = ? LIMIT 1'
+        );
+        $check->execute([$ridbId]);
+        $name = $check->fetchColumn();
+        if ($name === false) {
+            throw new RuntimeException('The RIDB facility is no longer in the source cache.');
+        }
+        $ridbName = (string) $name;
+    }
+    if ($action === 'nps_only_reviewed' && $target['reservation_id'] !== '') {
+        throw new RuntimeException(
+            'An official Recreation.gov ID is present. Investigate it before declaring no RIDB match.'
+        );
+    }
+    $notes = trim($notes);
+    if (strlen($notes) > 1000) {
+        throw new InvalidArgumentException('Review notes must be 1,000 bytes or shorter.');
+    }
+    if ($action === 'nps_only_reviewed' && $notes === '') {
+        throw new InvalidArgumentException('Explain what was checked before marking an NPS-only record.');
+    }
+    $nps->prepare(
+        'INSERT INTO nps_ridb_review_events
+         (nps_park_code, nps_record_id, decision, ridb_facility_id,
+          nps_source_hash, ridb_name_at_review, reviewer_user_id, review_note,
+          reviewed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'
+    )->execute([
+        $park, $id, $decision, $ridbId,
+        (string) $target['nps_source_hash'], $ridbName, $reviewer, $notes,
+    ]);
+}
+
+function llama_nps_match_apply_reviews(array &$data, array $reviews): void
+{
+    foreach ($data['rows'] as &$row) {
+        $key = $row['park'] . ':' . $row['nps_id'];
+        $row['review'] = $reviews[$key] ?? null;
+        $row['confirmable'] = llama_nps_match_confirmable($row);
+        $row['review_stale'] = $row['review'] !== null
+            && (string) $row['review']['nps_source_hash'] !== $row['nps_source_hash'];
+    }
+    unset($row);
+}
+
 $error = '';
 $ridbError = '';
 $npsError = '';
 $sourceNotice = '';
+$reviewNotice = '';
+$reviewInstallNotice = '';
+$reviewReady = false;
+$reviewHistory = [];
 $missingFacilityIds = [];
 $data = ['rows' => [], 'checked' => 0, 'link_notice' => ''];
 $ridbReady = false;
@@ -403,6 +583,36 @@ if ($npsReady && $ridbReady) {
         $data = llama_nps_match_audit($nps, $ridb, $main);
         $missingFacilityIds = llama_nps_match_uncached_ridb_ids($ridb, $data);
 
+        try {
+            $reviewHistory = llama_nps_match_review_history($nps, $data);
+            $reviewReady = true;
+        } catch (PDOException $exception) {
+            if (($exception->errorInfo[1] ?? null) !== 1146) {
+                throw $exception;
+            }
+            $reviewInstallNotice = 'Source-identity review is unavailable until the NPS review table SQL is installed.';
+        }
+
+        if ($reviewReady
+            && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+            && in_array((string) ($_POST['action'] ?? ''),
+                ['confirm_pair', 'nps_only_reviewed', 'reopen_review'], true)) {
+            if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+                throw new RuntimeException('Your session token expired. Reload and try again.');
+            }
+            $park = trim((string) ($_POST['nps_park_code'] ?? ''));
+            $id = trim((string) ($_POST['nps_record_id'] ?? ''));
+            $reviewAction = (string) $_POST['action'];
+            llama_nps_match_review_write(
+                $nps, $ridb, $data, $reviewHistory, $reviewAction,
+                $park, $id, (string) ($_POST['review_note'] ?? ''),
+                (int) ($adminUser['id'] ?? 0)
+            );
+            $reviewHistory = llama_nps_match_review_history($nps, $data);
+            $reviewNotice = 'Review decision saved in the NPS audit trail. No Llama Scout Place was changed.';
+        }
+        llama_nps_match_apply_reviews($data, $reviewHistory);
+
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
             && ($_POST['action'] ?? '') === 'fetch_ridb_facility'
         ) {
@@ -441,6 +651,7 @@ if ($npsReady && $ridbReady) {
             // Re-evaluate the report using the newly cached official record.
             $data = llama_nps_match_audit($nps, $ridb, $main);
             $missingFacilityIds = llama_nps_match_uncached_ridb_ids($ridb, $data);
+            llama_nps_match_apply_reviews($data, $reviewHistory);
         }
     } catch (Throwable $exception) {
         // Admin-only page. Show the actual failed operation rather than a
@@ -461,6 +672,8 @@ if (($_GET['format'] ?? '') === 'csv' && !$error && $npsReady && $ridbReady) {
             'NPS RV limit (ft)', 'RIDB facility ID', 'RIDB facility name',
             'Distance (miles)', 'Name agreement', 'Assessment', 'Reason',
             'Linked Llama Scout Place ID', 'Linked Llama Scout Place name',
+            'Reviewed identity decision', 'Reviewed RIDB ID',
+            'NPS source changed since review', 'Review notes', 'Reviewed UTC',
         ]);
         foreach ($data['rows'] as $row) {
             foreach ($row['matches'] ?: [[
@@ -479,6 +692,11 @@ if (($_GET['format'] ?? '') === 'csv' && !$error && $npsReady && $ridbReady) {
                     $candidate['name_agreement'], $candidate['category'],
                     $candidate['reason'], $linked['place_id'] ?? '',
                     $linked['place_name'] ?? '',
+                    $row['review']['decision'] ?? 'unresolved',
+                    $row['review']['ridb_facility_id'] ?? '',
+                    !empty($row['review_stale']) ? 'Yes' : 'No',
+                    $row['review']['review_note'] ?? '',
+                    $row['review']['reviewed_at'] ?? '',
                 ]));
             }
         }
@@ -505,6 +723,8 @@ require __DIR__ . '/_header.php';
         Compare cached NPS campground records with RIDB facilities. Names,
         coordinates, and Recreation.gov identifiers provide candidates only.
         You may cache one missing RIDB source record at a time for inspection.
+        Reviewed identity decisions are stored in an append-only NPS audit log.
+        Confirming an identity does not yet link or modify a published Place.
         No published Places are created, merged, approved, or modified here.
     </p>
     <div class="admin-user-form-actions">
@@ -515,6 +735,18 @@ require __DIR__ . '/_header.php';
         <?php endif; ?>
     </div>
 </section>
+
+<?php if ($reviewNotice !== ''): ?>
+<section class="admin-panel"><div class="admin-user-notice" role="status">
+    <?= moderation_e($reviewNotice) ?>
+</div></section>
+<?php endif; ?>
+
+<?php if ($reviewInstallNotice !== ''): ?>
+<section class="admin-panel"><div class="admin-user-notice is-error" role="status">
+    <?= moderation_e($reviewInstallNotice) ?>
+</div></section>
+<?php endif; ?>
 
 <?php if ($sourceNotice !== ''): ?>
 <section class="admin-panel">
@@ -587,6 +819,7 @@ require __DIR__ . '/_header.php';
                         <th>NPS facts</th>
                         <th>RIDB candidate(s)</th>
                         <th>Existing Place link</th>
+                        <th>Source-identity review</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -635,6 +868,60 @@ require __DIR__ . '/_header.php';
                             <?php endforeach; ?>
                             <?php if (!$anyLink): ?>
                                 <p>No existing RIDB-linked Place identified.</p>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php $review = (array) ($row['review'] ?? []); ?>
+                            <p><strong><?= moderation_e((string) ($review['decision'] ?? 'Unreviewed')) ?></strong></p>
+                            <?php if (!empty($review['ridb_facility_id'])): ?>
+                                <p>RIDB #<?= moderation_e((string) $review['ridb_facility_id']) ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($row['review_stale'])): ?>
+                                <p><strong>NPS source changed since review. Recheck before use.</strong></p>
+                            <?php endif; ?>
+                            <?php if (!empty($review['review_note'])): ?>
+                                <p><?= moderation_e((string) $review['review_note']) ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($review['reviewed_at'])): ?>
+                                <p>Reviewed UTC: <?= moderation_e((string) $review['reviewed_at']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($reviewReady): ?>
+                                <?php if ($row['confirmable'] !== null
+                                    && (($review['decision'] ?? '') !== 'confirmed_match'
+                                        || !empty($row['review_stale']))): ?>
+                                <form method="post" action="/nps-ridb-matches.php">
+                                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                                    <input type="hidden" name="action" value="confirm_pair">
+                                    <input type="hidden" name="nps_park_code" value="<?= moderation_e($row['park']) ?>">
+                                    <input type="hidden" name="nps_record_id" value="<?= moderation_e($row['nps_id']) ?>">
+                                    <p>Exact Recreation.gov ID: <?= moderation_e((string) $row['confirmable']['ridb_id']) ?></p>
+                                    <button class="admin-button is-secondary" type="submit">Confirm same facility</button>
+                                </form>
+                                <?php elseif ($row['reservation_id'] === ''
+                                    && (($review['decision'] ?? '') !== 'nps_only_reviewed'
+                                        || !empty($row['review_stale']))): ?>
+                                <form method="post" action="/nps-ridb-matches.php">
+                                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                                    <input type="hidden" name="action" value="nps_only_reviewed">
+                                    <input type="hidden" name="nps_park_code" value="<?= moderation_e($row['park']) ?>">
+                                    <input type="hidden" name="nps_record_id" value="<?= moderation_e($row['nps_id']) ?>">
+                                    <label><span>Investigation notes (optional)</span>
+                                        <input name="review_note" maxlength="1000" required placeholder="Search performed or reason RIDB has no counterpart">
+                                    </label>
+                                    <button class="admin-button is-secondary" type="submit">Reviewed: no RIDB link identified</button>
+                                </form>
+                                <?php elseif (!$review): ?>
+                                <p>Official facility ID not yet verified. Review the source records before confirmation.</p>
+                                <?php endif; ?>
+                                <?php if ($review): ?>
+                                <form method="post" action="/nps-ridb-matches.php">
+                                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                                    <input type="hidden" name="action" value="reopen_review">
+                                    <input type="hidden" name="nps_park_code" value="<?= moderation_e($row['park']) ?>">
+                                    <input type="hidden" name="nps_record_id" value="<?= moderation_e($row['nps_id']) ?>">
+                                    <button class="admin-button is-muted" type="submit">Reopen for review</button>
+                                </form>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
