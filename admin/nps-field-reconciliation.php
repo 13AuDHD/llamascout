@@ -196,39 +196,99 @@ if (($_GET['format'] ?? '') === 'csv' && $error === '') {
     exit;
 }
 
+/** Short status for narrow viewports; full explanation remains alongside it. */
+function llama_official_review_short_label(string $state): string
+{
+    return match ($state) {
+        'conflict' => 'Sources disagree',
+        'invalid_source' => 'Inconsistent count',
+        'ambiguous_source' => 'Ambiguous evidence',
+        'needs_review' => 'Review coordinates',
+        'agreement' => 'Sources agree',
+        'single_source' => 'One source',
+        'compatible_candidates' => 'Nearby locations',
+        'missing' => 'No data',
+        default => 'Review required',
+    };
+}
+
+function llama_official_review_attention_state(string $state): bool
+{
+    return in_array($state, [
+        'conflict', 'invalid_source', 'ambiguous_source', 'needs_review',
+    ], true);
+}
+
+function llama_official_review_evidence_label(array $result, string $provider): string
+{
+    $value = trim(llama_official_review_source_value($result, $provider));
+    return $value === '' ? 'Not provided' : $value;
+}
+
+$view = (string) ($_GET['view'] ?? 'attention');
+if (!in_array($view, ['attention', 'all'], true)) {
+    $view = 'attention';
+}
+
+$attentionCount = 0;
+$attentionCampgrounds = 0;
+$totalComparisons = 0;
+foreach ($rows as $row) {
+    $hasAttention = false;
+    foreach ($row['assessment'] as $result) {
+        $totalComparisons++;
+        if (llama_official_review_attention_state((string) $result['state'])) {
+            $attentionCount++;
+            $hasAttention = true;
+        }
+    }
+    if ($hasAttention) {
+        $attentionCampgrounds++;
+    }
+}
+
 require __DIR__ . '/_header.php';
 ?>
 
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Issue #6 — Phase 1B / Phase 3B foundation</p>
-            <h2>Official source field reconciliation</h2>
+            <p>Issue #6 · Official source reconciliation</p>
+            <h2>NPS and Recreation.gov field review</h2>
         </div>
-        <span class="admin-status-pill">Read-only comparison</span>
+        <span class="admin-status-pill">Read only</span>
     </header>
-    <p>
-        Compare only current, manually confirmed NPS and Recreation.gov / RIDB
-        identities. Disagreements withhold the canonical field preview while
-        preserving both source records. Single-source and matching values are
-        candidates, not approved changes to published Places.
-    </p>
-    <div class="admin-user-form-actions">
-        <a class="admin-button is-secondary" href="/nps-ridb-matches.php">
-            Back to identity review
-        </a>
-        <?php if ($error === ''): ?>
-            <a class="admin-button" href="/nps-field-reconciliation.php?format=csv">
-                Export field comparisons (CSV)
+    <div class="admin-panel-body">
+        <p>
+            <strong>What you need to do:</strong> Nothing needs to be approved on
+            this page. It shows where the official NPS and RIDB data agrees,
+            disagrees, or is incomplete. We will use the exported comparisons
+            to decide what can safely populate the Scout Report later.
+        </p>
+        <p>
+            <strong>When sources disagree, the proposed value remains blank.</strong>
+            Their original values stay in their own source databases.
+            Nothing here changes a published Place or a Scout contribution.
+        </p>
+        <div class="admin-user-form-actions">
+            <?php if ($error === ''): ?>
+                <a class="admin-button" href="/nps-field-reconciliation.php?format=csv">
+                    Export the comparison CSV
+                </a>
+            <?php endif; ?>
+            <a class="admin-button is-secondary" href="/nps-ridb-matches.php">
+                View campground identity matches
             </a>
-        <?php endif; ?>
+        </div>
     </div>
 </section>
 
 <?php if ($error !== ''): ?>
 <section class="admin-panel">
-    <div class="admin-user-notice is-error" role="alert">
-        <?= moderation_e($error) ?>
+    <div class="admin-panel-body">
+        <div class="admin-user-notice is-error" role="alert">
+            <?= moderation_e($error) ?>
+        </div>
     </div>
 </section>
 <?php endif; ?>
@@ -237,94 +297,166 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Source comparison</p>
-            <h2>Verified identities, unverified values</h2>
+            <p>Review summary</p>
+            <h2><?= number_format($stats['current']) ?> confirmed campground pairs</h2>
         </div>
     </header>
-    <div class="admin-integration-summary">
-        <div><strong><?= number_format($stats['current']) ?></strong><span>Current reviewed pairs</span></div>
-        <div><strong><?= number_format($stats['conflicts']) ?></strong><span>Conflicting field comparisons</span></div>
-        <div><strong><?= number_format($stats['internal']) ?></strong><span>Internal source inconsistencies</span></div>
-        <div><strong><?= number_format($stats['location']) ?></strong><span>Coordinates needing review</span></div>
-        <div><strong><?= number_format($stats['stale']) ?></strong><span>Stale or invalid identities skipped</span></div>
+    <div class="admin-panel-body">
+        <p>
+            <strong><?= number_format($attentionCount) ?> facts needing attention</strong>
+            across <?= number_format($attentionCampgrounds) ?> campgrounds.
+            The full comparison contains <?= number_format($totalComparisons) ?> field assessments.
+        </p>
+        <p>
+            <?= number_format($stats['conflicts']) ?> source disagreements ·
+            <?= number_format($stats['internal']) ?> internal count inconsistencies ·
+            <?= number_format($stats['location']) ?> coordinate discrepancies ·
+            <?= number_format($stats['stale']) ?> stale source identities skipped.
+        </p>
+        <p>
+            These are <strong>review flags, not live closures or verified public facts.</strong>
+            NPS safety alerts remain separately attributed and must not be hidden
+            because fee or site-count data conflicts.
+        </p>
+        <div class="admin-user-form-actions">
+            <a class="admin-button<?= $view === 'attention' ? '' : ' is-secondary' ?>"
+                href="/nps-field-reconciliation.php?view=attention"
+                <?= $view === 'attention' ? 'aria-current="page"' : '' ?>>
+                Needs attention (<?= number_format($attentionCount) ?>)
+            </a>
+            <a class="admin-button<?= $view === 'all' ? '' : ' is-secondary' ?>"
+                href="/nps-field-reconciliation.php?view=all"
+                <?= $view === 'all' ? 'aria-current="page"' : '' ?>>
+                Show all (<?= number_format($totalComparisons) ?>)
+            </a>
+        </div>
     </div>
-    <p>
-        Fee comparisons are intentionally limited to clearly described regular
-        nightly prices. Other rates, discounts, seasons, and parking charges
-        remain distinct. Narrative campsite counts are evidence, not verified
-        individual Site inventories. Coordinates never automatically replace a Place marker.
-    </p>
 </section>
 
 <?php if ($stale): ?>
 <section class="admin-panel">
-    <header class="admin-panel-header"><div><h2>Identity reviews requiring attention</h2></div></header>
-    <?php foreach ($stale as $message): ?>
-        <p><?= moderation_e($message) ?></p>
-    <?php endforeach; ?>
+    <header class="admin-panel-header">
+        <div><h2>Source identities needing a new review</h2></div>
+    </header>
+    <div class="admin-panel-body">
+        <?php foreach ($stale as $message): ?>
+            <p><?= moderation_e($message) ?></p>
+        <?php endforeach; ?>
+    </div>
 </section>
+<?php endif; ?>
+
+<?php if (!$rows): ?>
+<section class="admin-panel">
+    <div class="admin-panel-body">
+        <p>No current confirmed source pairs are available.</p>
+    </div>
+</section>
+<?php else: ?>
+    <?php $displayedCampgrounds = 0; ?>
+    <?php foreach ($rows as $row): ?>
+        <?php
+        $fieldsToShow = [];
+        foreach ($row['assessment'] as $field => $result) {
+            if ($view === 'all' || llama_official_review_attention_state((string) $result['state'])) {
+                $fieldsToShow[$field] = $result;
+            }
+        }
+        if (!$fieldsToShow) {
+            continue;
+        }
+        $displayedCampgrounds++;
+        ?>
+        <section class="admin-panel">
+            <header class="admin-panel-header">
+                <div>
+                    <p><?= moderation_e(strtoupper($row['park'])) ?> ·
+                        RIDB <?= moderation_e($row['ridb_id']) ?></p>
+                    <h2><?= moderation_e($row['name']) ?></h2>
+                </div>
+                <span class="admin-status-pill">
+                    <?= number_format(count($fieldsToShow)) ?> fact<?= count($fieldsToShow) === 1 ? '' : 's' ?>
+                </span>
+            </header>
+            <div class="admin-panel-body">
+                <details>
+                    <summary>Source record details</summary>
+                    <p><strong>NPS ID:</strong> <?= moderation_e($row['nps_id']) ?></p>
+                    <p><strong>RIDB ID:</strong> <?= moderation_e($row['ridb_id']) ?></p>
+                    <p><strong>RIDB name:</strong> <?= moderation_e($row['ridb_name']) ?></p>
+                    <p><strong>RIDB source updated:</strong>
+                        <?= moderation_e($row['ridb_source_updated'] !== ''
+                            ? $row['ridb_source_updated'] : 'Not supplied') ?></p>
+                </details>
+                <div class="admin-panel-stack">
+                    <?php foreach ($fieldsToShow as $field => $result): ?>
+                        <?php [$label, $scope, $unit] = $labels[$field]; ?>
+                        <section class="admin-panel">
+                            <header class="admin-panel-header">
+                                <div>
+                                    <p><?= moderation_e($scope) ?> · <?= moderation_e($unit) ?></p>
+                                    <h2><?= moderation_e($label) ?></h2>
+                                </div>
+                                <span class="admin-status-pill">
+                                    <?= moderation_e(llama_official_review_short_label($result['state'])) ?>
+                                </span>
+                            </header>
+                            <div class="admin-panel-body">
+                                <p><strong>NPS:</strong>
+                                    <?= moderation_e(llama_official_review_evidence_label($result, 'nps')) ?>
+                                </p>
+                                <p><strong>Recreation.gov / RIDB:</strong>
+                                    <?= moderation_e(llama_official_review_evidence_label($result, 'ridb')) ?>
+                                </p>
+                                <p><strong>Proposed value:</strong>
+                                    <?= moderation_e(llama_official_review_preview($result)) ?>
+                                </p>
+                                <?php if ($field === 'location' && $result['distance_miles'] !== null): ?>
+                                    <p>Source positions differ by
+                                        <?= number_format((float) $result['distance_miles'], 2) ?> miles.
+                                        Neither position automatically replaces a Place marker.</p>
+                                <?php endif; ?>
+                                <?php if ($field === 'place_rv_max_feet' && !empty($result['not_applicable'])): ?>
+                                    <p>RV camping is prohibited; zero does not mean a measured zero-foot limit.</p>
+                                <?php endif; ?>
+                                <?php if (llama_official_review_attention_state((string) $result['state'])): ?>
+                                    <p><strong>Why this is blank:</strong>
+                                        <?= moderation_e(llama_official_review_label($result['state'])) ?>.
+                                        We need reliable evidence before filling the canonical field.</p>
+                                <?php elseif ($result['state'] === 'single_source'): ?>
+                                    <p>Only one provider offers a comparable value.
+                                        This is a candidate, not an approved publication.</p>
+                                <?php elseif ($result['state'] === 'compatible_candidates'): ?>
+                                    <p>The positions are close, but location still requires a deliberate choice.</p>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+    <?php endforeach; ?>
+    <?php if ($displayedCampgrounds === 0): ?>
+        <section class="admin-panel">
+            <div class="admin-panel-body">
+                <p>There are no outstanding field discrepancies in the currently reviewed source pairs.</p>
+                <p>Select “Show all” to inspect matching and one-source facts.</p>
+            </div>
+        </section>
+    <?php endif; ?>
 <?php endif; ?>
 
 <section class="admin-panel">
     <header class="admin-panel-header">
-        <div><p>Source-by-source evidence</p><h2>Canonical fact candidates</h2></div>
+        <div><h2>What comes next</h2></div>
     </header>
-    <?php if (!$rows): ?>
-        <div class="admin-empty-state"><p>No current confirmed source pairs available.</p></div>
-    <?php else: ?>
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead><tr>
-                    <th>Campground / source records</th>
-                    <th>Fact and ownership</th>
-                    <th>NPS</th>
-                    <th>RIDB</th>
-                    <th>Reconciliation</th>
-                    <th>Canonical preview</th>
-                </tr></thead>
-                <tbody>
-                    <?php foreach ($rows as $row): ?>
-                        <?php foreach ($row['assessment'] as $field => $result): ?>
-                            <?php [$label, $scope, $unit] = $labels[$field]; ?>
-                            <tr>
-                                <td>
-                                    <strong><?= moderation_e($row['name']) ?></strong>
-                                    <p>NPS <?= moderation_e(strtoupper($row['park'])) ?>:
-                                    <?= moderation_e($row['nps_id']) ?></p>
-                                    <p>RIDB: <?= moderation_e($row['ridb_id']) ?></p>
-                                </td>
-                                <td><strong><?= moderation_e($label) ?></strong>
-                                    <p><?= moderation_e($scope) ?> · <?= moderation_e($unit) ?></p></td>
-                                <td><?= moderation_e(llama_official_review_source_value($result, 'nps')) ?></td>
-                                <td><?= moderation_e(llama_official_review_source_value($result, 'ridb')) ?></td>
-                                <td>
-                                    <strong><?= moderation_e(llama_official_review_label($result['state'])) ?></strong>
-                                    <?php if ($field === 'location' && $result['distance_miles'] !== null): ?>
-                                        <p><?= number_format($result['distance_miles'], 2) ?> mi apart</p>
-                                    <?php endif; ?>
-                                    <?php if ($field === 'place_rv_max_feet' && !empty($result['not_applicable'])): ?>
-                                        <p>RV camping prohibited; zero is not a measured length.</p>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= moderation_e(llama_official_review_preview($result)) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</section>
-
-<section class="admin-panel">
-    <header class="admin-panel-header"><div><h2>What this page does not publish</h2></div></header>
-    <p>
-        This is a review preview only. No values are inserted into the primary
-        Places database. Source conflicts must be resolved with reliable evidence
-        before their canonical fields are populated. Current safety alerts,
-        road closures, and service interruptions remain separately attributable
-        NPS advisory records and must not be suppressed by fee/count conflicts.
-    </p>
+    <div class="admin-panel-body">
+        <p>
+            Use “Export the comparison CSV” to get the complete evidence report.
+            We'll use it to define official-field provenance and safe Place linking.
+            Do not resolve source conflicts by choosing whichever number looks newer.
+        </p>
+    </div>
 </section>
 <?php endif; ?>
 
