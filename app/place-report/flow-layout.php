@@ -174,7 +174,6 @@ function llama_place_report_layout_assignments(): array
             'connectivity_starlink_tested',
             'connectivity_amazon_leo_tested',
             'connectivity_starlink_note',
-            'connectivity_starlink',
             'nearest_town',
             'nearest_fuel',
             'nearest_ev_charging',
@@ -439,7 +438,6 @@ function llama_place_report_apply_layout_metadata(
                 $key,
                 [
                     'max_vehicle_length_feet',
-                    'connectivity_starlink',
                     'max_trailer_length_feet',
                     'max_rv_length_feet',
                     'trailer_suitable',
@@ -450,9 +448,8 @@ function llama_place_report_apply_layout_metadata(
             )
         ) {
             /*
-             * Preserve compatibility fields for review without presenting
-             * historical provider-specific ratings as generic satellite data.
-             * Older Site suitability records remain readable as well.
+             * Older Site suitability records remain available for review,
+             * without turning them into active contributor questions.
              */
             $field['layout_section'] =
                 'compatibility';
@@ -463,9 +460,6 @@ function llama_place_report_apply_layout_metadata(
             $field['counts_toward_completion'] =
                 false;
 
-            if ($key === 'connectivity_starlink') {
-                $field['points_categories'] = [];
-            }
         }
     }
 
