@@ -18,6 +18,23 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
+/* Keep booking and fees near the beginning of the public Scout Report.
+ * Moderation continues to use its original registry section sequence.
+ */
+if ($placeReportReadMode === 'scout-report' && isset($placeReportSections['rules'])) {
+    $ruleSection = $placeReportSections['rules'];
+    unset($placeReportSections['rules']);
+    $earlySections = [];
+    foreach ($placeReportSections as $key => $definition) {
+        $earlySections[$key] = $definition;
+        if ($key === 'campground') {
+            $earlySections['rules'] = $ruleSection;
+        }
+    }
+    $placeReportSections = $earlySections;
+}
+
+
 /*
  * The contributor form and completion meter evaluate applicability against
  * flattened scoring input. The public Scout Report must use that exact same
