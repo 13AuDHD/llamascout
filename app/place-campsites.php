@@ -242,9 +242,10 @@ function llama_place_facility_features(
 
 function llama_place_campsites(
     PDO $db,
-    int $placeId
+    int $placeId,
+    ?int $onlyCampsiteId = null
 ): array {
-    if ($placeId < 1) {
+    if ($placeId < 1 || ($onlyCampsiteId !== null && $onlyCampsiteId < 1)) {
         return [];
     }
 
@@ -313,7 +314,9 @@ function llama_place_campsites(
              LEFT JOIN place_campsite_facts cf
                 ON cf.campsite_id = cs.id
              WHERE cs.place_id = ?
-               AND cs.is_active = 1
+               AND cs.is_active = 1'
+             . ($onlyCampsiteId === null ? '' : ' AND cs.id = ?')
+             . '
              ORDER BY
                 COALESCE(
                     NULLIF(cs.site_code, ""),
@@ -323,9 +326,11 @@ function llama_place_campsites(
                 cs.id ASC'
         );
 
-    $stmt->execute([
-        $placeId,
-    ]);
+    $stmt->execute(
+        $onlyCampsiteId === null
+            ? [$placeId]
+            : [$placeId, $onlyCampsiteId]
+    );
 
     $rows =
         $stmt->fetchAll(
@@ -514,7 +519,8 @@ function llama_place_campsite(
     foreach (
         llama_place_campsites(
             $db,
-            $placeId
+            $placeId,
+            $campsiteId
         )
         as $site
     ) {
