@@ -536,6 +536,117 @@ function llama_nps_match_apply_reviews(array &$data, array $reviews): void
     unset($row);
 }
 
+/**
+ * Export the original RIDB facility JSON for manually reviewed, current
+ * NPS/RIDB identity pairs. This does not fetch external APIs or change data.
+ * The source cache is authoritative for the value being exported; matching
+ * here only determines which record we are permitted to compare.
+ */
+function llama_nps_match_reviewed_ridb_source_export(
+    PDO $ridb,
+    array $rows
+): array {
+    $statement = $ridb->prepare(
+        'SELECT ridb_facility_id, facility_name, facility_type_description,
+                latitude, longitude, last_updated_date, source_json
+           FROM ridb_facilities
+          WHERE ridb_facility_id = ? LIMIT 1'
+    );
+
+    $records = [];
+    $skipped = [];
+    $confirmed = 0;
+    $usedRidbIds = [];
+    foreach ($rows as $row) {
+        $review = $row['review'] ?? null;
+        if (!is_array($review) || ($review['decision'] ?? '') !== 'confirmed_match') {
+            continue;
+        }
+        $confirmed++;
+        $npsIdentity = (string) ($row['park'] ?? '') . ':'
+            . (string) ($row['nps_id'] ?? '');
+        if (!empty($row['review_stale'])) {
+            $skipped[] = [
+                'nps_identity' => $npsIdentity,
+                'reason' => 'NPS source changed since identity confirmation',
+            ];
+            continue;
+        }
+        $ridbId = trim((string) ($review['ridb_facility_id'] ?? ''));
+        $verifiedCandidate = $row['confirmable'] ?? null;
+        if ($ridbId === '' || !is_array($verifiedCandidate)
+            || (string) $verifiedCandidate['ridb_id'] !== $ridbId) {
+            $skipped[] = [
+                'nps_identity' => $npsIdentity,
+                'reason' => 'Reviewed RIDB identifier no longer matches a current exact-ID candidate',
+            ];
+            continue;
+        }
+        if (isset($usedRidbIds[$ridbId])) {
+            $skipped[] = [
+                'nps_identity' => $npsIdentity,
+                'reason' => 'Duplicate reviewed RIDB identity in export',
+            ];
+            continue;
+        }
+        $usedRidbIds[$ridbId] = true;
+
+        $statement->execute([$ridbId]);
+        $source = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($source)) {
+            $skipped[] = [
+                'nps_identity' => $npsIdentity,
+                'reason' => 'RIDB facility no longer available in the source cache',
+            ];
+            continue;
+        }
+        try {
+            $raw = json_decode(
+                (string) ($source['source_json'] ?? ''),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+        } catch (JsonException) {
+            $raw = null;
+        }
+        if (!is_array($raw) || array_is_list($raw)) {
+            $skipped[] = [
+                'nps_identity' => $npsIdentity,
+                'reason' => 'RIDB facility source JSON is unavailable or invalid',
+            ];
+            continue;
+        }
+        $records[] = [
+            'nps_identity' => [
+                'park_code' => (string) $row['park'],
+                'record_id' => (string) $row['nps_id'],
+                'campground_name' => (string) $row['name'],
+                'source_hash_at_review' => (string) $review['nps_source_hash'],
+                'reviewed_at_utc' => (string) $review['reviewed_at'],
+            ],
+            'ridb_identity' => [
+                'facility_id' => (string) $source['ridb_facility_id'],
+                'facility_name' => (string) $source['facility_name'],
+                'facility_type' => (string) $source['facility_type_description'],
+                'latitude' => $source['latitude'],
+                'longitude' => $source['longitude'],
+                'last_updated_at_source' => $source['last_updated_date'],
+            ],
+            'ridb_original_record' => $raw,
+        ];
+    }
+    return [
+        'description' => 'Read-only raw RIDB facility records for confirmed NPS/RIDB identity pairs. No Llama Scout Place links are inferred.',
+        'generated_at_utc' => gmdate('Y-m-d\\TH:i:s\\Z'),
+        'reviewed_confirmed_records' => $confirmed,
+        'exported_facilities' => count($records),
+        'skipped_facilities' => count($skipped),
+        'records' => $records,
+        'skipped' => $skipped,
+    ];
+}
+
 $error = '';
 $ridbError = '';
 $npsError = '';
@@ -660,6 +771,32 @@ if ($npsReady && $ridbReady) {
     }
 }
 
+// The NPS source export was already supplied for Phase 1B. Exporting the
+// paired original RIDB records completes the source-to-source evidence set.
+// This endpoint remains owner/admin-only through moderation_require_admin().
+if (($_GET['format'] ?? '') === 'ridb-source-json'
+    && $error === '' && $npsReady && $ridbReady && $reviewReady) {
+    try {
+        $payload = llama_nps_match_reviewed_ridb_source_export(
+            $ridb,
+            (array) ($data['rows'] ?? [])
+        );
+        $json = json_encode(
+            $payload,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        );
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="nps-reviewed-ridb-sources.json"');
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Content-Type-Options: nosniff');
+        echo $json;
+        exit;
+    } catch (Throwable $exception) {
+        $error = 'Reviewed RIDB source export failed: ' . $exception->getMessage();
+    }
+}
+
 if (($_GET['format'] ?? '') === 'csv' && !$error && $npsReady && $ridbReady) {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="nps-ridb-match-audit.csv"');
@@ -720,8 +857,9 @@ require __DIR__ . '/_header.php';
         <span class="admin-status-pill">Source comparison</span>
     </header>
     <p>
-        Compare cached NPS campground records with RIDB facilities. Names,
-        coordinates, and Recreation.gov identifiers provide candidates only.
+        Compare cached NPS campground records with RIDB facilities. Confirmed
+        identities can also be exported with their original RIDB source JSON for
+        field-level reconciliation. Names, coordinates, and Recreation.gov identifiers provide candidates only.
         You may cache one missing RIDB source record at a time for inspection.
         Reviewed identity decisions are stored in an append-only NPS audit log.
         Confirming an identity does not yet link or modify a published Place.
@@ -732,6 +870,9 @@ require __DIR__ . '/_header.php';
         <a class="admin-button is-secondary" href="/ridb.php">RIDB control center</a>
         <?php if ($npsReady && $ridbReady && $error === ''): ?>
             <a class="admin-button" href="/nps-ridb-matches.php?format=csv">Export comparison CSV</a>
+            <?php if ($reviewReady): ?>
+                <a class="admin-button is-secondary" href="/nps-ridb-matches.php?format=ridb-source-json">Export confirmed RIDB sources (JSON)</a>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </section>
