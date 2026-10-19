@@ -16,7 +16,6 @@ function llama_place_report_add_experience_fields(
         'connectivity_verizon' => ['Verizon', 'None', 'Excellent', 'connectivity.verizon'],
         'connectivity_att' => ['AT&T', 'None', 'Excellent', 'connectivity.att'],
         'connectivity_other_cell' => ['Other cellular', 'None', 'Excellent', 'connectivity.other_cell'],
-        'connectivity_starlink' => ['Starlink (historical rating)', 'Poor', 'Excellent', 'connectivity.starlink'],
         'connectivity_satellite' => ['Satellite internet service', 'None', 'Excellent', 'connectivity.satellite'],
     ] as $key => [$label, $low, $high, $storage]) {
         $add($key, $label, 'connectivity', 'rating', $storage, [
