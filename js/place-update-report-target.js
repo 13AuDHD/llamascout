@@ -242,6 +242,21 @@
         if (!options || raw === unknown) return raw;
         if (Object.prototype.hasOwnProperty.call(options, raw)) return raw;
 
+        // RIDB numeric measurements may arrive as decimal strings (48.00).
+        // Normalize the stored representation, not its precision, before
+        // comparing it with our option keys. Do not round fractional feet.
+        if (
+            f.type === 'select'
+            && /^-?\d+(?:\.\d+)?$/.test(raw.trim())
+            && Object.keys(options).some(key => /^-?\d+(?:\.\d+)?$/.test(key))
+        ) {
+            const normalized = String(Number(raw));
+            if (Object.prototype.hasOwnProperty.call(options, normalized)) {
+                return normalized;
+            }
+            return normalized;
+        }
+
         // Some published values use the displayed option label instead of
         // the canonical stored option key. Map only exact label matches.
         const match = Object.entries(options).find(
@@ -285,7 +300,13 @@
                 // is not one of this field's current options. Retain it visibly
                 // for review without manufacturing a new registry option.
                 if (visible && ![...control.options].some(option => option.value === visible)) {
-                    const option = new Option(`Recorded: ${visible}`, visible);
+                    // An imported exact measurement can fall between the
+                    // manually selectable increments. Show its true value in
+                    // the existing select without implying it was rounded.
+                    const measuredFeet = f.key.endsWith('_feet')
+                        && /^-?\d+(?:\.\d+)?$/.test(visible);
+                    const label = measuredFeet ? `${Number(visible)} ft` : visible;
+                    const option = new Option(label, visible);
                     option.dataset.scopedRecordedOption = '1';
                     control.append(option);
                 }
