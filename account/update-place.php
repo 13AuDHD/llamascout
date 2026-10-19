@@ -1169,7 +1169,7 @@ $e =
                 $initialReportTarget,
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
             ) ?></script>
-            <script defer src="/js/place-update-report-target.js"></script>
+            <script defer src="<?= $e($siteUrl . '/js/place-update-report-target.js') ?>"></script>
             <div data-place-update-place-fields>
             <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
             </div>
