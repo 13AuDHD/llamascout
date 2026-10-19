@@ -87,7 +87,25 @@ function llama_nps_config(): array
     return ['api_key' => $key, 'base_url' => $url];
 }
 
-/** One bounded page; an empty park filter means every NPS park. */
+/** Stop before decoding a response that could exhaust a shared PHP worker. */
+function llama_nps_response_budget(): int
+{
+    $maximum = 2 * 1024 * 1024;
+    $setting = trim((string) ini_get('memory_limit'));
+    if ($setting !== '' && $setting !== '-1') {
+        $limit = (int) $setting;
+        $unit = strtolower(substr($setting, -1));
+        $limit *= match ($unit) { 'g' => 1024 ** 3, 'm' => 1024 ** 2, 'k' => 1024, default => 1 };
+        // Leave room for PHP's decoded arrays, prepared statements, and the page snapshot.
+        $maximum = min($maximum, max(0, (int) (($limit - memory_get_usage(true)) / 32)));
+    }
+    if ($maximum < 256 * 1024) {
+        throw new RuntimeException('There is not enough free PHP memory for an NPS batch. The import was paused without raising the server memory limit.');
+    }
+    return $maximum;
+}
+
+/** One bounded response; an empty park filter means every NPS park. */
 function llama_nps_request_page(
     string $resource,
     string $parkCode = '',
@@ -108,7 +126,7 @@ function llama_nps_request_page(
         if ($resource === 'parks') {
             $query['sort'] = 'parkCode';
         } elseif ($resource === 'campgrounds') {
-            $query['sort'] = 'parkCode,name';
+            $query['sort'] = 'name';
         }
     } elseif ($start !== 0) {
         throw new InvalidArgumentException('The road-event feed does not use offsets.');
@@ -123,11 +141,14 @@ function llama_nps_request_page(
         throw new RuntimeException('Could not initialize the NPS request.');
     }
     $remaining = null;
+    $body = '';
+    $oversized = false;
+    $budget = llama_nps_response_budget();
     curl_setopt_array($handle, [
-        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_RETURNTRANSFER => false,
         CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 25,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 20,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_HTTPHEADER => [
@@ -140,15 +161,26 @@ function llama_nps_request_page(
             }
             return strlen($header);
         },
+        CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$body, &$oversized, $budget): int {
+            if (strlen($body) + strlen($chunk) > $budget) {
+                $oversized = true;
+                return 0;
+            }
+            $body .= $chunk;
+            return strlen($chunk);
+        },
         CURLOPT_USERAGENT => 'LlamaScout-NPS-SourceImport/1.0',
     ]);
     try {
-        $body = curl_exec($handle);
+        $received = curl_exec($handle);
         $httpCode = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
     } finally {
         curl_close($handle);
     }
-    if ($body === false) {
+    if ($oversized) {
+        throw new RuntimeException('The NPS response exceeds this server\'s import memory budget. This record type was stopped before JSON decoding; its saved offset was kept.');
+    }
+    if ($received === false) {
         throw new RuntimeException('The NPS request timed out or could not connect. Resume to retry this page.');
     }
     if ($httpCode !== 200) {
@@ -286,7 +318,10 @@ function llama_nps_store_page(PDO $db, array $page): int
     if ($filter !== '') {
         $filter = llama_nps_validate_park($filter);
     }
-    $existing = $db->prepare('SELECT park_code FROM nps_raw_records WHERE resource_type = ? AND record_id = ?');
+    $records = (array) ($page['records'] ?? []);
+    if (count($records) > 50) {
+        throw new InvalidArgumentException('An NPS source batch cannot exceed 50 records.');
+    }
     $legacyFee = $db->prepare('SELECT record_id FROM nps_raw_records
         WHERE resource_type = ? AND park_code = ? ORDER BY fetched_at DESC, record_id LIMIT 1');
     $upsert = $db->prepare('INSERT INTO nps_raw_records
@@ -301,8 +336,8 @@ function llama_nps_store_page(PDO $db, array $page): int
         $db->beginTransaction();
     }
     try {
-        $stored = 0;
-        foreach ((array) ($page['records'] ?? []) as $record) {
+        $entries = [];
+        foreach ($records as $record) {
             if (!is_array($record) || array_is_list($record)) {
                 throw new UnexpectedValueException('Invalid NPS source record.');
             }
@@ -316,8 +351,24 @@ function llama_nps_store_page(PDO $db, array $page): int
                     $id = (string) $legacyId;
                 }
             }
-            $existing->execute([$resource, $id]);
-            $parks = array_values(array_unique(array_merge($parks, $existing->fetchAll(PDO::FETCH_COLUMN))));
+            $entries[] = ['record' => $record, 'id' => $id, 'parks' => $parks];
+        }
+        $contexts = [];
+        if ($entries) {
+            // One scan per batch, instead of one lookup per source record.
+            $ids = array_values(array_unique(array_column($entries, 'id')));
+            $existing = $db->prepare('SELECT record_id, park_code FROM nps_raw_records
+                WHERE resource_type = ? AND record_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')');
+            $existing->execute(array_merge([$resource], $ids));
+            foreach ($existing->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $contexts[(string) $row['record_id']][] = (string) $row['park_code'];
+            }
+        }
+        $stored = 0;
+        foreach ($entries as $entry) {
+            $record = $entry['record'];
+            $id = $entry['id'];
+            $parks = array_values(array_unique(array_merge($entry['parks'], $contexts[$id] ?? [])));
             if (!$parks) {
                 $parks = ['']; // No inferred park association; original metadata is retained.
             }
@@ -591,6 +642,9 @@ function llama_nps_import_pause(PDO $db): array
 /** Commit a source page and its cursor atomically, or keep the previous cursor. */
 function llama_nps_import_commit_page(PDO $db, array $state, array $page): void
 {
+    if (count($page['records']) > 50) {
+        throw new RuntimeException('An NPS write batch cannot contain more than 50 source records.');
+    }
     if (($page['resource'] ?? '') !== $state['resource_type']
         || (int) ($page['start'] ?? -1) !== (int) $state['next_start']) {
         throw new RuntimeException('The NPS page does not match the saved import cursor.');
@@ -603,11 +657,12 @@ function llama_nps_import_commit_page(PDO $db, array $state, array $page): void
     try {
         llama_nps_store_page($db, $page);
         $stmt = $db->prepare('UPDATE nps_import_progress SET status = ?, next_start = ?,
-            total_records = ?, last_page_hash = ?, response_metadata = ?, last_error = NULL,
+            total_records = ?, last_page_hash = ?, response_metadata = COALESCE(?, response_metadata), last_error = NULL,
             updated_at = UTC_TIMESTAMP(), completed_at = ? WHERE resource_type = ?');
         $stmt->execute([
             $page['complete'] ? 'complete' : 'pending', $page['next_start'], $page['total'],
-            $page['page_hash'], json_encode($page['metadata'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            $page['page_hash'], !empty($page['retain_snapshot']) ? null
+                : json_encode($page['metadata'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
             $page['complete'] ? gmdate('Y-m-d H:i:s') : null, $state['resource_type'],
         ]);
         $db->commit();
@@ -617,6 +672,58 @@ function llama_nps_import_commit_page(PDO $db, array $state, array $page): void
         }
         throw $exception;
     }
+}
+
+/** Road events have no API pagination. Cache one capped feed, then extract 50 records per request. */
+function llama_nps_import_road_page(PDO $db, array $state): array
+{
+    $start = (int) $state['next_start'];
+    $read = $db->prepare("SELECT JSON_LENGTH(response_metadata, '$.features') AS total,
+        JSON_REMOVE(response_metadata, '$.features') AS metadata
+        FROM nps_import_progress WHERE resource_type = ?");
+    $read->execute(['roadevents']);
+    $snapshot = $read->fetch(PDO::FETCH_ASSOC);
+    $remaining = null;
+    if ($snapshot['total'] === null) {
+        if ($start !== 0) {
+            throw new RuntimeException('The saved road-event snapshot is missing. Its last committed offset was kept.');
+        }
+        $feed = llama_nps_request_page('roadevents');
+        $metadata = $feed['metadata'];
+        $metadata['features'] = $feed['records'];
+        $save = $db->prepare('UPDATE nps_import_progress SET response_metadata = ?,
+            total_records = ?, updated_at = UTC_TIMESTAMP() WHERE resource_type = ?');
+        $save->execute([json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            $feed['total'], 'roadevents']);
+        $remaining = $feed['rate_remaining'];
+        unset($feed, $metadata);
+        $read->execute(['roadevents']);
+        $snapshot = $read->fetch(PDO::FETCH_ASSOC);
+    }
+    $total = (int) $snapshot['total'];
+    // MariaDB extracts just this batch; PHP does not reload/decode the entire saved feed.
+    $items = $db->prepare("SELECT item.source_json FROM nps_import_progress AS progress
+        CROSS JOIN JSON_TABLE(progress.response_metadata, '$.features[*]'
+            COLUMNS (item_ordinal FOR ORDINALITY, source_json JSON PATH '$' ERROR ON ERROR)) AS item
+        WHERE progress.resource_type = ? AND item.item_ordinal > ? AND item.item_ordinal <= ?
+        ORDER BY item.item_ordinal");
+    $items->execute(['roadevents', $start, $start + 50]);
+    $records = [];
+    $ids = [];
+    while (($json = $items->fetchColumn()) !== false) {
+        $record = json_decode((string) $json, true, 512, JSON_THROW_ON_ERROR);
+        $records[] = $record;
+        $ids[] = llama_nps_record_id($record, 'roadevents');
+    }
+    if (count($records) !== min(50, max(0, $total - $start))) {
+        throw new RuntimeException('The saved road-event batch is incomplete. Its offset was kept.');
+    }
+    $complete = $start + count($records) >= $total;
+    return ['resource' => 'roadevents', 'park_code' => '', 'records' => $records,
+        'start' => $start, 'next_start' => $start + count($records), 'total' => $total,
+        'complete' => $complete, 'retain_snapshot' => !$complete,
+        'metadata' => json_decode((string) $snapshot['metadata'], true, 512, JSON_THROW_ON_ERROR),
+        'page_hash' => hash('sha256', json_encode($ids, JSON_THROW_ON_ERROR)), 'rate_remaining' => $remaining];
 }
 
 function llama_nps_import_next(PDO $db): array
@@ -645,7 +752,8 @@ function llama_nps_import_next(PDO $db): array
         $state = $stmt->fetch(PDO::FETCH_ASSOC);
         $message = '';
         try {
-            $page = llama_nps_request_page($resource, '', 50, (int) $state['next_start']);
+            $page = $resource === 'roadevents' ? llama_nps_import_road_page($db, $state)
+                : llama_nps_request_page($resource, '', 50, (int) $state['next_start']);
             llama_nps_import_commit_page($db, $state, $page);
             if ($page['rate_remaining'] !== null && $page['rate_remaining'] <= 5) {
                 $db->exec("UPDATE nps_import_progress SET status = 'paused', updated_at = UTC_TIMESTAMP()
