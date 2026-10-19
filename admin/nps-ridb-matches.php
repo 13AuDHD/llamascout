@@ -284,7 +284,19 @@ function llama_nps_match_audit(PDO $nps, PDO $ridb, ?PDO $main): array
         }
         $seen++;
         $name = trim((string) ($json['name'] ?? $item['record_name']));
-        $matches = llama_nps_match_candidates($ridb, $json, $name);
+        try {
+            $matches = llama_nps_match_candidates($ridb, $json, $name);
+        } catch (Throwable $exception) {
+            // Include the source record being compared so failures are
+            // actionable without exposing credentials or raw API responses.
+            throw new RuntimeException(
+                'RIDB candidate lookup failed for NPS record '
+                . (string) $item['record_id'] . ' (' . $name . '): '
+                . $exception->getMessage(),
+                0,
+                $exception
+            );
+        }
         foreach ($matches as $candidate) {
             $allIds[] = $candidate['ridb_id'];
         }
@@ -331,18 +343,24 @@ $npsReady = false;
 
 try {
     $nps = nps_db();
-    $nps->query('SELECT 1 FROM nps_raw_records LIMIT 1');
+    $nps->query(
+        'SELECT record_id, park_code, record_name, source_url, source_json
+         FROM nps_raw_records LIMIT 1'
+    );
     $npsReady = true;
-} catch (Throwable) {
-    $npsError = 'Could not read the NPS source cache. Confirm the NPS database configuration and schema.';
+} catch (Throwable $exception) {
+    $npsError = 'NPS source cache check failed: ' . $exception->getMessage();
 }
 
 try {
     $ridb = ridb_db();
-    $ridb->query('SELECT ridb_facility_id FROM ridb_facilities LIMIT 1');
+    $ridb->query(
+        'SELECT ridb_facility_id, facility_name, latitude, longitude
+         FROM ridb_facilities LIMIT 1'
+    );
     $ridbReady = true;
-} catch (Throwable) {
-    $ridbError = 'Could not read the RIDB facility cache. Confirm RIDB synchronization and database access.';
+} catch (Throwable $exception) {
+    $ridbError = 'RIDB facility cache check failed: ' . $exception->getMessage();
 }
 
 if ($npsReady && $ridbReady) {
@@ -355,8 +373,10 @@ if ($npsReady && $ridbReady) {
             // The RIDB/NPS comparison remains available independently.
         }
         $data = llama_nps_match_audit($nps, $ridb, $main);
-    } catch (Throwable) {
-        $error = 'The source comparison failed. Verify that both source schemas are installed.';
+    } catch (Throwable $exception) {
+        // Admin-only page. Show the actual failed operation rather than a
+        // misleading blanket assertion that the schemas are missing.
+        $error = 'The source comparison failed: ' . $exception->getMessage();
     }
 }
 
