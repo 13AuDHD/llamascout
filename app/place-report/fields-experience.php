@@ -16,7 +16,8 @@ function llama_place_report_add_experience_fields(
         'connectivity_verizon' => ['Verizon', 'None', 'Excellent', 'connectivity.verizon'],
         'connectivity_att' => ['AT&T', 'None', 'Excellent', 'connectivity.att'],
         'connectivity_other_cell' => ['Other cellular', 'None', 'Excellent', 'connectivity.other_cell'],
-        'connectivity_starlink' => ['Starlink', 'Poor', 'Excellent', 'connectivity.starlink'],
+        'connectivity_starlink' => ['Starlink (historical rating)', 'Poor', 'Excellent', 'connectivity.starlink'],
+        'connectivity_satellite' => ['Satellite internet service', 'None', 'Excellent', 'connectivity.satellite'],
     ] as $key => [$label, $low, $high, $storage]) {
         $add($key, $label, 'connectivity', 'rating', $storage, [
             'allow_unknown' => true,
@@ -31,10 +32,15 @@ function llama_place_report_add_experience_fields(
         'points_categories' => ['connectivity'],
     ]);
 
-    $add('connectivity_starlink_note', 'Starlink notes', 'connectivity', 'textarea', 'connectivity.starlink_note', [
+    $add('connectivity_amazon_leo_tested', 'Amazon Leo tested?', 'connectivity', 'tri', 'connectivity.amazon_leo_tested', [
+        'allow_unknown' => true,
+        'points_categories' => ['connectivity'],
+    ]);
+
+    $add('connectivity_starlink_note', 'Connectivity notes', 'connectivity', 'textarea', 'connectivity.starlink_note', [
         'wide' => true,
         'rows' => 3,
-        'placeholder' => 'Clear northern sky, heavy tree obstruction, not personally tested, etc.',
+        'placeholder' => 'Providers tested, obstruction, speeds, or other connectivity details.',
         'points_categories' => ['connectivity'],
         'counts_toward_completion' => false,
     ]);
