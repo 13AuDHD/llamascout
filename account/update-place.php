@@ -907,6 +907,15 @@ $placeReportAllowedStoragePaths =
  * =========================================================
  */
 
+/*
+ * Observation metadata is rendered once in "Your observation" below.
+ * Do not also render the Add Place date field inside the Place questions:
+ * its empty required control would block native browser submission.
+ */
+$placeReportExternalFieldKeys =
+    ['visited_at'];
+
+
 $placeReportMode =
     'contributor';
 
@@ -1678,3 +1687,4 @@ require dirname(__DIR__)
     . '/partials/footer.php';
 
 ?>
+
