@@ -397,7 +397,6 @@ function llama_place_report_scope_overrides(): array
             'connectivity_verizon',
             'connectivity_att',
             'connectivity_other_cell',
-            'connectivity_starlink',
             'connectivity_satellite',
             'connectivity_starlink_tested',
             'connectivity_amazon_leo_tested',
