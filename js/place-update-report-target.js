@@ -188,8 +188,11 @@
                 if (controlTargetKey !== activeTarget) return;
 
                 const value = control.value.trim();
+                const original = recordedValue(f);
 
-                if (value) {
+                // If the field was not changed, it is never an update proposal.
+                // The same rule holds for values inherited from Place or Area.
+                if (value && value !== original) {
                     values.set(f.key, value);
                 } else {
                     values.delete(f.key);
@@ -229,18 +232,70 @@
             );
     }
 
+    function normalizedControlValue(f, value) {
+        if (value === null || value === undefined || value === '') return '';
+        if (value === true) return '1';
+        if (value === false) return '0';
+
+        const raw = String(value);
+        const options = optionValues(f);
+        if (!options || raw === unknown) return raw;
+        if (Object.prototype.hasOwnProperty.call(options, raw)) return raw;
+
+        // Some published values use the displayed option label instead of
+        // the canonical stored option key. Map only exact label matches.
+        const match = Object.entries(options).find(
+            ([, label]) => String(label).trim().toLowerCase() === raw.trim().toLowerCase()
+        );
+        return match ? match[0] : raw;
+    }
+
+    function recordedValue(f) {
+        if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
+            return normalizedControlValue(f, context.direct[f.key]);
+        }
+        if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
+            return normalizedControlValue(f, context.inherited[f.key]?.value);
+        }
+        return '';
+    }
+
     function showExisting() {
         for (const f of fields.filter(eligible)) {
-            const note = [...questions.querySelectorAll('[data-scoped-existing]')]
-                .find(el => el.dataset.scopedExisting === f.key);
+            const card = [...questions.querySelectorAll('[data-scoped-question]')]
+                .find(el => el.dataset.scopedQuestion === f.key);
+            if (!card) continue;
 
-            if (!note) continue;
+            const control = card.querySelector('[data-scoped-control]');
+            const note = card.querySelector('[data-scoped-existing]');
+            if (!control || !note) continue;
+
+            // A selected Site has its own draft. Otherwise display the actual
+            // recorded Site answer, falling back to permitted inherited facts.
+            // Displaying an answer does NOT add it to submitted changes.
+            const visible = values.has(f.key)
+                ? normalizedControlValue(f, values.get(f.key))
+                : recordedValue(f);
+
+            if (control.tagName === 'SELECT') {
+                for (const option of control.querySelectorAll('[data-scoped-recorded-option]')) {
+                    option.remove();
+                }
+                // Never silently display "Not answered" when the stored value
+                // is not one of this field's current options. Retain it visibly
+                // for review without manufacturing a new registry option.
+                if (visible && ![...control.options].some(option => option.value === visible)) {
+                    const option = new Option(`Recorded: ${visible}`, visible);
+                    option.dataset.scopedRecordedOption = '1';
+                    control.append(option);
+                }
+            }
+            control.value = visible;
 
             if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
-                note.textContent = `Recorded for this ${scope.value}: ${valueLabel(f, context.direct[f.key])}`;
+                note.textContent = `Recorded for this ${scope.value}`;
             } else if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
-                const info = context.inherited[f.key];
-                note.textContent = `Inherited from ${info.from}: ${valueLabel(f, info.value)}`;
+                note.textContent = `From ${context.inherited[f.key]?.from || 'parent'}`;
             } else {
                 note.textContent = 'No recorded answer';
             }
@@ -421,8 +476,9 @@
             queueInput.value = '[]';
 
             if (scoped) {
-                // Rebuild fresh controls after setting the target-specific
-                // values. iPad Safari must not reuse the prior Site's inputs.
+                // Clear previous target's existing answers BEFORE rendering.
+                // The asynchronous response may not have arrived yet.
+                context = {direct: {}, inherited: {}};
                 render();
                 loadContext(t);
             } else {
