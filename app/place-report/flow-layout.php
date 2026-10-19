@@ -170,9 +170,11 @@ function llama_place_report_layout_assignments(): array
             'connectivity_verizon',
             'connectivity_att',
             'connectivity_other_cell',
-            'connectivity_starlink',
+            'connectivity_satellite',
             'connectivity_starlink_tested',
+            'connectivity_amazon_leo_tested',
             'connectivity_starlink_note',
+            'connectivity_starlink',
             'nearest_town',
             'nearest_fuel',
             'nearest_ev_charging',
@@ -437,6 +439,7 @@ function llama_place_report_apply_layout_metadata(
                 $key,
                 [
                     'max_vehicle_length_feet',
+                    'connectivity_starlink',
                     'max_trailer_length_feet',
                     'max_rv_length_feet',
                     'trailer_suitable',
@@ -447,10 +450,9 @@ function llama_place_report_apply_layout_metadata(
             )
         ) {
             /*
-             * Compatibility only. Llama Scout now records objective Site
-             * dimensions and capacity instead of asking contributors to make
-             * vehicle/RV suitability judgments or duplicate those dimensions
-             * with published-fit limits.
+             * Preserve compatibility fields for review without presenting
+             * historical provider-specific ratings as generic satellite data.
+             * Older Site suitability records remain readable as well.
              */
             $field['layout_section'] =
                 'compatibility';
@@ -460,6 +462,10 @@ function llama_place_report_apply_layout_metadata(
 
             $field['counts_toward_completion'] =
                 false;
+
+            if ($key === 'connectivity_starlink') {
+                $field['points_categories'] = [];
+            }
         }
     }
 
