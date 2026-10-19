@@ -260,6 +260,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
         }
 
         /*
+         * Canonical campsite facts are direct Site facts, not inherited Place
+         * answers. Read existing RIDB/imported dimensions and capacity without
+         * changing the source records or overriding approved scoped answers.
+         */
+        if ($scope === 'site' && $source === 'campsite_record') {
+            $factsStmt = $db->prepare(
+                'SELECT
+                    cf.site_length_ft,
+                    cf.site_width_ft,
+                    cf.driveway_length_ft,
+                    cf.overhead_clearance_ft,
+                    cf.max_people,
+                    cf.max_vehicles,
+                    cf.max_vehicle_length_ft,
+                    cf.tent_pad_length_ft,
+                    cf.tent_pad_width_ft
+                 FROM place_campsites AS cs
+                 LEFT JOIN place_campsite_facts AS cf
+                    ON cf.campsite_id = cs.id
+                 WHERE cs.place_id = ?
+                   AND cs.id = ?
+                   AND cs.is_active = 1
+                 LIMIT 1'
+            );
+            $factsStmt->execute([$placeId, $targetId]);
+            $facts = $factsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $factFields = [
+                'site_length_ft' => 'site_length_feet',
+                'site_width_ft' => 'site_width_feet',
+                'driveway_length_ft' => 'parking_length_feet',
+                'overhead_clearance_ft' => 'overhead_clearance_feet',
+                'max_people' => 'max_people',
+                'max_vehicles' => 'vehicle_capacity',
+                'max_vehicle_length_ft' => 'max_vehicle_length_feet',
+                'tent_pad_length_ft' => 'tent_pad_length_feet',
+                'tent_pad_width_ft' => 'tent_pad_width_feet',
+            ];
+            foreach ($factFields as $column => $fieldKey) {
+                $factValue = $facts[$column] ?? null;
+                if (
+                    !array_key_exists($fieldKey, $direct)
+                    && $factValue !== null
+                    && trim((string) $factValue) !== ''
+                ) {
+                    $direct[$fieldKey] = (string) $factValue;
+                }
+            }
+        }
+
+        /*
          * llama_place_update_shared_form_values() produces placeholders for
          * unrecorded Place fields. Those are not inherited answers. Explicit
          * Unknown, No, numeric zero and false MUST remain meaningful values.
@@ -277,6 +327,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
             if (
                 !in_array(
                     $scope,
+                    (array) ($field['report_scopes'] ?? []),
+                    true
+                )
+                || !in_array(
+                    'place',
                     (array) ($field['report_scopes'] ?? []),
                     true
                 )
