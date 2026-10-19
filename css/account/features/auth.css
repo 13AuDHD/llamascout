@@ -609,7 +609,7 @@
     }
 
     .account-auth > a:first-child {
-        margin-bottom: -10px;
+        margin-bottom: 0;
     }
 
     .mfa-enrollment-grid,
