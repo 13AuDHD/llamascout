@@ -462,6 +462,7 @@ $placeMapEditorUrl =
 <script src="/js/place-map.js"></script>
 
 <?php if ($placeMapHasLayerAccess): ?>
+    <script src="/js/place-campsite-points.js"></script>
     <script src="/js/map-land-overlays.js"></script>
     <script src="/js/map-weather-overlays.js"></script>
     <script src="https://unpkg.com/h3-js@4.2.1"></script>
