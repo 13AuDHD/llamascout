@@ -193,6 +193,101 @@
             };
         };
 
+    /*
+     * Reconciliation shows every Site question, but it must never make
+     * a field editable under a scope that cannot own its answer.
+     * Both key sets come from the canonical field registry on the server.
+     */
+    const scopeConfigNode =
+        form.querySelector('[data-admin-place-campsites]');
+    let scopeConfig = {};
+
+    try {
+        scopeConfig = JSON.parse(
+            scopeConfigNode?.textContent || '{}'
+        );
+    } catch (_) {
+        scopeConfig = {};
+    }
+
+    const siteFieldKeys = new Set(
+        Array.isArray(scopeConfig.site_field_keys)
+            ? scopeConfig.site_field_keys : []
+    );
+
+    const placeFieldKeys = new Set(
+        Array.isArray(scopeConfig.place_field_keys)
+            ? scopeConfig.place_field_keys : []
+    );
+
+    const restrictedKeys = [
+        ...new Set([
+            ...siteFieldKeys,
+            ...placeFieldKeys
+        ])
+    ];
+
+    const scopedControls = new Map();
+    const initialDisabled = new WeakMap();
+
+    restrictedKeys.forEach((key) => {
+        const group = Array.from(form.elements).filter(
+            (control) => control.name === key
+        );
+        scopedControls.set(key, group);
+        group.forEach((control) => {
+            initialDisabled.set(control, control.disabled);
+        });
+    });
+
+    const ownershipNotice = document.createElement('span');
+    ownershipNotice.className = 'admin-place-muted';
+    ownershipNotice.setAttribute('role', 'status');
+    const reportHeader = form.querySelector(
+        '.admin-place-report-header'
+    );
+
+    if (reportHeader) {
+        reportHeader.appendChild(ownershipNotice);
+    }
+
+    const syncFieldOwnership = () => {
+        const siteActive = current().level === 'site';
+        let restricted = 0;
+
+        for (const [key, group] of scopedControls) {
+            const permitted = siteActive
+                ? siteFieldKeys.has(key)
+                : placeFieldKeys.has(key);
+
+            for (const control of group) {
+                control.disabled =
+                    initialDisabled.get(control) || !permitted;
+
+                const wrapper = control.closest(
+                    '.contribution-field, .contribution-check'
+                );
+
+                if (wrapper) {
+                    wrapper.dataset.reportScopeOwnership =
+                        permitted ? '' : (siteActive ? 'place' : 'site');
+                }
+            }
+
+            if (!permitted && group.length) {
+                restricted++;
+            }
+        }
+
+        ownershipNotice.textContent = restricted
+            ? (
+                siteActive
+                    ? 'Place-only questions remain visible for reconciliation. Select Place to edit those answers.'
+                    : 'Site-only questions remain visible for reconciliation. Select a Site to edit those answers.'
+            )
+            : '';
+    };
+
     let lastSignature = '';
 
     const emit =
@@ -211,6 +306,7 @@
                 signature === lastSignature
                 && source !== 'force'
             ) {
+                queueMicrotask(syncFieldOwnership);
                 return context;
             }
 
@@ -245,6 +341,9 @@
                     }
                 )
             );
+
+            // Run after the shared Site editor has synchronized controls.
+            queueMicrotask(syncFieldOwnership);
 
             return context;
         };
