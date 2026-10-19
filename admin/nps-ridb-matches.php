@@ -45,12 +45,12 @@ function llama_nps_match_name_similarity(string $left, string $right): float
     }
 
     $overlap = count(array_intersect($a, $b));
-    $precision = $overlap / count($a);
-    $recall = $overlap / count($b);
-    if (($precision + $recall) === 0.0) {
+    if ($overlap === 0) {
         return 0.0;
     }
 
+    $precision = $overlap / count($a);
+    $recall = $overlap / count($b);
     return (2.0 * $precision * $recall) / ($precision + $recall);
 }
 
