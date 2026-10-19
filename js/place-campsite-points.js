@@ -16,6 +16,58 @@
     }
 
     const map = handle.map;
+    const siteMarkers = new Map();
+
+    /*
+     * "View on map" should focus the currently selected campsite, not the
+     * campground center. Coordinates and marker identity come from the same
+     * protected campsite-points endpoint used by the displayed map overlay.
+     */
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        const link = target.closest('a[href="#place-map-heading"]');
+        if (!link) {
+            return;
+        }
+
+        const headerLink = link.matches('.place-overnight-options-map-link');
+        const context = link.closest('[data-selected-campsite-context]');
+        if (!headerLink && !context) {
+            return;
+        }
+
+        // The context can also refer to a mapped Area. Keep its existing
+        // map-focus behavior instead of substituting an unrelated Site.
+        if (context && !context.textContent.includes('Viewing Site:')) {
+            return;
+        }
+
+        const selected = document.querySelector(
+            '[data-stay-options] [data-campsite-id].is-selected'
+        );
+        const marker = siteMarkers.get(Number(selected?.dataset.campsiteId));
+        if (!marker) {
+            // An unlocated Site still uses the existing fallback behavior.
+            return;
+        }
+
+        event.preventDefault();
+        // Suppress the old focus handler on the Scout Report context link;
+        // it only knows map_feature_id, not imported Site GPS points.
+        event.stopImmediatePropagation();
+
+        const heading = document.getElementById('place-map-heading');
+        heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        map.setView(marker.getLatLng(), Math.min(18, map.getMaxZoom()), {
+            animate: true,
+        });
+        marker.openPopup();
+    }, true);
 
     const loadPoints = async () => {
         try {
@@ -89,6 +141,7 @@
                 popup.append(heading, detail, button);
                 point.bindPopup(popup);
                 layer.addLayer(point);
+                siteMarkers.set(id, point);
             }
 
             if (layer.getLayers().length === 0) {
