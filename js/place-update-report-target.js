@@ -44,15 +44,26 @@
     if (initial.locked === true) search.disabled = true;
 
     const form = search.closest('form');
-    const values =
-        new Map(
-            Object.entries(
-                initial.answers
-                && typeof initial.answers === 'object'
-                    ? initial.answers
-                    : {}
-            ).map(([key, value]) => [key, String(value)])
-        );
+
+    // Draft answers belong to an individual reporting target, not to the
+    // reusable set of Site questions. Switching Site must never carry over
+    // values from a different Site, even while answers remain unsent.
+    const initialTargetKey =
+        `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
+    const draftsByTarget = new Map();
+    const initialAnswers = new Map(
+        Object.entries(
+            initial.answers && typeof initial.answers === 'object'
+                ? initial.answers
+                : {}
+        ).map(([key, value]) => [key, String(value)])
+    );
+
+    if (initialAnswers.size > 0) {
+        draftsByTarget.set(initialTargetKey, new Map(initialAnswers));
+    }
+
+    let values = new Map();
     const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
     const unknown = '__LLAMA_UNKNOWN__';
     let activeTarget = '';
@@ -105,6 +116,7 @@
     function render() {
         questions.replaceChildren();
         const sections = new Map();
+        const targetId = activeTarget.replace(/[^a-zA-Z0-9_-]/g, '-');
 
         // The PHP registry has already applied the canonical field order.
         // Use its final section and group metadata without re-sorting fields.
@@ -163,9 +175,10 @@
             }
 
             control.dataset.scopedControl = f.key;
-            control.id = `scoped-answer-${f.key}`;
+            control.id = `scoped-answer-${targetId}-${f.key}`;
             control.setAttribute('aria-label', f.label);
-            control.value = values.get(f.key) || '';
+            control.setAttribute('autocomplete', 'off');
+            control.value = values.get(f.key) ?? '';
 
             const changed = () => {
                 const value = control.value.trim();
@@ -176,6 +189,7 @@
                     values.delete(f.key);
                 }
 
+                draftsByTarget.set(activeTarget, new Map(values));
                 sync();
                 applyDependencies();
             };
@@ -368,6 +382,13 @@
 
         const switched = targetKey !== activeTarget;
 
+        // Capture unsent changes for the departing Site or Area, then load
+        // only the draft belonging to the new target. This also handles
+        // switching back to an earlier Site without losing its draft.
+        if (switched && activeTarget !== '') {
+            draftsByTarget.set(activeTarget, new Map(values));
+        }
+
         activeTarget = targetKey;
         scope.value = t.scope;
         source.value = t.source;
@@ -382,24 +403,26 @@
             input.disabled = scoped;
         }
 
+        const scopedHeading = scopedFields.querySelector('h3');
+        if (scopedHeading) {
+            scopedHeading.textContent = scoped
+                ? `${t.scope === 'site' ? 'Site' : 'Area'} Scout Report: ${t.label}`
+                : 'Area or Site Scout Report';
+        }
+
         if (switched) {
-            const initialKey =
-                `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
-
-            if (
-                targetKey !== initialKey
-                || initial.locked !== true
-            ) {
-                values.clear();
-            }
-
+            values = new Map(draftsByTarget.get(targetKey) || []);
             queueInput.value = '[]';
 
             if (scoped) {
+                // Rebuild fresh controls after setting the target-specific
+                // values. iPad Safari must not reuse the prior Site's inputs.
                 render();
                 loadContext(t);
             } else {
                 ++loadSequence;
+                context = {direct: {}, inherited: {}};
+                questions.replaceChildren();
             }
         }
 
