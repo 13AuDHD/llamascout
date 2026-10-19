@@ -211,27 +211,150 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
         if ($scope === 'place') {
             throw new InvalidArgumentException('Select an Area or Site.');
         }
-        $direct = llama_scoped_report_load($db, $placeId, $scope, $targetId, $source);
-        $inherited = [];
+        $direct = llama_scoped_report_load(
+            $db,
+            $placeId,
+            $scope,
+            $targetId,
+            $source
+        );
+
+        /*
+         * Site identity belongs to the selected Site, not the parent Place.
+         * Show the Site's authoritative recorded number without proposing
+         * a change to it or copying another Site's answer into this report.
+         * An explicitly approved scoped answer takes precedence.
+         */
+        if (
+            $scope === 'site'
+            && !array_key_exists('site_number', $direct)
+        ) {
+            if ($source === 'campsite_record') {
+                $identityStmt = $db->prepare(
+                    'SELECT site_code
+                     FROM place_campsites
+                     WHERE place_id = ?
+                       AND id = ?
+                       AND is_active = 1
+                     LIMIT 1'
+                );
+            } else {
+                $identityStmt = $db->prepare(
+                    'SELECT site.site_code
+                     FROM place_map_camping_sites AS site
+                     INNER JOIN place_map_features AS feature
+                       ON feature.id = site.feature_id
+                     WHERE feature.place_id = ?
+                       AND feature.id = ?
+                       AND feature.is_active = 1
+                     LIMIT 1'
+                );
+            }
+
+            $identityStmt->execute([$placeId, $targetId]);
+            $recordedSiteNumber = trim((string) $identityStmt->fetchColumn());
+
+            if ($recordedSiteNumber !== '') {
+                $direct['site_number'] = $recordedSiteNumber;
+            }
+        }
+
+        /*
+         * llama_place_update_shared_form_values() produces placeholders for
+         * unrecorded Place fields. Those are not inherited answers. Explicit
+         * Unknown, No, numeric zero and false MUST remain meaningful values.
+         */
         $placeValues = llama_place_update_shared_form_values(
             llama_place_update_current_values($db, $placeId),
             llama_place_report_published_answer_state($db, $placeId)
         );
-        foreach (llama_place_report_fields() as $key => $field) {
-            if (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)) continue;
-            if (array_key_exists($key, $placeValues)) {
-                $inherited[$key] = ['value' => $placeValues[$key], 'from' => 'Place'];
+
+        $unansweredToken = llama_place_report_unanswered_token();
+        $inherited = [];
+        $fieldDefinitions = llama_place_report_fields();
+
+        foreach ($fieldDefinitions as $key => $field) {
+            if (
+                !in_array(
+                    $scope,
+                    (array) ($field['report_scopes'] ?? []),
+                    true
+                )
+                || !array_key_exists($key, $placeValues)
+            ) {
+                continue;
             }
+
+            $answer = $placeValues[$key];
+
+            if (
+                $answer === null
+                || $answer === $unansweredToken
+                || (is_string($answer) && trim($answer) === '')
+                || (is_array($answer) && $answer === [])
+            ) {
+                continue;
+            }
+
+            $inherited[$key] = [
+                'value' => $answer,
+                'from' => 'Place',
+            ];
         }
+
         if ($scope === 'site' && !empty($target['parent_area_id'])) {
-            $parent = llama_report_verified_target($db, $placeId, 'area', 'map_feature', (int) $target['parent_area_id']);
-            $parentAnswers = llama_scoped_report_load($db, $placeId, 'area', (int) $parent['id'], 'map_feature');
+            $parent = llama_report_verified_target(
+                $db,
+                $placeId,
+                'area',
+                'map_feature',
+                (int) $target['parent_area_id']
+            );
+
+            $parentAnswers = llama_scoped_report_load(
+                $db,
+                $placeId,
+                'area',
+                (int) $parent['id'],
+                'map_feature'
+            );
+
             foreach ($parentAnswers as $key => $value) {
-                $inherited[$key] = ['value' => $value, 'from' => 'Area: ' . $parent['label']];
+                if (
+                    !isset($fieldDefinitions[$key])
+                    || !in_array(
+                        'area',
+                        (array) (
+                            $fieldDefinitions[$key]['report_scopes'] ?? []
+                        ),
+                        true
+                    )
+                    || !in_array(
+                        'site',
+                        (array) (
+                            $fieldDefinitions[$key]['report_scopes'] ?? []
+                        ),
+                        true
+                    )
+                ) {
+                    continue;
+                }
+
+                $inherited[$key] = [
+                    'value' => $value,
+                    'from' => 'Area: ' . (string) $parent['label'],
+                ];
             }
         }
-        echo json_encode(['direct' => $direct, 'inherited' => $inherited],
-            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+
+        echo json_encode(
+            ['direct' => $direct, 'inherited' => $inherited],
+            JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+                | JSON_THROW_ON_ERROR
+        );
     } catch (Throwable $e) {
         http_response_code(400);
         echo json_encode(['error' => 'Could not load this reporting target.']);
