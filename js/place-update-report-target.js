@@ -64,7 +64,23 @@
     }
 
     let values = new Map();
+    // Scope-saving currently accepts scalar answers. Checkbox/multiselect
+    // need the planned canonical scoped storage/validation work, not a
+    // second JS-only implementation of those types.
     const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
+
+    // The Place form was rendered by the canonical PHP field renderer.
+    // Capture its field elements before the Place section is hidden. These
+    // are the ONLY source for scoped control markup, including labels,
+    // options, help text and validation attributes.
+    const sharedFieldTemplates = new Map();
+    const named = [...placeFields.querySelectorAll('input[name], select[name], textarea[name]')];
+    for (const f of fields) {
+        const control = named.find(el => el.name === f.key);
+        const wrapper = control?.closest('.contribution-field, .contribution-check');
+        if (wrapper) sharedFieldTemplates.set(f.key, wrapper.cloneNode(true));
+    }
+    const absentTemplates = new Set();
     const unknown = '__LLAMA_UNKNOWN__';
     let activeTarget = '';
     let context = {direct: {}, inherited: {}};
@@ -89,37 +105,55 @@
         return null;
     }
 
-    function normalizeRuleValue(value) {
-        if (value === true) return '1';
-        if (value === false) return '0';
-        if (value === null || value === undefined) return '';
-        if (Array.isArray(value)) return value.map(item => String(item));
-        return String(value);
+    // Native PHP radio groups are multiple inputs; all other supported
+    // controls have a single editable input/select/textarea.
+    function scopedControls(card) {
+        return [...card.querySelectorAll('input:not([type="hidden"]), select, textarea')];
     }
 
-    function effectiveRuleValue(fieldKey) {
-        if (values.has(fieldKey)) {
-            return normalizeRuleValue(values.get(fieldKey));
-        }
+    function scopedValue(card) {
+        const controls = scopedControls(card);
+        const radio = controls.find(el => el.type === 'radio');
+        if (radio) return controls.find(el => el.type === 'radio' && el.checked)?.value || '';
+        return controls[0]?.value?.trim() || '';
+    }
 
-        if (Object.prototype.hasOwnProperty.call(context.direct, fieldKey)) {
-            return normalizeRuleValue(context.direct[fieldKey]);
+    function setScopedValue(card, f, value) {
+        const controls = scopedControls(card);
+        const radios = controls.filter(el => el.type === 'radio');
+        if (radios.length) {
+            // Never inherit checked states from the Place markup.
+            for (const radio of radios) radio.checked = radio.value === value;
+            return;
         }
-
-        if (Object.prototype.hasOwnProperty.call(context.inherited, fieldKey)) {
-            return normalizeRuleValue(context.inherited[fieldKey]?.value);
+        const control = controls[0];
+        if (!control) return;
+        if (control.tagName === 'SELECT') {
+            for (const option of control.querySelectorAll('[data-scoped-recorded-option]')) {
+                option.remove();
+            }
+            if (value && ![...control.options].some(option => option.value === value)) {
+                // Do not round imported measurements to a dropdown increment
+                // or silently replace a historical stored option.
+                const numericFeet = f.key.endsWith('_feet')
+                    && /^-?\d+(?:\.\d+)?$/.test(value);
+                const label = numericFeet ? `${Number(value)} ft` : `Recorded: ${value}`;
+                const option = new Option(label, value);
+                option.dataset.scopedRecordedOption = '1';
+                control.append(option);
+            }
         }
-
-        return '';
+        control.value = value;
     }
 
     function render() {
         questions.replaceChildren();
+        absentTemplates.clear();
         const sections = new Map();
         const targetId = activeTarget.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-        // The PHP registry has already applied the canonical field order.
-        // Use its final section and group metadata without re-sorting fields.
+        // Registry controls eligible fields, scopes and order. PHP-rendered
+        // field markup supplies labels, options, help and input semantics.
         for (const f of fields.filter(eligible)) {
             const sectionKey = f.layout_section || 'legacy_review';
             const groupKey = f.layout_group || 'review';
@@ -138,7 +172,6 @@
             }
 
             let grid = sectionState.groups.get(groupKey);
-
             if (!grid) {
                 const group = make('section', 'place-report-flow-group');
                 group.append(make(
@@ -152,84 +185,128 @@
                 sectionState.groups.set(groupKey, grid);
             }
 
-            const card = make('div', 'contribution-field');
-            card.dataset.scopedQuestion = f.key;
-            card.append(make('span', 'place-report-field-label', f.label));
-
-            const options = optionValues(f);
-            let control;
-
-            if (options) {
-                control = make('select', 'contribution-input');
-                control.append(new Option('Not answered', ''));
-                for (const [value, label] of Object.entries(options)) {
-                    control.append(new Option(String(label), String(value)));
-                }
-                if (f.unknown) control.append(new Option('Unknown', unknown));
-            } else if (f.type === 'textarea') {
-                control = make('textarea', 'contribution-input');
-                control.rows = 3;
-            } else {
-                control = make('input', 'contribution-input');
-                control.type = ['number', 'date', 'url'].includes(f.type) ? f.type : 'text';
+            const template = sharedFieldTemplates.get(f.key);
+            if (!template) {
+                // No synthetic replacement. A missing canonical PHP field is
+                // a coverage defect to fix, not a reason to invent another UI.
+                absentTemplates.add(f.key);
+                const warning = make('p', 'place-report-answer-context',
+                    `${f.label}: shared field markup missing. This question cannot be edited until the shared form is corrected.`);
+                grid.append(warning);
+                continue;
             }
 
-            control.dataset.scopedControl = f.key;
-            control.id = `scoped-answer-${targetId}-${f.key}`;
-            control.setAttribute('aria-label', f.label);
-            control.setAttribute('autocomplete', 'off');
-            control.value = values.get(f.key) ?? '';
+            const card = template.cloneNode(true);
+            card.dataset.scopedQuestion = f.key;
+            // Scoped submissions use scoped_answers_json exclusively.
+            // Never send cloned Place fields as extra POST parameters.
+            for (const el of card.querySelectorAll('[name]')) el.removeAttribute('name');
+            for (const el of card.querySelectorAll('[required]')) el.removeAttribute('required');
+            for (const el of card.querySelectorAll('input[type="hidden"]')) el.remove();
+            for (const el of card.querySelectorAll('[data-location-field]')) el.removeAttribute('data-location-field');
 
-            // When changing Sites, the browser can dispatch a final change
-            // event from the outgoing input as its DOM node is removed.
-            // Never apply that event to the newly selected Site's draft.
-            const controlTargetKey = activeTarget;
-            const changed = () => {
-                if (controlTargetKey !== activeTarget) return;
-
-                const value = control.value.trim();
-                const original = recordedValue(f);
-
-                // If the field was not changed, it is never an update proposal.
-                // The same rule holds for values inherited from Place or Area.
-                if (value && value !== original) {
-                    values.set(f.key, value);
-                } else {
-                    values.delete(f.key);
+            // Canonical helpers have IDs used by aria-controls; make cloned
+            // IDs unique across the Place form, Areas, and Sites.
+            for (const el of card.querySelectorAll('[id]')) {
+                const oldId = el.id;
+                const newId = `scoped-${targetId}-${oldId}`;
+                el.id = newId;
+                for (const target of card.querySelectorAll('[aria-controls]')) {
+                    if (target.getAttribute('aria-controls') === oldId) {
+                        target.setAttribute('aria-controls', newId);
+                    }
                 }
+                for (const toggle of card.querySelectorAll('[data-place-report-help-toggle]')) {
+                    if (toggle.dataset.placeReportHelpToggle === oldId) {
+                        toggle.dataset.placeReportHelpToggle = newId;
+                    }
+                }
+            }
 
+            // Help icons are wired at initial page load in the Place form.
+            // Cloned Area/Site fields are created later, so bind the same
+            // expandable helper behavior to each scoped clone.
+            for (const toggle of card.querySelectorAll('[data-place-report-help-toggle]')) {
+                const panelId = toggle.dataset.placeReportHelpToggle || '';
+                const panel = [...card.querySelectorAll('[id]')]
+                    .find(element => element.id === panelId);
+                if (!panel) continue;
+                const toggleHelp = event => {
+                    if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const opening = !panel.classList.contains('is-open');
+                    for (const other of questions.querySelectorAll('[data-place-report-help-panel].is-open')) {
+                        other.classList.remove('is-open');
+                    }
+                    panel.classList.toggle('is-open', opening);
+                    toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+                    toggle.closest('.place-report-field-help')?.classList.toggle(
+                        'is-align-right', toggle.getBoundingClientRect().left > window.innerWidth / 2
+                    );
+                };
+                toggle.addEventListener('click', toggleHelp);
+                toggle.addEventListener('keydown', toggleHelp);
+            }
+
+            const controls = scopedControls(card);
+            if (!controls.length) {
+                absentTemplates.add(f.key);
+                grid.append(make('p', 'place-report-answer-context',
+                    `${f.label}: shared control unavailable for this target.`));
+                continue;
+            }
+            for (const control of controls) {
+                control.disabled = false;
+                control.setAttribute('autocomplete', 'off');
+                if (control.type === 'radio') control.checked = false;
+                else control.value = '';
+            }
+
+            // A changed field is sent as a proposal, not an edit to the
+            // inherited Place/Area value or the published record.
+            const controlTargetKey = activeTarget;
+            const changed = event => {
+                if (controlTargetKey !== activeTarget) return;
+                if (event?.target?.type === 'radio' && event.target.checked) {
+                    for (const other of scopedControls(card)) {
+                        if (other.type === 'radio' && other !== event.target) other.checked = false;
+                    }
+                }
+                const value = scopedValue(card);
+                const original = recordedValue(f);
+                if (value && value !== original) values.set(f.key, value);
+                else values.delete(f.key);
                 draftsByTarget.set(activeTarget, new Map(values));
                 sync();
                 applyDependencies();
             };
-
-            control.addEventListener('change', changed);
-            control.addEventListener('input', changed);
-            card.append(control);
+            for (const control of controls) {
+                control.addEventListener('change', changed);
+                if (control.type !== 'radio') control.addEventListener('input', changed);
+            }
+            for (const clear of card.querySelectorAll('[data-place-report-clear]')) {
+                clear.addEventListener('click', event => {
+                    event.preventDefault();
+                    for (const radio of scopedControls(card)) {
+                        if (radio.type === 'radio') radio.checked = false;
+                    }
+                    changed();
+                    showExisting();
+                });
+            }
 
             const existing = make('small', 'place-report-answer-context');
             existing.dataset.scopedExisting = f.key;
             card.append(existing);
-
             grid.append(card);
         }
 
         showExisting();
         applyDependencies();
-    }
-
-    function valueLabel(f, value) {
-        if (value === '__LLAMA_UNKNOWN__') return 'Unknown';
-        if (value === null || value === undefined) return 'Not recorded';
-
-        const options = optionValues(f);
-
-        return options?.[String(value)]
-            ?? (
-                typeof value === 'object'
-                    ? JSON.stringify(value)
-                    : String(value)
-            );
+        if (absentTemplates.size) {
+            status.textContent = `Shared form is missing ${absentTemplates.size} field template(s). Updates for those fields are unavailable.`;
+        }
     }
 
     function normalizedControlValue(f, value) {
@@ -280,38 +357,13 @@
             const card = [...questions.querySelectorAll('[data-scoped-question]')]
                 .find(el => el.dataset.scopedQuestion === f.key);
             if (!card) continue;
-
-            const control = card.querySelector('[data-scoped-control]');
             const note = card.querySelector('[data-scoped-existing]');
-            if (!control || !note) continue;
+            if (!note) continue;
 
-            // A selected Site has its own draft. Otherwise display the actual
-            // recorded Site answer, falling back to permitted inherited facts.
-            // Displaying an answer does NOT add it to submitted changes.
             const visible = values.has(f.key)
                 ? normalizedControlValue(f, values.get(f.key))
                 : recordedValue(f);
-
-            if (control.tagName === 'SELECT') {
-                for (const option of control.querySelectorAll('[data-scoped-recorded-option]')) {
-                    option.remove();
-                }
-                // Never silently display "Not answered" when the stored value
-                // is not one of this field's current options. Retain it visibly
-                // for review without manufacturing a new registry option.
-                if (visible && ![...control.options].some(option => option.value === visible)) {
-                    // An imported exact measurement can fall between the
-                    // manually selectable increments. Show its true value in
-                    // the existing select without implying it was rounded.
-                    const measuredFeet = f.key.endsWith('_feet')
-                        && /^-?\d+(?:\.\d+)?$/.test(visible);
-                    const label = measuredFeet ? `${Number(visible)} ft` : visible;
-                    const option = new Option(label, visible);
-                    option.dataset.scopedRecordedOption = '1';
-                    control.append(option);
-                }
-            }
-            control.value = visible;
+            setScopedValue(card, f, visible);
 
             if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
                 note.textContent = `Recorded for this ${scope.value}`;
@@ -319,6 +371,11 @@
                 note.textContent = `From ${context.inherited[f.key]?.from || 'parent'}`;
             } else {
                 note.textContent = 'No recorded answer';
+            }
+            if (visible && scopedControls(card).some(el => el.type === 'radio')
+                && !scopedControls(card).some(el => el.type === 'radio' && el.checked)) {
+                // Preserve legacy data visibly without inventing a radio choice.
+                note.textContent += ` · Recorded: ${visible}`;
             }
         }
     }
@@ -362,40 +419,6 @@
         }
     }
 
-    function matchesRule(rule) {
-        if (!rule || typeof rule !== 'object') return true;
-
-        if (rule.operator === 'any') {
-            return Array.isArray(rule.rules) && rule.rules.some(matchesRule);
-        }
-
-        if (rule.operator === 'all') {
-            return Array.isArray(rule.rules) && rule.rules.every(matchesRule);
-        }
-
-        const actual = effectiveRuleValue(rule.field);
-
-        if (rule.operator === 'equals') {
-            return !Array.isArray(actual)
-                && actual === String(rule.value);
-        }
-
-        if (rule.operator === 'in') {
-            if (!Array.isArray(rule.value)) return false;
-
-            const allowed = rule.value.map(String);
-
-            if (Array.isArray(actual)) {
-                return actual.some(value => allowed.includes(String(value)));
-            }
-
-            return allowed.includes(actual);
-        }
-
-        // Do not guess at unrecognized applicability operators.
-        return true;
-    }
-
     function applyDependencies() {
         // Issue #5 reconciliation mode: expose all eligible scoped questions.
         // Keep eligibility, target ownership, and answer persistence unchanged.
@@ -407,8 +430,7 @@
 
             card.hidden = false;
 
-            const input = card.querySelector('[data-scoped-control]');
-            if (input) input.disabled = false;
+            for (const input of scopedControls(card)) input.disabled = false;
         }
 
         sync();
@@ -516,6 +538,9 @@
                     : `Updating: ${t.label}`
             )
             : 'Updating: Entire Place';
+        if (scoped && absentTemplates.size) {
+            status.textContent = `${absentTemplates.size} shared question control(s) could not be loaded. Submit is disabled until they are corrected.`;
+        }
     }
 
     search.addEventListener('change', update);
@@ -530,6 +555,11 @@
         }
 
         if (t.scope !== 'place') {
+            if (absentTemplates.size) {
+                event.preventDefault();
+                status.textContent = 'The shared form has missing controls. Please reload or report the missing fields before submitting.';
+                return;
+            }
             sync();
 
             const count = JSON.parse(queueInput.value).length;
