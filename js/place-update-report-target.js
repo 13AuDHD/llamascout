@@ -180,7 +180,13 @@
             control.setAttribute('autocomplete', 'off');
             control.value = values.get(f.key) ?? '';
 
+            // When changing Sites, the browser can dispatch a final change
+            // event from the outgoing input as its DOM node is removed.
+            // Never apply that event to the newly selected Site's draft.
+            const controlTargetKey = activeTarget;
             const changed = () => {
+                if (controlTargetKey !== activeTarget) return;
+
                 const value = control.value.trim();
 
                 if (value) {
