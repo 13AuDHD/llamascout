@@ -18,6 +18,68 @@
     const map = handle.map;
     const siteMarkers = new Map();
 
+    const focusSite = (id, scroll = false) => {
+        const marker = siteMarkers.get(Number(id));
+        if (!marker) {
+            return false;
+        }
+
+        if (scroll) {
+            document.getElementById('place-map-heading')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }
+
+        map.setView(marker.getLatLng(), Math.min(18, map.getMaxZoom()), {
+            animate: false,
+        });
+        marker.openPopup();
+        return true;
+    };
+
+    /*
+     * Site selection is owned by the existing Site browser. It updates its
+     * selected card and Scout Report before the click reaches this section.
+     * Imported GPS points have no map_feature_id, so do not let the older
+     * polygon-only map handler replace their position with the Place center.
+     * Only an explicit View on map click scrolls the page.
+     */
+    const stayOptions = document.querySelector('[data-stay-options]');
+    stayOptions?.addEventListener('click', (event) => {
+        const row = event.target instanceof Element
+            ? event.target.closest('[data-campsite-id]') : null;
+        if (!row || !stayOptions.contains(row)) {
+            return;
+        }
+
+        const id = Number(row.dataset.campsiteId);
+        if (!siteMarkers.has(id)) {
+            return;
+        }
+
+        // The site button's own selection handler has already run.
+        // Stop the legacy Area/map-feature listener for imported GPS Sites.
+        event.stopImmediatePropagation();
+
+        const context = document.querySelector('[data-selected-campsite-context]');
+        if (context) {
+            const label = context.querySelector('span');
+            const selectedName = context.querySelector('strong');
+            if (label) {
+                label.textContent = 'Viewing Site: ';
+            }
+            if (selectedName) {
+                selectedName.textContent = row.querySelector(
+                    '.place-campsite-row-name'
+                )?.textContent.trim() || `Site ${id}`;
+            }
+        }
+
+        // Change the marker in place. Never scroll to the map on Site clicks.
+        focusSite(id);
+    });
+
     /*
      * "View on map" should focus the currently selected campsite, not the
      * campground center. Coordinates and marker identity come from the same
@@ -49,24 +111,13 @@
         const selected = document.querySelector(
             '[data-stay-options] [data-campsite-id].is-selected'
         );
-        const marker = siteMarkers.get(Number(selected?.dataset.campsiteId));
-        if (!marker) {
-            // An unlocated Site still uses the existing fallback behavior.
+        if (!siteMarkers.has(Number(selected?.dataset.campsiteId))) {
             return;
         }
 
         event.preventDefault();
-        // Suppress the old focus handler on the Scout Report context link;
-        // it only knows map_feature_id, not imported Site GPS points.
         event.stopImmediatePropagation();
-
-        const heading = document.getElementById('place-map-heading');
-        heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        map.setView(marker.getLatLng(), Math.min(18, map.getMaxZoom()), {
-            animate: true,
-        });
-        marker.openPopup();
+        focusSite(selected.dataset.campsiteId, true);
     }, true);
 
     const loadPoints = async () => {
