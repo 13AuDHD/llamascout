@@ -159,6 +159,17 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
+/*
+ * A parent workflow may render submission metadata in its own section.
+ * Keep those fields in the canonical registry and browser schema, but do
+ * not render a second control with the same name in this question area.
+ */
+$placeReportExternalFieldLookup =
+    array_fill_keys(
+        (array) ($placeReportExternalFieldKeys ?? []),
+        true
+    );
+
 $placeReportRequiredFields =
     is_array(
         $placeReportRequiredFields
@@ -1130,6 +1141,10 @@ $reportMainLabels = [
 $placeReportVisibleFields = [];
 
 foreach ($placeReportFields as $fieldKey => $field) {
+    if (isset($placeReportExternalFieldLookup[$fieldKey])) {
+        continue;
+    }
+
     $legacySection = (string) (
         $field['display_section']
         ?? $field['section']
@@ -1465,3 +1480,4 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 <script
     src="https://llamascout.com/js/place-report-form/recovery.js"
 ></script>
+
