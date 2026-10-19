@@ -5,11 +5,14 @@ declare(strict_types=1);
 /**
  * Issue #6 / Phase 1B: Read-only NPS ↔ RIDB identity audit.
  *
- * No writes, auto-linking, import, normalization, or published Place changes.
- * Identity candidates are NEVER approved automatically.
+ * Comparison is read-only; one explicit admin-only action can cache an
+ * official RIDB facility in the dedicated RIDB source database.
+ * No Place writes, auto-linking, or publishing. Identity candidates are
+ * NEVER approved automatically.
  */
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/nps.php';
+require_once dirname(__DIR__) . '/app/ridb.php';
 
 $adminUser = moderation_require_admin();
 
@@ -334,9 +337,34 @@ function llama_nps_match_audit(PDO $nps, PDO $ridb, ?PDO $main): array
     return ['rows' => $rows, 'checked' => $seen, 'link_notice' => $linkNotice];
 }
 
+/**
+ * Identify source IDs found in NPS reservation links but not yet available
+ * in the local RIDB facility cache. No fuzzy matching is used here.
+ */
+function llama_nps_match_uncached_ridb_ids(PDO $ridb, array $audit): array
+{
+    $check = $ridb->prepare(
+        'SELECT 1 FROM ridb_facilities WHERE ridb_facility_id = ? LIMIT 1'
+    );
+    $missing = [];
+    foreach ((array) ($audit['rows'] ?? []) as $row) {
+        $id = trim((string) ($row['reservation_id'] ?? ''));
+        if (!preg_match('/^[0-9]{1,16}$/D', $id) || isset($missing[$id])) {
+            continue;
+        }
+        $check->execute([$id]);
+        if ($check->fetchColumn() === false) {
+            $missing[$id] = (string) ($row['name'] ?? 'Unnamed NPS campground');
+        }
+    }
+    return $missing;
+}
+
 $error = '';
 $ridbError = '';
 $npsError = '';
+$sourceNotice = '';
+$missingFacilityIds = [];
 $data = ['rows' => [], 'checked' => 0, 'link_notice' => ''];
 $ridbReady = false;
 $npsReady = false;
@@ -373,6 +401,47 @@ if ($npsReady && $ridbReady) {
             // The RIDB/NPS comparison remains available independently.
         }
         $data = llama_nps_match_audit($nps, $ridb, $main);
+        $missingFacilityIds = llama_nps_match_uncached_ridb_ids($ridb, $data);
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+            && ($_POST['action'] ?? '') === 'fetch_ridb_facility'
+        ) {
+            if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+                throw new RuntimeException('Your session token expired. Reload and try again.');
+            }
+            $requestedId = trim((string) ($_POST['ridb_facility_id'] ?? ''));
+            if (!array_key_exists($requestedId, $missingFacilityIds)) {
+                throw new InvalidArgumentException(
+                    'Choose a Recreation.gov facility ID from the uncached list.'
+                );
+            }
+
+            // This admin-triggered request reads a single official facility.
+            // It writes ONLY to the existing dedicated RIDB source cache.
+            // Published Places, campsite records, Scout facts, and source
+            // linkages are intentionally not modified.
+            $response = llama_ridb_facility($requestedId);
+            $record = llama_ridb_response_record($response);
+            $returnedId = trim((string) llama_ridb_record_value(
+                $record, ['FacilityID', 'facilityID', 'facility_id'], ''
+            ));
+            if ($returnedId !== $requestedId) {
+                throw new RuntimeException(
+                    'RIDB did not return the requested facility ID. Nothing was cached.'
+                );
+            }
+            $count = llama_ridb_store_facilities($ridb, [$record]);
+            if ($count !== 1) {
+                throw new RuntimeException(
+                    'RIDB did not confirm the facility cache update.'
+                );
+            }
+            $sourceNotice = 'RIDB facility ' . $requestedId
+                . ' was added to the source cache. No Place was created or modified.';
+            // Re-evaluate the report using the newly cached official record.
+            $data = llama_nps_match_audit($nps, $ridb, $main);
+            $missingFacilityIds = llama_nps_match_uncached_ridb_ids($ridb, $data);
+        }
     } catch (Throwable $exception) {
         // Admin-only page. Show the actual failed operation rather than a
         // misleading blanket assertion that the schemas are missing.
@@ -430,12 +499,13 @@ require __DIR__ . '/_header.php';
             <p>Issue #6 — Phase 1B</p>
             <h2>NPS / RIDB campground matching</h2>
         </div>
-        <span class="admin-status-pill">Read-only audit</span>
+        <span class="admin-status-pill">Source comparison</span>
     </header>
     <p>
-        Compare the NPS campground records already cached with existing RIDB
-        facilities. Names, coordinates, and Recreation.gov identifiers provide
-        candidates only. No records are merged, approved, or published here.
+        Compare cached NPS campground records with RIDB facilities. Names,
+        coordinates, and Recreation.gov identifiers provide candidates only.
+        You may cache one missing RIDB source record at a time for inspection.
+        No published Places are created, merged, approved, or modified here.
     </p>
     <div class="admin-user-form-actions">
         <a class="admin-button is-secondary" href="/nps.php">NPS source explorer</a>
@@ -445,6 +515,14 @@ require __DIR__ . '/_header.php';
         <?php endif; ?>
     </div>
 </section>
+
+<?php if ($sourceNotice !== ''): ?>
+<section class="admin-panel">
+    <div class="admin-user-notice" role="status">
+        <?= moderation_e($sourceNotice) ?>
+    </div>
+</section>
+<?php endif; ?>
 
 <?php foreach ([$error, $npsError, $ridbError, $data['link_notice']] as $notice): ?>
     <?php if ($notice !== ''): ?>
@@ -465,10 +543,37 @@ require __DIR__ . '/_header.php';
         </div>
     </header>
     <p>
-        The comparison uses only existing source-cache records. A missing RIDB
-        candidate may mean that the facility has not been synchronized or that
-        its name differs. This audit does not attempt live RIDB downloads.
+        The comparison reads the existing RIDB source cache. Uncached
+        Recreation.gov facility IDs can be checked individually against the
+        official RIDB API using the controlled action below.
     </p>
+    <?php if ($missingFacilityIds): ?>
+        <form method="post" action="/nps-ridb-matches.php">
+            <input type="hidden" name="csrf_token"
+                value="<?= moderation_e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="fetch_ridb_facility">
+            <label>
+                <span>Verify one uncached Recreation.gov facility ID</span>
+                <select name="ridb_facility_id" required>
+                    <?php foreach ($missingFacilityIds as $id => $name): ?>
+                        <option value="<?= moderation_e((string) $id) ?>">
+                            <?= moderation_e($name . ' — ' . $id) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <div class="admin-user-form-actions">
+                <button class="admin-button" type="submit">
+                    Fetch one facility into RIDB source cache
+                </button>
+            </div>
+            <p>
+                Imports one official RIDB facility record into the dedicated
+                RIDB source cache. Does not publish or link a Llama Scout Place.
+                Repeat only for the IDs you want to inspect.
+            </p>
+        </form>
+    <?php endif; ?>
     <?php if (!$data['rows']): ?>
         <div class="admin-empty-state">
             <p>No cached NPS campground records were found.</p>
