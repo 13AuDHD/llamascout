@@ -6,6 +6,49 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/nps.php';
 
 $adminUser = moderation_require_admin();
+// One short source-only request per batch. The browser drives continuation.
+$importAction = (string) ($_POST['action'] ?? '');
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && in_array($importAction, ['import_start', 'import_next', 'import_pause', 'import_status'], true)) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    try {
+        if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            throw new RuntimeException('Your session expired. Reload this page and resume the import.');
+        }
+        // Do not hold the login session lock while an NPS request is in flight.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $sourceDb = nps_db();
+        $result = match ($importAction) {
+            'import_start' => llama_nps_import_start($sourceDb, ($_POST['refresh'] ?? '') === '1'),
+            'import_next' => llama_nps_import_next($sourceDb),
+            'import_pause' => llama_nps_import_pause($sourceDb),
+            default => ['summary' => llama_nps_import_summary($sourceDb)],
+        };
+        if (isset($result['summary']) && !$result['summary']['pending']) {
+            $result['counts'] = llama_nps_cache_summary($sourceDb);
+        }
+        echo json_encode(['ok' => true] + $result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    } catch (Throwable $exception) {
+        if (http_response_code() < 400) {
+            http_response_code(500);
+        }
+        $message = $exception instanceof PDOException
+            ? 'The NPS import database could not be prepared or read. Check the NPS connection, source schema, and permission to create nps_import_progress. Existing records and saved progress are retained.'
+            : $exception->getMessage();
+        if (function_exists('llama_log_caught_exception')) {
+            $reference = llama_log_caught_exception($exception, 'admin.nps_source_import_control',
+                ['action' => $importAction], [RuntimeException::class]);
+            $message = llama_error_message_with_reference($message, $reference);
+        }
+        echo json_encode(['ok' => false, 'message' => $message], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+    exit;
+}
+
 $adminPageTitle = 'National Park Service';
 $adminPageEyebrow = 'Reference Data';
 $adminActiveNav = 'reference-data';
@@ -25,9 +68,6 @@ $limit = max(1, min(10, (int) (
 if (!isset($resources[$resource])) {
     $resource = 'campgrounds';
 }
-if (!isset($parks[$parkCode])) {
-    $parkCode = 'yose';
-}
 
 $dbError = '';
 $error = '';
@@ -45,11 +85,16 @@ try {
     try {
         $npsDatabase->query('SELECT record_id FROM nps_raw_records LIMIT 0');
         $schemaReady = true;
+        $parks = llama_nps_available_parks($npsDatabase);
     } catch (Throwable) {
         $dbError = 'NPS database is connected. Run nps-schema.sql in this database before importing records.';
     }
 } catch (Throwable) {
     $dbError = 'NPS database connection failed. Check the nps_database entry in private configuration.';
+}
+
+if (!isset($parks[$parkCode])) {
+    $parkCode = 'yose';
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -103,6 +148,21 @@ if ($schemaReady && $npsDatabase instanceof PDO) {
     }
 }
 
+$importSummary = ['resources' => [], 'complete' => false, 'pending' => false, 'errors' => false];
+foreach ($resources as $type => $label) {
+    $importSummary['resources'][] = ['resource' => $type, 'label' => $label,
+        'status' => 'not_started', 'processed' => 0, 'total' => null, 'error' => ''];
+}
+if ($schemaReady && $npsDatabase instanceof PDO) {
+    try {
+        $importSummary = llama_nps_import_summary($npsDatabase);
+    } catch (PDOException) {
+        // The progress table is created by the first explicit Start action.
+    }
+}
+$importStatuses = ['not_started' => 'Not started', 'pending' => 'Ready to resume',
+    'paused' => 'Paused', 'error' => 'Needs retry', 'complete' => 'Complete'];
+
 $viewQuery = http_build_query([
     'resource' => $resource,
     'park_code' => $parkCode,
@@ -139,7 +199,7 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Phase 1B — Official Source Audit</p>
+            <p>Official NPS source data</p>
             <h2>National Park Service</h2>
         </div>
         <span class="admin-status-pill">
@@ -148,15 +208,60 @@ require __DIR__ . '/_header.php';
     </header>
 
     <p>
-        Inspect official NPS information independently of RIDB and published Llama
-        Scout records. Pilot imports preserve original NPS JSON only. They do not
-        create Places, merge records, alter official facts, or award Scout points.
+        Import and inspect original NPS information in the separate NPS source
+        database, including its identifiers, source dates, and full record contents.
     </p>
 
     <div class="admin-user-form-actions">
         <a class="admin-button is-secondary" href="/ridb.php">RIDB control center</a>
         <a class="admin-button is-secondary" href="/ridb-schema.php">RIDB schema explorer</a>
     </div>
+</section>
+
+<section class="admin-panel" data-nps-import data-endpoint="/nps.php"
+    data-summary="<?= moderation_e(json_encode($importSummary, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) ?>">
+    <header class="admin-panel-header">
+        <div>
+            <p>All NPS parks</p>
+            <h2>National source import</h2>
+        </div>
+    </header>
+    <p>
+        Import all parks, campgrounds, alerts and closures, fees and passes,
+        parking lots, and road events. Existing source records are refreshed
+        using their saved identities.
+    </p>
+    <p>Keep this page open while importing. You can pause and resume from the last saved batch.</p>
+    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+    <div class="admin-user-form-actions">
+        <button class="admin-button" type="button" data-nps-start <?= $schemaReady ? '' : 'disabled' ?>>
+            <?= $importSummary['complete'] ? 'Refresh source records' : 'Start / resume national import' ?>
+        </button>
+        <button class="admin-button is-secondary" type="button" data-nps-pause disabled>Pause</button>
+    </div>
+    <p data-nps-import-message role="status" aria-live="polite">
+        <?= $importSummary['complete'] ? 'The last national import completed for all six record types.' : 'Ready to import. Saved progress is shown below.' ?>
+    </p>
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead><tr><th>Record type</th><th>Records read</th><th>Progress</th><th>Status</th></tr></thead>
+            <tbody>
+            <?php foreach ($importSummary['resources'] as $item): ?>
+                <tr data-nps-resource="<?= moderation_e($item['resource']) ?>">
+                    <td><?= moderation_e($item['label']) ?></td>
+                    <td data-nps-count><?= number_format($item['processed']) ?> / <?= $item['total'] === null ? 'not fetched yet' : number_format($item['total']) ?></td>
+                    <td><progress data-nps-progress
+                        aria-label="<?= moderation_e($item['label']) ?> import progress"
+                        value="<?= $item['status'] === 'complete' ? max(1, $item['processed']) : $item['processed'] ?>"
+                        max="<?= max(1, $item['total'] ?? $item['processed']) ?>"></progress></td>
+                    <td><span data-nps-state><?= moderation_e($importStatuses[$item['status']] ?? $item['status']) ?></span>
+                        <p data-nps-error><?= moderation_e($item['error']) ?></p></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <noscript><p>JavaScript is required to continue importing batches automatically.</p></noscript>
 </section>
 
 <section class="admin-panel">
@@ -170,7 +275,7 @@ require __DIR__ . '/_header.php';
     <div class="admin-integration-summary">
         <?php foreach ($counts as $type => $count): ?>
             <div>
-                <strong><?= number_format($count) ?></strong>
+                <strong data-nps-cache-resource="<?= moderation_e($type) ?>"><?= number_format($count) ?></strong>
                 <span><?= moderation_e($resources[$type]) ?></span>
             </div>
         <?php endforeach; ?>
@@ -180,7 +285,7 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p>Manual, limited sampling</p>
+            <p>Inspect a small sample</p>
             <h2>Connection and source records</h2>
         </div>
     </header>
@@ -259,7 +364,7 @@ require __DIR__ . '/_header.php';
                     <?php foreach ($preview['records'] as $entry): ?>
                         <tr>
                             <td><?= moderation_e((string) ($entry['name'] ?? $entry['title'] ?? $entry['fullName'] ?? 'Unnamed')) ?></td>
-                            <td><?= moderation_e(llama_nps_record_id($entry)) ?></td>
+                            <td><?= moderation_e(llama_nps_record_id($entry, $resource)) ?></td>
                             <td><?= moderation_e((string) ($entry['parkCode'] ?? $parkCode)) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -342,4 +447,6 @@ require __DIR__ . '/_header.php';
     <?php endif; ?>
 </section>
 
+<script src="https://llamascout.com/js/admin-nps-import.js" defer></script>
 <?php require __DIR__ . '/_footer.php'; ?>
+
