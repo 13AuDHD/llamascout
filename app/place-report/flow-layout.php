@@ -53,7 +53,6 @@ function llama_place_report_layout_assignments(): array
             'road_overall_difficulty', 'road_stress', 'rocks',
             'washboards', 'potholes', 'mud_risk', 'steep_grades',
             'drop_off_exposure', 'water_crossings', 'downed_tree_risk',
-            'warning_possible_downed_trees',
         ],
 
         'getting_there:vehicle_access' => [
@@ -70,9 +69,10 @@ function llama_place_report_layout_assignments(): array
             'approach_closure_month', 'approach_closure_day',
             'approach_reopening_month', 'approach_reopening_day',
             'approach_winter_maintenance', 'approach_snow_chains',
-            'approach_seasonal_restrictions', 'approach_road_conditions_url',
+            'approach_seasonal_restrictions',
             'winter_access', 'seasonal_closure', 'seasonal_access_note',
             'snow_risk', 'mud_season_risk', 'monsoon_risk',
+            'approach_road_conditions_url',
         ],
 
         'getting_there:access_restrictions' => [
@@ -103,19 +103,20 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:reservations_pricing' => [
+            // Price is decision-critical. Show all fees before reference URLs.
+            'fee',
+            'entrance_facility_fee',
+            'parking_fee',
             'reservation_required',
-            'reservation_url',
             'reservation_fee',
             'membership_required',
-            'membership_url',
             'membership_fee',
             'check_in_required',
             'check_in_begins',
             'check_out_required',
             'checkout_ends',
-            'fee',
-            'entrance_facility_fee',
-            'parking_fee',
+            'reservation_url',
+            'membership_url',
         ],
 
         'place:shared_amenities' => [
@@ -198,11 +199,7 @@ function llama_place_report_layout_assignments(): array
             'collecting_firewood',
             'place_charcoal_grills_allowed',
             'place_propane_fire_pits_allowed',
-            'current_fire_restrictions_url',
             'fire_activities_conditional_details',
-            'fire_activity_permit_url',
-            'camping_permit_url',
-            'overnight_vehicle_tent_permit_url',
             'food_storage_required',
             'existing_sites_encouraged',
             'pack_it_in_pack_it_out',
@@ -214,6 +211,10 @@ function llama_place_report_layout_assignments(): array
             'drone_use_legal',
             'target_shooting_allowed',
             'place_additional_rules',
+            'current_fire_restrictions_url',
+            'fire_activity_permit_url',
+            'camping_permit_url',
+            'overnight_vehicle_tent_permit_url',
         ],
 
         'place:operating_closures' => [
@@ -233,9 +234,9 @@ function llama_place_report_layout_assignments(): array
             'place_closure_reason',
             'place_closure_began',
             'place_expected_reopening',
-            'place_closure_source_url',
             'place_closure_review_date',
             'place_closure_notes',
+            'place_closure_source_url',
         ],
 
         'site:selection_type' => [
@@ -314,6 +315,7 @@ function llama_place_report_layout_assignments(): array
 
         'site:safety_hazards' => [
             'felt_safe_daytime', 'felt_safe_nighttime',
+            'warning_possible_downed_trees',
             'flash_flood_risk', 'wildfire_risk', 'fall_hazard',
             'cliff_exposure', 'rockfall_risk', 'wildlife_risk',
             'traffic_hazard', 'emergency_access',
