@@ -53,6 +53,7 @@
                 const point = L.circleMarker([latitude, longitude], {
                     radius: 7,
                     className: 'place-map-feature place-map-feature--camping-site',
+                    pane: 'markerPane',
                     keyboard: true,
                 });
 
