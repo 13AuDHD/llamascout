@@ -124,6 +124,8 @@ $placeMapEditorUrl =
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 >
 
+<link rel="stylesheet" href="/css/site/features/place-map-site-popup.css">
+
 <section
     class="place-map-section"
     aria-labelledby="place-map-heading"
