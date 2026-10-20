@@ -109,6 +109,43 @@ $placeMapFeaturesApi =
         )
     );
 
+$placeExplorerCategory = in_array(
+    (string) ($place['type'] ?? ''),
+    [
+        'developed-campground', 'dispersed-camping', 'camping-area',
+        'rv-park-resort', 'membership-host', 'private-property', 'fairgrounds',
+    ],
+    true
+) ? 'camping' : (
+    in_array(
+        (string) ($place['type'] ?? ''),
+        [
+            'rest-area', 'public-parking', 'travel-center', 'truck-stop',
+            'retail-parking', 'restaurant-parking', 'casino-parking',
+            'hospital-parking', 'medical-office-parking', 'church-parking', 'street-parking',
+            'other-parking', 'vehicle-pulloff',
+        ],
+        true
+    ) ? 'parking' : 'other'
+);
+$placeExplorerPhoto = !empty($heroImage['src'])
+    ? place_image_url((string) $heroImage['src'])
+    : '';
+$placeExplorerSiteCount = 0;
+if ($placeMapHasLayerAccess) {
+    try {
+        $countQuery = db()->prepare(
+            'SELECT COUNT(*) FROM place_campsites WHERE place_id = ? AND is_active = 1'
+        );
+        $countQuery->execute([(int) ($place['id'] ?? 0)]);
+        $placeExplorerSiteCount = (int) $countQuery->fetchColumn();
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'place.explorer.site_count', [
+            'place_id' => (int) ($place['id'] ?? 0),
+        ]);
+    }
+}
+
 $placeMapEditorUrl =
     '/place-map-editor.php?slug='
     . rawurlencode(
@@ -125,6 +162,7 @@ $placeMapEditorUrl =
 >
 
 <link rel="stylesheet" href="/css/site/features/place-map-site-popup.css">
+<link rel="stylesheet" href="/css/site/features/place-explorer.css">
 
 <section
     class="place-map-section"
@@ -168,6 +206,10 @@ $placeMapEditorUrl =
     <div
         class="map-card place-map-card"
         data-map-member="<?= $placeMapHasLayerAccess ? '1' : '0' ?>"
+        data-explorer-name="<?= place_h((string) ($place['name'] ?? '')) ?>"
+        data-explorer-category="<?= place_h($placeExplorerCategory) ?>"
+        data-explorer-photo="<?= place_h($placeExplorerPhoto) ?>"
+        data-explorer-site-count="<?= $placeExplorerSiteCount ?>"
         data-map-scoped="<?= $placeMapIsScopedContributor ? '1' : '0' ?>"
         data-map-light-tile="<?= place_h(
             (string) (
@@ -465,6 +507,7 @@ $placeMapEditorUrl =
 
 <?php if ($placeMapHasLayerAccess): ?>
     <script src="/js/place-campsite-points.js"></script>
+    <script src="/js/place-explorer.js" defer></script>
     <script src="/js/map-land-overlays.js"></script>
     <script src="/js/map-weather-overlays.js"></script>
     <script src="https://unpkg.com/h3-js@4.2.1"></script>
