@@ -172,3 +172,23 @@
     stroke-width: 4;
     fill-opacity: .65;
 }
+
+/* Phase 2: keep location identity visible in the Scout Report and Site gallery. */
+.scout-report[data-explorer-color] .place-selected-campsite-context {
+    border-left: 3px solid var(--explorer-report-color);
+    padding-left: 10px;
+}
+
+.place-overnight-options[data-explorer-scope="site"]
+[data-campsite-selected-detail] .place-campsite-gallery-item {
+    border: 2px solid #e58a17;
+}
+
+.place-overnight-options .place-explorer-overview.is-selected {
+    border-color: var(--explorer-color);
+    box-shadow: inset 0 0 0 1px var(--explorer-color);
+}
+
+.place-overnight-options .place-campsite-row[data-stay-area-id].is-selected {
+    box-shadow: inset 0 0 0 1px currentColor;
+}
