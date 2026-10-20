@@ -1,0 +1,21 @@
+.map-contribute { width: min(100% - 32px, 1040px); margin: 32px auto 70px; display: grid; gap: 20px; }
+.map-contribute header h1 { margin: 8px 0; }
+.map-contribute header p, .map-contribute-tutorial p, .map-contribute-note { color: var(--text-muted, #aab0ba); }
+.map-contribute-tutorial { background: var(--surface, #202020); border: 1px solid var(--border, #444); border-radius: 12px; padding: 18px; }
+.map-contribute-tutorial h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.map-contribute form { display: grid; gap: 15px; }
+.map-contribute-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.map-contribute label { display: grid; gap: 7px; font-weight: 650; font-size: .9rem; }
+.map-contribute label[hidden] { display: none; }
+.map-contribute input, .map-contribute select { box-sizing: border-box; width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--border, #555); border-radius: 9px; background: var(--surface, #242424); color: var(--text, #fff); }
+.map-contribute-map { height: min(65vh, 540px); min-height: 300px; width: 100%; border: 1px solid var(--border, #555); border-radius: 12px; overflow: hidden; }
+.map-contribute-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.map-contribute button { cursor: pointer; border: 1px solid var(--border, #555); border-radius: 9px; padding: 11px 15px; background: var(--surface, #242424); color: var(--text, #fff); }
+.map-contribute button:disabled { opacity: .5; cursor: wait; }
+.map-contribute .map-contribute-submit { background: #207b45; border-color: #207b45; color: #fff; font-weight: 750; justify-self: start; }
+.map-contribute-count { font-variant-numeric: tabular-nums; }
+.map-review { background: #161616; color: #eee; font-family: system-ui,sans-serif; }
+.map-review a { color: #79b8f4; }
+.map-review-json { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; max-height: 280px; overflow: auto; }
+.map-review [role="alert"] { color: #ff9f9f; }
+.map-proposal-preview { width: 100%; height: 270px; border-radius: 10px; overflow: hidden; margin: 12px 0; }
