@@ -18,6 +18,128 @@
     const map = handle.map;
     const siteMarkers = new Map();
 
+    const formatFeet = (value) => {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric) || numeric <= 0) {
+            return '';
+        }
+
+        return `${Math.round(numeric)} ft max vehicle`;
+    };
+
+    const formatCapacity = (site) => {
+        const parts = [];
+        const maxVehicles = Number(site.max_vehicles);
+        const maxPeople = Number(site.max_people);
+
+        if (Number.isFinite(maxVehicles) && maxVehicles > 0) {
+            parts.push(`${maxVehicles} vehicle${maxVehicles === 1 ? '' : 's'}`);
+        }
+
+        if (Number.isFinite(maxPeople) && maxPeople > 0) {
+            parts.push(`${maxPeople} people`);
+        }
+
+        return parts.join(' • ');
+    };
+
+    const detailPartsFor = (site) => {
+        const parts = [];
+        const siteType = String(site.site_type_label || '').trim();
+        const parking = String(site.parking_label || '').trim();
+        const vehicleLength = formatFeet(site.max_vehicle_length_ft);
+        const capacity = formatCapacity(site);
+
+        if (siteType) {
+            parts.push(siteType);
+        }
+
+        if (parking) {
+            parts.push(parking);
+        }
+
+        if (vehicleLength) {
+            parts.push(vehicleLength);
+        }
+
+        if (capacity) {
+            parts.push(capacity);
+        }
+
+        return parts;
+    };
+
+    const popupBadges = (site) => {
+        const badges = [];
+
+        if (site.accessible === true) {
+            badges.push('Accessible');
+        }
+
+        if (site.electric === true) {
+            badges.push('Electric');
+        }
+
+        if (site.water === true) {
+            badges.push('Water');
+        }
+
+        if (site.sewer === true) {
+            badges.push('Sewer');
+        }
+
+        return badges;
+    };
+
+    const buildPopup = (site, id, name) => {
+        const popup = document.createElement('div');
+        popup.className = 'place-map-feature-popup';
+
+        const heading = document.createElement('strong');
+        heading.textContent = name;
+        popup.appendChild(heading);
+
+        const details = detailPartsFor(site);
+        if (details.length) {
+            const meta = document.createElement('span');
+            meta.textContent = details.join(' • ');
+            popup.appendChild(meta);
+        }
+
+        const badges = popupBadges(site);
+        if (badges.length) {
+            const badgeRow = document.createElement('span');
+            badgeRow.textContent = badges.join(' • ');
+            popup.appendChild(badgeRow);
+        }
+
+        const note = document.createElement('span');
+        note.textContent = 'Imported GPS point for this campsite.';
+        popup.appendChild(note);
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'place-map-edit-areas';
+        button.textContent = 'View Site details';
+        button.addEventListener('click', () => {
+            const target = document.querySelector(
+                `[data-campsite-id="${CSS.escape(String(id))}"]`
+            );
+            if (target) {
+                target.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+                return;
+            }
+
+            const destination = new URL(window.location.href);
+            destination.searchParams.set('site', String(id));
+            window.location.assign(destination.toString());
+        });
+
+        popup.appendChild(button);
+
+        return popup;
+    };
+
     const focusSite = (id, scroll = false) => {
         const marker = siteMarkers.get(Number(id));
         if (!marker) {
@@ -38,13 +160,6 @@
         return true;
     };
 
-    /*
-     * Site selection is owned by the existing Site browser. It updates its
-     * selected card and Scout Report before the click reaches this section.
-     * Imported GPS points have no map_feature_id, so do not let the older
-     * polygon-only map handler replace their position with the Place center.
-     * Only an explicit View on map click scrolls the page.
-     */
     const stayOptions = document.querySelector('[data-stay-options]');
     stayOptions?.addEventListener('click', (event) => {
         const row = event.target instanceof Element
@@ -58,8 +173,6 @@
             return;
         }
 
-        // The site button's own selection handler has already run.
-        // Stop the legacy Area/map-feature listener for imported GPS Sites.
         event.stopImmediatePropagation();
 
         const context = document.querySelector('[data-selected-campsite-context]');
@@ -76,15 +189,9 @@
             }
         }
 
-        // Change the marker in place. Never scroll to the map on Site clicks.
         focusSite(id);
     });
 
-    /*
-     * "View on map" should focus the currently selected campsite, not the
-     * campground center. Coordinates and marker identity come from the same
-     * protected campsite-points endpoint used by the displayed map overlay.
-     */
     document.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof Element)) {
@@ -102,8 +209,6 @@
             return;
         }
 
-        // The context can also refer to a mapped Area. Keep its existing
-        // map-focus behavior instead of substituting an unrelated Site.
         if (context && !context.textContent.includes('Viewing Site:')) {
             return;
         }
@@ -160,37 +265,7 @@
                     keyboard: true,
                 });
 
-                const popup = document.createElement('div');
-                popup.className = 'place-map-feature-popup';
-
-                const heading = document.createElement('strong');
-                heading.textContent = name;
-
-                const detail = document.createElement('span');
-                detail.textContent = 'Location from the imported campsite record.';
-
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'place-map-edit-areas';
-                button.textContent = 'View Site details';
-                button.addEventListener('click', () => {
-                    const target = document.querySelector(
-                        `[data-campsite-id="${CSS.escape(String(id))}"]`
-                    );
-                    if (target) {
-                        // The Site browser owns selection and its Scout Report.
-                        // A non-bubbling click avoids the separate map-focus handler
-                        // that still expects manually drawn Site geometries.
-                        target.dispatchEvent(new MouseEvent('click', { bubbles: false }));
-                        return;
-                    }
-                    const destination = new URL(window.location.href);
-                    destination.searchParams.set('site', String(id));
-                    window.location.assign(destination.toString());
-                });
-
-                popup.append(heading, detail, button);
-                point.bindPopup(popup);
+                point.bindPopup(buildPopup(site, id, name));
                 layer.addLayer(point);
                 siteMarkers.set(id, point);
             }
@@ -200,8 +275,6 @@
             }
 
             layer.addTo(map);
-            // Fit the imported points only when they form an extent. Don't
-            // create or modify map_feature_id associations in the database.
             const bounds = layer.getBounds();
             if (bounds.isValid() && layer.getLayers().length > 1) {
                 map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
