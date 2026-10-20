@@ -43,26 +43,18 @@
     overview.append(title, subtitle);
     slot.before(overview);
 
-    const preview = document.createElement('section');
-    preview.className = `place-explorer-preview is-${color}`;
-    preview.dataset.explorerPreview = '1';
-    const previewTitle = document.createElement('h3');
-    previewTitle.textContent = name;
-    const previewDescription = document.createElement('p');
-    previewDescription.textContent = subtitle.textContent;
-    preview.append(previewTitle, previewDescription);
-    if (photo) {
-        const image = document.createElement('img');
-        image.src = photo;
-        image.alt = `Overview of ${name}`;
-        image.loading = 'lazy';
-        image.decoding = 'async';
-        image.addEventListener('error', () => image.remove());
-        preview.prepend(image);
-    }
+    // Use the existing Place gallery, including its lightbox and captions.
+    // Move it into the explorer instead of rendering a second photo preview.
+    const placeGallery = document.querySelector('.place-photo-gallery-section');
     const options = section.querySelector('[data-stay-options-list]');
-    if (options) options.after(preview);
-    else slot.after(preview);
+    if (placeGallery) {
+        if (options) options.after(placeGallery);
+        else slot.after(placeGallery);
+        placeGallery.dataset.explorerPlacePhotos = '1';
+    }
+
+    // The map is directly above the explorer. Selection does not need a jump link.
+    section.querySelector('.place-overnight-options-map-link')?.remove();
 
     const requestedId = new URLSearchParams(window.location.search).get('site');
     let selection = requestedId && /^\d+$/.test(requestedId)
@@ -102,7 +94,7 @@
         section.dataset.explorerColor = reportColor(selection.kind);
         overview.classList.toggle('is-selected', placeSelected);
         overview.setAttribute('aria-current', String(placeSelected));
-        preview.hidden = !placeSelected;
+        if (placeGallery) placeGallery.hidden = !placeSelected;
 
         if (report) {
             report.dataset.explorerScope = selection.kind;
@@ -271,29 +263,31 @@
         return rows.length === 1 ? rows[0] : null;
     };
 
-    const mapCardFor = (label, kind, select, usePhoto) => {
+    // Green and purple shapes describe geography; they are not popup targets.
+    // Orange Site markers and blue parking areas retain their own interactions.
+    const silentPolygon = (layer) => {
+        const type = String(layer?.options?.className || '');
+        const boundary = type.includes('place-map-feature--place-boundary');
+        const camping = type.includes('place-map-feature--camping-area');
+        if (!boundary && !camping) return false;
+        if (boundary && !activePlaceLayer) activePlaceLayer = layer;
+        if (camping && !activePlaceLayer) activePlaceLayer = layer;
+        layer.unbindPopup?.();
+        return true;
+    };
+    map.eachLayer(silentPolygon);
+    map.on('layeradd', (event) => silentPolygon(event.layer));
+
+    const mapCardFor = (label, select) => {
         const card = document.createElement('button');
         card.type = 'button';
-        card.className = `place-explorer-map-card is-${kind}`;
-        if (usePhoto && photo) {
-            const image = document.createElement('img');
-            image.alt = '';
-            image.src = photo;
-            image.decoding = 'async';
-            image.loading = 'lazy';
-            image.addEventListener('error', () => image.remove());
-            card.append(image);
-        }
+        card.className = 'place-explorer-map-card is-blue';
         const body = document.createElement('span');
         body.className = 'place-explorer-map-card-body';
         const heading = document.createElement('strong');
         heading.textContent = label;
         const detail = document.createElement('span');
-        detail.textContent = [
-            kind === 'green' ? 'Campground or camping area'
-                : kind === 'blue' ? 'Parking area' : 'Location',
-            usePhoto ? countLabel : '',
-        ].filter(Boolean).join(' · ');
+        detail.textContent = 'Parking area';
         body.append(heading, detail);
         card.append(body);
         card.addEventListener('click', (event) => {
@@ -303,27 +297,82 @@
         return card;
     };
 
+    // The original Place pin is the only overview map popup.
+    // Leaflet owns the close X, keyboard handling, and popup positioning.
+    const mapElement = window.LlamaScoutMap?.mapElement;
+    const latitude = Number(mapElement?.dataset.placeLatitude);
+    const longitude = Number(mapElement?.dataset.placeLongitude);
+    const validCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
+        && latitude >= -90 && latitude <= 90
+        && longitude >= -180 && longitude <= 180
+        && (latitude !== 0 || longitude !== 0);
+
+    const buildPlacePinPopup = () => {
+        const card = document.createElement('div');
+        card.className = `place-explorer-pin-popup is-${color}`;
+        if (photo) {
+            const image = document.createElement('img');
+            image.alt = '';
+            image.loading = 'lazy';
+            image.decoding = 'async';
+            image.src = photo;
+            image.addEventListener('error', () => image.remove());
+            card.appendChild(image);
+        }
+        const copy = document.createElement('div');
+        copy.className = 'place-explorer-pin-popup-content';
+        const heading = document.createElement('strong');
+        heading.textContent = name;
+        const detail = document.createElement('span');
+        detail.textContent = [
+            category === 'camping' ? 'Campground or camping area'
+                : category === 'parking' ? 'Parking location' : 'Location',
+            countLabel,
+        ].filter(Boolean).join(' · ');
+        copy.append(heading, detail);
+        if (validCoordinates) {
+            const gps = document.createElement('small');
+            gps.className = 'place-explorer-pin-coordinates';
+            gps.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            copy.appendChild(gps);
+        }
+        card.appendChild(copy);
+        return card;
+    };
+
+    const isPlacePin = (layer) => layer instanceof L.Marker
+        && layer.options.icon?.options?.className === 'place-map-marker-shell';
+    const registerPlacePin = (layer) => {
+        if (!isPlacePin(layer) || layer._llamaExplorerPinReady) return;
+        layer._llamaExplorerPinReady = true;
+        layer.bindPopup(buildPlacePinPopup(), {
+            className: 'place-explorer-pin-popup-shell',
+            minWidth: 240,
+            maxWidth: 310,
+            closeButton: true,
+        });
+        layer.on('click', () => placeView('initial'));
+    };
+    map.eachLayer(registerPlacePin);
+    map.on('layeradd', (event) => registerPlacePin(event.layer));
+
+    // Preserve the blue parking-area card. Green/purple polygon popups are off.
     map.on('popupopen', (event) => {
         const popup = event.popup;
         const layer = popup?._source;
-        const layerClass = String(layer?.options?.className || '');
-        const camping = layerClass.includes('place-map-feature--camping-area');
-        const parking = layerClass.includes('place-map-feature--parking-area');
-        const boundary = layerClass.includes('place-map-feature--place-boundary');
-        if (!camping && !parking && !boundary) return;
+        if (silentPolygon(layer)) {
+            map.closePopup(popup);
+            return;
+        }
+        const type = String(layer?.options?.className || '');
+        if (!type.includes('place-map-feature--parking-area')) return;
         const original = popup.getContent();
         if (!(original instanceof HTMLElement)
             || original.classList.contains('place-explorer-map-card')) return;
-
         const label = original.querySelector('strong')?.textContent?.trim() || '';
-        const isPlace = sameName(label, name) && !parking;
-        const area = isPlace ? null : findAreaRow(label, parking);
-        // An unknown mapped subdivision must never accidentally edit the Place.
-        if (!isPlace && !area) return;
-        if (isPlace) activePlaceLayer = layer;
-        const kind = isPlace ? color : parking ? 'blue' : 'green';
-        popup.setContent(mapCardFor(label || name, kind,
-            isPlace ? () => placeView('map') : () => selectArea(area, 'map'), isPlace));
+        const area = findAreaRow(label, true);
+        if (!area) return;
+        popup.setContent(mapCardFor(label, () => selectArea(area, 'map')));
         popup.update();
     });
 

@@ -43,11 +43,28 @@
         ),
     ];
 
+    const placeCard = document.querySelector('.place-map-card[data-explorer-name]');
+    const placeName = String(placeCard?.dataset.explorerName || '')
+        .trim().toLocaleLowerCase();
+    const placeCategory = String(placeCard?.dataset.explorerCategory || '');
+
     const areaRows = [
-        ...fallbackList.querySelectorAll(
-            '[data-stay-area-id]'
-        ),
-    ];
+        ...fallbackList.querySelectorAll('[data-stay-area-id]'),
+    ].filter((row) => {
+        const label = String(row.dataset.stayAreaName || '')
+            .trim().toLocaleLowerCase();
+        const matchingArea = placeCategory === 'parking'
+            ? row.dataset.stayAreaKind === 'parking'
+            : placeCategory === 'camping'
+                && row.dataset.stayAreaKind === 'camping';
+
+        // A named boundary of the Place is not another Place card.
+        if (placeName && label === placeName && matchingArea) {
+            row.remove();
+            return false;
+        }
+        return true;
+    });
 
     const extraRows = [
         ...mappedRows,
