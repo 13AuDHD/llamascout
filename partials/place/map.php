@@ -147,7 +147,9 @@ if ($placeMapHasLayerAccess) {
 }
 
 $placeMapEditorUrl =
-    '/place-map-editor.php?slug='
+    (user_is_admin((int) ($userId ?? 0))
+        ? '/place-map-editor.php?slug='
+        : '/map-contribute.php?slug=')
     . rawurlencode(
         (string) (
             $place['slug']
@@ -197,7 +199,9 @@ $placeMapEditorUrl =
                         'edit'
                     ) ?>
 
-                    Edit mapped areas
+                    <?= user_is_admin((int) ($userId ?? 0))
+                        ? 'Edit mapped areas'
+                        : 'Propose a boundary' ?>
                 </a>
             <?php endif; ?>
         </div>
