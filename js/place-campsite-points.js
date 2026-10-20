@@ -69,57 +69,128 @@
         return parts;
     };
 
-    const popupBadges = (site) => {
-        const badges = [];
+    const svgIcon = (type) => {
+        const ns = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
 
-        if (site.accessible === true) {
-            badges.push('Accessible');
+        const add = (tag, attributes) => {
+            const element = document.createElementNS(ns, tag);
+            Object.entries(attributes).forEach(([key, value]) => {
+                element.setAttribute(key, String(value));
+            });
+            svg.appendChild(element);
+        };
+
+        if (type === 'accessible') {
+            add('circle', { cx: 12, cy: 4, r: 2 });
+            add('path', { d: 'M12 7v6h6l3 6' });
+            add('path', { d: 'M12 10H8' });
+            add('path', { d: 'M16 17a7 7 0 1 1-7-7' });
+        } else if (type === 'electric') {
+            add('path', { d: 'M12 2 6 13h6l-1 9 7-12h-6l1-8Z' });
+        } else if (type === 'water') {
+            add('path', { d: 'M12 22c4.4 0 8-3.6 8-8 0-4.5-8-12-8-12S4 9.5 4 14c0 4.4 3.6 8 8 8Z' });
+        } else if (type === 'sewer') {
+            add('path', { d: 'M2 8c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2' });
+            add('path', { d: 'M2 15c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2' });
+        }
+        return svg;
+    };
+
+    const addIndicator = (parent, iconName, label) => {
+        const pill = document.createElement('span');
+        pill.className = 'place-map-site-popup-pill';
+        pill.append(svgIcon(iconName), document.createTextNode(label));
+        parent.appendChild(pill);
+    };
+
+    const photoSrc = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw || raw.startsWith('//')) {
+            return '';
         }
 
-        if (site.electric === true) {
-            badges.push('Electric');
+        try {
+            const url = new URL(raw, window.location.origin);
+            if (url.protocol !== 'https:'
+                && !(url.protocol === 'http:' && url.origin === window.location.origin)) {
+                return '';
+            }
+            return url.href;
+        } catch (_) {
+            return '';
         }
-
-        if (site.water === true) {
-            badges.push('Water');
-        }
-
-        if (site.sewer === true) {
-            badges.push('Sewer');
-        }
-
-        return badges;
     };
 
     const buildPopup = (site, id, name) => {
         const popup = document.createElement('div');
-        popup.className = 'place-map-feature-popup';
+        popup.className = 'place-map-site-popup';
 
+        const photo = photoSrc(site.hero_image);
+        if (photo) {
+            const image = document.createElement('img');
+            image.className = 'place-map-site-popup-photo';
+            image.alt = '';
+            image.decoding = 'async';
+            image.dataset.photoSrc = photo;
+            image.addEventListener('load', () => {
+                popup.classList.add('has-photo');
+            });
+            image.addEventListener('error', () => {
+                image.removeAttribute('src');
+                image.removeAttribute('data-photo-src');
+                popup.classList.remove('has-photo');
+            });
+            popup.appendChild(image);
+        }
+
+        const content = document.createElement('div');
+        content.className = 'place-map-site-popup-content';
+
+        const top = document.createElement('div');
+        top.className = 'place-map-site-popup-top';
         const heading = document.createElement('strong');
+        heading.className = 'place-map-site-popup-title';
         heading.textContent = name;
-        popup.appendChild(heading);
+        top.appendChild(heading);
 
+        if (site.accessible === true) {
+            const accessible = document.createElement('span');
+            accessible.className = 'place-map-site-popup-accessible';
+            accessible.append(svgIcon('accessible'), document.createTextNode('Accessible'));
+            top.appendChild(accessible);
+        }
+        content.appendChild(top);
+
+        const bottom = document.createElement('div');
+        bottom.className = 'place-map-site-popup-bottom';
         const details = detailPartsFor(site);
         if (details.length) {
-            const meta = document.createElement('span');
-            meta.textContent = details.join(' • ');
-            popup.appendChild(meta);
+            const meta = document.createElement('div');
+            meta.className = 'place-map-site-popup-meta';
+            meta.textContent = details.join(' · ');
+            bottom.appendChild(meta);
         }
 
-        const badges = popupBadges(site);
-        if (badges.length) {
-            const badgeRow = document.createElement('span');
-            badgeRow.textContent = badges.join(' • ');
-            popup.appendChild(badgeRow);
+        const amenities = document.createElement('div');
+        amenities.className = 'place-map-site-popup-amenities';
+        if (site.electric === true) addIndicator(amenities, 'electric', 'Power');
+        if (site.water === true) addIndicator(amenities, 'water', 'Water');
+        if (site.sewer === true) addIndicator(amenities, 'sewer', 'Sewer');
+        if (amenities.childElementCount) {
+            bottom.appendChild(amenities);
         }
-
-        const note = document.createElement('span');
-        note.textContent = 'Imported GPS point for this campsite.';
-        popup.appendChild(note);
 
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'place-map-edit-areas';
+        button.className = 'place-map-site-popup-action';
         button.textContent = 'View Site details';
         button.addEventListener('click', () => {
             const target = document.querySelector(
@@ -135,8 +206,9 @@
             window.location.assign(destination.toString());
         });
 
-        popup.appendChild(button);
-
+        bottom.appendChild(button);
+        content.appendChild(bottom);
+        popup.appendChild(content);
         return popup;
     };
 
@@ -265,7 +337,19 @@
                     keyboard: true,
                 });
 
-                point.bindPopup(buildPopup(site, id, name));
+                const popupContent = buildPopup(site, id, name);
+                point.bindPopup(popupContent, {
+                    className: 'place-map-site-popup-shell',
+                    minWidth: 260,
+                    maxWidth: 300,
+                });
+                point.on('popupopen', () => {
+                    const photo = popupContent.querySelector('[data-photo-src]');
+                    if (photo && !photo.getAttribute('src')) {
+                        // Never fetch every Site photo when all markers load.
+                        photo.src = photo.dataset.photoSrc;
+                    }
+                });
                 layer.addLayer(point);
                 siteMarkers.set(id, point);
             }
