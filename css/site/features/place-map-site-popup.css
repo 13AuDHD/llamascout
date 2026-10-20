@@ -1,0 +1,181 @@
+/* Individual campsite popup. Independent of mapped-area popup presentation. */
+.place-map-card .place-map-site-popup-shell .leaflet-popup-content {
+    margin: 0;
+}
+
+.place-map-card .place-map-site-popup-shell .leaflet-popup-content-wrapper {
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 15px;
+    background: #151c19;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .36);
+}
+
+.place-map-card .place-map-site-popup-shell .leaflet-popup-tip {
+    background: #151c19;
+}
+
+.place-map-card .place-map-site-popup-shell a.leaflet-popup-close-button {
+    z-index: 5;
+    top: 9px;
+    right: 8px;
+    color: #fff;
+    background: rgba(0, 0, 0, .42);
+    border-radius: 50%;
+    width: 27px;
+    height: 27px;
+    line-height: 24px;
+    text-align: center;
+}
+
+.place-map-site-popup {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    overflow: hidden;
+    min-height: 208px;
+    border-radius: 14px;
+    background:
+        radial-gradient(ellipse at 20% 35%, rgba(71, 118, 88, .4), transparent 64%),
+        linear-gradient(145deg, #2d473b, #101b17 82%);
+    color: #fff;
+    font-family: inherit;
+}
+
+.place-map-site-popup::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(7, 13, 11, .78) 0%, rgba(7, 13, 11, .32) 39%, rgba(7, 13, 11, .92) 100%);
+}
+
+.place-map-site-popup-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .18s ease;
+}
+
+.place-map-site-popup.has-photo .place-map-site-popup-photo {
+    opacity: 1;
+}
+
+.place-map-site-popup-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    min-height: 208px;
+    gap: 20px;
+    padding: 15px 13px 12px;
+}
+
+.place-map-site-popup-top {
+    display: grid;
+    gap: 5px;
+    padding-right: 26px;
+}
+
+.place-map-site-popup-title {
+    display: block;
+    color: #fff;
+    font-size: 1.01rem;
+    line-height: 1.2;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .5);
+}
+
+.place-map-site-popup-accessible,
+.place-map-site-popup-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    min-height: 22px;
+    padding: 3px 7px;
+    border: 1px solid rgba(255, 255, 255, .35);
+    border-radius: 999px;
+    background: rgba(10, 18, 14, .65);
+    color: #fff;
+    font-size: .69rem;
+    font-weight: 700;
+    line-height: 1;
+    backdrop-filter: blur(5px);
+}
+
+.place-map-site-popup-accessible {
+    border-color: rgba(112, 222, 170, .8);
+    color: #b6f7d3;
+}
+
+.place-map-site-popup-pill svg,
+.place-map-site-popup-accessible svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+}
+
+.place-map-site-popup-bottom {
+    display: grid;
+    gap: 7px;
+}
+
+.place-map-site-popup-meta {
+    color: rgba(255, 255, 255, .95);
+    font-size: .76rem;
+    line-height: 1.35;
+    font-weight: 600;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+}
+
+.place-map-site-popup-amenities {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.place-map-site-popup-action {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 37px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    color: #1c2521;
+    font: inherit;
+    font-size: .77rem;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+}
+
+.place-map-site-popup-action:hover {
+    background: #e3f5e9;
+}
+
+.place-map-site-popup-action:focus-visible {
+    outline: 2px solid #a7f3d0;
+    outline-offset: 2px;
+}
+
+@media (max-width: 440px) {
+    .place-map-site-popup,
+    .place-map-site-popup-content {
+        min-height: 192px;
+    }
+
+    .place-map-site-popup-content {
+        gap: 10px;
+    }
+}
