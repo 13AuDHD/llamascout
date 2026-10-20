@@ -17,6 +17,16 @@
 
     const map = handle.map;
     const siteMarkers = new Map();
+    let selectedMarker = 0;
+
+    const highlightMarker = (id) => {
+        selectedMarker = Number(id) || 0;
+        for (const [siteId, layer] of siteMarkers) {
+            layer.getElement()?.classList.toggle(
+                'is-explorer-selected', siteId === selectedMarker
+            );
+        }
+    };
 
     const formatFeet = (value) => {
         const numeric = Number(value);
@@ -132,6 +142,7 @@
     const buildPopup = (site, id, name) => {
         const popup = document.createElement('div');
         popup.className = 'place-map-site-popup';
+        popup.dataset.explorerSiteId = String(id);
 
         const photo = photoSrc(site.hero_image);
         if (photo) {
@@ -193,22 +204,30 @@
         button.className = 'place-map-site-popup-action';
         button.textContent = 'View Site details';
         button.addEventListener('click', () => {
-            const target = document.querySelector(
-                `[data-campsite-id="${CSS.escape(String(id))}"]`
-            );
-            if (target) {
-                target.dispatchEvent(new MouseEvent('click', { bubbles: false }));
-                return;
-            }
-
-            const destination = new URL(window.location.href);
-            destination.searchParams.set('site', String(id));
-            window.location.assign(destination.toString());
+            window.dispatchEvent(new CustomEvent('llama:explorer-map-site', {
+                detail: { id },
+            }));
         });
 
         bottom.appendChild(button);
         content.appendChild(bottom);
         popup.appendChild(content);
+        // Treat the image/card as the action too, not only its small button.
+        popup.setAttribute('role', 'button');
+        popup.tabIndex = 0;
+        popup.addEventListener('click', (event) => {
+            if (event.target.closest('button')) return;
+            window.dispatchEvent(new CustomEvent('llama:explorer-map-site', {
+                detail: { id },
+            }));
+        });
+        popup.addEventListener('keydown', (event) => {
+            if (event.target !== popup || !['Enter', ' '].includes(event.key)) return;
+            event.preventDefault();
+            window.dispatchEvent(new CustomEvent('llama:explorer-map-site', {
+                detail: { id },
+            }));
+        });
         return popup;
     };
 
@@ -225,12 +244,18 @@
             });
         }
 
+        highlightMarker(id);
         map.setView(marker.getLatLng(), Math.min(18, map.getMaxZoom()), {
             animate: false,
         });
         marker.openPopup();
         return true;
     };
+
+    window.LlamaScoutSiteMap = Object.freeze({
+        focusSite,
+        clearSelection: () => highlightMarker(0),
+    });
 
     const stayOptions = document.querySelector('[data-stay-options]');
     stayOptions?.addEventListener('click', (event) => {
@@ -342,6 +367,11 @@
                     className: 'place-map-site-popup-shell',
                     minWidth: 260,
                     maxWidth: 300,
+                });
+                point.on('click', () => {
+                    window.dispatchEvent(new CustomEvent('llama:explorer-map-site', {
+                        detail: { id },
+                    }));
                 });
                 point.on('popupopen', () => {
                     const photo = popupContent.querySelector('[data-photo-src]');
