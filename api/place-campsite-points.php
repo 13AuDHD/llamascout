@@ -129,6 +129,38 @@ try {
         ], 422);
     }
 
+    /*
+     * A map card needs one hero image, not an entire campsite gallery.
+     * Read existing photo metadata once for this Place. Only the first
+     * nonempty image per campsite is used, in gallery priority order.
+     * The browser does not download the actual image until its popup opens.
+     */
+    $heroImages = [];
+
+    if ($rows !== []) {
+        $photoQuery = $db->prepare(
+            'SELECT campsite_id, src
+               FROM place_campsite_images
+              WHERE place_id = ?
+                AND src IS NOT NULL
+              ORDER BY
+                campsite_id ASC,
+                is_featured DESC,
+                sort_order ASC,
+                id ASC'
+        );
+        $photoQuery->execute([$placeId]);
+
+        while ($photo = $photoQuery->fetch(PDO::FETCH_ASSOC)) {
+            $siteId = (int) ($photo['campsite_id'] ?? 0);
+            $src = trim((string) ($photo['src'] ?? ''));
+
+            if ($siteId > 0 && $src !== '' && !isset($heroImages[$siteId])) {
+                $heroImages[$siteId] = $src;
+            }
+        }
+    }
+
     $points = [];
     foreach ($rows as $row) {
         $name = trim((string) ($row['site_code'] ?? ''));
@@ -142,6 +174,7 @@ try {
         $points[] = [
             'id' => (int) $row['id'],
             'name' => $name,
+            'hero_image' => $heroImages[(int) $row['id']] ?? null,
             'latitude' => (float) $row['latitude'],
             'longitude' => (float) $row['longitude'],
             'site_type_label' => llama_campsite_popup_site_type_label((string) ($row['site_type'] ?? '')),
