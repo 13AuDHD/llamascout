@@ -121,6 +121,32 @@ function llama_report_targets(
     $activeMappedSiteIds = [];
 
     /*
+     * Explicit Area-to-Site relationships are canonical for mapped and
+     * imported Sites alike. Read ONLY active Areas belonging to this Place.
+     * A stale link cannot make a Site inherit another Place's report.
+     */
+    $siteAreaLinks = [];
+    $areaLinkStmt = $db->prepare(
+        'SELECT l.campsite_id, l.area_feature_id
+         FROM place_campsite_area_links AS l
+         INNER JOIN place_campsites AS cs
+           ON cs.id = l.campsite_id
+          AND cs.place_id = l.place_id
+          AND cs.is_active = 1
+         INNER JOIN place_map_features AS area
+           ON area.id = l.area_feature_id
+          AND area.place_id = l.place_id
+          AND area.is_active = 1
+          AND area.feature_type IN ("camping_area", "parking_area")
+         WHERE l.place_id = ?'
+    );
+    $areaLinkStmt->execute([$placeId]);
+    foreach ($areaLinkStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $link) {
+        $siteAreaLinks[(int) $link['campsite_id']] =
+            (int) $link['area_feature_id'];
+    }
+
+    /*
      * Read all active mapped reporting features first. Multiple active
      * canonical campsite rows pointing at one mapped Site are an identity
      * conflict, not two legitimate report targets. Reject that state instead
@@ -197,6 +223,18 @@ function llama_report_targets(
         }
 
         $rowsByFeature[$featureId][] = $row;
+    }
+
+    // Only active Areas returned by the Place-scoped map query can be parents.
+    $validParentAreas = [];
+    foreach ($rowsByFeature as $candidateFeatureId => $candidateRows) {
+        if (in_array(
+            (string) ($candidateRows[0]['feature_type'] ?? ''),
+            ['camping_area', 'parking_area'],
+            true
+        )) {
+            $validParentAreas[(int) $candidateFeatureId] = true;
+        }
     }
 
     foreach ($rowsByFeature as $featureId => $rows) {
@@ -276,13 +314,9 @@ function llama_report_targets(
             );
         }
 
-        $parentAreaId =
-            $row['camping_area_feature_id']
-            === null
-                ? null
-                : (int) $row[
-                    'camping_area_feature_id'
-                ];
+        $legacyParentId = (int) ($row['camping_area_feature_id'] ?? 0);
+        $parentAreaId = isset($validParentAreas[$legacyParentId])
+            ? $legacyParentId : null;
 
         if ($canonicalRows) {
             $canonicalRow =
@@ -309,7 +343,7 @@ function llama_report_targets(
                     $campsiteId,
 
                 'parent_area_id' =>
-                    $parentAreaId,
+                    $siteAreaLinks[$campsiteId] ?? $parentAreaId,
 
                 'map_feature_id' =>
                     (int) $featureId,
@@ -439,7 +473,7 @@ function llama_report_targets(
                 $campsiteId,
 
             'parent_area_id' =>
-                null,
+                $siteAreaLinks[$campsiteId] ?? null,
 
             'map_feature_id' =>
                 $mapFeatureId > 0
