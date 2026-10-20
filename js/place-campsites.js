@@ -1085,19 +1085,10 @@
                 || ''
             );
 
-        if (
-            !sites.some(
-                (site) =>
-                    String(
-                        site.feature_id
-                    ) === selectedId
-            )
-        ) {
-            selectedId =
-                String(
-                    sites[0]
-                        .feature_id
-                );
+        // A Place starts on its own overview. Only explicit Site links
+        // restore a selected Site when the browser first loads.
+        if (!sites.some((site) => String(site.feature_id) === selectedId)) {
+            selectedId = '';
         }
 
         mount.innerHTML = `
@@ -1331,34 +1322,46 @@
                 );
 
             if (selectedButton) {
-                selectedButton.scrollIntoView({
-                    behavior:
-                        'smooth',
-                    block:
-                        'nearest',
-                    inline:
-                        'nearest'
-                });
+                const track = selectedButton.closest('[data-campsite-list]');
+                if (track) {
+                    const target = selectedButton.offsetLeft - track.offsetLeft
+                        - Math.max(0, (track.clientWidth - selectedButton.offsetWidth) / 2);
+                    track.scrollTo({
+                        left: Math.max(0, target),
+                        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                            ? 'instant' : 'smooth',
+                    });
+                }
             }
 
             if (updateUrl) {
-                const url =
-                    new URL(
-                        window.location.href
-                    );
-
-                url.searchParams.set(
-                    'site',
-                    selectedId
-                );
-
-                window.history.replaceState(
-                    {},
-                    '',
-                    url
-                );
+                const url = new URL(window.location.href);
+                url.searchParams.set('site', selectedId);
+                window.history.replaceState({}, '', url);
             }
+
+            window.dispatchEvent(new CustomEvent('llama:explorer-browser-site-selected', {
+                detail: { id: selectedId },
+            }));
         };
+
+        const clearSiteSelection = () => {
+            selectedId = '';
+            // An old Site request must not overwrite Place answers on completion.
+            selectionRequest++;
+            const detail = mount.querySelector('[data-campsite-selected-detail]');
+            if (detail) detail.replaceChildren();
+            mount.querySelectorAll('[data-campsite-id].is-selected').forEach((row) => {
+                row.classList.remove('is-selected');
+                row.setAttribute('aria-current', 'false');
+            });
+        };
+
+        window.LlamaScoutCampsiteBrowser = Object.freeze({
+            selectSite: (id) => selectSite(id, true),
+            clearSelection: clearSiteSelection,
+            selectedSite: () => selectedId,
+        });
 
         const syncSelectionClasses = () => {
             mount
@@ -1523,21 +1526,8 @@
                     }
                 );
 
-            if (
-                !visible.some(
-                    (site) =>
-                        String(
-                            site.feature_id
-                        ) === selectedId
-                )
-            ) {
-                selectSite(
-                    visible[0]
-                        .feature_id
-                );
-            } else {
-                syncSelectionClasses();
-            }
+            // Filters only change visible options, never the active report.
+            syncSelectionClasses();
         };
 
         search.addEventListener(
@@ -1574,10 +1564,12 @@
 
         renderList();
 
-        selectSite(
-            selectedId,
-            false
-        );
+        if (selectedId !== '') {
+            selectSite(selectedId, false);
+        }
+        window.dispatchEvent(new CustomEvent('llama:explorer-browser-ready', {
+            detail: { selectedSite: selectedId },
+        }));
     };
 
     const showLoading = () => {

@@ -257,38 +257,6 @@
         clearSelection: () => highlightMarker(0),
     });
 
-    const stayOptions = document.querySelector('[data-stay-options]');
-    stayOptions?.addEventListener('click', (event) => {
-        const row = event.target instanceof Element
-            ? event.target.closest('[data-campsite-id]') : null;
-        if (!row || !stayOptions.contains(row)) {
-            return;
-        }
-
-        const id = Number(row.dataset.campsiteId);
-        if (!siteMarkers.has(id)) {
-            return;
-        }
-
-        event.stopImmediatePropagation();
-
-        const context = document.querySelector('[data-selected-campsite-context]');
-        if (context) {
-            const label = context.querySelector('span');
-            const selectedName = context.querySelector('strong');
-            if (label) {
-                label.textContent = 'Viewing Site: ';
-            }
-            if (selectedName) {
-                selectedName.textContent = row.querySelector(
-                    '.place-campsite-row-name'
-                )?.textContent.trim() || `Site ${id}`;
-            }
-        }
-
-        focusSite(id);
-    });
-
     document.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof Element)) {
@@ -393,6 +361,7 @@
             if (bounds.isValid() && layer.getLayers().length > 1) {
                 map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
             }
+            window.dispatchEvent(new CustomEvent('llama:explorer-markers-ready'));
         } catch (error) {
             console.error('Llama Scout campsite coordinates could not be displayed:', error);
         }
