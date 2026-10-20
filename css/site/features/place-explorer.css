@@ -57,31 +57,6 @@
     border: 2px solid #337bdc;
 }
 
-.place-explorer-preview {
-    display: grid;
-    grid-template-columns: minmax(0, 170px) 1fr;
-    gap: 14px;
-    align-items: center;
-    margin: 16px 0;
-    padding: 13px;
-    border: 2px solid #249b56;
-    border-radius: 14px;
-    background: var(--surface, #222);
-}
-
-.place-explorer-preview.is-blue { border-color: #337bdc; }
-.place-explorer-preview.is-purple { border-color: #9765cb; }
-.place-explorer-preview[hidden] { display: none; }
-.place-explorer-preview img {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    border-radius: 9px;
-    grid-row: 1 / 3;
-}
-.place-explorer-preview h3 { margin: 0; font-size: 1.02rem; }
-.place-explorer-preview p { margin: 0; color: var(--text-muted, #aaa); }
-
 .place-overnight-options[data-explorer-scope="place"] [data-campsite-selected-detail] {
     display: none;
 }
@@ -162,7 +137,6 @@
 .place-explorer-map-card:focus-visible { outline: 3px solid #fff; outline-offset: -6px; }
 
 @media (max-width: 640px) {
-    .place-explorer-preview { grid-template-columns: minmax(0, 110px) 1fr; }
     .place-explorer-overview { padding: 13px 15px; }
     .scout-report[data-explorer-color] .scout-report-section { padding-left: 8px; }
 }
@@ -181,7 +155,7 @@
 
 .place-overnight-options[data-explorer-scope="site"]
 [data-campsite-selected-detail] .place-campsite-gallery-item {
-    border: 2px solid #e58a17;
+    border-left: 3px solid #e58a17;
 }
 
 .place-overnight-options .place-explorer-overview.is-selected {
@@ -191,4 +165,88 @@
 
 .place-overnight-options .place-campsite-row[data-stay-area-id].is-selected {
     box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* A single gallery moves with the selected Place, instead of being copied. */
+.place-overnight-options [data-explorer-place-photos] {
+    padding: 12px 0 20px;
+    border: 0;
+    min-width: 0;
+}
+.place-overnight-options [data-explorer-place-photos][hidden] {
+    display: none;
+}
+.place-overnight-options [data-explorer-place-photos] .place-detail-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+.place-overnight-options [data-explorer-place-photos] .place-photo-gallery-heading h2 {
+    font-size: 1.15rem;
+}
+.place-overnight-options [data-explorer-place-photos] .place-photo-gallery {
+    grid-auto-columns: minmax(145px, 25%);
+}
+.place-overnight-options [data-explorer-place-photos] .place-photo-thumb {
+    border-left: 3px solid var(--explorer-color);
+}
+/* Site photography stays attached to the selected Site. */
+.place-overnight-options [data-campsite-selected-detail] .place-campsite-gallery-item {
+    border-left: 3px solid #e58a17;
+}
+
+/* The official Place pin holds the only Place photo popup. */
+.place-map-card .place-explorer-pin-popup-shell .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 12px;
+    background: #222;
+    overflow: hidden;
+}
+.place-map-card .place-explorer-pin-popup-shell .leaflet-popup-content {
+    margin: 0;
+}
+.place-explorer-pin-popup {
+    width: min(290px, 74vw);
+    overflow: hidden;
+    border-left: 3px solid #249b56;
+    border-radius: 11px;
+    background: #222;
+    color: #fff;
+}
+.place-explorer-pin-popup.is-blue { border-left-color: #337bdc; }
+.place-explorer-pin-popup.is-purple { border-left-color: #9765cb; }
+.place-explorer-pin-popup > img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+}
+.place-explorer-pin-popup-content {
+    display: grid;
+    gap: 5px;
+    padding: 12px 14px;
+}
+.place-explorer-pin-popup-content strong {
+    font-size: .95rem;
+    font-weight: 800;
+}
+.place-explorer-pin-popup-content span {
+    color: #ddd;
+    font-size: .79rem;
+}
+.place-explorer-pin-coordinates {
+    color: #ccc;
+    font-size: .76rem;
+    font-variant-numeric: tabular-nums;
+}
+.place-map-card .place-explorer-pin-popup-shell .leaflet-popup-close-button {
+    z-index: 3;
+    background: rgba(0, 0, 0, .75);
+    border-radius: 50%;
+    color: #fff;
+}
+@media (max-width: 640px) {
+    .place-overnight-options [data-explorer-place-photos] .place-photo-gallery {
+        grid-auto-columns: minmax(140px, 57%);
+    }
 }
