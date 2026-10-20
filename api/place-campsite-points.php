@@ -17,6 +17,53 @@ function llama_campsite_points_response(array $payload, int $status = 200): neve
     exit;
 }
 
+function llama_campsite_popup_site_type_label(?string $value): string
+{
+    return match (strtolower(trim((string) $value))) {
+        'rv_site' => 'RV site',
+        'tent_site' => 'Tent site',
+        'mixed_site' => 'Tent / RV',
+        'vehicle_site' => 'Vehicle site',
+        'group_site' => 'Group site',
+        default => trim((string) $value),
+    };
+}
+
+function llama_campsite_popup_parking_label(?string $value): string
+{
+    return match (strtolower(trim((string) $value))) {
+        'pull_through' => 'Pull-through',
+        'back_in' => 'Back-in',
+        'pull_in' => 'Pull-in',
+        'parallel' => 'Parallel',
+        'unknown' => 'Unknown',
+        default => trim((string) $value),
+    };
+}
+
+function llama_campsite_popup_bool(mixed $value): ?bool
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    $normalized = strtolower(trim((string) $value));
+
+    if (in_array($normalized, ['1', 'y', 'yes', 'true'], true)) {
+        return true;
+    }
+
+    if (in_array($normalized, ['0', 'n', 'no', 'false'], true)) {
+        return false;
+    }
+
+    return null;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     llama_campsite_points_response(['ok' => false, 'error' => 'Method not allowed.'], 405);
 }
@@ -35,7 +82,6 @@ $placeId = (int) ($place['id'] ?? 0);
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 
-// Match the complete-Place access gate used by the existing Site and map APIs.
 if ($userId < 1 || !user_has_place_complete_access($placeId, $userId)) {
     llama_campsite_points_response([
         'ok' => false,
@@ -46,21 +92,36 @@ if ($userId < 1 || !user_has_place_complete_access($placeId, $userId)) {
 try {
     $db = db();
     $query = $db->prepare(
-        'SELECT id, site_code, site_name, latitude, longitude
-           FROM place_campsites
-          WHERE place_id = ?
-            AND is_active = 1
-            AND (map_feature_id IS NULL OR map_feature_id = 0)
-            AND latitude BETWEEN -90 AND 90
-            AND longitude BETWEEN -180 AND 180
-            AND (latitude <> 0 OR longitude <> 0)
-          ORDER BY id ASC
+        'SELECT
+            cs.id,
+            cs.site_code,
+            cs.site_name,
+            cs.site_type,
+            cs.parking_style,
+            cs.accessible_status,
+            cs.latitude,
+            cs.longitude,
+            cf.max_vehicle_length_ft,
+            cf.max_people,
+            cf.max_vehicles,
+            cf.electric_hookup,
+            cf.water_hookup,
+            cf.sewer_hookup
+           FROM place_campsites AS cs
+           LEFT JOIN place_campsite_facts AS cf
+             ON cf.campsite_id = cs.id
+          WHERE cs.place_id = ?
+            AND cs.is_active = 1
+            AND (cs.map_feature_id IS NULL OR cs.map_feature_id = 0)
+            AND cs.latitude BETWEEN -90 AND 90
+            AND cs.longitude BETWEEN -180 AND 180
+            AND (cs.latitude <> 0 OR cs.longitude <> 0)
+          ORDER BY cs.id ASC
           LIMIT 1001'
     );
     $query->execute([$placeId]);
     $rows = $query->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-    // Fail visibly rather than silently clipping large imported campgrounds.
     if (count($rows) > 1000) {
         llama_campsite_points_response([
             'ok' => false,
@@ -83,6 +144,21 @@ try {
             'name' => $name,
             'latitude' => (float) $row['latitude'],
             'longitude' => (float) $row['longitude'],
+            'site_type_label' => llama_campsite_popup_site_type_label((string) ($row['site_type'] ?? '')),
+            'parking_label' => llama_campsite_popup_parking_label((string) ($row['parking_style'] ?? '')),
+            'max_vehicle_length_ft' => isset($row['max_vehicle_length_ft']) && $row['max_vehicle_length_ft'] !== ''
+                ? (float) $row['max_vehicle_length_ft']
+                : null,
+            'max_people' => isset($row['max_people']) && $row['max_people'] !== ''
+                ? (int) $row['max_people']
+                : null,
+            'max_vehicles' => isset($row['max_vehicles']) && $row['max_vehicles'] !== ''
+                ? (int) $row['max_vehicles']
+                : null,
+            'accessible' => strtolower(trim((string) ($row['accessible_status'] ?? ''))) === 'yes',
+            'electric' => llama_campsite_popup_bool($row['electric_hookup'] ?? null),
+            'water' => llama_campsite_popup_bool($row['water_hookup'] ?? null),
+            'sewer' => llama_campsite_popup_bool($row['sewer_hookup'] ?? null),
         ];
     }
 
