@@ -819,52 +819,20 @@ foreach (
             </ul>
 
         <?php elseif ($sectionKey === 'amenities'): ?>
-            <div class="amenity-grid">
+            <?php
+            /*
+             * Use the canonical Scout Report renderer for every amenity.
+             * This shares the same question, answer, and icon positioning as
+             * all other report sections, without a separate visual system.
+             *
+             * The summary-only amenity_none answer does not need a card.
+             */
+            ?>
+            <div class="scout-report-grid">
                 <?php foreach ($reportedFields as $key => $field): ?>
-                    <?php
-                    if ($key === 'amenity_none') {
-                        continue;
-                    }
-
-                    $amenityState = llama_place_report_answer_state(
-                        $placeReportData,
-                        (string) $key
-                    );
-                    $amenityValue = llama_place_report_display_value(
-                        $placeReportData,
-                        (string) $key
-                    );
-                    if ($amenityState === 'unanswered') {
-                        $amenityValue = 'Not provided';
-                    } elseif ($amenityState === 'unknown') {
-                        $amenityValue = 'Unknown';
-                    } elseif ($amenityValue === null || $amenityValue === '') {
-                        $amenityValue = 'Not provided';
-                    }
-
-                    $amenityIsAvailable = $amenityState === 'answered'
-                        && !in_array(
-                            strtolower(trim((string) $amenityValue)),
-                            ['no', 'not provided', 'unknown'],
-                            true
-                        );
-                    $amenityIcon = (string) (
-                        $field['icon'] ?? llama_place_report_field_icon(
-                            (string) $key,
-                            $field
-                        )
-                    );
-                    $amenityIcon = $localIcon($amenityIcon, (string) $key);
-                    ?>
-                    <div class="amenity-item <?= $amenityIsAvailable
-                        ? 'is-available'
-                        : 'is-unavailable' ?>">
-                        <i aria-hidden="true">
-                            <?= llama_icon($amenityIcon) ?>
-                        </i>
-                        <span><?= $e((string) $field['label']) ?></span>
-                        <strong><?= $e((string) $amenityValue) ?></strong>
-                    </div>
+                    <?php if ((string) $key !== 'amenity_none'): ?>
+                        <?php $renderValue((string) $key, $field); ?>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </div>
 
