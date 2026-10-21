@@ -449,7 +449,6 @@ $hasSupplementalStayOptions =
     || $stayMappedSites;
 ?>
 
-<?php require __DIR__ . '/facility-info.php'; ?>
 
 <script src="/js/place-campsite-horizontal-scroll.js"></script>
 
