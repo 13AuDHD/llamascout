@@ -819,70 +819,51 @@ foreach (
             </ul>
 
         <?php elseif ($sectionKey === 'amenities'): ?>
-            <div class="scout-report-grid">
-                <?php foreach (
-                    $reportedFields
-                    as $key => $field
-                ): ?>
+            <div class="amenity-grid">
+                <?php foreach ($reportedFields as $key => $field): ?>
                     <?php
                     if ($key === 'amenity_none') {
                         continue;
                     }
 
-                    $rawAmenityValue =
-                        llama_place_report_get_path(
-                            $placeReportData,
-                            (string) $field['storage']
-                        );
-
-                    /* Missing must not be misrepresented as an explicit No. */
                     $amenityState = llama_place_report_answer_state(
                         $placeReportData,
                         (string) $key
                     );
-                    $amenityValue = $amenityState === 'unanswered'
-                        ? 'Not provided'
-                        : ($amenityState === 'unknown'
-                            ? 'Unknown'
-                            : (!empty($rawAmenityValue) ? 'Yes' : 'No'));
+                    $amenityValue = llama_place_report_display_value(
+                        $placeReportData,
+                        (string) $key
+                    );
+                    if ($amenityState === 'unanswered') {
+                        $amenityValue = 'Not provided';
+                    } elseif ($amenityState === 'unknown') {
+                        $amenityValue = 'Unknown';
+                    } elseif ($amenityValue === null || $amenityValue === '') {
+                        $amenityValue = 'Not provided';
+                    }
 
-                    $amenityIcon =
-                        $localIcon(
-                            llama_place_report_field_icon(
-                                (string) $key,
-                                $field
-                            ),
-                            (string) $key
+                    $amenityIsAvailable = $amenityState === 'answered'
+                        && !in_array(
+                            strtolower(trim((string) $amenityValue)),
+                            ['no', 'not provided', 'unknown'],
+                            true
                         );
-
-                    $amenityLabel =
-                        $key === 'amenity_fire_ring'
-                            ? 'Metal fire ring'
-                            : (string) $field['label'];
+                    $amenityIcon = (string) (
+                        $field['icon'] ?? llama_place_report_field_icon(
+                            (string) $key,
+                            $field
+                        )
+                    );
+                    $amenityIcon = $localIcon($amenityIcon, (string) $key);
                     ?>
-
-                    <div
-                        class="scout-report-item scout-report-value-item"
-                    >
-                        <div class="scout-report-value-content">
-                            <span>
-                                <?= $e(
-                                    $amenityLabel
-                                ) ?>
-                            </span>
-
-                            <strong>
-                                <?= $amenityValue ?>
-                            </strong>
-                        </div>
-
-                        <?= llama_icon(
-                            $amenityIcon,
-                            [
-                                'class' =>
-                                    'scout-report-value-icon',
-                            ]
-                        ) ?>
+                    <div class="amenity-item <?= $amenityIsAvailable
+                        ? 'is-available'
+                        : 'is-unavailable' ?>">
+                        <i aria-hidden="true">
+                            <?= llama_icon($amenityIcon) ?>
+                        </i>
+                        <span><?= $e((string) $field['label']) ?></span>
+                        <strong><?= $e((string) $amenityValue) ?></strong>
                     </div>
                 <?php endforeach; ?>
             </div>
