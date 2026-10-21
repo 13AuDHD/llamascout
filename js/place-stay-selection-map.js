@@ -606,7 +606,12 @@
                 strong
             );
 
-            if (mapElement) {
+            // The Map Explorer already keeps Site cards and map markers in sync.
+            // The legacy jump link is only needed on pages without the explorer.
+            if (
+                mapElement
+                && !mapCard?.hasAttribute('data-explorer-name')
+            ) {
                 const view =
                     document.createElement(
                         'a'
@@ -701,6 +706,17 @@
             if (
                 !handle?.map
                 || typeof L === 'undefined'
+            ) {
+                return;
+            }
+
+            // Canonical Site popups belong to Map Explorer's orange markers.
+            // The browser and explorer already synchronize selection and open
+            // the photo card. Do not create a second legacy white popup at
+            // the Place pin when a Site is chosen from the horizontal cards.
+            if (
+                selection.kind === 'canonical'
+                && mapCard?.hasAttribute('data-explorer-name')
             ) {
                 return;
             }
