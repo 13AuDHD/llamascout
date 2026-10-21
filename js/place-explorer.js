@@ -43,15 +43,8 @@
     overview.append(title, subtitle);
     slot.before(overview);
 
-    // Use the existing Place gallery, including its lightbox and captions.
-    // Move it into the explorer instead of rendering a second photo preview.
-    const placeGallery = document.querySelector('.place-photo-gallery-section');
-    const options = section.querySelector('[data-stay-options-list]');
-    if (placeGallery) {
-        if (options) options.after(placeGallery);
-        else slot.after(placeGallery);
-        placeGallery.dataset.explorerPlacePhotos = '1';
-    }
+    // The Place gallery is permanently rendered here by the PHP template.
+    const placeGallery = section.querySelector('[data-explorer-place-photos]');
 
     // The map is directly above the explorer. Selection does not need a jump link.
     section.querySelector('.place-overnight-options-map-link')?.remove();
