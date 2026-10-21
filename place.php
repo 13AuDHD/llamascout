@@ -458,63 +458,6 @@ $locationParts =
         ]
     );
 
-$amenityLabels = [
-    'toilets' => [
-        'at-toilet',
-        'Toilets',
-    ],
-
-    'potable_water' => [
-        'at-water-tap',
-        'Potable water',
-    ],
-
-    'trash' => [
-        'trash',
-        'Trash',
-    ],
-
-    'fire_ring' => [
-        'campfire',
-        'Metal fire ring',
-    ],
-
-    'picnic_table' => [
-        'picnic-table',
-        'Picnic table',
-    ],
-
-    'bear_box' => [
-        'bear',
-        'Bear box',
-    ],
-
-    'showers' => [
-        'at-shower-facilities',
-        'Showers',
-    ],
-
-    'electricity' => [
-        'at-electricity-socket',
-        'Electricity',
-    ],
-
-    'dump_station' => [
-        'caravan',
-        'Dump station',
-    ],
-
-    'wifi' => [
-        'at-wifi',
-        'WiFi',
-    ],
-
-    'laundry' => [
-        'wash-machine',
-        'Laundry',
-    ],
-];
-
 $details =
     $hasMemberAccess
         ? (
