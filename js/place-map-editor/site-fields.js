@@ -192,6 +192,11 @@
                     currentFeatureType()
                     === 'camping_site';
 
+            const parentLabel = siteParent?.closest('label')?.querySelector('span');
+            if (parentLabel) {
+                parentLabel.textContent = 'Containing Area (optional)';
+            }
+
             const parentCampingAreaForSite =
                 () => {
                     const parentId =
@@ -320,9 +325,7 @@
                     siteParent.append(
                         createOption(
                             '',
-                            areas.length > 0
-                                ? 'Choose an Area'
-                                : 'Create an Area first'
+                            'No containing Area (standalone Site)'
                         )
                     );
 
@@ -348,14 +351,6 @@
                         ) {
                             siteParent.value =
                                 desiredParent;
-
-                        } else if (
-                            areas.length === 1
-                        ) {
-                            siteParent.value =
-                                String(
-                                    areas[0].id
-                                );
 
                         } else {
                             siteParent.value =
