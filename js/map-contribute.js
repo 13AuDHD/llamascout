@@ -86,8 +86,8 @@
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (points.length < 3) { status.textContent = 'Add at least three perimeter points.'; return; }
-        if (type.value === 'camping_site' && (!areaChoice.value || !siteChoice.value)) {
-            status.textContent = 'Choose a containing Area and the existing Site this polygon represents.';
+        if (type.value === 'camping_site' && !siteChoice.value) {
+            status.textContent = 'Choose the existing Site this polygon represents. A containing Area is optional.';
             return;
         }
         const submit = form.querySelector('[type=submit]');
