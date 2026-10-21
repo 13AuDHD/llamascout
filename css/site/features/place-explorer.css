@@ -147,28 +147,19 @@
     fill-opacity: .65;
 }
 
-/* Phase 2: keep location identity visible in the Scout Report and Site gallery. */
+/* One compact thumbnail component for both Place and Site photos. */
 .scout-report[data-explorer-color] .place-selected-campsite-context {
     border-left: 3px solid var(--explorer-report-color);
     padding-left: 10px;
 }
-
-.place-overnight-options[data-explorer-scope="site"]
-[data-campsite-selected-detail] .place-campsite-gallery-item {
-    border-left: 3px solid #e58a17;
-}
-
 .place-overnight-options .place-explorer-overview.is-selected {
     border-color: var(--explorer-color);
     box-shadow: inset 0 0 0 1px var(--explorer-color);
 }
-
 .place-overnight-options .place-campsite-row[data-stay-area-id].is-selected {
     box-shadow: inset 0 0 0 1px currentColor;
 }
-
-/* A single gallery moves with the selected Place, instead of being copied. */
-.place-overnight-options [data-explorer-place-photos] {
+.place-overnight-options .place-photo-gallery-section {
     padding: 12px 0 20px;
     border: 0;
     min-width: 0;
@@ -176,25 +167,17 @@
 .place-overnight-options [data-explorer-place-photos][hidden] {
     display: none;
 }
-.place-overnight-options [data-explorer-place-photos] .place-detail-container {
-    width: 100%;
-    max-width: 100%;
-    padding: 0;
-}
-.place-overnight-options [data-explorer-place-photos] .place-photo-gallery-heading h2 {
+.place-overnight-options .place-photo-gallery-heading h2,
+.place-overnight-options .place-photo-gallery-heading h4 {
     font-size: 1.15rem;
+    margin: 0;
 }
-.place-overnight-options [data-explorer-place-photos] .place-photo-gallery {
+.place-overnight-options .place-photo-gallery {
     grid-auto-columns: minmax(145px, 25%);
 }
-.place-overnight-options [data-explorer-place-photos] .place-photo-thumb {
+.place-overnight-options [data-place-gallery] .place-photo-thumb {
     border-left: 3px solid var(--explorer-color);
 }
-/* Site photography stays attached to the selected Site. */
-.place-overnight-options [data-campsite-selected-detail] .place-campsite-gallery-item {
-    border-left: 3px solid #e58a17;
-}
-
 /* The official Place pin holds the only Place photo popup. */
 .place-map-card .place-explorer-pin-popup-shell .leaflet-popup-content-wrapper {
     padding: 0;
@@ -246,7 +229,7 @@
     color: #fff;
 }
 @media (max-width: 640px) {
-    .place-overnight-options [data-explorer-place-photos] .place-photo-gallery {
+    .place-overnight-options .place-photo-gallery {
         grid-auto-columns: minmax(140px, 57%);
     }
 }
