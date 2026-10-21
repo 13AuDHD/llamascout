@@ -90,37 +90,34 @@ function llama_place_map_feature_validate_site_details(
             )
         );
 
-    if ($parentFeatureId < 1) {
-        throw new InvalidArgumentException(
-            'Choose the Area that contains this Site.'
-        );
-    }
+    // Sites may be mapped without an enclosing Area. An Area is a separate
+    // optional reporting parent, not a prerequisite for a Site boundary.
+    $parentFeatureType = '';
 
-    $parentStmt = $db->prepare(
-        'SELECT feature_type
-         FROM place_map_features
-         WHERE id = ?
-           AND place_id = ?
-           AND feature_type IN ("camping_area", "parking_area")
-           AND is_active = 1
-         LIMIT 1'
-    );
-
-    $parentStmt->execute([
-        $parentFeatureId,
-        $placeId,
-    ]);
-
-    $parentFeatureType =
-        (string) (
-            $parentStmt->fetchColumn()
-            ?: ''
+    if ($parentFeatureId > 0) {
+        $parentStmt = $db->prepare(
+            'SELECT feature_type
+             FROM place_map_features
+             WHERE id = ?
+               AND place_id = ?
+               AND feature_type IN ("camping_area", "parking_area")
+               AND is_active = 1
+             LIMIT 1'
         );
 
-    if ($parentFeatureType === '') {
-        throw new InvalidArgumentException(
-            'The selected parent Area is not available.'
-        );
+        $parentStmt->execute([
+            $parentFeatureId,
+            $placeId,
+        ]);
+
+        $parentFeatureType =
+            (string) ($parentStmt->fetchColumn() ?: '');
+
+        if ($parentFeatureType === '') {
+            throw new InvalidArgumentException(
+                'The selected parent Area is not available.'
+            );
+        }
     }
 
     $siteClassId =
@@ -250,7 +247,7 @@ function llama_place_map_feature_validate_site_details(
 
     return [
         'camping_area_feature_id' =>
-            $parentFeatureId,
+            $parentFeatureId > 0 ? $parentFeatureId : null,
 
         'site_class_id' =>
             $siteClassId > 0

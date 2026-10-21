@@ -44,6 +44,18 @@ function llama_map_proposal_submit(PDO $db, int $placeId, int $userId, array $in
         'rates' => is_array($input['rates'] ?? null) ? $input['rates'] : [],
         'site_classes' => is_array($input['site_classes'] ?? null) ? $input['site_classes'] : [],
     ];
+    if ($type === 'camping_site') {
+        $siteId = max(0, (int) ($payload['site_details']['proposed_campsite_id'] ?? 0));
+        if ($siteId < 1) {
+            throw new InvalidArgumentException('Choose the existing Site this perimeter represents.');
+        }
+        $siteCheck = $db->prepare('SELECT id FROM place_campsites WHERE id = ? AND place_id = ? AND is_active = 1 LIMIT 1');
+        $siteCheck->execute([$siteId, $placeId]);
+        if (!$siteCheck->fetchColumn()) {
+            throw new InvalidArgumentException('This Site does not belong to the selected Place.');
+        }
+        // The final Site association is still explicitly reviewed by Admin.
+    }
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     if (strlen($json) > 150000) {
         throw new InvalidArgumentException('The mapped-area proposal is too large. Simplify the perimeter.');
