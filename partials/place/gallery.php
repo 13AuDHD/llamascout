@@ -1,6 +1,17 @@
-<?php if ($hasMemberAccess && $galleryImages): ?>
-    <section class="place-photo-gallery-section" aria-labelledby="place-photo-gallery-heading">
-        <div class="place-detail-container">
+<?php
+
+declare(strict_types=1);
+
+// The Place gallery is rendered by overnight-options.php, immediately after
+// the location selectors. Individual Sites use the same thumbnail component.
+if ($hasMemberAccess):
+?>
+    <?php if ($galleryImages): ?>
+        <section
+            class="place-photo-gallery-section"
+            data-explorer-place-photos
+            aria-labelledby="place-photo-gallery-heading"
+        >
             <div class="place-photo-gallery-heading">
                 <div>
                     <p class="place-detail-eyebrow">Photos</p>
@@ -14,13 +25,14 @@
                     <button
                         class="place-photo-thumb<?= !empty($image['is_featured']) ? ' is-featured' : '' ?>"
                         type="button"
-                        data-place-gallery-open="<?= (int) $index ?>"
+                        data-gallery-open="<?= (int) $index ?>"
                         aria-label="Open photo <?= (int) $index + 1 ?> of <?= count($galleryImages) ?>"
                     >
                         <img
                             src="<?= place_h(place_image_url($image['src'] ?? '')) ?>"
                             alt="<?= place_h(($image['alt_text'] ?? '') ?: $place['name']) ?>"
-                            loading="<?= $index < 4 ? 'eager' : 'lazy' ?>"
+                            loading="lazy"
+                            decoding="async"
                         >
                         <?php if (!empty($image['is_featured'])): ?>
                             <span class="place-photo-featured-label">Hero</span>
@@ -28,14 +40,11 @@
                     </button>
                 <?php endforeach; ?>
             </div>
+            <p class="place-photo-gallery-help">Tap a photo to see it larger.</p>
+        </section>
+    <?php endif; ?>
 
-            <p class="place-photo-gallery-help">
-                Tap any photo to view it larger and move through the full gallery.
-            </p>
-        </div>
-    </section>
-
-    <dialog class="place-gallery-lightbox" id="place-gallery-lightbox" aria-label="Place photo viewer">
+    <dialog class="place-gallery-lightbox" id="place-gallery-lightbox" aria-label="Photo viewer">
         <div class="place-gallery-lightbox-inner">
             <div class="place-gallery-lightbox-top">
                 <span id="place-gallery-counter"></span>
@@ -43,28 +52,17 @@
                     <i aria-hidden="true"><?= llama_icon('x') ?></i>
                 </button>
             </div>
-
             <div class="place-gallery-stage">
                 <button type="button" class="place-gallery-arrow is-previous" id="place-gallery-previous" aria-label="Previous photo">
                     <i aria-hidden="true"><?= llama_icon('chevron-left') ?></i>
                 </button>
-
                 <img id="place-gallery-large-image" src="" alt="">
-
                 <button type="button" class="place-gallery-arrow is-next" id="place-gallery-next" aria-label="Next photo">
                     <i aria-hidden="true"><?= llama_icon('chevron-right') ?></i>
                 </button>
             </div>
-
             <p class="place-gallery-caption" id="place-gallery-caption"></p>
-
-            <div class="place-gallery-lightbox-thumbs" id="place-gallery-lightbox-thumbs">
-                <?php foreach ($galleryImages as $index => $image): ?>
-                    <button type="button" data-place-gallery-jump="<?= (int) $index ?>" aria-label="View photo <?= (int) $index + 1 ?>">
-                        <img src="<?= place_h(place_image_url($image['src'] ?? '')) ?>" alt="" loading="lazy">
-                    </button>
-                <?php endforeach; ?>
-            </div>
+            <div class="place-gallery-lightbox-thumbs" id="place-gallery-lightbox-thumbs"></div>
         </div>
     </dialog>
 <?php endif; ?>

@@ -606,6 +606,8 @@ $hasSupplementalStayOptions =
         <?php endforeach; ?>
 
     </div>
+
+    <?php require __DIR__ . '/gallery.php'; ?>
 </section>
 
 <script
