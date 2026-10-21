@@ -708,7 +708,12 @@ function place_public_amenities(
             electricity,
             dump_station,
             wifi,
-            laundry
+            laundry,
+            picnic_shelter,
+            playground,
+            dog_park,
+            amphitheater,
+            campground_host
 
         FROM place_amenities
 

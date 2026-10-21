@@ -1163,6 +1163,10 @@ function admin_place_save_amenities(
         'dump_station',
         'wifi',
         'laundry',
+        'picnic_shelter',
+        'playground',
+        'dog_park',
+        'amphitheater',
     ];
 
     admin_place_upsert_row(
