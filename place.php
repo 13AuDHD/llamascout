@@ -840,12 +840,6 @@ require
     <?php
     require
         __DIR__
-        . '/partials/place/gallery.php';
-    ?>
-
-    <?php
-    require
-        __DIR__
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
