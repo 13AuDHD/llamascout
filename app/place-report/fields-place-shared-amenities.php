@@ -88,12 +88,25 @@ function llama_place_report_add_shared_amenity_fields(
         ],
     ];
 
+    $publicNames = [
+        'amenity_toilets' => 'Toilets',
+        'amenity_potable_water' => 'Potable water',
+        'amenity_trash' => 'Trash bins',
+        'amenity_picnic_shelter' => 'Picnic pavilion',
+        'amenity_showers' => 'Showers',
+        'amenity_dump_station' => 'Dump station',
+        'amenity_wifi' => 'WiFi',
+        'amenity_laundry' => 'Laundry',
+        'amenity_playground' => 'Playground',
+        'amenity_amphitheater' => 'Amphitheater',
+    ];
+
     foreach ($placeShared as $key => [$label, $help]) {
         if (!isset($fields[$key])) {
             continue;
         }
 
-        $fields[$key]['label'] = $label;
+        $fields[$key]['label'] = $publicNames[$key] ?? $label;
         $fields[$key]['help'] = $help;
         $fields[$key]['layout_section'] = 'place';
         $fields[$key]['layout_group'] = 'shared_amenities';
@@ -130,12 +143,25 @@ function llama_place_report_add_shared_amenity_fields(
     ];
 
     $add(
+        'amenity_dog_park',
+        'Dog park',
+        'amenities',
+        'tri',
+        'amenities.dog_park',
+        $common + [
+            'icon' => 'dog',
+            'help' => 'A designated shared dog park or off-leash area at this Place.',
+        ]
+    );
+
+    $add(
         'amenity_campground_host',
-        'Campground host available?',
+        'Camp host',
         'amenities',
         'select',
         'amenities.campground_host',
         $common + [
+            'icon' => 'user',
             'options' => [
                 '1' => 'Yes',
                 '0' => 'No',

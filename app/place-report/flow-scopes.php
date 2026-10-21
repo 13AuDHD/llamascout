@@ -213,6 +213,7 @@ function llama_place_report_scope_overrides(): array
             'amenity_electricity',
             'amenity_picnic_shelter',
             'amenity_playground',
+            'amenity_dog_park',
             'amenity_amphitheater',
             'amenity_fishing_pier',
             'amenity_lake_access',
