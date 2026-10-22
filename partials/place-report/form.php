@@ -1337,8 +1337,25 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                     $approvedSubgroups[$approvedKey]['fields'][] = $field;
                 }
                 ?>
+                <?php
+                /*
+                 * Do not repeat a heading when the approved subgroup is the
+                 * only subgroup and has the same name as its parent group.
+                 * Keep all field rendering and existing group containers intact.
+                 */
+                $showApprovedSubgroupHeadings = count($approvedSubgroups) > 1;
+                ?>
                 <?php foreach ($approvedSubgroups as $approvedSubgroup): ?>
-                    <h4><?= $e($approvedSubgroup['label']) ?></h4>
+                    <?php
+                    $approvedSubgroupLabel = (string) $approvedSubgroup['label'];
+                    $sameAsParent = strcasecmp(
+                        trim($approvedSubgroupLabel),
+                        trim((string) $reportGroupLabel)
+                    ) === 0;
+                    ?>
+                    <?php if ($showApprovedSubgroupHeadings || !$sameAsParent): ?>
+                        <h4><?= $e($approvedSubgroupLabel) ?></h4>
+                    <?php endif; ?>
                     <div class="contribution-grid">
                         <?php foreach ($approvedSubgroup['fields'] as $field): ?>
                             <?php $renderField($field); ?>
