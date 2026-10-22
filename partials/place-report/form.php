@@ -922,6 +922,37 @@ $renderField =
                 </div>
 
 
+            <?php elseif (in_array($key, ['season_begins', 'season_ends'], true)): ?>
+
+                <?php
+                $seasonParts = preg_match('/^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/', (string) $current)
+                    ? explode('-', (string) $current)
+                    : ['', ''];
+                $seasonMonths = [
+                    '01' => 'January', '02' => 'February', '03' => 'March',
+                    '04' => 'April', '05' => 'May', '06' => 'June',
+                    '07' => 'July', '08' => 'August', '09' => 'September',
+                    '10' => 'October', '11' => 'November', '12' => 'December',
+                ];
+                ?>
+
+                <div class="place-report-season-picker" data-season-picker>
+                    <select aria-label="<?= $e($field['label']) ?> month" data-season-month>
+                        <option value="">Month...</option>
+                        <?php foreach ($seasonMonths as $monthNumber => $monthName): ?>
+                            <option value="<?= $e($monthNumber) ?>" <?= $seasonParts[0] === $monthNumber ? 'selected' : '' ?>><?= $e($monthName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select aria-label="<?= $e($field['label']) ?> day" data-season-day>
+                        <option value="">Day...</option>
+                        <?php for ($dayNumber = 1; $dayNumber <= 31; $dayNumber++):
+                            $dayValue = sprintf('%02d', $dayNumber); ?>
+                            <option value="<?= $e($dayValue) ?>" <?= $seasonParts[1] === $dayValue ? 'selected' : '' ?>><?= $dayNumber ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <input type="hidden" name="<?= $e($key) ?>" value="<?= $e($current) ?>" data-season-value>
+                </div>
+
             <?php elseif (
                 $type === 'select'
             ): ?>
@@ -1516,6 +1547,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 
 
 
+<script defer src="/js/place-report-season-picker.js"></script>
 <script defer src="/js/place-report-section-completion.js"></script>
 <script defer src="/js/place-report-road-hazards.js"></script>
 
