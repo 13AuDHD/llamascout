@@ -10,12 +10,9 @@ declare(strict_types=1);
 function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
 {
     $derivedCompatibility = [
-        'recommended_overnight_stop',
         'recommended_quiet_evening',
-        'recommended_extended_stay',
         'recommended_sensory_retreat',
         'recommended_stargazing',
-        'recommended_remote_work',
     ];
 
     $legacySeasonCompatibility = [
