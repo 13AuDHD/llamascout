@@ -253,12 +253,16 @@
 
     const syncFieldOwnership = () => {
         const siteActive = current().level === 'site';
+        const bulkEnabled = !siteActive && Boolean(
+            form.querySelector('[name="admin_bulk_site_answers_json"]')
+            && form.querySelector('[data-admin-bulk-site-toggle]')?.checked
+        );
         let restricted = 0;
 
         for (const [key, group] of scopedControls) {
             const permitted = siteActive
                 ? siteFieldKeys.has(key)
-                : placeFieldKeys.has(key);
+                : (placeFieldKeys.has(key) || (bulkEnabled && siteFieldKeys.has(key)));
 
             for (const control of group) {
                 control.disabled =
@@ -287,6 +291,10 @@
             )
             : '';
     };
+
+    form.addEventListener('llama:admin-bulk-site-mode-changed', () => {
+        queueMicrotask(syncFieldOwnership);
+    });
 
     let lastSignature = '';
 

@@ -560,6 +560,7 @@
     const bulkLabel = document.createElement('label');
     const bulkToggle = document.createElement('input');
     bulkToggle.type = 'checkbox';
+    bulkToggle.dataset.adminBulkSiteToggle = '1';
     bulkLabel.append(bulkToggle, document.createTextNode(' Apply changed Site answers to all Sites'));
     const bulkHelp = document.createElement('p');
     bulkHelp.textContent = 'Only questions you change after enabling this option will be applied. Existing Site answers are protected unless you choose overwrite.';
@@ -574,10 +575,12 @@
         bulkField.value = '';
         bulkToggle.checked = false;
         overwriteToggle.checked = false;
+        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
     };
     bulkToggle.addEventListener('change', () => {
         bulkTouched.clear();
         bulkConfirmedPayload = '';
+        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
     });
 
 
@@ -658,7 +661,8 @@
         siteNumberInput.replaceWith(
             campsiteSelect
         );
-        campsiteSelect.insertAdjacentElement('afterend', bulkPanel);
+        // Outside the field wrapper so scope/applicability hiding cannot hide the bulk controls.
+        (wrapper || campsiteSelect).insertAdjacentElement('afterend', bulkPanel);
     }
 
     const setSiteControlMode = (
@@ -1245,6 +1249,7 @@
         bulkPanel.hidden = campsiteSites.length === 0;
         resetBulk();
         setSiteControlMode('place');
+        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
         campsiteDirty = false;
         placeSiteDirty = false;
 
