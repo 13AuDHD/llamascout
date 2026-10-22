@@ -49,6 +49,29 @@ $publicReportGroups = [
     'notes_public' => ['Scout Notes', ['scout_note_1','scout_note_2','scout_note_3']],
     'history_public' => ['Place History', ['visited_at','visit_length_of_stay','visit_setup_types']],
 ];
+/* Official contact data is sourced from the existing RIDB facility resolver. */
+$publicFacility = [];
+if ($placeReportReadMode === 'scout-report' && !empty($place['id'])) {
+    require_once dirname(__DIR__, 2) . '/app/ridb-facility-details.php';
+    try {
+        $publicFacility = llama_place_facility_public_data(db(), (int) $place['id']);
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'scout-report.facility');
+    }
+}
+
+/* Render only a limited set of formatting tags, never source HTML attributes. */
+$renderSafeDescription = static function (string $raw): string {
+    $raw = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $raw = preg_replace('~<(script|style|iframe|object|svg|form)\b[^>]*>.*?</\1\s*>~is', '', $raw) ?? $raw;
+    $raw = strip_tags($raw, '<p><br><strong><b><em><i><u><ul><ol><li><h3><h4><h5><blockquote>');
+    $raw = preg_replace_callback('~<(/?)([a-z][a-z0-9]*)\b[^>]*>~i', static function (array $m): string {
+        $tag = strtolower($m[2]);
+        return '<' . $m[1] . $tag . ($tag === 'br' ? ' /' : '') . '>';
+    }, $raw) ?? $raw;
+    return $raw;
+};
+
 $publicFieldGroups = [];
 if ($placeReportReadMode === 'scout-report') {
     $placeReportSections = [];
@@ -230,7 +253,8 @@ $renderValue =
         $placeReportReadMode,
         $e,
         $localIcon,
-        $campsiteSwitchableFields
+        $campsiteSwitchableFields,
+        $renderSafeDescription
     ): void {
         $state =
             llama_place_report_answer_state(
@@ -404,6 +428,8 @@ $renderValue =
                                 target="_blank"
                                 rel="noopener noreferrer"
                             ><?= $e($value) ?></a>
+                        <?php elseif ($key === 'description' && $state === 'answered'): ?>
+                            <?= $renderSafeDescription((string) $value) ?>
                         <?php else: ?>
                             <?= $e($value) ?>
                         <?php endif; ?>
@@ -715,6 +741,50 @@ foreach (
                 (string) $section['label']
             ) ?>
         </h3>
+
+        <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'basic'): ?>
+            <?php
+            $officialContact = [
+                'Official Address' => ['value' => trim((string) ($publicFacility['address'] ?? '')), 'icon' => 'map-pin'],
+                'Phone Number' => ['value' => trim((string) ($publicFacility['phone'] ?? '')), 'icon' => 'phone'],
+                'Email Address' => ['value' => trim((string) ($publicFacility['email'] ?? '')), 'icon' => 'mail'],
+            ];
+            ?>
+            <div class="scout-report-grid">
+                <?php foreach ($officialContact as $contactLabel => $contact): ?>
+                    <?php if ($contact['value'] === '') continue; ?>
+                    <div class="scout-report-item scout-report-value-item">
+                        <div class="scout-report-value-content">
+                            <span><?= $e($contactLabel) ?></span>
+                            <strong>
+                                <?php if ($contactLabel === 'Phone Number'): ?>
+                                    <a href="tel:<?= $e(preg_replace('/[^0-9+]/', '', $contact['value'])) ?>"><?= $e($contact['value']) ?></a>
+                                <?php elseif ($contactLabel === 'Email Address'): ?>
+                                    <a href="mailto:<?= $e($contact['value']) ?>"><?= $e($contact['value']) ?></a>
+                                <?php else: ?>
+                                    <?= $e($contact['value']) ?>
+                                <?php endif; ?>
+                            </strong>
+                        </div>
+                        <?= llama_icon($contact['icon'], ['class' => 'scout-report-value-icon']) ?>
+                    </div>
+                <?php endforeach; ?>
+                <?php foreach ((array) ($publicFacility['links'] ?? []) as $officialLink): ?>
+                    <?php
+                    $linkUrl = trim((string) ($officialLink['url'] ?? ''));
+                    if (!preg_match('~^https?://~i', $linkUrl)) continue;
+                    $linkTitle = trim((string) ($officialLink['title'] ?? ''));
+                    ?>
+                    <div class="scout-report-item scout-report-value-item">
+                        <div class="scout-report-value-content">
+                            <span>Official Links</span>
+                            <strong><a href="<?= $e($linkUrl) ?>" target="_blank" rel="noopener noreferrer"><?= $e($linkTitle !== '' ? $linkTitle : $linkUrl) ?></a></strong>
+                        </div>
+                        <?= llama_icon('external-link', ['class' => 'scout-report-value-icon']) ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (
             $placeReportReadMode === 'scout-report'
