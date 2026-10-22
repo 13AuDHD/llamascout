@@ -127,7 +127,7 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_entrance_gate',
-        'Place entrance gate present?',
+        'Site Gated',
         'rules',
         'tri',
         'rules.place_entrance_gate',
@@ -150,7 +150,7 @@ function llama_place_report_add_operating_fields(callable $add): void
 
     $add(
         'place_gate_access_type',
-        'Place gate access type',
+        'Site Gate Access Type',
         'rules',
         'select',
         'rules.place_gate_access_type',
@@ -170,8 +170,8 @@ function llama_place_report_add_operating_fields(callable $add): void
     );
 
     foreach ([
-        'place_gate_opening_time' => 'Normal gate opening time',
-        'place_gate_closing_time' => 'Normal gate closing time',
+        'place_gate_opening_time' => 'Site Gate Opens',
+        'place_gate_closing_time' => 'Site Gate Closes',
     ] as $key => $label) {
         $add(
             $key,
