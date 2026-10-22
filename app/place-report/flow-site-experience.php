@@ -13,63 +13,21 @@ declare(strict_types=1);
 function llama_place_report_apply_site_experience_metadata(
     array &$fields
 ): void {
-    $ratings = [
-        'site_rating' => [
-            'Scout Site rating',
-            'Your overall Scout rating of this individual Site based on the experience you observed. This is subjective and must not replace objective Site facts.',
-        ],
-
-        'condition_rating' => [
-            'Scout condition rating',
-            'Your Scout rating of the Site condition and upkeep when observed. Record measurable condition facts elsewhere when a specific field exists.',
-        ],
-
-        'location_rating' => [
-            'Scout location rating',
-            'Your Scout rating of this Site position within the surrounding Place, including privacy, convenience, views, and nearby activity.',
-        ],
-    ];
-
-    foreach ($ratings as $key => [$label, $help]) {
+    /* Official classifications remain separate from Scout opinions. */
+    foreach ([
+        'recommended_remote_work' => 'Remote Work',
+        'recommended_overnight_stop' => 'Overnight Stop',
+        'recommended_extended_stay' => 'Extended Stay',
+        'recommended_solo_travel' => 'Solo Travelers',
+        'recommended_families' => 'Families',
+        'recommended_large_groups' => 'Large Groups',
+    ] as $key => $label) {
         if (!isset($fields[$key])) {
             continue;
         }
-
-        $fields[$key]['label'] =
-            $label;
-
-        $fields[$key]['help'] =
-            $help;
-    }
-
-    /*
-     * These recommendation flags duplicate a paired 1-5 experience rating.
-     * Keep historical keys readable, but do not ask the Scout the same
-     * subjective question twice.
-     */
-    foreach (
-        [
-            'recommended_overnight_stop',
-            'recommended_quiet_evening',
-            'recommended_extended_stay',
-            'recommended_sensory_retreat',
-            'recommended_stargazing',
-            'recommended_remote_work',
-        ]
-        as $key
-    ) {
-        if (!isset($fields[$key])) {
-            continue;
-        }
-
-        $fields[$key]['layout_section'] =
-            'compatibility';
-
-        $fields[$key]['layout_group'] =
-            'compatibility';
-
-        $fields[$key]['counts_toward_completion'] =
-            false;
+        $fields[$key]['label'] = $label;
+        $fields[$key]['derived'] = false;
+        unset($fields[$key]['derived_from']);
     }
 
     $recommendationHelp = [
