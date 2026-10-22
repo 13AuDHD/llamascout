@@ -77,7 +77,7 @@ function llama_place_report_layout_assignments(): array
 
         'getting_there:access_restrictions' => [
             'approach_road_type', 'approach_permit_required',
-            'approach_fee_required', 'approach_gate_present',
+            'approach_fee_required', 'approach_road_fee', 'approach_gate_present',
             'approach_gate_access_type', 'approach_gate_opens',
             'approach_gate_closes', 'approach_restriction_details',
             'approach_access_info_url',
