@@ -892,3 +892,115 @@ function admin_place_save_selected_campsite_answers(
 
     return $siteId;
 }
+
+
+/**
+ * Explicit bulk Site answers. Never invoked by a normal Place save.
+ * Each submitted key must be a writable Site field and a nonblank value.
+ * Existing Site overrides and imported values are protected by default.
+ * Caller owns the surrounding transaction and permission checks.
+ */
+function admin_place_bulk_save_site_answers(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $input
+): array {
+    $raw = trim((string) ($input['admin_bulk_site_answers_json'] ?? ''));
+    if ($raw === '') {
+        return ['sites' => 0, 'answers' => 0];
+    }
+    if (trim((string) ($input['selected_campsite_id'] ?? '')) !== '') {
+        throw new InvalidArgumentException('Bulk Site editing requires the Place target.');
+    }
+    if (strlen($raw) > 200000) {
+        throw new InvalidArgumentException('Bulk Site answers are too large.');
+    }
+    $payload = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($payload) || !isset($payload['answers']) || !is_array($payload['answers'])
+        || (array_is_list($payload['answers']) && $payload['answers'] !== [])) {
+        throw new InvalidArgumentException('Invalid bulk Site answer format.');
+    }
+    $overwrite = ($payload['overwrite'] ?? false) === true;
+    $answers = $payload['answers'];
+    if (!$answers) {
+        throw new InvalidArgumentException('Choose at least one Site answer for bulk editing.');
+    }
+    $allowed = array_flip(admin_place_campsite_field_keys());
+    $definitions = llama_place_report_fields();
+    $unknownToken = llama_place_report_unknown_token();
+    $unansweredToken = llama_place_report_unanswered_token();
+    $parsed = [];
+    foreach ($answers as $key => $rawValue) {
+        if (!is_string($key) || !isset($allowed[$key]) || !isset($definitions[$key])) {
+            throw new InvalidArgumentException('Bulk editing includes an invalid Site field.');
+        }
+        if (!empty($definitions[$key]['location_field'])) {
+            throw new InvalidArgumentException('Location fields cannot be bulk edited.');
+        }
+        if (!is_string($rawValue) && !is_array($rawValue)) {
+            throw new InvalidArgumentException('Invalid bulk Site answer value.');
+        }
+        if (is_string($rawValue)) {
+            $rawValue = trim($rawValue);
+            if ($rawValue === '' || $rawValue === $unansweredToken) {
+                throw new InvalidArgumentException('Blank answers cannot be bulk applied.');
+            }
+        }
+        $unknownFields = [];
+        $parsed[$key] = $rawValue === $unknownToken
+            ? $unknownToken
+            : llama_place_report_parse_field($definitions[$key], $rawValue, $unknownFields);
+    }
+
+    $sites = llama_place_campsites($db, $placeId);
+    if (!$sites) {
+        throw new InvalidArgumentException('There are no active Sites to update.');
+    }
+    $siteCount = 0;
+    $savedCount = 0;
+    foreach ($sites as $site) {
+        $siteId = (int) ($site['id'] ?? 0);
+        if ($siteId < 1) {
+            continue;
+        }
+        $target = llama_report_verified_target($db, $placeId, 'site', 'campsite_record', $siteId);
+        $source = (string) ($target['source'] ?? 'campsite_record');
+        $targetId = (int) ($target['id'] ?? $siteId);
+        $existing = llama_scoped_report_load($db, $placeId, 'site', $targetId, $source);
+        $imported = admin_place_campsite_imported_form_values($site);
+        $siteSaved = false;
+        foreach ($parsed as $key => $value) {
+            if (!$overwrite && (array_key_exists($key, $existing)
+                || (array_key_exists($key, $imported)
+                    && $imported[$key] !== ''
+                    && $imported[$key] !== null
+                    && $imported[$key] !== $unansweredToken))) {
+                continue;
+            }
+            if (array_key_exists($key, $existing)
+                && llama_scoped_report_values_equal($existing[$key], $value)) {
+                continue;
+            }
+            llama_scoped_report_save($db, $placeId, 'site', $targetId, $source, $key, $value);
+            $savedCount++;
+            $siteSaved = true;
+        }
+        if ($siteSaved) {
+            $siteCount++;
+        }
+    }
+    admin_users_audit($db, $actorUserId, null,
+        'place.site_report_bulk_updated',
+        'Bulk updated Site report answers.',
+        [
+            'place_id' => $placeId,
+            'total_active_sites' => count($sites),
+            'sites_updated' => $siteCount,
+            'answers_saved' => $savedCount,
+            'field_keys' => array_keys($parsed),
+            'overwrite_existing' => $overwrite,
+        ]
+    );
+    return ['sites' => $siteCount, 'answers' => $savedCount];
+}
