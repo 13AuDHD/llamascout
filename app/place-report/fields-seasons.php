@@ -3,46 +3,22 @@
 declare(strict_types=1);
 
 /**
- * Standardized operating-season questions.
- *
- * These represent published recurring months, not a real-time open/closed
- * determination. Unknown or imprecise source data must not be guessed into
- * a definite operating schedule.
+ * Recurring operating-season dates. These are month/day facts without a year.
+ * The two canonical keys are season_begins and season_ends.
  */
 function llama_place_report_add_season_fields(array &$fields, callable $add): void
 {
-    $months = [
-        'january' => 'January',
-        'february' => 'February',
-        'march' => 'March',
-        'april' => 'April',
-        'may' => 'May',
-        'june' => 'June',
-        'july' => 'July',
-        'august' => 'August',
-        'september' => 'September',
-        'october' => 'October',
-        'november' => 'November',
-        'december' => 'December',
-    ];
-
     $extra = [
         'allow_unknown' => true,
-        // These are source-reported facts, not Scout observation points.
         'points_categories' => [],
         'counts_toward_completion' => false,
-        'options' => $months,
+        'placeholder' => 'MM-DD',
+        'help' => 'Enter the recurring month and day (MM-DD), without a year. Example: 05-15 for May 15. Leave unanswered if the date is not known.',
     ];
 
-    $add('season_begins', 'Season Begins', 'rules', 'select', 'rules.season_begins', $extra + [
-        'help' => 'First month of the published operating season. Leave Unknown when dates vary or are not confirmed.',
-    ]);
-    $add('season_ends', 'Season Ends', 'rules', 'select', 'rules.season_ends', $extra + [
-        'help' => 'Last month of the published operating season. Leave Unknown when dates vary or are not confirmed.',
-    ]);
+    $add('season_begins', 'Season Begins', 'rules', 'text', 'rules.season_begins', $extra);
+    $add('season_ends', 'Season Ends', 'rules', 'text', 'rules.season_ends', $extra);
 
-    // Maintain the established Rules card order without editing the large
-    // experience field registry. Keep both new cards adjacent before Best months.
     $begins = $fields['season_begins'];
     $ends = $fields['season_ends'];
     unset($fields['season_begins'], $fields['season_ends']);
