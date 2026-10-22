@@ -577,8 +577,8 @@ function llama_place_report_build_data(
     }
 
     /*
-     * Derived experience recommendations intentionally mirror the paired
-     * rating instead of asking the contributor for the same judgment twice.
+     * Only legacy derived recommendations mirror their paired ratings.
+     * Remote Work, Overnight Stop and Extended Stay are direct Scout answers.
      * Keep the stored compatibility fields current for downstream consumers.
      */
     if (!isset($data['experience']) || !is_array($data['experience'])) {
@@ -606,12 +606,9 @@ function llama_place_report_build_data(
 
     foreach (
         [
-            'recommended_overnight_stop' => 'overnight_comfort',
             'recommended_quiet_evening' => 'quiet_evening',
-            'recommended_extended_stay' => 'extended_stay_comfort',
             'recommended_sensory_retreat' => 'sensory_retreat',
             'recommended_stargazing' => 'stargazing',
-            'recommended_remote_work' => 'remote_work',
         ]
         as $derivedKey => $ratingKey
     ) {
@@ -1989,9 +1986,8 @@ function llama_place_report_data_from_published_place(
     }
 
     /*
-     * Recompute derived recommendation flags at read time as well so older
-     * published rows cannot display a stale recommendation that conflicts
-     * with the current 1-5 experience rating.
+     * Recompute only legacy derived recommendations at read time.
+     * Do not overwrite direct Scout recommendations.
      */
     $deriveRecommendation =
         static function (mixed $rating): ?bool {
@@ -2014,12 +2010,9 @@ function llama_place_report_data_from_published_place(
 
     foreach (
         [
-            'recommended_overnight_stop' => 'overnight_comfort',
             'recommended_quiet_evening' => 'quiet_evening',
-            'recommended_extended_stay' => 'extended_stay_comfort',
             'recommended_sensory_retreat' => 'sensory_retreat',
             'recommended_stargazing' => 'stargazing',
-            'recommended_remote_work' => 'remote_work',
         ]
         as $derivedKey => $ratingKey
     ) {
