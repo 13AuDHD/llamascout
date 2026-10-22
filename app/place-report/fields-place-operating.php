@@ -53,6 +53,9 @@ function llama_place_report_add_operating_fields(callable $add): void
             date('g A', strtotime('2000-01-01 ' . $key));
     }
 
+    $hours['sunrise'] = 'Sunrise';
+    $hours['sunset'] = 'Sunset';
+
     $add(
         'place_open_year_round',
         'Normally open year-round?',
@@ -86,7 +89,7 @@ function llama_place_report_add_operating_fields(callable $add): void
             'rules.' . $key,
             $base + [
                 'options' => $options,
-                'applicable_if' => [$no('place_open_year_round')],
+                'applicable_if' => [$no('place_open_year_round'), $yes('seasonal_closure')],
             ]
         );
     }
@@ -114,7 +117,9 @@ function llama_place_report_add_operating_fields(callable $add): void
             'select',
             'rules.' . $key,
             $base + [
-                'options' => $hours,
+                'options' => $key === 'place_opening_time'
+                    ? array_diff_key($hours, ['sunset' => true])
+                    : array_diff_key($hours, ['sunrise' => true]),
                 'applicable_if' => [$no('place_open_24_hours')],
             ]
         );
