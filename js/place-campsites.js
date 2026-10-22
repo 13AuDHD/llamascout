@@ -485,32 +485,12 @@
         `;
     };
 
-    const renderSiteDetail = (
-        site
-    ) => `
-        <article
-            class="place-campsite-detail${closureStatus(site) ? ' is-closed' : ''}"
-            data-campsite-detail-id="${escapeHtml(site.feature_id)}"
-        >
-            <header class="place-campsite-detail-heading">
-                <div>
-                    <p class="eyebrow">
-                        Selected Site
-                    </p>
-
-                    <h3>
-                        ${escapeHtml(
-                            smartCase(
-                                site.display_name
-                            )
-                        )}
-                    </h3>
-                </div>
-            </header>
-
-            ${closureDetails(site)}
-        </article>
-    `;
+    // The selected Site name already appears in the horizontal selector.
+    // Keep closure details, but do not repeat the Site number above photos.
+    const renderSiteDetail = (site) =>
+        closureStatus(site)
+            ? `<article class="place-campsite-detail is-closed" data-campsite-detail-id="${escapeHtml(site.feature_id)}">${closureDetails(site)}</article>`
+            : '';
 
     const siteMatchesFilter = (
         site,
@@ -888,6 +868,10 @@
         mergeReportValues(
             site.report_override_values
         );
+
+        // The selected Site identifier is the first Scout Report answer.
+        // Use the catalog's displayed name, not an optional report field.
+        set('site_number', smartCase(site.display_name));
 
         return values;
     };
@@ -1274,7 +1258,10 @@
                 updateScoutReport(resolved);
             } else {
                 // Clear the previous Site while its replacement loads.
-                updateScoutReport({ report_warnings: {} });
+                updateScoutReport({
+                    display_name: site.display_name,
+                    report_warnings: {},
+                });
                 const activeId = selectedId;
                 fetch(
                     `/api/place-campsite-detail.php?slug=${encodeURIComponent(slug)}&site=${encodeURIComponent(activeId)}&mode=report`,
