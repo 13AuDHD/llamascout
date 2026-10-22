@@ -308,7 +308,7 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('rv_suitable', 'RV suitable?', 'site_vehicle', 'tri', 'details.rv_suitable', [
+    $add('rv_suitable', 'RV / trailer suitable?', 'site_vehicle', 'tri', 'details.rv_suitable', [
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
