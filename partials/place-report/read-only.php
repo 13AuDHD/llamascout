@@ -18,20 +18,41 @@ $placeReportFields =
 $placeReportSections =
     llama_place_report_sections();
 
-/* Keep booking and fees near the beginning of the public Scout Report.
- * Moderation continues to use its original registry section sequence.
+/*
+ * Public Scout Report presentation follows the approved questionnaire order.
+ * Only the public view is reordered. Moderation and the shared field registry
+ * retain their existing behavior and storage mappings.
  */
-if ($placeReportReadMode === 'scout-report' && isset($placeReportSections['rules'])) {
-    $ruleSection = $placeReportSections['rules'];
-    unset($placeReportSections['rules']);
-    $earlySections = [];
-    foreach ($placeReportSections as $key => $definition) {
-        $earlySections[$key] = $definition;
-        if ($key === 'campground') {
-            $earlySections['rules'] = $ruleSection;
+if ($placeReportReadMode === 'scout-report') {
+    $publicSectionOrder = [
+        'basic',
+        'location',
+        'campground',
+        'amenities',
+        'road_access',
+        'site_vehicle',
+        'landscape_setting',
+        'accessibility',
+        'connectivity',
+        'sensory',
+        'safety',
+        'rules',
+        'experience',
+        'scout_notes',
+    ];
+
+    $orderedSections = [];
+    foreach ($publicSectionOrder as $key) {
+        if (isset($placeReportSections[$key])) {
+            $orderedSections[$key] = $placeReportSections[$key];
         }
     }
-    $placeReportSections = $earlySections;
+    foreach ($placeReportSections as $key => $section) {
+        if ($key !== 'summaries' && !isset($orderedSections[$key])) {
+            $orderedSections[$key] = $section;
+        }
+    }
+    $placeReportSections = $orderedSections;
 }
 
 
@@ -194,27 +215,6 @@ $campsiteSwitchableFields =
         )
     );
 
-/* Official contact information is rendered in the existing Campground cards. */
-$officialFacility = [];
-if ($placeReportReadMode === 'scout-report' && !empty($place['id'])) {
-    require_once dirname(__DIR__, 2) . '/app/ridb-facility-details.php';
-    try {
-        $officialFacility = llama_place_facility_public_data(db(), (int) $place['id']);
-    } catch (Throwable $exception) {
-        llama_log_caught_exception($exception, 'place.scout-report.facility');
-    }
-}
-
-/* Preserve simple source formatting without allowing scripts or HTML attributes. */
-$renderDescriptionHtml = static function (string $raw) use ($e): string {
-    $decoded = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $decoded = preg_replace('~<(script|style|iframe|object|svg|math)\b[^>]*>.*?</\1\s*>~is', '', $decoded) ?? $decoded;
-    $safe = strip_tags($decoded, '<p><br><strong><b><em><i><u><h2><h3><h4><ul><ol><li><blockquote>');
-    $safe = preg_replace('~<(p|br|strong|b|em|i|u|h2|h3|h4|ul|ol|li|blockquote)\b[^>]*>~i', '<$1>', $safe) ?? $safe;
-    $safe = preg_replace('~<br>~i', '<br>', $safe) ?? $safe;
-    return $safe;
-};
-
 $renderValue =
     static function (
         string $key,
@@ -224,8 +224,7 @@ $renderValue =
         $placeReportReadMode,
         $e,
         $localIcon,
-        $campsiteSwitchableFields,
-        $renderDescriptionHtml
+        $campsiteSwitchableFields
     ): void {
         $state =
             llama_place_report_answer_state(
@@ -399,8 +398,6 @@ $renderValue =
                                 target="_blank"
                                 rel="noopener noreferrer"
                             ><?= $e($value) ?></a>
-                        <?php elseif ($key === 'description' && $state === 'answered'): ?>
-                            <?= $renderDescriptionHtml((string) $value) ?>
                         <?php else: ?>
                             <?= $e($value) ?>
                         <?php endif; ?>
@@ -917,54 +914,6 @@ foreach (
                 );
                 ?>
             <?php endif; ?>
-        <?php endif; ?>
-
-        <?php if ($sectionKey === 'campground' && $officialFacility): ?>
-            <?php
-            $officialCards = [
-                ['Official address', trim((string) ($officialFacility['address'] ?? '')), 'map-pin', ''],
-                ['Phone', trim((string) ($officialFacility['phone'] ?? '')), 'phone', 'tel:'],
-                ['Email', trim((string) ($officialFacility['email'] ?? '')), 'mail', 'mailto:'],
-            ];
-            foreach ((array) ($officialFacility['links'] ?? []) as $link) {
-                $url = trim((string) ($link['url'] ?? ''));
-                if (!preg_match('~^https?://~i', $url)) {
-                    continue;
-                }
-                $officialCards[] = [
-                    'Official link',
-                    trim((string) ($link['title'] ?? '')) ?: 'Visit official website',
-                    'external-link',
-                    $url,
-                ];
-            }
-            ?>
-            <div class="scout-report-grid">
-                <?php foreach ($officialCards as [$label, $answer, $iconName, $linkTarget]): ?>
-                    <?php if ($answer === '') continue; ?>
-                    <div class="scout-report-item scout-report-value-item">
-                        <div class="scout-report-value-content">
-                            <span><?= $e($label) ?></span>
-                            <strong>
-                                <?php if ($linkTarget !== ''): ?>
-                                    <?php
-                                    $href = $linkTarget;
-                                    if ($linkTarget === 'tel:') {
-                                        $href .= preg_replace('/[^0-9+]/', '', $answer);
-                                    } elseif ($linkTarget === 'mailto:') {
-                                        $href .= $answer;
-                                    }
-                                    ?>
-                                    <a href="<?= $e($href) ?>" <?= str_starts_with($href, 'http') ? 'target="_blank" rel="noopener noreferrer"' : '' ?>><?= $e($answer) ?></a>
-                                <?php else: ?>
-                                    <?= $e($answer) ?>
-                                <?php endif; ?>
-                            </strong>
-                        </div>
-                        <?= llama_icon($localIcon($iconName), ['class' => 'scout-report-value-icon']) ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
         <?php endif; ?>
 
         <?php if (
