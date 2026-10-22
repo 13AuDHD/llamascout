@@ -558,6 +558,32 @@ function llama_place_report_reorder_layout_fields(
     $assignments =
         llama_place_report_layout_assignments();
 
+    /*
+     * Use the approved Scout Report questionnaire as the shared question
+     * order. Keep the existing Place/Site groups and scope assignments:
+     * this changes ordering, not answer storage or field ownership.
+     */
+    $approvedOrder = [];
+    foreach (llama_place_report_approved_question_groups() as $definition) {
+        foreach ($definition[1] as $key) {
+            if (!isset($approvedOrder[$key])) {
+                $approvedOrder[$key] = count($approvedOrder);
+            }
+        }
+    }
+
+    foreach ($assignments as &$keys) {
+        usort(
+            $keys,
+            static function (string $a, string $b) use ($approvedOrder): int {
+                $aRank = $approvedOrder[$a] ?? PHP_INT_MAX;
+                $bRank = $approvedOrder[$b] ?? PHP_INT_MAX;
+                return $aRank <=> $bRank;
+            }
+        );
+    }
+    unset($keys);
+
     foreach (
         llama_place_report_layout_groups()
         as $section => $groups
