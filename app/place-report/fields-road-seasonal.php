@@ -9,9 +9,12 @@ function llama_place_report_add_road_seasonal_questions(callable $add): void
         'allow_unknown' => true,
         'points_categories' => ['road_access'],
     ];
+    // Retained for historical data; the active form asks about seasonal road closure.
     $add('approach_year_round', 'Road accessible year-round?', 'road_access',
-        'tri', 'details.approach_year_round', $common);
-    $add('approach_seasonal_closure', 'Seasonal road closure?', 'road_access',
+        'tri', 'details.approach_year_round', $common + [
+            'counts_toward_completion' => false,
+        ]);
+    $add('approach_seasonal_closure', 'Seasonal Road Closure', 'road_access',
         'tri', 'details.approach_seasonal_closure', $common);
 
     $months = [];
@@ -29,7 +32,7 @@ function llama_place_report_add_road_seasonal_questions(callable $add): void
             'value' => '1',
         ]],
     ];
-    foreach (['closure' => 'Road closure begins', 'reopening' => 'Road reopens'] as $key => $label) {
+    foreach (['closure' => 'Season Begins', 'reopening' => 'Season Ends'] as $key => $label) {
         $add('approach_' . $key . '_month', $label . ': month', 'road_access',
             'select', 'details.approach_' . $key . '_month',
             $common + $whenClosed + ['options' => $months]);
