@@ -31,20 +31,6 @@ function llama_place_report_add_operating_fields(callable $add): void
         'value' => '0',
     ];
 
-    $months = [];
-
-    for ($month = 1; $month <= 12; $month++) {
-        $months[(string) $month] =
-            date('F', mktime(0, 0, 0, $month, 1));
-    }
-
-    $days = [];
-
-    for ($day = 1; $day <= 31; $day++) {
-        $days[(string) $day] =
-            (string) $day;
-    }
-
     $hours = [];
 
     for ($hour = 0; $hour < 24; $hour++) {
@@ -68,31 +54,9 @@ function llama_place_report_add_operating_fields(callable $add): void
         ]
     );
 
-    foreach ([
-        'place_operating_start_month' =>
-            ['Normal operating season begins: month', $months],
-
-        'place_operating_start_day' =>
-            ['Normal operating season begins: day', $days],
-
-        'place_operating_end_month' =>
-            ['Normal operating season ends: month', $months],
-
-        'place_operating_end_day' =>
-            ['Normal operating season ends: day', $days],
-    ] as $key => [$label, $options]) {
-        $add(
-            $key,
-            $label,
-            'rules',
-            'select',
-            'rules.' . $key,
-            $base + [
-                'options' => $options,
-                'applicable_if' => [$no('place_open_year_round'), $yes('seasonal_closure')],
-            ]
-        );
-    }
+    // Recurring month/day operating dates are defined once by
+    // llama_place_report_add_season_fields() as season_begins and season_ends.
+    // The four old month/day dropdowns are no longer active questions.
 
     $add(
         'place_open_24_hours',
