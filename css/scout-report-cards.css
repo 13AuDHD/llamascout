@@ -589,3 +589,16 @@
 .scout-report-section[class*="scout-report-scope-"] .scout-report-item {
     border-left: 4px solid var(--scout-report-scope-color);
 }
+
+/* Public Scout Report: section headings stay, outer panels go. */
+.scout-report .scout-report-section[class*="scout-report-scope-"] {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+/* Respect the existing Place/Site selection, including on narrow screens. */
+.scout-report .scout-report-section[hidden] {
+    display: none !important;
+}
