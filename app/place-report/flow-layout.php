@@ -348,15 +348,12 @@ function llama_place_report_layout_assignments(): array
         'site:experience_recommendations' => [
             'site_rating', 'condition_rating', 'location_rating',
             'experience_sunrise_view', 'experience_sunset_view',
-            'experience_overall_scenery', 'experience_night_sky',
-            'experience_stargazing', 'experience_quiet_evening',
-            'experience_overnight_comfort', 'experience_extended_stay_comfort',
-            'experience_sensory_retreat', 'experience_remote_work',
-            'recommended_overnight_stop', 'recommended_quiet_evening',
-            'recommended_extended_stay', 'recommended_sensory_retreat',
-            'recommended_stargazing', 'recommended_remote_work',
-            'recommended_solo_travel', 'recommended_families',
-            'recommended_large_groups', 'not_recommended_for',
+            'experience_overall_scenery', 'experience_stargazing',
+            'experience_sensory_retreat', 'experience_quiet_evening',
+            'recommended_remote_work', 'recommended_overnight_stop',
+            'recommended_extended_stay', 'recommended_solo_travel',
+            'recommended_families', 'recommended_large_groups',
+            'not_recommended_for',
         ],
 
         'site:site_photos' => [
