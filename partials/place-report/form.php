@@ -1207,6 +1207,16 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             if (!$reportGroupFields && !($reportMainKey === 'site' && $reportGroupKey === 'site_photos' && $placeReportShowPhotos)) {
                 continue;
             }
+            // Where all questions share one approved group, show its name on
+            // the existing collapsible section instead of nesting a heading.
+            $approvedLabels = [];
+            foreach ($reportGroupFields as $groupField) {
+                $label = trim((string) ($groupField['approved_question_group_label'] ?? ''));
+                $approvedLabels[$label !== '' ? $label : 'Additional Questions'] = true;
+            }
+            if (count($approvedLabels) === 1) {
+                $reportGroupLabel = (string) array_key_first($approvedLabels);
+            }
         ?>
         <details class="contribution-section" data-report-subsection="<?= $e($reportGroupKey) ?>"
             <?= $reportMainKey === 'place' && $reportGroupKey === 'information_location' ? 'open' : '' ?>>
@@ -1353,7 +1363,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                         trim((string) $reportGroupLabel)
                     ) === 0;
                     ?>
-                    <?php if ($showApprovedSubgroupHeadings || !$sameAsParent): ?>
+                    <?php if ($showApprovedSubgroupHeadings && !$sameAsParent): ?>
                         <h4><?= $e($approvedSubgroupLabel) ?></h4>
                     <?php endif; ?>
                     <div class="contribution-grid">
