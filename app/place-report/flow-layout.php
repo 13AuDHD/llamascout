@@ -266,6 +266,8 @@ function llama_place_report_layout_assignments(): array
          * How the Site is surfaced, positioned, and entered.
          */
         'site:parking_maneuvering' => [
+            'max_vehicle_length_feet',
+            'max_rv_length_feet',
             'parking_surface',
             'ground_condition',
             'levelness',
@@ -445,9 +447,7 @@ function llama_place_report_apply_layout_metadata(
             in_array(
                 $key,
                 [
-                    'max_vehicle_length_feet',
                     'max_trailer_length_feet',
-                    'max_rv_length_feet',
                     'trailer_suitable',
                     'rv_suitable',
                     'tent_camping_suitable',
