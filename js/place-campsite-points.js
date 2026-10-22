@@ -350,6 +350,27 @@
                         // Never fetch every Site photo when all markers load.
                         photo.src = photo.dataset.photoSrc;
                     }
+                    // Leaflet's automatic popup pan does not account for the
+                    // custom layer selector overlay at the top of this map.
+                    // Move the map contents down only when the popup overlaps it.
+                    const keepPopupBelowControls = () => {
+                        const popupElement = point.getPopup()?.getElement();
+                        const mapElement = map.getContainer();
+                        if (!popupElement || !mapElement) return;
+                        const mapRect = mapElement.getBoundingClientRect();
+                        const popupRect = popupElement.getBoundingClientRect();
+                        const topLimit = mapRect.top + 94;
+                        const overlap = Math.ceil(topLimit - popupRect.top);
+                        if (overlap > 0) {
+                            map.panBy([0, -overlap], { animate: false });
+                        }
+                    };
+                    requestAnimationFrame(keepPopupBelowControls);
+                    if (photo && !photo.complete) {
+                        photo.addEventListener('load', () => {
+                            requestAnimationFrame(keepPopupBelowControls);
+                        }, { once: true });
+                    }
                 });
                 layer.addLayer(point);
                 siteMarkers.set(id, point);
