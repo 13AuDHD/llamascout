@@ -1198,32 +1198,65 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         <span class="place-report-section-progress" data-section-completion-percent aria-label="Section completion"></span>
     </summary>
     <div class="contribution-section-body">
-        <?php foreach ($reportLayoutGroups[$reportMainKey] as $reportGroupKey => $reportGroupLabel):
-            $reportGroupFields = array_filter(
-                $reportMainFields,
-                static fn (array $field): bool =>
-                    (string) ($field['layout_group'] ?? '') === $reportGroupKey
-            );
-            if (!$reportGroupFields && !($reportMainKey === 'site' && $reportGroupKey === 'site_photos' && $placeReportShowPhotos)) {
+        <?php
+        /*
+         * Render one collapsible section per approved questionnaire group.
+         * Keep the canonical Place/Site ownership and field renderer intact.
+         */
+        $approvedDefinitions = llama_place_report_approved_question_groups();
+        $approvedSections = [];
+        foreach ($approvedDefinitions as $approvedKey => $definition) {
+            $approvedSections[$approvedKey] = [
+                'label' => (string) $definition[0],
+                'fields' => [],
+            ];
+        }
+        $approvedSections['additional_questions'] = [
+            'label' => 'Additional Questions',
+            'fields' => [],
+        ];
+        foreach ($reportMainFields as $fieldKey => $field) {
+            $approvedKey = (string) ($field['approved_question_group'] ?? '');
+            if ($approvedKey === '' || !isset($approvedSections[$approvedKey])) {
+                $approvedKey = 'additional_questions';
+            }
+            $approvedSections[$approvedKey]['fields'][$fieldKey] = $field;
+        }
+        // The approved inventory determines both group and question order.
+        foreach ($approvedDefinitions as $approvedKey => $definition) {
+            $fieldsInGroup = $approvedSections[$approvedKey]['fields'];
+            $orderedFields = [];
+            foreach ($definition[1] as $fieldKey) {
+                if (isset($fieldsInGroup[$fieldKey])) {
+                    $orderedFields[$fieldKey] = $fieldsInGroup[$fieldKey];
+                    unset($fieldsInGroup[$fieldKey]);
+                }
+            }
+            $approvedSections[$approvedKey]['fields'] = $orderedFields + $fieldsInGroup;
+        }
+        ?>
+        <?php foreach ($approvedSections as $approvedKey => $approvedSection): ?>
+            <?php
+            $hasLocate = $reportMainKey === 'place'
+                && $approvedKey === 'location'
+                && $placeReportShowLocate;
+            $hasPhotos = $reportMainKey === 'site'
+                && $approvedKey === 'notes_public'
+                && $placeReportShowPhotos;
+            if (!$approvedSection['fields'] && !$hasLocate && !$hasPhotos) {
                 continue;
             }
-            // Where all questions share one approved group, show its name on
-            // the existing collapsible section instead of nesting a heading.
-            $approvedLabels = [];
-            foreach ($reportGroupFields as $groupField) {
-                $label = trim((string) ($groupField['approved_question_group_label'] ?? ''));
-                $approvedLabels[$label !== '' ? $label : 'Additional Questions'] = true;
-            }
-            if (count($approvedLabels) === 1) {
-                $reportGroupLabel = (string) array_key_first($approvedLabels);
-            }
-        ?>
-        <details class="contribution-section" data-report-subsection="<?= $e($reportGroupKey) ?>"
-            <?= $reportMainKey === 'place' && $reportGroupKey === 'information_location' ? 'open' : '' ?>>
-            <summary><span><?= $e($reportGroupLabel) ?></span>
-            <span class="place-report-section-progress" data-section-completion-percent aria-label="Subsection completion"></span></summary>
-            <div class="contribution-section-body">
-                <?php if ($reportMainKey === 'place' && $reportGroupKey === 'information_location' && $placeReportShowLocate): ?>
+            ?>
+            <details class="contribution-section"
+                data-report-subsection="<?= $e($approvedKey) ?>"
+                <?= $hasLocate ? 'open' : '' ?>>
+                <summary>
+                    <span><?= $e($approvedSection['label']) ?></span>
+                    <span class="place-report-section-progress" data-section-completion-percent
+                        aria-label="Subsection completion"></span>
+                </summary>
+                <div class="contribution-section-body">
+                    <?php if ($hasLocate): ?>
             <?php if (
                 true
                 && $placeReportShowLocate
@@ -1320,59 +1353,15 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                 ></div>
 
             <?php endif; ?>
-
-
-
-                <?php endif; ?>
-                <?php
-                /*
-                 * Render approved questionnaire groups inside the existing
-                 * Place/Site sections. The canonical field renderer still owns
-                 * inputs, permissions, dependencies, and persistence.
-                 */
-                $approvedSubgroups = [];
-                foreach ($reportGroupFields as $field) {
-                    $approvedKey = (string) ($field['approved_question_group'] ?? '');
-                    $approvedLabel = (string) ($field['approved_question_group_label'] ?? '');
-                    if ($approvedKey === '') {
-                        $approvedKey = 'unmapped';
-                        $approvedLabel = 'Additional Questions';
-                    }
-                    if (!isset($approvedSubgroups[$approvedKey])) {
-                        $approvedSubgroups[$approvedKey] = [
-                            'label' => $approvedLabel,
-                            'fields' => [],
-                        ];
-                    }
-                    $approvedSubgroups[$approvedKey]['fields'][] = $field;
-                }
-                ?>
-                <?php
-                /*
-                 * Do not repeat a heading when the approved subgroup is the
-                 * only subgroup and has the same name as its parent group.
-                 * Keep all field rendering and existing group containers intact.
-                 */
-                $showApprovedSubgroupHeadings = count($approvedSubgroups) > 1;
-                ?>
-                <?php foreach ($approvedSubgroups as $approvedSubgroup): ?>
-                    <?php
-                    $approvedSubgroupLabel = (string) $approvedSubgroup['label'];
-                    $sameAsParent = strcasecmp(
-                        trim($approvedSubgroupLabel),
-                        trim((string) $reportGroupLabel)
-                    ) === 0;
-                    ?>
-                    <?php if ($showApprovedSubgroupHeadings && !$sameAsParent): ?>
-                        <h4><?= $e($approvedSubgroupLabel) ?></h4>
                     <?php endif; ?>
-                    <div class="contribution-grid">
-                        <?php foreach ($approvedSubgroup['fields'] as $field): ?>
-                            <?php $renderField($field); ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endforeach; ?>
-                <?php if ($reportMainKey === 'site' && $reportGroupKey === 'site_photos'): ?>
+                    <?php if ($approvedSection['fields']): ?>
+                        <div class="contribution-grid">
+                            <?php foreach ($approvedSection['fields'] as $field): ?>
+                                <?php $renderField($field); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($hasPhotos): ?>
 <?php if ($placeReportShowPhotos): ?>
 
     <details
@@ -1517,9 +1506,9 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
     </details>
 
 <?php endif; ?>
-                <?php endif; ?>
-            </div>
-        </details>
+                    <?php endif; ?>
+                </div>
+            </details>
         <?php endforeach; ?>
     </div>
 </details>
