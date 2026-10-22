@@ -1,6 +1,33 @@
 (() => {
     'use strict';
 
+    // Public Scout Report: show only the selected record's question groups.
+    // Reuse the existing explorer/browser selection events; no second selector.
+    const report = document.querySelector('.scout-report');
+    if (report) {
+        const placeGroups = '.scout-report-scope-place, .scout-report-scope-other-place';
+        const siteGroups = '.scout-report-scope-site, .scout-report-scope-space';
+        const showReportScope = (scope) => {
+            const siteSelected = scope !== 'place';
+            report.dataset.activeReportScope = siteSelected ? 'site' : 'place';
+            report.querySelectorAll(placeGroups).forEach((group) => {
+                group.hidden = siteSelected;
+            });
+            report.querySelectorAll(siteGroups).forEach((group) => {
+                group.hidden = !siteSelected;
+            });
+        };
+        const initialSite = new URLSearchParams(window.location.search).get('site');
+        showReportScope(initialSite && /^\d+$/.test(initialSite) ? 'site' : 'place');
+        window.addEventListener('llama:explorer-selection', (event) => {
+            const kind = String(event.detail?.kind || 'place');
+            showReportScope(kind === 'place' || kind === 'area' ? 'place' : 'site');
+        });
+        window.addEventListener('llama:explorer-browser-site-selected', () => {
+            showReportScope('site');
+        });
+    }
+
     const mount =
         document.querySelector(
             '[data-place-campsites-mount]'
