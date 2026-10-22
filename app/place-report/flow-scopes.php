@@ -281,6 +281,12 @@ function llama_place_report_scope_overrides(): array
             'amenity_grill',
             'amenity_bear_box',
             'amenity_lantern_post',
+            'site_potable_water',
+            'site_lake_access',
+            'site_river_access',
+            'site_trail_access',
+            'site_wifi_rating',
+            'site_amenities_notes',
 
             /*
              * Ratings whose labels explicitly refer to the individual Site.
