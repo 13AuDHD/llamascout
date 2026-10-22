@@ -335,6 +335,9 @@
                     className: 'place-map-site-popup-shell',
                     minWidth: 260,
                     maxWidth: 300,
+                    // Keep the popup clear of the map's top layer controls.
+                    autoPanPaddingTopLeft: L.point(16, 110),
+                    autoPanPaddingBottomRight: L.point(16, 16),
                 });
                 point.on('click', () => {
                     window.dispatchEvent(new CustomEvent('llama:explorer-map-site', {
