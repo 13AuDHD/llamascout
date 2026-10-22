@@ -580,3 +580,12 @@
         grid-template-rows: auto 6px auto;
     }
 }
+
+/* Place vs. site identity: match the existing map color families. */
+.scout-report-section.scout-report-scope-place { --scout-report-scope-color: #0a3d25; }
+.scout-report-section.scout-report-scope-other-place { --scout-report-scope-color: #7044a3; }
+.scout-report-section.scout-report-scope-site { --scout-report-scope-color: #d97706; }
+.scout-report-section.scout-report-scope-space { --scout-report-scope-color: #2563eb; }
+.scout-report-section[class*="scout-report-scope-"] .scout-report-item {
+    border-left: 4px solid var(--scout-report-scope-color);
+}
