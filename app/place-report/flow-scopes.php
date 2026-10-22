@@ -93,6 +93,7 @@ function llama_place_report_scope_overrides(): array
             'approach_road_type',
             'approach_permit_required',
             'approach_fee_required',
+            'approach_road_fee',
             'approach_gate_present',
             'approach_gate_access_type',
             'approach_gate_opens',
