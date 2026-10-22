@@ -326,6 +326,34 @@ function llama_place_report_add_experience_fields(
         'counts_toward_completion' => false,
     ]);
 
+    /* Visit-specific history. Preserve the Scout's own observations. */
+    $add('visit_length_of_stay', 'Length of Stay', 'scout_notes', 'select', 'experience.visit_length_of_stay', [
+        'options' => array_merge(
+            ['overnight' => 'Overnight'],
+            array_combine(array_map('strval', range(1, 15)), array_map(static fn(int $days): string => $days . ($days === 1 ? ' Day' : ' Days'), range(1, 15))),
+            ['28' => '28 Days', '30' => '30 Days', 'other' => 'Other']
+        ),
+        'help' => 'Select the length of this visit. Overnight is distinct from a one-day visit.',
+        'points_categories' => [],
+        'counts_toward_completion' => false,
+    ]);
+
+    $add('visit_setup_types', 'Type of Setup', 'scout_notes', 'multiselect', 'experience.visit_setup_types', [
+        'wide' => true,
+        'summary' => 'Select setups used',
+        'options' => [
+            'tent' => 'Tent',
+            'motorhome' => 'Motorhome',
+            'trailer' => 'Trailer',
+            'truck_camper' => 'Truck Camper',
+            'car_camping' => 'Car Camping',
+            'hammock' => 'Hammock',
+        ],
+        'help' => 'Select every setup you personally used during this visit.',
+        'points_categories' => [],
+        'counts_toward_completion' => false,
+    ]);
+
     /* Scout notes */
     foreach ([1, 2, 3] as $noteNumber) {
         $add(
