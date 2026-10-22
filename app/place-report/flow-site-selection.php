@@ -89,8 +89,6 @@ function llama_place_report_apply_site_selection_metadata(
      */
     foreach (
         [
-            'rv_suitable',
-            'tent_camping_suitable',
             'trailer_suitable',
             'max_trailer_length_feet',
         ]
@@ -121,4 +119,18 @@ function llama_place_report_apply_site_selection_metadata(
         $fields[$legacyKey]['hide_public'] =
             true;
     }
+    /* Restore the agreed Site suitability questions without changing storage. */
+    foreach (['tent_camping_suitable', 'rv_suitable'] as $activeKey) {
+        if (!isset($fields[$activeKey])) {
+            continue;
+        }
+        $fields[$activeKey]['section'] = 'site_vehicle';
+        $fields[$activeKey]['display_section'] = 'site_vehicle';
+        $fields[$activeKey]['layout_section'] = 'site';
+        $fields[$activeKey]['layout_group'] = 'selection_type';
+        $fields[$activeKey]['counts_toward_completion'] = true;
+        $fields[$activeKey]['points_categories'] = ['site_vehicle'];
+        $fields[$activeKey]['hide_public'] = false;
+    }
+
 }
