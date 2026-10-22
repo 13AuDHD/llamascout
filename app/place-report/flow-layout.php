@@ -295,6 +295,12 @@ function llama_place_report_layout_assignments(): array
             'tent_pad_width_feet',
             'tent_pad_length_feet',
             'amenity_bear_box',
+            'site_potable_water',
+            'site_lake_access',
+            'site_river_access',
+            'site_trail_access',
+            'site_wifi_rating',
+            'site_amenities_notes',
         ],
 
         'site:sensory_environment' => [
