@@ -369,6 +369,8 @@ function llama_place_report_scope_overrides(): array
             'environment_open_sky',
             'critter_activity',
 
+            'felt_safe_daytime_rating',
+            'felt_safe_nighttime_rating',
             'daytime_noise',
             'daytime_traffic',
             'daytime_crowds',
