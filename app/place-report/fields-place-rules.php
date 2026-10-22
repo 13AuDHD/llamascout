@@ -26,7 +26,7 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 
     $add(
         'place_charcoal_grills_allowed',
-        'Charcoal grills permitted?',
+        'Charcoal Grills',
         'rules',
         'select',
         'rules.place_charcoal_grills_allowed',
@@ -39,7 +39,7 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 
     $add(
         'place_propane_fire_pits_allowed',
-        'Propane fire pits permitted?',
+        'Propane Fire Pits',
         'rules',
         'select',
         'rules.place_propane_fire_pits_allowed',
@@ -52,7 +52,7 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 
     $add(
         'place_quiet_hours',
-        'Quiet hours established?',
+        'Quiet Hours',
         'rules',
         'tri',
         'rules.place_quiet_hours',
@@ -101,20 +101,25 @@ function llama_place_report_add_place_rules_fields(callable $add): void
 
     $add(
         'place_alcohol_permitted',
-        'Alcohol permitted?',
+        'Alcohol Allowed',
         'rules',
         'select',
         'rules.place_alcohol_permitted',
         $common + [
-            'options' => $conditional,
+            'options' => [
+                '0' => 'No',
+                '1' => 'Yes',
+                '3' => 'Conditional (legacy)',
+                'no-glass' => 'No Glass',
+            ],
             'help' =>
-                'Record the documented or posted alcohol rule. Choose Conditional when permission depends on area, container type, season, event, or another stated condition.',
+                'Record the posted alcohol policy. No Glass means alcohol is allowed but glass containers are prohibited.',
         ]
     );
 
     $add(
         'place_additional_rules',
-        'Additional documented rules',
+        'Rules Summary',
         'rules',
         'textarea',
         'rules.place_additional_rules',
@@ -123,9 +128,9 @@ function llama_place_report_add_place_rules_fields(callable $add): void
             'rows' => 3,
             'counts_toward_completion' => false,
             'placeholder' =>
-                'Only documented or posted rules not captured above.',
+                'Additional documented rules, restrictions, exceptions, or clarifications not captured by other questions.',
             'help' =>
-                'Use this for documented or posted rules that have no dedicated canonical field. Do not use it for guesses about enforcement or behavior you merely observed.',
+                'Add documented rules, restrictions, exceptions, or clarifications not covered by the questions above. Do not repeat existing answers.',
         ]
     );
 }
@@ -138,34 +143,34 @@ function llama_place_report_apply_place_rules_metadata(array &$fields): void
 {
     $labels = [
         'pets_allowed' =>
-            'Pets permitted?',
+            'Pets Allowed',
 
         'dogs_required_to_be_leashed' =>
-            'Leash required?',
+            'Leash Required',
 
         'generator_restrictions' =>
-            'Generator restrictions established?',
+            'Generator Restrictions',
 
         'generator_prohibited' =>
-            'Generators prohibited?',
+            'Generators Prohibited',
 
         'generator_quiet_hours' =>
-            'Generator quiet hours established?',
+            'Generator Quiet Hours',
 
         'generator_run_restrictions' =>
-            'Generator run-time limits established?',
+            'Run-Time Restrictions',
 
         'campfire_allowed' =>
-            'Campfires permitted?',
+            'Campfires Allowed',
 
         'collecting_firewood' =>
-            'Collecting firewood permitted?',
+            'Collecting Firewood',
 
         'drone_use_legal' =>
-            'Drone use permitted?',
+            'Drone Use',
 
         'target_shooting_allowed' =>
-            'Target shooting permitted?',
+            'Target Shooting',
     ];
 
     foreach ($labels as $key => $label) {
