@@ -23,7 +23,17 @@ function llama_place_report_add_road_restriction_questions(callable $add): void
         'road_access', 'tri', 'details.approach_permit_required', $common);
     $add('approach_fee_required', 'Road access fee required?',
         'road_access', 'tri', 'details.approach_fee_required', $common);
-    $add('approach_gate_present', 'Gated access?', 'road_access',
+    $add('approach_road_fee', 'Road access fee ($)', 'road_access',
+        'number', 'details.approach_road_fee', $common + [
+            'step' => '.01',
+            'min' => '0',
+            'placeholder' => '0.00',
+            'format' => 'currency',
+            'applicable_if' => [[
+                'field' => 'approach_fee_required', 'operator' => 'equals', 'value' => '1',
+            ]],
+        ]);
+    $add('approach_gate_present', 'Road gated?', 'road_access',
         'tri', 'details.approach_gate_present', $common);
 
     $gateYes = ['applicable_if' => [[
