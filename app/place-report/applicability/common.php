@@ -407,16 +407,6 @@ function llama_place_report_apply_common_applicability(
 
     llama_place_report_set_applicable(
         $fields,
-        ['connectivity_starlink_note'],
-        [[
-            'field' => 'connectivity_starlink_tested',
-            'operator' => 'equals',
-            'value' => '1',
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
         ['warning_possible_downed_trees'],
         [[
             'field' => 'type',
