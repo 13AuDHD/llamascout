@@ -54,6 +54,9 @@ function llama_place_report_apply_site_parking_metadata(
         'back_in' =>
             'Back-in Site?',
 
+        'parking_size' =>
+            'Parking Size',
+
         'double_driveway' =>
             'Double-width Site driveway?',
 
@@ -107,6 +110,9 @@ function llama_place_report_apply_site_parking_metadata(
 
         'back_in' =>
             'Whether the primary parking position is a back-in space.',
+
+        'parking_size' =>
+            'Select Single, Double, Triple, or Group based on the parking area available at this Site.',
 
         'double_driveway' =>
             'Whether the Site parking or driveway area is wide enough for two vehicles side by side.',
