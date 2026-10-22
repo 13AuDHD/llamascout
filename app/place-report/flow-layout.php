@@ -331,15 +331,14 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'site:site_accessibility' => [
-            'site_accessible',
-            'site_access_difficulty',
-            'hike_in_distance_feet',
-            'walking_distance_from_vehicle',
+            'accessible_picnic_table',
+            'accessible_toilet',
             'wheelchair_friendly',
             'mobility_device_friendly',
-            'flat_walking_surface',
             'step_free_access',
-            'accessible_picnic_table',
+            'flat_walking_surface',
+            'walking_distance_from_vehicle',
+            'accessibility_notes',
         ],
 
         'site:experience_recommendations' => [
