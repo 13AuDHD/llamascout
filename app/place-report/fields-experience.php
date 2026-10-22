@@ -302,33 +302,20 @@ function llama_place_report_add_experience_fields(
         ]);
     }
 
-    /*
-     * These six recommendation flags are derived from the paired 1-5
-     * experience rating instead of asking the contributor the same thing
-     * twice.
-     *
-     * 4-5 = recommended
-     * 1-2 = not recommended
-     * 3   = neutral / no derived recommendation
-     */
-    $derivedRecommendations = [
-        'recommended_overnight_stop' => 'experience_overnight_comfort',
-        'recommended_quiet_evening' => 'experience_quiet_evening',
-        'recommended_extended_stay' => 'experience_extended_stay_comfort',
-        'recommended_sensory_retreat' => 'experience_sensory_retreat',
-        'recommended_stargazing' => 'experience_stargazing',
-        'recommended_remote_work' => 'experience_remote_work',
-    ];
-
-    foreach ($derivedRecommendations as $derivedKey => $sourceKey) {
-        if (!isset($f[$derivedKey])) {
+    /* Recommendations are direct Scout answers, not derived from ratings. */
+    foreach ([
+        'recommended_overnight_stop',
+        'recommended_extended_stay',
+        'recommended_remote_work',
+        'recommended_solo_travel',
+        'recommended_families',
+        'recommended_large_groups',
+    ] as $key) {
+        if (!isset($f[$key])) {
             continue;
         }
-
-        $f[$derivedKey]['derived'] = true;
-        $f[$derivedKey]['derived_from'] = $sourceKey;
-        $f[$derivedKey]['counts_toward_completion'] = false;
-        $f[$derivedKey]['points_categories'] = [];
+        $f[$key]['derived'] = false;
+        unset($f[$key]['derived_from']);
     }
 
     $add('not_recommended_for', 'Not recommended for', 'experience', 'textarea', 'experience.not_recommended_for', [
