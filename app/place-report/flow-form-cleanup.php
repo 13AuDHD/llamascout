@@ -18,7 +18,6 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
     $legacySeasonCompatibility = [
         'season_begins',
         'season_ends',
-        'seasonal_closure',
     ];
 
     foreach (array_merge($derivedCompatibility, $legacySeasonCompatibility) as $key) {
@@ -35,6 +34,16 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
         if (isset($fields[$key])) {
             $fields[$key]['derived'] = true;
         }
+    }
+
+    // A recurring closure of the entire Place is a direct reportable fact.
+    // It is distinct from normal year-round operation and road closures.
+    if (isset($fields['seasonal_closure'])) {
+        $fields['seasonal_closure']['label'] = 'Entire Place closes seasonally?';
+        $fields['seasonal_closure']['layout_section'] = 'place';
+        $fields['seasonal_closure']['layout_group'] = 'operating';
+        $fields['seasonal_closure']['derived'] = false;
+        $fields['seasonal_closure']['counts_toward_completion'] = true;
     }
 
     // The previous Double Driveway question remains stored as legacy data.
