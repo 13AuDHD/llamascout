@@ -72,6 +72,16 @@ $renderSafeDescription = static function (string $raw): string {
     return $raw;
 };
 
+/* Place/area groups and site/space groups use the same visual identity as map features. */
+$publicPlaceGroups = [
+    'basic', 'location', 'amenities', 'operating', 'road_conditions',
+    'vehicle_access', 'seasonal_access', 'gate_access', 'nearest_services',
+];
+$publicPlaceType = strtolower(trim((string) ($place['type'] ?? $placeReportData['type'] ?? '')));
+$publicPlaceIsArea = preg_match('/campground|camping area|recreation area|dispersed area|area/', $publicPlaceType) === 1;
+$publicSiteType = strtolower(trim((string) ($placeReportData['site_type'] ?? $placeReportData['space_type'] ?? '')));
+$publicSiteIsParking = preg_match('/parking|space/', $publicSiteType) === 1;
+
 $publicFieldGroups = [];
 if ($placeReportReadMode === 'scout-report') {
     $placeReportSections = [];
@@ -718,8 +728,13 @@ foreach (
         );
     ?>
 
+    <?php
+    $reportScopeClass = in_array((string) $sectionKey, $publicPlaceGroups, true)
+        ? ($publicPlaceIsArea ? 'scout-report-scope-place' : 'scout-report-scope-other-place')
+        : ($publicSiteIsParking ? 'scout-report-scope-space' : 'scout-report-scope-site');
+    ?>
     <section
-        class="scout-report-section"
+        class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
         <?php if (
             $placeReportReadMode === 'scout-report'
             && $switchableApplicableCount > 0
