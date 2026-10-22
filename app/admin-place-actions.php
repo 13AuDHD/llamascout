@@ -41,6 +41,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     try {
         if ($action === 'save-report') {
             $photosAdded = 0;
+            $bulkResult = ['sites' => 0, 'answers' => 0];
             $committedPhotosForCleanup = [];
             $deferredPhotoDeletes = [];
 
@@ -103,6 +104,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
                 admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
                 admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
+                $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
 
                 if ($areaId > 0) {
                     $saved = admin_place_save_area_answers($db, $placeId, $areaId, $areaAnswers);
@@ -233,6 +235,8 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     'success' => true,
                     'message' => 'Place Report saved.',
                     'photos_added' => $photosAdded,
+                    'bulk_sites_updated' => $bulkResult['sites'],
+                    'bulk_answers_saved' => $bulkResult['answers'],
                     'photo_total' => $photoTargetTotal,
                     'csrf_token' => moderation_csrf_token(),
                 ]);
