@@ -409,6 +409,8 @@ function llama_place_report_scope_overrides(): array
             'connectivity_other_cell',
             'connectivity_satellite',
             'connectivity_services_tested',
+            'connectivity_starlink_tested',
+            'connectivity_amazon_leo_tested',
             'connectivity_starlink_note',
 
             'felt_safe_daytime',
