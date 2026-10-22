@@ -36,6 +36,11 @@ function llama_place_report_add_rules_service_fields(
     $add('seasonal_closure', 'Seasonal closure?', 'rules', 'tri', 'details.seasonal_closure', [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
+        'applicable_if' => [[
+            'field' => 'place_open_year_round',
+            'operator' => 'equals',
+            'value' => '0',
+        ]],
     ]);
 
     foreach ([
