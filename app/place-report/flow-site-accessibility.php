@@ -30,13 +30,13 @@ function llama_place_report_apply_site_accessibility_metadata(
             'Outdoor mobility device usable?',
 
         'flat_walking_surface' =>
-            'Firm / mostly level route?',
+            'Flat Walking Surface',
 
         'step_free_access' =>
             'Step-free route into Site?',
 
         'walking_distance_from_vehicle' =>
-            'Distance from vehicle to Site',
+            'Walking Distance from Vehicle',
 
         'accessible_picnic_table' =>
             'Accessible picnic table at this Site?',
