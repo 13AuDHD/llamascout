@@ -87,7 +87,12 @@
             mapElement,
             {
                 maxZoom,
-                zoomControl: false
+                zoomControl: false,
+                // Avoid fractional tile transforms and Safari tile seams.
+                zoomSnap: 1,
+                zoomAnimation: false,
+                fadeAnimation: false,
+                markerZoomAnimation: false
             }
         ).setView(
             [
@@ -373,7 +378,12 @@
                 source.url,
                 {
                     ...source.options,
-                    maxZoom
+                    maxZoom,
+                    // Render stable tiles after zooming, rather than
+                    // rescaling tiles during the animation on iPad Safari.
+                    updateWhenZooming: false,
+                    updateWhenIdle: true,
+                    keepBuffer: 3
                 }
             );
 
