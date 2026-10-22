@@ -26,17 +26,34 @@ function llama_place_report_add_experience_fields(
         ]);
     }
 
+    $add('connectivity_services_tested', 'Service Tested', 'connectivity', 'multiselect', 'connectivity.services_tested', [
+        'wide' => true,
+        'summary' => 'Select services tested',
+        'options' => [
+            'starlink' => 'Starlink',
+            'amazon_leo' => 'Amazon Leo',
+            'other' => 'Other',
+            'none' => 'None Tested',
+        ],
+        'help' => 'Select the satellite services you personally tested during this visit. None Tested cannot be combined with a service.',
+        'points_categories' => ['connectivity'],
+    ]);
+
     $add('connectivity_starlink_tested', 'Starlink tested?', 'connectivity', 'tri', 'connectivity.starlink_tested', [
         'allow_unknown' => true,
-        'points_categories' => ['connectivity'],
+        'points_categories' => [],
+        'counts_toward_completion' => false,
+        'derived' => true,
     ]);
 
     $add('connectivity_amazon_leo_tested', 'Amazon Leo tested?', 'connectivity', 'tri', 'connectivity.amazon_leo_tested', [
         'allow_unknown' => true,
-        'points_categories' => ['connectivity'],
+        'points_categories' => [],
+        'counts_toward_completion' => false,
+        'derived' => true,
     ]);
 
-    $add('connectivity_starlink_note', 'Connectivity notes', 'connectivity', 'textarea', 'connectivity.starlink_note', [
+    $add('connectivity_starlink_note', 'Connectivity Summary', 'connectivity', 'textarea', 'connectivity.starlink_note', [
         'wide' => true,
         'rows' => 3,
         'placeholder' => 'Providers tested, obstruction, speeds, or other connectivity details.',
