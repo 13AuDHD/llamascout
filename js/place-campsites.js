@@ -485,32 +485,8 @@
         `;
     };
 
-    const renderSiteDetail = (
-        site
-    ) => `
-        <article
-            class="place-campsite-detail${closureStatus(site) ? ' is-closed' : ''}"
-            data-campsite-detail-id="${escapeHtml(site.feature_id)}"
-        >
-            <header class="place-campsite-detail-heading">
-                <div>
-                    <p class="eyebrow">
-                        Selected Site
-                    </p>
-
-                    <h3>
-                        ${escapeHtml(
-                            smartCase(
-                                site.display_name
-                            )
-                        )}
-                    </h3>
-                </div>
-            </header>
-
-            ${closureDetails(site)}
-        </article>
-    `;
+    // The selected card already identifies the Site; no duplicate heading.
+    const renderSiteDetail = () => '';
 
     const siteMatchesFilter = (
         site,
@@ -888,6 +864,16 @@
         mergeReportValues(
             site.report_override_values
         );
+
+        // Always identify the selected Site in the first Scout Report card.
+        // The site selector is authoritative for the displayed identifier.
+        const selectedRow = sites.find(
+            (candidate) => String(candidate.feature_id) === selectedId
+        );
+        const selectedName = clean(selectedRow?.display_name || site.display_name);
+        if (selectedName) {
+            values.site_number = selectedName;
+        }
 
         return values;
     };
@@ -1312,10 +1298,8 @@
                 );
 
             if (detailMount) {
-                detailMount.innerHTML =
-                    renderSiteDetail(
-                        site
-                    );
+                detailMount.replaceChildren();
+                detailMount.hidden = true;
             }
 
             mount

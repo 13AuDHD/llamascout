@@ -1094,13 +1094,8 @@
                 updateTargetContributionPrompts();
             }
 
-            showContext(
-                name,
-                isArea
-                    ? 'area'
-                    : 'campsite',
-                lastSelection
-            );
+            // Selection is already shown in the horizontal Site/Area cards.
+            // Do not repeat it inside the Scout Report header.
 
             if (shouldFocus) {
                 void focusSelection(
