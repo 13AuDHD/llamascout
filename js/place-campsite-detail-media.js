@@ -257,12 +257,6 @@
             return '';
         }
 
-        const maximum =
-            equipmentMaximumLength(
-                site,
-                rows
-            );
-
         const pills =
             names
                 .map(
@@ -280,11 +274,6 @@
                 <div class="place-campsite-rich-heading">
                     <h4>Permitted equipment</h4>
 
-                    ${
-                        maximum
-                            ? `<span>Maximum vehicle length: ${escapeHtml(String(maximum))} ft</span>`
-                            : ''
-                    }
                 </div>
 
                 <div class="place-campsite-equipment-pills">

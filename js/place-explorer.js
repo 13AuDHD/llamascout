@@ -236,7 +236,7 @@
 
     const oldIntro = section.querySelector('.place-stay-intro');
     if (oldIntro) {
-        oldIntro.textContent = 'Select this location or explore individual Sites. The map, cards, and Scout Report stay in sync.';
+        oldIntro.textContent = 'Select this location or explore individual sites.';
     }
     overview.addEventListener('click', () => placeView('card'));
     section.addEventListener('click', (event) => {
