@@ -61,7 +61,7 @@ function llama_place_report_apply_site_parking_metadata(
             'Double-width Site driveway?',
 
         'hike_in_distance_feet' =>
-            'Distance from vehicle parking to Site (ft)',
+            'Hike-in Distance (Legacy, ft)',
 
         'site_access_difficulty' =>
             'Final Site entry difficulty',
