@@ -41,7 +41,6 @@ function llama_place_report_scope_overrides(): array
             'name',
             'type',
             'description',
-            'visited_at',
             'latitude',
             'longitude',
             'elevation_feet',
@@ -456,9 +455,12 @@ function llama_place_report_scope_overrides(): array
              * target is currently being reported.
              */
             'sensory_summary',
+            'visited_at',
             'scout_note_1',
             'scout_note_2',
             'scout_note_3',
+            'visit_length_of_stay',
+            'visit_setup_types',
             'contributor_notes',
         ],
     ];
