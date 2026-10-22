@@ -45,6 +45,30 @@ function llama_place_report_approved_question_groups(): array
 ];
 }
 
+/**
+ * Lookup for the approved questionnaire. The first occurrence wins so a
+ * question cannot acquire two display groups accidentally.
+ *
+ * This is display metadata only; answer storage and Place/Site ownership
+ * continue to come from the registered field definition.
+ */
+function llama_place_report_approved_question_lookup(): array
+{
+    $lookup = [];
+    foreach (llama_place_report_approved_question_groups() as $groupKey => $definition) {
+        foreach ($definition[1] as $position => $fieldKey) {
+            if (!isset($lookup[$fieldKey])) {
+                $lookup[$fieldKey] = [
+                    'group' => $groupKey,
+                    'group_label' => $definition[0],
+                    'position' => $position,
+                ];
+            }
+        }
+    }
+    return $lookup;
+}
+
 function llama_place_report_layout_groups(): array
 {
     return [
@@ -448,7 +472,16 @@ function llama_place_report_apply_layout_metadata(
         'summaries' => ['site', 'site_photos'],
     ];
 
+    $approvedQuestions = llama_place_report_approved_question_lookup();
+
     foreach ($fields as $key => &$field) {
+        // Expose the shared approved grouping to every interface, without
+        // overriding the field's scope, persistence or legacy visibility.
+        $approved = $approvedQuestions[$key] ?? null;
+        $field['approved_question_group'] = $approved['group'] ?? null;
+        $field['approved_question_group_label'] = $approved['group_label'] ?? null;
+        $field['approved_question_position'] = $approved['position'] ?? null;
+
         $current =
             (string) (
                 $field['section']
