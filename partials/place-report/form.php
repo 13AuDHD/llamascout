@@ -1314,11 +1314,37 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 
 
                 <?php endif; ?>
-                <div class="contribution-grid">
-                    <?php foreach ($reportGroupFields as $field): ?>
-                        <?php $renderField($field); ?>
-                    <?php endforeach; ?>
-                </div>
+                <?php
+                /*
+                 * Render approved questionnaire groups inside the existing
+                 * Place/Site sections. The canonical field renderer still owns
+                 * inputs, permissions, dependencies, and persistence.
+                 */
+                $approvedSubgroups = [];
+                foreach ($reportGroupFields as $field) {
+                    $approvedKey = (string) ($field['approved_question_group'] ?? '');
+                    $approvedLabel = (string) ($field['approved_question_group_label'] ?? '');
+                    if ($approvedKey === '') {
+                        $approvedKey = 'unmapped';
+                        $approvedLabel = 'Additional Questions';
+                    }
+                    if (!isset($approvedSubgroups[$approvedKey])) {
+                        $approvedSubgroups[$approvedKey] = [
+                            'label' => $approvedLabel,
+                            'fields' => [],
+                        ];
+                    }
+                    $approvedSubgroups[$approvedKey]['fields'][] = $field;
+                }
+                ?>
+                <?php foreach ($approvedSubgroups as $approvedSubgroup): ?>
+                    <h4><?= $e($approvedSubgroup['label']) ?></h4>
+                    <div class="contribution-grid">
+                        <?php foreach ($approvedSubgroup['fields'] as $field): ?>
+                            <?php $renderField($field); ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
                 <?php if ($reportMainKey === 'site' && $reportGroupKey === 'site_photos'): ?>
 <?php if ($placeReportShowPhotos): ?>
 
