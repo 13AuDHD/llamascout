@@ -851,24 +851,6 @@ foreach (
                 <?php endforeach; ?>
             </ul>
 
-        <?php elseif ($sectionKey === 'amenities'): ?>
-            <?php
-            /*
-             * Use the canonical Scout Report renderer for every amenity.
-             * This shares the same question, answer, and icon positioning as
-             * all other report sections, without a separate visual system.
-             *
-             * The summary-only amenity_none answer does not need a card.
-             */
-            ?>
-            <div class="scout-report-grid">
-                <?php foreach ($reportedFields as $key => $field): ?>
-                    <?php if ((string) $key !== 'amenity_none'): ?>
-                        <?php $renderValue((string) $key, $field); ?>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-
         <?php elseif ($placeReportReadMode === 'scout-report'): ?>
             <div class="scout-report-grid">
                 <?php foreach ($publicReportGroups[$sectionKey][1] as $key): ?>
