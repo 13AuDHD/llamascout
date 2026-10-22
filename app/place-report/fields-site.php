@@ -195,6 +195,18 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $add('parking_size', 'Parking Size', 'site_vehicle', 'select', 'details.parking_size', [
+        'options' => [
+            'single' => 'Single',
+            'double' => 'Double',
+            'triple' => 'Triple',
+            'group' => 'Group',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
+    /* Retain the original Double Driveway answer for historical records. */
     $add('double_driveway', 'Double driveway?', 'site_vehicle', 'tri', 'details.double_driveway', [
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
@@ -335,14 +347,9 @@ function llama_place_report_add_site_fields(
         ]);
     }
 
-    /*
-     * Legacy compatibility only. Leveling Required is derived from the
-     * Levelness rating and is no longer a separate contributor question.
-     */
-    $add('leveling_required', 'Leveling required?', 'site_vehicle', 'derived', 'details.leveling_required', [
-        'derived' => true,
-        'counts_toward_completion' => false,
-        'points_categories' => [],
+    $add('leveling_required', 'Leveling Required', 'site_vehicle', 'tri', 'details.leveling_required', [
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
     ]);
 
     foreach ([
@@ -409,6 +416,38 @@ function llama_place_report_add_site_fields(
             'points_categories' => ['road_access'],
         ]);
     }
+
+    /* Individual campsite amenities. Never share the Place amenity storage path. */
+    foreach ([
+        'site_potable_water' => ['Potable Water', 'A drinking-water tap or pump at this individual campsite, separate from a water hookup.'],
+        'site_lake_access' => ['Lake Access', 'Direct lake access from this campsite, not merely elsewhere in the campground.'],
+        'site_river_access' => ['River Access', 'Direct river access from this campsite.'],
+        'site_trail_access' => ['Trail Access', 'Direct access to a trail from this campsite.'],
+    ] as $key => [$label, $help]) {
+        $add($key, $label, 'site_vehicle', 'tri', 'details.' . $key, [
+            'allow_unknown' => true,
+            'help' => $help,
+            'points_categories' => ['site_vehicle'],
+        ]);
+    }
+
+    $add('site_wifi_rating', 'WiFi', 'site_vehicle', 'rating', 'details.site_wifi_rating', [
+        'allow_unknown' => true,
+        'low' => 'No usable signal',
+        'high' => 'Excellent',
+        'help' => 'WiFi quality measured at this campsite, not at the shared campground facilities.',
+        'points_categories' => ['connectivity'],
+        'applicable_if' => [[
+            'field' => 'amenity_wifi',
+            'operator' => 'equals',
+            'value' => '1',
+        ]],
+    ]);
+
+    $add('site_amenities_notes', 'Amenities Notes', 'site_vehicle', 'textarea', 'details.site_amenities_notes', [
+        'help' => 'Additional details about amenities at this individual campsite.',
+        'points_categories' => ['site_vehicle'],
+    ]);
 
     /* Amenities */
     foreach ([
