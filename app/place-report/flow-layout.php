@@ -323,12 +323,14 @@ function llama_place_report_layout_assignments(): array
 
         'site:safety_hazards' => [
             'warning_possible_downed_trees',
-            'flash_flood_risk', 'wildfire_risk', 'fall_hazard',
-            'cliff_exposure', 'rockfall_risk', 'wildlife_risk',
-            'traffic_hazard', 'emergency_access',
-            'warning_passing_vehicle_dust',
-            'warning_motorized_recreation_traffic',
+            'fall_hazard',
+            'wildlife_risk',
+            'wildfire_risk',
+            'flash_flood_risk',
+            'rockfall_risk',
+            'traffic_hazard',
             'warning_blind_turn_traffic_nearby',
+            'emergency_access',
         ],
 
         'site:site_accessibility' => [
