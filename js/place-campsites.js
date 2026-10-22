@@ -487,10 +487,16 @@
 
     // The selected Site name already appears in the horizontal selector.
     // Keep closure details, but do not repeat the Site number above photos.
-    const renderSiteDetail = (site) =>
-        closureStatus(site)
-            ? `<article class="place-campsite-detail is-closed" data-campsite-detail-id="${escapeHtml(site.feature_id)}">${closureDetails(site)}</article>`
-            : '';
+    // Keep the detail mount for the independent photo/equipment renderer.
+    // Only the redundant selected-site heading is removed.
+    const renderSiteDetail = (site) => `
+        <article
+            class="place-campsite-detail${closureStatus(site) ? ' is-closed' : ''}"
+            data-campsite-detail-id="${escapeHtml(site.feature_id)}"
+        >
+            ${closureDetails(site)}
+        </article>
+    `;
 
     const siteMatchesFilter = (
         site,
