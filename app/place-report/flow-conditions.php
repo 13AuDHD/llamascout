@@ -17,7 +17,7 @@ function llama_place_report_add_flow_condition_fields(array &$fields, callable $
             'help' => 'Choose Yes when generators may run only for a limited number of hours at a time.',
         ]);
 
-    $add('generator_max_run_hours', 'Maximum generator run time', 'rules', 'select',
+    $add('generator_max_run_hours', 'Run-Time Hours', 'rules', 'select',
         'rules.generator_max_run_hours', $common + [
             'options' => [
                 '1' => '1 hour',
@@ -36,7 +36,7 @@ function llama_place_report_add_flow_condition_fields(array &$fields, callable $
             'help' => 'Use Yes when generators are prohibited throughout this Place.',
         ]);
 
-    $add('generator_restriction_details', 'Generator restriction details', 'rules', 'textarea',
+    $add('generator_restriction_details', 'Restriction Details', 'rules', 'textarea',
         'rules.generator_restriction_details', $common + [
             'wide' => true,
             'rows' => 3,
