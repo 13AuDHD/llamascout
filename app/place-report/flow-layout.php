@@ -39,7 +39,7 @@ function llama_place_report_layout_groups(): array
             'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
             'experience_recommendations' => 'Experience & Recommendations',
-            'site_photos' => 'Photos & Site Information',
+            'site_photos' => 'Scout Notes & Place History',
         ],
     ];
 }
@@ -86,7 +86,7 @@ function llama_place_report_layout_assignments(): array
         'place:information_location' => [
             'name', 'type', 'description', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
-            'land_manager', 'region', 'visited_at',
+            'land_manager', 'region',
         ],
 
         'place:overnight_stays' => [
@@ -357,10 +357,13 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'site:site_photos' => [
-            'contributor_notes',
             'scout_note_1',
             'scout_note_2',
             'scout_note_3',
+            'visited_at',
+            'visit_length_of_stay',
+            'visit_setup_types',
+            'contributor_notes',
         ],
     ];
 }
