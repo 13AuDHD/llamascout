@@ -14,7 +14,7 @@ function llama_place_report_apply_site_equipment_metadata(
 ): void {
     $labels = [
         'tent_pad' =>
-            'Tent pad / platform?',
+            'Tent Pad',
 
         'tent_pad_length_feet' =>
             'Tent pad length (ft)',
@@ -23,34 +23,34 @@ function llama_place_report_apply_site_equipment_metadata(
             'Tent pad width (ft)',
 
         'site_hookups_available' =>
-            'Any utility hookups at this Site?',
+            'Hookups',
 
         'hookup_electric' =>
             'Power / electric hookup?',
 
         'hookup_electric_service' =>
-            'Electrical service',
+            'Electrical Service',
 
         'hookup_water' =>
-            'Water hookup?',
+            'Water Hookup',
 
         'hookup_sewer' =>
-            'Sewer hookup?',
+            'Sewer Hookup',
 
         'amenity_fire_ring' =>
-            'Fire ring at this Site?',
+            'Fire Ring',
 
         'amenity_grill' =>
-            'Grill at this Site?',
+            'Grill',
 
         'amenity_picnic_table' =>
-            'Picnic table at this Site?',
+            'Picnic Table',
 
         'amenity_bear_box' =>
-            'Food-storage / bear box at this Site?',
+            'Food Storage / Bear Box',
 
         'amenity_lantern_post' =>
-            'Lantern post at this Site?',
+            'Lantern Post',
     ];
 
     foreach ($labels as $key => $label) {
