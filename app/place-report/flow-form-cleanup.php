@@ -15,12 +15,7 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
         'recommended_stargazing',
     ];
 
-    $legacySeasonCompatibility = [
-        'season_begins',
-        'season_ends',
-    ];
-
-    foreach (array_merge($derivedCompatibility, $legacySeasonCompatibility) as $key) {
+    foreach ($derivedCompatibility as $key) {
         if (!isset($fields[$key])) {
             continue;
         }
@@ -34,6 +29,19 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
         if (isset($fields[$key])) {
             $fields[$key]['derived'] = true;
         }
+    }
+
+    // Recurring operating-season dates are direct inputs (MM-DD, no year).
+    // The canonical group and ordering are defined in flow-layout.php.
+    foreach (['season_begins', 'season_ends'] as $key) {
+        if (!isset($fields[$key])) {
+            continue;
+        }
+        $fields[$key]['layout_section'] = 'place';
+        $fields[$key]['layout_group'] = 'operating';
+        $fields[$key]['derived'] = false;
+        $fields[$key]['counts_toward_completion'] = true;
+        $fields[$key]['points_categories'] = ['seasons_rules_services'];
     }
 
     // A recurring closure of the entire Place is a direct reportable fact.
