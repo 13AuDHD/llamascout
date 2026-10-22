@@ -10,7 +10,6 @@ declare(strict_types=1);
 function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
 {
     $derivedCompatibility = [
-        'leveling_required',
         'recommended_overnight_stop',
         'recommended_quiet_evening',
         'recommended_extended_stay',
@@ -39,6 +38,14 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
         if (isset($fields[$key])) {
             $fields[$key]['derived'] = true;
         }
+    }
+
+    // The previous Double Driveway question remains stored as legacy data.
+    if (isset($fields['double_driveway'])) {
+        $fields['double_driveway']['layout_section'] = 'compatibility';
+        $fields['double_driveway']['layout_group'] = 'compatibility';
+        $fields['double_driveway']['counts_toward_completion'] = false;
+        $fields['double_driveway']['points_categories'] = [];
     }
 
     // Felt safe at night is a separate observed answer, not a calculation
