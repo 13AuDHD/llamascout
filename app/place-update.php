@@ -27,16 +27,7 @@ require_once __DIR__ . '/access.php';
 function llama_place_update_field_by_storage(
     string $storage
 ): ?array {
-    foreach (llama_place_report_fields() as $field) {
-        if (
-            (string) ($field['storage'] ?? '')
-            === $storage
-        ) {
-            return $field;
-        }
-    }
-
-    return null;
+    return llama_place_report_field_by_storage($storage);
 }
 
 
