@@ -578,8 +578,11 @@ $renderField =
                     : ''
             );
 
+        $usesYesNoControl = $type === 'tri'
+            || ($field['control'] ?? '') === 'yes-no';
+
         $fieldContainerTag =
-            $type === 'multiselect'
+            $usesYesNoControl || in_array($type, ['multiselect', 'permission', 'rating'], true)
                 ? 'div'
                 : 'label';
         ?>
@@ -624,7 +627,13 @@ $renderField =
             </span>
 
 
-            <?php if (
+            <?php if ($usesYesNoControl): ?>
+                <?php
+                $yesNoField = $field;
+                $yesNoValue = $current;
+                require __DIR__ . '/yes-no-control.php';
+                ?>
+            <?php elseif (
                 in_array(
                     $type,
                     [
