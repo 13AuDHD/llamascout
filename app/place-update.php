@@ -27,66 +27,7 @@ require_once __DIR__ . '/access.php';
 
 function llama_place_update_definitions(): array
 {
-    $definitions = [];
-
-    foreach (
-        llama_place_report_fields()
-        as $key => $field
-    ) {
-        $storageDefinition =
-            llama_place_report_storage_definition(
-                $field
-            );
-
-        if (!$storageDefinition) {
-            continue;
-        }
-
-
-        $storage =
-            (string) $field['storage'];
-
-
-        // Match the canonical registry's first-definition-wins rule.
-        // Legacy keys may share one storage path; do not let the last
-        // duplicate silently replace the definition used elsewhere.
-        if (array_key_exists($storage, $definitions)) {
-            continue;
-        }
-
-        $definitions[$storage] =
-            array_merge(
-                $storageDefinition,
-                [
-                    'shared' =>
-                        $field,
-
-                    'key' =>
-                        (string) $key,
-
-                    'label' =>
-                        (string) (
-                            $field['label']
-                            ?? $key
-                        ),
-
-                    'section' =>
-                        (string) (
-                            $field['section']
-                            ?? 'other'
-                        ),
-
-                    'type' =>
-                        (string) (
-                            $field['type']
-                            ?? 'text'
-                        ),
-                ]
-            );
-    }
-
-
-    return $definitions;
+    return llama_place_report_published_definitions();
 }
 
 
