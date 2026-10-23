@@ -456,3 +456,67 @@ function llama_place_report_storage_definition(
 
     return null;
 }
+
+
+/** Canonical index of publishable Place answer definitions. */
+function llama_place_report_published_definitions(): array
+{
+    $definitions = [];
+
+    foreach (
+        llama_place_report_fields()
+        as $key => $field
+    ) {
+        $storageDefinition =
+            llama_place_report_storage_definition(
+                $field
+            );
+
+        if (!$storageDefinition) {
+            continue;
+        }
+
+
+        $storage =
+            (string) $field['storage'];
+
+
+        // Preserve the first definition for shared legacy storage paths.
+        if (array_key_exists($storage, $definitions)) {
+            continue;
+        }
+
+        $definitions[$storage] =
+            array_merge(
+                $storageDefinition,
+                [
+                    'shared' =>
+                        $field,
+
+                    'key' =>
+                        (string) $key,
+
+                    'label' =>
+                        (string) (
+                            $field['label']
+                            ?? $key
+                        ),
+
+                    'section' =>
+                        (string) (
+                            $field['section']
+                            ?? 'other'
+                        ),
+
+                    'type' =>
+                        (string) (
+                            $field['type']
+                            ?? 'text'
+                        ),
+                ]
+            );
+    }
+
+
+    return $definitions;
+}
