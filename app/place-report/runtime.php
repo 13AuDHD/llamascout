@@ -2473,3 +2473,26 @@ function llama_place_report_apply_published_answer_state(
 
 
 
+
+
+/** Normalize canonical storage values for reads and update comparisons. */
+function llama_place_report_normalize_storage_value(
+    mixed $value,
+    array $definition
+): mixed {
+    $field =
+        $definition['shared']
+        ?? [];
+
+    if (
+        is_array($field)
+        && (string) ($field['type'] ?? '')
+            === 'multiselect'
+    ) {
+        return llama_place_report_multiselect_values(
+            $value
+        );
+    }
+
+    return $value;
+}
