@@ -24,13 +24,6 @@ require_once __DIR__ . '/access.php';
  */
 
 
-function llama_place_update_field_by_storage(
-    string $storage
-): ?array {
-    return llama_place_report_field_by_storage($storage);
-}
-
-
 function llama_place_update_storage_definition(
     array $field
 ): ?array {
@@ -1365,7 +1358,7 @@ function llama_place_update_changed_proposals(
 
 
         $field =
-            llama_place_update_field_by_storage(
+            llama_place_report_field_by_storage(
                 (string) $path
             );
 
@@ -3313,7 +3306,7 @@ function llama_place_update_display_value(
 
 
     $field =
-        llama_place_update_field_by_storage(
+        llama_place_report_field_by_storage(
             $path
         );
 
@@ -3440,7 +3433,7 @@ function llama_place_update_schema_icon(
     string $path
 ): string {
     $field =
-        llama_place_update_field_by_storage(
+        llama_place_report_field_by_storage(
             $path
         );
 
