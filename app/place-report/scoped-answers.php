@@ -60,6 +60,97 @@ function llama_scoped_report_field(string $key, string $scope): array
 }
 
 /**
+ * Canonical input interpretation for scoped Area and Site answers.
+ * Missing or explicitly unanswered input removes the local override;
+ * Unknown, No, zero and empty selections remain distinct values.
+ * Parsing rules are the same as the shared Place Report form.
+ *
+ * @return array{clear:bool,value:mixed}
+ */
+function llama_scoped_report_parse_input(
+    string $fieldKey,
+    string $scope,
+    mixed $raw
+): array {
+    $field = llama_scoped_report_field($fieldKey, $scope);
+    $unanswered = llama_place_report_unanswered_token();
+    $unknown = llama_place_report_unknown_token();
+
+    if ($raw === null || $raw === $unanswered
+        || (!is_array($raw) && is_scalar($raw)
+            && trim((string) $raw) === '')) {
+        return ['clear' => true, 'value' => null];
+    }
+
+    if ($raw === $unknown) {
+        if (empty($field['allow_unknown'])) {
+            throw new InvalidArgumentException(
+                'Unknown is not available for this reporting question.'
+            );
+        }
+        return ['clear' => false, 'value' => $unknown];
+    }
+
+    if (!is_array($raw) && !is_scalar($raw)) {
+        throw new InvalidArgumentException('Invalid reporting answer value.');
+    }
+
+    $type = (string) ($field['type'] ?? '');
+    $text = is_scalar($raw) ? (string) $raw : '';
+    if ($type === 'select' && !array_key_exists(
+        $text, (array) ($field['options'] ?? [])
+    )) {
+        throw new InvalidArgumentException('Choose one of the available answers.');
+    }
+    if ($type === 'tri' && !in_array($text, ['0', '1'], true)) {
+        throw new InvalidArgumentException('Choose Yes or No.');
+    }
+    if ($type === 'rating' && !in_array($text, ['1','2','3','4','5'], true)) {
+        throw new InvalidArgumentException('Choose a rating from 1 to 5.');
+    }
+    if ($type === 'permission' && !in_array($text, ['0','1','2'], true)) {
+        throw new InvalidArgumentException('Choose a valid permission answer.');
+    }
+
+    $unknownFields = [];
+    $value = llama_place_report_parse_field($field, $raw, $unknownFields);
+    return ['clear' => false, 'value' => $value];
+}
+
+/**
+ * Only Place-owned or shared questions can provide Area/Site defaults.
+ * Site-owned facts in historical Place records are retained in storage but
+ * cannot silently propagate to every campsite.
+ *
+ * @return array{values:array<string,mixed>,provenance:array<string,array{scope:string,source:string,id:int}>}
+ */
+function llama_scoped_report_place_baseline(
+    array $placeValues,
+    array $definitions,
+    int $placeId
+): array {
+    $values = [];
+    $provenance = [];
+
+    foreach ($placeValues as $key => $value) {
+        $key = (string) $key;
+        $field = $definitions[$key] ?? null;
+        if (!is_array($field) || !in_array('place',
+            (array) ($field['report_scopes'] ?? []), true)) {
+            continue;
+        }
+        $values[$key] = $value;
+        $provenance[$key] = [
+            'scope' => 'place',
+            'source' => 'place',
+            'id' => $placeId,
+        ];
+    }
+
+    return ['values' => $values, 'provenance' => $provenance];
+}
+
+/**
  * Caller must validate ownership of scopeId and the authenticated Scout's
  * ability to edit placeId. This is a storage service, not a public endpoint.
  * Null, false, zero, empty lists and Unknown are stored as explicit answers.
@@ -246,42 +337,11 @@ function llama_scoped_report_effective_answers(
     $definitions =
         llama_place_report_fields();
 
-    $values =
-        [];
-
-    $provenance =
-        [];
-
-    foreach (
-        $placeValues
-        as $fieldKey => $value
-    ) {
-        $fieldKey =
-            (string) $fieldKey;
-
-        if (
-            $fieldKey === ''
-            || !isset(
-                $definitions[$fieldKey]
-            )
-        ) {
-            continue;
-        }
-
-        $values[$fieldKey] =
-            $value;
-
-        $provenance[$fieldKey] = [
-            'scope' =>
-                'place',
-
-            'source' =>
-                'place',
-
-            'id' =>
-                $placeId,
-        ];
-    }
+    $baseline = llama_scoped_report_place_baseline(
+        $placeValues, $definitions, $placeId
+    );
+    $values = $baseline['values'];
+    $provenance = $baseline['provenance'];
 
     $applyLayer =
         static function (
@@ -633,42 +693,11 @@ function llama_scoped_report_effective_answers_for_targets(
             $source
         );
 
-        $values =
-            [];
-
-        $provenance =
-            [];
-
-        foreach (
-            $placeValues
-            as $fieldKey => $value
-        ) {
-            $fieldKey =
-                (string) $fieldKey;
-
-            if (
-                $fieldKey === ''
-                || !isset(
-                    $definitions[$fieldKey]
-                )
-            ) {
-                continue;
-            }
-
-            $values[$fieldKey] =
-                $value;
-
-            $provenance[$fieldKey] = [
-                'scope' =>
-                    'place',
-
-                'source' =>
-                    'place',
-
-                'id' =>
-                    $placeId,
-            ];
-        }
+        $baseline = llama_scoped_report_place_baseline(
+            $placeValues, $definitions, $placeId
+        );
+        $values = $baseline['values'];
+        $provenance = $baseline['provenance'];
 
         $areaAnswers =
             [];
