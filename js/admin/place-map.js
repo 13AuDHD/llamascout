@@ -287,6 +287,191 @@
             return 'llama-place-boundary';
         };
 
+    // Edit the canonical Site record coordinates, not a second map identity.
+    const siteLocationForm =
+        panel.querySelector('[data-admin-site-location-form]');
+    const siteLocationSelect =
+        siteLocationForm?.querySelector('[data-site-location-target]');
+    const siteLatitude =
+        siteLocationForm?.querySelector('[data-site-location-latitude]');
+    const siteLongitude =
+        siteLocationForm?.querySelector('[data-site-location-longitude]');
+    const siteLocationStatus =
+        siteLocationForm?.querySelector('[data-site-location-status]');
+    const newSiteFields =
+        siteLocationForm?.querySelector('[data-site-location-new]');
+    const newSiteName =
+        siteLocationForm?.querySelector('[data-site-location-name]');
+    const siteLocationPick =
+        siteLocationForm?.querySelector('[data-site-location-pick]');
+    const siteLocationGps =
+        siteLocationForm?.querySelector('[data-site-location-gps]');
+    let pickingSitePoint = false;
+    let sitePointPreview = null;
+
+    const siteLocationMessage = (message) => {
+        if (siteLocationStatus) {
+            siteLocationStatus.textContent = message;
+        }
+    };
+
+    const setSitePoint = (latitude, longitude, pan = false) => {
+        if (!siteLatitude || !siteLongitude) {
+            return;
+        }
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+            || latitude < -90 || latitude > 90
+            || longitude < -180 || longitude > 180
+            || (latitude === 0 && longitude === 0)) {
+            return;
+        }
+        siteLatitude.value = latitude.toFixed(7);
+        siteLongitude.value = longitude.toFixed(7);
+        if (sitePointPreview) {
+            map.removeLayer(sitePointPreview);
+        }
+        sitePointPreview = L.circleMarker([latitude, longitude], {
+            pane: 'llama-site',
+            radius: 9,
+            color: '#d97706',
+            weight: 3,
+            fillColor: '#d97706',
+            fillOpacity: .55,
+            interactive: false,
+        }).addTo(map);
+        if (pan) {
+            map.setView([latitude, longitude], Math.max(17, map.getZoom()));
+        }
+    };
+
+    const updateSiteLocationSelection = () => {
+        pickingSitePoint = false;
+        if (siteLocationPick) {
+            siteLocationPick.classList.remove('is-active');
+        }
+        if (sitePointPreview) {
+            map.removeLayer(sitePointPreview);
+            sitePointPreview = null;
+        }
+        if (!siteLatitude || !siteLongitude) {
+            return;
+        }
+        siteLatitude.value = '';
+        siteLongitude.value = '';
+        const creatingSite = siteLocationSelect?.value === 'new';
+        if (newSiteFields) {
+            newSiteFields.hidden = !creatingSite;
+        }
+        if (newSiteName) {
+            newSiteName.disabled = !creatingSite;
+            newSiteName.required = creatingSite;
+        }
+        if (creatingSite) {
+            siteLocationMessage('Name the new Site, then set its exact location. No Site boundary is required.');
+            return;
+        }
+        const selected = siteLocationSelect?.selectedOptions?.[0];
+        if (!selected?.value) {
+            siteLocationMessage('Choose a Site before assigning its GPS point.');
+            return;
+        }
+        const latText = selected.dataset.latitude || '';
+        const lngText = selected.dataset.longitude || '';
+        if (latText !== '' && lngText !== '') {
+            setSitePoint(Number(latText), Number(lngText), true);
+            siteLocationMessage('Existing Site location loaded. You can adjust and save it.');
+        } else {
+            siteLocationMessage('This Site has no GPS point yet. Place a pin, use GPS, or enter coordinates.');
+        }
+    };
+
+    const pickSiteLocation = (event) => {
+        if (!pickingSitePoint || !siteLocationSelect?.value) {
+            return false;
+        }
+        pickingSitePoint = false;
+        siteLocationPick?.classList.remove('is-active');
+        const point = event?.latlng;
+        if (!point) {
+            return false;
+        }
+        setSitePoint(point.lat, point.lng);
+        siteLocationMessage('Site pin selected. Choose Save Site GPS point to keep it.');
+        return true;
+    };
+
+    siteLocationSelect?.addEventListener('change', updateSiteLocationSelection);
+    const previewTypedSiteLocation = () => {
+        if (!siteLocationSelect?.value) {
+            return;
+        }
+        const lat = Number(siteLatitude?.value);
+        const lng = Number(siteLongitude?.value);
+        if (siteLatitude?.value && siteLongitude?.value
+            && Number.isFinite(lat) && Number.isFinite(lng)
+            && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+            && (lat !== 0 || lng !== 0)) {
+            setSitePoint(lat, lng);
+            siteLocationMessage('Site GPS position previewed. Save to publish the coordinates.');
+        }
+    };
+    siteLatitude?.addEventListener('change', previewTypedSiteLocation);
+    siteLongitude?.addEventListener('change', previewTypedSiteLocation);
+    siteLocationPick?.addEventListener('click', () => {
+        if (!siteLocationSelect?.value) {
+            siteLocationMessage('Choose a Site before placing a pin.');
+            siteLocationSelect?.focus();
+            return;
+        }
+        pickingSitePoint = !pickingSitePoint;
+        siteLocationPick.classList.toggle('is-active', pickingSitePoint);
+        siteLocationMessage(pickingSitePoint
+            ? 'Tap the Site location on the map, including inside an Area boundary.'
+            : 'Pin placement cancelled.');
+    });
+    siteLocationGps?.addEventListener('click', () => {
+        if (!siteLocationSelect?.value) {
+            siteLocationMessage('Choose a Site before using device GPS.');
+            return;
+        }
+        if (!navigator.geolocation) {
+            siteLocationMessage('Device GPS is unavailable in this browser.');
+            return;
+        }
+        siteLocationMessage('Reading your current position...');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setSitePoint(position.coords.latitude, position.coords.longitude, true);
+                siteLocationMessage('Device location captured. Check the accuracy before saving.');
+            },
+            () => siteLocationMessage('Location unavailable or permission denied. Enter coordinates or place a pin.'),
+            {enableHighAccuracy: true, timeout: 15000, maximumAge: 0}
+        );
+    });
+    siteLocationForm?.addEventListener('submit', (event) => {
+        const lat = Number(siteLatitude?.value);
+        const lng = Number(siteLongitude?.value);
+        if (!siteLocationSelect?.value
+            || (siteLocationSelect.value === 'new' && !newSiteName?.value.trim())
+            || !siteLatitude?.value || !siteLongitude?.value
+            || !Number.isFinite(lat) || !Number.isFinite(lng)
+            || lat < -90 || lat > 90 || lng < -180 || lng > 180
+            || (lat === 0 && lng === 0)) {
+            event.preventDefault();
+            siteLocationMessage('Choose a Site and enter valid nonzero coordinates first.');
+        }
+    });
+    window.addEventListener('llama:place-context-changed', (event) => {
+        if (event?.detail?.level !== 'site' || !siteLocationSelect) {
+            return;
+        }
+        const value = 'campsite_record:' + Number(event.detail.site_id || 0);
+        if (Array.from(siteLocationSelect.options).some((option) => option.value === value)) {
+            siteLocationSelect.value = value;
+            updateSiteLocationSelection();
+        }
+    });
+
     const layers =
         new Map();
 
@@ -345,7 +530,10 @@
 
                     child.on(
                         'click',
-                        () => {
+                        (event) => {
+                            if (pickSiteLocation(event)) {
+                                return;
+                            }
                             window.dispatchEvent(
                                 new CustomEvent(
                                     'llama:map-feature-selected',
@@ -538,6 +726,10 @@
                 url.toString();
         };
 
+    map.on('click', (event) => {
+        pickSiteLocation(event);
+    });
+
     window.addEventListener(
         'llama:place-context-changed',
         (event) => {
@@ -631,6 +823,8 @@
             );
         }
     }
+
+    updateSiteLocationSelection();
 
     window.requestAnimationFrame(
         () => {
