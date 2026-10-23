@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/place-report/campsite-baseline.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser =
@@ -510,12 +511,21 @@ if (
                 ]
                 as $featureKey
             ) {
+                $featureValue = $_POST[$featureKey] ?? '';
+                if (in_array($featureKey, ['picnic_table', 'grill', 'fire_ring', 'pets_allowed', 'food_storage', 'lantern_post'], true)) {
+                    $featureValue = match ($featureValue) {
+                        '1', 'Yes' => 'Yes',
+                        '0', 'No' => 'No',
+                        llama_place_report_unknown_token() => 'Unknown',
+                        '', llama_place_report_unanswered_token() => '',
+                        default => throw new InvalidArgumentException('Choose Yes, No, Unknown, or Clear for Site amenities.'),
+                    };
+                }
                 admin_campsite_feature_override(
                     $db,
                     $campsiteId,
                     $featureKey,
-                    $_POST[$featureKey]
-                    ?? ''
+                    $featureValue
                 );
             }
 
@@ -995,14 +1005,16 @@ $selectedName =
                                 'food_storage' => 'Food storage',
                                 'lantern_post' => 'Lantern post',
                             ] as $key => $label): ?>
-                                <label>
+                                <div class="contribution-field" data-campsite-amenity>
                                     <span><?= $e($label) ?></span>
-                                    <select name="<?= $e($key) ?>">
-                                        <option value="">Unknown</option>
-                                        <option value="Yes" <?= strtolower($feature($key)) === 'yes' ? 'selected' : '' ?>>Yes</option>
-                                        <option value="No" <?= strtolower($feature($key)) === 'no' ? 'selected' : '' ?>>No</option>
-                                    </select>
-                                </label>
+                                    <?php
+                                    $yesNoField = ['key' => $key, 'label' => $label];
+                                    $yesNoValue = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== ''
+                                        ? ($_POST[$key] ?? '')
+                                        : llama_place_report_campsite_bool_form_value($feature($key));
+                                    require dirname(__DIR__) . '/partials/place-report/yes-no-control.php';
+                                    ?>
+                                </div>
                             <?php endforeach; ?>
 
                         </div>
@@ -1104,4 +1116,5 @@ $selectedName =
 
 </div>
 
+<script src="https://llamascout.com/js/admin/campsite-amenities.js"></script>
 <?php require __DIR__ . '/_footer.php'; ?>
