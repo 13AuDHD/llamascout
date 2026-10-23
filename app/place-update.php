@@ -267,6 +267,13 @@ function llama_place_update_definitions(): array
             (string) $field['storage'];
 
 
+        // Match the canonical registry's first-definition-wins rule.
+        // Legacy keys may share one storage path; do not let the last
+        // duplicate silently replace the definition used elsewhere.
+        if (array_key_exists($storage, $definitions)) {
+            continue;
+        }
+
         $definitions[$storage] =
             array_merge(
                 $storageDefinition,
