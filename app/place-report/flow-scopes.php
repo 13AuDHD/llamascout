@@ -20,7 +20,9 @@ function llama_place_report_scope_groups(): array
     return [
         'place' => ['place'],
         'place_area' => ['place', 'area'],
-        'site' => ['site'],
+        'site' => [
+            'parking_notes',
+            'experience_summary','site'],
         'all' => ['place', 'area', 'site'],
     ];
 }
@@ -181,6 +183,11 @@ function llama_place_report_scope_overrides(): array
             'membership_required',
             'membership_url',
             'membership_fee',
+            'extra_vehicle_fee',
+            'parking_entrance_required',
+            'parking_entrance_fee',
+            'discounts_available',
+            'environment_notes',
             'entrance_facility_fee',
             'parking_fee',
             'collecting_firewood',

@@ -326,6 +326,18 @@ function llama_place_report_add_experience_fields(
         'counts_toward_completion' => false,
     ]);
 
+    $add('environment_notes', 'Environment notes', 'landscape_setting', 'textarea', 'details.environment_notes', [
+        'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
+        'points_categories' => ['environment'],
+    ]);
+    $add('parking_notes', 'Parking notes', 'site_vehicle', 'textarea', 'details.parking_notes', [
+        'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
+    ]);
+    $add('experience_summary', 'Experience summary', 'experience', 'textarea', 'experience.experience_summary', [
+        'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
+        'points_categories' => ['experience_recommendations'],
+    ]);
+
     /* Visit-specific history. Preserve the Scout's own observations. */
     $add('visit_length_of_stay', 'Length of Stay', 'scout_notes', 'select', 'experience.visit_length_of_stay', [
         'options' => array_merge(

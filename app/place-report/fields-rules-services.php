@@ -264,6 +264,23 @@ function llama_place_report_add_rules_service_fields(
             'A separate charge required to park a vehicle or hold a parking pass. Do not use this for the nightly camping price unless the documented charge is specifically a parking charge.',
     ]);
 
+    $add('extra_vehicle_fee', 'Extra vehicle fee', 'rules', 'number', 'rules.extra_vehicle_fee', [
+        'step' => '.01', 'min' => '0', 'max' => '100000', 'format' => 'currency',
+        'allow_unknown' => true, 'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('parking_entrance_required', 'Entrance or parking fee required?', 'rules', 'tri', 'rules.parking_entrance_required', [
+        'allow_unknown' => true, 'points_categories' => ['seasons_rules_services'],
+    ]);
+    $add('parking_entrance_fee', 'Combined entrance / parking fee', 'rules', 'number', 'rules.parking_entrance_fee', [
+        'step' => '.01', 'min' => '0', 'max' => '100000', 'format' => 'currency',
+        'allow_unknown' => true, 'points_categories' => ['seasons_rules_services'],
+        'help' => 'Use only when the reported charge combines entrance and parking. Existing separate entrance/facility and parking fees remain available; do not count the same charge twice.',
+    ]);
+    $add('discounts_available', 'Discounts available', 'rules', 'textarea', 'rules.discounts_available', [
+        'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
+        'points_categories' => ['seasons_rules_services'],
+    ]);
+
     $add('current_fire_restrictions_url', 'Current fire restrictions URL', 'rules', 'url', 'rules.current_fire_restrictions_url', [
         'wide' => true,
         'placeholder' => 'https://...',
