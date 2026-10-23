@@ -19,9 +19,10 @@
     const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const controls = new Map();
     for (const control of form.elements) {
-        if (!fieldKeys.has(control.name)) continue;
-        if (!controls.has(control.name)) controls.set(control.name, []);
-        controls.get(control.name).push(control);
+        const name = control.name.replace(/\[\]$/, '');
+        if (!fieldKeys.has(name)) continue;
+        if (!controls.has(name)) controls.set(name, []);
+        controls.get(name).push(control);
     }
     if (!controls.size) return;
 
