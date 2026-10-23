@@ -89,38 +89,6 @@ function llama_place_update_sections(): array
  */
 
 
-function llama_place_update_valid_identifier(
-    string $value
-): bool {
-    return preg_match(
-        '/^[a-z0-9_]+$/',
-        $value
-    ) === 1;
-}
-
-
-function llama_place_update_normalize_storage_value(
-    mixed $value,
-    array $definition
-): mixed {
-    $field =
-        $definition['shared']
-        ?? [];
-
-    if (
-        is_array($field)
-        && (string) ($field['type'] ?? '')
-            === 'multiselect'
-    ) {
-        return llama_place_report_multiselect_values(
-            $value
-        );
-    }
-
-    return $value;
-}
-
-
 function llama_place_update_current_values(
     PDO $db,
     int $placeId,
@@ -151,10 +119,10 @@ function llama_place_update_current_values(
 
 
         if (
-            !llama_place_update_valid_identifier(
+            !llama_place_report_valid_storage_identifier(
                 $table
             )
-            || !llama_place_update_valid_identifier(
+            || !llama_place_report_valid_storage_identifier(
                 $column
             )
         ) {
@@ -200,7 +168,7 @@ function llama_place_update_current_values(
 
 
             $values[$path] =
-                llama_place_update_normalize_storage_value(
+                llama_place_report_normalize_storage_value(
                     $cache['places'][$column]
                         ?? null,
                     $definition
@@ -262,7 +230,7 @@ function llama_place_update_current_values(
 
 
             $values[$path] =
-                llama_place_update_normalize_storage_value(
+                llama_place_report_normalize_storage_value(
                     $cache[$cacheKey][$column]
                         ?? null,
                     $definition
@@ -308,7 +276,7 @@ function llama_place_update_current_values(
 
 
         $values[$path] =
-            llama_place_update_normalize_storage_value(
+            llama_place_report_normalize_storage_value(
                 $cache[$table][$column]
                     ?? null,
                 $definition
@@ -353,10 +321,10 @@ function llama_place_update_current_value(
 
 
     if (
-        !llama_place_update_valid_identifier(
+        !llama_place_report_valid_storage_identifier(
             $table
         )
-        || !llama_place_update_valid_identifier(
+        || !llama_place_report_valid_storage_identifier(
             $column
         )
     ) {
@@ -393,7 +361,7 @@ function llama_place_update_current_value(
             $stmt->fetchColumn();
 
 
-        return llama_place_update_normalize_storage_value(
+        return llama_place_report_normalize_storage_value(
             $value === false
                 ? null
                 : $value,
@@ -439,7 +407,7 @@ function llama_place_update_current_value(
             $stmt->fetchColumn();
 
 
-        return llama_place_update_normalize_storage_value(
+        return llama_place_report_normalize_storage_value(
             $value === false
                 ? null
                 : $value,
@@ -473,7 +441,7 @@ function llama_place_update_current_value(
         $stmt->fetchColumn();
 
 
-    return llama_place_update_normalize_storage_value(
+    return llama_place_report_normalize_storage_value(
         $value === false
             ? null
             : $value,
