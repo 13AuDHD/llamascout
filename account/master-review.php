@@ -280,7 +280,20 @@ require dirname(__DIR__) . '/partials/header.php';
         $historyRow ? llama_place_update_latest_original_unknown_fields($historyRow) : [],
         true
     );
-    $estimate = llama_points_estimate_place_update($db, $proposed);
+    require_once dirname(__DIR__) . '/app/place-report/review.php';
+    $reviewRows = llama_place_report_review_changes($proposed, $original,
+        array_keys($newUnknownLookup), array_keys($originalUnknownLookup));
+    if (isset($proposed['__scoped_report__'])) {
+        require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
+        $estimate = llama_scoped_update_point_estimate($db, (int) $item['place_id'],
+            (string) $item['place_slug'], $proposed['__scoped_report__']);
+    } else {
+        $finalInput = llama_place_update_shared_form_values(
+            llama_place_update_current_values($db, (int) $item['place_id']),
+            llama_place_report_published_answer_state($db, (int) $item['place_id']),
+            $proposed, array_keys($newUnknownLookup));
+        $estimate = llama_points_estimate_place_update($db, $finalInput, $proposed, count($photos));
+    }
     $estimatedPoints = (int) ($estimate['estimated_points'] ?? 0);
     ?>
 
@@ -291,7 +304,7 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
         <div>
             <span>Changed fields</span>
-            <strong><?= number_format(count($proposed)) ?></strong>
+            <strong><?= number_format(count($reviewRows)) ?></strong>
         </div>
         <div>
             <span>Photos</span>
@@ -341,22 +354,13 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
         <?php else: ?>
             <div class="master-moderation-change-list">
-                <?php foreach ($proposed as $path => $newValue): ?>
+                <?php foreach ($reviewRows as $row): ?>
                     <?php
-                    $definition = $definitions[$path] ?? [];
-                    $fieldKey = (string) ($definition['key'] ?? '');
-                    $label = (string) ($definition['label'] ?? ucwords(str_replace(['.', '_'], ' ', (string) $path)));
-                    $oldValue = $original[$path] ?? null;
-                    $oldText = llama_place_update_display_value(
-                        (string) $path,
-                        $oldValue,
-                        $fieldKey !== '' && isset($originalUnknownLookup[$fieldKey])
-                    );
-                    $newText = llama_place_update_display_value(
-                        (string) $path,
-                        $newValue,
-                        $fieldKey !== '' && isset($newUnknownLookup[$fieldKey])
-                    );
+                    $path = $row['path'];
+                    $label = (string) ($row['definition']['label'] ?? $path);
+                    if ($row['target_label'] !== '') { $label = $row['target_label'] . ' / ' . $label; }
+                    $oldText = llama_place_report_review_value($path, $row['old'], $row['old_unknown']);
+                    $newText = llama_place_report_review_value($path, $row['new'], $row['new_unknown']);
                     ?>
                     <article>
                         <h3><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></h3>
