@@ -1213,7 +1213,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         static fn (array $field): bool =>
             (string) ($field['layout_section'] ?? '') === $reportMainKey
     );
-    if (!$reportMainFields && !($reportMainKey === 'site' && $placeReportShowPhotos)) {
+    if (!$reportMainFields) {
         continue;
     }
 ?>
@@ -1238,10 +1238,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             $hasLocate = $reportMainKey === 'place'
                 && $approvedKey === 'location'
                 && $placeReportShowLocate;
-            $hasPhotos = $reportMainKey === 'site'
-                && $approvedKey === 'notes_public'
-                && $placeReportShowPhotos;
-            if (!$approvedSection['fields'] && !$hasLocate && !$hasPhotos) {
+            if (!$approvedSection['fields'] && !$hasLocate) {
                 continue;
             }
             ?>
@@ -1359,8 +1356,23 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
-                    <?php if ($hasPhotos): ?>
-<?php if ($placeReportShowPhotos): ?>
+
+                </div>
+            </details>
+        <?php endforeach; ?>
+    </div>
+</details>
+<?php endforeach; ?>
+
+<?php
+/*
+ * Photos belong to the selected reporting target, not to the Site Notes
+ * question group. Keep one uploader for Place and Site records. Admin
+ * target switching is handled by the existing photo controller.
+ */
+if ($placeReportShowPhotos):
+?>
+
 
     <details
         class="contribution-section"
@@ -1504,15 +1516,6 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
     </details>
 
 <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-            </details>
-        <?php endforeach; ?>
-    </div>
-</details>
-<?php endforeach; ?>
-
-
 
 <script defer src="/js/place-report-season-picker.js"></script>
 <script defer src="/js/place-report-section-completion.js"></script>
