@@ -230,3 +230,229 @@ function llama_place_report_field_by_storage(string $storage): ?array
     }
     return $index[$storage] ?? null;
 }
+
+
+/**
+ * Resolve canonical report storage to its published Place table/column.
+ * Submission-only metadata intentionally has no published Place target.
+ * This is shared mapping metadata, not a database write.
+ */
+function llama_place_report_storage_definition(
+    array $field
+): ?array {
+    $storage =
+        trim(
+            (string) (
+                $field['storage']
+                ?? ''
+            )
+        );
+
+    if ($storage === '') {
+        return null;
+    }
+
+
+    /*
+     * Update submission metadata, not published Place data.
+     */
+    if (
+        in_array(
+            $storage,
+            [
+                'visited_at',
+                'contributor_notes',
+            ],
+            true
+        )
+    ) {
+        return null;
+    }
+
+
+    $placeColumns = [
+        'name',
+        'type',
+        'description',
+        'latitude',
+        'longitude',
+        'elevation_feet',
+        'road',
+        'city',
+        'county',
+        'state',
+        'region',
+        'land_manager',
+        'land_type',
+        'access_summary',
+        'sensory_summary',
+    ];
+
+
+    if (
+        in_array(
+            $storage,
+            $placeColumns,
+            true
+        )
+    ) {
+        return [
+            'table' => 'places',
+            'column' => $storage,
+        ];
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'details.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_details',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen('details.')
+                ),
+        ];
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'amenities.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_amenities',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen('amenities.')
+                ),
+        ];
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'connectivity.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_connectivity',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen('connectivity.')
+                ),
+        ];
+    }
+
+
+    foreach (
+        [
+            'daytime',
+            'nighttime',
+        ]
+        as $period
+    ) {
+        $prefix =
+            'sensory.'
+            . $period
+            . '.';
+
+        if (
+            str_starts_with(
+                $storage,
+                $prefix
+            )
+        ) {
+            return [
+                'table' =>
+                    'place_sensory',
+
+                'column' =>
+                    substr(
+                        $storage,
+                        strlen($prefix)
+                    ),
+
+                'period' =>
+                    $period,
+            ];
+        }
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'sensory.details.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_sensory_details',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen(
+                        'sensory.details.'
+                    )
+                ),
+        ];
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'rules.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_rules',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen('rules.')
+                ),
+        ];
+    }
+
+
+    if (
+        str_starts_with(
+            $storage,
+            'experience.'
+        )
+    ) {
+        return [
+            'table' =>
+                'place_experience',
+
+            'column' =>
+                substr(
+                    $storage,
+                    strlen('experience.')
+                ),
+        ];
+    }
+
+
+    return null;
+}
