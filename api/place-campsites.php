@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/place-campsites.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
+require_once dirname(__DIR__) . '/app/place-report/target-model.php';
 require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
 
@@ -220,6 +221,9 @@ try {
                 )
                 : null;
 
+        if (is_array($resolved)) {
+            $resolved = llama_place_report_with_campsite_baseline($resolved, $site);
+        }
         $site['report_inherited_values'] =
             is_array($resolved)
                 ? llama_scoped_report_display_values(
