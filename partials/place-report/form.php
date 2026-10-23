@@ -131,13 +131,12 @@ $placeReportAllowedStoragePaths =
         : null;
 
 /*
- * Reconciliation mode is an explicit diagnostic override only.
- * A workflow with a storage allow-list must never offer questions it
- * cannot save. Add Place and Admin without an allow-list still receive
- * the complete canonical registry.
+ * Issue #5 reconciliation: show the entire canonical question set.
+ * Visibility is independent of the current workflow's save capabilities.
+ * Set false only when restoring workflow storage filtering intentionally.
  */
 $placeReportReconciliationMode =
-    (bool) ($placeReportReconciliationMode ?? false);
+    (bool) ($placeReportReconciliationMode ?? true);
 
 $placeReportAllowedStorageLookup =
     $placeReportAllowedStoragePaths !== null
@@ -1235,37 +1234,9 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
          * Render one collapsible section per approved questionnaire group.
          * Keep the canonical Place/Site ownership and field renderer intact.
          */
-        $approvedDefinitions = llama_place_report_approved_question_groups();
-        $approvedSections = [];
-        foreach ($approvedDefinitions as $approvedKey => $definition) {
-            $approvedSections[$approvedKey] = [
-                'label' => (string) $definition[0],
-                'fields' => [],
-            ];
-        }
-        $approvedSections['additional_questions'] = [
-            'label' => 'Additional Questions',
-            'fields' => [],
-        ];
-        foreach ($reportMainFields as $fieldKey => $field) {
-            $approvedKey = (string) ($field['approved_question_group'] ?? '');
-            if ($approvedKey === '' || !isset($approvedSections[$approvedKey])) {
-                $approvedKey = 'additional_questions';
-            }
-            $approvedSections[$approvedKey]['fields'][$fieldKey] = $field;
-        }
-        // The approved inventory determines both group and question order.
-        foreach ($approvedDefinitions as $approvedKey => $definition) {
-            $fieldsInGroup = $approvedSections[$approvedKey]['fields'];
-            $orderedFields = [];
-            foreach ($definition[1] as $fieldKey) {
-                if (isset($fieldsInGroup[$fieldKey])) {
-                    $orderedFields[$fieldKey] = $fieldsInGroup[$fieldKey];
-                    unset($fieldsInGroup[$fieldKey]);
-                }
-            }
-            $approvedSections[$approvedKey]['fields'] = $orderedFields + $fieldsInGroup;
-        }
+        $approvedSections = llama_place_report_group_eligible_questions(
+            $reportMainFields
+        );
         ?>
         <?php foreach ($approvedSections as $approvedKey => $approvedSection): ?>
             <?php
