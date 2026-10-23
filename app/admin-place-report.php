@@ -106,333 +106,34 @@ function admin_place_shared_report_data(
 }
 
 
-function admin_place_save_shared_report(
-    PDO $db,
-    int $actorUserId,
-    int $placeId,
-    array $input
-): array {
-    $place =
-        admin_place_get(
-            $db,
-            $placeId
-        );
-
-    if (!$place) {
-        throw new RuntimeException(
-            'Place not found.'
-        );
-    }
-
-    $baseData =
-        admin_place_shared_report_data(
-            $db,
-            $placeId
-        );
-
-    $placeLevelInput =
-        admin_place_without_campsite_fields(
-            $input
-        );
-
-    $reportData =
-        llama_place_report_build_data(
-            $placeLevelInput,
-            $baseData
-        );
-
-    $coreData = [
-        'name' =>
-            $reportData['name']
-            ?? $place['name']
-            ?? '',
-
-        'type' =>
-            $reportData['type']
-            ?? $place['type']
-            ?? 'other',
-
-        'slug' =>
-            trim(
-                (string) (
-                    $input['admin_slug']
-                    ?? $place['slug']
-                    ?? ''
-                )
-            ),
-
-        'source_type' =>
-            trim(
-                (string) (
-                    $input['admin_source_type']
-                    ?? $place['source_type']
-                    ?? 'llama-scouted'
-                )
-            ),
-
-        'description' =>
-            $reportData['description']
-            ?? null,
-
-        'public_summary' =>
-            trim(
-                (string) (
-                    $input['admin_public_summary']
-                    ?? $place['public_summary']
-                    ?? ''
-                )
-            ),
-
-        'public_location_label' =>
-            trim(
-                (string) (
-                    $input['admin_public_location_label']
-                    ?? $place['public_location_label']
-                    ?? ''
-                )
-            ),
-
-        'latitude' =>
-            $reportData['latitude']
-            ?? null,
-
-        'longitude' =>
-            $reportData['longitude']
-            ?? null,
-
-        'public_latitude' =>
-            $place['public_latitude']
-            ?? null,
-
-        'public_longitude' =>
-            $place['public_longitude']
-            ?? null,
-
-        'elevation_feet' =>
-            $reportData['elevation_feet']
-            ?? null,
-
-        'road' =>
-            $reportData['road']
-            ?? null,
-
-        'city' =>
-            $reportData['city']
-            ?? null,
-
-        'county' =>
-            $reportData['county']
-            ?? null,
-
-        'state' =>
-            $reportData['state']
-            ?? null,
-
-        'region' =>
-            $reportData['region']
-            ?? null,
-
-        'land_manager' =>
-            $reportData['land_manager']
-            ?? null,
-
-        'land_type' =>
-            $reportData['land_type']
-            ?? null,
-
-        'sensory_summary' =>
-            $reportData['sensory_summary']
-            ?? null,
-
-        'access_summary' =>
-            $reportData['access_summary']
-            ?? null,
-    ];
-
-    $amenities =
-        is_array(
-            $reportData['amenities']
-            ?? null
-        )
-            ? $reportData['amenities']
-            : [];
-
-    $connectivity =
-        is_array(
-            $reportData['connectivity']
-            ?? null
-        )
-            ? $reportData['connectivity']
-            : [];
-
-    $details =
-        is_array(
-            $reportData['details']
-            ?? null
-        )
-            ? $reportData['details']
-            : [];
-
-    $rules =
-        is_array(
-            $reportData['rules']
-            ?? null
-        )
-            ? $reportData['rules']
-            : [];
-
-    $experience =
-        is_array(
-            $reportData['experience']
-            ?? null
-        )
-            ? $reportData['experience']
-            : [];
-
-    $sensory =
-        is_array(
-            $reportData['sensory']
-            ?? null
-        )
-            ? $reportData['sensory']
-            : [];
-
-    $sensoryPayload =
-        is_array(
-            $sensory['details']
-            ?? null
-        )
-            ? $sensory['details']
-            : [];
-
-    foreach (
-        [
-            'daytime',
-            'nighttime',
-        ]
-        as $period
-    ) {
-        $periodData =
-            is_array(
-                $sensory[$period]
-                ?? null
-            )
-                ? $sensory[$period]
-                : [];
-
-        foreach (
-            [
-                'noise',
-                'traffic',
-                'crowds',
-                'privacy',
-                'light_pollution',
-                'sensory_comfort',
-                'social_interaction_likelihood',
-            ]
-            as $field
-        ) {
-            $sensoryPayload[
-                $period
-                . '_'
-                . $field
-            ] =
-                $periodData[$field]
-                ?? null;
-        }
-    }
-
-    $ownsTransaction =
-        !$db->inTransaction();
-
-    if ($ownsTransaction) {
-        $db->beginTransaction();
-    }
-
+function admin_place_save_shared_report(PDO $db, int $actorUserId, int $placeId, array $input): array
+{
+    $ownsTransaction = !$db->inTransaction();
+    if ($ownsTransaction) { $db->beginTransaction(); }
     try {
-        admin_place_save_core(
-            $db,
-            $actorUserId,
-            $placeId,
-            $coreData
-        );
-
-        admin_place_save_amenities(
-            $db,
-            $actorUserId,
-            $placeId,
-            $amenities
-        );
-
-        admin_place_save_connectivity(
-            $db,
-            $actorUserId,
-            $placeId,
-            $connectivity
-        );
-
-        admin_place_save_details(
-            $db,
-            $actorUserId,
-            $placeId,
-            $details
-        );
-
-        admin_place_save_sensory_details(
-            $db,
-            $actorUserId,
-            $placeId,
-            $sensoryPayload
-        );
-
-        admin_place_save_rules(
-            $db,
-            $actorUserId,
-            $placeId,
-            $rules
-        );
-
-        admin_place_save_experience(
-            $db,
-            $actorUserId,
-            $placeId,
-            $experience
-        );
-
-        llama_place_report_publish_answer_state(
-            $db,
-            $placeId,
-            $reportData
-        );
-
-        admin_users_audit(
-            $db,
-            $actorUserId,
-            null,
-            'place.shared_report_updated',
-            'Updated the shared Place Report.',
-            [
-                'place_id' =>
-                    $placeId,
-            ]
-        );
-
-        if ($ownsTransaction) {
-            $db->commit();
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) { throw new RuntimeException('Place not found.'); }
+        $place = admin_place_get($db, $placeId);
+        $baseData = admin_place_shared_report_data($db, $placeId);
+        $placeLevelInput = admin_place_without_campsite_fields(llama_place_report_expand_presence($input));
+        $allowed = llama_place_report_fields_for_scope('place');
+        $placeLevelInput = array_intersect_key($placeLevelInput, $allowed);
+        if (isset($input['_report_touched'])) {
+            $placeLevelInput['_report_touched'] = array_intersect_key((array) $input['_report_touched'], $allowed);
         }
-
+        $reportData = llama_place_report_build_data($placeLevelInput, $baseData);
+        admin_place_save_report_metadata($db, $placeId, $place, $input);
+        llama_place_report_publish_data($db, $placeId, $reportData,
+            llama_place_report_changed_keys($baseData, $reportData, array_keys($placeLevelInput)));
+        admin_users_audit($db, $actorUserId, null, 'place.shared_report_updated',
+            'Updated the shared Place Report.', ['place_id' => $placeId, 'field_keys' => array_keys($placeLevelInput)]);
+        if ($ownsTransaction) { $db->commit(); }
+        return $reportData;
     } catch (Throwable $exception) {
-        if (
-            $ownsTransaction
-            && $db->inTransaction()
-        ) {
-            $db->rollBack();
-        }
-
+        if ($ownsTransaction && $db->inTransaction()) { $db->rollBack(); }
         throw $exception;
     }
-
-    return $reportData;
 }
 
 
@@ -1218,4 +919,33 @@ function admin_place_background_save_respond(
     );
 
     exit;
+}
+
+/** Admin-only metadata keeps its existing boundary, separate from report answers. */
+function admin_place_save_report_metadata(PDO $db, int $placeId, array $place, array $input): void
+{
+    $sets = []; $params = [];
+    if (array_key_exists('admin_slug', $input)) {
+        $slug = strtolower(trim((string) $input['admin_slug']));
+        $slug = trim(preg_replace('/[^a-z0-9]+/', '-', $slug) ?? '', '-');
+        if ($slug === '' || strlen($slug) > 190) { throw new InvalidArgumentException('Enter a URL slug of 1 to 190 characters.'); }
+        $statement = $db->prepare('SELECT id FROM places WHERE slug = ? AND id <> ? LIMIT 1');
+        $statement->execute([$slug, $placeId]);
+        if ($statement->fetchColumn()) { throw new InvalidArgumentException('That URL slug is already used by another Place.'); }
+        $sets[] = 'slug = ?'; $params[] = $slug;
+    }
+    if (array_key_exists('admin_source_type', $input)) {
+        $source = trim((string) $input['admin_source_type']);
+        if (!in_array($source, ['llama-scouted','community-scouted','external','legacy'], true)) {
+            throw new InvalidArgumentException('Choose a valid Place source.');
+        }
+        $sets[] = 'source_type = ?'; $params[] = $source;
+    }
+    foreach (['admin_public_summary'=>'public_summary','admin_public_location_label'=>'public_location_label'] as $key=>$column) {
+        if (!array_key_exists($key, $input)) { continue; }
+        $sets[] = "`$column` = ?"; $params[] = trim((string) $input[$key]) ?: null;
+    }
+    if (!$sets) { return; }
+    $params[] = $placeId;
+    $db->prepare('UPDATE places SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
 }
