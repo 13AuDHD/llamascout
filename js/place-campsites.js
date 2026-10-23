@@ -877,7 +877,7 @@
 
         // The selected Site identifier is the first Scout Report answer.
         // Use the catalog's displayed name, not an optional report field.
-        set('site_number', smartCase(site.display_name));
+        if (!values.site_number) set('site_number', smartCase(site.display_name));
 
         return values;
     };

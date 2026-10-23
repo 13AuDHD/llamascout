@@ -561,6 +561,8 @@ const completionFieldValue = (
 form,
 fieldKey
 ) => {
+const unknownControl = form.querySelector(`[name="${CSS.escape('_report_unknown[' + fieldKey + ']')}"]`);
+if (unknownControl?.checked) return '__LLAMA_UNKNOWN__';
 const arrayControls = [
 ...form.querySelectorAll(
 `[name="${CSS.escape(fieldKey + '[]')}"]`
@@ -1258,6 +1260,25 @@ search?.addEventListener(
 filterOptions
 );
 
+control.addEventListener('change', event => {
+const namedChoice = control.querySelector('input[name$="[]"]');
+if (namedChoice) {
+const key = namedChoice.name.slice(0, -2);
+let touched = [...form.querySelectorAll('input[type="hidden"]')].find(el => el.name === `_report_touched[${key}]`);
+if (!touched) { touched = document.createElement('input'); touched.type = 'hidden'; touched.name = `_report_touched[${key}]`; form.append(touched); }
+touched.value = '1';
+}
+const unknownOption = control.querySelector('[data-report-multiselect-unknown]');
+if (!unknownOption) return;
+if (event.target === unknownOption && unknownOption.checked) {
+for (const option of options) {
+const checkbox = option.querySelector('input[type="checkbox"]');
+if (checkbox) checkbox.checked = false;
+}
+} else if (event.target !== unknownOption && event.target.type === 'checkbox') {
+unknownOption.checked = false;
+}
+});
 control.addEventListener(
 'change',
 syncSummary
