@@ -93,6 +93,69 @@ $mapLongitude =
         <span>Place</span>
     </div>
 
+    <form
+        class="admin-place-site-location"
+        data-admin-site-location-form
+        method="post"
+        action="/place.php?id=<?= (int) $placeId ?>#place-map"
+    >
+        <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+        <input type="hidden" name="place_admin_action" value="save-site-location">
+        <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
+
+        <header class="admin-place-site-location-header">
+            <h3>Individual Site GPS point</h3>
+            <p>Mark the exact Site location without changing the Place boundary or other Sites.</p>
+        </header>
+
+        <label for="admin-site-location-target">Site</label>
+        <select
+            name="site_target"
+            id="admin-site-location-target"
+            data-site-location-target
+            required
+        >
+            <option value="">Choose a Site</option>
+            <option value="new">+ Create new Site from a GPS point</option>
+            <?php foreach ($adminPlaceCampsites as $site): ?>
+                <option
+                    value="<?= $e((string) ($site['id'] ?? '')) ?>"
+                    data-latitude="<?= $e((string) ($site['latitude'] ?? '')) ?>"
+                    data-longitude="<?= $e((string) ($site['longitude'] ?? '')) ?>"
+                    <?= (int) ($_GET['site'] ?? 0) === (int) ($site['scope_id'] ?? 0) ? 'selected' : '' ?>
+                ><?= $e((string) ($site['label'] ?? 'Unnamed Site')) ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <label class="admin-place-site-location-new" data-site-location-new hidden>
+            <span>New Site name</span>
+            <input type="text" name="site_name" data-site-location-name
+                maxlength="120" autocomplete="off" placeholder="Rocky Camp" disabled>
+        </label>
+
+        <div class="admin-place-site-location-coordinates">
+            <label>
+                <span>Latitude</span>
+                <input type="text" name="site_latitude" data-site-location-latitude
+                    inputmode="decimal" placeholder="37.226325" autocomplete="off" required>
+            </label>
+            <label>
+                <span>Longitude</span>
+                <input type="text" name="site_longitude" data-site-location-longitude
+                    inputmode="decimal" placeholder="-107.695025" autocomplete="off" required>
+            </label>
+        </div>
+
+        <div class="admin-place-site-location-actions">
+            <button type="button" class="admin-button is-muted" data-site-location-pick>Place pin on map</button>
+            <button type="button" class="admin-button is-muted" data-site-location-gps>Use device GPS</button>
+            <button type="submit" class="admin-button" data-site-location-save>Save Site GPS point</button>
+        </div>
+        <p class="admin-place-site-location-status" data-site-location-status role="status" aria-live="polite">
+            Choose an existing Site, then enter its coordinates or select its location on the map.
+        </p>
+    </form>
+
     <script
         type="application/json"
         data-admin-place-map-data
