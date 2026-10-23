@@ -199,16 +199,17 @@ const state = {};
 groupedControls(form).forEach(
 (controls, name) => {
 const first = controls[0];
+const radios = controls.filter(control =>
+control instanceof HTMLInputElement && control.type === 'radio'
+);
 
-if (
-first
-instanceof HTMLInputElement
-&& first.type === 'radio'
-) {
+// Yes/No groups include an unanswered hidden input before the radio buttons.
+// Serialize the selected radio instead of that hidden fallback.
+if (radios.length) {
 state[name] = {
 kind: 'radio',
 value:
-controls.find(
+radios.find(
 (control) =>
 control.checked
 )?.value
