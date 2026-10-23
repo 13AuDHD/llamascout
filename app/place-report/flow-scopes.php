@@ -20,9 +20,7 @@ function llama_place_report_scope_groups(): array
     return [
         'place' => ['place'],
         'place_area' => ['place', 'area'],
-        'site' => [
-            'parking_notes',
-            'experience_summary','site'],
+        'site' => ['site'],
         'all' => ['place', 'area', 'site'],
     ];
 }
@@ -300,6 +298,8 @@ function llama_place_report_scope_overrides(): array
             'site_rating',
             'condition_rating',
             'location_rating',
+            'parking_notes',
+            'experience_summary',
         ],
 
         'all' => [
