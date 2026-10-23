@@ -279,12 +279,9 @@ function llama_place_report_land_types(): array
 
 function llama_place_report_place_types(): array
 {
-    $types =
-        function_exists('community_place_types')
-            ? community_place_types()
-            : [];
-
-    $expanded = [
+    // This is the one canonical Place Type option list. Community forms
+    // delegate here; calling them from here would recurse indefinitely.
+    return [
         'dispersed-camping' => 'Dispersed camping',
         'developed-campground' => 'Developed campground',
         'camping-area' => 'Camping area',
@@ -314,11 +311,6 @@ function llama_place_report_place_types(): array
 
         'other' => 'Other',
     ];
-
-    return array_replace(
-        $types,
-        $expanded
-    );
 }
 
 function llama_place_report_surface_options(bool $allowGrass = true): array
