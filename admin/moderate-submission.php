@@ -277,11 +277,7 @@ if (
              * because normalized SQL columns use NULL for both an
              * untouched question and an explicit Unknown answer.
              */
-            llama_place_report_publish_answer_state(
-                $db,
-                $placeId,
-                $currentData
-            );
+
 
             admin_users_audit(
                 $db,
