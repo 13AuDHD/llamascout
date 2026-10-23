@@ -586,9 +586,6 @@
 .scout-report-section.scout-report-scope-other-place { --scout-report-scope-color: #7044a3; }
 .scout-report-section.scout-report-scope-site { --scout-report-scope-color: #d97706; }
 .scout-report-section.scout-report-scope-space { --scout-report-scope-color: #2563eb; }
-.scout-report-section[class*="scout-report-scope-"] .scout-report-item {
-    border-left: 4px solid var(--scout-report-scope-color);
-}
 
 /* Public Scout Report: section headings stay, outer panels go. */
 .scout-report .scout-report-section[class*="scout-report-scope-"] {
