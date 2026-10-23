@@ -46,6 +46,50 @@ function llama_place_report_approved_question_groups(): array
 }
 
 /**
+ * Build the canonical question groups for any workflow from its eligible fields.
+ *
+ * This is the only grouping/order projection for the approved questionnaire.
+ * Eligibility (Place/Area/Site, workflow storage, and dependencies) must be
+ * resolved before calling this function. Unapproved legacy questions are
+ * retained in a separate review group rather than silently discarded.
+ */
+function llama_place_report_group_eligible_questions(array $eligibleFields): array
+{
+    $groups = [];
+    $approved = llama_place_report_approved_question_groups();
+    foreach ($approved as $groupKey => $definition) {
+        $groups[$groupKey] = [
+            'label' => (string) $definition[0],
+            'fields' => [],
+        ];
+    }
+    $groups['additional_questions'] = [
+        'label' => 'Additional Questions',
+        'fields' => [],
+    ];
+
+    $lookup = llama_place_report_approved_question_lookup();
+    foreach ($eligibleFields as $key => $field) {
+        $group = $lookup[$key]['group'] ?? 'additional_questions';
+        $groups[$group]['fields'][$key] = $field;
+    }
+
+    foreach ($approved as $groupKey => $definition) {
+        $remaining = $groups[$groupKey]['fields'];
+        $ordered = [];
+        foreach ($definition[1] as $key) {
+            if (array_key_exists($key, $remaining)) {
+                $ordered[$key] = $remaining[$key];
+                unset($remaining[$key]);
+            }
+        }
+        $groups[$groupKey]['fields'] = $ordered + $remaining;
+    }
+
+    return $groups;
+}
+
+/**
  * Lookup for the approved questionnaire. The first occurrence wins so a
  * question cannot acquire two display groups accidentally.
  *
