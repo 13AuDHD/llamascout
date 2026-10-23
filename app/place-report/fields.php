@@ -467,6 +467,13 @@ function llama_place_report_published_definitions(): array
         llama_place_report_fields()
         as $key => $field
     ) {
+        // Only Place-owned/shared answers may be published into Place tables.
+        // Site-only questions are saved against a verified Site target instead.
+        if (!in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            || !empty($field['derived'])) {
+            continue;
+        }
+
         $storageDefinition =
             llama_place_report_storage_definition(
                 $field
