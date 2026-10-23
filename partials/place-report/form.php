@@ -541,20 +541,9 @@ $renderField =
                 $current === '1';
             ?>
 
-            <label class="contribution-check">
+            <label class="contribution-check" data-report-field="<?= $e($key) ?>">
 
-                <?php if (
-                    $placeReportMode === 'moderator'
-                ): ?>
-
-                    <input
-                        type="hidden"
-                        name="<?= $e($key) ?>"
-                        value="0"
-                    >
-
-                <?php endif; ?>
-
+                <input type="hidden" name="_report_present[<?= $e($key) ?>]" value="1">
 
                 <input
                     type="checkbox"
@@ -597,7 +586,7 @@ $renderField =
 
         <<?= $fieldContainerTag ?> class="<?= $e(
             $class
-        ) ?>">
+        ) ?>" data-report-field="<?= $e($key) ?>">
 
             <span class="place-report-field-label">
                 <span>
@@ -891,7 +880,13 @@ $renderField =
 
                 ?>
 
+                <input type="hidden" name="_report_present[<?= $e($key) ?>]" value="1">
                 <div class="place-report-multiselect" data-place-report-multiselect>
+                    <?php if (!empty($field['allow_unknown'])): ?>
+                        <label><input type="checkbox" name="_report_unknown[<?= $e($key) ?>]"
+                            value="1" data-report-multiselect-unknown
+                            <?= $current === $unknown ? 'checked' : '' ?>> Unknown</label>
+                    <?php endif; ?>
                     <div class="place-report-multiselect-options">
                             <?php foreach (
                                 $multiOptions
@@ -1526,4 +1521,5 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
 <script
     src="https://llamascout.com/js/place-report-form/recovery.js"
 ></script>
+
 
