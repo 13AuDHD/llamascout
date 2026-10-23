@@ -59,6 +59,16 @@
             '[name="photos_json"]'
         );
 
+    const tokenField =
+        form.querySelector(
+            '[name="photo_stage_token"]'
+        );
+
+    const csrfField =
+        form.querySelector(
+            '[name="csrf_token"]'
+        );
+
     const uploader =
         form.querySelector(
             '[data-photo-uploader]'
@@ -194,15 +204,170 @@
         return;
     }
 
-    const photoInput =
-        uploader.querySelector(
-            '[data-photo-files]'
+    // The shared uploader initializes in the Admin footer, after this
+    // controller. Resolve its controls at use time, not before they exist.
+    const photoInput = () =>
+        uploader.querySelector('[data-photo-files]');
+
+    const photoDrop = () =>
+        uploader.querySelector('[data-photo-drop]');
+
+    // Stage and commit are separate operations. Saving photos must not
+    // revalidate or rewrite hundreds of unrelated Scout Report answers.
+    const photoSavePanel =
+        document.createElement('div');
+    photoSavePanel.className =
+        'admin-place-photo-actions';
+
+    const photoSaveButton =
+        document.createElement('button');
+    photoSaveButton.type = 'button';
+    photoSaveButton.className = 'admin-button';
+    photoSaveButton.textContent = 'Save selected photos';
+
+    const photoSaveStatus =
+        document.createElement('p');
+    photoSaveStatus.className = 'admin-place-muted';
+    photoSaveStatus.setAttribute('role', 'status');
+    photoSaveStatus.setAttribute('aria-live', 'polite');
+
+    photoSavePanel.append(photoSaveButton, photoSaveStatus);
+    uploader.insertAdjacentElement('afterend', photoSavePanel);
+
+    let savingPhotos = false;
+    const reportSaveButton = form.querySelector('[data-place-report-admin-save]');
+
+    const updatePhotoSaveButton = () => {
+        const target = currentTarget();
+        photoSaveButton.disabled =
+            savingPhotos
+            || uploader.getAttribute('aria-busy') === 'true'
+            || reportSaveButton?.classList.contains('is-saving')
+            || !target
+            || target.supported === false
+            || stagedPhotoCount() < 1;
+        photoSaveButton.textContent =
+            savingPhotos
+                ? 'Saving photos...'
+                : 'Save photos to ' + String(target?.label || 'selected location');
+    };
+
+    form.addEventListener(
+        'llama:photo-staging-changed',
+        updatePhotoSaveButton
+    );
+
+    photoSaveButton.addEventListener('click', async () => {
+        if (savingPhotos) {
+            return;
+        }
+
+        if (uploader.getAttribute('aria-busy') === 'true'
+            || reportSaveButton?.classList.contains('is-saving')) {
+            photoSaveStatus.textContent = 'Finish the current upload or report save first.';
+            return;
+        }
+
+        // The uploader writes its current in-memory photos synchronously.
+        form.dispatchEvent(new CustomEvent('llama:photo-uploader-sync'));
+        const count = stagedPhotoCount();
+        const targetKey = currentTargetKey();
+        const target = currentTarget();
+
+        if (!target || target.supported === false || count < 1) {
+            photoSaveStatus.textContent =
+                'Select a Place or saved Site and add a photo first.';
+            return;
+        }
+
+        const payload = new FormData();
+        payload.set('place_admin_action', 'save-report');
+        payload.set('admin_photo_only', '1');
+        payload.set('place_id', String(placeId));
+        payload.set('csrf_token', String(csrfField?.value || ''));
+        payload.set('photo_stage_token', String(tokenField?.value || ''));
+        payload.set('photos_json', String(photosField?.value || '[]'));
+        payload.set(
+            'selected_campsite_id',
+            String(siteSelector?.value || '')
+        );
+        payload.set(
+            'selected_area_id',
+            siteSelector?.value
+                ? ''
+                : String(areaSelector?.value || '')
         );
 
-    const photoDrop =
-        uploader.querySelector(
-            '[data-photo-drop]'
-        );
+        savingPhotos = true;
+        const reportSaveWasDisabled = Boolean(reportSaveButton?.disabled);
+        if (reportSaveButton) {
+            reportSaveButton.disabled = true;
+        }
+        updatePhotoSaveButton();
+        photoSaveStatus.textContent = 'Attaching photos to ' + target.label + '...';
+
+        try {
+            const response = await fetch(form.action || window.location.href, {
+                method: 'POST',
+                body: payload,
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Llama-Admin-Save': 'place-report'
+                }
+            });
+
+            const raw = await response.text();
+            let result;
+            try {
+                result = JSON.parse(raw);
+            } catch (_) {
+                throw new Error('The server returned an unexpected photo-save response.');
+            }
+
+            if (!response.ok || result?.success !== true) {
+                throw new Error(
+                    String(result?.message || `Photo save failed (HTTP ${response.status}).`)
+                    + (result?.reference ? ` Error reference: ${result.reference}` : '')
+                );
+            }
+
+            const saved = Number(result.photos_added || 0);
+            if (saved !== count || !Array.isArray(result.gallery)) {
+                throw new Error('The server response did not confirm every saved photo. Refresh and inspect the gallery before retrying.');
+            }
+
+            if (csrfField && result.csrf_token) {
+                csrfField.value = String(result.csrf_token);
+            }
+
+            if (targets[targetKey]) {
+                targets[targetKey].photos = result.gallery;
+            }
+
+            form.dispatchEvent(new CustomEvent('llama:photo-uploader-committed', {
+                detail: {
+                    context: 'admin-place',
+                    count: saved,
+                    total: Number(result.photo_total || 0)
+                }
+            }));
+
+            render();
+            photoSaveStatus.textContent =
+                `${saved} photo${saved === 1 ? '' : 's'} saved to ${target.label}.`;
+        } catch (error) {
+            photoSaveStatus.textContent =
+                'Photos not saved: ' + String(error?.message || 'Unknown error.');
+        } finally {
+            savingPhotos = false;
+            if (reportSaveButton) {
+                reportSaveButton.disabled = reportSaveWasDisabled;
+            }
+            updatePhotoSaveButton();
+        }
+    });
 
     const makePhoto =
         (photo) => {
@@ -277,13 +442,14 @@
             supported,
             target
         ) => {
-            if (photoInput) {
-                photoInput.disabled =
-                    !supported;
+            const input = photoInput();
+            const drop = photoDrop();
+            if (input) {
+                input.disabled = !supported;
             }
 
-            if (photoDrop) {
-                photoDrop.setAttribute(
+            if (drop) {
+                drop.setAttribute(
                     'aria-disabled',
                     supported
                         ? 'false'
@@ -380,6 +546,7 @@
                 supported,
                 target
             );
+            updatePhotoSaveButton();
 
             if (help) {
                 help.textContent =
@@ -534,4 +701,5 @@
     );
 
     render();
+    updatePhotoSaveButton();
 })();

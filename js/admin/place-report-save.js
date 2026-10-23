@@ -1395,15 +1395,10 @@
             }
         );
 
-        if (campsiteSites.length === 1) {
-            campsiteSelect.value =
-                String(campsiteSites[0].id);
-            loadCampsite(
-                campsiteSelect.value
-            );
-        } else {
-            loadCampsite('');
-        }
+        // A Place must open as Place even when it has exactly one Site.
+        // Auto-selecting that Site silently changes the owner of photos
+        // and other scoped answers. Select a Site only when requested.
+        loadCampsite('');
     }
 
     form.addEventListener(
