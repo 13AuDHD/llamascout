@@ -2098,6 +2098,79 @@ function llama_place_report_published_answer_state(
 }
 
 
+/**
+ * Return true only when the complete canonical storage path exists in the
+ * submitted report data. An explicitly recorded NULL is still present.
+ */
+function llama_place_report_has_path(array $data, string $path): bool
+{
+    foreach (explode('.', $path) as $part) {
+        if (!is_array($data) || !array_key_exists($part, $data)) {
+            return false;
+        }
+        $data = $data[$part];
+    }
+    return true;
+}
+
+/**
+ * Shared publication for approved/new Place answers and direct Admin edits.
+ *
+ * The canonical registry determines the storage path, published SQL target,
+ * and Place/Area/Site ownership. Only fields allowing Place scope are written
+ * here. Site-only historical values are never copied or cleared. The caller
+ * owns permissions, transaction boundaries, and publication status.
+ *
+ * When $editedKeys is provided, only those submitted question keys are
+ * applied; missing form controls never implicitly clear published data.
+ * $includeCore is false when the caller already wrote Place identity fields
+ * through the existing slug/coordinate workflow or initial INSERT.
+ */
+function llama_place_report_publish_place_fields(
+    PDO $db,
+    int $placeId,
+    array $data,
+    ?array $editedKeys = null,
+    bool $includeCore = false
+): int {
+    if ($placeId < 1) {
+        throw new InvalidArgumentException('Invalid Place ID.');
+    }
+
+    $registry = llama_place_report_fields();
+    $requestedPaths = null;
+    if ($editedKeys !== null) {
+        $requestedPaths = [];
+        foreach ($editedKeys as $key) {
+            $field = $registry[(string) $key] ?? null;
+            if (!is_array($field)) {
+                continue;
+            }
+            $requestedPaths[(string) $field['storage']] = true;
+        }
+    }
+
+    $written = 0;
+    foreach (llama_place_report_published_definitions() as $path => $definition) {
+        $field = $definition['shared'] ?? null;
+        if (!is_array($field)
+            || !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            || !empty($field['derived'])
+            || (!$includeCore && ($definition['table'] ?? '') === 'places')
+            || ($requestedPaths !== null && !isset($requestedPaths[$path]))
+            || !llama_place_report_has_path($data, $path)) {
+            continue;
+        }
+
+        llama_place_report_apply_published_field(
+            $db, $placeId, $path, llama_place_report_get_path($data, $path)
+        );
+        $written++;
+    }
+
+    return $written;
+}
+
 /** Canonical Place-answer publication, shared with moderation. */
 function llama_place_report_valid_storage_identifier(
     string $value
