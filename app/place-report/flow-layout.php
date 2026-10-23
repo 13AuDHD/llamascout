@@ -68,22 +68,38 @@ function llama_place_report_group_eligible_questions(array $eligibleFields): arr
         'fields' => [],
     ];
 
-    $lookup = llama_place_report_approved_question_lookup();
+    /*
+     * Group and position come from the finalized canonical field registry.
+     * The editable form and public report must not independently reinterpret
+     * approved-question membership or its order.
+     */
     foreach ($eligibleFields as $key => $field) {
-        $group = $lookup[$key]['group'] ?? 'additional_questions';
+        $group = (string) ($field['approved_question_group'] ?? '');
+        if (
+            empty($field['approved_question'])
+            || !array_key_exists($group, $approved)
+        ) {
+            $group = 'additional_questions';
+        }
         $groups[$group]['fields'][$key] = $field;
     }
 
-    foreach ($approved as $groupKey => $definition) {
-        $remaining = $groups[$groupKey]['fields'];
-        $ordered = [];
-        foreach ($definition[1] as $key) {
-            if (array_key_exists($key, $remaining)) {
-                $ordered[$key] = $remaining[$key];
-                unset($remaining[$key]);
-            }
+    foreach ($approved as $groupKey => $_definition) {
+        $positioned = [];
+        foreach ($groups[$groupKey]['fields'] as $key => $field) {
+            $positioned[] = [
+                'key' => $key,
+                'field' => $field,
+                'position' => (int) ($field['approved_question_position'] ?? PHP_INT_MAX),
+            ];
         }
-        $groups[$groupKey]['fields'] = $ordered + $remaining;
+        usort($positioned, static fn (array $a, array $b): int =>
+            $a['position'] <=> $b['position']
+        );
+        $groups[$groupKey]['fields'] = [];
+        foreach ($positioned as $item) {
+            $groups[$groupKey]['fields'][$item['key']] = $item['field'];
+        }
     }
 
     return $groups;
