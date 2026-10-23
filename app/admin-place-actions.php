@@ -42,6 +42,10 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
     try {
         if ($action === 'save-report') {
+            // Save staged photos without rewriting unrelated report answers.
+            // This uses the same existing staging and publication functions.
+            $photoOnly = $backgroundPlaceSave
+                && (string) ($_POST['admin_photo_only'] ?? '') === '1';
             $photosAdded = 0;
             $bulkResult = ['sites' => 0, 'answers' => 0];
             $committedPhotosForCleanup = [];
@@ -50,72 +54,80 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             // A single transaction covers Place, Area, Site, photos and audit.
             $db->beginTransaction();
             try {
-                // Validate the separate Area payload before changing Place data.
-                $areaTarget = trim((string) ($_POST['selected_area_id'] ?? ''));
-                $areaPayload = (string) ($_POST['admin_area_answers_json'] ?? '');
-                $areaId = 0;
-                $areaAnswers = [];
-                if ($areaTarget !== '' || $areaPayload !== '') {
-                    if (!preg_match('/^map_feature:([1-9][0-9]*)$/D', $areaTarget, $matches)) {
-                        throw new InvalidArgumentException('Invalid Area reporting target.');
-                    }
-                    if ($areaPayload === '' || strlen($areaPayload) > 200000) {
-                        throw new InvalidArgumentException('Area answers are missing or too large.');
-                    }
-                    $areaId = (int) $matches[1];
-                    $areaAnswers = json_decode($areaPayload, true, 512, JSON_THROW_ON_ERROR);
-                    if (!is_array($areaAnswers) || array_is_list($areaAnswers) && $areaAnswers !== []) {
-                        throw new InvalidArgumentException('Invalid Area answer format.');
-                    }
-                    llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
-                }
-
-                $selectedSiteTarget =
-                    trim(
-                        (string) (
-                            $_POST['selected_campsite_id']
-                            ?? ''
-                        )
-                    );
-
-                if ($selectedSiteTarget !== '') {
-                    $parsedSiteTarget =
-                        admin_place_parse_site_target(
-                            $selectedSiteTarget
-                        );
-
-                    $siteId =
-                        llama_place_site_identity_ensure_target(
-                            $db,
-                            $placeId,
-                            (string) $parsedSiteTarget['source'],
-                            (int) $parsedSiteTarget['id']
-                        );
-
-                    $_POST['selected_campsite_id'] =
-                        'campsite_record:'
-                        . $siteId;
-                }
-
-                $photoTarget =
-                    admin_place_report_photo_target(
+                if ($photoOnly) {
+                    $photoTarget = admin_place_report_photo_target(
                         $db,
                         $placeId,
                         $_POST
                     );
+                } else {
+                    // Validate the separate Area payload before changing Place data.
+                    $areaTarget = trim((string) ($_POST['selected_area_id'] ?? ''));
+                    $areaPayload = (string) ($_POST['admin_area_answers_json'] ?? '');
+                    $areaId = 0;
+                    $areaAnswers = [];
+                    if ($areaTarget !== '' || $areaPayload !== '') {
+                        if (!preg_match('/^map_feature:([1-9][0-9]*)$/D', $areaTarget, $matches)) {
+                            throw new InvalidArgumentException('Invalid Area reporting target.');
+                        }
+                        if ($areaPayload === '' || strlen($areaPayload) > 200000) {
+                            throw new InvalidArgumentException('Area answers are missing or too large.');
+                        }
+                        $areaId = (int) $matches[1];
+                        $areaAnswers = json_decode($areaPayload, true, 512, JSON_THROW_ON_ERROR);
+                        if (!is_array($areaAnswers) || array_is_list($areaAnswers) && $areaAnswers !== []) {
+                            throw new InvalidArgumentException('Invalid Area answer format.');
+                        }
+                        llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
+                    }
 
-                admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
-                admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
-                $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
+                    $selectedSiteTarget =
+                        trim(
+                            (string) (
+                                $_POST['selected_campsite_id']
+                                ?? ''
+                            )
+                        );
 
-                if ($areaId > 0) {
-                    $saved = admin_place_save_area_answers($db, $placeId, $areaId, $areaAnswers);
-                    admin_users_audit(
-                        $db, $actorUserId, null,
-                        'place.area_report_updated',
-                        'Updated an individual Area report.',
-                        ['place_id' => $placeId, 'area_id' => $areaId, 'answers_saved' => $saved]
-                    );
+                    if ($selectedSiteTarget !== '') {
+                        $parsedSiteTarget =
+                            admin_place_parse_site_target(
+                                $selectedSiteTarget
+                            );
+
+                        $siteId =
+                            llama_place_site_identity_ensure_target(
+                                $db,
+                                $placeId,
+                                (string) $parsedSiteTarget['source'],
+                                (int) $parsedSiteTarget['id']
+                            );
+
+                        $_POST['selected_campsite_id'] =
+                            'campsite_record:'
+                            . $siteId;
+                    }
+
+                    $photoTarget =
+                        admin_place_report_photo_target(
+                            $db,
+                            $placeId,
+                            $_POST
+                        );
+
+                    admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
+                    admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
+                    $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
+
+                    if ($areaId > 0) {
+                        $saved = admin_place_save_area_answers($db, $placeId, $areaId, $areaAnswers);
+                        admin_users_audit(
+                            $db, $actorUserId, null,
+                            'place.area_report_updated',
+                            'Updated an individual Area report.',
+                            ['place_id' => $placeId, 'area_id' => $areaId, 'answers_saved' => $saved]
+                        );
+                    }
                 }
 
                 $removePaths = is_array($_POST['remove_existing_photos'] ?? null)
@@ -151,6 +163,10 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
                 $photoToken = trim((string) ($_POST['photo_stage_token'] ?? ''));
                 $newPhotos = llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]');
+
+                if ($photoOnly && !$newPhotos) {
+                    throw new InvalidArgumentException('Choose at least one photo before saving photos.');
+                }
 
                 if ($newPhotos) {
                     if ($photoToken === '') {
@@ -233,10 +249,25 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                         )
                         : 0;
 
+                // Return the committed gallery so the Photos section can
+                // refresh without discarding unsaved report-field changes.
+                $gallery = [];
+                if ($photoOnly) {
+                    foreach (admin_place_report_target_images($db, $placeId, $photoTarget) as $image) {
+                        $gallery[] = [
+                            'id' => (int) ($image['id'] ?? 0),
+                            'src' => (string) ($image['src'] ?? ''),
+                            'url' => admin_place_photo_url($image),
+                            'alt' => (string) ($image['alt_text'] ?? ''),
+                        ];
+                    }
+                }
+
                 admin_place_background_save_respond(200, [
                     'success' => true,
-                    'message' => 'Place Report saved.',
+                    'message' => $photoOnly ? 'Photos saved.' : 'Place Report saved.',
                     'photos_added' => $photosAdded,
+                    'gallery' => $gallery,
                     'bulk_sites_updated' => $bulkResult['sites'],
                     'bulk_answers_saved' => $bulkResult['answers'],
                     'photo_total' => $photoTargetTotal,
