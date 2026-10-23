@@ -2096,3 +2096,380 @@ function llama_place_report_published_answer_state(
         )
     );
 }
+
+
+/** Canonical Place-answer publication, shared with moderation. */
+function llama_place_report_valid_storage_identifier(
+    string $value
+): bool {
+    return preg_match(
+        '/^[a-z0-9_]+$/',
+        $value
+    ) === 1;
+}
+
+function llama_place_report_apply_published_field(
+    PDO $db,
+    int $placeId,
+    string $path,
+    mixed $value
+): void {
+    $definitions =
+        llama_place_report_published_definitions();
+
+
+    if (
+        !isset(
+            $definitions[$path]
+        )
+    ) {
+        throw new RuntimeException(
+            'Unsupported Place update field: '
+            . $path
+        );
+    }
+
+
+    $definition =
+        $definitions[$path];
+
+    $table =
+        (string) $definition['table'];
+
+    $column =
+        (string) $definition['column'];
+
+
+    if (
+        !llama_place_report_valid_storage_identifier(
+            $table
+        )
+        || !llama_place_report_valid_storage_identifier(
+            $column
+        )
+    ) {
+        throw new RuntimeException(
+            'Invalid Place update storage definition.'
+        );
+    }
+
+
+    $field =
+        $definition['shared']
+        ?? [];
+
+    if (
+        is_array($field)
+        && (string) ($field['type'] ?? '')
+            === 'multiselect'
+    ) {
+        $values =
+            llama_place_report_multiselect_values(
+                $value
+            );
+
+        $storedValue =
+            $values
+                ? json_encode(
+                    $values,
+                    JSON_UNESCAPED_SLASHES
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+                )
+                : null;
+    } else {
+        $storedValue =
+            is_bool($value)
+                ? (
+                    $value
+                        ? 1
+                        : 0
+                )
+                : $value;
+    }
+
+
+    if ($table === 'places') {
+
+        $stmt =
+            $db->prepare(
+                "UPDATE places
+                 SET `$column` = ?
+                 WHERE id = ?"
+            );
+
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+
+
+        if ($path === 'latitude') {
+
+            $db->prepare(
+                'UPDATE places
+                 SET public_latitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+
+                $placeId,
+            ]);
+        }
+
+
+        if ($path === 'longitude') {
+
+            $db->prepare(
+                'UPDATE places
+                 SET public_longitude = ?
+                 WHERE id = ?'
+            )->execute([
+                $storedValue !== null
+                    ? round(
+                        (float) $storedValue,
+                        1
+                    )
+                    : null,
+
+                $placeId,
+            ]);
+        }
+
+
+        return;
+    }
+
+
+    if (
+        $table === 'place_sensory'
+    ) {
+        $period =
+            (string) (
+                $definition['period']
+                ?? ''
+            );
+
+
+        $exists =
+            $db->prepare(
+                'SELECT id
+                 FROM place_sensory
+                 WHERE place_id = ?
+                   AND period = ?
+                 LIMIT 1'
+            );
+
+
+        $exists->execute([
+            $placeId,
+            $period,
+        ]);
+
+
+        if (
+            $exists->fetchColumn()
+        ) {
+            $stmt =
+                $db->prepare(
+                    "UPDATE place_sensory
+                     SET `$column` = ?
+                     WHERE place_id = ?
+                       AND period = ?"
+                );
+
+
+            $stmt->execute([
+                $storedValue,
+                $placeId,
+                $period,
+            ]);
+
+        } else {
+            $stmt =
+                $db->prepare(
+                    "INSERT INTO place_sensory
+                        (
+                            place_id,
+                            period,
+                            `$column`
+                        )
+                     VALUES (?, ?, ?)"
+                );
+
+
+            $stmt->execute([
+                $placeId,
+                $period,
+                $storedValue,
+            ]);
+        }
+
+
+        return;
+    }
+
+
+    $exists =
+        $db->prepare(
+            "SELECT place_id
+             FROM `$table`
+             WHERE place_id = ?
+             LIMIT 1"
+        );
+
+
+    $exists->execute([
+        $placeId,
+    ]);
+
+
+    if (
+        $exists->fetchColumn()
+    ) {
+        $stmt =
+            $db->prepare(
+                "UPDATE `$table`
+                 SET `$column` = ?
+                 WHERE place_id = ?"
+            );
+
+
+        $stmt->execute([
+            $storedValue,
+            $placeId,
+        ]);
+
+    } else {
+        $stmt =
+            $db->prepare(
+                "INSERT INTO `$table`
+                    (
+                        place_id,
+                        `$column`
+                    )
+                 VALUES (?, ?)"
+            );
+
+
+        $stmt->execute([
+            $placeId,
+            $storedValue,
+        ]);
+    }
+}
+
+
+/*
+ * =========================================================
+ * ANSWER STATE
+ * =========================================================
+ */
+
+
+function llama_place_report_apply_published_answer_state(
+    PDO $db,
+    int $placeId,
+    array $proposed,
+    array $explicitUnknownFields
+): void {
+    $publishedUnknownFields =
+        llama_place_report_published_answer_state(
+            $db,
+            $placeId
+        );
+
+
+    $unknownLookup =
+        array_fill_keys(
+            array_map(
+                'strval',
+                $publishedUnknownFields
+            ),
+            true
+        );
+
+
+    $submittedUnknownLookup =
+        array_fill_keys(
+            array_map(
+                'strval',
+                $explicitUnknownFields
+            ),
+            true
+        );
+
+
+    $definitions =
+        llama_place_report_published_definitions();
+
+
+    foreach (
+        $proposed
+        as $path => $_value
+    ) {
+        $definition =
+            $definitions[$path]
+            ?? null;
+
+
+        if (!$definition) {
+            continue;
+        }
+
+
+        $fieldKey =
+            (string) (
+                $definition['key']
+                ?? ''
+            );
+
+
+        if ($fieldKey === '') {
+            continue;
+        }
+
+
+        /*
+         * A changed field gets a fresh answer state.
+         */
+        unset(
+            $unknownLookup[$fieldKey]
+        );
+
+
+        if (
+            isset(
+                $submittedUnknownLookup[
+                    $fieldKey
+                ]
+            )
+        ) {
+            $unknownLookup[$fieldKey] =
+                true;
+        }
+    }
+
+
+    llama_place_report_publish_answer_state(
+        $db,
+        $placeId,
+        [
+            '_answer_state' =>
+                array_values(
+                    array_keys(
+                        $unknownLookup
+                    )
+                ),
+        ]
+    );
+}
+
+
+
