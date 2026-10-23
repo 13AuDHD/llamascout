@@ -12,8 +12,8 @@ require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
 
-$groups = llama_place_report_approved_question_groups();
 $fields = llama_place_report_fields();
+$groups = llama_place_report_approved_question_groups();
 $errors = [];
 $warnings = [];
 $seen = [];
