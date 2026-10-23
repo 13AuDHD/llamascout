@@ -209,3 +209,24 @@ function llama_place_report_fields(): array
 
     return $f;
 }
+
+/**
+ * Resolve a canonical question from its published storage path.
+ *
+ * Preserve the first registered definition when legacy keys share a path,
+ * matching the existing Suggest an Update lookup behavior.
+ */
+function llama_place_report_field_by_storage(string $storage): ?array
+{
+    static $index = null;
+    if ($index === null) {
+        $index = [];
+        foreach (llama_place_report_fields() as $field) {
+            $path = (string) ($field['storage'] ?? '');
+            if ($path !== '' && !array_key_exists($path, $index)) {
+                $index[$path] = $field;
+            }
+        }
+    }
+    return $index[$storage] ?? null;
+}
