@@ -32,6 +32,12 @@
 }
 
 .place-report-form
+.add-place-radio-control[data-radio-type="yes-no"].has-extra-options
+.add-place-radio-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.place-report-form
 .add-place-radio-control[data-radio-type="permission"]
 .add-place-radio-options {
     grid-template-columns: repeat(4, minmax(0, 1fr));
