@@ -191,5 +191,21 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-scopes.php';
     llama_place_report_apply_flow_scopes($f);
 
+    /*
+     * Publish the approved question identity and ordering only after all
+     * registration, presentation, and ownership passes have completed.
+     * Consumers must use these final values rather than recomputing them.
+     * Legacy fields remain registered without an approved question slot.
+     */
+    $approvedQuestions = llama_place_report_approved_question_lookup();
+    foreach ($f as $key => &$field) {
+        $approved = $approvedQuestions[$key] ?? null;
+        $field['approved_question_group'] = $approved['group'] ?? null;
+        $field['approved_question_group_label'] = $approved['group_label'] ?? null;
+        $field['approved_question_position'] = $approved['position'] ?? null;
+        $field['approved_question'] = $approved !== null;
+    }
+    unset($field);
+
     return $f;
 }
