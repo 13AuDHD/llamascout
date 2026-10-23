@@ -1921,18 +1921,20 @@ if (!name) {
 return;
 }
 
-form
+const radios = form
 .querySelectorAll(
 `input[type="radio"][name="${CSS.escape(name)}"]`
-)
-.forEach(
+);
+radios.forEach(
 (radio) => {
 radio.checked =
 false;
 }
 );
 
-form.dispatchEvent(
+// Notify field listeners too (including the admin shared-facilities save bridge).
+// A change dispatched only on the form does not mark that field as edited.
+(radios[0] || form).dispatchEvent(
 new Event(
 'change',
 {
