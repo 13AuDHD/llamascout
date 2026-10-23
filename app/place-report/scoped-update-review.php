@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/report-targets.php';
 require_once __DIR__ . '/scoped-answers.php';
+require_once __DIR__ . '/target-model.php';
 require_once dirname(__DIR__) . '/photo-staging.php';
 require_once dirname(__DIR__) . '/points.php';
 
@@ -121,6 +122,7 @@ function llama_scoped_update_build_payload(
             $source
         );
 
+    $model = llama_place_report_target_model($db, $placeId, $target);
     $answers = [];
     $originalAnswers = [];
     $unknown =
@@ -162,128 +164,11 @@ function llama_scoped_update_build_payload(
             $answer['value']
             ?? null;
 
-        if (
-            !is_scalar($raw)
-            || trim((string) $raw) === ''
-        ) {
-            throw new InvalidArgumentException(
-                'Choose an answer for every question.'
-            );
+        $answerValue = llama_place_report_parse_answer($field, $raw);
+        if ($answerValue['state'] === 'unanswered') {
+            throw new InvalidArgumentException('Choose an answer for ' . $field['label'] . '.');
         }
-
-        if ((string) $raw === $unknown) {
-            if (empty($field['allow_unknown'])) {
-                throw new InvalidArgumentException(
-                    'Unknown is not supported for this question.'
-                );
-            }
-
-            $value =
-                $unknown;
-        } elseif (
-            $field['type'] === 'select'
-        ) {
-            if (
-                !array_key_exists(
-                    (string) $raw,
-                    (array) (
-                        $field['options']
-                        ?? []
-                    )
-                )
-            ) {
-                throw new InvalidArgumentException(
-                    'Choose one of the allowed answers.'
-                );
-            }
-
-            $value =
-                (string) $raw;
-        } elseif (
-            $field['type'] === 'tri'
-        ) {
-            if (
-                !in_array(
-                    (string) $raw,
-                    ['0', '1'],
-                    true
-                )
-            ) {
-                throw new InvalidArgumentException(
-                    'Choose Yes or No.'
-                );
-            }
-
-            $value =
-                (string) $raw;
-        } elseif (
-            $field['type'] === 'permission'
-        ) {
-            if (
-                !in_array(
-                    (string) $raw,
-                    ['0', '1', '2', '3'],
-                    true
-                )
-            ) {
-                throw new InvalidArgumentException(
-                    'Choose a valid permission answer.'
-                );
-            }
-
-            $value =
-                (string) $raw;
-        } elseif (
-            $field['type'] === 'rating'
-        ) {
-            if (
-                !in_array(
-                    (string) $raw,
-                    ['1', '2', '3', '4', '5'],
-                    true
-                )
-            ) {
-                throw new InvalidArgumentException(
-                    'Choose a rating from 1 to 5.'
-                );
-            }
-
-            $value =
-                (string) $raw;
-        } elseif (
-            in_array(
-                $field['type'],
-                [
-                    'textarea',
-                    'text',
-                    'url',
-                    'date',
-                    'number',
-                ],
-                true
-            )
-        ) {
-            $parsedUnknown = [];
-
-            $value =
-                llama_place_report_parse_field(
-                    $field,
-                    $raw,
-                    $parsedUnknown
-                );
-
-            if ($value === null) {
-                throw new InvalidArgumentException(
-                    'Enter a valid answer for '
-                    . $field['label']
-                    . '.'
-                );
-            }
-        } else {
-            throw new InvalidArgumentException(
-                'This question is not supported for Area or Site corrections.'
-            );
-        }
+        $value = $answerValue['state'] === 'unknown' ? $unknown : $answerValue['value'];
 
         $recorded =
             array_key_exists(
@@ -293,7 +178,7 @@ function llama_scoped_update_build_payload(
 
         if (
             $recorded
-            && $before[$key] === $value
+            && llama_place_report_values_equal($before[$key], $value, $field)
         ) {
             throw new InvalidArgumentException(
                 'The answer for '
@@ -313,16 +198,12 @@ function llama_scoped_update_build_payload(
                 $recorded
                     ? $before[$key]
                     : null,
+            'effective_recorded' => array_key_exists($key, $model['values']),
+            'effective_value' => $model['values'][$key] ?? null,
         ];
     }
 
-    $visited =
-        trim(
-            (string) (
-                $input['visited_at']
-                ?? ''
-            )
-        );
+    $visited = (string) (llama_place_report_metadata($input, 'visited_at') ?? '');
 
     return [
         'target' =>
@@ -510,12 +391,7 @@ function llama_scoped_update_submit(
                 | JSON_UNESCAPED_UNICODE
             ),
             '[]',
-            trim(
-                (string) (
-                    $input['contributor_notes']
-                    ?? ''
-                )
-            ),
+            (string) (llama_place_report_metadata($input, 'contributor_notes') ?? ''),
         ]);
 
         $updateId =
@@ -764,12 +640,7 @@ function llama_scoped_update_resubmit(
         $built['visited'];
 
     $notes =
-        trim(
-            (string) (
-                $input['contributor_notes']
-                ?? ''
-            )
-        );
+        (string) (llama_place_report_metadata($input, 'contributor_notes') ?? '');
 
     $reviewRequest =
         trim(
@@ -1067,62 +938,12 @@ function llama_scoped_update_point_estimate(
         );
     }
 
-    $placeSlug =
-        trim(
-            $placeSlug
-        );
-
-    if ($placeSlug === '') {
-        throw new RuntimeException(
-            'The Place slug is unavailable for scoped point calculation.'
-        );
+    $resolved = llama_place_report_target_model($db, $placeId, $target);
+    $effectiveInput = [];
+    foreach ($resolved['values'] as $key => $value) {
+        $field = llama_place_report_fields()[$key] ?? null;
+        if ($field) { $effectiveInput[$key] = llama_place_report_answer_form_value($field, $value); }
     }
-
-    $publishedPlace =
-        place_member_by_slug(
-            $placeSlug
-        );
-
-    if (!$publishedPlace) {
-        throw new RuntimeException(
-            'The published Place could not be loaded for scoped point calculation.'
-        );
-    }
-
-    $placeData =
-        llama_place_report_data_from_published_place(
-            $publishedPlace,
-            llama_place_report_published_answer_state(
-                $db,
-                $placeId
-            )
-        );
-
-    $placeValues =
-        llama_place_report_scoring_input_from_data(
-            $placeData
-        );
-
-    $resolved =
-        llama_scoped_report_effective_answers(
-            $db,
-            $placeId,
-            $placeValues,
-            $scope,
-            $targetId,
-            $source,
-            !empty(
-                $target['parent_area_id']
-            )
-                ? (int) $target['parent_area_id']
-                : null
-        );
-
-    $effectiveInput =
-        (array) (
-            $resolved['values']
-            ?? []
-        );
 
     foreach (
         $answers
@@ -1136,10 +957,8 @@ function llama_scoped_update_point_estimate(
             $scope
         );
 
-        $effectiveInput[
-            $fieldKey
-        ] =
-            $value;
+        $effectiveInput[$fieldKey] = llama_place_report_answer_form_value(
+            llama_place_report_fields()[$fieldKey], $value);
     }
 
     return
@@ -1254,6 +1073,10 @@ function llama_scoped_update_approve(
         );
     }
 
+    if (!$db->inTransaction()) { throw new RuntimeException('Scoped approval requires an active transaction.'); }
+    llama_scoped_report_assert_owner($db, $placeId, $scope, $targetId, $source);
+    $target = llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+    $model = llama_place_report_target_model($db, $placeId, $target);
     $current =
         llama_scoped_report_load(
             $db,
@@ -1267,10 +1090,8 @@ function llama_scoped_update_approve(
      * Validate every original value before writing any answer.
      */
     foreach ($answers as $key => $value) {
-        llama_scoped_report_field(
-            (string) $key,
-            $scope
-        );
+        $field = llama_scoped_report_field((string) $key, $scope);
+        $answers[$key] = llama_place_report_scoped_value($field, $value);
 
         $prior =
             $oldAnswers[$key]
@@ -1282,6 +1103,12 @@ function llama_scoped_update_approve(
             );
         }
 
+        if (array_key_exists('effective_recorded', $prior)
+            && ((bool) $prior['effective_recorded'] !== array_key_exists($key, $model['values'])
+                || !llama_place_report_values_equal($prior['effective_value'] ?? null,
+                    $model['values'][$key] ?? null, $field))) {
+            throw new RuntimeException('The inherited or imported answer changed since submission. Review the latest information.');
+        }
         $recorded =
             array_key_exists(
                 $key,
@@ -1296,11 +1123,8 @@ function llama_scoped_update_approve(
             )
             || (
                 $recorded
-                && $current[$key]
-                    !== (
-                        $prior['value']
-                        ?? null
-                    )
+                && !llama_place_report_values_equal($current[$key], $prior['value'] ?? null,
+                    llama_place_report_fields()[$key] ?? null)
             )
         ) {
             throw new RuntimeException(

@@ -7,44 +7,6 @@ declare(strict_types=1);
  * Flatten published Scout Report data to field-key values while preserving
  * explicit Unknown answers. This is the input shape used by scoped answers.
  */
-function llama_scoped_report_values_from_data(array $data): array
-{
-    $values = [];
-
-    foreach (
-        llama_place_report_fields()
-        as $fieldKey => $field
-    ) {
-        $fieldKey =
-            (string) $fieldKey;
-
-        $state =
-            llama_place_report_answer_state(
-                $data,
-                $fieldKey
-            );
-
-        if ($state === 'unknown') {
-            $values[$fieldKey] =
-                llama_place_report_unknown_token();
-
-            continue;
-        }
-
-        if ($state !== 'answered') {
-            continue;
-        }
-
-        $values[$fieldKey] =
-            llama_place_report_form_value_from_data(
-                $data,
-                $fieldKey
-            );
-    }
-
-    return $values;
-}
-
 /**
  * Build nested Scout Report data from a flat effective answer set.
  *
