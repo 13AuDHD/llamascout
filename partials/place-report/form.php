@@ -131,12 +131,13 @@ $placeReportAllowedStoragePaths =
         : null;
 
 /*
- * Issue #5 reconciliation: show the entire canonical question set.
- * Visibility is independent of the current workflow's save capabilities.
- * Set false only when restoring workflow storage filtering intentionally.
+ * Reconciliation mode is an explicit diagnostic override only.
+ * A workflow with a storage allow-list must never offer questions it
+ * cannot save. Add Place and Admin without an allow-list still receive
+ * the complete canonical registry.
  */
 $placeReportReconciliationMode =
-    (bool) ($placeReportReconciliationMode ?? true);
+    (bool) ($placeReportReconciliationMode ?? false);
 
 $placeReportAllowedStorageLookup =
     $placeReportAllowedStoragePaths !== null
