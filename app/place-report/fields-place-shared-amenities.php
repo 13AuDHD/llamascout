@@ -162,6 +162,7 @@ function llama_place_report_add_shared_amenity_fields(
         'amenities.campground_host',
         $common + [
             'icon' => 'user',
+            'control' => 'yes-no',
             'options' => [
                 '1' => 'Yes',
                 '0' => 'No',

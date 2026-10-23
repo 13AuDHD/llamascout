@@ -474,7 +474,8 @@ function llama_place_report_add_site_fields(
         'wifi' => 'WiFi',
         'laundry' => 'Laundry',
     ] as $suffix => $label) {
-        $add('amenity_' . $suffix, $label, 'amenities', 'checkbox', 'amenities.' . $suffix, [
+        $add('amenity_' . $suffix, $label, 'amenities', 'tri', 'amenities.' . $suffix, [
+            'allow_unknown' => true,
             'points_categories' => ['amenities'],
             'completion_group' => 'amenities',
         ]);
