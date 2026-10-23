@@ -174,6 +174,9 @@ function admin_place_apply_site_overrides(array $values, array $overrides): arra
 
         if ($value === llama_place_report_unknown_token()) {
             $values[$key] = llama_place_report_unknown_token();
+        } elseif ($value === null) {
+            // A cleared answer must suppress the imported baseline on reload.
+            $values[$key] = llama_place_report_answer_form_value($fields[$key], null);
         } elseif (
             in_array(
                 $type,
