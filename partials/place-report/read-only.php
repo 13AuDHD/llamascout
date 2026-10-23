@@ -925,33 +925,11 @@ foreach (
             /* Canonical layout-group order within the existing report section.
              * Keep the surrounding section and Site-switching hooks intact.
              */
-            $layoutGroups = llama_place_report_layout_groups();
-            $fieldBuckets = [];
-            foreach ($reportedFields as $fieldKey => $fieldDefinition) {
-                $layoutSection = (string) ($fieldDefinition['layout_section'] ?? '');
-                $layoutGroup = (string) ($fieldDefinition['layout_group'] ?? '');
-                $bucketKey = $layoutSection . ':' . $layoutGroup;
-                $fieldBuckets[$bucketKey][$fieldKey] = $fieldDefinition;
-            }
-            $orderedBuckets = [];
-            foreach ($layoutGroups as $layoutSection => $groups) {
-                foreach ($groups as $groupKey => $groupLabel) {
-                    $bucketKey = $layoutSection . ':' . $groupKey;
-                    if (isset($fieldBuckets[$bucketKey])) {
-                        $orderedBuckets[$bucketKey] = [
-                            'label' => $groupLabel,
-                            'fields' => $fieldBuckets[$bucketKey],
-                        ];
-                        unset($fieldBuckets[$bucketKey]);
-                    }
-                }
-            }
-            foreach ($fieldBuckets as $bucketKey => $remainingFields) {
-                $orderedBuckets[$bucketKey] = [
-                    'label' => 'Legacy Review',
-                    'fields' => $remainingFields,
-                ];
-            }
+            // Use the same canonical grouping and order as the editable form.
+            $orderedBuckets = array_filter(
+                llama_place_report_group_eligible_questions($reportedFields),
+                static fn (array $bucket): bool => !empty($bucket['fields'])
+            );
             ?>
             <?php foreach ($orderedBuckets as $bucket): ?>
                 <div class="scout-report-subsection">
