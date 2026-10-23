@@ -3,10 +3,8 @@
 declare(strict_types=1);
 
 /**
- * This service deliberately does not alter the legacy Place Report JSON,
- * scoring, moderation, or public display. Its SQL table must be installed
- * before using it. Callers are responsible for authentication, authorization,
- * CSRF and verifying the selected Area/Site belongs to the Place.
+ * Canonical Area/Site storage. Endpoint authentication and CSRF remain with
+ * callers; writes enforce target ownership, answer parsing and a transaction.
  */
 function llama_scoped_report_validate_target(string $scope, int $scopeId): void
 {
@@ -73,6 +71,7 @@ function llama_scoped_report_save(
     string $fieldKey,
     mixed $value
 ): void {
+    if (!$db->inTransaction()) { throw new RuntimeException('Scoped answer writes require an active transaction.'); }
     if ($placeId < 1) {
         throw new InvalidArgumentException('Invalid Place ID.');
     }
@@ -87,10 +86,9 @@ function llama_scoped_report_save(
         $source
     );
 
-    llama_scoped_report_field(
-        $fieldKey,
-        $scope
-    );
+    $field = llama_scoped_report_field($fieldKey, $scope);
+    $value = llama_place_report_scoped_value($field, $value);
+    llama_scoped_report_assert_owner($db, $placeId, $scope, $scopeId, $source);
 
     $json =
         json_encode(
@@ -157,7 +155,7 @@ function llama_scoped_report_load(
              WHERE place_id = ?
                AND scope_type = ?
                AND scope_source = ?
-               AND scope_id = ?'
+               AND scope_id = ?' . ($db->inTransaction() ? ' FOR UPDATE' : '')
         );
 
     $stmt->execute([
@@ -209,229 +207,12 @@ function llama_scoped_report_load(
  *     site:array<string,mixed>
  * }
  */
-function llama_scoped_report_effective_answers(
-    PDO $db,
-    int $placeId,
-    array $placeValues,
-    string $scope,
-    int $scopeId,
-    string $source,
-    ?int $parentAreaId = null
-): array {
-    if ($placeId < 1) {
-        throw new InvalidArgumentException(
-            'Invalid Place ID.'
-        );
-    }
-
-    llama_scoped_report_validate_target(
-        $scope,
-        $scopeId
-    );
-
-    llama_scoped_report_validate_source(
-        $scope,
-        $source
-    );
-
-    if (
-        $parentAreaId !== null
-        && $parentAreaId < 1
-    ) {
-        throw new InvalidArgumentException(
-            'Invalid parent Area ID.'
-        );
-    }
-
-    $definitions =
-        llama_place_report_fields();
-
-    $values =
-        [];
-
-    $provenance =
-        [];
-
-    foreach (
-        $placeValues
-        as $fieldKey => $value
-    ) {
-        $fieldKey =
-            (string) $fieldKey;
-
-        if (
-            $fieldKey === ''
-            || !isset(
-                $definitions[$fieldKey]
-            )
-        ) {
-            continue;
-        }
-
-        $values[$fieldKey] =
-            $value;
-
-        $provenance[$fieldKey] = [
-            'scope' =>
-                'place',
-
-            'source' =>
-                'place',
-
-            'id' =>
-                $placeId,
-        ];
-    }
-
-    $applyLayer =
-        static function (
-            array $answers,
-            string $layerScope,
-            string $layerSource,
-            int $layerId
-        ) use (
-            $definitions,
-            &$values,
-            &$provenance
-        ): void {
-            foreach (
-                $answers
-                as $fieldKey => $value
-            ) {
-                $fieldKey =
-                    (string) $fieldKey;
-
-                $field =
-                    $definitions[$fieldKey]
-                    ?? null;
-
-                if (
-                    !is_array($field)
-                    || !in_array(
-                        $layerScope,
-                        (array) (
-                            $field['report_scopes']
-                            ?? []
-                        ),
-                        true
-                    )
-                    || !empty(
-                        $field['derived']
-                    )
-                    || !empty(
-                        $field['location_field']
-                    )
-                ) {
-                    continue;
-                }
-
-                $values[$fieldKey] =
-                    $value;
-
-                $provenance[$fieldKey] = [
-                    'scope' =>
-                        $layerScope,
-
-                    'source' =>
-                        $layerSource,
-
-                    'id' =>
-                        $layerId,
-                ];
-            }
-        };
-
-    $areaAnswers =
-        [];
-
-    $siteAnswers =
-        [];
-
-    if ($scope === 'area') {
-        $areaAnswers =
-            llama_scoped_report_load(
-                $db,
-                $placeId,
-                'area',
-                $scopeId,
-                $source
-            );
-
-        $applyLayer(
-            $areaAnswers,
-            'area',
-            $source,
-            $scopeId
-        );
-
-        return [
-            'values' =>
-                $values,
-
-            'provenance' =>
-                $provenance,
-
-            'direct' =>
-                $areaAnswers,
-
-            'area' =>
-                $areaAnswers,
-
-            'site' =>
-                [],
-        ];
-    }
-
-    if ($parentAreaId !== null) {
-        $areaAnswers =
-            llama_scoped_report_load(
-                $db,
-                $placeId,
-                'area',
-                $parentAreaId,
-                'map_feature'
-            );
-
-        $applyLayer(
-            $areaAnswers,
-            'area',
-            'map_feature',
-            $parentAreaId
-        );
-    }
-
-    $siteAnswers =
-        llama_scoped_report_load(
-            $db,
-            $placeId,
-            'site',
-            $scopeId,
-            $source
-        );
-
-    $applyLayer(
-        $siteAnswers,
-        'site',
-        $source,
-        $scopeId
-    );
-
-    return [
-        'values' =>
-            $values,
-
-        'provenance' =>
-            $provenance,
-
-        'direct' =>
-            $siteAnswers,
-
-        'area' =>
-            $areaAnswers,
-
-        'site' =>
-            $siteAnswers,
-    ];
+function llama_scoped_report_effective_answers(PDO $db, int $placeId, array $placeValues,
+    string $scope, int $scopeId, string $source, ?int $parentAreaId = null): array
+{
+    $target = ['scope' => $scope, 'source' => $source, 'id' => $scopeId, 'parent_area_id' => $parentAreaId];
+    $resolved = llama_scoped_report_effective_answers_for_targets($db, $placeId, $placeValues, [$target]);
+    return $resolved[$scope . ':' . $source . ':' . $scopeId];
 }
 
 
@@ -445,335 +226,55 @@ function llama_scoped_report_effective_answers(
  * @param array<int,array<string,mixed>> $targets
  * @return array<string,array<string,mixed>>
  */
-function llama_scoped_report_effective_answers_for_targets(
-    PDO $db,
-    int $placeId,
-    array $placeValues,
-    array $targets
-): array {
-    if ($placeId < 1) {
-        throw new InvalidArgumentException(
-            'Invalid Place ID.'
-        );
+function llama_scoped_report_effective_answers_for_targets(PDO $db, int $placeId,
+    array $placeValues, array $targets): array
+{
+    if ($placeId < 1) { throw new InvalidArgumentException('Invalid Place ID.'); }
+    if (!$targets) { return []; }
+    $statement = $db->prepare('SELECT scope_type, scope_source, scope_id, field_key, value_json
+        FROM place_report_scoped_answers WHERE place_id = ?');
+    $statement->execute([$placeId]);
+    $layers = [];
+    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $layers[$row['scope_type']][$row['scope_source']][(int) $row['scope_id']][$row['field_key']]
+            = json_decode($row['value_json'], true, 512, JSON_THROW_ON_ERROR);
     }
-
-    if (!$targets) {
-        return [];
-    }
-
-    $stmt =
-        $db->prepare(
-            'SELECT
-                scope_type,
-                scope_source,
-                scope_id,
-                field_key,
-                value_json
-             FROM place_report_scoped_answers
-             WHERE place_id = ?'
-        );
-
-    $stmt->execute([
-        $placeId,
-    ]);
-
-    $layers =
-        [];
-
-    foreach (
-        $stmt->fetchAll(PDO::FETCH_ASSOC)
-        ?: []
-        as $row
-    ) {
-        $scope =
-            (string) (
-                $row['scope_type']
-                ?? ''
-            );
-
-        $source =
-            (string) (
-                $row['scope_source']
-                ?? ''
-            );
-
-        $scopeId =
-            (int) (
-                $row['scope_id']
-                ?? 0
-            );
-
-        $fieldKey =
-            (string) (
-                $row['field_key']
-                ?? ''
-            );
-
-        if (
-            $fieldKey === ''
-            || $scopeId < 1
-        ) {
-            continue;
-        }
-
-        $layers[
-            $scope
-        ][
-            $source
-        ][
-            $scopeId
-        ][
-            $fieldKey
-        ] =
-            json_decode(
-                (string) (
-                    $row['value_json']
-                    ?? 'null'
-                ),
-                true,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-    }
-
-    $definitions =
-        llama_place_report_fields();
-
-    $applyLayer =
-        static function (
-            array &$values,
-            array &$provenance,
-            array $answers,
-            string $layerScope,
-            string $layerSource,
-            int $layerId
-        ) use (
-            $definitions
-        ): void {
-            foreach (
-                $answers
-                as $fieldKey => $value
-            ) {
-                $fieldKey =
-                    (string) $fieldKey;
-
-                $field =
-                    $definitions[$fieldKey]
-                    ?? null;
-
-                if (
-                    !is_array($field)
-                    || !in_array(
-                        $layerScope,
-                        (array) (
-                            $field['report_scopes']
-                            ?? []
-                        ),
-                        true
-                    )
-                    || !empty(
-                        $field['derived']
-                    )
-                    || !empty(
-                        $field['location_field']
-                    )
-                ) {
-                    continue;
-                }
-
-                $values[$fieldKey] =
-                    $value;
-
-                $provenance[$fieldKey] = [
-                    'scope' =>
-                        $layerScope,
-
-                    'source' =>
-                        $layerSource,
-
-                    'id' =>
-                        $layerId,
-                ];
-            }
-        };
-
-    $results =
-        [];
-
+    $fields = llama_place_report_fields();
+    $results = [];
     foreach ($targets as $target) {
-        if (!is_array($target)) {
-            continue;
+        $scope = (string) $target['scope'];
+        $source = (string) $target['source'];
+        $id = (int) $target['id'];
+        llama_scoped_report_validate_target($scope, $id);
+        llama_scoped_report_validate_source($scope, $source);
+        $parentAreaId = $scope === 'site' ? (int) ($target['parent_area_id'] ?? 0) : $id;
+        $area = $parentAreaId > 0 ? ($layers['area']['map_feature'][$parentAreaId] ?? []) : [];
+        $site = $scope === 'site' ? ($layers['site'][$source][$id] ?? []) : [];
+        $filter = static function (array $values, string $owner) use ($fields): array {
+            return array_filter($values, static fn(mixed $value, string $key): bool =>
+                isset($fields[$key]) && empty($fields[$key]['derived']) && empty($fields[$key]['location_field'])
+                && in_array($owner, (array) $fields[$key]['report_scopes'], true), ARRAY_FILTER_USE_BOTH);
+        };
+        $area = $filter($area, 'area');
+        $site = $filter($site, 'site');
+        $values = $inherited = $provenance = [];
+        foreach ($fields as $key => $field) {
+            $answer = llama_place_report_resolve_scoped_answer($field, $placeValues, $area, $site, $scope);
+            if (!$answer['recorded']) { continue; }
+            $values[$key] = $answer['value'];
+            $owner = $answer['source_scope'];
+            $provenance[$key] = ['scope' => $owner,
+                'source' => $owner === 'place' ? 'place' : ($owner === 'area' ? 'map_feature' : $source),
+                'id' => $owner === 'place' ? $placeId : ($owner === 'area' ? $parentAreaId : $id)];
+            // A separate resolution omits the selected target for inheritance hints.
+            $ancestor = llama_place_report_resolve_scoped_answer($field, $placeValues,
+                $scope === 'site' ? $area : [], [], $scope);
+            if ($ancestor['recorded']) { $inherited[$key] = $ancestor['value']; }
         }
-
-        $scope =
-            (string) (
-                $target['scope']
-                ?? ''
-            );
-
-        $source =
-            (string) (
-                $target['source']
-                ?? ''
-            );
-
-        $scopeId =
-            (int) (
-                $target['id']
-                ?? 0
-            );
-
-        llama_scoped_report_validate_target(
-            $scope,
-            $scopeId
-        );
-
-        llama_scoped_report_validate_source(
-            $scope,
-            $source
-        );
-
-        $values =
-            [];
-
-        $provenance =
-            [];
-
-        foreach (
-            $placeValues
-            as $fieldKey => $value
-        ) {
-            $fieldKey =
-                (string) $fieldKey;
-
-            if (
-                $fieldKey === ''
-                || !isset(
-                    $definitions[$fieldKey]
-                )
-            ) {
-                continue;
-            }
-
-            $values[$fieldKey] =
-                $value;
-
-            $provenance[$fieldKey] = [
-                'scope' =>
-                    'place',
-
-                'source' =>
-                    'place',
-
-                'id' =>
-                    $placeId,
-            ];
-        }
-
-        $areaAnswers =
-            [];
-
-        if (
-            $scope === 'site'
-            && !empty(
-                $target['parent_area_id']
-            )
-        ) {
-            $parentAreaId =
-                (int) $target[
-                    'parent_area_id'
-                ];
-
-            $areaAnswers =
-                (array) (
-                    $layers['area']['map_feature'][
-                        $parentAreaId
-                    ]
-                    ?? []
-                );
-
-            $applyLayer(
-                $values,
-                $provenance,
-                $areaAnswers,
-                'area',
-                'map_feature',
-                $parentAreaId
-            );
-        } elseif ($scope === 'area') {
-            $areaAnswers =
-                (array) (
-                    $layers['area'][$source][
-                        $scopeId
-                    ]
-                    ?? []
-                );
-
-            $applyLayer(
-                $values,
-                $provenance,
-                $areaAnswers,
-                'area',
-                $source,
-                $scopeId
-            );
-        }
-
-        $inheritedValues =
-            $values;
-
-        $siteAnswers =
-            [];
-
-        if ($scope === 'site') {
-            $siteAnswers =
-                (array) (
-                    $layers['site'][$source][
-                        $scopeId
-                    ]
-                    ?? []
-                );
-
-            $applyLayer(
-                $values,
-                $provenance,
-                $siteAnswers,
-                'site',
-                $source,
-                $scopeId
-            );
-        }
-
-        $key =
-            $scope
-            . ':'
-            . $source
-            . ':'
-            . $scopeId;
-
-        $results[$key] = [
-            'values' =>
-                $values,
-
-            'inherited' =>
-                $inheritedValues,
-
-            'provenance' =>
-                $provenance,
-
-            'direct' =>
-                $scope === 'site'
-                    ? $siteAnswers
-                    : $areaAnswers,
-
-            'area' =>
-                $areaAnswers,
-
-            'site' =>
-                $siteAnswers,
-        ];
+        $results[$scope . ':' . $source . ':' . $id] = [
+            'values' => $values, 'inherited' => $inherited, 'provenance' => $provenance,
+            'direct' => $scope === 'site' ? $site : $area, 'area' => $area, 'site' => $site];
     }
-
     return $results;
 }
 
@@ -877,6 +378,7 @@ function llama_scoped_report_clear_override(
     string $source,
     string $fieldKey
 ): void {
+    if (!$db->inTransaction()) { throw new RuntimeException('Scoped answer writes require an active transaction.'); }
     if ($placeId < 1) {
         throw new InvalidArgumentException('Invalid Place ID.');
     }
@@ -896,6 +398,7 @@ function llama_scoped_report_clear_override(
         $scope
     );
 
+    llama_scoped_report_assert_owner($db, $placeId, $scope, $scopeId, $source);
     $stmt =
         $db->prepare(
             'DELETE FROM place_report_scoped_answers
@@ -1205,4 +708,23 @@ function llama_scoped_report_merge_site_identity(
         'deduped' =>
             $deduped,
     ];
+}
+
+/** Enforce Place ownership without trusting an incoming source/ID pair. */
+function llama_scoped_report_assert_owner(PDO $db, int $placeId, string $scope, int $scopeId, string $source): void
+{
+    if ($source === 'campsite_record' && $scope === 'site') {
+        $sql = 'SELECT id FROM place_campsites WHERE place_id = ? AND id = ? AND is_active = 1';
+        $params = [$placeId, $scopeId];
+    } else {
+        $types = $scope === 'site' ? ['camping_site'] : ['camping_area','parking_area'];
+        $sql = 'SELECT id FROM place_map_features WHERE place_id = ? AND id = ? AND is_active = 1 AND feature_type IN ('
+            . implode(',', array_fill(0, count($types), '?')) . ')';
+        $params = array_merge([$placeId,$scopeId],$types);
+    }
+    $statement = $db->prepare($sql . ($db->inTransaction() ? ' FOR UPDATE' : ''));
+    $statement->execute($params);
+    if (!$statement->fetchColumn()) {
+        throw new InvalidArgumentException('The reporting target does not belong to this Place.');
+    }
 }

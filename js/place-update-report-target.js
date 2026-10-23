@@ -56,7 +56,7 @@
             initial.answers && typeof initial.answers === 'object'
                 ? initial.answers
                 : {}
-        ).map(([key, value]) => [key, String(value)])
+        ).map(([key, value]) => [key, value])
     );
 
     if (initialAnswers.size > 0) {
@@ -64,10 +64,8 @@
     }
 
     let values = new Map();
-    // Scope-saving currently accepts scalar answers. Checkbox/multiselect
-    // need the planned canonical scoped storage/validation work, not a
-    // second JS-only implementation of those types.
-    const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url']);
+    // Every control type is validated by the same canonical PHP parser.
+    const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url', 'checkbox', 'multiselect']);
 
     // The Place form was rendered by the canonical PHP field renderer.
     // Capture its field elements before the Place section is hidden. These
@@ -76,7 +74,7 @@
     const sharedFieldTemplates = new Map();
     const named = [...placeFields.querySelectorAll('input[name], select[name], textarea[name]')];
     for (const f of fields) {
-        const control = named.find(el => el.name === f.key);
+        const control = named.find(el => (el.name === f.key || el.name === `${f.key}[]`));
         const wrapper = control?.closest('.contribution-field, .contribution-check');
         if (wrapper) sharedFieldTemplates.set(f.key, wrapper.cloneNode(true));
     }
@@ -111,8 +109,26 @@
         return [...card.querySelectorAll('input:not([type="hidden"]), select, textarea')];
     }
 
-    function scopedValue(card) {
+    function equalValue(a, b) {
+        if (Array.isArray(a) && Array.isArray(b)) {
+            return JSON.stringify(a.map(String).sort()) === JSON.stringify(b.map(String).sort());
+        }
+        return String(a ?? '') === String(b ?? '');
+    }
+
+    function scopedValue(card, f) {
         const controls = scopedControls(card);
+        if (f.type === 'multiselect') {
+            if (card.querySelector('[data-report-multiselect-unknown]')?.checked) return unknown;
+            return controls.filter(el => el.type === 'checkbox' && el.checked
+                && !el.matches('[data-report-multiselect-unknown]')).map(el => el.value);
+        }
+        if (f.type === 'checkbox') return controls.find(el => el.type === 'checkbox')?.checked ? '1' : '0';
+        if (card.querySelector('[data-season-picker]')) {
+            const month = card.querySelector('[data-season-month]')?.value;
+            const day = card.querySelector('[data-season-day]')?.value;
+            return month && day ? `${month}-${day}` : '';
+        }
         const radio = controls.find(el => el.type === 'radio');
         if (radio) return controls.find(el => el.type === 'radio' && el.checked)?.value || '';
         return controls[0]?.value?.trim() || '';
@@ -120,30 +136,41 @@
 
     function setScopedValue(card, f, value) {
         const controls = scopedControls(card);
+        if (f.type === 'multiselect') {
+            for (const control of controls) {
+                control.checked = control.matches('[data-report-multiselect-unknown]')
+                    ? value === unknown : Array.isArray(value) && value.map(String).includes(control.value);
+            }
+            return;
+        }
+        if (f.type === 'checkbox') {
+            const control = controls.find(el => el.type === 'checkbox');
+            if (control) control.checked = value === '1' || value === 1 || value === true;
+            return;
+        }
+        if (card.querySelector('[data-season-picker]')) {
+            const parts = String(value || '').split('-');
+            card.querySelector('[data-season-month]').value = parts[0] || '';
+            card.querySelector('[data-season-day]').value = parts[1] || '';
+            return;
+        }
         const radios = controls.filter(el => el.type === 'radio');
         if (radios.length) {
-            // Never inherit checked states from the Place markup.
-            for (const radio of radios) radio.checked = radio.value === value;
+            for (const radio of radios) radio.checked = radio.value === String(value);
             return;
         }
         const control = controls[0];
         if (!control) return;
         if (control.tagName === 'SELECT') {
-            for (const option of control.querySelectorAll('[data-scoped-recorded-option]')) {
-                option.remove();
-            }
-            if (value && ![...control.options].some(option => option.value === value)) {
-                // Do not round imported measurements to a dropdown increment
-                // or silently replace a historical stored option.
-                const numericFeet = f.key.endsWith('_feet')
-                    && /^-?\d+(?:\.\d+)?$/.test(value);
-                const label = numericFeet ? `${Number(value)} ft` : `Recorded: ${value}`;
-                const option = new Option(label, value);
+            for (const option of control.querySelectorAll('[data-scoped-recorded-option]')) option.remove();
+            if (value && ![...control.options].some(option => option.value === String(value))) {
+                const numericFeet = f.key.endsWith('_feet') && /^-?\d+(?:\.\d+)?$/.test(String(value));
+                const option = new Option(numericFeet ? `${Number(value)} ft` : `Recorded: ${value}`, String(value));
                 option.dataset.scopedRecordedOption = '1';
                 control.append(option);
             }
         }
-        control.value = value;
+        control.value = value ?? '';
     }
 
     function render() {
@@ -259,7 +286,7 @@
             for (const control of controls) {
                 control.disabled = false;
                 control.setAttribute('autocomplete', 'off');
-                if (control.type === 'radio') control.checked = false;
+                if (['radio','checkbox'].includes(control.type)) control.checked = false;
                 else control.value = '';
             }
 
@@ -273,9 +300,17 @@
                         if (other.type === 'radio' && other !== event.target) other.checked = false;
                     }
                 }
-                const value = scopedValue(card);
+                if (f.type === 'multiselect' && event?.target?.type === 'checkbox') {
+                    if (event.target.matches('[data-report-multiselect-unknown]') && event.target.checked) {
+                        for (const option of card.querySelectorAll('[data-place-report-multiselect-option] input')) option.checked = false;
+                    } else if (!event.target.matches('[data-report-multiselect-unknown]')) {
+                        const unknownOption = card.querySelector('[data-report-multiselect-unknown]');
+                        if (unknownOption) unknownOption.checked = false;
+                    }
+                }
+                const value = scopedValue(card, f);
                 const original = recordedValue(f);
-                if (value && value !== original) values.set(f.key, value);
+                if (value !== '' && !equalValue(value, original)) values.set(f.key, value);
                 else values.delete(f.key);
                 draftsByTarget.set(activeTarget, new Map(values));
                 sync();
@@ -310,6 +345,7 @@
     }
 
     function normalizedControlValue(f, value) {
+        if (Array.isArray(value)) return value.map(String);
         if (value === null || value === undefined || value === '') return '';
         if (value === true) return '1';
         if (value === false) return '0';
@@ -503,8 +539,14 @@
         placeFields.hidden = scoped;
         scopedFields.hidden = !scoped;
 
+        for (const card of placeFields.querySelectorAll('[data-report-field]')) {
+            const field = fields.find(f => f.key === card.dataset.reportField);
+            card.hidden = !scoped && field && !field.scopes.includes('place');
+        }
         for (const input of placeFields.querySelectorAll('input, select, textarea, button')) {
-            input.disabled = scoped;
+            const card = input.closest('[data-report-field]');
+            const field = card ? fields.find(f => f.key === card.dataset.reportField) : null;
+            input.disabled = scoped || Boolean(field && !field.scopes.includes('place'));
         }
 
         const scopedHeading = scopedFields.querySelector('h3');

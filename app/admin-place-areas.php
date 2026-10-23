@@ -134,32 +134,11 @@ function admin_place_save_area_answers(
 
         $field = $fields[$key];
 
-        if (is_array($raw)) {
-            // Multi-select input is interpreted by the canonical parser.
-            $ignored = [];
-            $value = llama_place_report_parse_field($field, $raw, $ignored);
-        } else {
-            $rawText = trim((string) $raw);
-
-            if ($rawText === '' || $rawText === $unansweredToken) {
-                llama_scoped_report_clear_override(
-                    $db,
-                    $placeId,
-                    'area',
-                    $areaId,
-                    'map_feature',
-                    $key
-                );
-                continue;
-            }
-
-            if ($rawText === $unknownToken) {
-                $value = $unknownToken;
-            } else {
-                $ignored = [];
-                $value = llama_place_report_parse_field($field, $raw, $ignored);
-            }
+        if ($raw === null || $raw === '' || $raw === $unansweredToken) {
+            llama_scoped_report_clear_override($db, $placeId, 'area', $areaId, 'map_feature', $key);
+            continue;
         }
+        $value = llama_place_report_scoped_value($field, $raw);
 
         llama_scoped_report_save(
             $db,

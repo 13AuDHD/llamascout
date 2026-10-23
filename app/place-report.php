@@ -19,3 +19,7 @@ require_once __DIR__ . '/place-report/fields-summaries.php';
 require_once __DIR__ . '/place-report/applicability.php';
 require_once __DIR__ . '/place-report/fields.php';
 require_once __DIR__ . '/place-report/runtime.php';
+require_once __DIR__ . '/place-report/flow-layout.php';
+require_once __DIR__ . '/place-report/flow-scopes.php';
+require_once __DIR__ . '/place-report/answers.php';
+require_once __DIR__ . '/place-report/persistence.php';

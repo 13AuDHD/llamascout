@@ -23,6 +23,8 @@
 
   const getValue = (form, key) => {
     const escaped = escapeSelector(key);
+    const unknown = form.querySelector(`[name="_report_unknown[${escaped}]"]`);
+    if (unknown?.checked) return '__LLAMA_UNKNOWN__';
     const arrayControls = [
       ...form.querySelectorAll(
         `[name="${escaped}[]"]`

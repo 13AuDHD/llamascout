@@ -291,11 +291,7 @@ function llama_master_moderate_new_place(
                 $copiedPhotoPaths
             );
 
-            llama_place_report_publish_answer_state(
-                $db,
-                $placeId,
-                $data
-            );
+
 
             llama_master_moderation_audit(
                 $db,

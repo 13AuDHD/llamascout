@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/place-report.php';
 require_once __DIR__ . '/points.php';
 require_once __DIR__ . '/access.php';
 
@@ -89,364 +90,15 @@ function llama_place_update_sections(): array
  */
 
 
-function llama_place_update_current_values(
-    PDO $db,
-    int $placeId,
-    bool $lock = false
-): array {
-    $definitions =
-        llama_place_update_definitions();
-
-    $values = [];
-    $cache = [];
-
-
-    foreach (
-        $definitions
-        as $path => $definition
-    ) {
-        $table =
-            (string) (
-                $definition['table']
-                ?? ''
-            );
-
-        $column =
-            (string) (
-                $definition['column']
-                ?? ''
-            );
-
-
-        if (
-            !llama_place_report_valid_storage_identifier(
-                $table
-            )
-            || !llama_place_report_valid_storage_identifier(
-                $column
-            )
-        ) {
-            continue;
-        }
-
-
-        if ($table === 'places') {
-
-            if (
-                !array_key_exists(
-                    'places',
-                    $cache
-                )
-            ) {
-                $sql =
-                    'SELECT *
-                     FROM places
-                     WHERE id = ?
-                     LIMIT 1';
-
-                if ($lock) {
-                    $sql .= ' FOR UPDATE';
-                }
-
-
-                $stmt =
-                    $db->prepare(
-                        $sql
-                    );
-
-                $stmt->execute([
-                    $placeId,
-                ]);
-
-
-                $cache['places'] =
-                    $stmt->fetch(
-                        PDO::FETCH_ASSOC
-                    )
-                    ?: [];
-            }
-
-
-            $values[$path] =
-                llama_place_report_normalize_storage_value(
-                    $cache['places'][$column]
-                        ?? null,
-                    $definition
-                );
-
-            continue;
-        }
-
-
-        if (
-            $table === 'place_sensory'
-        ) {
-            $period =
-                (string) (
-                    $definition['period']
-                    ?? ''
-                );
-
-            $cacheKey =
-                'place_sensory:'
-                . $period;
-
-
-            if (
-                !array_key_exists(
-                    $cacheKey,
-                    $cache
-                )
-            ) {
-                $sql =
-                    'SELECT *
-                     FROM place_sensory
-                     WHERE place_id = ?
-                       AND period = ?
-                     LIMIT 1';
-
-                if ($lock) {
-                    $sql .= ' FOR UPDATE';
-                }
-
-
-                $stmt =
-                    $db->prepare(
-                        $sql
-                    );
-
-                $stmt->execute([
-                    $placeId,
-                    $period,
-                ]);
-
-
-                $cache[$cacheKey] =
-                    $stmt->fetch(
-                        PDO::FETCH_ASSOC
-                    )
-                    ?: [];
-            }
-
-
-            $values[$path] =
-                llama_place_report_normalize_storage_value(
-                    $cache[$cacheKey][$column]
-                        ?? null,
-                    $definition
-                );
-
-            continue;
-        }
-
-
-        if (
-            !array_key_exists(
-                $table,
-                $cache
-            )
-        ) {
-            $sql =
-                "SELECT *
-                 FROM `$table`
-                 WHERE place_id = ?
-                 LIMIT 1";
-
-            if ($lock) {
-                $sql .= ' FOR UPDATE';
-            }
-
-
-            $stmt =
-                $db->prepare(
-                    $sql
-                );
-
-            $stmt->execute([
-                $placeId,
-            ]);
-
-
-            $cache[$table] =
-                $stmt->fetch(
-                    PDO::FETCH_ASSOC
-                )
-                ?: [];
-        }
-
-
-        $values[$path] =
-            llama_place_report_normalize_storage_value(
-                $cache[$table][$column]
-                    ?? null,
-                $definition
-            );
-    }
-
-
-    return $values;
+function llama_place_update_current_values(PDO $db, int $placeId, bool $lock = false): array
+{
+    return llama_place_report_current_values($db, $placeId, $lock);
 }
 
 
-function llama_place_update_current_value(
-    PDO $db,
-    int $placeId,
-    string $path,
-    bool $lock = false
-): mixed {
-    $definitions =
-        llama_place_update_definitions();
-
-
-    if (
-        !isset(
-            $definitions[$path]
-        )
-    ) {
-        throw new RuntimeException(
-            'Unsupported Place update field: '
-            . $path
-        );
-    }
-
-
-    $definition =
-        $definitions[$path];
-
-    $table =
-        (string) $definition['table'];
-
-    $column =
-        (string) $definition['column'];
-
-
-    if (
-        !llama_place_report_valid_storage_identifier(
-            $table
-        )
-        || !llama_place_report_valid_storage_identifier(
-            $column
-        )
-    ) {
-        throw new RuntimeException(
-            'Invalid Place update storage definition.'
-        );
-    }
-
-
-    if ($table === 'places') {
-
-        $sql =
-            "SELECT `$column`
-             FROM places
-             WHERE id = ?
-             LIMIT 1";
-
-        if ($lock) {
-            $sql .= ' FOR UPDATE';
-        }
-
-
-        $stmt =
-            $db->prepare(
-                $sql
-            );
-
-        $stmt->execute([
-            $placeId,
-        ]);
-
-
-        $value =
-            $stmt->fetchColumn();
-
-
-        return llama_place_report_normalize_storage_value(
-            $value === false
-                ? null
-                : $value,
-            $definition
-        );
-    }
-
-
-    if (
-        $table === 'place_sensory'
-    ) {
-        $period =
-            (string) (
-                $definition['period']
-                ?? ''
-            );
-
-
-        $sql =
-            "SELECT `$column`
-             FROM place_sensory
-             WHERE place_id = ?
-               AND period = ?
-             LIMIT 1";
-
-        if ($lock) {
-            $sql .= ' FOR UPDATE';
-        }
-
-
-        $stmt =
-            $db->prepare(
-                $sql
-            );
-
-        $stmt->execute([
-            $placeId,
-            $period,
-        ]);
-
-
-        $value =
-            $stmt->fetchColumn();
-
-
-        return llama_place_report_normalize_storage_value(
-            $value === false
-                ? null
-                : $value,
-            $definition
-        );
-    }
-
-
-    $sql =
-        "SELECT `$column`
-         FROM `$table`
-         WHERE place_id = ?
-         LIMIT 1";
-
-    if ($lock) {
-        $sql .= ' FOR UPDATE';
-    }
-
-
-    $stmt =
-        $db->prepare(
-            $sql
-        );
-
-    $stmt->execute([
-        $placeId,
-    ]);
-
-
-    $value =
-        $stmt->fetchColumn();
-
-
-    return llama_place_report_normalize_storage_value(
-        $value === false
-            ? null
-            : $value,
-        $definition
-    );
+function llama_place_update_current_value(PDO $db, int $placeId, string $path, bool $lock = false): mixed
+{
+    return llama_place_report_current_value($db, $placeId, $path, $lock);
 }
 
 
@@ -457,162 +109,18 @@ function llama_place_update_current_value(
  */
 
 
-function llama_place_update_shared_form_values(
-    array $currentValues,
-    array $currentUnknownFields = [],
-    array $proposedValues = [],
-    array $proposedUnknownFields = []
-): array {
+function llama_place_update_shared_form_values(array $currentValues, array $currentUnknownFields = [],
+    array $proposedValues = [], array $proposedUnknownFields = []): array
+{
     $values = [];
-
-
-    $currentUnknownLookup =
-        array_fill_keys(
-            array_map(
-                'strval',
-                $currentUnknownFields
-            ),
-            true
-        );
-
-
-    $proposedUnknownLookup =
-        array_fill_keys(
-            array_map(
-                'strval',
-                $proposedUnknownFields
-            ),
-            true
-        );
-
-
-    foreach (
-        llama_place_update_definitions()
-        as $storage => $definition
-    ) {
-        $field =
-            $definition['shared'];
-
-        $key =
-            (string) $field['key'];
-
-        $type =
-            (string) $field['type'];
-
-
-        $hasProposed =
-            array_key_exists(
-                $storage,
-                $proposedValues
-            );
-
-        $hasCurrent =
-            array_key_exists(
-                $storage,
-                $currentValues
-            );
-
-
-        if (
-            !$hasProposed
-            && !$hasCurrent
-        ) {
-            continue;
-        }
-
-
-        $value =
-            $hasProposed
-                ? $proposedValues[$storage]
-                : $currentValues[$storage];
-
-
-        $isExplicitUnknown =
-            $hasProposed
-                ? isset(
-                    $proposedUnknownLookup[
-                        $key
-                    ]
-                )
-            : isset(
-                    $currentUnknownLookup[
-                        $key
-                    ]
-                );
-
-
-        if ($type === 'checkbox') {
-
-            if ((bool) $value) {
-                $values[$key] = '1';
-            }
-
-            continue;
-        }
-
-
-        if (
-            $isExplicitUnknown
-            && !empty(
-                $field['allow_unknown']
-            )
-        ) {
-            $values[$key] =
-                llama_place_report_unknown_token();
-
-            continue;
-        }
-
-
-        if ($type === 'multiselect') {
-            $values[$key] =
-                llama_place_report_multiselect_values(
-                    $value
-                );
-
-            continue;
-        }
-
-
-        if (
-            in_array(
-                $type,
-                [
-                    'tri',
-                    'rating',
-                ],
-                true
-            )
-            && $value === null
-        ) {
-            $values[$key] =
-                llama_place_report_unanswered_token();
-
-            continue;
-        }
-
-
-        if ($value === null) {
-            $values[$key] = '';
-            continue;
-        }
-
-
-        if (is_bool($value)) {
-            $values[$key] =
-                $value
-                    ? '1'
-                    : '0';
-
-            continue;
-        }
-
-
-        $values[$key] =
-            (string) $value;
+    foreach (llama_place_update_definitions() as $storage => $definition) {
+        $field = $definition['shared'];
+        $proposed = array_key_exists($storage, $proposedValues);
+        if (!$proposed && !array_key_exists($storage, $currentValues)) { continue; }
+        $values[$field['key']] = llama_place_report_answer_form_value($field,
+            $proposed ? $proposedValues[$storage] : $currentValues[$storage],
+            in_array($field['key'], $proposed ? $proposedUnknownFields : $currentUnknownFields, true));
     }
-
-
     return $values;
 }
 
@@ -624,84 +132,9 @@ function llama_place_update_shared_form_values(
  */
 
 
-function llama_place_update_value_equal(
-    mixed $a,
-    mixed $b,
-    ?array $field = null
-): bool {
-    if (is_bool($a)) {
-        $a =
-            $a
-                ? '1'
-                : '0';
-    }
-
-
-    if (is_bool($b)) {
-        $b =
-            $b
-                ? '1'
-                : '0';
-    }
-
-
-    if (
-        $a === null
-        || $b === null
-    ) {
-        return $a === $b;
-    }
-
-
-    if (
-        (string) (
-            $field['type']
-            ?? ''
-        ) === 'multiselect'
-    ) {
-        $aValues =
-            llama_place_report_multiselect_values(
-                $a
-            );
-
-        $bValues =
-            llama_place_report_multiselect_values(
-                $b
-            );
-
-        sort($aValues, SORT_STRING);
-        sort($bValues, SORT_STRING);
-
-        return $aValues === $bValues;
-    }
-
-
-    /*
-     * Number fields are compared numerically so harmless database
-     * formatting differences are not treated as edits.
-     *
-     * Examples:
-     * 37.2522200 = 37.25222
-     * -107.2192000 = -107.2192
-     * 0.00 = 0
-     */
-    if (
-        (string) (
-            $field['type']
-            ?? ''
-        ) === 'number'
-        && is_numeric($a)
-        && is_numeric($b)
-    ) {
-        return
-            (float) $a
-            == (float) $b;
-    }
-
-
-    return
-        (string) $a
-        === (string) $b;
+function llama_place_update_value_equal(mixed $a, mixed $b, ?array $field = null): bool
+{
+    return llama_place_report_values_equal($a, $b, $field);
 }
 
 
@@ -710,6 +143,7 @@ function llama_place_update_build_changes(
     array $current,
     array $currentUnknownFields = []
 ): array {
+    $input = llama_place_report_expand_presence($input);
     $proposed = [];
     $original = [];
 
@@ -741,38 +175,19 @@ function llama_place_update_build_changes(
             (string) $field['type'];
 
 
-        if ($type === 'checkbox') {
-
-            $raw =
-                !empty(
-                    $input[$key]
-                )
-                    ? '1'
-                    : '0';
-
-        } else {
-
-            if (
-                !array_key_exists(
-                    $key,
-                    $input
-                )
-            ) {
-                continue;
-            }
-
-            $raw =
-                $input[$key];
-        }
-
-
-        if (
-            is_array($raw)
-            && $type !== 'multiselect'
-        ) {
+        if (!array_key_exists($key, $input) || !empty($field['derived'])
+            || !in_array('place', (array) $field['report_scopes'], true)) {
             continue;
         }
-
+        $raw = $input[$key];
+        if ($type === 'multiselect' && $raw === [] && ($current[$path] ?? null) === null
+            && !isset($currentUnknownLookup[$key]) && empty($input['_report_touched'][$key])) { continue; }
+        // Preserve unchanged historical options without accepting new invalid values.
+        if ($raw !== llama_place_report_unknown_token() && $raw !== llama_place_report_unanswered_token()
+            && !isset($currentUnknownLookup[$key])
+            && llama_place_report_values_equal($raw, $current[$path] ?? null, $field)) {
+            continue;
+        }
 
         $fieldUnknown = [];
 
@@ -1367,18 +782,11 @@ function llama_place_update_submit(
 
 
     $visitedAt =
-        community_clean_text(
-            $input['visited_at']
-            ?? null,
-            30
-        );
+        llama_place_report_metadata($input, 'visited_at');
 
 
     $notes =
-        community_clean_text(
-            $input['contributor_notes']
-            ?? null
-        );
+        llama_place_report_metadata($input, 'contributor_notes');
 
 
     $updateId = 0;
@@ -1744,18 +1152,11 @@ function llama_place_update_resubmit(
 
 
     $visitedAt =
-        community_clean_text(
-            $input['visited_at']
-            ?? null,
-            30
-        );
+        llama_place_report_metadata($input, 'visited_at');
 
 
     $notes =
-        community_clean_text(
-            $input['contributor_notes']
-            ?? null
-        );
+        llama_place_report_metadata($input, 'contributor_notes');
 
 
     $beforeProposed =
@@ -2194,6 +1595,10 @@ function llama_place_update_approve(
         (int) $update['place_id'];
 
 
+    $placeLock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+    $placeLock->execute([$placeId]);
+    if (!$placeLock->fetchColumn()) { throw new RuntimeException('Place not found.'); }
+
     $proposed =
         is_array(
             $update['proposed']
@@ -2383,6 +1788,26 @@ function llama_place_update_approve(
     }
 
 
+    foreach ($proposed as $path => $value) {
+        $field = $definitions[$path]['shared'];
+        if (!in_array('place', (array) $field['report_scopes'], true) || !empty($field['derived'])) {
+            throw new RuntimeException('This pending answer requires a Site target or is read-only. Return it for correction.');
+        }
+        $answer = llama_place_report_parse_answer($field,
+            isset($newUnknownLookup[$field['key']]) ? llama_place_report_unknown_token() : $value);
+        if (in_array($path, ['name','type'], true) && $answer['state'] !== 'answered') {
+            throw new InvalidArgumentException('Place name and type cannot be cleared.');
+        }
+        $proposed[$path] = $answer['value'];
+    }
+    $finalCoordinates = llama_place_report_current_values($db, $placeId, true);
+    foreach (['latitude','longitude'] as $coordinate) {
+        if (array_key_exists($coordinate, $proposed)) { $finalCoordinates[$coordinate] = $proposed[$coordinate]; }
+    }
+    if (($finalCoordinates['latitude'] === null) !== ($finalCoordinates['longitude'] === null)) {
+        throw new InvalidArgumentException('Latitude and longitude must both be present or both be blank.');
+    }
+
     $photos =
         is_array(
             $update['photo_list']
@@ -2445,14 +1870,8 @@ function llama_place_update_approve(
         );
 
 
-    $finalInput =
-        llama_place_update_shared_form_values(
-            $finalCurrentValues,
-            array_keys(
-                $newUnknownLookup
-            )
-        );
-
+    $finalInput = llama_place_update_shared_form_values($finalCurrentValues,
+        llama_place_report_published_answer_state($db, $placeId));
 
     $pointEstimate =
         llama_points_estimate_place_update(
@@ -2618,145 +2037,10 @@ function llama_place_update_record_review(
  */
 
 
-function llama_place_update_display_value(
-    string $path,
-    mixed $value,
-    bool $explicitUnknown = false
-): string {
-    if ($explicitUnknown) {
-        return 'Unknown';
-    }
-
-
-    if (
-        $value === null
-        || $value === ''
-    ) {
-        return 'Not provided';
-    }
-
-
-    $field =
-        llama_place_report_field_by_storage(
-            $path
-        );
-
-
-    if (!$field) {
-
-        if (is_bool($value)) {
-            return $value
-                ? 'Yes'
-                : 'No';
-        }
-
-        return (string) $value;
-    }
-
-
-    $type =
-        (string) (
-            $field['type']
-            ?? ''
-        );
-
-
-    if (
-        in_array(
-            $type,
-            [
-                'tri',
-                'checkbox',
-            ],
-            true
-        )
-    ) {
-        return (bool) $value
-            ? 'Yes'
-            : 'No';
-    }
-
-
-    if ($type === 'permission') {
-        return match ((int) $value) {
-            1 => 'Yes',
-            2 => 'With Permit',
-            default => 'No',
-        };
-    }
-
-    if ($type === 'rating') {
-        return
-            (int) $value
-            . '/5';
-    }
-
-
-    if ($type === 'multiselect') {
-        $options =
-            (array) (
-                $field['options']
-                ?? []
-            );
-
-        $labels = [];
-
-        foreach (
-            llama_place_report_multiselect_values(
-                $value
-            )
-            as $selected
-        ) {
-            $labels[] =
-                (string) (
-                    $options[$selected]
-                    ?? $selected
-                );
-        }
-
-        return $labels
-            ? implode(', ', $labels)
-            : 'Not provided';
-    }
-
-
-    if ($type === 'select') {
-
-        $options =
-            (array) (
-                $field['options']
-                ?? []
-            );
-
-
-        if (
-            array_key_exists(
-                (string) $value,
-                $options
-            )
-        ) {
-            return
-                (string) $options[
-                    (string) $value
-                ];
-        }
-    }
-
-
-    if (
-        ($field['format'] ?? '')
-        === 'currency'
-    ) {
-        return
-            '$'
-            . number_format(
-                (float) $value,
-                2
-            );
-    }
-
-
-    return (string) $value;
+function llama_place_update_display_value(string $path, mixed $value, bool $explicitUnknown = false): string
+{
+    require_once __DIR__ . '/place-report/review.php';
+    return llama_place_report_review_value($path, $value, $explicitUnknown);
 }
 
 
@@ -2824,3 +2108,4 @@ function llama_place_update_schema_icon(
             'edit',
     };
 }
+

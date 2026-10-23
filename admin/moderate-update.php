@@ -816,80 +816,18 @@ $sectionIconNames = [
 ];
 
 
-foreach (
-    $proposed
-    as $path => $newValue
-) {
-
-    if ($path === '__scoped_report__') {
-        continue;
-    }
-
-    $definition =
-        $definitions[$path]
-        ?? [
-            'label' =>
-                ucwords(
-                    str_replace(
-                        [
-                            '.',
-                            '_',
-                        ],
-                        ' ',
-                        $path
-                    )
-                ),
-
-            'section' =>
-                'other',
-
-            'group' =>
-                'Other',
-
-            'key' =>
-                '',
-        ];
-
-
-    $section =
-        (string) (
-            $definition['section']
-            ?? 'other'
-        );
-
-
-    $groupedChanges[$section]['meta'] =
-        llama_place_report_sections()[$section]
-        ?? [
-            'label' =>
-                (string) (
-                    $definition['group']
-                    ?? 'Other'
-                ),
-
-            'icon' =>
-                'edit',
-        ];
-
-
-    $groupedChanges[$section]['local_icon'] =
-        $sectionIconNames[$section]
-        ?? 'edit';
-
-
-    $groupedChanges[$section]['changes'][$path] = [
-        'definition' =>
-            $definition,
-
-        'old' =>
-            $original[$path]
-            ?? null,
-
-        'new' =>
-            $newValue,
-    ];
+require_once dirname(__DIR__) . '/app/place-report/review.php';
+$reviewRows = llama_place_report_review_changes($proposed, $original,
+    array_keys($latestUnknownLookup), array_keys($originalUnknownLookup));
+foreach ($reviewRows as $row) {
+    $field = $row['definition']['shared'] ?? $row['definition'];
+    $section = (string) ($field['approved_question_group'] ?? $field['section'] ?? 'other');
+    $label = (string) ($field['approved_question_group_label'] ?? 'Other');
+    if ($row['target_label'] !== '') { $label = $row['target_label'] . ' / ' . $label; }
+    $groupedChanges[$section]['meta'] = ['label' => $label];
+    $groupedChanges[$section]['local_icon'] = $sectionIconNames[$section] ?? 'edit';
+    $groupedChanges[$section]['changes'][$row['path']] = $row;
 }
-
 
 /*
  * =========================================================
@@ -1213,7 +1151,7 @@ $formatTime =
                         llama_place_update_display_value(
                             $path,
                             $change['old'],
-                            $oldExplicitUnknown
+                            $oldExplicitUnknown || !empty($change['old_unknown'])
                         );
 
 
@@ -1221,7 +1159,7 @@ $formatTime =
                         llama_place_update_display_value(
                             $path,
                             $change['new'],
-                            $newExplicitUnknown
+                            $newExplicitUnknown || !empty($change['new_unknown'])
                         );
 
                     ?>

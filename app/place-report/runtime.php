@@ -270,15 +270,12 @@ function llama_place_report_answer_state(array $data, string $fieldKey): string
         );
 
     if ((string) $field['type'] === 'checkbox') {
-        return $value === true || $value === 1 || $value === '1'
-            ? 'answered'
-            : 'unanswered';
+        return $value === null || $value === '' ? 'unanswered' : 'answered';
     }
 
     if ((string) $field['type'] === 'multiselect') {
-        return llama_place_report_multiselect_values($value)
-            ? 'answered'
-            : 'unanswered';
+        return is_array($value) || (is_string($value) && is_array(json_decode($value, true)))
+            ? 'answered' : 'unanswered';
     }
 
     if ($value === null || $value === '') {
@@ -290,48 +287,11 @@ function llama_place_report_answer_state(array $data, string $fieldKey): string
 
 function llama_place_report_form_value_from_data(array $data, string $fieldKey): mixed
 {
-    $field =
-        llama_place_report_fields()[$fieldKey]
-        ?? null;
-
-    if (!$field) {
-        return null;
-    }
-
-    if (llama_place_report_answer_state($data, $fieldKey) === 'unknown') {
-        return llama_place_report_unknown_token();
-    }
-
-    $value =
-        llama_place_report_get_path(
-            $data,
-            (string) $field['storage']
-        );
-
-    if ((string) $field['type'] === 'multiselect') {
-        return llama_place_report_multiselect_values($value);
-    }
-
-    if ((string) $field['type'] === 'checkbox') {
-        return $value ? '1' : '';
-    }
-
-    if (
-        in_array(
-            (string) $field['type'],
-            ['tri', 'permission', 'rating'],
-            true
-        )
-        && $value === null
-    ) {
-        return llama_place_report_unanswered_token();
-    }
-
-    if (is_bool($value)) {
-        return $value ? '1' : '0';
-    }
-
-    return $value;
+    $field = llama_place_report_fields()[$fieldKey] ?? null;
+    if (!$field) { return null; }
+    return llama_place_report_answer_form_value($field,
+        llama_place_report_get_path($data, (string) $field['storage']),
+        llama_place_report_answer_state($data, $fieldKey) === 'unknown');
 }
 
 function llama_place_report_form_input_from_data(array $data): array
@@ -354,9 +314,8 @@ function llama_place_report_form_input_from_data(array $data): array
         }
 
         if ((string) $field['type'] === 'multiselect') {
-            $input[$key] = is_array($value)
-                ? array_values($value)
-                : [];
+            $input[$key] = $value === llama_place_report_unknown_token() ? $value
+                : (is_array($value) ? array_values($value) : []);
             continue;
         }
 
@@ -368,154 +327,21 @@ function llama_place_report_form_input_from_data(array $data): array
     return $input;
 }
 
-function llama_place_report_parse_field(
-    array $field,
-    mixed $raw,
-    array &$unknownFields
-): mixed {
-    $key = (string) $field['key'];
-    $type = (string) $field['type'];
-
-    if ($raw === llama_place_report_unknown_token()) {
-        if (!empty($field['allow_unknown'])) {
-            $unknownFields[$key] = true;
-        }
-
-        return null;
+function llama_place_report_parse_field(array $field, mixed $raw, array &$unknownFields): mixed
+{
+    $answer = llama_place_report_parse_answer($field, $raw);
+    unset($unknownFields[$field['key']]);
+    if ($answer['state'] === 'unknown') {
+        $unknownFields[$field['key']] = true;
     }
-
-    if ($raw === llama_place_report_unanswered_token()) {
-        return null;
-    }
-
-    if ($type === 'checkbox') {
-        return (string) $raw === '1';
-    }
-
-    if ($type === 'multiselect') {
-        $options = (array) ($field['options'] ?? []);
-        $rawValues = is_array($raw)
-            ? $raw
-            : (($raw === null || $raw === '') ? [] : [$raw]);
-        $values = [];
-
-        foreach ($rawValues as $rawValue) {
-            if (!is_scalar($rawValue)) {
-                continue;
-            }
-
-            $cleanValue = trim((string) $rawValue);
-
-            if (
-                $cleanValue !== ''
-                && array_key_exists($cleanValue, $options)
-            ) {
-                $values[$cleanValue] = true;
-            }
-        }
-
-        return array_keys($values);
-    }
-
-    if ($type === 'tri') {
-        if ($raw === '' || $raw === null) {
-            return null;
-        }
-
-        return (string) $raw === '1';
-    }
-
-    if ($type === 'permission') {
-        if ($raw === '' || $raw === null) {
-            return null;
-        }
-
-        $value = (int) $raw;
-
-        return in_array($value, [0, 1, 2], true)
-            ? $value
-            : null;
-    }
-
-    if ($type === 'rating') {
-        if ($raw === '' || $raw === null || !is_numeric($raw)) {
-            return null;
-        }
-
-        $value = (int) $raw;
-
-        return $value >= 1 && $value <= 5
-            ? $value
-            : null;
-    }
-
-    if ($type === 'number') {
-        $clean = trim((string) $raw);
-
-        if ($clean === '') {
-            return null;
-        }
-
-        if (!is_numeric($clean)) {
-            throw new InvalidArgumentException(
-                (string) $field['label']
-                . ' must be numeric.'
-            );
-        }
-
-        $number =
-            str_contains($clean, '.')
-                ? (float) $clean
-                : (int) $clean;
-
-        if (
-            isset($field['min'])
-            && $number < (float) $field['min']
-        ) {
-            return null;
-        }
-
-        if (
-            isset($field['max'])
-            && $number > (float) $field['max']
-        ) {
-            return null;
-        }
-
-        return $number;
-    }
-
-    $clean = trim((string) $raw);
-
-    if ($clean === '') {
-        return null;
-    }
-
-    if ($type === 'select') {
-        $options =
-            (array) ($field['options'] ?? []);
-
-        /*
-         * Place type is the one select that has historically been
-         * normalized server-side. Preserve that protection.
-         */
-        if (
-            $key === 'type'
-            && !array_key_exists($clean, $options)
-        ) {
-            return 'other';
-        }
-    }
-
-    $max = (int) ($field['maxlength'] ?? 5000);
-
-    return mb_substr($clean, 0, $max);
+    return $answer['value'];
 }
 
 function llama_place_report_build_data(
     array $input,
     ?array $baseData = null
 ): array {
+    $input = llama_place_report_expand_presence($input);
     $data =
         is_array($baseData)
             ? $baseData
@@ -537,25 +363,23 @@ function llama_place_report_build_data(
 
     foreach (llama_place_report_fields() as $key => $field) {
         $type = (string) $field['type'];
+        if (!empty($field['derived'])) { continue; }
 
         if (!array_key_exists($key, $input)) {
-            if ($baseData === null && $type === 'checkbox') {
-                llama_place_report_set_path(
-                    $data,
-                    (string) $field['storage'],
-                    false
-                );
-            }
-
             continue;
         }
 
-        $value =
-            llama_place_report_parse_field(
-                $field,
-                $input[$key],
-                $unknownFields
-            );
+        if ($type === 'multiselect' && $input[$key] === []
+            && llama_place_report_get_path($data, (string) $field['storage']) === null
+            && empty($input['_report_touched'][$key])) { continue; }
+        if ($baseData !== null && $input[$key] !== llama_place_report_unknown_token()
+            && $input[$key] !== llama_place_report_unanswered_token()
+            && llama_place_report_answer_state($baseData, $key) !== 'unknown'
+            && llama_place_report_values_equal($input[$key],
+                llama_place_report_get_path($baseData, (string) $field['storage']), $field)) {
+            continue;
+        }
+        $value = llama_place_report_parse_field($field, $input[$key], $unknownFields);
 
         llama_place_report_set_path(
             $data,
@@ -564,60 +388,7 @@ function llama_place_report_build_data(
         );
     }
 
-    if (isset($data['details']) && is_array($data['details'])) {
-        $data['details']['road_difficulty'] =
-            $data['details']['road_overall_difficulty']
-            ?? null;
-    }
-
-    if (isset($data['rules']) && is_array($data['rules'])) {
-        $data['rules']['recommended_travel_season'] =
-            $data['rules']['best_months']
-            ?? null;
-    }
-
-    /*
-     * Only legacy derived recommendations mirror their paired ratings.
-     * Remote Work, Overnight Stop and Extended Stay are direct Scout answers.
-     * Keep the stored compatibility fields current for downstream consumers.
-     */
-    if (!isset($data['experience']) || !is_array($data['experience'])) {
-        $data['experience'] = [];
-    }
-
-    $deriveRecommendation =
-        static function (mixed $rating): ?bool {
-            if (!is_numeric($rating)) {
-                return null;
-            }
-
-            $rating = (int) $rating;
-
-            if ($rating >= 4) {
-                return true;
-            }
-
-            if ($rating <= 2 && $rating >= 1) {
-                return false;
-            }
-
-            return null;
-        };
-
-    foreach (
-        [
-            'recommended_quiet_evening' => 'quiet_evening',
-            'recommended_sensory_retreat' => 'sensory_retreat',
-            'recommended_stargazing' => 'stargazing',
-        ]
-        as $derivedKey => $ratingKey
-    ) {
-        $data['experience'][$derivedKey] =
-            $deriveRecommendation(
-                $data['experience'][$ratingKey]
-                ?? null
-            );
-    }
+    $data = llama_place_report_derive_compatibility($data, array_keys($input));
 
     /*
      * Preserve existing explicit Unknown answers when a moderator edits
@@ -1378,7 +1149,7 @@ function llama_place_report_display_value(
             }
         }
 
-        return $labels ? implode(', ', $labels) : null;
+        return $labels ? implode(', ', $labels) : 'None selected';
     }
 
     if ($type === 'select') {
@@ -1388,6 +1159,10 @@ function llama_place_report_display_value(
         if (array_key_exists($key, $options)) {
             return (string) $options[$key];
         }
+    }
+
+    if ($type === 'select' && str_ends_with($fieldKey, '_feet') && is_numeric($value)) {
+        return rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.') . ' ft';
     }
 
     if (($field['format'] ?? '') === 'currency') {
@@ -1677,8 +1452,8 @@ function llama_place_report_submit_new_place(
         }
 
         if ($submissionId > 0) {
-            llama_photo_delete_tree(
-                dirname(__DIR__)
+            llama_photo_remove_tree(
+                dirname(__DIR__, 2)
                 . '/uploads/place-submissions/'
                 . $submissionId
             );
@@ -1721,15 +1496,8 @@ function llama_place_report_resubmit_new_place(
         );
     }
 
-    $data =
-        llama_place_report_build_data(
-            $input
-        );
-
-    $existingData =
-        is_array($existing['data'] ?? null)
-            ? $existing['data']
-            : [];
+    $existingData = is_array($existing['data'] ?? null) ? $existing['data'] : [];
+    $data = llama_place_report_build_data($input, $existingData);
 
     $existingPhotos =
         is_array($existingData['photos'] ?? null)
@@ -1878,7 +1646,7 @@ function llama_place_report_resubmit_new_place(
 
             if ($path !== '') {
                 $absolute =
-                    dirname(__DIR__)
+                    dirname(__DIR__, 2)
                     . $path;
 
                 if (is_file($absolute)) {
@@ -1903,7 +1671,7 @@ function llama_place_report_resubmit_new_place(
         }
 
         $absolute =
-            dirname(__DIR__)
+            dirname(__DIR__, 2)
             . $path;
 
         if (is_file($absolute)) {
@@ -1956,72 +1724,9 @@ function llama_place_report_data_from_published_place(
             );
 
     $data['sensory'] = $sensory;
+    $data = llama_place_report_normalize_data($data);
 
-    /*
-     * Multi-select values are stored as JSON in normalized child tables.
-     * Submission JSON already contains arrays, so decode only persisted strings.
-     */
-    foreach (llama_place_report_fields() as $fieldKey => $field) {
-        if ((string) ($field['type'] ?? '') !== 'multiselect') {
-            continue;
-        }
-
-        $storage =
-            (string) (
-                $field['storage']
-                ?? ''
-            );
-
-        $value =
-            llama_place_report_get_path(
-                $data,
-                $storage
-            );
-
-        llama_place_report_set_path(
-            $data,
-            $storage,
-            llama_place_report_multiselect_values($value)
-        );
-    }
-
-    /*
-     * Recompute only legacy derived recommendations at read time.
-     * Do not overwrite direct Scout recommendations.
-     */
-    $deriveRecommendation =
-        static function (mixed $rating): ?bool {
-            if (!is_numeric($rating)) {
-                return null;
-            }
-
-            $rating = (int) $rating;
-
-            if ($rating >= 4) {
-                return true;
-            }
-
-            if ($rating >= 1 && $rating <= 2) {
-                return false;
-            }
-
-            return null;
-        };
-
-    foreach (
-        [
-            'recommended_quiet_evening' => 'quiet_evening',
-            'recommended_sensory_retreat' => 'sensory_retreat',
-            'recommended_stargazing' => 'stargazing',
-        ]
-        as $derivedKey => $ratingKey
-    ) {
-        $data['experience'][$derivedKey] =
-            $deriveRecommendation(
-                $data['experience'][$ratingKey]
-                ?? null
-            );
-    }
+    $data = llama_place_report_derive_compatibility($data);
 
     $data['_answer_state'] = array_values($unknownFields);
 
@@ -2056,45 +1761,13 @@ function llama_place_report_publish_answer_state(
     ]);
 }
 
-function llama_place_report_published_answer_state(
-    PDO $db,
-    int $placeId
-): array {
-    $stmt = $db->prepare(
-        'SELECT place_report_answer_state
-         FROM places
-         WHERE id = ?
-         LIMIT 1'
-    );
-
+function llama_place_report_published_answer_state(PDO $db, int $placeId): array
+{
+    $stmt = $db->prepare('SELECT place_report_answer_state FROM places WHERE id = ? LIMIT 1');
     $stmt->execute([$placeId]);
-
-    $json = $stmt->fetchColumn();
-
-    if (!is_string($json) || trim($json) === '') {
-        return [];
-    }
-
-    $decoded =
-        json_decode(
-            $json,
-            true
-        );
-
-    if (!is_array($decoded)) {
-        return [];
-    }
-
-    return array_values(
-        array_filter(
-            array_map(
-                'strval',
-                $decoded
-            ),
-            static fn (string $value): bool =>
-                $value !== ''
-        )
-    );
+    $raw = $stmt->fetchColumn();
+    return llama_place_report_unknown_fields(['_answer_state' =>
+        is_string($raw) ? (json_decode($raw, true) ?? []) : []]);
 }
 
 
@@ -2114,6 +1787,7 @@ function llama_place_report_apply_published_field(
     string $path,
     mixed $value
 ): void {
+    if (!$db->inTransaction()) { throw new RuntimeException('Place answer writes require an active transaction.'); }
     $definitions =
         llama_place_report_published_definitions();
 
@@ -2154,40 +1828,7 @@ function llama_place_report_apply_published_field(
     }
 
 
-    $field =
-        $definition['shared']
-        ?? [];
-
-    if (
-        is_array($field)
-        && (string) ($field['type'] ?? '')
-            === 'multiselect'
-    ) {
-        $values =
-            llama_place_report_multiselect_values(
-                $value
-            );
-
-        $storedValue =
-            $values
-                ? json_encode(
-                    $values,
-                    JSON_UNESCAPED_SLASHES
-                    | JSON_UNESCAPED_UNICODE
-                    | JSON_THROW_ON_ERROR
-                )
-                : null;
-    } else {
-        $storedValue =
-            is_bool($value)
-                ? (
-                    $value
-                        ? 1
-                        : 0
-                )
-                : $value;
-    }
-
+    $storedValue = llama_place_report_database_value($definition['shared'], $value);
 
     if ($table === 'places') {
 
@@ -2363,6 +2004,7 @@ function llama_place_report_apply_published_field(
             $storedValue,
         ]);
     }
+    llama_place_report_publish_mirror($db, $placeId, $definition['shared'], $value);
 }
 
 
@@ -2476,23 +2118,17 @@ function llama_place_report_apply_published_answer_state(
 
 
 /** Normalize canonical storage values for reads and update comparisons. */
-function llama_place_report_normalize_storage_value(
-    mixed $value,
-    array $definition
-): mixed {
-    $field =
-        $definition['shared']
-        ?? [];
-
-    if (
-        is_array($field)
-        && (string) ($field['type'] ?? '')
-            === 'multiselect'
-    ) {
-        return llama_place_report_multiselect_values(
-            $value
-        );
+function llama_place_report_normalize_storage_value(mixed $value, array $definition): mixed
+{
+    $field = $definition['shared'] ?? $definition;
+    $type = (string) ($field['type'] ?? '');
+    if ($type === 'multiselect') { return $value === null || $value === '' ? null : llama_place_report_multiselect_values($value); }
+    if ($value === null || $value === '') { return $value; }
+    if (in_array($type, ['tri','checkbox'], true) && in_array($value, [true,false,0,1,'0','1'], true)) {
+        return $value === true || $value === 1 || $value === '1';
     }
-
+    if (in_array($type, ['rating','permission'], true) && is_numeric($value)) { return (int) $value; }
+    if ($type === 'number' && is_numeric($value)) { return (float) $value; }
     return $value;
 }
+

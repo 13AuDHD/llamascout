@@ -32,14 +32,6 @@ $placeReportData =
         $publishedUnknown
     );
 
-if (empty($isDemoScoutReport)) {
-    $placeReportData = llama_usfs_report_enrich(
-        db(),
-        (int) ($place['id'] ?? 0),
-        $placeReportData
-    );
-}
-
 $placeReportReadMode =
     'scout-report';
 

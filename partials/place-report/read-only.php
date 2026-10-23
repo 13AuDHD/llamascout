@@ -253,6 +253,11 @@ $renderValue =
                 $key
             );
 
+        if ($placeReportReadMode === 'scout-report'
+            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+            $state = 'unanswered';
+            $value = null;
+        }
         /*
          * During Issue #5 reconciliation, unanswered values stay visible in
          * every read-only flow so they can be compared against editable input.
@@ -1021,3 +1026,4 @@ foreach (
         <?php endif; ?>
     </section>
 <?php endforeach; ?>
+
