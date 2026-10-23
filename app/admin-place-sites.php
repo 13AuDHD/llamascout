@@ -351,6 +351,18 @@ function admin_place_campsite_form_catalog(PDO $db, int $placeId): array
             'scope_source' =>
                 'campsite_record',
 
+            'latitude' =>
+                isset($site['latitude'])
+                && is_numeric($site['latitude'])
+                    ? (float) $site['latitude']
+                    : null,
+
+            'longitude' =>
+                isset($site['longitude'])
+                && is_numeric($site['longitude'])
+                    ? (float) $site['longitude']
+                    : null,
+
             'map_feature_id' =>
                 $mapFeatureId > 0
                     ? $mapFeatureId
