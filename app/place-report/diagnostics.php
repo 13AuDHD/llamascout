@@ -37,6 +37,7 @@ function llama_place_report_contract_issues(): array
             }
         }
         if (!llama_place_report_storage_definition($field)
+            && empty($field['scoped_only_storage'])
             && !in_array($path, ['visited_at','contributor_notes'], true)) {
             $issues[] = 'Missing storage adapter: ' . $key;
         }
@@ -60,6 +61,14 @@ function llama_place_report_schema_issues(PDO $db): array
         'place_map_features' => ['id','place_id','feature_type','is_active'],
         'place_update_submissions' => ['id','place_id','user_id','proposed_changes','original_values','revision_history','status','update_type'],
         'place_submissions' => ['id','user_id','place_id','submission_data','status'],
+        'scout_report_schemas' => ['schema_version','definition_json','created_at'],
+        'scout_reports' => ['id','logical_report_key','revision_number','prior_revision_id','amends_report_id',
+            'submission_bundle_key','place_id','target_scope','target_source','target_id','target_label',
+            'contributor_id','role_at_submission','visit_date','submitted_at','schema_version',
+            'source_channel','client_submission_key','content_sha256'],
+        'scout_report_answers' => ['id','report_id','question_key','answer_state','value_json','created_at'],
+        'scout_report_moderation_events' => ['id','report_id','event_type','actor_user_id','reason','metadata_json','created_at'],
+        'scout_report_photos' => ['id','report_id','photo_path','photo_path_sha256','sort_order','photo_snapshot_json','created_at'],
     ];
 
     foreach (llama_place_report_published_definitions() as $definition) {
@@ -164,6 +173,77 @@ function llama_place_report_schema_issues(PDO $db): array
         }
         if (!$unique) {
             $issues[] = 'Missing unique scoped-answer identity index (Place, scope, source, target, field).';
+        }
+    }
+
+    $appendOnlyTables = [
+        'scout_report_schemas',
+        'scout_reports',
+        'scout_report_answers',
+        'scout_report_moderation_events',
+        'scout_report_photos',
+    ];
+    $triggers = [];
+    foreach ($db->query('SHOW TRIGGERS')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $triggers[(string) ($row['Trigger'] ?? '')] = $row;
+    }
+    foreach ($appendOnlyTables as $appendOnlyTable) {
+        if (!isset($tables[$appendOnlyTable])) {
+            continue;
+        }
+        foreach (['bu' => 'UPDATE', 'bd' => 'DELETE'] as $suffix => $operation) {
+            $trigger = $appendOnlyTable . '_' . $suffix . '_immutable';
+            if (!isset($triggers[$trigger])) {
+                $issues[] = 'Missing append-only guard: ' . $trigger;
+                continue;
+            }
+            $definition = $triggers[$trigger];
+            if (strcasecmp((string) ($definition['Table'] ?? ''), $appendOnlyTable) !== 0
+                || strcasecmp((string) ($definition['Timing'] ?? ''), 'BEFORE') !== 0
+                || strcasecmp((string) ($definition['Event'] ?? ''), $operation) !== 0
+                || !str_contains(
+                    (string) ($definition['Statement'] ?? ''),
+                    'Scout Report history is append-only'
+                )) {
+                $issues[] = 'Invalid append-only guard: ' . $trigger;
+            }
+        }
+    }
+
+    $requiredUniqueIndexes = [
+        'scout_reports' => [
+            ['logical_report_key', 'revision_number'],
+            ['contributor_id', 'client_submission_key'],
+        ],
+        'scout_report_answers' => [
+            ['report_id', 'question_key'],
+        ],
+        'scout_report_photos' => [
+            ['report_id', 'photo_path_sha256'],
+        ],
+    ];
+    foreach ($requiredUniqueIndexes as $indexTable => $expectedIndexes) {
+        if (!isset($tables[$indexTable])) {
+            continue;
+        }
+        $uniqueIndexes = [];
+        foreach ($db->query('SHOW INDEX FROM `' . $indexTable . '`')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ((int) ($row['Non_unique'] ?? 1) !== 0) {
+                continue;
+            }
+            $uniqueIndexes[(string) $row['Key_name']][(int) $row['Seq_in_index']] =
+                (string) $row['Column_name'];
+        }
+        foreach ($uniqueIndexes as &$indexColumns) {
+            ksort($indexColumns);
+            $indexColumns = array_values($indexColumns);
+        }
+        unset($indexColumns);
+        foreach ($expectedIndexes as $expectedIndex) {
+            if (!in_array($expectedIndex, $uniqueIndexes, true)) {
+                $issues[] = 'Missing immutable-report unique index: '
+                    . $indexTable . '(' . implode(',', $expectedIndex) . ')';
+            }
         }
     }
 
