@@ -753,31 +753,60 @@ if (
                 ?? ''
             );
 
+        $fieldTouched =
+            !empty(
+                $_POST['_report_touched'][$fieldKey]
+            );
 
-        if ($fieldType === 'checkbox') {
-
-            if (
-                !empty(
-                    $_POST[$fieldKey]
-                )
-            ) {
-                $placeReportValues[$fieldKey] =
-                    '1';
-
-            } else {
-                /*
-                 * No array value means the user intentionally
-                 * submitted this checkbox unchecked.
-                 */
-                unset(
-                    $placeReportValues[$fieldKey]
-                );
-            }
-
+        if (!$fieldTouched) {
+            unset(
+                $placeReportValues[$fieldKey]
+            );
 
             continue;
         }
 
+        if (
+            !empty(
+                $_POST['_report_unknown'][$fieldKey]
+            )
+        ) {
+            $placeReportValues[$fieldKey] =
+                llama_place_report_unknown_token();
+
+            continue;
+        }
+
+        if ($fieldType === 'checkbox') {
+            $placeReportValues[$fieldKey] =
+                !empty(
+                    $_POST[$fieldKey]
+                )
+                    ? '1'
+                    : '0';
+
+            continue;
+        }
+
+        if (
+            $fieldType === 'multiselect'
+        ) {
+            $postedValues =
+                $_POST[$fieldKey]
+                ?? [];
+
+            $placeReportValues[$fieldKey] =
+                is_array($postedValues)
+                    ? array_values(
+                        array_map(
+                            'strval',
+                            $postedValues
+                        )
+                    )
+                    : [];
+
+            continue;
+        }
 
         if (
             array_key_exists(
@@ -787,7 +816,6 @@ if (
         ) {
             $postedValue =
                 $_POST[$fieldKey];
-
 
             if (
                 is_scalar(
