@@ -58,7 +58,7 @@ This task establishes system boundaries and representative files, not detailed c
 
 **Base commit:** `b35be100e45590ef5167ef1b2eee12dba29dd7a4`
 
-**Pull request:** Pending creation
+**Pull request:** [#9 — V3-002: Reporting Definition Audit](https://github.com/13AuDHD/llamascout/pull/9)
 
 ### Result
 
