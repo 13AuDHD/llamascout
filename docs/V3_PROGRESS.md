@@ -222,11 +222,13 @@ This static audit does not certify live schema, stored data quality, deployment 
 
 ## V3-005: Permissions and Moderation Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `45c3789957111a7db0ac108316519a3fd406f1a2`
 
 ### Result
 
@@ -261,4 +263,47 @@ Created `docs/audits/05-permissions-and-moderation.md`, a static audit of authen
 
 ### Next planned task
 
-**V3-006: External Data Import Audit.** It has not been started.
+**V3-006: External Data Import Audit.** See the task record below.
+
+## V3-006: External Data Import Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Result
+
+Created `docs/audits/06-external-data.md`, a static audit of RIDB, NPS, USFS, BLM, PAD-US, FCC, source databases, normalization, matching, conflict handling, sync tracking, and photo import behavior.
+
+### Confirmed findings
+
+- RIDB is the most complete production integration, with a dedicated source database, mirror, normalization, Place import, individual Site import, Site facts/features, media, and sync logging.
+- RIDB repeated imports match by RIDB external ID, but there is no generalized cross-provider duplicate detector before creating a Place.
+- NPS has a dedicated source database, raw source hashes, resumable import tracking, and human-confirmed RIDB matching before canonical fill.
+- NPS fills only empty canonical fields and preserves conflicting non-empty values for review.
+- USFS currently functions as explicit reviewed campground enrichment rather than a full nationwide source mirror/Site importer.
+- BLM is actively used for land-management map overlays, but no canonical BLM recreation/primitive-Site ingestion pipeline was found.
+- PAD-US has working reference-source synchronization, issue tracking, classification, and managed-land lookup.
+- FCC cell coverage has a mature separate ingestion pipeline with planning, downloads, retries, queues, progress, and dataset tracking.
+- Source identity, conflict policy, and synchronization are currently provider-specific rather than governed by one shared source-registry/source-authority service.
+- RIDB Site media preserves provider IDs, URLs, credits, and source timestamps; NPS Place image provenance is less complete.
+
+### Important risks
+
+- RIDB production refresh can overwrite selected canonical Place fields while NPS and USFS use more conservative policies.
+- A manually created or differently sourced campground can duplicate an RIDB Place if the RIDB source link is absent.
+- Upstream disappearance behavior differs by provider and must not become automatic canonical deletion.
+- Imported provider facts and community observations need a shared field-level source authority model before more providers are automated.
+- BLM/USFS expansion must preserve the distinction between land ownership/reference geography and verified legal camping.
+
+### Verification
+
+- Inspected source database connections, RIDB API/mirror/normalization/import/canonical/media paths, NPS raw/import/matching/fill paths, USFS enrichment, PAD-US sync/review, FCC sync workers, BLM land overlays, and official-source reconciliation.
+- Distinguished working, incomplete, and missing components.
+- Did not access source credentials, production databases, provider accounts, or alter importer behavior.
+
+### Next planned task
+
+**V3-007: Approved Scout Report Reconciliation.** It has not been started.
