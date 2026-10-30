@@ -1237,11 +1237,13 @@ Migrate one reporting interface or shared authorization path to consume canonica
 
 ## M1-013: Locked Preview Canonical Visibility
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `6748605150ff8c46e2cd27ec3d5fe8f13ceba958`
 
 ### Objective
 
@@ -1312,3 +1314,61 @@ No database schema or SQL migration is required.
 ### Next
 
 Migrate the next reporting interface or read path to consume canonical visibility, then evaluate the remaining Milestone 1 completion gate.
+
+
+## M1-014: Canonical Published Report Page Ownership
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Remove the published Scout Report's duplicate hardcoded Place-group list and make canonical two-page metadata authoritative for Place/Site ownership and group order.
+
+### Canonical group sequence
+
+Added:
+
+`llama_place_report_approved_groups_in_page_order()`
+
+This derives the report sequence from:
+
+`llama_place_report_approved_pages()`
+
+while retaining group labels and question order from:
+
+`llama_place_report_approved_question_groups()`
+
+### Published renderer migration
+
+The read-only Scout Report now:
+
+- builds its group sequence from canonical page definitions
+- gets each group's Place/Site ownership from `llama_place_report_approved_group_page_lookup()`
+- no longer maintains a local nine-group Place list
+- preserves existing Place/Area and Site/Parking visual scope classes
+- exposes semantic page ownership through `data-report-page="place"` or `data-report-page="site"`
+
+### Behavior preservation
+
+This task does not yet split the existing Place experience into separate visual Place and Site pages.
+
+It establishes canonical semantic ownership first so the later UI migration can separate them without rebuilding group logic again.
+
+No question storage, answers, access control, Site switching, database schema, or SQL changed.
+
+### Verification
+
+- Confirmed all approved groups are returned in canonical page order.
+- Confirmed all nine Place groups derive from the Place page registry.
+- Confirmed all fifteen Site groups derive from the Site page registry.
+- Confirmed the old local `$publicPlaceGroups` list is removed.
+- Confirmed report scope styling uses canonical page ownership.
+- Approved stored-question projection remains 264.
+
+### Next
+
+Review remaining Milestone 1 definition consumers and determine whether the canonical-definition completion gate is satisfied before beginning Milestone 2 answer/history work.
