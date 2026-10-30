@@ -166,6 +166,7 @@ if ($compareMode === 'reports') {
     if (
         $hasReportPlaceAccess
         && $reportPlaceSlug !== ''
+        && $reportSiteId === 0
     ) {
         $reportPlace =
             place_member_by_slug(
