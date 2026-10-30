@@ -1217,3 +1217,9 @@
     opacity: .58;
     cursor: not-allowed;
 }
+
+/* Allow multiple historical Site reports without squeezing their columns. */
+.compare-site-history-scroll { overflow-x: auto; max-width: 100%; }
+.compare-site-history-scroll table { width: 100%; min-width: 640px; border-collapse: collapse; }
+.compare-site-history-scroll th, .compare-site-history-scroll td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border-color, #333); }
+.compare-site-history-scroll thead small { display: block; font-weight: 400; margin-top: 6px; }
