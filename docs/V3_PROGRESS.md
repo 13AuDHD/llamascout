@@ -46,4 +46,61 @@ This task establishes system boundaries and representative files, not detailed c
 
 ### Next planned task
 
-**V3-002: Reporting Definition Audit.** It has not been started.
+**V3-002: Reporting Definition Audit.** See the task record below.
+
+## V3-002: Reporting Definition Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+**Base commit:** `b35be100e45590ef5167ef1b2eee12dba29dd7a4`
+
+**Pull request:** Pending creation
+
+### Result
+
+Created `docs/audits/02-reporting-definitions.md`, a static audit of the existing Scout Report definition system. The audit covers:
+
+- Canonical registry assembly and field-family files.
+- Stable keys, labels, types, choices, validation, help, and display metadata.
+- Approved groups, form layout groups, flow groups, and final ordering.
+- Place, Area, and Site scope, inheritance, targets, and imported Site baselines.
+- Generic answer states and question-specific state-like values.
+- Applicability profiles, dependency operators, and frontend rule mirrors.
+- Published Place mappings, scoped answers, compatibility mirrors, and specialized writers.
+- Intentional adapters, legacy compatibility, suspected duplication, suspected overrides, and unresolved modules.
+
+### Confirmed findings
+
+- `llama_place_report_fields()` is the canonical final contract, assembled through registration and ordered mutation passes rather than defined in one static array.
+- Approved-question membership/order, active form layout, legacy sections, and semantic scope are separate registries with different responsibilities.
+- Generic answer states are `answered`, `unanswered`, and `unknown`; explicit No is an answered value.
+- Scope supports Place, Area, Site, Place/Area inheritance, and nearest-recorded Place/Area/Site inheritance. Resource scope is not implemented in the reviewed target services.
+- Published Place persistence is derived from canonical storage paths, while Area/Site overrides use canonical field keys in `place_report_scoped_answers`.
+
+### Important risks
+
+- The registry does not expose a general Public/Community classification or general field status/version metadata required by the specification.
+- Site applicability logic exists in an unwired module while later metadata passes also replace applicability.
+- Supplemental Admin save bridges repeat field lists/validation and may bypass canonical Unknown-state updates.
+- JavaScript repeats taxonomy lists, hazard keys, and applicability evaluation that can drift from PHP.
+- Legacy, approved, additional, derived, hidden, and compatibility-only fields coexist and require consistent filtering.
+
+### Verification
+
+- Inspected the required definition, applicability, condition, permission, metadata, scope, persistence, target, and scoped-answer services.
+- Searched report-related PHP and JavaScript for independent field lists, labels, options, conditional logic, ordering, visibility, legacy aliases, and supplemental persistence.
+- Labeled possible duplication and overrides as suspected unless the separate behavior was directly confirmed.
+- Did not access production data, run migrations, or modify application files.
+- Verified the documentation-only file scope before delivery.
+
+### Limitations
+
+PHP CLI is not installed in the Codex environment, so the repository's read-only runtime contract diagnostic could not be executed. The audit is based on static repository evidence. It does not certify live schemas, current route reachability, deployed interface behavior, or question-by-question agreement with the approved Scout Report.
+
+### Next planned task
+
+**V3-003: Reporting Interface Audit.** It has not been started.
