@@ -499,11 +499,12 @@ Rules and activity permissions do not share one universal answer vocabulary.
 
 The approved V3 answer sets are field-specific.
 
-**Yes / No**
+**Yes / With Permit / No**
 
 The following questions use:
 
 * Yes
+* With Permit
 * No
 * Unknown
 * Unanswered
@@ -518,7 +519,9 @@ Canonical keys:
 * `overnight_camping_allowed`
 * `dispersed_camping_allowed`
 
-Historical values `2` (Permit required) and `3` (Conditional) remain readable when they already exist, but they are not offered as new answers for these two questions.
+Stored value `2` is the active **With Permit** answer.
+
+Historical value `3` (Conditional) remains readable when already stored but is not offered as a new answer.
 
 **Yes / Permit required / No**
 
