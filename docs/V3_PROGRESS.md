@@ -4,7 +4,7 @@ This file records completed and reviewable V3 implementation-plan tasks. Work pr
 
 ## V3-001: Repository and Infrastructure Inventory
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
@@ -13,6 +13,8 @@ This file records completed and reviewable V3 implementation-plan tasks. Work pr
 **Base commit:** `463462c9e64143908d0e77895393b2372a12e7aa`
 
 **Pull request:** [#8 — V3-001: Repository and Infrastructure Inventory](https://github.com/13AuDHD/llamascout/pull/8)
+
+**Merged into `v3-development`:** `059bc8df49d0cafde21fcfcbe3a71eb1b61813f4`
 
 ### Result
 
