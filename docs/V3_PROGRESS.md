@@ -475,11 +475,13 @@ After review and merge, proceed to the first definition-reconciliation change th
 
 ## M1-003: Keep Flat Walking Surface as an Approved V3 Question
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `404b105432c4e37f0af807a89122ed5e16cc0f28`
 
 ### Decision
 
@@ -511,3 +513,61 @@ The older approved Scout Report PDF does not contain this question, but the V3 s
 ### Next
 
 Continue definition reconciliation with another confirmed mismatch that still requires correction.
+
+
+## M1-004: Canonical Official Basic Information
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Bring the four approved official Basic Information items under the canonical Scout Report definition layer without copying them into community-editable answer storage.
+
+### Canonical source fields
+
+Added four read-only approved source-field definitions:
+
+- `official_address`
+- `official_phone`
+- `official_email`
+- `official_links`
+
+All four are:
+
+- Page: Place details
+- Group: Basic
+- Accent role: Place
+- Visibility: Public
+- Editing: Read-only
+- Source bundle: existing facility public/source data
+
+### Existing data preserved
+
+The values continue to come from the existing `llama_place_facility_public_data()` path backed by official facility/source records.
+
+No database fields, provider IDs, provenance records, or community answer storage were changed.
+
+### Presentation cleanup
+
+The existing `partials/place/facility-info.php` presentation now consumes the canonical source-field definitions for labels and source keys instead of independently hardcoding those definitions.
+
+### Reconciliation status
+
+The four V3-007 items are no longer classified as unexplained fields outside the registry. They are now explicitly classified as canonical source fields.
+
+### Verification
+
+- Confirmed exactly four canonical official Basic source fields.
+- Confirmed each points to the Basic group on the Place page.
+- Confirmed each remains read-only.
+- Confirmed each has a source key.
+- Confirmed the existing 263 community/current approved question slots are unchanged.
+- Confirmed no persistence, schema, provider provenance, or production data changed.
+
+### Next
+
+Continue definition reconciliation with a mismatch that affects approved question identity or answer semantics while preserving historical compatibility.

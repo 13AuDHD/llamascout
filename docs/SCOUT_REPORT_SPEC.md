@@ -310,6 +310,38 @@ Its existing storage and historical answers are preserved.
 
 This is a deliberate specification override, not a compatibility-only or retired field.
 
+4.7 Canonical Official Basic Information
+
+The approved Basic Information group includes four read-only official/source fields in addition to the ordinary canonical Place questions:
+
+* Official Address
+* Phone Number
+* Email Address
+* Official Links
+
+These are canonical Scout Report definitions, but they are not ordinary community-editable questions.
+
+Their canonical keys are:
+
+* `official_address`
+* `official_phone`
+* `official_email`
+* `official_links`
+
+They belong to:
+
+* Page: Place details
+* Group: Basic
+* Accent role: Place
+* Visibility: Public
+* Editing: Read-only through the Scout Report question system
+
+Their values come from the existing official facility/source bundle and retain provider provenance through the existing source infrastructure.
+
+Interfaces must consume these canonical definitions for labels, grouping, and source identity rather than independently redefining the same official fields.
+
+This rule does not require copying official source values into ordinary community answer storage.
+
 ⸻
 
 5. Place and Site Ownership

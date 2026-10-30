@@ -125,6 +125,52 @@ function llama_place_report_approved_group_page_lookup(): array
 }
 
 /**
+ * Approved read-only source fields shown with the Place Basic information.
+ *
+ * These are canonical Scout Report definitions, but they are not ordinary
+ * community-editable questions. Their values come from the existing official
+ * facility/source bundle and retain provider provenance outside the editable
+ * question registry.
+ */
+function llama_place_report_approved_source_fields(): array
+{
+    return [
+        'official_address' => [
+            'approved_label' => 'Official Address',
+            'approved_group' => 'basic',
+            'canonical_key' => 'official_address',
+            'current_keys' => [],
+            'status' => 'canonical_source_field',
+            'compatibility' => 'facility_public_projection',
+        ],
+        'official_phone' => [
+            'approved_label' => 'Phone Number',
+            'approved_group' => 'basic',
+            'canonical_key' => 'official_phone',
+            'current_keys' => [],
+            'status' => 'canonical_source_field',
+            'compatibility' => 'facility_public_projection',
+        ],
+        'official_email' => [
+            'approved_label' => 'Email Address',
+            'approved_group' => 'basic',
+            'canonical_key' => 'official_email',
+            'current_keys' => [],
+            'status' => 'canonical_source_field',
+            'compatibility' => 'facility_public_projection',
+        ],
+        'official_links' => [
+            'approved_label' => 'Official Links',
+            'approved_group' => 'basic',
+            'canonical_key' => 'official_links',
+            'current_keys' => [],
+            'status' => 'canonical_source_field',
+            'compatibility' => 'facility_public_projection',
+        ],
+    ];
+}
+
+/**
  * Known differences between the approved Scout Report PDF and the current
  * implementation. These records make the migration work machine-readable
  * without changing current storage or rendering behavior.
@@ -378,6 +424,48 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    foreach (llama_place_report_approved_source_fields() as $key => $field) {
+        $groupKey = (string) ($field['group'] ?? '');
+        $pageKey = (string) ($field['page'] ?? '');
+        $sourceKey = (string) ($field['source_key'] ?? '');
+
+        if ($key === '' || $groupKey === '' || $pageKey === '') {
+            $issues[] =
+                'Approved source field has a missing key, group, or page.';
+            continue;
+        }
+
+        if (!isset($groups[$groupKey])) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' references unknown group '
+                . $groupKey
+                . '.';
+        }
+
+        if (($assignedGroups[$groupKey] ?? null) !== $pageKey) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' does not match its group page assignment.';
+        }
+
+        if (!empty($field['editable'])) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' must remain read-only.';
+        }
+
+        if ($sourceKey === '') {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' is missing its source key.';
+        }
+    }
+
     return $issues;
 }
 
@@ -398,6 +486,7 @@ function llama_place_report_approved_registry_summary(): array
         'approved_pdf_visible_entries' => 266,
         'current_projection_groups' => count($groups),
         'current_projection_questions' => $questions,
+        'approved_source_fields' => count(llama_place_report_approved_source_fields()),
         'approved_pages' => count(llama_place_report_approved_pages()),
         'approved_page_groups' => count(llama_place_report_approved_group_page_lookup()),
         'known_reconciliation_items' =>
