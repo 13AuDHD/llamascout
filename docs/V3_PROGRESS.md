@@ -2018,3 +2018,139 @@ historical records.
 Connect approved report submissions to append-only Scout Report persistence while
 keeping current summaries as derived projections and preserving existing
 moderation behavior.
+
+
+## M2-006: Approved Update Report History
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Persist approved Update This Place reports as append-only historical evidence
+before applying their answers to the existing current-summary projection.
+
+This task covers Entire Place, Area, and Site targets submitted through Update
+This Place.
+
+### Immutable history service
+
+Added:
+
+`app/place-report/immutable-history.php`
+
+The service:
+
+- requires an active moderation transaction
+- snapshots the canonical question registry and addresses it by SHA-256
+- validates each report answer through the shared M2-005 submission contract
+- omits Unanswered because it never enters the approved report payload
+- preserves Answered, explicit No, numeric zero, Unknown, and empty lists
+- stores explicit Place / Area / Site target identity
+- stores contributor, role, visit date, and submission time
+- creates a deterministic content hash
+- records the approval moderation event
+- prevents a reused client submission key from identifying different content
+
+### Approval ordering
+
+For Entire Place and scoped Area/Site updates, approval now performs this order
+inside the existing transaction:
+
+1. validate the pending submission and conflict snapshots
+2. copy submitted photos into permanent Place storage
+3. create the immutable report, answers, ordered photo snapshots, and approval event
+4. update only the submitted questions in the existing current projection
+5. create the existing contribution, points, moderation history, and Admin audit records
+6. commit through the existing controller
+
+If a later step fails, the database transaction rolls back. The existing copied
+photo rollback journal removes permanent files created during the failed approval.
+
+### Scoped photo preservation
+
+Scoped approval previously returned before the normal photo attachment path.
+The controller then deleted the source update folder after commit, which could
+leave scoped evidence metadata pointing at removed files.
+
+Scoped approval now uses the same transaction-safe permanent photo copy path as
+Entire Place approval before immutable photo snapshots are written.
+
+The immutable photo record reuses the permanent Place photo file. It does not
+create a duplicate report-only copy.
+
+Each photo snapshot preserves:
+
+- report order
+- permanent path
+- SHA-256 of the permanent path
+- SHA-256 of the file contents
+- the original submitted photo metadata
+
+### Database migration
+
+Added:
+
+`tools/migrations/20261030_m2_006_scout_report_history.sql`
+
+The migration creates:
+
+- `scout_report_schemas`
+- `scout_reports`
+- `scout_report_answers`
+- `scout_report_moderation_events`
+- `scout_report_photos`
+
+It also creates the unique indexes expected by the existing diagnostic and
+UPDATE / DELETE guard triggers for every append-only table.
+
+Migration, backup, compatibility, verification, and recovery instructions are
+documented in:
+
+`docs/migrations/M2-006_APPROVED_UPDATE_REPORT_HISTORY.md`
+
+The migration must be reviewed and applied before the PHP changes are deployed.
+No production database change was performed by Codex.
+
+### Current projection compatibility
+
+Existing public and Admin readers continue using the current published Place and
+scoped-answer tables.
+
+M2-006 writes those compatibility tables only after the immutable report insert
+succeeds in the same transaction.
+
+No current-answer precedence, permission, moderation authorization, points rule,
+or public presentation changed.
+
+### Scope boundaries
+
+This task does not:
+
+- create immutable history for Add Place and its first Site
+- backfill legacy submissions or update history
+- make current-answer reads query the immutable ledger
+- implement corrections or amendments to already approved reports
+- change public history or comparison presentation
+- delete or migrate existing current tables
+
+### Verification
+
+- `git diff --check` passes.
+- Inspected the Admin and Master Scout approval callers to confirm they retain
+  the existing outer transaction and copied-photo rollback handling.
+- Confirmed immutable history is inserted before current Place or scoped writes.
+- Confirmed Place and scoped paths use the same writer and answer validator.
+- PHP CLI and MariaDB clients are not installed in the Codex environment, so PHP
+  lint, SQL execution, schema diagnostics, and live approval tests could not be
+  run here.
+
+### Next
+
+Apply and verify the reviewed migration in staging, then exercise one Entire
+Place approval and one Site approval before merging or deploying the application
+changes. After that, the next code task is immutable history for Add Place and
+its first Site bundle.

@@ -1027,6 +1027,41 @@ range, date, URL, length, or Unknown rules remain invalid.
 Current-answer comparison remains reference and moderation-conflict data. It is
 not answer-state validation.
 
+4.21 Approved Update Report History
+
+An approved Update This Place submission creates one append-only Scout Report
+for its selected Place, Area, or Site target.
+
+The immutable report stores:
+
+* explicit target identity
+* contributor and role at submission
+* visit date and submission time
+* the exact canonical schema version used for validation
+* only the intentionally submitted Answered and Unknown observations
+* ordered photo evidence snapshots
+* a content hash
+* the approval moderation event
+
+The immutable report must be written successfully before its answers update the
+existing current Place or scoped-answer tables. Both operations occur in the
+same moderation transaction.
+
+The current tables remain compatibility projections for existing interfaces.
+They are not the historical report itself.
+
+An approval failure must roll back the immutable report, its answers, photos,
+moderation event, and all current-summary changes together.
+
+Historical photo rows reference the permanent Place photo copy rather than
+creating a duplicate report-only file. They preserve report order, the submitted
+photo metadata, the permanent path, and the file content hash.
+
+M2-006 applies this contract to approved Update This Place submissions. New
+Place approval, legacy history backfill, current-answer reads from the immutable
+ledger, corrections to already approved reports, and public history presentation
+remain separate tasks.
+
 ⸻
 
 5. Place and Site Ownership

@@ -1672,7 +1672,14 @@ function llama_place_update_approve(
 
     if (array_key_exists('__scoped_report__', $proposed)) {
         require_once __DIR__ . '/place-report/scoped-update-review.php';
-        return llama_scoped_update_approve($db, $update, $updateId, $reviewedBy, $reviewNotes);
+        return llama_scoped_update_approve(
+            $db,
+            $update,
+            $updateId,
+            $reviewedBy,
+            $reviewNotes,
+            $copiedPhotoPaths
+        );
     }
 
     $historyRow =
@@ -1880,6 +1887,76 @@ function llama_place_update_approve(
     }
 
 
+    $copyJournalStart =
+        count(
+            $copiedPhotoPaths
+        );
+
+
+    moderation_attach_place_photos_transactional(
+        $db,
+        $placeId,
+        (int) $update['user_id'],
+        $photos,
+        '/uploads/place-updates/'
+        . $updateId
+        . '/',
+        $copiedPhotoPaths
+    );
+
+
+    $reportPhotoPaths =
+        array_slice(
+            $copiedPhotoPaths,
+            $copyJournalStart
+        );
+
+
+    $reportAnswers = [];
+
+
+    foreach ($proposed as $path => $value) {
+        $field =
+            $definitions[$path]['shared'];
+
+        $key =
+            (string) $field['key'];
+
+        $reportAnswers[$key] =
+            isset($newUnknownLookup[$key])
+                ? llama_place_report_unknown_token()
+                : $value;
+    }
+
+
+    llama_scout_report_record_approved_update(
+        $db,
+        $updateId,
+        $update,
+        [
+            'scope' =>
+                'place',
+
+            'source' =>
+                'place',
+
+            'id' =>
+                $placeId,
+
+            'label' =>
+                (string) (
+                    $update['place_name']
+                    ?? ''
+                ),
+        ],
+        $reportAnswers,
+        $reviewedBy,
+        $reviewNotes,
+        $photos,
+        $reportPhotoPaths
+    );
+
+
     foreach (
         $proposed
         as $path => $value
@@ -1900,18 +1977,6 @@ function llama_place_update_approve(
         array_keys(
             $newUnknownLookup
         )
-    );
-
-
-    moderation_attach_place_photos_transactional(
-        $db,
-        $placeId,
-        (int) $update['user_id'],
-        $photos,
-        '/uploads/place-updates/'
-        . $updateId
-        . '/',
-        $copiedPhotoPaths
     );
 
 
