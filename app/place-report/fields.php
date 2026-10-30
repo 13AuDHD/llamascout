@@ -210,6 +210,28 @@ function llama_place_report_fields(): array
 
     foreach ($f as $key => &$field) {
         $approved = $approvedQuestions[$key] ?? null;
+
+        // New V3 questions can opt into an existing report group and
+        // visibility directly in their registration metadata. Existing
+        // PDF-approved questions retain their exact authoritative order.
+        // No second question inventory or display file needs editing.
+        if ($approved === null && isset($field['report_group'])) {
+            $groupKey = (string) $field['report_group'];
+            $visibility = (string) ($field['report_visibility'] ?? '');
+            $groups = llama_place_report_approved_question_groups();
+            if (!isset($groups[$groupKey])
+                || !in_array($visibility, ['public', 'community'], true)) {
+                throw new LogicException(
+                    'Question ' . $key . ' needs an existing report group and valid report_visibility.'
+                );
+            }
+            $approved = [
+                'group' => $groupKey,
+                'group_label' => (string) $groups[$groupKey][0],
+                'position' => PHP_INT_MAX,
+            ];
+        }
+
         $page =
             $approved !== null
                 ? ($approvedGroupPages[$approved['group']] ?? null)
@@ -224,7 +246,7 @@ function llama_place_report_fields(): array
         $field['approved_accent_role'] = $page['accent_role'] ?? null;
         $field['approved_visibility'] =
             $approved !== null
-                ? ($approvedQuestionVisibility[$key] ?? null)
+                ? ($approvedQuestionVisibility[$key] ?? $field['report_visibility'] ?? null)
                 : null;
 
         $compound =
