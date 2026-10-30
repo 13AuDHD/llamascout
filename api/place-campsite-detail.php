@@ -87,6 +87,26 @@ try {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
 
+    // Authorized Site history is read directly from immutable approved reports.
+    // This mode never changes the existing Site detail/report response shape.
+    if (($_GET['mode'] ?? '') === 'history') {
+        $target = llama_report_verified_target(
+            $db, $placeId, 'site', 'campsite_record', $campsiteId
+        );
+        $history = llama_scout_report_target_history(
+            $db,
+            $placeId,
+            (string) $target['scope'],
+            (string) $target['source'],
+            (int) $target['id']
+        );
+        llama_place_campsite_detail_json([
+            'ok' => true,
+            'siteId' => $campsiteId,
+            'reports' => $history,
+        ]);
+    }
+
     // Media and report consumers continue using their existing response shape.
     if (($_GET['mode'] ?? '') !== 'report') {
         $images = llama_place_campsite_images($db, $placeId, $campsiteId);
