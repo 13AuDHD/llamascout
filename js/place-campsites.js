@@ -57,6 +57,18 @@
         historyLink.href = url.pathname + url.search;
     };
 
+    // Other map/explorer controls can switch back to the Place without
+    // calling the campsite browser's clearSelection method.
+    window.addEventListener('llama:explorer-selection', (event) => {
+        const kind = String(event.detail?.kind || 'place');
+        if (kind === 'place' || kind === 'area') {
+            syncHistoryLink();
+        } else {
+            const siteId = event.detail?.id ?? event.detail?.siteId;
+            if (siteId != null) syncHistoryLink(String(siteId));
+        }
+    });
+
 
     if (!slug) {
         return;
