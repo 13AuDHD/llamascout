@@ -397,6 +397,27 @@ The existing `overhead_clearance_feet` key must not be repurposed as Parking Cle
 
 The new Parking Clearance field uses the existing scoped JSON detail model and does not require a database schema migration.
 
+4.10 Camp Host Answer Vocabulary
+
+Camp Host is an approved Place Amenities Yes/No question.
+
+Canonical key:
+
+`amenity_campground_host`
+
+Active answers are:
+
+* Yes
+* No
+* Unknown through the canonical answer-state system
+* Unanswered through the canonical answer-state system
+
+The historical value `seasonal` remains readable for compatibility but is not offered as a new answer.
+
+For new reports, Yes means a campground host is normally available during the Place's normal operating season.
+
+Existing Seasonal records must remain displayable and must not be erased merely because the active answer vocabulary has been simplified.
+
 ⸻
 
 5. Place and Site Ownership
