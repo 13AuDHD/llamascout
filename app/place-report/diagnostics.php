@@ -7,8 +7,18 @@ require_once dirname(__DIR__) . '/place-report.php';
 /** Read-only registry and production-schema validation, with no migrations. */
 function llama_place_report_contract_issues(): array
 {
-    $issues = [];
-    $fields = llama_place_report_fields();
+    $issues =
+        llama_place_report_approved_registry_issues();
+
+    $fields =
+        llama_place_report_fields();
+
+    $approvedGroupPages =
+        llama_place_report_approved_group_page_lookup();
+
+    $approvedVisibility =
+        llama_place_report_approved_question_visibility();
+
     $storages = [];
     foreach (llama_place_report_approved_question_groups() as $group => [$label, $keys]) {
         foreach ($keys as $position => $key) {
@@ -17,6 +27,37 @@ function llama_place_report_contract_issues(): array
             if (($field['approved_question_group'] ?? '') !== $group
                 || ($field['approved_question_position'] ?? null) !== $position) {
                 $issues[] = 'Question ordering mismatch: ' . $key;
+            }
+
+            $page =
+                $approvedGroupPages[$group]
+                ?? [];
+
+            if (
+                (string) ($field['approved_report_page'] ?? '')
+                !== (string) ($page['page'] ?? '')
+            ) {
+                $issues[] =
+                    'Question page ownership mismatch: '
+                    . $key;
+            }
+
+            if (
+                (string) ($field['approved_accent_role'] ?? '')
+                !== (string) ($page['accent_role'] ?? '')
+            ) {
+                $issues[] =
+                    'Question accent-role mismatch: '
+                    . $key;
+            }
+
+            if (
+                (string) ($field['approved_visibility'] ?? '')
+                !== (string) ($approvedVisibility[$key] ?? '')
+            ) {
+                $issues[] =
+                    'Question visibility mismatch: '
+                    . $key;
             }
         }
     }
