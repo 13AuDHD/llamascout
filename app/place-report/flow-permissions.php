@@ -12,8 +12,8 @@ declare(strict_types=1);
  * - that staff currently enforce it;
  * - or that ordinary parking is permitted.
  *
- * Legacy values 0, 1, and 2 retain their meanings. A value of 3 represents
- * Conditional.
+ * Active answer vocabulary is field-specific. Historical values remain
+ * readable through legacy_values metadata. Value 3 means Conditional.
  */
 
 function llama_place_report_add_permission_fields(
