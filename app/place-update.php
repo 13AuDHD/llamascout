@@ -143,6 +143,11 @@ function llama_place_update_build_changes(
     array $current,
     array $currentUnknownFields = []
 ): array {
+    $partialReport =
+        !empty(
+            $input['_report_partial']
+        );
+
     $input = llama_place_report_expand_presence($input);
     $proposed = [];
     $original = [];
@@ -174,6 +179,15 @@ function llama_place_update_build_changes(
         $type =
             (string) $field['type'];
 
+
+        if (
+            $partialReport
+            && empty(
+                $input['_report_touched'][$key]
+            )
+        ) {
+            continue;
+        }
 
         if (!array_key_exists($key, $input) || !empty($field['derived'])
             || !in_array('place', (array) $field['report_scopes'], true)) {
