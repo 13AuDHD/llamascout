@@ -287,6 +287,11 @@ function llama_place_report_current_place_answers(
         );
     }
 
+    $data =
+        llama_place_report_derive_compatibility(
+            $data
+        );
+
     $data['_answer_state'] =
         llama_place_report_published_answer_state(
             $db,
@@ -516,6 +521,116 @@ function llama_place_report_current_answer_model(
 
 
 /**
+ * Convert one canonical envelope back to the legacy flat scoped value shape.
+ *
+ * Unknown remains the existing transport token because legacy display helpers
+ * already understand it. Unanswered answers are omitted by the map helper.
+ */
+function llama_place_report_current_answer_legacy_value(
+    array $answer
+): mixed {
+    $state =
+        (string) (
+            $answer['state']
+            ?? 'unanswered'
+        );
+
+    if ($state === 'unknown') {
+        return llama_place_report_unknown_token();
+    }
+
+    return $answer['value'] ?? null;
+}
+
+/**
+ * Project canonical current-answer envelopes into a legacy flat value map.
+ *
+ * Supported selections:
+ * - effective: every recorded winner
+ * - inherited: winners inherited from Place or Area
+ * - local: winners recorded on the selected target itself
+ * - scoped_override: target-local Scout/Admin scoped overrides only
+ * - baseline: target-local campsite baseline values only
+ *
+ * @return array<string,mixed>
+ */
+function llama_place_report_current_answer_values(
+    array $answers,
+    string $selection = 'effective'
+): array {
+    if (
+        !in_array(
+            $selection,
+            [
+                'effective',
+                'inherited',
+                'local',
+                'scoped_override',
+                'baseline',
+            ],
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid current-answer projection.'
+        );
+    }
+
+    $values = [];
+
+    foreach ($answers as $fieldKey => $answer) {
+        if (
+            !is_array($answer)
+            || empty($answer['recorded'])
+        ) {
+            continue;
+        }
+
+        $origin =
+            (array) (
+                $answer['origin']
+                ?? []
+            );
+
+        $originType =
+            (string) (
+                $origin['origin_type']
+                ?? ''
+            );
+
+        $include =
+            match ($selection) {
+                'inherited' =>
+                    !empty($answer['inherited']),
+
+                'local' =>
+                    empty($answer['inherited']),
+
+                'scoped_override' =>
+                    empty($answer['inherited'])
+                    && $originType === 'scoped_override',
+
+                'baseline' =>
+                    !empty($answer['baseline']),
+
+                default =>
+                    true,
+            };
+
+        if (!$include) {
+            continue;
+        }
+
+        $values[(string) $fieldKey] =
+            llama_place_report_current_answer_legacy_value(
+                $answer
+            );
+    }
+
+    return $values;
+}
+
+/**
  * Side-effect-free contract checks for the current-answer envelope.
  *
  * These checks intentionally use synthetic values so diagnostics can validate
@@ -716,6 +831,94 @@ function llama_place_report_current_answer_contract_issues(): array
     ) {
         $issues[] =
             'Current-answer imported baseline contract mismatch.';
+    }
+
+    $projectionAnswers = [
+        'unknown_field' =>
+            $unknown,
+
+        'inherited_field' =>
+            $inherited,
+
+        'baseline_field' =>
+            $imported,
+
+        'unanswered_field' =>
+            $unanswered,
+    ];
+
+    $effectiveProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'effective'
+        );
+
+    if (
+        !array_key_exists(
+            'unknown_field',
+            $effectiveProjection
+        )
+        || $effectiveProjection['unknown_field']
+            !== llama_place_report_unknown_token()
+        || array_key_exists(
+            'unanswered_field',
+            $effectiveProjection
+        )
+    ) {
+        $issues[] =
+            'Current-answer effective projection contract mismatch.';
+    }
+
+    $inheritedProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'inherited'
+        );
+
+    if (
+        array_keys($inheritedProjection)
+        !== ['inherited_field']
+    ) {
+        $issues[] =
+            'Current-answer inherited projection contract mismatch.';
+    }
+
+    $localProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'local'
+        );
+
+    if (
+        !array_key_exists(
+            'unknown_field',
+            $localProjection
+        )
+        || !array_key_exists(
+            'baseline_field',
+            $localProjection
+        )
+        || array_key_exists(
+            'inherited_field',
+            $localProjection
+        )
+    ) {
+        $issues[] =
+            'Current-answer local projection contract mismatch.';
+    }
+
+    $baselineProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'baseline'
+        );
+
+    if (
+        array_keys($baselineProjection)
+        !== ['baseline_field']
+    ) {
+        $issues[] =
+            'Current-answer baseline projection contract mismatch.';
     }
 
     return $issues;
