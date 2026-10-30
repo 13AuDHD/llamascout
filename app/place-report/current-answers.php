@@ -501,3 +501,205 @@ function llama_place_report_current_answer_model(
                 ),
     ];
 }
+
+
+/**
+ * Side-effect-free contract checks for the current-answer envelope.
+ *
+ * These checks intentionally use synthetic values so diagnostics can validate
+ * state/origin semantics without requiring production records.
+ */
+function llama_place_report_current_answer_contract_issues(): array
+{
+    $issues = [];
+
+    $field =
+        llama_place_report_fields()[
+            'amenity_potable_water'
+        ]
+        ?? null;
+
+    if (!is_array($field)) {
+        return [
+            'Current-answer diagnostic field is unavailable.',
+        ];
+    }
+
+    $placeTarget = [
+        'scope' =>
+            'place',
+
+        'source' =>
+            'place',
+
+        'id' =>
+            1,
+    ];
+
+    $siteTarget = [
+        'scope' =>
+            'site',
+
+        'source' =>
+            'campsite_record',
+
+        'id' =>
+            2,
+    ];
+
+    $unanswered =
+        llama_place_report_current_answer_envelope(
+            $field,
+            false,
+            null,
+            $placeTarget
+        );
+
+    if (
+        $unanswered['state'] !== 'unanswered'
+        || $unanswered['recorded'] !== false
+        || $unanswered['value'] !== null
+        || $unanswered['origin'] !== null
+    ) {
+        $issues[] =
+            'Current-answer Unanswered contract mismatch.';
+    }
+
+    $unknown =
+        llama_place_report_current_answer_envelope(
+            $field,
+            true,
+            llama_place_report_unknown_token(),
+            $placeTarget,
+            [
+                'scope' =>
+                    'place',
+
+                'source' =>
+                    'place',
+
+                'id' =>
+                    1,
+
+                'origin_type' =>
+                    'published_place',
+            ]
+        );
+
+    if (
+        $unknown['state'] !== 'unknown'
+        || $unknown['recorded'] !== true
+        || $unknown['value'] !== null
+        || $unknown['direct'] !== true
+    ) {
+        $issues[] =
+            'Current-answer Unknown contract mismatch.';
+    }
+
+    $explicitNo =
+        llama_place_report_current_answer_envelope(
+            $field,
+            true,
+            false,
+            $placeTarget,
+            [
+                'scope' =>
+                    'place',
+
+                'source' =>
+                    'place',
+
+                'id' =>
+                    1,
+
+                'origin_type' =>
+                    'published_place',
+            ]
+        );
+
+    if (
+        $explicitNo['state'] !== 'answered'
+        || $explicitNo['recorded'] !== true
+        || $explicitNo['value'] !== false
+    ) {
+        $issues[] =
+            'Current-answer explicit No contract mismatch.';
+    }
+
+    $inherited =
+        llama_place_report_current_answer_envelope(
+            $field,
+            true,
+            true,
+            $siteTarget,
+            [
+                'scope' =>
+                    'area',
+
+                'source' =>
+                    'map_feature',
+
+                'id' =>
+                    3,
+
+                'origin_type' =>
+                    'scoped_override',
+            ]
+        );
+
+    if (
+        $inherited['state'] !== 'answered'
+        || $inherited['inherited'] !== true
+        || $inherited['direct'] !== false
+        || $inherited['imported'] !== false
+    ) {
+        $issues[] =
+            'Current-answer inherited Area contract mismatch.';
+    }
+
+    $imported =
+        llama_place_report_current_answer_envelope(
+            $field,
+            true,
+            true,
+            $siteTarget,
+            [
+                'scope' =>
+                    'site',
+
+                'source' =>
+                    'campsite_record',
+
+                'id' =>
+                    2,
+
+                'origin_type' =>
+                    'imported_baseline',
+
+                'provider' =>
+                    'RIDB',
+
+                'external_id' =>
+                    'test',
+            ]
+        );
+
+    if (
+        $imported['state'] !== 'answered'
+        || $imported['inherited'] !== false
+        || $imported['direct'] !== false
+        || $imported['imported'] !== true
+        || (
+            (string) (
+                $imported['origin']['provider']
+                ?? ''
+            )
+            !== 'RIDB'
+        )
+    ) {
+        $issues[] =
+            'Current-answer imported baseline contract mismatch.';
+    }
+
+    return $issues;
+}
