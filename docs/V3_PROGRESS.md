@@ -109,7 +109,7 @@ PHP CLI is not installed in the Codex environment, so the repository's read-only
 
 ## V3-003: Reporting Interface Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
@@ -118,6 +118,8 @@ PHP CLI is not installed in the Codex environment, so the repository's read-only
 **Base commit:** `99d4752a0e2903d53db827a8ee31076ccdbfbaed`
 
 **Pull request:** [#10 — V3-003: Reporting Interface Audit](https://github.com/13AuDHD/llamascout/pull/10)
+
+**Merged into `v3-development`:** `b068871dcbf5f38f89e72ada657841af47b002e9`
 
 ### Result
 
@@ -162,4 +164,56 @@ The audit is based on static repository evidence. It does not certify deployed r
 
 ### Next planned task
 
-**V3-004: Database and Historical Records Audit.** It has not been started.
+**V3-004: Database and Historical Records Audit.** See the task record below.
+
+## V3-004: Database and Historical Records Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+**Base commit:** `b068871dcbf5f38f89e72ada657841af47b002e9`
+
+### Result
+
+Created `docs/audits/04-data-and-history.md`, a static audit of Scout Report storage and historical records. It covers:
+
+- Published Place tables and canonical storage mappings.
+- Area/Site target identity, scoped overrides, inheritance, clear behavior, and imported Site baselines.
+- New Place and update submissions, moderation records, contribution provenance, and public history.
+- Answer-state persistence, including confirmed Admin supplemental-save inconsistency surfaces.
+- Scoped-history reconstruction limits and Site identity normalization risks.
+- Imported provenance, Place/Site/problem evidence relationships, scoped-photo retention, schema diagnostics, and known integrity behavior.
+
+### Confirmed findings
+
+- Published Place state, mutable scoped overrides, imported baselines, submission snapshots, contribution provenance, public history, and comparison versions are separate data systems.
+- Place Unknown state uses `places.place_report_answer_state`; scoped Unknown is an explicit token, while absence of a scoped row means Unanswered and deletion resumes inheritance.
+- Scoped update JSON preserves its target and changed answers, but the current scoped table has no immutable revision link and Place comparison does not reconstruct Area/Site snapshots.
+- Active Admin operating/shared-amenity supplemental saves can null fact columns without updating canonical answer-state metadata.
+- Approved scoped updates do not promote evidence photos before their source update folder is removed.
+- The repository has no checked-in Scout Report DDL. The `scout_report_*` append-only model appears only as a diagnostic contract, with no active repository persistence path found.
+
+### Important risks
+
+- Site identity normalization can leave pending/historical scoped payloads referring to an earlier map-feature identity.
+- Imported baseline refreshes are not historical snapshots, so prior effective Site state cannot be replayed completely.
+- Current historical views use current registry metadata and Place-level deltas rather than immutable, versioned report answers.
+- Most live primary keys, foreign keys, unique constraints, indexes, and cascade rules cannot be certified from repository evidence alone.
+
+### Verification
+
+- Inspected canonical Place persistence, scoped answers, targets, Site identity, imported baselines, submission/update history, moderation, contributions, comparison, public timeline, media, import, and diagnostics paths.
+- Kept repository-confirmed behavior separate from application assumptions, diagnostic requirements, and data-dependent risks.
+- Did not connect to a database, run schema diagnostics, execute schema creation, or modify application/schema files.
+- Verified cited paths and the documentation-only change scope before delivery.
+
+### Limitations
+
+This static audit does not certify live schema, stored data quality, deployment migrations, trigger/index presence, source-database contents, or the frequency of identified risks. No production or external database was accessed.
+
+### Next planned task
+
+**V3-005: Permissions and Moderation Audit.** It has not been started.
