@@ -171,6 +171,80 @@ function llama_place_report_approved_source_fields(): array
 }
 
 /**
+ * Approved compound questions.
+ *
+ * A compound question has one user-facing identity but preserves multiple
+ * existing component keys for storage, validation, and historical data.
+ */
+function llama_place_report_approved_compound_questions(): array
+{
+    return [
+        'season_begins' => [
+            'label' => 'Season Begins',
+            'group' => 'seasonal_access',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'display_format' => 'month_day',
+            'components' => [
+                'approach_closure_month' => [
+                    'role' => 'month',
+                    'label' => 'Month',
+                ],
+                'approach_closure_day' => [
+                    'role' => 'day',
+                    'label' => 'Day',
+                ],
+            ],
+            'status' => 'active',
+        ],
+        'season_ends' => [
+            'label' => 'Season Ends',
+            'group' => 'seasonal_access',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'display_format' => 'month_day',
+            'components' => [
+                'approach_reopening_month' => [
+                    'role' => 'month',
+                    'label' => 'Month',
+                ],
+                'approach_reopening_day' => [
+                    'role' => 'day',
+                    'label' => 'Day',
+                ],
+            ],
+            'status' => 'active',
+        ],
+    ];
+}
+
+/**
+ * Map persisted component keys back to their user-facing compound question.
+ */
+function llama_place_report_approved_compound_component_lookup(): array
+{
+    $lookup = [];
+
+    foreach (llama_place_report_approved_compound_questions() as $compoundKey => $compound) {
+        foreach ((array) ($compound['components'] ?? []) as $componentKey => $component) {
+            $lookup[(string) $componentKey] = [
+                'compound_key' => $compoundKey,
+                'compound_label' => (string) ($compound['label'] ?? $compoundKey),
+                'group' => (string) ($compound['group'] ?? ''),
+                'page' => (string) ($compound['page'] ?? ''),
+                'accent_role' => (string) ($compound['accent_role'] ?? ''),
+                'role' => (string) ($component['role'] ?? ''),
+                'component_label' => (string) ($component['label'] ?? $componentKey),
+            ];
+        }
+    }
+
+    return $lookup;
+}
+
+/**
  * Known differences between the approved Scout Report PDF and the current
  * implementation. These records make the migration work machine-readable
  * without changing current storage or rendering behavior.
@@ -213,7 +287,7 @@ function llama_place_report_approved_reconciliation(): array
                 'approach_closure_month',
                 'approach_closure_day',
             ],
-            'status' => 'split_current_keys',
+            'status' => 'canonical_compound_question',
             'compatibility' => 'preserve_existing_month_day_storage',
         ],
         'seasonal_access_end' => [
@@ -487,6 +561,7 @@ function llama_place_report_approved_registry_summary(): array
         'current_projection_groups' => count($groups),
         'current_projection_questions' => $questions,
         'approved_source_fields' => count(llama_place_report_approved_source_fields()),
+        'approved_compound_questions' => count(llama_place_report_approved_compound_questions()),
         'approved_pages' => count(llama_place_report_approved_pages()),
         'approved_page_groups' => count(llama_place_report_approved_group_page_lookup()),
         'known_reconciliation_items' =>
