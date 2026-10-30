@@ -105,4 +105,61 @@ PHP CLI is not installed in the Codex environment, so the repository's read-only
 
 ### Next planned task
 
-**V3-003: Reporting Interface Audit.** It has not been started.
+**V3-003: Reporting Interface Audit.** See the task record below.
+
+## V3-003: Reporting Interface Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+**Base commit:** `99d4752a0e2903d53db827a8ee31076ccdbfbaed`
+
+**Pull request:** [#10 — V3-003: Reporting Interface Audit](https://github.com/13AuDHD/llamascout/pull/10)
+
+### Result
+
+Created `docs/audits/03-reporting-interfaces.md`, a static end-to-end audit of the Scout Report interfaces. It covers:
+
+- Add Place submission, moderation, Place publication, and first-Site creation.
+- Existing Area/Site target selection, scoped reporting, inheritance, and imported Site baselines.
+- Entire-Place and scoped Update This Place parsing, moderation, concurrency checks, and partial updates.
+- Admin Place, Area, Site, bulk Site, photo, and supplemental save paths.
+- Admin and Master Scout moderation plus problem-report handling.
+- Published report access, approved grouping, unanswered fields, Site selection, imported values, and attribution.
+- Historical snapshot reconstruction, comparison, and public timeline relationships.
+
+### Confirmed findings
+
+- Major editable interfaces consume the finalized canonical registry, but target selection, scoped payloads, read-only display, history, and supplemental Admin persistence remain separate adapters.
+- Omitted keys in moderated Place and scoped updates leave unrelated published answers unchanged. Approval checks the submission-time value and answer state before writing.
+- Active Admin operating and shared-amenity bridges run after the canonical save, write duplicate columns directly, collapse Unknown and Unanswered to SQL null, and do not update canonical published answer state.
+- Public reconciliation rendering uses approved groups and `hide_public`, keeps unanswered questions visible, and currently bypasses canonical applicability filtering.
+- Contributor reporting can update an existing Area or Site but cannot create another Site for an existing Place; later Site creation is an Admin/import/identity workflow.
+- Historical report reconstruction applies Place-level storage paths only; scoped Area/Site updates can appear as versions without reconstructing their scoped answers.
+
+### Important risks
+
+- One Admin Save action can succeed canonically and then fail in a separate supplemental request.
+- Published target selection does not expose Area or map-feature-only Site reports through the reviewed public Scout Report path.
+- Public Site cards flatten inherited, imported, and direct values without per-answer attribution or structured answer state.
+- Historical reports use current definition metadata and a separate curated comparison registry, creating future drift risk.
+- Legacy campsite editing and an unreferenced rules supplemental bridge remain parallel behavior surfaces.
+
+### Verification
+
+- Inspected Add Place, Update This Place, Admin Place, Admin Area/Site, moderation, Master Scout moderation, public rendering, Site API/browser, history, and comparison entry points and services.
+- Traced target identity and answer-state handling through frontend payloads, backend verification, moderation, publication, scoped storage, and read-only display.
+- Confirmed important cited paths exist and labeled runtime/data-dependent conclusions as suspected rather than confirmed.
+- Did not access production data, run migrations, modify application files, or begin implementation work.
+- Verified the documentation-only file scope before delivery.
+
+### Limitations
+
+The audit is based on static repository evidence. It does not certify deployed route reachability, browser execution order, live schema state, historical data quality, or the frequency of identified risks. The complete approved-question reconciliation remains separate work.
+
+### Next planned task
+
+**V3-004: Database and Historical Records Audit.** It has not been started.
