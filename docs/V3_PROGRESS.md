@@ -50,7 +50,7 @@ This task establishes system boundaries and representative files, not detailed c
 
 ## V3-002: Reporting Definition Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
@@ -59,6 +59,8 @@ This task establishes system boundaries and representative files, not detailed c
 **Base commit:** `b35be100e45590ef5167ef1b2eee12dba29dd7a4`
 
 **Pull request:** [#9 — V3-002: Reporting Definition Audit](https://github.com/13AuDHD/llamascout/pull/9)
+
+**Merged into `v3-development`:** `ef7896ef0643259ad51a6207c6f0de77014a115f`
 
 ### Result
 
