@@ -1295,6 +1295,18 @@ $renderCompoundField =
 
 ?>
 
+<?php if ($placeReportMode === 'update-report'): ?>
+    <input type="hidden" name="_report_partial" value="1">
+    <?php foreach (array_keys($placeReportValues) as $initialAnswerKey): ?>
+        <input
+            type="hidden"
+            name="_report_touched[<?= $e((string) $initialAnswerKey) ?>]"
+            value="1"
+            data-report-touched-marker="<?= $e((string) $initialAnswerKey) ?>"
+        >
+    <?php endforeach; ?>
+<?php endif; ?>
+
 <script
     type="application/json"
     data-place-report-schema-config
