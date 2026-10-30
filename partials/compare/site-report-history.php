@@ -5,13 +5,37 @@ declare(strict_types=1);
 $escapeSiteHistory = static fn (mixed $value): string =>
     htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $siteHistoryFields = llama_place_report_fields();
-$siteHistoryQuestionKeys = [];
+$siteHistoryReportedKeys = [];
 foreach ($siteHistoryReports as $report) {
     foreach (array_keys((array) ($report['answers'] ?? [])) as $key) {
         if (isset($siteHistoryFields[$key])) {
-            $siteHistoryQuestionKeys[$key] = true;
+            $siteHistoryReportedKeys[$key] = true;
         }
     }
+}
+
+// The shared approved registry owns section and question order.
+// Exclude questions with no historical observation in these reports.
+$siteHistoryGroups = [];
+foreach (llama_place_report_approved_groups_in_page_order() as $group) {
+    [$groupLabel, $questionKeys] = $group;
+    $included = [];
+    foreach ($questionKeys as $key) {
+        if (isset($siteHistoryReportedKeys[$key])) {
+            $included[] = $key;
+            unset($siteHistoryReportedKeys[$key]);
+        }
+    }
+    if ($included) {
+        $siteHistoryGroups[] = ['label' => $groupLabel, 'keys' => $included];
+    }
+}
+// Preserve any historical keys absent from today's approved registry.
+if ($siteHistoryReportedKeys) {
+    $siteHistoryGroups[] = [
+        'label' => 'Earlier Report Questions',
+        'keys' => array_keys($siteHistoryReportedKeys),
+    ];
 }
 ?>
 <section class="compare-empty" aria-labelledby="site-history-heading">
@@ -35,7 +59,13 @@ foreach ($siteHistoryReports as $report) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach (array_keys($siteHistoryQuestionKeys) as $questionKey): ?>
+                    <?php foreach ($siteHistoryGroups as $group): ?>
+                        <tr class="compare-site-history-group">
+                            <th scope="rowgroup" colspan="<?= count($siteHistoryReports) + 1 ?>">
+                                <?= $escapeSiteHistory($group['label']) ?>
+                            </th>
+                        </tr>
+                        <?php foreach ($group['keys'] as $questionKey): ?>
                         <tr>
                             <th scope="row"><?= $escapeSiteHistory(
                                 $siteHistoryFields[$questionKey]['label'] ?? $questionKey
@@ -80,6 +110,7 @@ foreach ($siteHistoryReports as $report) {
                                 </td>
                             <?php endforeach; ?>
                         </tr>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
