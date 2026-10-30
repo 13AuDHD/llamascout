@@ -493,6 +493,83 @@ No exact-foot measurement is required.
 
 Existing storage, historical answers, and display labels remain unchanged.
 
+4.13 Rule and Permission Answer Vocabularies
+
+Rules and activity permissions do not share one universal answer vocabulary.
+
+The approved V3 answer sets are field-specific.
+
+**Yes / No**
+
+The following questions use:
+
+* Yes
+* No
+* Unknown
+* Unanswered
+
+Fields:
+
+* Overnight stay permitted
+* Dispersed camping permitted
+
+Canonical keys:
+
+* `overnight_camping_allowed`
+* `dispersed_camping_allowed`
+
+Historical values `2` (Permit required) and `3` (Conditional) remain readable when they already exist, but they are not offered as new answers for these two questions.
+
+**Yes / Permit required / No**
+
+The following questions use:
+
+* Yes
+* Permit required
+* No
+* Unknown
+* Unanswered
+
+Fields:
+
+* Campfires
+* Collecting firewood
+* Charcoal grills
+* Propane fire pits
+* Drone use
+* Target shooting
+
+Canonical keys:
+
+* `campfire_allowed`
+* `collecting_firewood`
+* `place_charcoal_grills_allowed`
+* `place_propane_fire_pits_allowed`
+* `drone_use_legal`
+* `target_shooting_allowed`
+
+Historical value `3` (Conditional) remains readable when already stored but is not offered as a new answer.
+
+Permit and conditions detail fields remain applicable to both active Permit-required values and historical Conditional records where appropriate.
+
+**Alcohol**
+
+Alcohol Allowed uses:
+
+* Yes
+* No Glass
+* No
+* Unknown
+* Unanswered
+
+Canonical key:
+
+`place_alcohol_permitted`
+
+Historical value `3` (Conditional) remains readable but is not offered as a new answer.
+
+The active answer vocabulary must describe the rule itself. Additional conditions, permit links, and exceptions belong in the dedicated rule-detail fields rather than in a generic Conditional answer.
+
 ⸻
 
 5. Place and Site Ownership
