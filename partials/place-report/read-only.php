@@ -19,11 +19,15 @@ $placeReportSections =
     llama_place_report_sections();
 
 /*
- * Public Scout Report groups follow the approved questionnaire.
+ * Published Scout Report groups follow the canonical two-page definition.
  * The shared field registry remains authoritative for labels, answer values,
  * storage and site switching. Unlisted legacy fields are not displayed.
  */
-$publicReportGroups = llama_place_report_approved_question_groups();
+$publicReportGroups =
+    llama_place_report_approved_groups_in_page_order();
+
+$approvedGroupPages =
+    llama_place_report_approved_group_page_lookup();
 /* Official contact data is sourced from the existing RIDB facility resolver. */
 $publicFacility = [];
 if ($placeReportReadMode === 'scout-report' && !empty($place['id'])) {
@@ -48,10 +52,6 @@ $renderSafeDescription = static function (string $raw): string {
 };
 
 /* Place/area groups and site/space groups use the same visual identity as map features. */
-$publicPlaceGroups = [
-    'basic', 'location', 'amenities', 'operating', 'road_conditions',
-    'vehicle_access', 'seasonal_access', 'gate_access', 'nearest_services',
-];
 $publicPlaceType = strtolower(trim((string) ($place['type'] ?? $placeReportData['type'] ?? '')));
 $publicPlaceIsArea = preg_match('/campground|camping area|recreation area|dispersed area|area/', $publicPlaceType) === 1;
 $publicSiteType = strtolower(trim((string) ($placeReportData['site_type'] ?? $placeReportData['space_type'] ?? '')));
@@ -900,12 +900,33 @@ foreach (
     ?>
 
     <?php
-    $reportScopeClass = in_array((string) $sectionKey, $publicPlaceGroups, true)
-        ? ($publicPlaceIsArea ? 'scout-report-scope-place' : 'scout-report-scope-other-place')
-        : ($publicSiteIsParking ? 'scout-report-scope-space' : 'scout-report-scope-site');
+    $reportPageKey =
+        (string) (
+            $approvedGroupPages[(string) $sectionKey]['page']
+            ?? ''
+        );
+
+    $reportScopeClass =
+        $reportPageKey === 'place'
+            ? (
+                $publicPlaceIsArea
+                    ? 'scout-report-scope-place'
+                    : 'scout-report-scope-other-place'
+            )
+            : (
+                $publicSiteIsParking
+                    ? 'scout-report-scope-space'
+                    : 'scout-report-scope-site'
+            );
     ?>
     <section
         class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $reportPageKey !== ''
+        ): ?>
+            data-report-page="<?= $e($reportPageKey) ?>"
+        <?php endif; ?>
         <?php if (
             $placeReportReadMode === 'scout-report'
             && $switchableApplicableCount > 0

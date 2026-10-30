@@ -696,6 +696,52 @@ This migration changes how the locked preview determines which questions are pro
 
 It does not expose Community answers to public users and does not change Complete Access eligibility.
 
+4.16 Canonical Report Page Ownership
+
+The published Scout Report must derive Place/Site group ownership and group order from the canonical two-page definition.
+
+Authoritative source:
+
+`llama_place_report_approved_pages()`
+
+The Place page owns:
+
+* Basic
+* Location
+* Amenities
+* Operating Hours
+* Road Conditions
+* Vehicle Access
+* Seasonal Access
+* Gate Access
+* Nearest Services
+
+The Site page owns:
+
+* Site Info
+* Fees and Reservations
+* Setting and Environment
+* Parking and Maneuvering
+* Accessibility
+* Site Amenities
+* Connectivity
+* Daytime
+* Nighttime
+* Specific Sensory
+* Safety and Hazards
+* Rules and Restrictions
+* Experience and Recommendations
+* Scout Notes
+* Place History
+
+Published rendering must not maintain a second hardcoded list of Place groups.
+
+Group labels and question order remain owned by the approved question registry.
+
+Page ownership and page-local group order remain owned by the approved page registry.
+
+The current renderer may still present both surfaces inside the existing Place experience until the later interface migration separates them visually, but its semantic ownership must already come from the canonical page definition.
+
 ⸻
 
 5. Place and Site Ownership

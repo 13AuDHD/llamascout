@@ -185,6 +185,34 @@ function llama_place_report_approved_pages(): array
 }
 
 /**
+ * Approved question groups ordered by their canonical report pages.
+ *
+ * Page ownership and page-local group order come only from approved_pages().
+ * The group registry still owns each group's label and question order.
+ */
+function llama_place_report_approved_groups_in_page_order(): array
+{
+    $groups =
+        llama_place_report_approved_question_groups();
+
+    $ordered = [];
+
+    foreach (llama_place_report_approved_pages() as $page) {
+        foreach ((array) ($page['groups'] ?? []) as $groupKey) {
+            $groupKey =
+                (string) $groupKey;
+
+            if (isset($groups[$groupKey])) {
+                $ordered[$groupKey] =
+                    $groups[$groupKey];
+            }
+        }
+    }
+
+    return $ordered;
+}
+
+/**
  * Flatten approved page metadata to one lookup per approved group.
  */
 function llama_place_report_approved_group_page_lookup(): array
