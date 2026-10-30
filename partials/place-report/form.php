@@ -334,7 +334,8 @@ $valueFor =
         string $key,
         array $field
     ) use (
-        $placeReportValues
+        $placeReportValues,
+        $placeReportMode
     ): mixed {
         if (
             array_key_exists(
@@ -352,6 +353,10 @@ $valueFor =
             return is_scalar($value)
                 ? (string) $value
                 : '';
+        }
+
+        if ($placeReportMode === 'update-report') {
+            return '';
         }
 
         return isset(
