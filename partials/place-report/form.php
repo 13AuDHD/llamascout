@@ -16,6 +16,11 @@ $placeReportValues =
         ? $placeReportValues
         : [];
 
+$placeReportReferenceValues =
+    is_array($placeReportReferenceValues ?? null)
+        ? $placeReportReferenceValues
+        : [];
+
 $placeReportExistingPhotos =
     is_array($placeReportExistingPhotos ?? null)
         ? $placeReportExistingPhotos
@@ -271,6 +276,8 @@ foreach ($placeReportFields as $fieldKey => $field) {
 $placeReportBrowserConfig = [
     'unknown_token' => llama_place_report_unknown_token(),
     'unanswered_token' => llama_place_report_unanswered_token(),
+    'mode' => $placeReportMode,
+    'initial_answer_keys' => array_values(array_keys($placeReportValues)),
     'fields' => $placeReportBrowserFields,
 ];
 
@@ -288,6 +295,39 @@ $e =
  * FIELD VALUE HELPERS
  * =========================================================
  */
+
+$referenceFor =
+    static function (
+        string $key
+    ) use (
+        $placeReportReferenceValues
+    ): string {
+        if (
+            !array_key_exists(
+                $key,
+                $placeReportReferenceValues
+            )
+        ) {
+            return '';
+        }
+
+        $value =
+            $placeReportReferenceValues[$key];
+
+        if (is_array($value)) {
+            return implode(
+                ', ',
+                array_map(
+                    'strval',
+                    $value
+                )
+            );
+        }
+
+        return trim(
+            (string) $value
+        );
+    };
 
 $valueFor =
     static function (
