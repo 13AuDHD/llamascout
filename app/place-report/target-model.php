@@ -103,8 +103,8 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 $baselineImported,
 
             'provider' =>
-                !$isOverride && $provider !== ''
-                    ? $provider
+                !$isOverride
+                    ? (trim((string) ($featureSource['source_provider'] ?? '')) ?: ($provider ?: null))
                     : null,
 
             'external_id' =>
