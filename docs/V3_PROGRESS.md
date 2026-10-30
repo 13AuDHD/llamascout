@@ -312,11 +312,13 @@ Created `docs/audits/06-external-data.md`, a static audit of RIDB, NPS, USFS, BL
 
 ## V3-007: Approved Scout Report Reconciliation
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `fa6a3b8eba5c514cf34567e32a2da9117963fe4c`
 
 ### Result
 
@@ -351,3 +353,56 @@ The recommended first Milestone 1 implementation is a bounded canonical-definiti
 ### Next
 
 **Milestone 0 Completion Gate.** Review audit findings and approve a small initial Milestone 1 implementation task before changing application behavior.
+
+
+## M1-001: Extract Approved Question Registry
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Begin Milestone 1 without changing persistence or rendered questionnaire behavior.
+
+### Changes
+
+- Added `app/place-report/approved-questions.php` as the dedicated owner of the current approved Scout Report group/order inventory.
+- Removed the duplicate inventory definition from `app/place-report/flow-layout.php`.
+- Updated `flow-layout.php` to consume the dedicated approved-question module.
+- Added machine-readable reconciliation metadata for the known differences identified in V3-007.
+- Added static registry diagnostics and a summary function.
+
+### Behavior preservation
+
+The active approved projection remains:
+
+- 24 groups
+- 263 current approved question slots
+
+No question keys, ordering, persistence paths, scope ownership, applicability, or rendered field behavior were intentionally changed.
+
+### Known reconciliation metadata now represented
+
+- official Basic Information outside the current registry
+- Seasonal Access dates split across month/day keys
+- Site Overhead Clearance and Parking Clearance sharing one current key
+- `flat_walking_surface` as an extra current approved slot
+- questionnaire-only moderator notes
+- toilet answer-option mismatch
+- Camp Host answer-option mismatch
+- parking-to-Site distance type mismatch
+- legacy permission-answer vocabulary differences
+
+### Verification
+
+- Confirmed `flow-layout.php` requires the new registry module.
+- Confirmed `flow-layout.php` no longer defines the approved-question inventory itself.
+- Confirmed the extracted inventory still contains 24 groups and 263 question slots.
+- Confirmed no database schema, persistence mapping, or production data changed.
+
+### Next
+
+After review and merge, the next bounded Milestone 1 task should begin correcting the approved-definition mismatches one category at a time, starting with identity-only issues that do not require destructive storage changes.
