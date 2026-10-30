@@ -258,21 +258,18 @@ function llama_scout_report_photo_snapshots(
     return $snapshots;
 }
 
-/**
- * Insert one approved Update This Place report and its evidence atomically.
- * The existing current Place/Area/Site tables remain compatibility projections
- * written later in the same moderation transaction.
- */
-function llama_scout_report_record_approved_update(
+/** Insert one approved immutable report inside its moderation transaction. */
+function llama_scout_report_record_approved(
     PDO $db,
-    int $updateId,
-    array $update,
+    array $identity,
     array $target,
     array $answers,
     int $reviewedBy,
     string $reviewNotes,
     array $submittedPhotos,
-    array $permanentPhotoPaths
+    array $permanentPhotoPaths,
+    array $eventMetadata = [],
+    bool $allowEmpty = false
 ): int {
     if (!$db->inTransaction()) {
         throw new RuntimeException(
@@ -281,10 +278,10 @@ function llama_scout_report_record_approved_update(
     }
 
     $placeId =
-        (int) ($update['place_id'] ?? 0);
+        (int) ($identity['place_id'] ?? 0);
 
     $contributorId =
-        (int) ($update['user_id'] ?? 0);
+        (int) ($identity['contributor_id'] ?? 0);
 
     $scope =
         trim((string) ($target['scope'] ?? ''));
@@ -301,19 +298,33 @@ function llama_scout_report_record_approved_update(
     $roleAtSubmission =
         trim(
             (string) (
-                $update['role_at_submission']
+                $identity['role_at_submission']
                 ?? 'user'
             )
         ) ?: 'user';
 
+    $logicalReportKey =
+        trim((string) ($identity['logical_report_key'] ?? ''));
+
+    $submissionBundleKey =
+        trim((string) ($identity['submission_bundle_key'] ?? ''));
+
+    $clientSubmissionKey =
+        trim((string) ($identity['client_submission_key'] ?? ''));
+
+    $sourceChannel =
+        trim((string) ($identity['source_channel'] ?? 'web')) ?: 'web';
+
     if (
-        $updateId < 1
-        || $placeId < 1
+        $placeId < 1
         || $contributorId < 1
         || !in_array($scope, ['place', 'area', 'site'], true)
         || $source === ''
         || $targetId < 1
         || $reviewedBy < 1
+        || $logicalReportKey === ''
+        || $submissionBundleKey === ''
+        || $clientSubmissionKey === ''
     ) {
         throw new InvalidArgumentException(
             'Invalid approved Scout Report identity.'
@@ -321,7 +332,7 @@ function llama_scout_report_record_approved_update(
     }
 
     $submittedAt =
-        trim((string) ($update['submitted_at'] ?? ''));
+        trim((string) ($identity['submitted_at'] ?? ''));
 
     if ($submittedAt === '') {
         throw new RuntimeException(
@@ -330,7 +341,7 @@ function llama_scout_report_record_approved_update(
     }
 
     $visitDate =
-        trim((string) ($update['visited_at'] ?? ''));
+        trim((string) ($identity['visit_date'] ?? ''));
 
     $visitDate =
         $visitDate !== ''
@@ -352,6 +363,7 @@ function llama_scout_report_record_approved_update(
     if (
         !$normalizedAnswers
         && !$photoSnapshots
+        && !$allowEmpty
     ) {
         throw new InvalidArgumentException(
             'An immutable Scout Report requires an answer or photo.'
@@ -362,17 +374,6 @@ function llama_scout_report_record_approved_update(
         llama_scout_report_schema_version(
             $db
         );
-
-    $logicalReportKey =
-        'place-update:'
-        . $updateId;
-
-    $submissionBundleKey =
-        $logicalReportKey;
-
-    $clientSubmissionKey =
-        'web:'
-        . $logicalReportKey;
 
     $content = [
         'answers' =>
@@ -410,8 +411,8 @@ function llama_scout_report_record_approved_update(
                 $source,
         ],
 
-        'update_id' =>
-            $updateId,
+        'event_metadata' =>
+            $eventMetadata,
 
         'visit_date' =>
             $visitDate,
@@ -498,7 +499,7 @@ function llama_scout_report_record_approved_update(
         $visitDate,
         $submittedAt,
         $schemaVersion,
-        'web',
+        $sourceChannel,
         $clientSubmissionKey,
         $contentHash,
     ]);
@@ -573,11 +574,138 @@ function llama_scout_report_record_approved_update(
         $reviewNotes !== ''
             ? $reviewNotes
             : null,
-        llama_scout_report_json([
-            'place_update_submission_id' =>
-                $updateId,
-        ]),
+        llama_scout_report_json($eventMetadata),
     ]);
 
     return $reportId;
+}
+
+/** Insert one approved Update This Place report and its evidence atomically. */
+function llama_scout_report_record_approved_update(
+    PDO $db,
+    int $updateId,
+    array $update,
+    array $target,
+    array $answers,
+    int $reviewedBy,
+    string $reviewNotes,
+    array $submittedPhotos,
+    array $permanentPhotoPaths
+): int {
+    if ($updateId < 1) {
+        throw new InvalidArgumentException('Invalid approved Place update identity.');
+    }
+
+    $logicalReportKey = 'place-update:' . $updateId;
+
+    return llama_scout_report_record_approved(
+        $db,
+        [
+            'place_id' => (int) ($update['place_id'] ?? 0),
+            'contributor_id' => (int) ($update['user_id'] ?? 0),
+            'role_at_submission' => (string) ($update['role_at_submission'] ?? 'user'),
+            'visit_date' => (string) ($update['visited_at'] ?? ''),
+            'submitted_at' => (string) ($update['submitted_at'] ?? ''),
+            'logical_report_key' => $logicalReportKey,
+            'submission_bundle_key' => $logicalReportKey,
+            'client_submission_key' => 'web:' . $logicalReportKey,
+            'source_channel' => 'web',
+        ],
+        $target,
+        $answers,
+        $reviewedBy,
+        $reviewNotes,
+        $submittedPhotos,
+        $permanentPhotoPaths,
+        [
+            'place_update_submission_id' => $updateId,
+        ]
+    );
+}
+
+/**
+ * Record the Place and first Site reports created by one approved Add Place
+ * submission. Both rows share a bundle key but retain separate target identity.
+ */
+function llama_scout_report_record_approved_new_place_bundle(
+    PDO $db,
+    int $submissionId,
+    array $submission,
+    int $placeId,
+    array $site,
+    array $answers,
+    int $reviewedBy,
+    string $reviewNotes,
+    array $submittedPhotos,
+    array $permanentPhotoPaths
+): array {
+    $contributorId = (int) ($submission['user_id'] ?? 0);
+    $siteId = (int) ($site['id'] ?? 0);
+    $submittedAt = trim((string) ($submission['submitted_at'] ?? ''));
+    $data = is_array($submission['data'] ?? null) ? $submission['data'] : [];
+    $bundleKey = 'place-submission:' . $submissionId;
+
+    if ($submissionId < 1 || $placeId < 1 || $siteId < 1 || $contributorId < 1) {
+        throw new InvalidArgumentException('Invalid approved Add Place report bundle identity.');
+    }
+
+    $common = [
+        'place_id' => $placeId,
+        'contributor_id' => $contributorId,
+        'role_at_submission' => (string) ($submission['role_at_submission'] ?? 'user'),
+        'visit_date' => (string) ($data['visited_at'] ?? ''),
+        'submitted_at' => $submittedAt,
+        'submission_bundle_key' => $bundleKey,
+        'source_channel' => 'web',
+    ];
+
+    $eventMetadata = [
+        'place_submission_id' => $submissionId,
+    ];
+
+    $placeReportId = llama_scout_report_record_approved(
+        $db,
+        $common + [
+            'logical_report_key' => $bundleKey . ':place',
+            'client_submission_key' => 'web:' . $bundleKey . ':place',
+        ],
+        [
+            'scope' => 'place',
+            'source' => 'place',
+            'id' => $placeId,
+            'label' => (string) ($data['name'] ?? $submission['place_name'] ?? ''),
+        ],
+        is_array($answers['place_answers'] ?? null) ? $answers['place_answers'] : [],
+        $reviewedBy,
+        $reviewNotes,
+        $submittedPhotos,
+        $permanentPhotoPaths,
+        $eventMetadata
+    );
+
+    $siteReportId = llama_scout_report_record_approved(
+        $db,
+        $common + [
+            'logical_report_key' => $bundleKey . ':site',
+            'client_submission_key' => 'web:' . $bundleKey . ':site',
+        ],
+        [
+            'scope' => 'site',
+            'source' => (string) ($site['source'] ?? 'campsite_record'),
+            'id' => $siteId,
+            'label' => (string) ($site['label'] ?? 'Reported Site'),
+        ],
+        is_array($answers['site_answers'] ?? null) ? $answers['site_answers'] : [],
+        $reviewedBy,
+        $reviewNotes,
+        [],
+        [],
+        $eventMetadata,
+        true
+    );
+
+    return [
+        'place_report_id' => $placeReportId,
+        'site_report_id' => $siteReportId,
+    ];
 }

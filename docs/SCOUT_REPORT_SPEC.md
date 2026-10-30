@@ -1062,6 +1062,44 @@ Place approval, legacy history backfill, current-answer reads from the immutable
 ledger, corrections to already approved reports, and public history presentation
 remain separate tasks.
 
+4.22 Approved Add Place Report Bundle
+
+An approved community Add Place submission creates two immutable Scout Reports
+in one submission bundle:
+
+* one Place-targeted report containing the intentionally submitted Place answers
+  and ordered photo evidence
+* one Site-targeted report containing the intentionally submitted first-Site
+  answers
+
+Both reports retain the same contributor, role at submission, visit date,
+submission time, canonical schema version, approval actor, approval notes, and
+Add Place submission identity. Each report has its own stable logical report key,
+client submission key, content hash, and explicit target identity.
+
+The required first Site identity is created before the immutable bundle so the
+Site report can point to a canonical `place_campsites` record. The immutable
+Place and Site reports must then be inserted before their answers are published
+to the current Place and scoped-answer projections.
+
+An Add Place submission still creates its first Site when every optional
+Site-specific question is Unanswered. In that case the Site report has no answer
+rows, but preserves the creation and moderation identity of the first Site in
+the shared submission bundle.
+
+Submitted photos are stored once in permanent Place storage and attached to the
+Place report in their submitted order. The Site report does not duplicate the
+same evidence rows or physical files.
+
+Place creation, first-Site creation, immutable report insertion, current-answer
+publication, contribution credit, points, moderation state, and Admin audit all
+remain within the existing approval transaction. Any failure rolls back the
+database work and invokes the existing copied-photo cleanup journal.
+
+M2-007 does not backfill legacy Add Place submissions, infer missing historical
+first Sites, switch current reads to the immutable ledger, or change Add Place
+minimum requirements, points, permissions, or moderation authorization.
+
 ⸻
 
 5. Place and Site Ownership
@@ -1145,6 +1183,10 @@ Resource-specific questions must not be added to ordinary campground forms unles
 6.1 Add Place
 
 Add Place creates a proposed Place and its first Site when the location is community-created.
+
+Approval creates the first Site even when all optional Site questions are
+Unanswered. The Place and first Site are represented by separate immutable
+reports joined by one submission bundle.
 
 The form presents applicable Place and Site questions from the canonical registry.
 
