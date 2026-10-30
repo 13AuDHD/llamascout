@@ -22,7 +22,7 @@ foreach ($siteHistoryReports as $report) {
         <p>No approved V3 Scout Reports have been recorded for this Site yet.</p>
     <?php else: ?>
         <div class="compare-site-history-scroll">
-            <table class="compare-table">
+            <table class="compare-site-history-table">
                 <thead>
                     <tr>
                         <th scope="col">Question</th>
