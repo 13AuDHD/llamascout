@@ -1277,6 +1277,15 @@ $name = trim(
     $publishedPlaceAnswers = llama_place_report_current_place_answers($db, $placeId);
     foreach ($submissionAnswers['place_answers'] as $key => $submittedValue) {
         $field = llama_place_report_fields()[$key] ?? null;
+        // The publisher only mirrors Place fields with a registered
+        // storage mapping. Other approved observations live in the
+        // immutable ledger and have no current-table row to read back.
+        if (!is_array($field)) {
+            throw new RuntimeException('An approved Place question is not registered.');
+        }
+        if (!llama_place_report_storage_definition($field)) {
+            continue;
+        }
         $publishedAnswer = $publishedPlaceAnswers[$key] ?? null;
         if (!is_array($field) || !is_array($publishedAnswer) || empty($publishedAnswer['recorded'])) {
             throw new RuntimeException(
