@@ -49,10 +49,22 @@ foreach ($siteHistoryReports as $report) {
                                         Unknown
                                     <?php else: ?>
                                         <?php
+                                        // Reuse the same formatting rules as published Scout cards.
+                                        $field = $siteHistoryFields[$questionKey];
                                         $value = $answer['value'] ?? null;
-                                        $text = is_array($value)
-                                            ? implode(', ', array_map('strval', array_filter($value, 'is_scalar')))
-                                            : (is_scalar($value) ? (string) $value : '');
+                                        $displayData = [];
+                                        llama_place_report_set_path(
+                                            $displayData,
+                                            (string) $field['storage'],
+                                            $value
+                                        );
+                                        $text = llama_place_report_display_value(
+                                            $displayData,
+                                            $questionKey
+                                        );
+                                        if ($text === null || $text === '') {
+                                            $text = 'No value recorded';
+                                        }
                                         ?>
                                         <?= $escapeSiteHistory($text) ?>
                                     <?php endif; ?>
