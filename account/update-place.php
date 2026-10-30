@@ -202,22 +202,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, private');
     try {
-        require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
-        require_once dirname(__DIR__) . '/app/place-report/scoped-answers.php';
         $scope = (string) ($_GET['scope'] ?? '');
         $source = (string) ($_GET['source'] ?? '');
         $targetId = (int) ($_GET['target_id'] ?? 0);
-        $target = llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+
         if ($scope === 'place') {
             throw new InvalidArgumentException('Select an Area or Site.');
         }
-        require_once dirname(__DIR__) . '/app/place-report/target-model.php';
-        $resolved = llama_place_report_target_model($db, $placeId, $target);
-        $direct = $resolved['direct'];
+
+        $currentModel =
+            llama_place_report_current_answer_model(
+                $db,
+                $placeId,
+                [
+                    'scope' =>
+                        $scope,
+
+                    'source' =>
+                        $source,
+
+                    'id' =>
+                        $targetId,
+                ]
+            );
+
+        $currentAnswers =
+            (array) (
+                $currentModel['answers']
+                ?? []
+            );
+
+        /*
+         * This response is context only. It must never become the Scout's
+         * draft answers unless the Scout explicitly answers a question.
+         *
+         * Keep the historical "direct" response key for JavaScript
+         * compatibility. It means current target-local values, including a
+         * canonical campsite baseline where one exists.
+         */
+        $direct =
+            llama_place_report_current_answer_values(
+                $currentAnswers,
+                'local'
+            );
+
         $inherited = [];
-        foreach ($resolved['inherited'] as $key => $value) {
-            $inherited[$key] = ['value' => $value, 'from' =>
-                ($resolved['provenance'][$key]['scope'] ?? 'place') === 'area' ? 'Area' : 'Place'];
+
+        foreach ($currentAnswers as $key => $answer) {
+            if (
+                !is_array($answer)
+                || empty($answer['recorded'])
+                || empty($answer['inherited'])
+            ) {
+                continue;
+            }
+
+            $origin =
+                (array) (
+                    $answer['origin']
+                    ?? []
+                );
+
+            $inherited[(string) $key] = [
+                'value' =>
+                    llama_place_report_current_answer_legacy_value(
+                        $answer
+                    ),
+
+                'from' =>
+                    (string) ($origin['scope'] ?? '') === 'area'
+                        ? 'Area'
+                        : 'Place',
+            ];
         }
 
         echo json_encode(
