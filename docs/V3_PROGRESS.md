@@ -1738,6 +1738,20 @@ Warnings continue to use the same effective current answers.
 
 The source of those answers is now the canonical envelope instead of endpoint-local precedence code.
 
+### Published Place compatibility
+
+During self-review, the canonical Place reader was corrected to run:
+
+`llama_place_report_derive_compatibility()`
+
+before converting published Place data into canonical scoped values.
+
+This preserves the same compatibility-mirror behavior previously used by:
+
+`llama_place_report_data_from_published_place()`
+
+and prevents the first consumer migration from silently dropping legacy mirror-derived answers.
+
 ### Diagnostics
 
 Extended the current-answer synthetic contract checks to verify:
