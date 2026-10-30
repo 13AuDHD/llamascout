@@ -1001,6 +1001,32 @@ The reporting target remains locked to the original submission where existing re
 
 Update This Place may retain its product name, but the interface must describe the action as reporting or submitting observations rather than editing the live Place.
 
+4.20 Unified Report Answer Validation
+
+Entire Place, Area, and Site report submissions use one canonical server-side
+answer contract before any proposed answer reaches moderation or persistence.
+
+For a partial report:
+
+* Answered is included in the submitted report.
+* Unknown is included as an explicit recorded answer only when the canonical question permits Unknown.
+* Unanswered is omitted.
+* No / false, numeric zero, and an intentional empty list remain Answered.
+
+Validation is based on the canonical question definition and the submitted
+observation. It is not based on whether the observation differs from the
+current answer.
+
+A Scout may submit an Answered or Unknown observation that confirms the current
+answer. That observation must not be rejected or silently converted to
+Unanswered merely because the current summary already displays the same value.
+
+Duplicate question entries and values that violate the canonical type, option,
+range, date, URL, length, or Unknown rules remain invalid.
+
+Current-answer comparison remains reference and moderation-conflict data. It is
+not answer-state validation.
+
 ⸻
 
 5. Place and Site Ownership

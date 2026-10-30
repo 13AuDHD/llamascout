@@ -1904,3 +1904,117 @@ Scoped status text now says Reporting rather than Updating.
 ### Next
 
 Audit and unify answer validation across Place and scoped report submission so the same state rules are enforced before moving deeper into persistence/history work.
+
+
+## M2-005: Unified Report Answer Validation
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Enforce the same Answered / Unknown / Unanswered contract for Entire Place and
+scoped Area/Site report submissions before moving into immutable report
+persistence and history.
+
+### Audit findings
+
+Both submission paths already used the canonical field parser for type-specific
+validation, but they applied different report-state behavior around it.
+
+Entire Place reports omitted Unanswered observations. Area/Site reports rejected
+an Unanswered entry as an error.
+
+Entire Place reports silently removed an Answered observation when it matched
+the current Place answer. Area/Site reports rejected the same observation as
+already recorded.
+
+Those differences treated current-summary comparison as answer validation even
+though Update This Place is a new report.
+
+### Shared submission-answer contract
+
+Added:
+
+`llama_place_report_submission_answer()`
+
+The envelope exposes:
+
+- `state`
+- canonical `value`
+- whether the answer is `recorded`
+- the existing scoped transport representation
+
+The contract preserves:
+
+- No / false as Answered
+- numeric zero as Answered
+- Unknown as recorded Unknown when permitted
+- an intentional empty list as Answered
+- blank or Unanswered as not recorded
+
+All existing type, option, range, date, URL, length, and Unknown-permission
+validation remains owned by the canonical parser.
+
+### Entire Place reports
+
+Partial Place reports now use the shared submission-answer envelope.
+
+Unanswered remains omitted.
+
+An intentionally submitted Answered or Unknown observation remains in the
+moderated report payload even when it confirms the current answer.
+
+The existing non-report editing path retains its previous change-only behavior.
+
+### Area and Site reports
+
+Scoped submissions now use the same envelope.
+
+Unanswered entries are omitted instead of becoming a target-specific validation
+error. A payload containing no recorded answers is still rejected.
+
+Valid Answered or Unknown observations are no longer rejected merely because
+the current scoped answer has the same value.
+
+The scoped browser adapter now queues an intentionally supplied answer based on
+its answer state rather than comparing it with the current reference value.
+
+Duplicate submitted question keys remain invalid, including when an earlier
+duplicate entry was Unanswered.
+
+### Diagnostics
+
+The standard Place Report contract diagnostic now checks the shared submission
+contract for:
+
+- Unanswered
+- explicit No
+- numeric zero
+- Unknown
+- intentional empty list
+
+### Scope
+
+No database schema, SQL migration, current-answer precedence, permissions,
+Admin clearing behavior, moderation authorization, or frontend layout changed.
+
+This task does not implement immutable Scout Report persistence or migrate
+historical records.
+
+### Verification
+
+- `git diff --check` passes.
+- `node --check js/place-update-report-target.js` passes.
+- Reviewed both active submission paths against the shared envelope.
+- PHP CLI is not installed in the Codex environment, so PHP lint and the runtime
+  contract diagnostic could not be executed here.
+
+### Next
+
+Connect approved report submissions to append-only Scout Report persistence while
+keeping current summaries as derived projections and preserving existing
+moderation behavior.

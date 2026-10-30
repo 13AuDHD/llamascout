@@ -105,12 +105,170 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
     return ['state' => 'answered', 'value' => $value];
 }
 
+/**
+ * Canonical answer envelope for a newly submitted report observation.
+ *
+ * This is deliberately independent of the current published answer. A Scout
+ * may confirm the same value in a later report and that remains an Answered
+ * observation. Unanswered is the only state that is omitted from a partial
+ * report.
+ *
+ * @return array{
+ *     state:string,
+ *     value:mixed,
+ *     recorded:bool,
+ *     scoped_value:mixed
+ * }
+ */
+function llama_place_report_submission_answer(
+    array $field,
+    mixed $raw
+): array {
+    $answer =
+        llama_place_report_parse_answer(
+            $field,
+            $raw
+        );
+
+    $state =
+        (string) $answer['state'];
+
+    return [
+        'state' =>
+            $state,
+
+        'value' =>
+            $answer['value'],
+
+        'recorded' =>
+            $state !== 'unanswered',
+
+        'scoped_value' =>
+            $state === 'unknown'
+                ? llama_place_report_unknown_token()
+                : $answer['value'],
+    ];
+}
+
 /** Convert a parsed answer to the existing scoped JSON representation. */
 function llama_place_report_scoped_value(array $field, mixed $raw): mixed
 {
-    $answer = llama_place_report_parse_answer($field, $raw);
-    return $answer['state'] === 'unknown'
-        ? llama_place_report_unknown_token() : $answer['value'];
+    $answer =
+        llama_place_report_submission_answer(
+            $field,
+            $raw
+        );
+
+    return $answer['scoped_value'];
+}
+
+/** Side-effect-free checks for the shared report-submission answer contract. */
+function llama_place_report_submission_answer_contract_issues(): array
+{
+    $issues = [];
+
+    $tri = [
+        'key' => 'diagnostic_tri',
+        'label' => 'Diagnostic Yes or No',
+        'type' => 'tri',
+        'allow_unknown' => true,
+    ];
+
+    $number = [
+        'key' => 'diagnostic_number',
+        'label' => 'Diagnostic Number',
+        'type' => 'number',
+        'min' => 0,
+        'max' => 10,
+    ];
+
+    $multiselect = [
+        'key' => 'diagnostic_list',
+        'label' => 'Diagnostic List',
+        'type' => 'multiselect',
+        'options' => [
+            'one' => 'One',
+        ],
+    ];
+
+    $unanswered =
+        llama_place_report_submission_answer(
+            $tri,
+            llama_place_report_unanswered_token()
+        );
+
+    if (
+        $unanswered['state'] !== 'unanswered'
+        || $unanswered['recorded'] !== false
+        || $unanswered['value'] !== null
+    ) {
+        $issues[] =
+            'Submission-answer Unanswered contract mismatch.';
+    }
+
+    $explicitNo =
+        llama_place_report_submission_answer(
+            $tri,
+            '0'
+        );
+
+    if (
+        $explicitNo['state'] !== 'answered'
+        || $explicitNo['recorded'] !== true
+        || $explicitNo['value'] !== false
+    ) {
+        $issues[] =
+            'Submission-answer explicit No contract mismatch.';
+    }
+
+    $zero =
+        llama_place_report_submission_answer(
+            $number,
+            '0'
+        );
+
+    if (
+        $zero['state'] !== 'answered'
+        || $zero['recorded'] !== true
+        || $zero['value'] !== 0
+    ) {
+        $issues[] =
+            'Submission-answer numeric zero contract mismatch.';
+    }
+
+    $unknown =
+        llama_place_report_submission_answer(
+            $tri,
+            llama_place_report_unknown_token()
+        );
+
+    if (
+        $unknown['state'] !== 'unknown'
+        || $unknown['recorded'] !== true
+        || $unknown['value'] !== null
+        || $unknown['scoped_value']
+            !== llama_place_report_unknown_token()
+    ) {
+        $issues[] =
+            'Submission-answer Unknown contract mismatch.';
+    }
+
+    $emptyList =
+        llama_place_report_submission_answer(
+            $multiselect,
+            []
+        );
+
+    if (
+        $emptyList['state'] !== 'answered'
+        || $emptyList['recorded'] !== true
+        || $emptyList['value'] !== []
+    ) {
+        $issues[] =
+            'Submission-answer empty-list contract mismatch.';
+    }
+
+    return $issues;
 }
 
 /** Compare persisted representations without changing historical records. */

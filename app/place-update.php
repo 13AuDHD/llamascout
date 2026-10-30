@@ -195,9 +195,12 @@ function llama_place_update_build_changes(
         }
         $raw = $input[$key];
 
+        $submissionAnswer =
+            null;
+
         if ($partialReport) {
-            $partialAnswer =
-                llama_place_report_parse_answer(
+            $submissionAnswer =
+                llama_place_report_submission_answer(
                     $field,
                     $raw
                 );
@@ -209,8 +212,7 @@ function llama_place_update_build_changes(
              * still recorded answers and continue below.
              */
             if (
-                $partialAnswer['state']
-                === 'unanswered'
+                !$submissionAnswer['recorded']
             ) {
                 continue;
             }
@@ -219,7 +221,8 @@ function llama_place_update_build_changes(
         if ($type === 'multiselect' && $raw === [] && ($current[$path] ?? null) === null
             && !isset($currentUnknownLookup[$key]) && empty($input['_report_touched'][$key])) { continue; }
         // Preserve unchanged historical options without accepting new invalid values.
-        if ($raw !== llama_place_report_unknown_token() && $raw !== llama_place_report_unanswered_token()
+        if (!$partialReport
+            && $raw !== llama_place_report_unknown_token() && $raw !== llama_place_report_unanswered_token()
             && !isset($currentUnknownLookup[$key])
             && llama_place_report_values_equal($raw, $current[$path] ?? null, $field)) {
             continue;
@@ -228,12 +231,25 @@ function llama_place_update_build_changes(
         $fieldUnknown = [];
 
 
-        $newValue =
-            llama_place_report_parse_field(
-                $field,
-                $raw,
-                $fieldUnknown
-            );
+        if ($submissionAnswer !== null) {
+            $newValue =
+                $submissionAnswer['value'];
+
+            if (
+                $submissionAnswer['state']
+                === 'unknown'
+            ) {
+                $fieldUnknown[$key] =
+                    true;
+            }
+        } else {
+            $newValue =
+                llama_place_report_parse_field(
+                    $field,
+                    $raw,
+                    $fieldUnknown
+                );
+        }
 
 
         $oldValue =
@@ -279,7 +295,8 @@ function llama_place_update_build_changes(
 
 
         if (
-            !$valueChanged
+            !$partialReport
+            && !$valueChanged
             && !$answerStateChanged
         ) {
             continue;

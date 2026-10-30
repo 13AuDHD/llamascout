@@ -109,13 +109,6 @@
         return [...card.querySelectorAll('input:not([type="hidden"]), select, textarea')];
     }
 
-    function equalValue(a, b) {
-        if (Array.isArray(a) && Array.isArray(b)) {
-            return JSON.stringify(a.map(String).sort()) === JSON.stringify(b.map(String).sort());
-        }
-        return String(a ?? '') === String(b ?? '');
-    }
-
     function scopedValue(card, f) {
         const controls = scopedControls(card);
         if (f.type === 'multiselect') {
@@ -298,8 +291,8 @@
                 else control.value = '';
             }
 
-            // A changed field is sent as a proposal, not an edit to the
-            // inherited Place/Area value or the published record.
+            // An intentionally answered question is sent as this report's
+            // observation, even when it confirms the current reference value.
             const controlTargetKey = activeTarget;
             const changed = event => {
                 if (controlTargetKey !== activeTarget) return;
@@ -317,8 +310,7 @@
                     }
                 }
                 const value = scopedValue(card, f);
-                const original = recordedValue(f);
-                if (value !== '' && !equalValue(value, original)) values.set(f.key, value);
+                if (value !== '') values.set(f.key, value);
                 else values.delete(f.key);
                 draftsByTarget.set(activeTarget, new Map(values));
                 sync();
@@ -384,16 +376,6 @@
             ([, label]) => String(label).trim().toLowerCase() === raw.trim().toLowerCase()
         );
         return match ? match[0] : raw;
-    }
-
-    function recordedValue(f) {
-        if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
-            return normalizedControlValue(f, context.direct[f.key]);
-        }
-        if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
-            return normalizedControlValue(f, context.inherited[f.key]?.value);
-        }
-        return '';
     }
 
     function displayReferenceValue(f, value) {
