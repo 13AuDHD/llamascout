@@ -931,6 +931,76 @@ M2-003 does not:
 * change database schema
 * expose new provenance fields to the client
 
+4.19 Update This Place Is a New Report
+
+Update This Place is a report-submission workflow.
+
+It is not an editor for the current Place, Area, or Site record.
+
+### Current answers
+
+Current answers are reference context only.
+
+They may be displayed beside the report question so the Scout can see what is currently known.
+
+They must not be preloaded into a new report control.
+
+A new report control starts unanswered unless:
+
+* the Scout intentionally answers the question, or
+* the Scout is revising their own submitted report after moderation requested changes.
+
+### Partial report semantics
+
+A new report submits only questions the Scout intentionally answered.
+
+Untouched questions are omitted.
+
+Unanswered questions are omitted even when the control was previously touched and later cleared.
+
+Therefore a partial report cannot erase an unrelated current answer.
+
+The following remain explicit recorded answers:
+
+* No / false
+* numeric zero
+* Unknown
+* intentional empty-list answers
+
+### Current-answer reference model
+
+Entire Place, Area, and Site current context must come from the canonical current-answer model.
+
+For Area/Site reports, the current effective answer and direct scoped answer are snapshotted for moderation conflict detection.
+
+Those snapshots are reference/history data.
+
+They are not the Scout's proposed answers.
+
+### Approval behavior
+
+Submission does not directly mutate current Place or scoped answer storage.
+
+A moderator reviews the submitted report first.
+
+Only approved submitted answers may update the current summary projection.
+
+Questions absent from the approved report remain unchanged.
+
+The historical report remains separate from the mutable current summary.
+
+### Needs Changes revisions
+
+A Needs Changes revision may preload only the contributor's own previously submitted report answers.
+
+Current published answers remain reference-only.
+
+The reporting target remains locked to the original submission where existing revision rules require it.
+
+### UI wording
+
+Update This Place may retain its product name, but the interface must describe the action as reporting or submitting observations rather than editing the live Place.
+
 ⸻
 
 5. Place and Site Ownership

@@ -16,6 +16,11 @@ $placeReportValues =
         ? $placeReportValues
         : [];
 
+$placeReportReferenceValues =
+    is_array($placeReportReferenceValues ?? null)
+        ? $placeReportReferenceValues
+        : [];
+
 $placeReportExistingPhotos =
     is_array($placeReportExistingPhotos ?? null)
         ? $placeReportExistingPhotos
@@ -271,6 +276,8 @@ foreach ($placeReportFields as $fieldKey => $field) {
 $placeReportBrowserConfig = [
     'unknown_token' => llama_place_report_unknown_token(),
     'unanswered_token' => llama_place_report_unanswered_token(),
+    'mode' => $placeReportMode,
+    'initial_answer_keys' => array_values(array_keys($placeReportValues)),
     'fields' => $placeReportBrowserFields,
 ];
 
@@ -289,12 +296,46 @@ $e =
  * =========================================================
  */
 
+$referenceFor =
+    static function (
+        string $key
+    ) use (
+        $placeReportReferenceValues
+    ): string {
+        if (
+            !array_key_exists(
+                $key,
+                $placeReportReferenceValues
+            )
+        ) {
+            return '';
+        }
+
+        $value =
+            $placeReportReferenceValues[$key];
+
+        if (is_array($value)) {
+            return implode(
+                ', ',
+                array_map(
+                    'strval',
+                    $value
+                )
+            );
+        }
+
+        return trim(
+            (string) $value
+        );
+    };
+
 $valueFor =
     static function (
         string $key,
         array $field
     ) use (
-        $placeReportValues
+        $placeReportValues,
+        $placeReportMode
     ): mixed {
         if (
             array_key_exists(
@@ -312,6 +353,10 @@ $valueFor =
             return is_scalar($value)
                 ? (string) $value
                 : '';
+        }
+
+        if ($placeReportMode === 'update-report') {
+            return '';
         }
 
         return isset(
@@ -499,6 +544,7 @@ $renderField =
     ) use (
         $e,
         $valueFor,
+        $referenceFor,
         $renderSelect,
         $placeReportMode,
         $placeReportShowNameSuggestion,
@@ -514,6 +560,11 @@ $renderField =
             $valueFor(
                 $key,
                 $field
+            );
+
+        $reference =
+            $referenceFor(
+                $key
             );
 
         $wide =
@@ -580,6 +631,12 @@ $renderField =
                 </span>
 
             </label>
+
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                    Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
 
             <?php
             return;
@@ -1145,6 +1202,12 @@ $renderField =
 
             <?php endif; ?>
 
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
+
 
         </<?= $fieldContainerTag ?>>
 
@@ -1159,6 +1222,7 @@ $renderCompoundField =
     ) use (
         $e,
         $valueFor,
+        $referenceFor,
         $renderSelect
     ): void {
         $definitions =
@@ -1215,6 +1279,12 @@ $renderCompoundField =
                     >
                         <span><?= $e($componentLabel) ?></span>
                         <?php $renderSelect($field, $current); ?>
+                        <?php $componentReference = $referenceFor((string) $componentKey); ?>
+                        <?php if ($componentReference !== ''): ?>
+                            <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($componentReference) ?>
+                            </small>
+                        <?php endif; ?>
                     </label>
                 <?php endforeach; ?>
             </div>
@@ -1224,6 +1294,18 @@ $renderCompoundField =
 
 
 ?>
+
+<?php if ($placeReportMode === 'update-report'): ?>
+    <input type="hidden" name="_report_partial" value="1">
+    <?php foreach (array_keys($placeReportValues) as $initialAnswerKey): ?>
+        <input
+            type="hidden"
+            name="_report_touched[<?= $e((string) $initialAnswerKey) ?>]"
+            value="1"
+            data-report-touched-marker="<?= $e((string) $initialAnswerKey) ?>"
+        >
+    <?php endforeach; ?>
+<?php endif; ?>
 
 <script
     type="application/json"
@@ -1388,6 +1470,26 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                         least 5 decimal places for each coordinate. Llama Scout
                         standardizes both values to 7 decimal places.
                     </small>
+
+                    <?php
+                    $latitudeReference =
+                        $referenceFor('latitude');
+
+                    $longitudeReference =
+                        $referenceFor('longitude');
+
+                    $coordinateReference =
+                        $latitudeReference !== ''
+                        && $longitudeReference !== ''
+                            ? $latitudeReference . ', ' . $longitudeReference
+                            : '';
+                    ?>
+
+                    <?php if ($coordinateReference !== ''): ?>
+                        <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($coordinateReference) ?>
+                        </small>
+                    <?php endif; ?>
 
                     <input
                         type="hidden"

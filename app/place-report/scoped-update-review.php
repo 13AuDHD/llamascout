@@ -113,16 +113,35 @@ function llama_scoped_update_build_payload(
         );
     }
 
-    $before =
-        llama_scoped_report_load(
+    $currentModel =
+        llama_place_report_current_answer_model(
             $db,
             $placeId,
-            $scope,
-            $id,
-            $source
+            $target
         );
 
-    $model = llama_place_report_target_model($db, $placeId, $target);
+    $currentAnswers =
+        (array) (
+            $currentModel['answers']
+            ?? []
+        );
+
+    /*
+     * Direct current answers and effective current answers are reference
+     * snapshots for this new report. They are not draft answers.
+     */
+    $before =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'scoped_override'
+        );
+
+    $effectiveBefore =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'effective'
+        );
+
     $answers = [];
     $originalAnswers = [];
     $unknown =
@@ -198,8 +217,8 @@ function llama_scoped_update_build_payload(
                 $recorded
                     ? $before[$key]
                     : null,
-            'effective_recorded' => array_key_exists($key, $model['values']),
-            'effective_value' => $model['values'][$key] ?? null,
+            'effective_recorded' => array_key_exists($key, $effectiveBefore),
+            'effective_value' => $effectiveBefore[$key] ?? null,
         ];
     }
 
@@ -1076,18 +1095,35 @@ function llama_scoped_update_approve(
     if (!$db->inTransaction()) { throw new RuntimeException('Scoped approval requires an active transaction.'); }
     llama_scoped_report_assert_owner($db, $placeId, $scope, $targetId, $source);
     $target = llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
-    $model = llama_place_report_target_model($db, $placeId, $target);
-    $current =
-        llama_scoped_report_load(
+
+    $currentModel =
+        llama_place_report_current_answer_model(
             $db,
             $placeId,
-            $scope,
-            $targetId,
-            $source
+            $target
+        );
+
+    $currentAnswers =
+        (array) (
+            $currentModel['answers']
+            ?? []
+        );
+
+    $effectiveCurrent =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'effective'
+        );
+
+    $current =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'scoped_override'
         );
 
     /*
-     * Validate every original value before writing any answer.
+     * Validate every original reference value before writing any approved
+     * answer. Submission itself never edits the current target.
      */
     foreach ($answers as $key => $value) {
         $field = llama_scoped_report_field((string) $key, $scope);
@@ -1104,9 +1140,9 @@ function llama_scoped_update_approve(
         }
 
         if (array_key_exists('effective_recorded', $prior)
-            && ((bool) $prior['effective_recorded'] !== array_key_exists($key, $model['values'])
+            && ((bool) $prior['effective_recorded'] !== array_key_exists($key, $effectiveCurrent)
                 || !llama_place_report_values_equal($prior['effective_value'] ?? null,
-                    $model['values'][$key] ?? null, $field))) {
+                    $effectiveCurrent[$key] ?? null, $field))) {
             throw new RuntimeException('The inherited or imported answer changed since submission. Review the latest information.');
         }
         $recorded =

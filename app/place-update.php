@@ -143,6 +143,11 @@ function llama_place_update_build_changes(
     array $current,
     array $currentUnknownFields = []
 ): array {
+    $partialReport =
+        !empty(
+            $input['_report_partial']
+        );
+
     $input = llama_place_report_expand_presence($input);
     $proposed = [];
     $original = [];
@@ -175,11 +180,42 @@ function llama_place_update_build_changes(
             (string) $field['type'];
 
 
+        if (
+            $partialReport
+            && empty(
+                $input['_report_touched'][$key]
+            )
+        ) {
+            continue;
+        }
+
         if (!array_key_exists($key, $input) || !empty($field['derived'])
             || !in_array('place', (array) $field['report_scopes'], true)) {
             continue;
         }
         $raw = $input[$key];
+
+        if ($partialReport) {
+            $partialAnswer =
+                llama_place_report_parse_answer(
+                    $field,
+                    $raw
+                );
+
+            /*
+             * Unanswered means this report has no observation for the
+             * question. It must never erase or clear an existing current
+             * answer. Explicit No, Unknown and an intentional empty list are
+             * still recorded answers and continue below.
+             */
+            if (
+                $partialAnswer['state']
+                === 'unanswered'
+            ) {
+                continue;
+            }
+        }
+
         if ($type === 'multiselect' && $raw === [] && ($current[$path] ?? null) === null
             && !isset($currentUnknownLookup[$key]) && empty($input['_report_touched'][$key])) { continue; }
         // Preserve unchanged historical options without accepting new invalid values.
@@ -766,7 +802,7 @@ function llama_place_update_submit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or add a current photo before submitting.'
+            'Nothing was reported. Answer at least one Place question or add a current photo before submitting.'
         );
     }
 
@@ -1136,7 +1172,7 @@ function llama_place_update_resubmit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or include a current photo before resubmitting.'
+            'Nothing was reported. Answer at least one Place question or include a current photo before resubmitting.'
         );
     }
 

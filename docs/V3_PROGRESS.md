@@ -1662,11 +1662,13 @@ Migrate one current-answer consumer to the canonical envelope while preserving i
 
 ## M2-003: Site Detail Uses Canonical Current Answers
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `8cf56ef9d78a55c97f367ed9732fe068e0f93da8`
 
 ### Objective
 
@@ -1772,3 +1774,133 @@ No persistence, moderation, schema, or SQL changed.
 ### Next
 
 Migrate the next active current-answer consumer, preferably the Update This Place scoped target read path, onto the canonical envelope while preserving its editing-layer semantics.
+
+
+## M2-004: Update This Place Reference-Only Report Model
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Correct Update This Place so current answers are reference context for a new Scout report rather than editable form values.
+
+### Product rule
+
+Update This Place submits a new report.
+
+It does not directly edit the current Place, Area, or Site record.
+
+Current answers may inform the Scout and moderation conflict checks, but they are not copied into the Scout's draft.
+
+### Entire Place reports
+
+Normal new Entire Place reports now start with blank controls.
+
+Current published answers are displayed separately as:
+
+`Current answer: ...`
+
+The current reference values come from:
+
+`llama_place_report_current_answer_model()`
+
+A Needs Changes revision preloads only the contributor's own previously submitted answers.
+
+A failed POST restores only that submitted draft.
+
+### Touched-field submission
+
+The shared form now supports:
+
+`mode = update-report`
+
+Update-report forms emit a partial-report marker and touched-question markers.
+
+The browser marks a Place question touched only when the Scout interacts with that question while the Entire Place target is selected.
+
+The backend independently enforces the same rule.
+
+Untouched questions are ignored even if the shared form emitted hidden presence or Unanswered controls.
+
+### Unanswered preservation
+
+For partial reports:
+
+- Unanswered is omitted
+- untouched is omitted
+- explicit No remains an answer
+- zero remains an answer
+- Unknown remains an answer
+- intentional empty-list remains an answer
+
+This prevents a one-question report from erasing unrelated current answers.
+
+### Area and Site reports
+
+The scoped context endpoint now uses the canonical current-answer envelope.
+
+Existing answers are shown as reference notes only.
+
+Current answers no longer populate Area/Site report controls.
+
+Draft controls are populated only by the Scout's new answers or a Needs Changes revision.
+
+The existing response shape remains compatible with the target-switching JavaScript.
+
+### Scoped submission snapshots
+
+Scoped report submission now snapshots:
+
+- current direct scoped override state
+- current effective answer state
+
+through the canonical current-answer model.
+
+These are moderation conflict/reference snapshots, not proposed answers.
+
+Approval conflict checking reads the same canonical current-answer model before applying approved answers.
+
+### Compatibility fix
+
+Scoped target composition now applies:
+
+`llama_place_report_derive_compatibility()`
+
+to published Place data before inheritance resolution.
+
+The current-answer service now explicitly loads the scoped value adapter it depends on.
+
+### UI wording
+
+The Update This Place page now explains:
+
+- submit a new Scout report
+- current answers are reference only
+- answer only what was observed
+- blank questions are not submitted
+- approval can update the current summary while the report remains in history
+
+Scoped status text now says Reporting rather than Updating.
+
+### Verification
+
+- Confirmed normal Entire Place controls start blank.
+- Confirmed field defaults do not preload in update-report mode.
+- Confirmed current Place answers render separately as references.
+- Confirmed Needs Changes can preload only the contributor's report draft.
+- Confirmed failed POST restores only touched draft answers.
+- Confirmed untouched Place fields are ignored server-side.
+- Confirmed Unanswered partial-report fields cannot clear current answers.
+- Confirmed explicit No, Unknown, zero, and empty-list answers remain recordable.
+- Confirmed Site/Area current answers no longer populate report controls.
+- Confirmed scoped current-answer context and moderation conflict checks use the canonical envelope.
+- Confirmed Place touched tracking cannot be triggered by Site/Area controls.
+- No database schema or SQL migration is required.
+
+### Next
+
+Audit and unify answer validation across Place and scoped report submission so the same state rules are enforced before moving deeper into persistence/history work.
