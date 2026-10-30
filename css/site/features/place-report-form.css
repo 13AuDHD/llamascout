@@ -532,6 +532,44 @@
     }
 }
 
+.place-report-form .contribution-field-compound {
+    display: grid;
+    gap: 8px;
+}
+
+.place-report-form .place-report-compound-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.place-report-form .place-report-compound-control {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+
+.place-report-form .place-report-compound-control > span {
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 760;
+}
+
+.place-report-form .place-report-compound-control select {
+    width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 450px) {
+    .place-report-form .place-report-compound-controls {
+        gap: 6px;
+    }
+
+    .place-report-form .place-report-compound-control > span {
+        font-size: .62rem;
+    }
+}
+
 /* =========================================================
    MULTI-SELECT PILLS
    Shared by Add Place and moderator editing.
