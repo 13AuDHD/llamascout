@@ -112,6 +112,14 @@ function llama_scout_report_normalize_answers(
         );
     }
 
+    // Keep Add Place and Update This Place on the same report-size contract.
+    // Enforce at the shared immutable writer as well as the form endpoints.
+    if (count($answers) > 200) {
+        throw new InvalidArgumentException(
+            'A Scout Report cannot contain more than 200 questions.'
+        );
+    }
+
     $normalized = [];
     $fields =
         llama_place_report_fields();
