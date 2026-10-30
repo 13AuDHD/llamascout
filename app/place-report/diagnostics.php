@@ -8,7 +8,10 @@ require_once dirname(__DIR__) . '/place-report.php';
 function llama_place_report_contract_issues(): array
 {
     $issues =
-        llama_place_report_approved_registry_issues();
+        array_merge(
+            llama_place_report_approved_registry_issues(),
+            llama_place_report_current_answer_contract_issues()
+        );
 
     $fields =
         llama_place_report_fields();

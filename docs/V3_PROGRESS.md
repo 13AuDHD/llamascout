@@ -1459,11 +1459,13 @@ Begin Milestone 2 with a bounded audit of the canonical current-answer read path
 
 ## M2-001: Current-Answer Read Path Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `42f3a7a00068580f48fb685bd71c85cf5ed7b612`
 
 ### Objective
 
@@ -1547,3 +1549,110 @@ No storage, precedence, answer values, interface behavior, database schema, or S
 **M2-002: Canonical Current Answer Read Model**
 
 Introduce one shared current-answer envelope over the existing compatibility precedence before changing persistence or historical storage.
+
+
+## M2-002: Canonical Current Answer Read Model
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Introduce one canonical read-only answer envelope over the existing current Place, Area, Site, and campsite baseline precedence.
+
+### New service
+
+Added:
+
+`app/place-report/current-answers.php`
+
+Shared entry point:
+
+`llama_place_report_current_answer_model()`
+
+The target is verified against the selected Place before current answers are returned.
+
+### Answer envelope
+
+Each relevant field now has a common read shape:
+
+- `field_key`
+- `state`
+- `value`
+- `recorded`
+- `inherited`
+- `direct`
+- `baseline`
+- `imported`
+- `target`
+- `origin`
+
+### State semantics
+
+The read model distinguishes:
+
+- Answered
+- Unknown
+- Unanswered
+
+An explicit recorded null remains Answered with a null value.
+
+Unknown and Unanswered also use a null value, but their state remains distinct.
+
+No truthiness-based state inference is used.
+
+### Origin semantics
+
+Current origin types:
+
+- `published_place`
+- `scoped_override`
+- `campsite_baseline`
+
+A campsite baseline is separately marked as externally imported only when its source provider is not Llama Scout.
+
+### Campsite baseline preservation
+
+The target model now retains:
+
+- `baseline`: campsite-record baseline values
+- `overrides`: direct scoped answers
+- `direct`: baseline plus overrides
+
+Field-level provenance now distinguishes a baseline winner from a direct Scout/Admin scoped override.
+
+Source provider and external ID are retained for baseline provenance when available.
+
+### Precedence preservation
+
+No current-answer winner changed.
+
+The model wraps the existing precedence documented in M2-001.
+
+### Diagnostics
+
+Added side-effect-free contract checks covering:
+
+- Unanswered
+- Unknown
+- explicit No / false
+- inherited Area answer
+- campsite baseline
+- external imported baseline identity
+
+The standard Place Report contract diagnostic now includes these checks.
+
+### Behavior
+
+This task does not migrate any public/admin/member interface to the new envelope yet.
+
+It does not change persistence, approval behavior, database schema, or historical storage.
+
+No SQL is required.
+
+### Next
+
+Migrate one current-answer consumer to the canonical envelope while preserving its rendered and editing behavior.
