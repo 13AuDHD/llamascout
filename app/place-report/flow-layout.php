@@ -731,3 +731,40 @@ function llama_place_report_reorder_layout_fields(
         $ordered;
 }
 
+
+/**
+ * Project the current field registry into the approved Scout Report groups.
+ *
+ * Historical PDF question ordering stays intact. Newly registered V3
+ * questions with report_group/report_visibility are appended to their
+ * declared group automatically, so forms, public cards and history share
+ * one question inventory instead of maintaining extra page-level lists.
+ */
+function llama_place_report_effective_report_groups(array $fields): array
+{
+    $groups = llama_place_report_approved_groups_in_page_order();
+    $included = [];
+    foreach ($groups as $definition) {
+        foreach ((array) ($definition[1] ?? []) as $key) {
+            $included[(string) $key] = true;
+        }
+    }
+
+    foreach ($fields as $key => $field) {
+        if (isset($included[$key])
+            || empty($field['approved_question'])
+            || empty($field['approved_visibility'])
+            || !empty($field['derived'])
+            || !empty($field['hide_public'])) {
+            continue;
+        }
+        $groupKey = (string) ($field['approved_question_group'] ?? '');
+        if (!isset($groups[$groupKey])) {
+            continue;
+        }
+        $groups[$groupKey][1][] = $key;
+        $included[$key] = true;
+    }
+
+    return $groups;
+}
