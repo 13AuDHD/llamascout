@@ -21,7 +21,7 @@ foreach ($siteHistoryReports as $report) {
     <?php if (!$siteHistoryReports): ?>
         <p>No approved V3 Scout Reports have been recorded for this Site yet.</p>
     <?php else: ?>
-        <div style="overflow-x:auto">
+        <div class="compare-site-history-scroll">
             <table class="compare-table">
                 <thead>
                     <tr>
