@@ -249,9 +249,31 @@ function llama_place_report_metadata(array $input, string $key): mixed
 
 function llama_place_report_mirror_value(mixed $value, string $transform): mixed
 {
-    if ($transform === 'identity') { return $value; }
-    if (!is_numeric($value)) { return null; }
-    return (float) $value >= 4 ? true : ((float) $value <= 2 && (float) $value >= 1 ? false : null);
+    if ($transform === 'identity') {
+        return $value;
+    }
+
+    if ($transform === 'toilet_presence') {
+        if (in_array($value, ['pit', 'flush', 'portable', 'present_unknown_type'], true)) {
+            return true;
+        }
+
+        if ($value === 'no') {
+            return false;
+        }
+
+        return null;
+    }
+
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    return (float) $value >= 4
+        ? true
+        : ((float) $value <= 2 && (float) $value >= 1
+            ? false
+            : null);
 }
 
 function llama_place_report_derive_compatibility(array $data, ?array $changedKeys = null): array
