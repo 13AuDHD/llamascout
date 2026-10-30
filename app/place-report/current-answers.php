@@ -363,6 +363,38 @@ function llama_place_report_current_place_answers(
             );
     }
 
+    // Overlay only questions actually written to the unified current store.
+    // Older Places and questions without a V3 row keep their legacy values.
+    // Explicit Unknown, false, zero and empty lists are all retained.
+    if (llama_report_current_store_available($db)) {
+        $stored = llama_report_current_store_load(
+            $db, $placeId, 'place', 'place', $placeId
+        );
+        $fields = llama_place_report_fields();
+        foreach ($stored as $key => $observation) {
+            $field = $fields[$key] ?? null;
+            if (!is_array($field)
+                || !llama_place_report_field_relevant_to_target($field, 'place')) {
+                continue;
+            }
+            $raw = $observation['state'] === 'unknown'
+                ? llama_place_report_unknown_token()
+                : $observation['value'];
+            $answers[$key] = llama_place_report_current_answer_envelope(
+                $field,
+                true,
+                $raw,
+                $target,
+                [
+                    'scope' => 'place',
+                    'source' => 'place',
+                    'id' => $placeId,
+                    'origin_type' => 'published_place',
+                ]
+            );
+        }
+    }
+
     return $answers;
 }
 
