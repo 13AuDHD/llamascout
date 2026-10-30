@@ -173,6 +173,12 @@ function llama_scout_report_target_history(
         || trim($source) === '') {
         throw new InvalidArgumentException('Invalid Scout Report history target.');
     }
+    // Defense in depth: verify that this exact Site/Area/Place target
+    // belongs to the requested Place before reading its report ledger.
+    // Authentication and paid/earned visibility remain the caller's job.
+    require_once __DIR__ . '/report-targets.php';
+    llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+
     $limit = max(1, min($limit, 100));
     $query = $db->prepare(
         'SELECT r.id, r.revision_number, r.contributor_id,
