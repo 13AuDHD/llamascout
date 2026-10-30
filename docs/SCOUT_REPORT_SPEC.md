@@ -742,6 +742,131 @@ Page ownership and page-local group order remain owned by the approved page regi
 
 The current renderer may still present both surfaces inside the existing Place experience until the later interface migration separates them visually, but its semantic ownership must already come from the canonical page definition.
 
+4.17 Canonical Current Answer Model
+
+Milestone 2 introduces one read-only current-answer envelope over the existing published Place, scoped inheritance, and campsite baseline precedence.
+
+This model does not choose a new winner.
+
+It describes the winner selected by the existing compatibility read paths in one consistent structure.
+
+### Entry point
+
+Canonical service:
+
+`llama_place_report_current_answer_model()`
+
+The caller provides:
+
+* Place ID
+* reporting target scope
+* reporting target source
+* reporting target ID
+
+The target is reverified against the Place before answers are returned.
+
+### Answer envelope
+
+Each relevant canonical field returns:
+
+* `field_key`
+* `state`
+* `value`
+* `recorded`
+* `inherited`
+* `direct`
+* `baseline`
+* `imported`
+* `target`
+* `origin`
+
+### Answer state
+
+Allowed current states are:
+
+* `answered`
+* `unknown`
+* `unanswered`
+
+`value` is null for Unknown and Unanswered.
+
+An explicitly recorded null may also have `value = null`, but its state is Answered.
+
+State, not value truthiness, distinguishes these cases.
+
+### Origin types
+
+The initial compatibility origin types are:
+
+* `published_place`
+* `scoped_override`
+* `campsite_baseline`
+
+Inherited answers retain their actual origin scope and are marked with:
+
+`inherited = true`
+
+A campsite baseline is marked with:
+
+`baseline = true`
+
+A campsite baseline is marked with:
+
+`imported = true`
+
+only when the campsite source provider is external rather than Llama Scout.
+
+### Current precedence
+
+The current-answer model preserves the existing precedence.
+
+Place:
+
+1. current published Place value and answer state
+
+Area:
+
+1. direct Area scoped answer
+2. eligible Place answer
+
+Map-only Site:
+
+1. direct Site scoped answer
+2. eligible parent Area answer
+3. eligible Place answer
+
+Canonical campsite Site:
+
+1. direct Site scoped override
+2. campsite baseline
+3. eligible parent Area answer
+4. eligible Place answer
+
+### Campsite baseline provenance
+
+The target model now retains three separate Site layers:
+
+* `baseline` for campsite-record baseline values
+* `overrides` for direct scoped Scout/Admin answers
+* `direct` for the composed Site-local result
+
+Field-level provenance identifies whether the winning Site-local answer came from the campsite baseline or a scoped override.
+
+External source provider and external ID are preserved on baseline provenance when available.
+
+### Non-goals
+
+M2-002 does not:
+
+* change current-answer precedence
+* change persistence
+* create immutable history
+* infer contributor attribution that current storage does not contain
+* change public or member rendering
+* change database schema
+
+Later Milestone 2 work may add historical contribution/report identity to the same answer envelope without changing its state/value semantics.
+
 ⸻
 
 5. Place and Site Ownership
