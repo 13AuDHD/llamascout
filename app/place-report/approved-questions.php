@@ -498,6 +498,89 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    $compoundComponents = [];
+
+    foreach (llama_place_report_approved_compound_questions() as $compoundKey => $compound) {
+        $groupKey = (string) ($compound['group'] ?? '');
+        $pageKey = (string) ($compound['page'] ?? '');
+        $components = (array) ($compound['components'] ?? []);
+
+        if ($compoundKey === '' || $groupKey === '' || $pageKey === '') {
+            $issues[] =
+                'Approved compound question has a missing key, group, or page.';
+            continue;
+        }
+
+        if (!isset($groups[$groupKey])) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' references unknown group '
+                . $groupKey
+                . '.';
+        }
+
+        if (($assignedGroups[$groupKey] ?? null) !== $pageKey) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' does not match its group page assignment.';
+        }
+
+        if (count($components) < 2) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' must contain at least two component fields.';
+        }
+
+        foreach ($components as $componentKey => $component) {
+            $componentKey = (string) $componentKey;
+
+            if (isset($compoundComponents[$componentKey])) {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' is assigned to both '
+                    . $compoundComponents[$componentKey]
+                    . ' and '
+                    . $compoundKey
+                    . '.';
+                continue;
+            }
+
+            $compoundComponents[$componentKey] =
+                $compoundKey;
+
+            $componentGroup =
+                null;
+
+            foreach ($groups as $candidateGroupKey => $definition) {
+                if (in_array($componentKey, (array) ($definition[1] ?? []), true)) {
+                    $componentGroup =
+                        $candidateGroupKey;
+                    break;
+                }
+            }
+
+            if ($componentGroup !== $groupKey) {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' does not belong to approved group '
+                    . $groupKey
+                    . '.';
+            }
+
+            if (trim((string) ($component['role'] ?? '')) === '') {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' is missing its component role.';
+            }
+        }
+    }
+
     foreach (llama_place_report_approved_source_fields() as $key => $field) {
         $groupKey = (string) ($field['group'] ?? '');
         $pageKey = (string) ($field['page'] ?? '');
