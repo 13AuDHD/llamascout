@@ -107,7 +107,7 @@ try {
     $site = $enriched[0] ?? $site;
 
     $currentModel =
-        llama_place_report_current_answer_model(
+        llama_place_report_current_answer_model_with_history(
             $db,
             $placeId,
             [
@@ -150,6 +150,21 @@ try {
             $currentAnswers,
             'effective'
         );
+
+    // Report attribution accompanies only verified, current Site answers.
+    // The existing access gate above protects this endpoint.
+    $site['report_answer_sources'] = [];
+    foreach ($currentAnswers as $fieldKey => $answer) {
+        $report = $answer['approved_report'] ?? null;
+        if (!is_array($report)) {
+            continue;
+        }
+        $site['report_answer_sources'][(string) $fieldKey] = [
+            'visitDate' => $report['visit_date'] ?? null,
+            'submittedAt' => $report['submitted_at'] ?? null,
+            'contributorId' => (int) ($report['contributor_id'] ?? 0),
+        ];
+    }
 
     $site['report_inherited_values'] =
         llama_scoped_report_display_values(
