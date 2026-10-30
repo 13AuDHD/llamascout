@@ -1381,6 +1381,18 @@ return [];
 };
 
 const markTouched = (event) => {
+const selectedScope =
+form.querySelector(
+'[name="report_target_scope"]'
+);
+
+if (
+selectedScope
+&& String(selectedScope.value || 'place') !== 'place'
+) {
+return;
+}
+
 fieldKeysForTarget(
 event.target
 ).forEach(
