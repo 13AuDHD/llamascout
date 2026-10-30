@@ -1378,11 +1378,13 @@ Review remaining Milestone 1 definition consumers and determine whether the cano
 
 ## M1-015: Milestone 1 Completion Gate
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `0a50c649478f26274af71ab0f6b9fb4fd6f5298b`
 
 ### Objective
 
@@ -1453,3 +1455,95 @@ Remaining reporting concerns involving answer precedence, persistence, immutable
 ### Next
 
 Begin Milestone 2 with a bounded audit of the canonical current-answer read path before changing answer persistence behavior.
+
+
+## M2-001: Current-Answer Read Path Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Trace what the application currently treats as the current answer for Place, Area, map-only Site, and canonical campsite Site targets before changing persistence or history behavior.
+
+### Audit
+
+Added:
+
+`docs/audits/09-current-answer-read-path.md`
+
+### Current Place model
+
+Current Place values come from mutable published fact tables through:
+
+`llama_place_report_current_values()`
+
+Unknown state is read separately through:
+
+`llama_place_report_published_answer_state()`
+
+Historical contributions and submissions do not select current Place answers.
+
+### Scoped model
+
+Current scoped answers use deterministic nearest-recorded precedence.
+
+Area:
+
+1. direct Area answer
+2. eligible Place answer
+
+Map-only Site:
+
+1. direct Site answer
+2. eligible parent Area answer
+3. eligible Place answer
+
+Canonical campsite Site:
+
+1. direct Site Scout/Admin override
+2. imported campsite baseline
+3. eligible parent Area answer
+4. eligible Place answer
+
+### State behavior to preserve
+
+The resolver deliberately treats these as recorded answers that stop inheritance:
+
+- explicit No / false
+- numeric zero
+- explicit null
+- Unknown
+- explicitly recorded empty list
+
+Only an absent field inherits.
+
+Clearing a scoped override deletes the row and resumes inheritance.
+
+### Confirmed read-model gaps
+
+- no single canonical answer envelope exists
+- Place current values do not expose field-level origin
+- canonical campsite provenance collapses imported baseline and direct Site override into the same Site/campsite_record provenance identity
+- imported source refresh can change current Site baseline without a historical baseline snapshot
+- mutable current state is not derived from immutable report history
+- Place and scoped Unknown state use different storage representations
+
+### Append-only report contract
+
+The diagnostic `scout_report_*` tables are not currently part of current-answer selection and still have no active repository-backed read/write integration.
+
+### Behavior
+
+This task is audit-only.
+
+No storage, precedence, answer values, interface behavior, database schema, or SQL changed.
+
+### Next
+
+**M2-002: Canonical Current Answer Read Model**
+
+Introduce one shared current-answer envelope over the existing compatibility precedence before changing persistence or historical storage.
