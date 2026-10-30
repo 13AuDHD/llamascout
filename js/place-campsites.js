@@ -43,6 +43,21 @@
             || ''
         ).trim();
 
+    // Keep the existing Compare Reports link in sync with Site selection.
+    const historyLink = document.querySelector('.scout-report-history-link');
+    const placeHistoryUrl = historyLink?.getAttribute('href') || '';
+    const syncHistoryLink = (siteId = '') => {
+        if (!historyLink || !placeHistoryUrl) return;
+        const url = new URL(placeHistoryUrl, window.location.origin);
+        if (/^\\d+$/.test(String(siteId)) && Number(siteId) > 0) {
+            url.searchParams.set('site', String(siteId));
+        } else {
+            url.searchParams.delete('site');
+        }
+        historyLink.href = url.pathname + url.search;
+    };
+
+
     if (!slug) {
         return;
     }
@@ -1400,6 +1415,8 @@
                 window.history.replaceState({}, '', url);
             }
 
+            syncHistoryLink(selectedId);
+
             window.dispatchEvent(new CustomEvent('llama:explorer-browser-site-selected', {
                 detail: { id: selectedId },
             }));
@@ -1407,6 +1424,7 @@
 
         const clearSiteSelection = () => {
             selectedId = '';
+            syncHistoryLink();
             // An old Site request must not overwrite Place answers on completion.
             selectionRequest++;
             const detail = mount.querySelector('[data-campsite-selected-detail]');
@@ -1624,6 +1642,7 @@
 
         renderList();
 
+        syncHistoryLink(selectedId);
         if (selectedId !== '') {
             selectSite(selectedId, false);
         }
