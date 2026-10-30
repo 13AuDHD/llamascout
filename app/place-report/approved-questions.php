@@ -375,7 +375,7 @@ function llama_place_report_approved_reconciliation(): array
             'current_keys' => [
                 'amenity_campground_host',
             ],
-            'status' => 'answer_options_mismatch',
+            'status' => 'resolved_yes_no_with_legacy_value',
             'compatibility' => 'preserve_existing_seasonal_value',
         ],
         'parking_to_site_distance' => [

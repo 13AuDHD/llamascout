@@ -669,11 +669,13 @@ Continue canonical definition reconciliation with the next confirmed mismatch.
 
 ## M1-006: Separate Site and Parking Clearance
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `fd523aec448356b4be6fa4a5553dd23d09027caa`
 
 ### Objective
 
@@ -737,3 +739,82 @@ The Seasonal Access compound presentation still combines four stored component f
 ### Next
 
 Continue canonical definition reconciliation with the next confirmed answer-type or answer-option mismatch.
+
+
+## M1-007: Camp Host Answer Vocabulary
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Align Camp Host with the approved Yes/No answer model while preserving historical Seasonal answers.
+
+### Active answer vocabulary
+
+New/current Camp Host answers are:
+
+- Yes
+- No
+- Unknown
+- Unanswered
+
+Unknown and Unanswered continue to use the canonical answer-state system.
+
+### Historical compatibility
+
+The historical value:
+
+`seasonal`
+
+remains registered as a compatibility-only answer.
+
+It is:
+
+- displayed correctly on old reports
+- retained if an existing record is edited without changing Camp Host
+- not offered as a new answer on a fresh report
+
+### Shared compatibility support
+
+Added generic `legacy_values` support for select-style fields:
+
+- the parser accepts registered historical values
+- the read-only renderer displays their human label
+- the shared Yes/No control exposes a legacy value only when it is the existing current value
+
+This prevents future answer-vocabulary cleanup from requiring one-off UI hacks.
+
+### Toilet type deferral
+
+The Toilets mismatch was reviewed before this task.
+
+The approved answer vocabulary requires:
+
+- Pit
+- Flush
+- Portable
+- No
+- Unknown
+
+However, the existing Place answer publishes through the SQL-backed `place_amenities.toilets` column and the repository does not contain a main reporting schema migration for changing that storage shape.
+
+The richer Toilet answer was therefore intentionally not merged in this task.
+
+It remains unresolved until a safe storage migration or dual-storage design is approved.
+
+### Verification
+
+- Confirmed Camp Host new options are only Yes and No.
+- Confirmed Unknown remains available through existing canonical answer state.
+- Confirmed existing Seasonal values remain readable.
+- Confirmed an existing Seasonal value can remain selected during an edit.
+- Confirmed the approved stored projection remains 264 field slots.
+- No database schema or production data changed.
+
+### Next
+
+Continue with the next mismatch that can be corrected without an undefined storage migration.
