@@ -261,6 +261,8 @@ Do not start implementation until the findings have been reviewed and a small in
 
 5. Milestone 1: Canonical Reporting Definitions
 
+Status: Complete after M1-015 is merged.
+
 Goal: Eliminate inconsistent question definitions.
 
 This milestone begins only after Milestone 0 approval.

@@ -786,6 +786,52 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    $resolvedReconciliationStatuses = [
+        'canonical_source_field',
+        'canonical_compound_question',
+        'resolved_existing_key',
+        'resolved_distinct_key',
+        'approved_v3_override',
+        'workflow_metadata',
+        'resolved_typed_storage_with_presence_mirror',
+        'resolved_yes_no_with_legacy_value',
+        'approved_v3_bucket_override',
+        'resolved_field_specific_vocabularies',
+    ];
+
+    foreach (llama_place_report_approved_reconciliation() as $itemKey => $item) {
+        $status =
+            (string) (
+                $item['status']
+                ?? ''
+            );
+
+        if (!in_array($status, $resolvedReconciliationStatuses, true)) {
+            $issues[] =
+                'Reconciliation item '
+                . $itemKey
+                . ' remains unresolved with status '
+                . ($status !== '' ? $status : '(missing)')
+                . '.';
+        }
+    }
+
+    $visibilityKeys =
+        array_keys(
+            llama_place_report_approved_question_visibility()
+        );
+
+    $approvedKeys =
+        array_keys($seen);
+
+    sort($visibilityKeys);
+    sort($approvedKeys);
+
+    if ($visibilityKeys !== $approvedKeys) {
+        $issues[] =
+            'Canonical visibility keys do not exactly match the approved question inventory.';
+    }
+
     return $issues;
 }
 
