@@ -28,6 +28,25 @@ function llama_report_current_store_target(
 }
 
 /**
+ * Migration rollout check. Existing V2 storage remains authoritative until
+ * M3-001 is installed and the current-answer readers are cut over.
+ * Never use this check to suppress failures after the table exists.
+ */
+function llama_report_current_store_available(PDO $db): bool
+{
+    static $available = null;
+    if ($available !== null) {
+        return $available;
+    }
+    $statement = $db->prepare(
+        'SELECT COUNT(*) FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+    );
+    $statement->execute(['place_report_current_answers']);
+    return $available = ((int) $statement->fetchColumn() === 1);
+}
+
+/**
  * One canonical answer writer for Place, Area and Site.
  *
  * Unanswered removes the current observation, Unknown is explicitly retained,
