@@ -1143,11 +1143,13 @@ Continue Milestone 1 reconciliation from the corrected rule vocabulary.
 
 ## M1-012: Canonical Question Visibility
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `c5737a85b18df69899d411f22fb19418078ba640`
 
 ### Objective
 
@@ -1231,3 +1233,82 @@ Interface enforcement will be migrated separately so access behavior changes onl
 ### Next
 
 Migrate one reporting interface or shared authorization path to consume canonical visibility without changing dispersed-Site discoverability rules.
+
+
+## M1-013: Locked Preview Canonical Visibility
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Migrate the locked public Scout Report preview to consume canonical Public / Community visibility instead of legacy section exclusions.
+
+### Shared authorization helper
+
+Added:
+
+`llama_place_report_visibility_allows()`
+
+and:
+
+`llama_place_report_field_visibility_allows()`
+
+Rules:
+
+- Public is allowed at Public access.
+- Community is allowed only with Community access.
+- Missing or invalid visibility never grants access.
+
+These helpers evaluate question-level visibility only.
+
+They do not grant Place/Site access and do not override restricted dispersed-Site discoverability.
+
+### Locked preview migration
+
+The locked public preview now derives its question inventory from:
+
+`llama_place_report_approved_question_groups()`
+
+For a public viewer, it includes only fields that:
+
+- are not Public
+- are Community
+- belong to the approved questionnaire
+
+It no longer uses legacy section names as its access-control rule.
+
+### Presentation preservation
+
+- Public questions are not shown as Members only.
+- Community questions remain locked.
+- Description remains a separate locked About this place panel.
+- Seasonal compound questions appear as Season Begins and Season Ends rather than four month/day cards.
+- Approved question/group order is preserved.
+
+### Access behavior
+
+No Community answer values are exposed publicly.
+
+Complete Access behavior is unchanged.
+
+Dispersed-Site discoverability restrictions are unchanged.
+
+No database schema or SQL migration is required.
+
+### Verification
+
+- Confirmed locked preview uses canonical approved question groups.
+- Confirmed it calls the shared visibility authorization helper.
+- Confirmed Public fields are excluded from locked cards.
+- Confirmed Community fields remain represented as locked cards.
+- Confirmed invalid or missing visibility does not grant access.
+- Confirmed compound seasonal components deduplicate to two locked question labels.
+- Approved stored-question projection remains 264.
+
+### Next
+
+Migrate the next reporting interface or read path to consume canonical visibility, then evaluate the remaining Milestone 1 completion gate.

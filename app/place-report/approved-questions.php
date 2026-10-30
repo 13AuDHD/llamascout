@@ -101,6 +101,37 @@ function llama_place_report_approved_question_visibility(): array
 }
 
 /**
+ * Shared authorization decision for canonical question visibility.
+ *
+ * This helper answers only question-level visibility. It does not grant access
+ * to a Place or Site and must not bypass dispersed-Site discoverability rules.
+ */
+function llama_place_report_visibility_allows(
+    string $visibility,
+    bool $hasCommunityAccess
+): bool {
+    if ($visibility === 'public') {
+        return true;
+    }
+
+    if ($visibility === 'community') {
+        return $hasCommunityAccess;
+    }
+
+    return false;
+}
+
+function llama_place_report_field_visibility_allows(
+    array $field,
+    bool $hasCommunityAccess
+): bool {
+    return llama_place_report_visibility_allows(
+        (string) ($field['approved_visibility'] ?? ''),
+        $hasCommunityAccess
+    );
+}
+
+/**
  * Approved two-page Scout Report presentation.
  *
  * The data foundation remains shared, but the full Scout Report must not be
