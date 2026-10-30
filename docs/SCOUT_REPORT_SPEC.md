@@ -246,6 +246,54 @@ The resulting mapping must identify:
 
 No field may be removed, reassigned, or retired merely because it is absent from one existing interface.
 
+4.5 Two-Page Scout Report Presentation
+
+The canonical data foundation is shared, but the full Scout Report presentation must remain split into two comprehensible pages or surfaces.
+
+The report must not be flattened into one continuous page containing both Place and Site detail.
+
+The approved presentation surfaces are:
+
+**Place details**
+
+* Basic Information
+* Location
+* Amenities
+* Operating Hours
+* Road Conditions
+* Vehicle Access
+* Seasonal Access
+* Gate Access
+* Nearest Services
+
+The Place surface uses the established Llama Scout Place accent treatment, currently represented by the green visual language in the approved Canyon Haven Place reference.
+
+**Site details**
+
+* Site Info
+* Fees and Reservations
+* Setting and Environment
+* Parking and Maneuvering
+* Accessibility
+* Site Amenities
+* Connectivity
+* Daytime
+* Nighttime
+* Specific Sensory
+* Safety and Hazards
+* Rules and Restrictions
+* Experience and Recommendations
+* Scout Notes
+* Place History report metadata
+
+The Site surface uses the established Llama Scout Site accent treatment, currently represented by the orange visual language in the approved Canyon Haven Site reference.
+
+The color rule is semantic, not a storage rule. Canonical reporting metadata identifies the Place or Site accent role. CSS and presentation components own the actual color values.
+
+Interfaces may use tabs, steps, navigation, or separate URLs where appropriate, but a full reporting interface must preserve the Place/Site conceptual split.
+
+The two surfaces share one canonical question system underneath. Separating presentation must never create duplicate question definitions, duplicate answer storage, or conflicting ownership.
+
 ⸻
 
 5. Place and Site Ownership
