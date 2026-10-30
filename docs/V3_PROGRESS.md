@@ -1553,11 +1553,13 @@ Introduce one shared current-answer envelope over the existing compatibility pre
 
 ## M2-002: Canonical Current Answer Read Model
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `505a65c6e55e743bd39ee00ad2c00fbe903df457`
 
 ### Objective
 
@@ -1656,3 +1658,103 @@ No SQL is required.
 ### Next
 
 Migrate one current-answer consumer to the canonical envelope while preserving its rendered and editing behavior.
+
+
+## M2-003: Site Detail Uses Canonical Current Answers
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Migrate one active current-answer consumer onto the canonical answer envelope without changing its response or frontend behavior.
+
+### Consumer
+
+Migrated:
+
+`api/place-campsite-detail.php?mode=report`
+
+This endpoint is used by Site switching in the published Scout Report.
+
+### Previous read path
+
+The endpoint previously rebuilt current Site state locally by:
+
+1. reading published Place answer state
+2. converting Place data to scoped values
+3. locating the Site reporting target
+4. resolving Place / Area / Site precedence
+5. composing the campsite baseline
+6. generating display maps and warnings
+
+That duplicated the precedence now owned by the canonical current-answer model.
+
+### New read path
+
+The endpoint now calls:
+
+`llama_place_report_current_answer_model()`
+
+for the canonical campsite target.
+
+It projects the returned envelopes through:
+
+`llama_place_report_current_answer_values()`
+
+### Compatibility projections
+
+Added reusable envelope-to-flat-map projections:
+
+- `effective`
+- `inherited`
+- `local`
+- `scoped_override`
+- `baseline`
+
+Unknown answers convert back to the existing Unknown token.
+
+Unanswered answers are omitted.
+
+### Response preservation
+
+The existing JSON contract is unchanged:
+
+- `report_inherited_values`
+- `report_override_values`
+- `report_override_keys`
+- `report_warnings`
+
+For compatibility, the historical name `report_override_values` still contains all Site-local values, including campsite baseline values.
+
+No JavaScript change is required.
+
+### Warning preservation
+
+Warnings continue to use the same effective current answers.
+
+The source of those answers is now the canonical envelope instead of endpoint-local precedence code.
+
+### Diagnostics
+
+Extended the current-answer synthetic contract checks to verify:
+
+- effective projection preserves Unknown and omits Unanswered
+- inherited projection returns only inherited winners
+- local projection excludes inherited answers
+- baseline projection returns only campsite baseline winners
+
+### Behavior
+
+No current-answer precedence changed.
+
+No Site switching behavior changed.
+
+No persistence, moderation, schema, or SQL changed.
+
+### Next
+
+Migrate the next active current-answer consumer, preferably the Update This Place scoped target read path, onto the canonical envelope while preserving its editing-layer semantics.
